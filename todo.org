@@ -1,6 +1,6 @@
 * Infrastructure
-** TODO Make module docs show up in Sphinx documentation      :documentation:
-** TODO	Add 'mailer' to README as a dependency						      :documentation:
+** DONE Make module docs show up in Sphinx documentation      :documentation:
+** DONE Add 'mailer' to README as a dependency	      :documentation:
 ** TODO Create test_data directory and add to repository     :test:
 ** TODO Write a configuration file test.cfg in test_data	       :test:
 Use the following template:

@@ -13,6 +13,10 @@ of this license is in the LICENSE file.
 Installation
 ------------
 
+bbcflib requires:
+  * Python >=2.6
+  * mailer >=0.6 (http://pypi.python.org/pypi/mailer)
+
 bbcflib doesn't have regular releases, since it is an internally used
 library.  You should download the latest source code from GitHub,
 either by going to
