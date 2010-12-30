@@ -4,8 +4,8 @@ Copyright 2010 Frederick Ross <madhadron at gmail dot com>
 bbcflib is a set of Python modules for accessing facilities used by
 the Bioinformatics and Biostatistics Core Facility˘(BBCF) at the EPFL.
 At the moment it provides modules for BBCF's GenRep, the LIMS of the
-DNA Array Facility at UNIL, and the standard frontend code for
-workflows written by Fabrice David.
+DNA Array Facility at UNIL, the standard frontend code for workflows
+written by Fabrice David, and sending job description emails.
 
 bbcflib is released under the GNU General Public License 3.0.  A copy
 of this license is in the LICENSE file.
