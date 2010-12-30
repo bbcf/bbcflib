@@ -168,6 +168,37 @@ and http://htsstation.vital-it.ch/rnaseq/runs.json?key=9pv1x7PamOj80eXnZa14 retu
     }
   }
 ]
+and http://htsstation.vital-it.ch/rnaseq/jobs/9pv1x7PamOj80eXnZa14.json for
+{
+  "job": {
+    "remote_ip": null,
+    "from_action": null,
+    "bein_id": null,
+    "query_string": null,
+    "accept": null,
+    "time": null,
+    "protocol": null,
+    "domain": null,
+    "action": null,
+    "method": null,
+    "id": 2,
+    "facility_id": null,
+    "user_agent": null,
+    "referer": null,
+    "description": "Job for testing Frontend module",
+    "controller": null,
+    "machine_id": null,
+    "path": null,
+    "lane_nber": null,
+    "key": "9pv1x7PamOj80eXnZa14",
+    "assembly_id": 14,
+    "run_nber": null,
+    "input_file": null,
+    "from_controller": null,
+    "email": "madhadron@gmail.com",
+    "created_at": "2010-12-30T13:29:54Z"
+  }
+}
 
 *** TODO Write unit tests in test.py for Frontend to make sure all values are correct :test:
 ** TODO Write Frontend class with __init__ that checks for ConfigParser or url :frontend:
