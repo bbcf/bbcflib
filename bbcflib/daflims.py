@@ -1,2 +1,5 @@
 """
 """
+
+class DAFLIMS(object):
+    pass

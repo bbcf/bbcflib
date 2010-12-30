@@ -1,2 +1,5 @@
 """
 """
+
+class Frontend(object):
+    pass

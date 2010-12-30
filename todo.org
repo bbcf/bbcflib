@@ -25,9 +25,9 @@ from daflims, DAFLIMS,
 from mail, EmailReport,
 from frontend, Frontend
 and ConfigParser from ConfigParse
-** TODO Create test.py to run against test_data. 		       :test:
+** DONE Create test.py to run against test_data.		       :test:
 Load test_data/test.cfg as a ConfigParser for use in the tests.
-** TODO Add test_suite field to setup.py to enable python setup.py test :test:
+** DONE Add test_suite field to setup.py to enable python setup.py test :test:
 http://ericholscher.com/blog/2009/jun/29/enable-setuppy-test-your-django-apps/
 http://peak.telecommunity.com/DevCenter/setuptools#test
 
