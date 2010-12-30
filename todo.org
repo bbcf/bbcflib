@@ -31,7 +31,7 @@ Load test_data/test.cfg as a ConfigParser for use in the tests.
 http://ericholscher.com/blog/2009/jun/29/enable-setuppy-test-your-django-apps/
 http://peak.telecommunity.com/DevCenter/setuptools#test
 
-** TODO Write docstring for __init__.py			      :documentation:
+** DONE Write docstring for __init__.py			      :documentation:
 * GenRep
 ** TODO Unit tests for genrep.py				       :test:
 Test against http://bbcftools.vital-it.ch/genrep/ 
