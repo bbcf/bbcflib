@@ -1,7 +1,54 @@
 """
+==============
+bbcflib.genrep
+==============
+
+This module provides and interface to GenRep repositories.  It
+provides two classes. ``GenRep`` connects to a GenRep repository and
+handles all queries.  A query via the ``GenRep`` object returns an
+``Assembly``, giving the information on a particular entry in GenRep.
+
+The primary GenRep repository on VITAL-IT has URL
+``http://bbcftools.vital-it.ch/genrep/`` and root directory
+``/scratch/frt/yearly/genrep/nr_assemblies/bowtie``.  To connect to
+this GenRep repository and fetch an ``Assembly`` named ``ce6``, we
+would write::
+
+    g = GenRep('http://bbcftools.vital-it.ch/genrep/',
+               '/scratch/frt/yearly/genrep/nr_assemblies/bowtie')
+    g.assembly('ce6')
+
+Assemblies in GenRep are also assigned unique integer IDs.  The unique
+integer ID for assembly ``ce6`` is 14.  We can use these IDs anywhere
+we would use the name, so the third line in the prevous code could
+equally well be written::
+
+    g.assembly(14)
+
+``GenRep`` objects can also be created from ``ConfigParser`` objects.
+Instead of a URL and root directory, we pass keyword arguments
+``config`` with the ``ConfigParser`` and optionally ``section`` to
+choose what section of the configuration file to use.  If no
+``section`` is specified, it defaults to "genrep".  The two fields
+read from that section are
+
+  * genrep_url
+  * genrep_root
+
+With a ``ConfigParser``, the previous code would look like::
+
+    c = ConfigParser(...)
+    ... fill the ConfigParser
+    g = GenRep(config=c) # or GenRep(config=c,section='genrep')
+    g.assembly('ce6')
+
+.. autoclass:: GenRep
+
+.. autoclass:: Assembly
 """
 import urllib2
 import json
+import os
 
 class GenRep(object):
     """Create an object to query a GenRep repository.
@@ -28,15 +75,15 @@ class GenRep(object):
 
     def query_url(self, method, assembly):
         """Assemble a URL to call *method* for *assembly* on the repository."""
-        if isinstance(assembly, int):
+        if isinstance(assembly, str):
             return """%s/%s.json?assembly_name=%s""" % (self.url, method, assembly)
-        elif isinstance(assembly, str):
+        elif isinstance(assembly, int):
             return """%s/%s.json?assembly_id=%d""" % (self.url, method, assembly)
         else:
             raise ValueError("Argument 'assembly' to index_path must be a " + \
                                  "string or integer, got " + str(assembly))
 
-    def get_assembly(self, assembly):
+    def assembly(self, assembly):
         """Get an Assembly object corresponding to *assembly*.
 
         *assembly* may be an integer giving the assembly ID, or a

@@ -32,15 +32,404 @@ http://ericholscher.com/blog/2009/jun/29/enable-setuppy-test-your-django-apps/
 http://peak.telecommunity.com/DevCenter/setuptools#test
 
 ** DONE Write docstring for __init__.py			      :documentation:
+** TODO Reorganize documentation to be sanely readable	      :documentation:
 * GenRep
 ** TODO Unit tests for genrep.py				       :test:
-Test against http://bbcftools.vital-it.ch/genrep/ 
-*** TODO Tests in test.py for GenRep.query_url 			       :test:
-*** TODO Get JSON from GenRep for assemblies and chromosomes on GenRep, prettyprint it. :test:
+Test against http://bbcftools.vital-it.ch/genrep/
+*** DONE Tests in test.py for GenRep.query_url			       :test:
+*** DONE Get JSON from GenRep for assemblies and chromosomes on GenRep, prettyprint it. :test:
+**** from http://bbcftools.vital-it.ch/genrep/assemblies.json
+[
+  {
+    "assembly": {
+      "name": "ce6",
+      "bbcf_valid": true,
+      "updated_at": "2010-12-20T07:47:55Z",
+      "nr_assembly_id": 103,
+      "genome_id": 8,
+      "source_name": "UCSC",
+      "id": 14,
+      "md5": "75d3de3127a40c1aa5fd835ba35984d40f3405a2",
+      "source_id": 4,
+      "created_at": "2010-12-19T20:52:31Z"
+    }
+  },
+  {
+    "assembly": {
+      "name": "dm3",
+      "bbcf_valid": true,
+      "updated_at": "2010-12-20T07:56:34Z",
+      "nr_assembly_id": 104,
+      "genome_id": 12,
+      "source_name": "UCSC",
+      "id": 13,
+      "md5": "a5b17550727af419676aef920ba932597ca0d737",
+      "source_id": 4,
+      "created_at": "2010-12-19T20:51:37Z"
+    }
+  },
+  {
+    "assembly": {
+      "name": "hg19",
+      "bbcf_valid": true,
+      "updated_at": "2010-12-17T21:29:01Z",
+      "nr_assembly_id": 76,
+      "genome_id": 5,
+      "source_name": "UCSC",
+      "id": 11,
+      "md5": "bb27b89826b88823423282438077cdb836e1e6e5",
+      "source_id": 4,
+      "created_at": "2010-12-16T16:08:13Z"
+    }
+  },
+  {
+    "assembly": {
+      "name": "mm9",
+      "bbcf_valid": true,
+      "updated_at": "2010-11-26T14:57:53Z",
+      "nr_assembly_id": 70,
+      "genome_id": 4,
+      "source_name": "UCSC",
+      "id": 7,
+      "md5": "251fb5451eac220c459d419874582a3f4165e697",
+      "source_id": 4,
+      "created_at": "2010-04-29T08:23:09Z"
+    }
+  },
+  {
+    "assembly": {
+      "name": "MSmeg_JS623",
+      "bbcf_valid": false,
+      "updated_at": "2010-12-20T12:11:34Z",
+      "nr_assembly_id": null,
+      "genome_id": 13,
+      "source_name": "NCBI",
+      "id": 16,
+      "md5": null,
+      "source_id": 3,
+      "created_at": "2010-12-20T12:11:34Z"
+    }
+  },
+  {
+    "assembly": {
+      "name": "MTb_H37Rv",
+      "bbcf_valid": true,
+      "updated_at": "2010-12-19T16:21:02Z",
+      "nr_assembly_id": 72,
+      "genome_id": 10,
+      "source_name": "NCBI",
+      "id": 8,
+      "md5": "af7ab0cda6faea803b53ec27f74a92e89c88bd67",
+      "source_id": 3,
+      "created_at": "2010-07-27T14:42:07Z"
+    }
+  },
+  {
+    "assembly": {
+      "name": "NA1000",
+      "bbcf_valid": true,
+      "updated_at": "2010-12-20T07:56:52Z",
+      "nr_assembly_id": 105,
+      "genome_id": 11,
+      "source_name": "NCBI",
+      "id": 15,
+      "md5": "8c53bc420284d75648ef91df33bec1e11f54a1ea",
+      "source_id": 3,
+      "created_at": "2010-12-19T20:54:15Z"
+    }
+  },
+  {
+    "assembly": {
+      "name": "NCBIM37",
+      "bbcf_valid": false,
+      "updated_at": "2010-07-31T15:00:08Z",
+      "nr_assembly_id": 70,
+      "genome_id": 4,
+      "source_name": "NCBI",
+      "id": 5,
+      "md5": "251fb5451eac220c459d419874582a3f4165e697",
+      "source_id": 3,
+      "created_at": "2010-04-29T08:22:22Z"
+    }
+  },
+  {
+    "assembly": {
+      "name": "sacCer1",
+      "bbcf_valid": false,
+      "updated_at": "2010-12-19T20:54:55Z",
+      "nr_assembly_id": 75,
+      "genome_id": 6,
+      "source_name": "UCSC",
+      "id": 1,
+      "md5": "4686147fbf69556cfe74880b04cbc60a49ba5367",
+      "source_id": 4,
+      "created_at": "2010-04-21T18:00:45Z"
+    }
+  },
+  {
+    "assembly": {
+      "name": "sacCer2",
+      "bbcf_valid": true,
+      "updated_at": "2010-12-19T21:12:22Z",
+      "nr_assembly_id": 98,
+      "genome_id": 6,
+      "source_name": "UCSC",
+      "id": 12,
+      "md5": "074f74ecd5ab5c52296d7d12954b5e8f79504d76",
+      "source_id": 4,
+      "created_at": "2010-12-19T16:15:59Z"
+    }
+  },
+  {
+    "assembly": {
+      "name": "SGD1.01",
+      "bbcf_valid": false,
+      "updated_at": "2010-12-19T21:04:53Z",
+      "nr_assembly_id": 98,
+      "genome_id": 6,
+      "source_name": "Ensembl",
+      "id": 2,
+      "md5": "074f74ecd5ab5c52296d7d12954b5e8f79504d76",
+      "source_id": 1,
+      "created_at": "2010-04-21T18:01:06Z"
+    }
+  },
+  {
+    "assembly": {
+      "name": "TAIR8",
+      "bbcf_valid": true,
+      "updated_at": "2010-11-26T14:59:56Z",
+      "nr_assembly_id": 74,
+      "genome_id": 7,
+      "source_name": "TAIR",
+      "id": 10,
+      "md5": "9534e18182dccfb1488e777e57176cb0e56a5f25",
+      "source_id": 5,
+      "created_at": "2010-07-28T08:48:17Z"
+    }
+  }
+]
+
+**** from http://bbcftools.vital-it.ch/genrep/assemblies.json?assembly_name=ce6
+[
+  {
+    "assembly": {
+      "name": "ce6",
+      "bbcf_valid": true,
+      "updated_at": "2010-12-20T07:47:55Z",
+      "nr_assembly_id": 103,
+      "genome_id": 8,
+      "source_name": "UCSC",
+      "id": 14,
+      "md5": "75d3de3127a40c1aa5fd835ba35984d40f3405a2",
+      "source_id": 4,
+      "created_at": "2010-12-19T20:52:31Z"
+    }
+  }
+]
+
+**** from http://bbcftools.vital-it.ch/genrep/assemblies.json?assembly_id=14
+Produces the whole list, not the same as assembly_name=ce6!  Emailed Fabrice about this.
+**** from http://bbcftools.vital-it.ch/genrep/chromosomes.json?assembly_name=ce6
+http://bbcftools.vital-it.ch/genrep/chromosomes.json?assembly_id=14 produces the same thing.
+[
+  {
+    "chromosome": {
+      "name": "1",
+      "updated_at": "2010-04-30T20:13:34Z",
+      "genome_id": 8,
+      "chr_type_id": 3,
+      "refseq_locus": "NC_001328",
+      "chr_names": [
+        {
+          "chr_name": {
+            "updated_at": "2010-12-19T23:50:13Z",
+            "id": 352,
+            "value": "chrM",
+            "chromosome_id": 2948,
+            "assembly_id": 14,
+            "created_at": "2010-12-19T23:50:13Z"
+          }
+        }
+      ],
+      "refseq_version": 1,
+      "id": 2948,
+      "num": 1,
+      "length": 13794,
+      "gi_number": 5834884,
+      "created_at": "2010-04-30T20:13:34Z"
+    }
+  },
+  {
+    "chromosome": {
+      "name": "2",
+      "updated_at": "2010-04-30T20:13:41Z",
+      "genome_id": 8,
+      "chr_type_id": 1,
+      "refseq_locus": "NC_003279",
+      "chr_names": [
+        {
+          "chr_name": {
+            "updated_at": "2010-12-19T23:50:13Z",
+            "id": 351,
+            "value": "chrI",
+            "chromosome_id": 3066,
+            "assembly_id": 14,
+            "created_at": "2010-12-19T23:50:13Z"
+          }
+        }
+      ],
+      "refseq_version": 6,
+      "id": 3066,
+      "num": 2,
+      "length": 15072421,
+      "gi_number": 193203938,
+      "created_at": "2010-04-30T20:13:41Z"
+    }
+  },
+  {
+    "chromosome": {
+      "name": "3",
+      "updated_at": "2010-04-30T20:13:41Z",
+      "genome_id": 8,
+      "chr_type_id": 1,
+      "refseq_locus": "NC_003280",
+      "chr_names": [
+        {
+          "chr_name": {
+            "updated_at": "2010-12-19T23:50:13Z",
+            "id": 350,
+            "value": "chrII",
+            "chromosome_id": 3067,
+            "assembly_id": 14,
+            "created_at": "2010-12-19T23:50:13Z"
+          }
+        }
+      ],
+      "refseq_version": 7,
+      "id": 3067,
+      "num": 3,
+      "length": 15279323,
+      "gi_number": 193205342,
+      "created_at": "2010-04-30T20:13:41Z"
+    }
+  },
+  {
+    "chromosome": {
+      "name": "4",
+      "updated_at": "2010-04-30T20:13:41Z",
+      "genome_id": 8,
+      "chr_type_id": 1,
+      "refseq_locus": "NC_003281",
+      "chr_names": [
+        {
+          "chr_name": {
+            "updated_at": "2010-12-20T07:47:55Z",
+            "id": 359,
+            "value": "chrIII",
+            "chromosome_id": 3068,
+            "assembly_id": 14,
+            "created_at": "2010-12-20T07:47:55Z"
+          }
+        }
+      ],
+      "refseq_version": 8,
+      "id": 3068,
+      "num": 4,
+      "length": 13783681,
+      "gi_number": 193211354,
+      "created_at": "2010-04-30T20:13:41Z"
+    }
+  },
+  {
+    "chromosome": {
+      "name": "5",
+      "updated_at": "2010-04-30T20:13:41Z",
+      "genome_id": 8,
+      "chr_type_id": 1,
+      "refseq_locus": "NC_003282",
+      "chr_names": [
+        {
+          "chr_name": {
+            "updated_at": "2010-12-20T07:47:55Z",
+            "id": 358,
+            "value": "chrIV",
+            "chromosome_id": 3069,
+            "assembly_id": 14,
+            "created_at": "2010-12-20T07:47:55Z"
+          }
+        }
+      ],
+      "refseq_version": 5,
+      "id": 3069,
+      "num": 5,
+      "length": 17493785,
+      "gi_number": 193207055,
+      "created_at": "2010-04-30T20:13:41Z"
+    }
+  },
+  {
+    "chromosome": {
+      "name": "6",
+      "updated_at": "2010-04-30T20:13:41Z",
+      "genome_id": 8,
+      "chr_type_id": 1,
+      "refseq_locus": "NC_003283",
+      "chr_names": [
+        {
+          "chr_name": {
+            "updated_at": "2010-12-19T23:50:13Z",
+            "id": 348,
+            "value": "chrV",
+            "chromosome_id": 3070,
+            "assembly_id": 14,
+            "created_at": "2010-12-19T23:50:13Z"
+          }
+        }
+      ],
+      "refseq_version": 8,
+      "id": 3070,
+      "num": 6,
+      "length": 20919568,
+      "gi_number": 193209363,
+      "created_at": "2010-04-30T20:13:41Z"
+    }
+  },
+  {
+    "chromosome": {
+      "name": "7",
+      "updated_at": "2010-04-30T20:13:41Z",
+      "genome_id": 8,
+      "chr_type_id": 1,
+      "refseq_locus": "NC_003284",
+      "chr_names": [
+        {
+          "chr_name": {
+            "updated_at": "2010-12-19T23:50:13Z",
+            "id": 349,
+            "value": "chrX",
+            "chromosome_id": 3071,
+            "assembly_id": 14,
+            "created_at": "2010-12-19T23:50:13Z"
+          }
+        }
+      ],
+      "refseq_version": 7,
+      "id": 3071,
+      "num": 7,
+      "length": 17718854,
+      "gi_number": 193211360,
+      "created_at": "2010-04-30T20:13:41Z"
+    }
+  }
+]
 *** TODO Put GenRep JSON as an Assembly object in test.py to test against. :test:
+***** TODO Have Jacques explain the exact structure of the chromosome JSON so I can properly represent it in Python
+
 *** TODO Tests in test.py for GenRep.get_assembly 		       :test:
-** TODO Write module docstring for genrep.py		      :documentation:
+** DONE Write module docstring for genrep.py		      :documentation:
 Tutorial on how to use it, what the GenRep is, how to set it up.
+** TODO Make GenRep __init__ accept ConfigParser/section as well as url/root :genrep:
 * EmailReport
 ** TODO Write class skeleton and init function for EmailReport	:emailreport:
 Handle either from, to, subject, smtp_server, or config, section (default emailreport), and to
