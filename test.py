@@ -81,7 +81,52 @@ class TestGenRep(TestCase):
 
 
 class TestEmailReport(TestCase):
-    pass
+    def setUp(self):
+        self.report = EmailReport(sender='nobody@localhost',
+                                  to='ross@localhost',
+                                  subject='Default Subject',
+                                  smtp_server='localhost')
+        cp = ConfigParser()
+        cp.read('test_data/test.cfg')
+        self.report_from_config = EmailReport(config=cp, to='ross@localhost')
+
+    def test_config_requires_to(self):
+        cp = ConfigParser()
+        cp.read('test_data/test.cfg')
+        self.assertRaises(TypeError,
+                          lambda : EmailReport(config=cp))
+
+
+    def test_init(self):
+        self.assertEqual(self.report.sender, 'nobody@localhost')
+        self.assertEqual(self.report.to, 'ross@localhost')
+        self.assertEqual(self.report.subject, 'Default Subject')
+        self.assertEqual(self.report.smtp_server, 'localhost')
+
+    def test_init_from_config(self):
+        self.assertEqual(self.report_from_config.sender, 'nobody@localhost')
+        self.assertEqual(self.report_from_config.to, 'ross@localhost')
+        self.assertEqual(self.report_from_config.subject, 'Default Subject')
+        self.assertEqual(self.report_from_config.smtp_server, 'localhost')
+
+    def test_append_body(self):
+        a = "This is a test of the emergency broadcasting system."
+        self.report.appendBody(a)
+        self.assertEqual(self.report.body, a)
+        self.report.appendBody(a)
+        self.assertEqual(self.report.body, a+a)
+
+    def test_dump(self):
+        self.assertEqual(self.report.dump(),
+                         {'sender': 'nobody@localhost',
+                          'to': 'ross@localhost',
+                          'subject': 'Default Subject',
+                          'smtp_server': 'localhost',
+                          'body': self.report.body})
+
+    def test_send(self):
+        self.report.send()
+
 
 class TestDAFLIMS(TestCase):
     pass
