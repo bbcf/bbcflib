@@ -49,6 +49,7 @@ With a ``ConfigParser``, the previous code would look like::
 import urllib2
 import json
 import os
+from datetime import datetime
 
 class GenRep(object):
     """Create an object to query a GenRep repository.
@@ -66,8 +67,8 @@ class GenRep(object):
     method with either the integer assembly ID or the string assembly
     name.  This returns an Assembly object.
 
-    >>> a = GenRep.get_assembly(3)
-    >>> b = GenRep.get_assembly('mus')
+    >>> a = g.assembly(3)
+    >>> b = g.assembly('mus')
     """
     def __init__(self, url, root):
         self.root = os.path.abspath(root)
@@ -80,7 +81,7 @@ class GenRep(object):
         elif isinstance(assembly, int):
             return """%s/%s.json?assembly_id=%d""" % (self.url, method, assembly)
         else:
-            raise ValueError("Argument 'assembly' to index_path must be a " + \
+            raise ValueError("Argument 'assembly' to must be a " + \
                                  "string or integer, got " + str(assembly))
 
     def assembly(self, assembly):
@@ -89,28 +90,47 @@ class GenRep(object):
         *assembly* may be an integer giving the assembly ID, or a
         string giving the assembly name.
         """
-        assembly_info = json.load(urllib2.urlopen(self.query_url('assemblies', assembly)))
-        assembly = Assembly(assembly_id = str(assembly_info[0]['assembly']['id']),
-                            assembly_name = assembly_info[0]['assembly']['name'],
-                            index_path = os.path.join(self.root, 
-                                                      str(assembly_info[0]['assembly']['md5'])))
+        if isinstance(assembly, str):
+            assembly_info = json.load(urllib2.urlopen(self.query_url('assemblies', assembly)))[0]
+        elif isinstance(assembly, int):
+            assembly_info = json.load(urllib2.urlopen(self.query_url('assemblies/ID', assembly)))
+        else:
+            raise ValueError("Argument 'assembly' must be a string or integer, got " + str(assembly))
+
+        a = Assembly(assembly_id = int(assembly_info['assembly']['id']),
+                     assembly_name = assembly_info['assembly']['name'],
+                     index_path = os.path.join(self.root, 
+                                               str(assembly_info['assembly']['md5'])),
+                     bbcf_valid = assembly_info['assembly']['bbcf_valid'],
+                     updated_at = datetime.strptime(assembly_info['assembly']['updated_at'],
+                                                    '%Y-%m-%dT%H:%M:%SZ'),
+                     nr_assembly_id = int(assembly_info['assembly']['nr_assembly_id']),
+                     genome_id = int(assembly_info['assembly']['genome_id']),
+                     source_name = assembly_info['assembly']['source_name'],
+                     md5 = assembly_info['assembly']['md5'],
+                     source_id = int(assembly_info['assembly']['source_id']),
+                     created_at = datetime.strptime(assembly_info['assembly']['created_at'],
+                                                    '%Y-%m-%dT%H:%M:%SZ'))
         chromosomes = json.load(urllib2.urlopen(self.query_url('chromosomes', assembly)))
         for c in chromosomes:
             name_dictionary = dict([ (x['chr_name']['assembly_id'],
                                       x['chr_name']['value'])
                                      for x in c['chromosome']['chr_names']])
-            assembly.add_chromosome(c['chromosome']['id'],
-                                    c['chromosome']['refseq_locus'],
-                                    c['chromosome']['refseq_version'],
-                                    name_dictionary[assembly.id],
-                                    c['chromosome']['length'])
-        return assembly
+            a.add_chromosome(c['chromosome']['id'],
+                             c['chromosome']['refseq_locus'],
+                             c['chromosome']['refseq_version'],
+                             name_dictionary[a.id],
+                             c['chromosome']['length'])
+        return a
                                     
             
 
 
 class Assembly(object):
     """A representation of a GenRep assembly.
+
+    In general, Assembly objects should always be created by calls to
+    a GenRep object.
 
     An Assembly has the following fields:
 
@@ -133,14 +153,44 @@ class Assembly(object):
       RefSeq version), and the values are dictionaries with the keys
       'name' and 'length'.
 
-    In general, Assembly objects should always be created by calls to
-    a GenRep object.
+    .. attribute:: bbcf_valid
+
+      Boolean.
+    
+    .. attribute:: updated_at
+
+    .. attribute:: created_at
+   
+      ``datetime`` objects.
+
+    .. attribute:: nr_assembly_id
+
+    .. attribute:: genome_id
+
+    .. attribute:: source_id
+
+      All integers.
+
+    .. attribute:: source_name
+
+    .. attribute:: md5
+
     """
-    def __init__(self, assembly_id, assembly_name, index_path):
-        self.id = assembly_id
+    def __init__(self, assembly_id, assembly_name, index_path,
+                 bbcf_valid, updated_at, nr_assembly_id, genome_id,
+                 source_name, md5, source_id, created_at):
+        self.id = int(assembly_id)
         self.name = assembly_name
         self.chromosomes = {}
         self.index_path = os.path.abspath(index_path)
+        self.bbcf_valid = bbcf_valid
+        self.updated_at = updated_at
+        self.nr_assembly_id = nr_assembly_id
+        self.genome_id = genome_id
+        self.source_name = source_name
+        self.md5 = md5
+        self.source_id = source_id
+        self.created_at = created_at
 
     def add_chromosome(self, chromosome_id, refseq_locus, refseq_version, name, length):
         self.chromosomes[(chromosome_id, refseq_locus, refseq_version)] = \

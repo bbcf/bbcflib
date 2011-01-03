@@ -17,15 +17,10 @@ which reexports the important functions from all the submodules.  It
 reexports ``ConfigParser`` from ``ConfigParser``, and the following
 modules from bbcflib:
 
-.. autoclass:: GenRep
-
-.. autoclass:: Assembly
-
-.. autoclass:: EmailReport
-
-.. autoclass:: DAFLIMS
-
-.. autoclass:: Frontend
+* ``GenRep`` and ``Assembly`` from  :doc:`bbcflib_genrep`
+* ``EmailReport`` from :doc:`bbcflib_email`
+* ``DAFLIMS`` from :doc:`bbcflib_daflims`
+* ``Frontend`` from :doc:`bbcflib_frontend`
 
 """
 
