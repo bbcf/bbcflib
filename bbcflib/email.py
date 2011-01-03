@@ -79,9 +79,11 @@ class EmailReport(object):
 
 
     def appendBody(self, s):
+        """Append string *s* to the message body."""
         self.body = self.body + s
 
     def dump(self):
+        """Return a dictionary describing this email."""
         return {'sender': self.sender,
                 'to': self.to,
                 'subject': self.subject,
@@ -89,6 +91,7 @@ class EmailReport(object):
                 'body': self.body}
 
     def send(self):
+        """Send the email described by this object."""
         message = Message(From=self.sender,
                           To=self.to,
                           charset="utf-8")

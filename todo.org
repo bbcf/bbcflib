@@ -32,9 +32,9 @@ http://ericholscher.com/blog/2009/jun/29/enable-setuppy-test-your-django-apps/
 http://peak.telecommunity.com/DevCenter/setuptools#test
 
 ** DONE Write docstring for __init__.py			      :documentation:
-** TODO Reorganize documentation to be sanely readable	      :documentation:
+** DONE Reorganize documentation to be sanely readable	            :documentation:
 * GenRep
-** TODO Unit tests for genrep.py				       :test:
+** DONE Unit tests for genrep.py				       :test:
 Test against http://bbcftools.vital-it.ch/genrep/
 *** DONE Tests in test.py for GenRep.query_url			       :test:
 *** DONE Get JSON from GenRep for assemblies and chromosomes on GenRep, prettyprint it. :test:
@@ -229,7 +229,8 @@ Test against http://bbcftools.vital-it.ch/genrep/
 ]
 
 **** from http://bbcftools.vital-it.ch/genrep/assemblies.json?assembly_id=14
-Produces the whole list, not the same as assembly_name=ce6!  Emailed Fabrice about this.
+To get an assembly by ID, use
+http://bbcftools.vital-it.ch/genrep/assemblies/ID.json?assembly_id=...
 **** from http://bbcftools.vital-it.ch/genrep/chromosomes.json?assembly_name=ce6
 http://bbcftools.vital-it.ch/genrep/chromosomes.json?assembly_id=14 produces the same thing.
 [
@@ -423,26 +424,29 @@ http://bbcftools.vital-it.ch/genrep/chromosomes.json?assembly_id=14 produces the
     }
   }
 ]
+*** DONE Fix lookup of assembly by ID
+Waiting for Fabrice to send me correct URL to do this.
 *** TODO Put GenRep JSON as an Assembly object in test.py to test against. :test:
 ***** TODO Have Jacques explain the exact structure of the chromosome JSON so I can properly represent it in Python
 
-*** TODO Tests in test.py for GenRep.get_assembly 		       :test:
+*** DONE Tests in test.py for GenRep.assembly			       :test:
+*** DONE Test creating GenRep from configuration object, including with custom section :test:
 ** DONE Write module docstring for genrep.py		      :documentation:
 Tutorial on how to use it, what the GenRep is, how to set it up.
-** TODO Make GenRep __init__ accept ConfigParser/section as well as url/root :genrep:
+** DONE Make GenRep __init__ accept ConfigParser/section as well as url/root :genrep:
 * EmailReport
-** TODO Write class skeleton and init function for EmailReport	:emailreport:
+** DONE Write class skeleton and init function for EmailReport	:emailreport:
 Handle either from, to, subject, smtp_server, or config, section (default emailreport), and to
 Set up Message object.  Use utf-8 charset.
-** TODO Write appendBody method for EmailReport			:emailreport:
-** TODO Write dump method for EmailReport that produces a dictionary of all the information :test:
-** TODO Add a send method to EmailReport			:emailreport:
-** TODO Formulate a test message and its dumped form, add it to test.py :test:
-** TODO Write unit tests to check that dumped message is correct       :test:
-** TODO Write documentation for EmailReport		      :documentation:
-*** TODO Docstring for module				      :documentation:
-*** TODO Docstring for EmailReport class		      :documentation:
-*** TODO Docstring for EmailReport methods		      :documentation:
+** DONE Write appendBody method for EmailReport			:emailreport:
+** DONE Write dump method for EmailReport that produces a dictionary of all the information :test:
+** DONE Add a send method to EmailReport			:emailreport:
+** DONE Formulate a test message and its dumped form, add it to test.py :test:
+** DONE Write unit tests to check that dumped message is correct       :test:
+** DONE Write documentation for EmailReport		      :documentation:
+*** DONE Docstring for module				      :documentation:
+*** DONE Docstring for EmailReport class		      :documentation:
+*** DONE Docstring for EmailReport methods		      :documentation:
 
 * DAFLIMS
 ** TODO Write class and constructor for DAFLIMS			    :daflims:
