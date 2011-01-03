@@ -426,7 +426,7 @@ http://bbcftools.vital-it.ch/genrep/chromosomes.json?assembly_id=14 produces the
 ]
 *** DONE Fix lookup of assembly by ID
 Waiting for Fabrice to send me correct URL to do this.
-*** TODO Put GenRep JSON as an Assembly object in test.py to test against. :test:
+*** DONE Put GenRep JSON as an Assembly object in test.py to test against. :test:
 ***** TODO Have Jacques explain the exact structure of the chromosome JSON so I can properly represent it in Python
 
 *** DONE Tests in test.py for GenRep.assembly			       :test:
@@ -451,8 +451,8 @@ Set up Message object.  Use utf-8 charset.
 * DAFLIMS
 ** DONE Write class and constructor for DAFLIMS			    :daflims:
 Either take username and password, or config and section (default "daflims").
-** TODO Make DAFLIMS __init__ make sure it can connect to LIMS	    :daflims:
 ** TODO Track down a small file in the DAFLIMS I can fetch for testing purposes :test:
+*** TODO Ask Jacques for a small file to fetch from DAFLIMS as a test.
 ** TODO Adapt Jacques' fetch function into fetch_file		    :daflims:
 def download_fastq( sample_descr, root="/scratch/frt/daily/htsserver/chipseq/" ):
     """Fetches fastq file for a given experiment from the Core Facilities LIMS, 
@@ -497,8 +497,8 @@ Test for write_to left empty, set to a directory, and set to a filename.
 ** TODO Write DAFLIMS class and method docstrings	      :documentation:
 
 * Frontend
-** TODO Unit tests for Frontend					       :test:
-*** TODO Put test data for key 9pv1x7PamOj80eXnZa14 in test.py as dicts :test:
+** DONE Unit tests for Frontend					       :test:
+*** DONE Put test data for key 9pv1x7PamOj80eXnZa14 in test.py as dicts :test:
 http://htsstation.vital-it.ch/rnaseq/groups.json?key=9pv1x7PamOj80eXnZa14 returned:
 [
   {
@@ -594,7 +594,7 @@ and http://htsstation.vital-it.ch/rnaseq/jobs/9pv1x7PamOj80eXnZa14.json for
   }
 }
 
-*** TODO Write unit tests in test.py for Frontend to make sure all values are correct :test:
-** TODO Write Frontend class with __init__ that checks for ConfigParser or url :frontend:
-** TODO Make Frontend __init__ query Fabrice's URLs and set local fields from them :frontend:
-** TODO Write module docstring for frontend.py		      :documentation:
+*** DONE Write unit tests in test.py for Frontend to make sure all values are correct :test:
+** DONE Write Frontend class with __init__ that checks for ConfigParser or url :frontend:
+** DONE Make Frontend __init__ query Fabrice's URLs and set local fields from them :frontend:
+** DONE Write module docstring for frontend.py		      :documentation:

@@ -3,7 +3,7 @@
 bbcflib.genrep
 ==============
 
-This module provides and interface to GenRep repositories.  It
+This module provides an interface to GenRep repositories.  It
 provides two classes. ``GenRep`` connects to a GenRep repository and
 handles all queries.  A query via the ``GenRep`` object returns an
 ``Assembly``, giving the information on a particular entry in GenRep.
@@ -50,6 +50,8 @@ import urllib2
 import json
 import os
 from datetime import datetime
+
+from common import normalize_url
 
 class GenRep(object):
     """Create an object to query a GenRep repository.
@@ -209,24 +211,6 @@ class Assembly(object):
         
         
         
-def normalize_url(url):
-    """Produce a fixed form for an HTTP URL.
-
-    Make sure the URL begins with http:// and does *not* end with a /.
-
-    >>> normalize_url('http://www.google.com')
-    'http://www.google.com'
-    >>> normalize_url('http://www.google.com/')
-    'http://www.google.com'
-    >>> normalize_url('www.google.com/')
-    'http://www.google.com'
-    """
-    url = url.lower()
-    if not(url.startswith("http://")):
-        url = "http://" + url
-    if url.endswith("/"):
-        url = url[:-1]
-    return url
 
 if __name__ == '__main__':
     import doctest

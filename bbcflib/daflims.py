@@ -14,3 +14,4 @@ class DAFLIMS(object):
         else:
             self.username = username
             self.password = password
+
