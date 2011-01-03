@@ -26,6 +26,13 @@ class TestGenRep(TestCase):
     def setUp(self):
         self.genrep = GenRep('http://bbcftools.vital-it.ch/genrep/',
                              '/scratch/frt/yearly/genrep/nr_assemblies/bowtie')
+        cp = ConfigParser()
+        cp.read('test_data/test.cfg')
+        self.genrep_from_config = GenRep(config=cp)
+
+    def test_config_correctly_loaded(self):
+        self.assertEqual(self.genrep.url, 'http://bbcftools.vital-it.ch/genrep')
+        self.assertEqual(self.genrep.root, '/scratch/frt/yearly/genrep/nr_assemblies/bowtie')
 
     def test_query_url(self):
         def check_with_url(url):
@@ -42,35 +49,35 @@ class TestGenRep(TestCase):
         self.assertRaises(ValueError,
                           lambda : g.query_url('boris',[1,2,3]))
 
+    def assertAssembliesEqual(self, a, b):
+        self.assertEqual(a.id, b.id)
+        self.assertEqual(a.name, b.name)
+        self.assertEqual(a.index_path, b.index_path)
+        self.assertEqual(a.bbcf_valid, b.bbcf_valid)
+        self.assertEqual(a.updated_at, b.updated_at)
+        self.assertEqual(a.nr_assembly_id, b.nr_assembly_id)
+        self.assertEqual(a.genome_id, b.genome_id)
+        self.assertEqual(a.source_name, b.source_name)
+        self.assertEqual(a.md5, b.md5)
+        self.assertEqual(a.source_id, b.source_id)
+        self.assertEqual(a.created_at, b.created_at)
+        self.assertEqual(a.chromosomes, b.chromosomes)        
+
     def test_assembly_with_name(self):
         a = self.genrep.assembly('ce6')
-        self.assertEqual(a.id, ce6.id)
-        self.assertEqual(a.name, ce6.name)
-        self.assertEqual(a.index_path, ce6.index_path)
-        self.assertEqual(a.bbcf_valid, ce6.bbcf_valid)
-        self.assertEqual(a.updated_at, ce6.updated_at)
-        self.assertEqual(a.nr_assembly_id, ce6.nr_assembly_id)
-        self.assertEqual(a.genome_id, ce6.genome_id)
-        self.assertEqual(a.source_name, ce6.source_name)
-        self.assertEqual(a.md5, ce6.md5)
-        self.assertEqual(a.source_id, ce6.source_id)
-        self.assertEqual(a.created_at, ce6.created_at)
-        self.assertEqual(a.chromosomes, ce6.chromosomes)
+        self.assertAssembliesEqual(a, ce6)
 
     def test_assembly_with_id(self):
         a = self.genrep.assembly(14)
-        self.assertEqual(a.id, ce6.id)
-        self.assertEqual(a.name, ce6.name)
-        self.assertEqual(a.index_path, ce6.index_path)
-        self.assertEqual(a.bbcf_valid, ce6.bbcf_valid)
-        self.assertEqual(a.updated_at, ce6.updated_at)
-        self.assertEqual(a.nr_assembly_id, ce6.nr_assembly_id)
-        self.assertEqual(a.genome_id, ce6.genome_id)
-        self.assertEqual(a.source_name, ce6.source_name)
-        self.assertEqual(a.md5, ce6.md5)
-        self.assertEqual(a.source_id, ce6.source_id)
-        self.assertEqual(a.created_at, ce6.created_at)
-        self.assertEqual(a.chromosomes, ce6.chromosomes)
+        self.assertAssembliesEqual(a, ce6)
+
+    def test_assembly_with_name_from_config(self):
+        a = self.genrep_from_config.assembly('ce6')
+        self.assertAssembliesEqual(a, ce6)
+
+    def test_assembly_with_id_from_config(self):
+        a = self.genrep_from_config.assembly(14)
+        self.assertAssembliesEqual(a, ce6)
 
 
 class TestEmailReport(TestCase):

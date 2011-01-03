@@ -70,9 +70,19 @@ class GenRep(object):
     >>> a = g.assembly(3)
     >>> b = g.assembly('mus')
     """
-    def __init__(self, url, root):
-        self.root = os.path.abspath(root)
-        self.url = normalize_url(url)
+    def __init__(self, url=None, root=None, config=None, section='genrep'):
+        if (url == None or root == None) and config == None:
+            raise TypeError("GenRep requires either a 'url' and 'root', or a 'config'")
+        elif config != None:
+            self.root = os.path.abspath(config.get(section, 'genrep_root'))
+            self.url = normalize_url(config.get(section, 'genrep_url'))
+            if url != None:
+                self.url = normalize_url(url)
+            if root != None:
+                self.root = os.path.abspath(root)
+        else:
+            self.url = normalize_url(url)
+            self.root = os.path.abspath(root)
 
     def query_url(self, method, assembly):
         """Assemble a URL to call *method* for *assembly* on the repository."""
@@ -93,7 +103,7 @@ class GenRep(object):
         if isinstance(assembly, str):
             assembly_info = json.load(urllib2.urlopen(self.query_url('assemblies', assembly)))[0]
         elif isinstance(assembly, int):
-            assembly_info = json.load(urllib2.urlopen(self.query_url('assemblies/ID', assembly)))
+            assembly_info = json.load(urllib2.urlopen("""%s/assemblies/%d.json""" % (self.url, assembly)))
         else:
             raise ValueError("Argument 'assembly' must be a string or integer, got " + str(assembly))
 
