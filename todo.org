@@ -449,7 +449,7 @@ Set up Message object.  Use utf-8 charset.
 *** DONE Docstring for EmailReport methods		      :documentation:
 
 * DAFLIMS
-** TODO Write class and constructor for DAFLIMS			    :daflims:
+** DONE Write class and constructor for DAFLIMS			    :daflims:
 Either take username and password, or config and section (default "daflims").
 ** TODO Make DAFLIMS __init__ make sure it can connect to LIMS	    :daflims:
 ** TODO Track down a small file in the DAFLIMS I can fetch for testing purposes :test:
