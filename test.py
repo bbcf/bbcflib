@@ -129,7 +129,14 @@ class TestEmailReport(TestCase):
 
 
 class TestDAFLIMS(TestCase):
-    pass
+    def setUp(self):
+        cp = ConfigParser()
+        cp.read('test_data/test.cfg')
+        self.d = DAFLIMS(config=cp)
+
+    def test_fetch(self):
+        print self.d.fetch("lgtf", "R2D2", 91, 3)
+
 
 
 class TestFrontend(TestCase):

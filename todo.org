@@ -452,7 +452,8 @@ Set up Message object.  Use utf-8 charset.
 ** DONE Write class and constructor for DAFLIMS			    :daflims:
 Either take username and password, or config and section (default "daflims").
 ** TODO Track down a small file in the DAFLIMS I can fetch for testing purposes :test:
-*** TODO Ask Jacques for a small file to fetch from DAFLIMS as a test.
+*** DONE Ask Jacques for a small file to fetch from DAFLIMS as a test.
+Jacques said ["lgtf","R2D2","91","3"] -- which is a large file, but there it is.
 ** TODO Adapt Jacques' fetch function into fetch_file		    :daflims:
 def download_fastq( sample_descr, root="/scratch/frt/daily/htsserver/chipseq/" ):
     """Fetches fastq file for a given experiment from the Core Facilities LIMS, 
