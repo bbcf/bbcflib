@@ -1,4 +1,17 @@
 """
+===============
+bbcflib.daflims
+===============
+
+This module provides an interface to the DNA Array Facility's LIMS.
+To use it, create a DAFLIMS object with your username and password to
+the facility, then call the ``fetch`` method on the object to get a
+particular file.
+
+Files in the LIMS are identified by four fields: facility, machine, run, and lane.  For instance, lane 3 of run 91 sequenced on R2D2 at lgtf.  To fetch this file to 'myfile.fastq' in the current working directory, we would write::
+
+    d = DAFLIMS(username=..., password=...)
+    d.fetch('lgtf', 'R2D2', 91, 3, 'myfile.fastq')
 """
 import urllib2
 import tarfile
@@ -18,7 +31,7 @@ class DAFLIMS(object):
             self.username = username
             self.password = password
 
-    def fetch(self, facility, machine, run, lane):
+    def fetch(self, facility, machine, run, lane, to=None):
         if not(isinstance(facility, str)):
             raise ValueError("facility must be a string, found %s" % str(facility))
         if not(isinstance(machine, str)):

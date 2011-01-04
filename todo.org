@@ -451,10 +451,10 @@ Set up Message object.  Use utf-8 charset.
 * DAFLIMS
 ** DONE Write class and constructor for DAFLIMS			    :daflims:
 Either take username and password, or config and section (default "daflims").
-** TODO Track down a small file in the DAFLIMS I can fetch for testing purposes :test:
+** DONE Track down a small file in the DAFLIMS I can fetch for testing purposes :test:
 *** DONE Ask Jacques for a small file to fetch from DAFLIMS as a test.
 Jacques said ["lgtf","R2D2","91","3"] -- which is a large file, but there it is.
-** TODO Adapt Jacques' fetch function into fetch_file		    :daflims:
+** DONE Adapt Jacques' fetch function into fetch_file		    :daflims:
 def download_fastq( sample_descr, root="/scratch/frt/daily/htsserver/chipseq/" ):
     """Fetches fastq file for a given experiment from the Core Facilities LIMS, 
     saves in local directory.
@@ -492,9 +492,11 @@ def download_fastq( sample_descr, root="/scratch/frt/daily/htsserver/chipseq/" )
     tar.close()
     return {lib_name: file_loc+"/"+fastqname}
 
+** TODO Make fetch method write to given output argument
+** TODO Figure out what proper return value should be from fetch
 ** TODO Write a unit test that fetches a file, md5 checks it, then deletes it :test:
 Test for write_to left empty, set to a directory, and set to a filename.
-** TODO Write DAFLIMS module docstring			      :documentation:
+** DONE Write DAFLIMS module docstring			      :documentation:
 ** TODO Write DAFLIMS class and method docstrings	      :documentation:
 
 * Frontend
