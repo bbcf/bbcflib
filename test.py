@@ -1,6 +1,16 @@
 from bbcflib import *
 from unittest import TestCase, TestSuite, main
 from datetime import datetime
+import socket
+import re
+
+def hostname_contains(pattern):
+    hostname = socket.gethostbyaddr(socket.gethostname())[0]
+    if re.search(pattern, hostname) == None:
+        return False
+    else:
+        return True
+    
 
 ce6 = Assembly(assembly_id = 14,
                assembly_name = 'ce6',
@@ -125,7 +135,8 @@ class TestEmailReport(TestCase):
                           'body': self.report.body})
 
     def test_send(self):
-        self.report.send()
+        if not(hostname_contains('vital-it.ch')):
+            self.report_from_config.send()
 
 
 class TestDAFLIMS(TestCase):
@@ -135,7 +146,8 @@ class TestDAFLIMS(TestCase):
         self.d = DAFLIMS(config=cp)
 
     def test_fetch(self):
-        print self.d.fetch("lgtf", "R2D2", 91, 3)
+        if hostname_contains('lipidx.vital-it.ch'):
+            print self.d.fetch("lgtf", "R2D2", 91, 3)
 
 
 
