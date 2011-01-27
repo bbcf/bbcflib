@@ -67,7 +67,12 @@ class DAFLIMS(object):
             raise ValueError("Request "+url+"\n"+lanedesc)
         url = "/".join([base_url,"symlink",link_name])
         tar = tarfile.open(fileobj=urllib2.urlopen(url),mode="r|gz")
-        file_loc = root+unique_filename_in(root)
+        if to == None:
+            file_loc = os.getcwd() + unique_filename_in(os.getcwd())
+        elif os.path.isdir(to):
+            file_loc = to + unique_filename_in(to)
+        else:
+            file_loc = to
         tar.extractall(path=file_loc)
         fastqname = tar.getnames()[0]
         tar.close()

@@ -601,3 +601,52 @@ and http://htsstation.vital-it.ch/rnaseq/jobs/9pv1x7PamOj80eXnZa14.json for
 ** DONE Write Frontend class with __init__ that checks for ConfigParser or url :frontend:
 ** DONE Make Frontend __init__ query Fabrice's URLs and set local fields from them :frontend:
 ** DONE Write module docstring for frontend.py		      :documentation:
+
+
+
+DAF LIMS docs:
+==HELP
+Usage: [ http://host-url/ws/resource-name/query-parameters ] 
+
+Example: http://uhts-lgtf.vital-it.ch/ws/lanedesc/R2D2/77/4
+
+These URLs (except for the host part) are case sensitive.
+
+The resource-names that you can query are:
+1. help
+	RETURN this help
+2. listdata
+	RETURN '==DATA' followed on the next line by a tab-delimited table.
+	Data available to this login are returned with the following fields:
+	<Library><Project><Project PI><Insert Size With Adapters><Machine>
+	<Run Nb><Lane Nb><Run Date><Run Type><Cycle Nb>
+3. lanedesc
+	parameter1: machine name
+	parameter2: run number
+	parameter3: lane number
+	RETURN '==DATA' followed on the next line by a tab-delimited table with the following fields:
+	<Machine><Run><Cycle><Lane><Library><Quant [pM]><Protocol><Organism>
+	<Project><PI firstname><PI lastname><Submitter firstname><Submitter lastname>
+	<Run Type><NCBI Taxo ID>
+	This may be a one line table.
+3. symlinkname
+	parameter1: machine name
+	parameter2: run number
+	parameter3: lane number
+	RETURN '==DATA' followed by a tab-delimited line with the following fields:
+	<FASTQ><ELAND><Qseq> 
+	Each field contains the symlink for a .tar.gz file that contains one or more 
+	files with the sequencing data of a particular lane.
+	The data from our reference Illumina pipeline analysis are returned.
+4. genome
+	parameter1: NCBI taxonomy ID
+	RETURN '==DATA' followed on the next line by a tab-delimited table with the following fields:
+	<Taxonomy name><Genome folder><Assembly>
+	This ressource is only available to facility members.
+5. activeruns
+	RETURN '==DATA' followed on the next line by a tab-delimited table with the following fields:
+	<Run ID><Run Folder>
+	This ressource is only available to facility members.
+
+An error message may also be returned instead of the expected tab delimited table. 
+In this case the response will start with '==ERROR'.
