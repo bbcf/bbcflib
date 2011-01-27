@@ -16,6 +16,7 @@ Files in the LIMS are identified by four fields: facility, machine, run, and lan
 import urllib2
 import tarfile
 import re
+import os
 
 class DAFLIMS(object):
     def __init__(self, username=None, password=None, config=None, section="daflims"):
