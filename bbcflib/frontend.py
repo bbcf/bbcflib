@@ -80,13 +80,15 @@ class Frontend(object):
 
     def _fetch_job(self, key):
         j = json.load(urllib2.urlopen("""%s/jobs/%s.json""" % (self.url, key)))['job']
-        return {'id': j['id'],
-                'created_at': datetime.strptime(j['created_at'],
-                                                             '%Y-%m-%dT%H:%M:%SZ'),
-                'key': j['key'],
-                'assembly_id': j['assembly_id'],
-                'description': j['description'],
-                'email': j['email']}
+        ret_val = {'id': j.pop('id'),
+                   'created_at': datetime.strptime(j.pop('created_at'),
+                                                   '%Y-%m-%dT%H:%M:%SZ'),
+                   'key': j.pop('key'),
+                   'assembly_id': j.pop('assembly_id'),
+                   'description': j.pop('description'),
+                   'email': j.pop('email')}
+        ret_val.update({'options': j})
+        return ret_val
 
     def job(self, key):
         """Fetch information about job *key* as a Job object."""
@@ -96,7 +98,8 @@ class Frontend(object):
                 key = key,
                 assembly_id = x['assembly_id'],
                 description = x['description'],
-                email = x['email'])
+                email = x['email'],
+                options = x['options'])
         [j.add_group(id=g['id'], control=g['control'], name=g['name'])
          for g in self._fetch_groups(key)]
         [j.add_run(id=r['id'], group=r['group_id'], 
@@ -122,11 +125,12 @@ class Job(object):
       * ``description``
       * ``email``
       * ``groups``
+      * ``options``
 
     ``groups`` is a dictionary of group IDs point to dictionaries with
     information about the group and a dictionary of runs.
     """
-    def __init__(self, id, created_at, key, assembly_id, description, email):
+    def __init__(self, id, created_at, key, assembly_id, description, email, options):
         self.id = id
         self.created_at = created_at
         self.key = key
@@ -134,6 +138,7 @@ class Job(object):
         self.description = description
         self.email = email
         self.groups = {}
+        self.options = options
 
     def add_group(self, id, control, name):
         if self.groups.has_key(id):
