@@ -158,8 +158,31 @@ class TestFrontend(TestCase):
                                 key = "9pv1x7PamOj80eXnZa14",
                                 assembly_id = 14,
                                 description = "Job for testing Frontend module",
-                                email = "madhadron@gmail.com")
-        self.frontend_job.add_group(id=3, control=False, name=u'My first group')
+                                email = "madhadron@gmail.com",
+                                options={u'domain': None,
+                                         u'protocol': None,
+                                         u'accept': None,
+                                         u'run_nber': None,
+                                         u'input_file': None,
+                                         u'from_controller': None,
+                                         u'lane_nber': None,
+                                         u'method': None,
+                                         u'remote_ip': None,
+                                         u'bein_id': None,
+                                         u'from_action': None,
+                                         u'status_id': None,
+                                         u'query_string': None,
+                                         u'controller': None,
+                                         u'referer': None,
+                                         u'path': None,
+                                         u'facility_id': None,
+                                         u'user_agent': None,
+                                         u'time': None,
+                                         u'action': None,
+                                         u'machine_id': None})
+        self.frontend_job.add_group(id=3,
+                                    control=False,
+                                    name=u'My first group')
         self.frontend_job.add_run(id=5, group=3, 
                                   facility=u"lgtf", facility_location=u"Lausanne",
                                   machine=u"C3PO", machine_id=1, 
@@ -222,7 +245,16 @@ class TestFrontend(TestCase):
                           'created_at': datetime(2010, 12, 30, 13, 29, 54), 
                           'id': 2,
                           'key': u'9pv1x7PamOj80eXnZa14',
-                          'email': u'madhadron@gmail.com'})
+                          'email': u'madhadron@gmail.com',
+                          'options': {u'domain': None, u'protocol': None, u'accept': None,
+                                      u'run_nber': None, u'input_file': None,
+                                      u'from_controller': None, u'lane_nber': None,
+                                      u'method': None, u'remote_ip': None, u'bein_id': None,
+                                      u'from_action': None, u'status_id': None,
+                                      u'query_string': None, u'controller': None,
+                                      u'referer': None, u'path': None, u'facility_id': None,
+                                      u'user_agent': None, u'time': None, u'action': None,
+                                      u'machine_id': None}})
 
     def test_job(self):
         j = self.f.job(self.key)
