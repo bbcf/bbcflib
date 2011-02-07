@@ -11,12 +11,13 @@ particular file.
 Files in the LIMS are identified by four fields: facility, machine, run, and lane.  For instance, lane 3 of run 91 sequenced on R2D2 at lgtf.  To fetch this file to 'myfile.fastq' in the current working directory, we would write::
 
     d = DAFLIMS(username=..., password=...)
-    d.fetch('lgtf', 'R2D2', 91, 3, 'myfile.fastq')
+    d.fetch('lgtf', 'R2D2', 91, 3, 'path/to/save/to')
 """
 import urllib2
 import tarfile
 import re
 import os
+from bein import unique_filename_in
 
 class DAFLIMS(object):
     def __init__(self, username=None, password=None, config=None, section="daflims"):
@@ -58,7 +59,7 @@ class DAFLIMS(object):
             link_name = links[0]
         else:
             raise ValueError("Request "+url+"\n"+str(links))
-        url = "/".join([base_url,"ws","lanedesc"]+sample_descr[1:4])
+        url = "/".join([base_url,"ws","lanedesc", machine, str(run), str(lane)])
         s = urllib2.urlopen(url).read()
         status = re.search(r'==(\w+)\s',s).groups()[0]
         lanedesc = re.search(r'\n(.*)\n',s).groups()[0].split("\t")
@@ -66,14 +67,13 @@ class DAFLIMS(object):
             lib_name = lanedesc[4]
         else:
             raise ValueError("Request "+url+"\n"+lanedesc)
-        url = "/".join([base_url,"symlink",link_name])
+#        url = "/".join([base_url,"symlink",link_name])
+        url = link_name
         tar = tarfile.open(fileobj=urllib2.urlopen(url),mode="r|gz")
         if to == None:
-            file_loc = os.getcwd() + unique_filename_in(os.getcwd())
-        elif os.path.isdir(to):
-            file_loc = to + unique_filename_in(to)
+            file_loc = os.path.join(os.getcwd(),unique_filename_in())
         else:
-            file_loc = to
+            file_loc = os.path.join(to,unique_filename_in(to))
         tar.extractall(path=file_loc)
         fastqname = tar.getnames()[0]
         tar.close()
