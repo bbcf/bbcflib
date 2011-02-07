@@ -3,6 +3,7 @@ from unittest import TestCase, TestSuite, main
 from datetime import datetime
 import socket
 import re
+import os
 
 def hostname_contains(pattern):
     hostname = socket.gethostbyaddr(socket.gethostname())[0]
@@ -143,10 +144,47 @@ class TestDAFLIMS(TestCase):
         cp.read('test_data/test.cfg')
         self.d = DAFLIMS(config=cp)
 
-    def test_fetch(self):
-        if hostname_contains('lipidx.vital-it.ch'):
-            print self.d.fetch("lgtf", "R2D2", 91, 3)
+    def test_symlinkname(self):
+        self.assertEqual(self.d.symlinkname('lgtf', 'R2D2', 91, 3),
+                         {'fastq': 'http://uhts-lgtf.vital-it.ch/symlink/CLNT_Xv8dVtOJaoOp.seq.tar.gz',
+                          'eland': 'http://uhts-lgtf.vital-it.ch/symlink/CLNT_jVgjbO5f9MPW.exp.tar.gz',
+                          'qseq': 'http://uhts-lgtf.vital-it.ch/symlink/CLNT_Lgtk8K2UsjeV.qseq.tar.gz'})
+        self.assertRaises(ValueError, self.d.symlinkname, 'lgtf', 'boris', 91, 3)
 
+    def test_lanedesc(self):
+        self.assertEqual(self.d.lanedesc('lgtf', 'R2D2', 91, 3),
+                         {'quantity (/pM)': 10.0, 'run': 91, 'PI lastname': 'Naef',
+                          'PI firstname': 'Felix', 'NCBI ID': '9606', 'library': 'CLNT',
+                          'submitter firstname': 'Keith', 'protocol': 'ChIP-Seq', 'cycle': 38,
+                          'project': 'Michael Brunner project', 'lane': 3,
+                          'run type': 'single read', 'submitter lastname': 'Harshman',
+                          'machine': 'R2D2', 'organism': 'Homo sapiens'})
+        self.assertRaises(ValueError, self.d.lanedesc, 'lgtf', 'boris', 91, 3)
+        
+    def test_fetch_symlink(self):
+        fastq = self.d.symlinkname('lgtf','R2D2',91,3)['fastq']
+        filename = self.d.fetch_symlink(fastq, to='/scratch/frt/daily/fross')
+        self.assertTrue(os.path.exists(filename))
+        self.assertEqual(os.stat(filename).st_size, 2927141632)
+        os.unlink(filename)
+
+    def test_fetch_fastq(self):
+        s = self.d.fetch_fastq('lgtf','R2D2',91,3, to='/scratch/frt/daily/fross')
+        self.assertTrue(os.path.exists(s['path']))
+        self.assertEqual(os.stat(s['path']).st_size, 2927141632)
+        os.unlink(s['path'])
+
+    def test_fetch_eland(self):
+        s = self.d.fetch_eland('lgtf','R2D2',91,3, to='/scratch/frt/daily/fross')
+        self.assertTrue(os.path.exists(s['path']))
+        self.assertEqual(os.stat(s['path']).st_size, 3011727531)
+        os.unlink(s['path'])
+
+    def test_fetch_qseq(self):
+        s = self.d.fetch_qseq('lgtf','R2D2',91,3, to='/scratch/frt/daily/fross')
+        self.assertTrue(os.path.exists(s['path']))
+        self.assertEqual(os.stat(s['path']).st_size, 27223154)
+        os.unlink(s['path'])
 
 
 class TestFrontend(TestCase):
