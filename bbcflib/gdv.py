@@ -17,7 +17,7 @@ def create_gdv_project( gdv_key, gdv_email,
 
 def add_gdv_track( gdv_key, gdv_email,
                    files, project_id,
-                   server_url="http://htsstation.vital-it.ch/chipseq/results/",
+                   server_url="http://htsstation.vital-it.ch/chipseq",
                    gdv_url="http://svitsrv25.epfl.ch/gdv/post" ):
     request = { "id": "gdv_post",
                 "mail": gdv_email,
@@ -27,7 +27,7 @@ def add_gdv_track( gdv_key, gdv_email,
                 "url": '',
                 "datatype": "quantitative" }
     for f in files:
-        request['url'] = server_url+f
+        request['url'] = server_url+"/jobs/get_file?name="+f
         urllib2.urlopen( gdv_url, urllib.urlencode(request) ).read()
     return 
 ############################################################

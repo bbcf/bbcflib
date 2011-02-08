@@ -147,12 +147,12 @@ def map_groups( ex, job, daflims, globals, genrep ):
     for gid,group in job.groups.iteritems():
         processed[gid] = {}
         for rid,run in group['runs'].iteritems():
-            file = daflims.fetch( str(run['facility']), str(run['machine']),
+            fq_file = daflims.fetch_fastq( str(run['facility']), str(run['machine']),
                                   run['run'], run['lane'], to=globals["fastq_root"] )
-            m = map_reads( ex, file.values()[0], chromosomes, 
+            m = map_reads( ex, fq_file['path'], chromosomes, 
                            g_rep_assembly.index_path, name=str(rid),
                            remove_pcr_duplicates=pcr_dupl )
-            processed[gid][file.keys()[0]] = m
+            processed[gid][fq_file['library']] = m
     return processed
 
 def add_pdf_stats( ex, processed, group_names, script_path, description = "mapping pdf report" ):
@@ -200,7 +200,7 @@ def import_mapseq_results( hts_key, minilims, ex_root, url ):
         processed[gid] = {}
         for rid,run in group['runs'].iteritems():
             bams = minilims.search_files(with_text=str(rid)+" filtered bam file", source=('execution',exid))
-            rname = "_".join([name,run['machine'],str(run['run']),str(run['lane'])])
+            rname = ":".join([name,rid])
             bamfile = os.path.join(ex_root, unique_filename_in(ex_root))
             minilims.export_file(bams.pop(),bamfile+".bai")
             minilims.export_file(bams.pop(),bamfile)

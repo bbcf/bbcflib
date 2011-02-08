@@ -162,3 +162,29 @@ def parallel_density( ex, bamfile, chromosomes,
             output = None
         ex.add( output, description=description, alias=alias )
     return output
+
+def get_chipseq_files( hts_key, minilims, lib_root, url ):
+    def path_from_lib( M, id, root ):
+        return os.path.relpath(M.path_to_file(id),root)
+    files = {}
+    bamfiles = {}
+    htss = frontend.Frontend( url=url )
+    job = htss.job( hts_key )
+    try: 
+        exid = max(minilims.search_executions(with_text=hts_key))
+    except ValueError, v:
+        raise ValueError("No execution with key "+hts_key)
+    for group in job.groups.values():
+        name = group['name']
+        for rid,run in group['runs'].iteritems():
+            both = minilims.search_files(with_text=str(rid)+" filtered bam file", source=('execution',exid))
+            file = "_".join([name,run['machine'],str(run['run']),str(run['lane'])])+".bam"
+            bamfiles[file+".bai"] = path_from_lib(minilims,both.pop(),lib_root)
+            bamfiles[file] = path_from_lib(minilims,both.pop(),lib_root)
+    names = "_".join([g['name'] for g in job.groups.values()])
+    files["bam"] = bamfiles
+    files["pdf"] = {names+".pdf": path_from_lib(minilims,minilims.search_files(
+        with_text="mapping pdf report",
+        source=('execution',exid)).pop(),lib_root)}
+    return files
+
