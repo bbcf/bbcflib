@@ -1,4 +1,5 @@
-import pysam, re
+import pysam
+import re
 import json
 import os
 import pickle
@@ -110,7 +111,7 @@ def map_reads( ex, fastq_file, chromosomes, bowtie_index,
                maxhits=5, antibody_enrichment=50, name='',
                remove_pcr_duplicates=True ):
     if len(name) > 0:
-        name += ' '
+        name += '_'
     bwtarg = ["-Sam",str(max(20,maxhits)),"--best","--strata"]
     if count_lines( ex, fastq_file )>10000000:
         bam = parallel_bowtie_lsf( ex, bowtie_index, fastq_file,
@@ -121,15 +122,15 @@ def map_reads( ex, fastq_file, chromosomes, bowtie_index,
         future = bowtie.lsf( ex, bowtie_index, fastq_file, bwtarg )
         samfile = future.wait()
         bam = add_nh_flag( samfile )
-    sorted_bam = add_and_index_bam( ex, bam, name+"complete bam file from bowtie" )
+    sorted_bam = add_and_index_bam( ex, bam, "BAM:"+name+"complete.bam" )
     stats = bamstats( ex, sorted_bam )
-    add_pickle( ex, stats, name+"bamstat output" )
+    add_pickle( ex, stats, "PY:"+name+"bamstat" )
     if remove_pcr_duplicates:
         thresh = poisson_threshold( antibody_enrichment*stats["actual_coverage"] )
-        add_pickle( ex, thresh, name+"Poisson threshold" )
+        add_pickle( ex, thresh, "PY:"+name+"Poisson_threshold" )
         bam2 = remove_duplicate_reads( sorted_bam, chromosomes,
                                        maxhits, thresh, convert=True )
-        reduced_bam = add_and_index_bam( ex, bam2, name+"filtered bam file" )
+        reduced_bam = add_and_index_bam( ex, bam2, "BAM:"+name+"filtered.bam" )
     else:
         reduced_bam = sorted_bam
     return {"full": sorted_bam, "reduced": reduced_bam, "stats": stats}
@@ -144,48 +145,44 @@ def map_groups( ex, job, daflims, globals, genrep ):
     pcr_dupl = True
     if 'discard_pcr_duplicates' in job.options:
         pcr_dupl = job.options['discard_pcr_duplicates']
+    file_names = {}
     for gid,group in job.groups.iteritems():
         processed[gid] = {}
+        file_names[gid] = {}
+        group_name = re.sub(r'\s+','_',group['name'])
         for rid,run in group['runs'].iteritems():
             fq_file = daflims.fetch_fastq( str(run['facility']), str(run['machine']),
-                                  run['run'], run['lane'], to=globals["fastq_root"] )
+                                           run['run'], run['lane'],
+                                           to=globals["fastq_root"] )
+            if len(group['runs'])>1:
+                name = "_".join([run['machine'],str(run['run']),str(run['lane'])])
+            else:
+                name = group_name
             m = map_reads( ex, fq_file['path'], chromosomes, 
-                           g_rep_assembly.index_path, name=str(rid),
+                           g_rep_assembly.index_path, name=name,
                            remove_pcr_duplicates=pcr_dupl )
-            processed[gid][fq_file['library']] = m
+            file_names[gid][rid] = name
+            m.update({'libname': name})
+            processed[gid][rid] = m
+    add_pickle( ex, file_names, "PY:file_names" )
     return processed
 
-def add_pdf_stats( ex, processed, group_names, script_path, description = "mapping pdf report" ):
+def add_pdf_stats( ex, processed, group_names, script_path,
+                   description = "PDF:mapping_report.pdf" ):
     all_stats = {}
     for gid, p in processed.iteritems():
-        for lib_id, mapped in p.iteritems():
-            all_stats[group_names[gid]+": "+lib_id] = mapped['stats']
+        i=1
+        for mapped in p.values():
+            name = group_names[gid]
+            if 'libname' in mapped:
+                name = mapped['libname']
+            if name in all_stats:
+                name += ":"+str(i)
+            all_stats[name] = mapped['stats']
+            i += 1
     pdf = plot_stats(ex, all_stats, script_path=script_path)
     ex.add(pdf,description)
     return pdf
-
-def get_mapseq_files( hts_key, minilims, lib_root, url ):
-    def path_from_lib( M, id, root ):
-        return os.path.relpath(M.path_to_file(id),root)
-    bamfiles = {}
-    htss = frontend.Frontend( url=url )
-    job = htss.job( hts_key )
-    try: 
-        exid = max(minilims.search_executions(with_text=hts_key))
-    except ValueError, v:
-        raise ValueError("No execution with key "+hts_key)
-    for group in job.groups.values():
-        name = group['name']
-        for rid,run in group['runs'].iteritems():
-            both = minilims.search_files(with_text=str(rid)+" filtered bam file", source=('execution',exid))
-            file = "_".join([name,run['machine'],str(run['run']),str(run['lane'])])+".bam"
-            bamfiles[file+".bai"] = path_from_lib(minilims,both.pop(),lib_root)
-            bamfiles[file] = path_from_lib(minilims,both.pop(),lib_root)
-    names = "_".join([g['name'] for g in job.groups.values()])
-    pdffile = {names+".pdf": path_from_lib(minilims,minilims.search_files(
-        with_text="mapping pdf report",
-        source=('execution',exid)).pop(),lib_root)}
-    return {"bam": bamfiles, "pdf": pdffile}
 
 def import_mapseq_results( hts_key, minilims, ex_root, url ):
     processed = {}
@@ -195,17 +192,39 @@ def import_mapseq_results( hts_key, minilims, ex_root, url ):
         exid = max(minilims.search_executions(with_text=hts_key))
     except ValueError, v:
         raise ValueError("No execution with key "+hts_key)
+    allfiles = dict((minilims.fetch_file(x)['description'],x) for x in minilims.search_files(source=('execution',exid)))
+    with open(minilims.path_to_file(allfiles['PY:file_names'])) as q:
+        file_names = pickle.load(q)
     for gid, group in job.groups.iteritems():
-        name = group['name']
+        group_name = re.sub(r'\s+','_',group['name'])
         processed[gid] = {}
         for rid,run in group['runs'].iteritems():
-            bams = minilims.search_files(with_text=str(rid)+" filtered bam file", source=('execution',exid))
-            rname = ":".join([name,rid])
             bamfile = os.path.join(ex_root, unique_filename_in(ex_root))
-            minilims.export_file(bams.pop(),bamfile+".bai")
-            minilims.export_file(bams.pop(),bamfile)
-            stats = minilims.search_files(with_text=str(rid)+" bamstat output", source=('execution',exid))[0]
-            with open(minilims.path_to_file(stats)) as q:
+            name = file_names[gid][rid] 
+            bam_id = allfiles['BAM:'+name+'filtered.bam']
+            bam_bai_id = allfiles['BAM:'+name+'filtered.bam (BAM index)']
+            minilims.export_file(bam_id,bamfile+".bai")
+            minilims.export_file(bam_bai_id,bamfile)
+            stats_id = allfiles["PY:"+name+"bamstat"]
+            with open(minilims.path_to_file(stats_id)) as q:
                 s = pickle.load(q)
-            processed[gid][rname] = {'reduced': bamfile, 'stats': s}
+            processed[gid][rid] = {'reduced': bamfile, 'stats': s, 
+                                   'libname': name}
     return (processed,job)
+
+def get_files( id_or_key, minilims ):
+    if isinstance(id_or_key, str):
+        try: 
+            exid = max(minilims.search_executions(with_text=id_or_key))
+        except ValueError, v:
+            raise ValueError("No execution with key "+id_or_key)
+    else:
+        exid = id_or_key
+    file_dict = {}
+    all = dict((y['repository_name'],y['description']) for y in
+               [minilims.fetch_file(x) for x in minilims.search_files(source=('execution',exid))])
+    for f,d in all.iteriems():
+        cat,name = d.split(":")
+        re.sub(r' (BAM index)','.bai',name)
+        file_dict[cat].update({f: name})
+    return file_dict
