@@ -21,7 +21,7 @@ output_location='''+out
     error, result, type = job.run()
     if error != 200: 
         raise RuntimeError(result)
-    ex.add( out, description="SQL:"+description )
+    ex.add( out, description="sql:"+description )
     return out
 
 ############################################################
@@ -36,8 +36,9 @@ def macs( read_length, genome_size, bamfile, ctrlbam=None, shift=80 ):
         macs_args += ["-c",ctrlbam]
     macs_args += ["-n",outname,"-f","BAM",
                   "-g",str(genome_size),"-s",str(read_length),
-                  "--nomodel","--shiftsize="+str(shift),"-m","5,50",
-                  "-p",".001","--bw=200"]
+                  "--nomodel","-m","5,50","-p",".001","--bw=200"]
+    if shift>0:
+        macs_args += ["--shiftsize="+str(shift)]
     return {"arguments": macs_args, "return_value": outname}
 
 def add_macs_results( ex, chromosomes, read_length, genome_size, bamfile,
@@ -64,17 +65,17 @@ def add_macs_results( ex, chromosomes, read_length, genome_size, bamfile,
             futures[n] = macs.lsf( ex, read_length, genome_size, bam, cam, shift )
     prefixes = dict((n,f.wait()) for n,f in futures.iteritems())
     for n,p in prefixes.iteritems():
-        description = "MACS:"+"_vs_".join(n)
+        description = "_vs_".join(n)
         touch( ex, p )
-        ex.add( p, description=description, alias=alias )
-        ex.add( p+"_peaks.xls", description=description+"_peaks.xls",
+        ex.add( p, description="none:"+description, alias=alias )
+        ex.add( p+"_peaks.xls", description="macs:"+description+"peaks.xls",
                 associate_to_filename=p, template='%s_peaks.xls' )
-        ex.add( p+"_peaks.bed", description=description+"_peaks.bed",
+        ex.add( p+"_peaks.bed", description="macs:"+description+"peaks.bed",
                 associate_to_filename=p, template='%s_peaks.bed' )
-        ex.add( p+"_summits.bed", description=description+"_summits.bed",
+        ex.add( p+"_summits.bed", description="macs:"+description+"summits.bed",
                 associate_to_filename=p, template='%s_summits.bed' )
         if len(n)>1:
-            ex.add( p+"_negative_peaks.xls", description=description+"_negative_peaks.xls",
+            ex.add( p+"_negative_peaks.xls", description="macs:"+description+"negative_peaks.xls",
                     associate_to_filename=p, template='%s_negative_peaks.xls' )
     return prefixes
 
@@ -139,7 +140,7 @@ def parallel_density( ex, bamfile, chromosomes,
             pass
     if sql:
         touch( ex, output )
-        ex.add( output, description=description, alias=alias )
+        ex.add( output, description="none:"+description, alias=alias )
         for outf in results[0]:
             connection = sqlite3.connect( outf )
             connection.execute('create table chrNames (name text, length integer)')
@@ -150,7 +151,7 @@ def parallel_density( ex, bamfile, chromosomes,
             connection.commit()
             connection.close()
             suffix = outf[len(output):len(outf)]
-            ex.add( outf, description=description+"_"+suffix,
+            ex.add( outf, description="sql:"+description+"_"+suffix,
                     associate_to_filename=output, template='%s'+suffix )
     else:
         if len(results) > 1:
