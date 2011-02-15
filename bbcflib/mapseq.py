@@ -149,9 +149,10 @@ def map_groups( ex, job, daflims, globals, genrep ):
         file_names[gid] = {}
         group_name = re.sub(r'\s+','_',group['name'])
         for rid,run in group['runs'].iteritems():
-            fq_file = daflims.fetch_fastq( str(run['facility']), str(run['machine']),
-                                           run['run'], run['lane'],
-                                           to=globals["fastq_root"] )
+            fq_file = daflims[run['facility']].fetch_fastq( str(run['facility']),
+                                                            str(run['machine']),
+                                                            run['run'], run['lane'],
+                                                            to=globals['fastq_root'] )
             if len(group['runs'])>1:
                 name = "_".join([run['machine'],str(run['run']),str(run['lane'])])
             else:

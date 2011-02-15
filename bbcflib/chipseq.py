@@ -82,13 +82,18 @@ def add_macs_results( ex, chromosomes, read_length, genome_size, bamfile,
 ############################################################ 
 
 def cat(files):
-    out = unique_filename_in()
-    with open(out,"w") as f1:
-        for inf in files: 
-            with open(inf,"r") as f2:
-                [f1.write(l) for l in f2]
-                f2.close()
-        f1.close()
+    if len(files) > 1:
+        out = unique_filename_in()
+        with open(out,"w") as f1:
+            for inf in files: 
+                with open(inf,"r") as f2:
+                    [f1.write(l) for l in f2]
+                    f2.close()
+            f1.close()
+    elif len(files) == 1:
+        out = files[0]
+    else:
+        out = None
     return out
 
 @program
@@ -124,13 +129,15 @@ def bam_to_density( bamfile, chromosome_accession, chromosome_name, output,
     return {"arguments": ["bam2wig"]+b2w_args, "return_value": files}
 
 
-def parallel_density( ex, bamfile, chromosomes, 
-                      nreads=1, merge=-1, read_length=-1, convert=True, sql=False,
-                      description="", alias=None ):
-    """Runs 'bam_to_density' in parallel for every chromosome in the 'chromosomes' list.
+def parallel_density_wig( ex, bamfile, chromosomes, 
+                          nreads=1, merge=-1, read_length=-1, convert=True, 
+                          description="", alias=None ):
+    """Runs 'bam_to_density' in parallel 
+    for every chromosome in the 'chromosomes' list.
+    Returns produces a single text wig file.
     """
-    output = unique_filename_in()
-    futures = [bam_to_density.lsf(ex,bamfile,k,v["name"],output,nreads,merge,read_length,convert,sql)
+    futures = [bam_to_density.lsf(ex,bamfile,k,v['name'],unique_filename_in(),
+                                  nreads,merge,read_length,convert,False)
                for k,v in chromosomes.iteritems()]
     results = []
     for f in futures:
@@ -138,29 +145,46 @@ def parallel_density( ex, bamfile, chromosomes,
             results.append(f.wait())
         except ProgramFailed:
             pass
-    if sql:
-        touch( ex, output )
-        ex.add( output, description="none:"+description, alias=alias )
-        for outf in results[0]:
-            connection = sqlite3.connect( outf )
-            connection.execute('create table chrNames (name text, length integer)')
-            connection.execute('create table attributes (key text, value text)')
-            connection.execute('insert into attributes (key,value) values ("datatype","quantitative")')
-            vals = [(v['name'],str(v['length'])) for v in chromosomes.values()]
-            connection.executemany('insert into chrNames (name,length) values (?,?)',vals)
-            connection.commit()
-            connection.close()
-            suffix = outf[len(output):len(outf)]
-            ex.add( outf, description="sql:"+description+"_"+suffix,
-                    associate_to_filename=output, template='%s'+suffix )
+    output = cat(results)
+    ex.add( output, description=description, alias=alias )
+    return output
+
+
+def parallel_density_sql( ex, bamfile, chromosomes, 
+                          nreads=1, merge=-1, read_length=-1, convert=True, 
+                          description="", alias=None ):
+    """Runs 'bam_to_density' for every chromosome in the 'chromosomes' list.
+    Returns one or two sqlite files depending if 'merge'>=0 or 'merge'<0.
+    """
+    output = unique_filename_in()
+    if merge>0:
+        suffix = ['fwd','rev']
     else:
-        if len(results) > 1:
-            output = cat(results)
-        elif len(results) == 1:
-            output = results[0]
-        else:
-            output = None
-        ex.add( output, description=description, alias=alias )
+        suffix = ['merged']
+    for s in suffix:
+        conn1 = sqlite3.connect( output+s )
+        conn1.execute('create table chrNames (name text, length integer)')
+        conn1.execute('create table attributes (key text, value text)')
+        conn1.execute('insert into attributes (key,value) values ("datatype","quantitative")')
+        vals = [(v['name'],str(v['length'])) for v in chromosomes.values()]
+        conn1.executemany('insert into chrNames (name,length) values (?,?)',vals)
+        [conn1.execute('create table '+v['name']+' (start integer, end integer, score real)') 
+         for v in chromosomes.values()]
+        conn1.commit()
+        conn1.close()
+    results = []
+    for k,v in chromosomes.iteritems():
+        future = bam_to_density.lsf(ex,bamfile,k,v['name'],output,
+                                    nreads,merge,read_length,convert,True)
+        try: 
+            result.append(future.wait)
+        except ProgramFailed:
+            pass
+    ex.add( output, description="none:"+description, alias=alias )
+    for outf in results[0]:
+        suffix = outf[len(output):len(outf)]
+        ex.add( outf, description="sql:"+description+"_"+suffix,
+                associate_to_filename=output, template='%s'+suffix )
     return output
 
 def get_chipseq_files( hts_key, minilims, lib_root, hts_url, gdv_url,
