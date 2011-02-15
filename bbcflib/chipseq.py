@@ -157,7 +157,8 @@ def parallel_density_sql( ex, bamfile, chromosomes,
     Returns one or two sqlite files depending if 'merge'>=0 or 'merge'<0.
     """
     output = unique_filename_in()
-    if merge>0:
+    touch(ex,output)
+    if merge<0:
         suffix = ['fwd','rev']
     else:
         suffix = ['merged']
@@ -177,7 +178,7 @@ def parallel_density_sql( ex, bamfile, chromosomes,
         future = bam_to_density.lsf(ex,bamfile,k,v['name'],output,
                                     nreads,merge,read_length,convert,True)
         try: 
-            result.append(future.wait)
+            results.append(future.wait())
         except ProgramFailed:
             pass
     ex.add( output, description="none:"+description, alias=alias )
