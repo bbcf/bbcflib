@@ -21,7 +21,7 @@ output_location='''+out
     error, result, type = job.run()
     if error != 200: 
         raise RuntimeError(result)
-    ex.add( out, description="sql:"+description )
+    ex.add( out, description=description )
     return out
 
 ############################################################
@@ -181,64 +181,10 @@ def parallel_density_sql( ex, bamfile, chromosomes,
             results.append(future.wait())
         except ProgramFailed:
             pass
-    ex.add( output, description="none:"+description, alias=alias )
+    ex.add( output, description='none:'+description+'.sql', alias=alias )
     for outf in results[0]:
         suffix = outf[len(output):len(outf)]
-        ex.add( outf, description="sql:"+description+"_"+suffix,
-                associate_to_filename=output, template='%s'+suffix )
+        ex.add( outf, description='sql:'+description+'_'+suffix+'.sql',
+                associate_to_filename=output, template='%s_'+suffix+'.sql' )
     return output
-
-def get_chipseq_files( hts_key, minilims, lib_root, hts_url, gdv_url,
-                       mapseq_url=None ):
-    def path_from_lib( M, id, root ):
-        return os.path.relpath(M.path_to_file(id),root)
-    files = {}
-    bamfiles = {}
-    htss = frontend.Frontend( url=hts_url )
-    job = htss.job( hts_key )
-    try: 
-        exid = max(minilims.search_executions(with_text=hts_key))
-    except ValueError, v:
-        raise ValueError("No execution with key "+hts_key)
-    if job.options['select_source'] == 'mapseq_key':
-        files['url'] = {mapseq_url+job.options['mapseq_key']+"/get_results": "Mapseq results"}
-    gid2name = {}
-    for gid,group in job.groups.iteritems():
-        name = re.sub(r'\s+','_',group['name'])
-        gid2name[gid] = name
-        if job.options['select_source'] != 'mapseq_key':
-            for rid,run in group['runs'].iteritems():
-                both = minilims.search_files(with_text=str(rid)+" filtered bam", 
-                                             source=('execution',exid))
-                file = "_".join([name,run['machine'],str(run['run']),str(run['lane'])])+".bam"
-                bamfiles[path_from_lib(minilims,both.pop(),lib_root)] = file+".bai"
-                bamfiles[path_from_lib(minilims,both.pop(),lib_root)] = file
-            files["bam"] = bamfiles
-            names = "_".join([g['name'] for g in job.groups.values()])
-            fid = minilims.search_files(with_text="mapping pdf report",
-                                        source=('execution',exid)).pop()
-            files["pdf"] = {path_from_lib(minilims,fid,lib_root):
-                            names+".pdf"}
-        sql_text = str(gid)+" group density"
-        files["sql"] = {}
-        if job.options['merge_strands']>=0:
-            sql_fid = minilims.search_files(with_text=sql_text+" merged", 
-                                            source=('execution',exid)).pop()
-            files["sql"][path_from_lib(minilims,sql_fid,lib_root)] = name+"_merged.sql"
-        else:
-            sql_fid = minilims.search_files(with_text=sql_text+" fwd", 
-                                            source=('execution',exid)).pop()
-            files["sql"][path_from_lib(minilims,sql_fid,lib_root)] = name+"_fwd.sql"
-            sql_fid = minilims.search_files(with_text=sql_text+" rev", 
-                                            source=('execution',exid)).pop()
-            files["sql"][path_from_lib(minilims,sql_fid,lib_root)] = name+"_rev.sql"
-    if job.options['peak_calling']:
-        files['macs'] = {}
-        for fid in minilims.search_files(with_text=" macs", source=('execution',exid)):
-            fd = minilims.fetch_file(fid)['description'].split(' ')
-            fn = "_vs_".join([gid2name[int(x)] for x in fd[0].split(':')])
-            files['macs'][path_from_lib(minilims,fid,lib_root)] = fn+"_".join(fd[1:])
-    files['url'] = {gdv_url+"/log/htschipseq/"+hts_key: 'GDV view'}
-    return files
-
 

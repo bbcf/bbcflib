@@ -27,7 +27,7 @@ def add_gdv_track( gdv_key, gdv_email,
                 "url": '',
                 "datatype": "quantitative" }
     for f in files:
-        request['url'] = server_url+"/get_file?name="+f+"&type=sql"
+        request['url'] = server_url+"/get_file?name="+f
         urllib2.urlopen( gdv_url+"/post", urllib.urlencode(request) ).read()
     return 
 ############################################################
