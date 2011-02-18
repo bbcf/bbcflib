@@ -41,7 +41,7 @@ def macs( read_length, genome_size, bamfile, ctrlbam=None, shift=80 ):
         macs_args += ["--shiftsize="+str(shift)]
     return {"arguments": macs_args, "return_value": outname}
 
-def add_macs_results( ex, chromosomes, read_length, genome_size, bamfile,
+def add_macs_results( ex, read_length, genome_size, bamfile,
                       ctrlbam=[None], name=None, shift=80, alias=None ):
     """Adds macs result files to the repository.
     """
@@ -79,7 +79,85 @@ def add_macs_results( ex, chromosomes, read_length, genome_size, bamfile,
                     associate_to_filename=p, template='%s_negative_peaks.xls' )
     return prefixes
 
+@program
+def sql_prepare_deconv(sql_prefix,macs_bed,chr_name,chr_length,cutoff,read_length):
+    out = unique_filename_in()
+    args = [sql_prefix,macs_bed,out,chr_name,str(chr_length),str(cutoff),str(read_length)]
+    return {"arguments": ["sql_prepare_deconv.py"]+args, 
+            "return_value": out}
+
+@program
+def run_deconv_r( counts_file, read_length, chr_name, script_path ):
+    pdf_file = unique_filename_in()
+    output_file = unique_filename_in()
+    rargs = [counts_file, pdf_file, read_length, chr_name, output_file, script_path]
+    return {'arguments': ["R","--vanilla","--slave","-f",
+                          os.path.join(script_path,"deconv.R"),
+                          "--args"] + rargs,
+            'return_value': {'pdf': pdf_file, 'rdata': output_file}}
+
+@program
+def sql_finish_deconv(sqlout,rdata):
+    return {"arguments": ["sql_finish_deconv.py",rdata,sqlout], 
+            "return_value": sqlout}
+
+def run_deconv(ex,sql,macs,chromosomes,read_length,script_path):
+    prep_futures = dict((chr,
+                         sql_prepare_deconv.lsf(ex,sql,macs,chr['name'],
+                                                chr['length'],1500,read_length))
+                        for chr in chromosomes.values())
+    rdeconv_futures = dict((chr,
+                            run_deconv_r.lsf(ex,prep_futures[chr].wait(), read_length,
+                                             chr['name'], script_path))
+                           for chr in chromosomes.values())
+    rdeconv_out = dict((chr, redconv_futures[chr].wait()) 
+                       for chr in chromosomes.values())
+    pdf_future = join_pdf.lsf(ex,[x['pdf'] for x in rdeconv_out.values()])
+    sqlout = unique_filename_in()
+    outfiles = {}
+    conn = sqlite3.connect( sqlout )
+    conn.execute('create table chrNames (name text, length integer)')
+    conn.execute('create table attributes (key text, value text)')
+    conn.execute('insert into attributes (key,value) values ("datatype","quantitative")')
+    vals = [(v['name'],str(v['length'])) for v in chromosomes.values()]
+    conn.executemany('insert into chrNames (name,length) values (?,?)',vals)
+    [conn.execute('create table '+v['name']+' (start integer, end integer, score real)') 
+     for v in chromosomes.values()]
+    conn.commit()
+    conn.close()
+    for chr in chromosomes.values():
+        f = sql_finish_deconv.lsf(ex,sqlout,rdeconv_out[chr]['rdata'])
+        f.wait()
+    outfiles['sql'] = sqlout
+    outfiles['pdf'] = pdf_future.wait()
+    return outfiles
+    
 ############################################################ 
+@program
+def merge_two_bed(file1,file2):
+    out = unique_filename_in()
+    args = ['intersectBed','-a',file1,'-b',files2]
+    def catch_out(p):
+        with open(out,'w') as f:
+            [f.write(l) for l in p.stdout]
+            f.close()
+        return out
+    return {"arguments": args, "return_value": catch_out}
+
+def merge_many_bed(ex,files):
+    out = files[0]
+    for f in files[1:]:
+        future = merge_two_bed.lsf(ex,out,f)
+        out = future.wait()
+    return out
+
+@program
+def join_pdf(files):
+    out = unique_filename_in()
+    gs_args = ['gs','-dBATCH','-dNOPAUSE','-q','-sDEVICE=pdfwrite',
+               '-sOutputFile=%s'%out]
+    gs_args += files
+    return {"arguments": gs_args, "return_value": out}
 
 def cat(files):
     if len(files) > 1:
