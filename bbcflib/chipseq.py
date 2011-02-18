@@ -82,7 +82,8 @@ def add_macs_results( ex, read_length, genome_size, bamfile,
 @program
 def sql_prepare_deconv(sql_prefix,macs_bed,chr_name,chr_length,cutoff,read_length):
     out = unique_filename_in()
-    args = [sql_prefix,macs_bed,out,chr_name,str(chr_length),str(cutoff),str(read_length)]
+    args = [sql_prefix,macs_bed,out,chr_name,str(chr_length),
+            str(cutoff),str(read_length)]
     return {"arguments": ["sql_prepare_deconv.py"]+args, 
             "return_value": out}
 
@@ -90,7 +91,8 @@ def sql_prepare_deconv(sql_prefix,macs_bed,chr_name,chr_length,cutoff,read_lengt
 def run_deconv_r( counts_file, read_length, chr_name, script_path ):
     pdf_file = unique_filename_in()
     output_file = unique_filename_in()
-    rargs = [counts_file, pdf_file, read_length, chr_name, output_file, script_path]
+    rargs = [counts_file, pdf_file, str(read_length), 
+             chr_name, output_file, script_path]
     return {'arguments': ["R","--vanilla","--slave","-f",
                           os.path.join(script_path,"deconv.R"),
                           "--args"] + rargs,
@@ -102,16 +104,15 @@ def sql_finish_deconv(sqlout,rdata):
             "return_value": sqlout}
 
 def run_deconv(ex,sql,macs,chromosomes,read_length,script_path):
-    prep_futures = dict((chr,
+    prep_futures = dict((chr['name'],
                          sql_prepare_deconv.lsf(ex,sql,macs,chr['name'],
                                                 chr['length'],1500,read_length))
                         for chr in chromosomes.values())
     rdeconv_futures = dict((chr,
-                            run_deconv_r.lsf(ex,prep_futures[chr].wait(), read_length,
-                                             chr['name'], script_path))
-                           for chr in chromosomes.values())
-    rdeconv_out = dict((chr, redconv_futures[chr].wait()) 
-                       for chr in chromosomes.values())
+                            run_deconv_r.lsf(ex,f.wait(), read_length,
+                                             chr, script_path))
+                           for chr,f in prep_futures.iteritems())
+    rdeconv_out = dict((chr, f.wait()) for chr,f in rdeconv_futures.iteritems())
     pdf_future = join_pdf.lsf(ex,[x['pdf'] for x in rdeconv_out.values()])
     sqlout = unique_filename_in()
     outfiles = {}
@@ -125,8 +126,8 @@ def run_deconv(ex,sql,macs,chromosomes,read_length,script_path):
      for v in chromosomes.values()]
     conn.commit()
     conn.close()
-    for chr in chromosomes.values():
-        f = sql_finish_deconv.lsf(ex,sqlout,rdeconv_out[chr]['rdata'])
+    for fout in rdeconv_out.values():
+        f = sql_finish_deconv.lsf(ex,sqlout,fout['rdata'])
         f.wait()
     outfiles['sql'] = sqlout
     outfiles['pdf'] = pdf_future.wait()
