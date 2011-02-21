@@ -113,7 +113,8 @@ def run_deconv(ex,sql,macs,chromosomes,read_length,script_path):
                                              chr, script_path))
                            for chr,f in prep_futures.iteritems())
     rdeconv_out = dict((chr, f.wait()) for chr,f in rdeconv_futures.iteritems())
-    pdf_future = join_pdf.lsf(ex,[x['pdf'] for x in rdeconv_out.values()])
+    if len(rdeconv_out)>0:
+        pdf_future = join_pdf.lsf(ex,[x['pdf'] for x in rdeconv_out.values()])
     sqlout = unique_filename_in()
     outfiles = {}
     conn = sqlite3.connect( sqlout )
@@ -130,7 +131,11 @@ def run_deconv(ex,sql,macs,chromosomes,read_length,script_path):
         f = sql_finish_deconv.lsf(ex,sqlout,fout['rdata'])
         f.wait()
     outfiles['sql'] = sqlout
-    outfiles['pdf'] = pdf_future.wait()
+    outfiles['bed'] = sqlout+'_deconv.bed'
+    if len(rdeconv_out)>0:
+        outfiles['pdf'] = pdf_future.wait()
+    else:
+        outfiles['pdf'] = rdeconv_out.values()[0]['pdf']
     return outfiles
     
 ############################################################ 
