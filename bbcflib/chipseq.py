@@ -62,7 +62,8 @@ def add_macs_results( ex, read_length, genome_size, bamfile,
             else:
                 n = (n,m)
             j += 1
-            futures[n] = macs.lsf( ex, read_length, genome_size, bam, cam, shift )
+            futures[n] = macs.nonblocking( ex, read_length, genome_size, bam, 
+                                           cam, shift, via='lsf' )
     prefixes = dict((n,f.wait()) for n,f in futures.iteritems())
     for n,p in prefixes.iteritems():
         description = "_vs_".join(n)
@@ -105,16 +106,20 @@ def sql_finish_deconv(sqlout,rdata):
 
 def run_deconv(ex,sql,macs,chromosomes,read_length,script_path):
     prep_futures = dict((chr['name'],
-                         sql_prepare_deconv.lsf(ex,sql,macs,chr['name'],
-                                                chr['length'],1500,read_length))
+                         sql_prepare_deconv.nonblocking( ex, sql, macs, 
+                                                         chr['name'], chr['length'],
+                                                         1500, read_length, 
+                                                         via='lsf' ))
                         for chr in chromosomes.values())
     rdeconv_futures = dict((chr,
-                            run_deconv_r.lsf(ex,f.wait(), read_length,
-                                             chr, script_path))
+                            run_deconv_r.nonblocking( ex, f.wait(), read_length,
+                                                      chr, script_path, via='lsf' ))
                            for chr,f in prep_futures.iteritems())
     rdeconv_out = dict((chr, f.wait()) for chr,f in rdeconv_futures.iteritems())
     if len(rdeconv_out)>0:
-        pdf_future = join_pdf.lsf(ex,[x['pdf'] for x in rdeconv_out.values()])
+        pdf_future = join_pdf.nonblocking( ex,
+                                           [x['pdf'] for x in rdeconv_out.values()],
+                                           via='lsf' )
     sqlout = unique_filename_in()
     outfiles = {}
     conn = sqlite3.connect( sqlout )
@@ -128,7 +133,7 @@ def run_deconv(ex,sql,macs,chromosomes,read_length,script_path):
     conn.commit()
     conn.close()
     for fout in rdeconv_out.values():
-        f = sql_finish_deconv.lsf(ex,sqlout,fout['rdata'])
+        f = sql_finish_deconv.nonblocking( ex, sqlout,fout['rdata'], via='lsf' )
         f.wait()
     outfiles['sql'] = sqlout
     outfiles['bed'] = sqlout+'_deconv.bed'
@@ -153,7 +158,7 @@ def merge_two_bed(file1,file2):
 def merge_many_bed(ex,files):
     out = files[0]
     for f in files[1:]:
-        future = merge_two_bed.lsf(ex,out,f)
+        future = merge_two_bed.nonblocking( ex, out, f, via='lsf' )
         out = future.wait()
     return out
 
@@ -220,8 +225,10 @@ def parallel_density_wig( ex, bamfile, chromosomes,
     for every chromosome in the 'chromosomes' list.
     Returns produces a single text wig file.
     """
-    futures = [bam_to_density.lsf(ex,bamfile,k,v['name'],unique_filename_in(),
-                                  nreads,merge,read_length,convert,False)
+    futures = [bam_to_density.nonblocking( ex, bamfile, k, v['name'],
+                                           unique_filename_in(),
+                                           nreads, merge, read_length, convert, 
+                                           False, via='lsf' )
                for k,v in chromosomes.iteritems()]
     results = []
     for f in futures:
@@ -259,8 +266,9 @@ def parallel_density_sql( ex, bamfile, chromosomes,
         conn1.close()
     results = []
     for k,v in chromosomes.iteritems():
-        future = bam_to_density.lsf(ex,bamfile,k,v['name'],output,
-                                    nreads,merge,read_length,convert,True)
+        future = bam_to_density.nonblocking( ex, bamfile, k, v['name'], output,
+                                             nreads, merge, read_length, 
+                                             convert, True, via='lsf' )
         try: 
             results.append(future.wait())
         except ProgramFailed:

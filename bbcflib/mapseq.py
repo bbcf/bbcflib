@@ -112,12 +112,13 @@ def map_reads( ex, fastq_file, chromosomes, bowtie_index,
                remove_pcr_duplicates=True ):
     bwtarg = ["-Sam",str(max(20,maxhits)),"--best","--strata"]
     if count_lines( ex, fastq_file )>10000000:
-        bam = parallel_bowtie_lsf( ex, bowtie_index, fastq_file,
-                                   n_lines=8000000,
-                                   bowtie_args=bwtarg,
-                                   add_nh_flags=True )
+        bam = parallel_bowtie( ex, bowtie_index, fastq_file,
+                               n_lines=8000000,
+                               bowtie_args=bwtarg,
+                               add_nh_flags=True, via='lsf' )
     else:
-        future = bowtie.lsf( ex, bowtie_index, fastq_file, bwtarg )
+        future = bowtie.nonblocking( ex, bowtie_index, fastq_file, 
+                                     bwtarg, via='lsf' )
         samfile = future.wait()
         bam = add_nh_flag( samfile )
     sorted_bam = add_and_index_bam( ex, bam, "bam:"+name+"complete.bam" )
