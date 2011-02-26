@@ -1,3 +1,15 @@
+"""
+===============
+bbcflib.chipseq
+===============
+
+This module provides functions to run a basic ChIP-seq analysis from reads mapped on
+a reference genome.
+The most important steps are the binding of ``macs`` via the 'add_macs_results' function, 
+the peak deconvolution algorithm with the 'run_deconv' function and
+the 'parallel_density_sql' function to create quantitative sql tracks from bam files.
+"""
+
 import sqlite3
 from bein import *
 from bein.util import *
@@ -5,7 +17,7 @@ import gMiner as gm
 
 ############ gMiner operations ############
 def merge_sql( ex, sqls, ids, description="merged.sql" ):
-    """Run gMiner merge_score function on a set of sql files
+    """Run ``gMiner``'s 'merge_score' function on a set of sql files
     """
     out = unique_filename_in()
     req = "[gMiner]\nversion=0.1.3\n"
@@ -30,6 +42,20 @@ output_location='''+out
 ############ Peaks and annotation ############
 @program
 def macs( read_length, genome_size, bamfile, ctrlbam=None, shift=80 ):
+    """Binding for the ``macs`` peak caller.
+
+    takes one (optionally two) bam file(s) and
+    the 'read_length', 'genome_size' and 'shift' parameters passed to ``macs``. 
+    Other ``macs`` parameter are default or set as follows:
+
+    * ``'p'``: .001 (p-value threshold)
+
+    * ``'bw'``: 200 ('bandwith')
+
+    * ``'m'``: 5,50 ('minimum and maximum enrichments relative to background or control)
+    
+    Returns the file prefix ('-n' option of ``macs``)
+    """
     outname = unique_filename_in()
     macs_args = ["macs14","-t",bamfile]
     if ctrlbam != None:
@@ -43,7 +69,10 @@ def macs( read_length, genome_size, bamfile, ctrlbam=None, shift=80 ):
 
 def add_macs_results( ex, read_length, genome_size, bamfile,
                       ctrlbam=[None], name=None, shift=80, alias=None ):
-    """Adds macs result files to the repository.
+    """Calls the ``macs`` function on each possible pair 
+    of test and control bam files and adds 
+    the respective outputs to the execution repository.
+    Returns the set of file prefixes.
     """
     if not(isinstance(bamfile,list)):
         bamfile = [bamfile]
@@ -82,6 +111,12 @@ def add_macs_results( ex, read_length, genome_size, bamfile,
 
 @program
 def sql_prepare_deconv(sql_prefix,macs_bed,chr_name,chr_length,cutoff,read_length):
+    """Prepares files for the deconvolution algorithm.
+    Calls the stand-alone ``sql_prepare_deconv.py`` script which needs 
+    a pair of sql files (quantitative tracks for forward and reverse strand) 
+    and a bed file (*_peaks.bed file from ``macs``) of wnriched regions to consider.
+    Returns the name of an 'Rdata' file to be passed to the *R* deconvolution script.
+    """
     out = unique_filename_in()
     args = [sql_prefix,macs_bed,out,chr_name,str(chr_length),
             str(cutoff),str(read_length)]
@@ -90,6 +125,10 @@ def sql_prepare_deconv(sql_prefix,macs_bed,chr_name,chr_length,cutoff,read_lengt
 
 @program
 def run_deconv_r( counts_file, read_length, chr_name, script_path ):
+    """Runs the 'deconv.R' script (found under 'script_path') on the 'counts_file' 
+    input with parameters 'chr_name' (name of chromosome to process) and 'read_length'.
+    Returns the pdf file and the 'Rdata' output. 
+    """
     pdf_file = unique_filename_in()
     output_file = unique_filename_in()
     rargs = [counts_file, pdf_file, str(read_length), 
@@ -101,10 +140,20 @@ def run_deconv_r( counts_file, read_length, chr_name, script_path ):
 
 @program
 def sql_finish_deconv(sqlout,rdata):
+    """Binds the ``sql_finish_deconv.py`` scripts which creates an sqlite file from
+    'run_deconv''s output. 
+    """
     return {"arguments": ["sql_finish_deconv.py",rdata,sqlout], 
             "return_value": sqlout}
 
 def run_deconv(ex,sql,macs,chromosomes,read_length,script_path):
+    """Runs the complete deconvolution process for a set of sql files and a bed file,
+    parallelized over a set of chromosomes (a dictionary with keys 'chromosome_id' 
+    and values a dictionary with common chromosome names and lengths.
+   
+    Returns a dictionary of file outputs with keys file types 
+    ('pdf', 'sql' and 'bed') and values the file names.
+    """
     prep_futures = dict((chr['name'],
                          sql_prepare_deconv.nonblocking( ex, sql, macs, 
                                                          chr['name'], chr['length'],
@@ -146,6 +195,8 @@ def run_deconv(ex,sql,macs,chromosomes,read_length,script_path):
 ############################################################ 
 @program
 def merge_two_bed(file1,file2):
+    """Binds ``intersectBed`` from the 'BedTools' suite.
+    """
     out = unique_filename_in()
     args = ['intersectBed','-a',file1,'-b',files2]
     def catch_out(p):
@@ -156,6 +207,8 @@ def merge_two_bed(file1,file2):
     return {"arguments": args, "return_value": catch_out}
 
 def merge_many_bed(ex,files):
+    """Runs ``intersectBed`` iteratively over a list of bed files.
+    """
     out = files[0]
     for f in files[1:]:
         future = merge_two_bed.nonblocking( ex, out, f, via='lsf' )
@@ -164,6 +217,8 @@ def merge_many_bed(ex,files):
 
 @program
 def join_pdf(files):
+    """Uses 'ghostscript' to join several pdf files into one.
+    """
     out = unique_filename_in()
     gs_args = ['gs','-dBATCH','-dNOPAUSE','-q','-sDEVICE=pdfwrite',
                '-sOutputFile=%s'%out]
@@ -171,6 +226,8 @@ def join_pdf(files):
     return {"arguments": gs_args, "return_value": out}
 
 def cat(files):
+    """Concatenates files.
+    """
     if len(files) > 1:
         out = unique_filename_in()
         with open(out,"w") as f1:
@@ -188,13 +245,13 @@ def cat(files):
 @program
 def bam_to_density( bamfile, chromosome_accession, chromosome_name, output,
                     nreads=1, merge=-1, read_length=-1, convert=True, sql=False ):
-    """Runs the bam2wig program on a bam file and 
+    """Runs the ``bam2wig`` program on a bam file and 
     normalizes for the total number of reads
-    provided as argument nreads. 
+    provided as argument 'nreads'. 
 
     Returns the name of the output wig or sql file(s) (if 'sql' is True).
 
-    Use 'convert'=False if the bam already uses chromosome names.
+    Use 'convert'=False if the bam already uses chromosome names instead of ids.
     """
     b2w_args = ["-w",str(nreads),"-s",bamfile,"-o",output]
     if convert:
@@ -222,7 +279,7 @@ def parallel_density_wig( ex, bamfile, chromosomes,
                           nreads=1, merge=-1, read_length=-1, convert=True, 
                           description="", alias=None ):
     """Runs 'bam_to_density' in parallel 
-    for every chromosome in the 'chromosomes' list.
+    for every chromosome in the 'chromosomes' list with 'sql' set to False.
     Returns produces a single text wig file.
     """
     futures = [bam_to_density.nonblocking( ex, bamfile, k, v['name'],
@@ -240,12 +297,14 @@ def parallel_density_wig( ex, bamfile, chromosomes,
     ex.add( output, description=description, alias=alias )
     return output
 
-
 def parallel_density_sql( ex, bamfile, chromosomes, 
                           nreads=1, merge=-1, read_length=-1, convert=True, 
                           description="", alias=None ):
     """Runs 'bam_to_density' for every chromosome in the 'chromosomes' list.
-    Returns one or two sqlite files depending if 'merge'>=0 or 'merge'<0.
+    
+    Returns one or two sqlite files depending 
+    if 'merge'>=0 (shift and merge strands into one tracks) 
+    or 'merge'<0 (keep seperate tracks for each strand).
     """
     output = unique_filename_in()
     touch(ex,output)

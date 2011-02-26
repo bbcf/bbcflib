@@ -1,3 +1,30 @@
+"""
+===============
+bbcflib.mapseq
+===============
+
+This module provides functions useful to map raw reads using bowtie. 
+The most common workflow will use ``map_reads`` which takes the following arguments:
+
+  * ``'ex'``: an execution environment to run jobs in,
+
+  * ``'fastq_file'``: the raw reads as a fastq file, 
+
+  * ``'chromosomes'``: a dictionary with keys 'chromosome_id' as used in the bowtie indexes and values a dictionary with common chromosome names and lengths,
+
+  * ``'bowtie_index'``: the file prefix to the bowtie index,
+
+  * ``'maxhits'``: the maximum number of hits per read to keep in the output (default *5*),
+
+  * ``'antibody_enrichment'``: an approximate enrichement ratio of protein bound sequences over controls (default *50*),
+
+  * ``'name'``: sample name to be used in descriptions and file names,
+
+  * ``'remove_pcr_duplicates'``: whether to remove probable PCR amplification artifacts based on a Poisson confience threshold (default *True*).
+
+The function ``map_groups`` will take a collection of sample as described in a *job* object from the ``frontend`` module and run fetch fastq files for each of them through using a ``daflims`` object, use ``genrep`` to get the bowtie indexes and run ``map_reads`` for each sample.
+"""
+
 import pysam
 import re
 import json
@@ -12,7 +39,10 @@ from bein.util import *
 ############ Preprocessing ############
 @program
 def bamstats(bamfile):
-    """Runs the Bamstat program and parses the output. Returns a dictionary.
+    """Wrapper to the ``bamstat`` program.
+
+    This program computes read mapping statistics on a bam file. The output will 
+    be parsed and converted to a dictionary.
     """
     def extract_pairs(s,head,foot):
         m=re.search(head+r'\n([\d\s]*)\n'+foot,s,
@@ -45,6 +75,13 @@ def bamstats(bamfile):
 
 @program
 def plot_stats(sample_stats,script_path="./"):
+    """Wrapper to the ``pdfstats.R`` script which generates 
+    a pdf report of the mapping statistics.
+
+    The input is the dictionary return by the ``bamstats`` call. 
+    This is passed as a json string to the R script. 
+    Returns the pdf file created by the script.
+    """
     json_string = json.dumps(sample_stats)
     pdf_file = unique_filename_in()
     return {'arguments': ["R","--vanilla","--slave","-f",
@@ -55,7 +92,7 @@ def plot_stats(sample_stats,script_path="./"):
 def poisson_threshold(mu, cutoff=0.95, max_terms=100):
     """Calculate confidence threshold for Poisson distributions.
 
-    Returns the largest integer k such that, for a Poisson
+    Returns the largest integer *k* such that, for a Poisson
     distribution random value X with mean 'mu', P(X <= k) <= 'cutoff'.
     It will calculate no farther than k = 'max_terms'.  If it reaches
     that point, it raises an exception.
@@ -110,6 +147,21 @@ def remove_duplicate_reads( bamfile, chromosomes,
 def map_reads( ex, fastq_file, chromosomes, bowtie_index,
                maxhits=5, antibody_enrichment=50, name='',
                remove_pcr_duplicates=True ):
+    """Runs ``bowtie`` in parallel over lsf for the `fastq_file` input. 
+    Returns the full bamfile, its filtered version (see 'remove_duplicate_reads') 
+    and the mapping statistics dictionary (see 'bamstats').
+
+    The input file will be split into subfiles if it contains more than 10M lines.
+    The 'add_nh_flag' function will be called to add the number of hits per read 
+    in the bowtie output.
+    If 'remove_pcr_duplicates' is *True*, the 'chromosomes' and 'maxhits' arguments
+    are passed to the 'remove_duplicate_reads' 
+    function and the 'antibody_enrichment' will be used as input to 
+    the 'poisson_threshold' function to compute its 'pilesize' argument. 
+
+    The mapping statistics dictionary is pickled and added to the execution's 
+    repository, as well as both the full and filtered bam files.
+    """
     bwtarg = ["-Sam",str(max(20,maxhits)),"--best","--strata"]
     if count_lines( ex, fastq_file )>10000000:
         bam = parallel_bowtie( ex, bowtie_index, fastq_file,
@@ -136,7 +188,25 @@ def map_reads( ex, fastq_file, chromosomes, bowtie_index,
 
 ############################################################ 
 
-def map_groups( ex, job, daflims, globals, genrep ):
+def map_groups( ex, job, daflims, fastq_root, genrep ):
+    """Fetches fastq files and bowtie indexes, and runs the 'map_reads' function for 
+    a collection of samples described in a 'Frontend' 'job'.
+
+    Arguments are:
+
+
+    * ``'ex'``: a 'bein' execution environment to run jobs in,
+    
+    * ``'job'``: a 'Frontend' 'job' object,
+    
+    * ``'daflims'``: a 'Daflims' object,
+
+    * ``'fastq_root'``: path where to download raw fastq files,
+
+    * ``'genrep'``: a 'Genrep' object.
+
+    Returns a dictionary with keys *group_id* from the job object and values dictionaries mapping *run_is* to the corresponding return value of the 'map_reads' function.
+    """
     processed = {}
     g_rep_assembly = genrep.assembly( job.assembly_id )
     chromosomes = dict([(str(k[0])+"_"+k[1]+"."+str(k[2]),v) 
@@ -153,7 +223,7 @@ def map_groups( ex, job, daflims, globals, genrep ):
             fq_file = daflims[run['facility']].fetch_fastq( str(run['facility']),
                                                             str(run['machine']),
                                                             run['run'], run['lane'],
-                                                            to=globals['fastq_root'] )
+                                                            to=fastq_root )
             if len(group['runs'])>1:
                 name = "_".join([run['machine'],str(run['run']),str(run['lane'])])
             else:
@@ -169,6 +239,15 @@ def map_groups( ex, job, daflims, globals, genrep ):
 
 def add_pdf_stats( ex, processed, group_names, script_path,
                    description = "pdf:mapping_report.pdf" ):
+    """Runs the 'plot_stats' function and adds its pdf output to the execution's repository.
+    
+    Arguments are the output of 'map_groups' ('processed'),
+    a dictionary of group_id to names used in the display, 
+    the path to the script used by 'plot_stats', 
+    and the 'description' to use in the repository.
+
+    Returns the name of the pdf file.
+    """
     all_stats = {}
     for gid, p in processed.iteritems():
         i=1
@@ -185,6 +264,18 @@ def add_pdf_stats( ex, processed, group_names, script_path,
     return pdf
 
 def import_mapseq_results( hts_key, minilims, ex_root, url ):
+    """Imports all files created by a previous 'mapseq' workflow into the current execution environement.
+
+    * ``'hts_key'`` is the previous execution's description in the MiniLIMS,
+
+    * ``'minilims'`` is the MiniLIMS where that execution was saved,
+
+    * ``'ex_root'`` is the current execution's directory (where files will be copied to),
+
+    * ``'url'`` is the 'Frontend' url, used to fetch the mapseq job's description
+
+    Returns a tuple with a dictionary similar to the output of 'map_groups' and a 'Frontend' 'job' object describing the mapseq runs.
+    """
     processed = {}
     htss = frontend.Frontend( url=url )
     job = htss.job( hts_key )
@@ -214,6 +305,10 @@ def import_mapseq_results( hts_key, minilims, ex_root, url ):
     return (processed,job)
 
 def get_files( id_or_key, minilims ):
+    """Retrieves a dictionary of files created by the mapseq run identified by its key or bein id in a MiniLIMS.
+    
+    The dictionarie's keys are the file types (e.g. 'pdf', 'bam', 'py' for python objects), the values are dictionaries with keys repository file names and values actual file descriptions (names to provide in the user interface).
+    """
     if isinstance(id_or_key, str):
         try: 
             exid = max(minilims.search_executions(with_text=id_or_key))
