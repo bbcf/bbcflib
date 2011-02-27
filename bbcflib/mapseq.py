@@ -23,6 +23,21 @@ The most common workflow will use ``map_reads`` which takes the following argume
   * ``'remove_pcr_duplicates'``: whether to remove probable PCR amplification artifacts based on a Poisson confience threshold (default *True*).
 
 The function ``map_groups`` will take a collection of sample as described in a *job* object from the ``frontend`` module and run fetch fastq files for each of them through using a ``daflims`` object, use ``genrep`` to get the bowtie indexes and run ``map_reads`` for each sample.
+Below is the script used by the frontend::
+    M = MiniLIMS( limspath )
+    gl = use_pickle(M, "global variables")
+    htss = frontend.Frontend( url=gl["hts_url"] )
+    job = htss.job( hts_key )
+    g_rep = genrep.GenRep( gl["genrep_url"], gl["bwt_root"] )
+    daflims = dict((loc,daflims.DAFLIMS( username=gl['lims']['user'], 
+                                         password=gl['lims']['passwd'][loc] ))
+                   for loc in gl['lims']['passwd'].keys())
+    with execution( M, description=hts_key, remote_working_directory=working_dir ) as ex:
+        processed = map_groups( ex, job, daflims, gl['fastq_root'], g_rep )
+        pdf = add_pdf_stats( ex, processed,
+                             dict((k,v['name']) for k,v in job.groups.iteritems()),
+                             gl['script_path'] )
+
 """
 
 import pysam
