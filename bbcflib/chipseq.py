@@ -21,75 +21,7 @@ the 'parallel_density_sql' function to create quantitative sql tracks from bam f
         g_rep_assembly = g_rep.assembly( ms_job.assembly_id )
         chromosomes = dict([(str(k[0])+"_"+k[1]+"."+str(k[2]),v) for k,v in g_rep_assembly.chromosomes.iteritems()])
         job.groups = ms_job.groups
-        gid2name = {}
-        for gid,group in job.groups.iteritems():
-            group_name = re.sub(r'\s+','_',group['name'])
-            gid2name[gid] = group_name+"_"
-            mapped = processed[gid]
-            if len(mapped)>1:
-                wig = [parallel_density_sql( ex, m["reduced"], chromosomes, 
-                                             nreads=m["stats"]["total"], 
-                                             merge=job.options['merge_strands'], 
-                                             convert=False, 
-                                             description=m['libname'] ) for m in mapped.values()]
-                merged_bam = merge_bam(ex, [m['reduced'] for m in mapped.values()])
-                ids = [m['libname'] for m in mapped.values()]
-                if job.options['merge_strands']>=0:
-                    sqls = [x+"merged" for x in wig]
-                    merged_wig = [merge_sql(ex, sqls, ids, description="sql:"+group_name+"_shift_merged.sql")]
-                else: 
-                    sqls_fwd = [x+"fwd" for x in wig]
-                    sqls_rev = [x+"rev" for x in wig]
-                    merged_wig = [merge_sql(ex, sqls_fwd, ids, description="sql:"+group_name+"_fwd.sql"),
-                                  merge_sql(ex, sqls_rev, ids, description="sql:"+group_name+"_rev.sql")]
-            else:
-                m = mapped.values()[0]
-                merged_bam = m['reduced']
-                wig = parallel_density_sql( ex, merged_bam, chromosomes, 
-                                            nreads=m["stats"]["total"], 
-                                            merge=job.options['merge_strands'], 
-                                            convert=False, 
-                                            description=group_name )
-                if job.options['merge_strands']>=0:
-                    merged_wig = [wig+"merged"]
-                else: 
-                    merged_wig = [wig+"fwd",wig+"rev"]
-            processed[gid] = {'bam': merged_bam, 'wig': merged_wig,
-                              'read_length': mapped.values()[0]['stats']['read_length'],
-                              'genome_size': mapped.values()[0]['stats']['genome_size']}
-        if job.options['peak_calling']:
-            tests = []
-            controls = []
-            names = {'tests': [], 'controls': []}
-            wigs = {}
-            for gid,group in processed.iteritems():
-                if job.groups[gid]['control']:
-                    controls.append(group['bam'])
-                    names['controls'].append(gid2name[gid])
-                else:
-                    tests.append(group['bam'])
-                    names['tests'].append(gid2name[gid])
-                    wigs[gid2name[gid]] = group['wig']
-                read_length = group['read_length']
-                genome_size = group['genome_size']
-            if len(controls)<1:
-                controls = [None]
-                names['controls'] = [None]
-            processed['macs'] = add_macs_results( ex, read_length, genome_size,
-                                                  tests, ctrlbam=controls, name=names, 
-                                                  shift=job.options['merge_strands'] )
-            if job.options['peak_deconvolution']:
-                for name in names['tests']:
-                    if len(names['controls'])>1:
-                        macsbed = merged_many_bed([processed['macs'][(name,c)]+"_peaks.bed" 
-                                              for c in names['controls']])
-                    elif names['controls']==[None]:
-                        macsbed = processed['macs'][(name,)]+"_peaks.bed"
-                    else:
-                        macsbed = processed['macs'][(name,names['controls'][0])]+"_peaks.bed" 
-                    deconv = run_deconv(ex,wigs[name],macsbed,chromosomes,
-                                        read_length,gl['script_path'])
-                    [ex.add(v, description=k+':'+name+'_deconv.'+k) for k,v in deconv.iteritems()]
+        processed,gid2name = workflow_groups( ex, job, processed, chromosomes, script_path=gl['script_path'] )
 
 """
 
@@ -97,6 +29,7 @@ import sqlite3
 from bein import *
 from bein.util import *
 from bbcflib import frontend
+from bbcflib import mapseq
 import gMiner as gm
 
 ############ gMiner operations ############
@@ -229,7 +162,7 @@ def sql_finish_deconv(sqlout,rdata):
 def run_deconv(ex,sql,macs,chromosomes,read_length,script_path):
     """Runs the complete deconvolution process for a set of sql files and a bed file,
     parallelized over a set of chromosomes (a dictionary with keys 'chromosome_id' 
-    and values a dictionary with common chromosome names and lengths.
+    and values a dictionary with chromosome names and lengths).
    
     Returns a dictionary of file outputs with keys file types 
     ('pdf', 'sql' and 'bed') and values the file names.
@@ -421,7 +354,21 @@ def parallel_density_sql( ex, bamfile, chromosomes,
 
 ###################### Workflow ####################
 
-def analyse_groups( ex, job_or_dict, processed, chromosomes )
+def workflow_groups( ex, job_or_dict, processed, chromosomes, script_path='' ):
+    """Runs a chipseq workflow over bam files obtained by mapseq. Will optionally run ``macs`` and 'run_deconv'.
+    
+    Arguments are:
+
+    * ``'ex'``: a 'bein' execution environment to run jobs in,
+    
+    * ``'job_or_dict'``: a 'Frontend' 'job' object, or a dictionary with key 'groups' and 'options' if applicable,
+    
+    * ``'chromosomes'``: a dictionary with keys 'chromosome_id' and values a dictionary with chromosome names and lengths,
+
+    * ``'script_path'``: only needed if 'run_deconv' is in the job options, must point to the location of the R scripts.
+
+    Returns a tuple of a dictionary with keys *group_id* from the job groups, *macs* and *deconv* if applicable and values file description dictionaries and a dictionary of *group_ids* to *names* used in file descriptions.
+"""
     gid2name = {}
     if isinstance(job_or_dict,frontend.Job):
         options = job_or_dict.options
@@ -450,18 +397,23 @@ def analyse_groups( ex, job_or_dict, processed, chromosomes )
             group_name = gid
         gid2name[gid] = group_name+"_"
         mapped = processed[gid]
+        if not isinstance(mapped,dict):
+            raise TypeError("processed values must be dictionaries with keys *run_ids* or 'bam'.")
+        if 'bam' in mapped:
+            mapped = {'_': mapped}
         for k in mapped.keys():
             if not 'libname' in mapped[k]:
                 mapped[k]['libname'] = group_name+"_"+k
-            if not 
+            if not 'stats' in mapped[k]:
+                mapped[k]['stats'] = mapseq.bamstats( ex, m["bam"] )
         if len(mapped)>1:
-            wig = [parallel_density_sql( ex, m["reduced"], chromosomes, 
+            wig = [parallel_density_sql( ex, m["bam"], chromosomes, 
                                          nreads=m["stats"]["total"], 
                                          merge=merge_strands, 
                                          convert=False, 
                                          description=m['libname'] ) 
                    for m in mapped.values()]
-            merged_bam = merge_bam(ex, [m['reduced'] for m in mapped.values()])
+            merged_bam = merge_bam(ex, [m['bam'] for m in mapped.values()])
             ids = [m['libname'] for m in mapped.values()]
             if merge_strands>=0:
                 sqls = [x+"merged" for x in wig]
@@ -476,7 +428,7 @@ def analyse_groups( ex, job_or_dict, processed, chromosomes )
                                         description="sql:"+group_name+"_rev.sql")]
         else:
             m = mapped.values()[0]
-            merged_bam = m['reduced']
+            merged_bam = m['bam']
             wig = parallel_density_sql( ex, merged_bam, chromosomes, 
                                         nreads=m["stats"]["total"], 
                                         merge=merge_strands, 
@@ -495,7 +447,7 @@ def analyse_groups( ex, job_or_dict, processed, chromosomes )
         names = {'tests': [], 'controls': []}
         wigs = {}
         for gid,group in processed.iteritems():
-            if job.groups[gid]['control']:
+            if groups[gid]['control']:
                 controls.append(group['bam'])
                 names['controls'].append(gid2name[gid])
             else:
@@ -519,8 +471,9 @@ def analyse_groups( ex, job_or_dict, processed, chromosomes )
                     macsbed = processed['macs'][(name,)]+"_peaks.bed"
                 else:
                     macsbed = processed['macs'][(name,names['controls'][0])]+"_peaks.bed" 
-                deconv = run_deconv(ex,wigs[name],macsbed,chromosomes,
-                                    read_length,gl['script_path'])
+                deconv = run_deconv( ex, wigs[name], macsbed, chromosomes,
+                                     read_length, script_path )
                 [ex.add(v, description=k+':'+name+'_deconv.'+k)
                  for k,v in deconv.iteritems()]
-    return processed
+                processed['deconv'][name] = deconv
+    return (processed,gid2name)
