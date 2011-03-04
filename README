@@ -1,5 +1,6 @@
 bbcflib 0.1
-Copyright 2010 Frederick Ross <madhadron at gmail dot com>
+Copyright 2010 Frederick Ross <bbcf at gmail dot com>,
+2011 BBCF <webmaster dot bbcf at epfl dot ch>
 
 bbcflib is a set of Python modules for accessing facilities used by
 the Bioinformatics and Biostatistics Core Facility˘(BBCF) at the EPFL.
@@ -21,11 +22,11 @@ bbcflib doesn't have regular releases, since it is an internally used
 library.  You should download the latest source code from GitHub,
 either by going to
 
-    http://github.com/madhadron/bbcflib
+    http://github.com/bbcf/bbcflib
 
 and clicking on "Downloads", or by cloning the git repository with
 
-$ git clone https://github.com/madhadron/bein.git
+$ git clone https://github.com/bbcf/bein.git
 
 Once you have the source code, run
 
@@ -49,10 +50,4 @@ Known issues
 
 None.
 
-Acknowledgements
-----------------
-
-The development of bbcflib was supported by The Bioinformatics and
-Biostatistics Core Facility of the EPFL (http://bbcf.epfl.ch/).  Much
-of the code is derived from code of Jacques Rougemont.
 

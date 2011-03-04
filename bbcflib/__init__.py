@@ -6,6 +6,7 @@ bbcflib 0.1
 bbcflib is a set of Python modules for accessing facilities used by
 the Bioinformatics and Biostatistics Core Facility (BBCF) at the EPFL.
 It provides modules for BBCF's 
+
 * *GenRep* (genome data repository), 
 * the LIMS of the DNA Array Facilities at UNIL and UNIGE, 
 * the standard frontend code for workflows written by Fabrice David, 
