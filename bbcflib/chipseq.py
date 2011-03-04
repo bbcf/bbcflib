@@ -96,6 +96,7 @@ the 'parallel_density_sql' function to create quantitative sql tracks from bam f
 import sqlite3
 from bein import *
 from bein.util import *
+from bbcflib import frontend
 import gMiner as gm
 
 ############ gMiner operations ############
@@ -162,18 +163,14 @@ def add_macs_results( ex, read_length, genome_size, bamfile,
     if not(isinstance(ctrlbam,list)):
         ctrlbam = [ctrlbam]
     futures = {}
-    i = 0
-    for bam in bamfile:
+    for i,bam in enumerate(bamfile):
         n = name['tests'][i]
-        i += 1
-        j = 0
-        for cam in ctrlbam:
+        for j,cam in enumerate(ctrlbam):
             m = name['controls'][j]
             if m == None:
                 n = (n,)
             else:
                 n = (n,m)
-            j += 1
             futures[n] = macs.nonblocking( ex, read_length, genome_size, bam, 
                                            cam, shift, via='lsf' )
     prefixes = dict((n,f.wait()) for n,f in futures.iteritems())
@@ -422,3 +419,108 @@ def parallel_density_sql( ex, bamfile, chromosomes,
                 associate_to_filename=output, template='%s_'+suffix+'.sql' )
     return output
 
+###################### Workflow ####################
+
+def analyse_groups( ex, job_or_dict, processed, chromosomes )
+    gid2name = {}
+    if isinstance(job_or_dict,frontend.Job):
+        options = job_or_dict.options
+        groups = job_or_dict.groups
+    elif isinstance(job_or_dict,dict) and 'groups' in job_or_dict:
+        if 'options' in job_or_dict:
+            options = job_or_dict['options']
+        groups = job_or_dict['groups']
+    else:
+        raise TypeError("job_or_dict must be a frontend.Job object or a dictionary with key 'groups'.")
+    merge_strands = -1
+    if 'merge_strands' in options:
+        merge_strands = options['merge_strands']
+    peak_calling = False
+    if 'peak_calling' in options:
+        peak_calling = options['peak_calling']
+    peak_deconvolution = False
+    if 'peak_deconvolution' in options:
+        peak_deconvolution = options['peak_deconvolution']
+    if not isinstance(processed,dict):
+        raise TypeError("processed must be a dictionary.")
+    for gid,group in groups.iteritems():
+        if 'name' in group:
+            group_name = re.sub(r'\s+','_',group['name'])
+        else:
+            group_name = gid
+        gid2name[gid] = group_name+"_"
+        mapped = processed[gid]
+        for k in mapped.keys():
+            if not 'libname' in mapped[k]:
+                mapped[k]['libname'] = group_name+"_"+k
+            if not 
+        if len(mapped)>1:
+            wig = [parallel_density_sql( ex, m["reduced"], chromosomes, 
+                                         nreads=m["stats"]["total"], 
+                                         merge=merge_strands, 
+                                         convert=False, 
+                                         description=m['libname'] ) 
+                   for m in mapped.values()]
+            merged_bam = merge_bam(ex, [m['reduced'] for m in mapped.values()])
+            ids = [m['libname'] for m in mapped.values()]
+            if merge_strands>=0:
+                sqls = [x+"merged" for x in wig]
+                merged_wig = [merge_sql(ex, sqls, ids,
+                                        description="sql:"+group_name+"_shift_merged.sql")]
+            else: 
+                sqls_fwd = [x+"fwd" for x in wig]
+                sqls_rev = [x+"rev" for x in wig]
+                merged_wig = [merge_sql(ex, sqls_fwd, ids,
+                                        description="sql:"+group_name+"_fwd.sql"),
+                              merge_sql(ex, sqls_rev, ids,
+                                        description="sql:"+group_name+"_rev.sql")]
+        else:
+            m = mapped.values()[0]
+            merged_bam = m['reduced']
+            wig = parallel_density_sql( ex, merged_bam, chromosomes, 
+                                        nreads=m["stats"]["total"], 
+                                        merge=merge_strands, 
+                                        convert=False, 
+                                        description=group_name )
+            if merge_strands>=0:
+                merged_wig = [wig+"merged"]
+            else: 
+                merged_wig = [wig+"fwd",wig+"rev"]
+        processed[gid] = {'bam': merged_bam, 'wig': merged_wig,
+                          'read_length': mapped.values()[0]['stats']['read_length'],
+                          'genome_size': mapped.values()[0]['stats']['genome_size']}
+    if peak_calling:
+        tests = []
+        controls = []
+        names = {'tests': [], 'controls': []}
+        wigs = {}
+        for gid,group in processed.iteritems():
+            if job.groups[gid]['control']:
+                controls.append(group['bam'])
+                names['controls'].append(gid2name[gid])
+            else:
+                tests.append(group['bam'])
+                names['tests'].append(gid2name[gid])
+                wigs[gid2name[gid]] = group['wig']
+            read_length = group['read_length']
+            genome_size = group['genome_size']
+        if len(controls)<1:
+            controls = [None]
+            names['controls'] = [None]
+        processed['macs'] = add_macs_results( ex, read_length, genome_size,
+                                              tests, ctrlbam=controls, name=names, 
+                                              shift=merge_strands )
+        if peak_deconvolution:
+            for name in names['tests']:
+                if len(names['controls'])>1:
+                    macsbed = merged_many_bed([processed['macs'][(name,c)]+"_peaks.bed" 
+                                          for c in names['controls']])
+                elif names['controls']==[None]:
+                    macsbed = processed['macs'][(name,)]+"_peaks.bed"
+                else:
+                    macsbed = processed['macs'][(name,names['controls'][0])]+"_peaks.bed" 
+                deconv = run_deconv(ex,wigs[name],macsbed,chromosomes,
+                                    read_length,gl['script_path'])
+                [ex.add(v, description=k+':'+name+'_deconv.'+k)
+                 for k,v in deconv.iteritems()]
+    return processed
