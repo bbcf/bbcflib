@@ -218,7 +218,7 @@ def map_reads( ex, fastq_file, chromosomes, bowtie_index,
         outfile.close()
         infile.close()
     add_pickle( ex, stats, "py:"+name+"bamstat" )
-    return {"full": sorted_bam, "reduced": reduced_bam, "stats": stats}
+    return {"fullbam": sorted_bam, "bam": reduced_bam, "stats": stats}
 
 ############################################################ 
 
@@ -238,7 +238,7 @@ def map_groups( ex, job_or_dict, daflims_or_files, fastq_root, genrep_or_dict ):
 
     * ``'genrep_or_dict'``: a 'Genrep' object, or a dictionary of 'chromosomes' and 'index_path'.
 
-    Returns a dictionary with keys *group_id* from the job object and values dictionaries mapping *run_is* to the corresponding return value of the 'map_reads' function.
+    Returns a dictionary with keys *group_id* from the job object and values dictionaries mapping *run_id* to the corresponding return value of the 'map_reads' function.
     """
     processed = {}
     file_names = {}
@@ -357,7 +357,7 @@ def import_mapseq_results( hts_key, minilims, ex_root, url ):
             stats_id = allfiles["py:"+name+"bamstat"]
             with open(minilims.path_to_file(stats_id)) as q:
                 s = pickle.load(q)
-            processed[gid][rid] = {'reduced': bamfile, 'stats': s, 
+            processed[gid][rid] = {'bam': bamfile, 'stats': s, 
                                    'libname': name}
     return (processed,job)
 
