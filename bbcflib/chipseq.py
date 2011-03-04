@@ -19,9 +19,8 @@ the 'parallel_density_sql' function to create quantitative sql tracks from bam f
         mapseq_url = gl_ms['hts_url']
         (processed, ms_job) = import_mapseq_results( job.options['mapseq_key'], M_ms, working_dir, gl_ms["hts_url"] )
         g_rep_assembly = g_rep.assembly( ms_job.assembly_id )
-        chromosomes = dict([(str(k[0])+"_"+k[1]+"."+str(k[2]),v) for k,v in g_rep_assembly.chromosomes.iteritems()])
         job.groups = ms_job.groups
-        processed,gid2name = workflow_groups( ex, job, processed, chromosomes, script_path=gl['script_path'] )
+        processed,gid2name = workflow_groups( ex, job, processed, g_rep_assembly.chromosomes, script_path=gl['script_path'] )
 
 """
 
@@ -190,7 +189,7 @@ def run_deconv(ex,sql,macs,chromosomes,read_length,script_path):
     conn.execute('insert into attributes (key,value) values ("datatype","quantitative")')
     vals = [(v['name'],str(v['length'])) for v in chromosomes.values()]
     conn.executemany('insert into chrNames (name,length) values (?,?)',vals)
-    [conn.execute('create table '+v['name']+' (start integer, end integer, score real)') 
+    [conn.execute('create table "'+v['name']+'" (start integer, end integer, score real)') 
      for v in chromosomes.values()]
     conn.commit()
     conn.close()
@@ -287,6 +286,13 @@ def bam_to_density( bamfile, chromosome_accession, chromosome_name, output,
         files = output
     return {"arguments": ["bam2wig"]+b2w_args, "return_value": files}
 
+def compact_chromosome_name(key):
+    if isinstance(key,str):
+        return key
+    elif isinstance(key,tuple) and len(key)>2:
+        return str(k[0])+"_"+k[1]+"."+str(k[2])
+    else:
+        raise ValueError("Can't handle this chromosomes key ",key)
 
 def parallel_density_wig( ex, bamfile, chromosomes, 
                           nreads=1, merge=-1, read_length=-1, convert=True, 
@@ -295,7 +301,7 @@ def parallel_density_wig( ex, bamfile, chromosomes,
     for every chromosome in the 'chromosomes' list with 'sql' set to False.
     Returns produces a single text wig file.
     """
-    futures = [bam_to_density.nonblocking( ex, bamfile, k, v['name'],
+    futures = [bam_to_density.nonblocking( ex, bamfile, compact_chromosome_name(k), v['name'],
                                            unique_filename_in(),
                                            nreads, merge, read_length, convert, 
                                            False, via='lsf' )
@@ -332,14 +338,14 @@ def parallel_density_sql( ex, bamfile, chromosomes,
         conn1.execute('insert into attributes (key,value) values ("datatype","quantitative")')
         vals = [(v['name'],str(v['length'])) for v in chromosomes.values()]
         conn1.executemany('insert into chrNames (name,length) values (?,?)',vals)
-        [conn1.execute('create table '+v['name']+' (start integer, end integer, score real)') 
+        [conn1.execute('create table "'+v['name']+'" (start integer, end integer, score real)') 
          for v in chromosomes.values()]
         conn1.commit()
         conn1.close()
     results = []
     for k,v in chromosomes.iteritems():
-        future = bam_to_density.nonblocking( ex, bamfile, k, v['name'], output,
-                                             nreads, merge, read_length, 
+        future = bam_to_density.nonblocking( ex, bamfile, compact_chromosome_name(k), v['name'], 
+                                             output, nreads, merge, read_length, 
                                              convert, True, via='lsf' )
         try: 
             results.append(future.wait())
