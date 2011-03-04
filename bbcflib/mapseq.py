@@ -190,15 +190,34 @@ def map_reads( ex, fastq_file, chromosomes, bowtie_index,
         bam = add_nh_flag( samfile )
     sorted_bam = add_and_index_bam( ex, bam, "bam:"+name+"complete.bam" )
     stats = bamstats( ex, sorted_bam )
-    add_pickle( ex, stats, "py:"+name+"bamstat" )
     if remove_pcr_duplicates:
         thresh = poisson_threshold( antibody_enrichment*stats["actual_coverage"] )
         add_pickle( ex, thresh, "py:"+name+"Poisson_threshold" )
         bam2 = remove_duplicate_reads( sorted_bam, chromosomes,
                                        maxhits, thresh, convert=True )
         reduced_bam = add_and_index_bam( ex, bam2, "bam:"+name+"filtered.bam" )
+        stats2 = bamstats( ex, reduced_bam )
+        stats2['unmapped'] = stats['unmapped']
+        stats2['pcr_duplicates'] = stats['total']-stats2['total']
+        stats = stats2
     else:
-        reduced_bam = sorted_bam
+        infile = pysam.Samfile( sorted_bam, "rb" )
+        reduced_bam = unique_filename_in()
+        header = infile.header
+        for h in header["SQ"]:
+            if h["SN"] in chromosomes:
+                h["SN"] = chromosomes[h["SN"]]["name"]
+        outfile = pysam.Samfile( reduced_bam, "wb", header=header )
+        for read in infile:
+            nh = dict(read.tags).get('NH')
+            if nh == None:
+                nh = 1
+            if nh < 1:
+                continue
+            outfile.write(read)
+        outfile.close()
+        infile.close()
+    add_pickle( ex, stats, "py:"+name+"bamstat" )
     return {"full": sorted_bam, "reduced": reduced_bam, "stats": stats}
 
 ############################################################ 
