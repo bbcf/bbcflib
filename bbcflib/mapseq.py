@@ -20,7 +20,7 @@ The most common workflow will use ``map_reads`` which takes the following argume
 
   * ``'name'``: sample name to be used in descriptions and file names,
 
-  * ``'remove_pcr_duplicates'``: whether to remove probable PCR amplification artifacts based on a Poisson confience threshold (default *True*).
+  * ``'remove_pcr_duplicates'``: whether to remove probable PCR amplification artifacts based on a Poisson confidence threshold (default *True*).
 
 The function ``map_groups`` will take a collection of sample as described in a *job* object from the ``frontend`` module and run fetch fastq files for each of them through using a ``daflims`` object, use ``genrep`` to get the bowtie indexes and run ``map_reads`` for each sample.
 Below is the script used by the frontend::
@@ -203,48 +203,73 @@ def map_reads( ex, fastq_file, chromosomes, bowtie_index,
 
 ############################################################ 
 
-def map_groups( ex, job, daflims, fastq_root, genrep ):
+def map_groups( ex, job_or_dict, daflims_or_files, fastq_root, genrep_or_dict ):
     """Fetches fastq files and bowtie indexes, and runs the 'map_reads' function for 
     a collection of samples described in a 'Frontend' 'job'.
 
     Arguments are:
 
-
     * ``'ex'``: a 'bein' execution environment to run jobs in,
     
-    * ``'job'``: a 'Frontend' 'job' object,
+    * ``'job_or_dict'``: a 'Frontend' 'job' object, or a dictionary with keys 'groups' and 'assembly_id',
     
-    * ``'daflims'``: a 'Daflims' object,
+    * ``'daflims_or_files'``: a dictionary of 'Daflims' objects (keys are the facility names), or a dictionary with run_ids as keys (same as in job.groups) and values file names,
 
     * ``'fastq_root'``: path where to download raw fastq files,
 
-    * ``'genrep'``: a 'Genrep' object.
+    * ``'genrep_or_dict'``: a 'Genrep' object, or a dictionary of 'chromosomes' and 'index_path'.
 
     Returns a dictionary with keys *group_id* from the job object and values dictionaries mapping *run_is* to the corresponding return value of the 'map_reads' function.
     """
     processed = {}
-    g_rep_assembly = genrep.assembly( job.assembly_id )
-    chromosomes = dict([(str(k[0])+"_"+k[1]+"."+str(k[2]),v) 
-                        for k,v in g_rep_assembly.chromosomes.iteritems()])
-    pcr_dupl = True
-    if 'discard_pcr_duplicates' in job.options:
-        pcr_dupl = job.options['discard_pcr_duplicates']
     file_names = {}
-    for gid,group in job.groups.iteritems():
+    options = {}
+    if isinstance(job_or_dict,frontend.Job):
+        options = job_or_dict.options
+        groups = job_or_dict.groups
+        assembly_id = job_or_dict.assembly_id
+    elif isinstance(job_or_dict,dict) and 'groups' in job_or_dict and 'assembly_id' in job_or_dict:
+        if 'options' in job_or_dict:
+            options = job_or_dict['options']
+        groups = job_or_dict['groups']
+        assembly_id = job_or_dict['assembly_id']
+    else:
+        raise TypeError("job_or_dict must be a frontend.Job object or a dictionary with keys 'groups' and 'assembly_id'.")
+    pcr_dupl = True
+    if 'discard_pcr_duplicates' in options:
+        pcr_dupl = options['discard_pcr_duplicates']
+    if isinstance(genrep_or_dict,genrep.Genrep):
+        g_rep_assembly = genrep_or_dict.assembly( assembly_id )
+        chromosomes = dict([(str(k[0])+"_"+k[1]+"."+str(k[2]),v) 
+                            for k,v in g_rep_assembly.chromosomes.iteritems()])
+        index_path = g_rep_assembly.index_path 
+    elif isinstance(genrep_or_dict,dict) and 'chromosomes' in genrep_or_dict:
+        chromosomes = genrep_or_dict['chromosomes']
+        index_path = genrep_or_dict['index_path ']
+    else:
+        raise TypeError("genrep_or_dict must be a genrep.Genrep object or a dictionary with keys 'chromosomes' and 'index_path'.")
+    for gid,group in groups.iteritems():
         processed[gid] = {}
         file_names[gid] = {}
-        group_name = re.sub(r'\s+','_',group['name'])
+        if name in group:
+            group_name = re.sub(r'\s+','_',group['name'])
+        else:
+            group_name = gid
         for rid,run in group['runs'].iteritems():
-            fq_file = daflims[run['facility']].fetch_fastq( str(run['facility']),
-                                                            str(run['machine']),
-                                                            run['run'], run['lane'],
-                                                            to=fastq_root )
-            if len(group['runs'])>1:
-                name = "_".join([run['machine'],str(run['run']),str(run['lane'])])
+            dafl = daflims_or_files[run['facility']]
+            if isinstance(dafl,daflims.DAFLIMS):
+                fq_file = dafl.fetch_fastq( str(run['facility']), str(run['machine']),
+                                            run['run'], run['lane'], to=fastq_root )['path']
+                if len(group['runs'])>1:
+                    name = "_".join([run['machine'],str(run['run']),str(run['lane'])])
+                else:
+                    name = group_name
             else:
+                fq_file = os.path.join(fastq_root,daflims_or_files[gid][rid])
                 name = group_name
-            m = map_reads( ex, fq_file['path'], chromosomes, 
-                           g_rep_assembly.index_path, name=name+"_",
+                if len(group['runs'])>1:
+                    name += "_"+str(rid)
+            m = map_reads( ex, fq_file, chromosomes, index_path, name=name+"_",
                            remove_pcr_duplicates=pcr_dupl )
             file_names[gid][rid] = name
             m.update({'libname': name})
@@ -265,15 +290,13 @@ def add_pdf_stats( ex, processed, group_names, script_path,
     """
     all_stats = {}
     for gid, p in processed.iteritems():
-        i=1
-        for mapped in p.values():
+        for i,mapped in enumerate(p.values()):
             name = group_names[gid]
             if 'libname' in mapped:
                 name = mapped['libname']
             if name in all_stats:
-                name += ":"+str(i)
+                name += ":"+str(i+1)
             all_stats[name] = mapped['stats']
-            i += 1
     pdf = plot_stats(ex, all_stats, script_path=script_path)
     ex.add(pdf,description)
     return pdf
