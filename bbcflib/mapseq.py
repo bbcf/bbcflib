@@ -45,7 +45,7 @@ import re
 import json
 import os
 import pickle
-from bbcflib import frontend
+from bbcflib import frontend, genrep, daflims
 from numpy import *
 from scipy.misc import factorial
 from bein import *
@@ -236,7 +236,7 @@ def map_groups( ex, job_or_dict, daflims_or_files, fastq_root, genrep_or_dict ):
 
     * ``'fastq_root'``: path where to download raw fastq files,
 
-    * ``'genrep_or_dict'``: a 'Genrep' object, or a dictionary of 'chromosomes' and 'index_path'.
+    * ``'genrep_or_dict'``: a 'GenRep' object, or a dictionary of 'chromosomes' and 'index_path'.
 
     Returns a dictionary with keys *group_id* from the job object and values dictionaries mapping *run_id* to the corresponding return value of the 'map_reads' function.
     """
@@ -257,7 +257,7 @@ def map_groups( ex, job_or_dict, daflims_or_files, fastq_root, genrep_or_dict ):
     pcr_dupl = True
     if 'discard_pcr_duplicates' in options:
         pcr_dupl = options['discard_pcr_duplicates']
-    if isinstance(genrep_or_dict,genrep.Genrep):
+    if isinstance(genrep_or_dict,genrep.GenRep):
         g_rep_assembly = genrep_or_dict.assembly( assembly_id )
         chromosomes = dict([(str(k[0])+"_"+k[1]+"."+str(k[2]),v) 
                             for k,v in g_rep_assembly.chromosomes.iteritems()])
@@ -266,26 +266,24 @@ def map_groups( ex, job_or_dict, daflims_or_files, fastq_root, genrep_or_dict ):
         chromosomes = genrep_or_dict['chromosomes']
         index_path = genrep_or_dict['index_path ']
     else:
-        raise TypeError("genrep_or_dict must be a genrep.Genrep object or a dictionary with keys 'chromosomes' and 'index_path'.")
+        raise TypeError("genrep_or_dict must be a genrep.GenRep object or a dictionary with keys 'chromosomes' and 'index_path'.")
     for gid,group in groups.iteritems():
         processed[gid] = {}
         file_names[gid] = {}
-        if name in group:
+        if 'name' in group:
             group_name = re.sub(r'\s+','_',group['name'])
         else:
             group_name = gid
         for rid,run in group['runs'].iteritems():
             dafl = daflims_or_files[run['facility']]
+            name = group_name
             if isinstance(dafl,daflims.DAFLIMS):
                 fq_file = dafl.fetch_fastq( str(run['facility']), str(run['machine']),
                                             run['run'], run['lane'], to=fastq_root )['path']
                 if len(group['runs'])>1:
-                    name = "_".join([run['machine'],str(run['run']),str(run['lane'])])
-                else:
-                    name = group_name
+                    name += "_".join([run['machine'],str(run['run']),str(run['lane'])])
             else:
                 fq_file = os.path.join(fastq_root,daflims_or_files[gid][rid])
-                name = group_name
                 if len(group['runs'])>1:
                     name += "_"+str(rid)
             m = map_reads( ex, fq_file, chromosomes, index_path, name=name+"_",
