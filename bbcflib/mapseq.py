@@ -348,15 +348,14 @@ def import_mapseq_results( hts_key, minilims, ex_root, url ):
         for rid,run in group['runs'].iteritems():
             bamfile = os.path.join(ex_root, unique_filename_in(ex_root))
             name = file_names[gid][rid] 
-            bam_id = allfiles['bam:'+name+'filtered.bam']
-            bam_bai_id = allfiles['bam:'+name+'filtered.bam (BAM index)']
+            bam_id = allfiles['bam:'+name+'_filtered.bam']
+            bam_bai_id = allfiles['bam:'+name+'_filtered.bam (BAM index)']
             minilims.export_file(bam_id,bamfile)
             minilims.export_file(bam_bai_id,bamfile+".bai")
-            stats_id = allfiles["py:"+name+"bamstat"]
+            stats_id = allfiles["py:"+name+"_bamstat"]
             with open(minilims.path_to_file(stats_id)) as q:
                 s = pickle.load(q)
-            processed[gid][rid] = {'bam': bamfile, 'stats': s, 
-                                   'libname': name}
+            processed[gid][rid] = {'bam': bamfile, 'stats': s, 'libname': name}
     return (processed,job)
 
 def get_files( id_or_key, minilims ):

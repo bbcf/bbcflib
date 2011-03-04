@@ -27,8 +27,7 @@ the 'parallel_density_sql' function to create quantitative sql tracks from bam f
 import sqlite3
 from bein import *
 from bein.util import *
-from bbcflib import frontend
-from bbcflib import mapseq
+from bbcflib import frontend, mapseq
 import gMiner as gm
 
 ############ gMiner operations ############
@@ -110,14 +109,14 @@ def add_macs_results( ex, read_length, genome_size, bamfile,
         description = "_vs_".join(n)
         touch( ex, p )
         ex.add( p, description="none:"+description, alias=alias )
-        ex.add( p+"_peaks.xls", description="macs:"+description+"peaks.xls",
+        ex.add( p+"_peaks.xls", description="macs:"+description+"_peaks.xls",
                 associate_to_filename=p, template='%s_peaks.xls' )
-        ex.add( p+"_peaks.bed", description="macs:"+description+"peaks.bed",
+        ex.add( p+"_peaks.bed", description="macs:"+description+"_peaks.bed",
                 associate_to_filename=p, template='%s_peaks.bed' )
-        ex.add( p+"_summits.bed", description="macs:"+description+"summits.bed",
+        ex.add( p+"_summits.bed", description="macs:"+description+"_summits.bed",
                 associate_to_filename=p, template='%s_summits.bed' )
         if len(n)>1:
-            ex.add( p+"_negative_peaks.xls", description="macs:"+description+"negative_peaks.xls",
+            ex.add( p+"_negative_peaks.xls", description="macs:"+description+"_negative_peaks.xls",
                     associate_to_filename=p, template='%s_negative_peaks.xls' )
     return prefixes
 
@@ -290,7 +289,7 @@ def compact_chromosome_name(key):
     if isinstance(key,str):
         return key
     elif isinstance(key,tuple) and len(key)>2:
-        return str(k[0])+"_"+k[1]+"."+str(k[2])
+        return str(key[0])+"_"+key[1]+"."+str(key[2])
     else:
         raise ValueError("Can't handle this chromosomes key ",key)
 
@@ -301,10 +300,9 @@ def parallel_density_wig( ex, bamfile, chromosomes,
     for every chromosome in the 'chromosomes' list with 'sql' set to False.
     Returns produces a single text wig file.
     """
-    futures = [bam_to_density.nonblocking( ex, bamfile, compact_chromosome_name(k), v['name'],
-                                           unique_filename_in(),
-                                           nreads, merge, read_length, convert, 
-                                           False, via='lsf' )
+    futures = [bam_to_density.nonblocking( ex, bamfile, compact_chromosome_name(k),
+                                           v['name'], unique_filename_in(), nreads, merge, 
+                                           read_length, convert, False, via='lsf' )
                for k,v in chromosomes.iteritems()]
     results = []
     for f in futures:
@@ -344,9 +342,9 @@ def parallel_density_sql( ex, bamfile, chromosomes,
         conn1.close()
     results = []
     for k,v in chromosomes.iteritems():
-        future = bam_to_density.nonblocking( ex, bamfile, compact_chromosome_name(k), v['name'], 
-                                             output, nreads, merge, read_length, 
-                                             convert, True, via='lsf' )
+        future = bam_to_density.nonblocking( ex, bamfile, compact_chromosome_name(k),
+                                              v['name'], output, nreads, merge,
+                                              read_length, convert, True, via='lsf' )
         try: 
             results.append(future.wait())
         except ProgramFailed:
@@ -401,7 +399,7 @@ def workflow_groups( ex, job_or_dict, processed, chromosomes, script_path='' ):
             group_name = re.sub(r'\s+','_',group['name'])
         else:
             group_name = gid
-        gid2name[gid] = group_name+"_"
+        gid2name[gid] = group_name
         mapped = processed[gid]
         if not isinstance(mapped,dict):
             raise TypeError("processed values must be dictionaries with keys *run_ids* or 'bam'.")
@@ -409,7 +407,7 @@ def workflow_groups( ex, job_or_dict, processed, chromosomes, script_path='' ):
             mapped = {'_': mapped}
         for k in mapped.keys():
             if not 'libname' in mapped[k]:
-                mapped[k]['libname'] = group_name+"_"+k
+                mapped[k]['libname'] = group_name+"_"+str(k)
             if not 'stats' in mapped[k]:
                 mapped[k]['stats'] = mapseq.bamstats( ex, m["bam"] )
         if len(mapped)>1:
