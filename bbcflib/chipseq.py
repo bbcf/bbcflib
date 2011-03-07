@@ -208,22 +208,16 @@ def run_deconv(ex,sql,macs,chromosomes,read_length,script_path):
 def merge_two_bed(file1,file2):
     """Binds ``intersectBed`` from the 'BedTools' suite.
     """
-    out = unique_filename_in()
-    args = ['intersectBed','-a',file1,'-b',files2]
-    def catch_out(p):
-        with open(out,'w') as f:
-            [f.write(l) for l in p.stdout]
-            f.close()
-        return out
-    return {"arguments": args, "return_value": catch_out}
+    return {"arguments": ['intersectBed','-a',file1,'-b',files2], "return_value": ''}
 
 def merge_many_bed(ex,files):
     """Runs ``intersectBed`` iteratively over a list of bed files.
     """
     out = files[0]
     for f in files[1:]:
-        future = merge_two_bed.nonblocking( ex, out, f, via='lsf' )
-        out = future.wait()
+        next = unique_filename_in()
+        null = merge_two_bed.nonblocking( ex, out, f, via='lsf', stdout=next ).wait()
+        out = next
     return out
 
 @program
@@ -276,9 +270,9 @@ def bam_to_density( bamfile, chromosome_accession, chromosome_name, output,
     if sql:
         b2w_args += ["-d"]
         if merge<0:
-            files = [output+"fwd",output+"rev"]
+            files = [output+"fwd.sql",output+"rev.sql"]
         else:
-            files = [output+"merged"]
+            files = [output+"merged.sql"]
     else:
         if merge<0:
             b2w_args += ["-6"]
@@ -326,9 +320,9 @@ def parallel_density_sql( ex, bamfile, chromosomes,
     output = unique_filename_in()
     touch(ex,output)
     if merge<0:
-        suffix = ['fwd','rev']
+        suffix = ['fwd.sql','rev.sql']
     else:
-        suffix = ['merged']
+        suffix = ['merged.sql']
     for s in suffix:
         conn1 = sqlite3.connect( output+s )
         conn1.execute('create table chrNames (name text, length integer)')
@@ -420,12 +414,12 @@ def workflow_groups( ex, job_or_dict, processed, chromosomes, script_path='' ):
             merged_bam = merge_bam(ex, [m['bam'] for m in mapped.values()])
             ids = [m['libname'] for m in mapped.values()]
             if merge_strands>=0:
-                sqls = [x+"merged" for x in wig]
+                sqls = [x+"merged.sql" for x in wig]
                 merged_wig = [merge_sql(ex, sqls, ids,
                                         description="sql:"+group_name+"_shift_merged.sql")]
             else: 
-                sqls_fwd = [x+"fwd" for x in wig]
-                sqls_rev = [x+"rev" for x in wig]
+                sqls_fwd = [x+"fwd.sql" for x in wig]
+                sqls_rev = [x+"rev.sql" for x in wig]
                 merged_wig = [merge_sql(ex, sqls_fwd, ids,
                                         description="sql:"+group_name+"_fwd.sql"),
                               merge_sql(ex, sqls_rev, ids,
@@ -439,9 +433,9 @@ def workflow_groups( ex, job_or_dict, processed, chromosomes, script_path='' ):
                                         convert=False, 
                                         description=group_name )
             if merge_strands>=0:
-                merged_wig = [wig+"merged"]
+                merged_wig = [wig+"merged.sql"]
             else: 
-                merged_wig = [wig+"fwd",wig+"rev"]
+                merged_wig = [wig+"fwd.sql",wig+"rev.sql"]
         processed[gid] = {'bam': merged_bam, 'wig': merged_wig,
                           'read_length': mapped.values()[0]['stats']['read_length'],
                           'genome_size': mapped.values()[0]['stats']['genome_size']}

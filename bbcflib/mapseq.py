@@ -281,7 +281,7 @@ def map_groups( ex, job_or_dict, daflims_or_files, fastq_root, genrep_or_dict ):
                 fq_file = dafl.fetch_fastq( str(run['facility']), str(run['machine']),
                                             run['run'], run['lane'], to=fastq_root )['path']
                 if len(group['runs'])>1:
-                    name += "_".join([run['machine'],str(run['run']),str(run['lane'])])
+                    name += "_".join(['',run['machine'],str(run['run']),str(run['lane'])])
             else:
                 fq_file = os.path.join(fastq_root,daflims_or_files[gid][rid])
                 if len(group['runs'])>1:
