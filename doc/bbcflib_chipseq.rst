@@ -1,18 +1,24 @@
 .. automodule:: bbcflib.chipseq
 
+   .. autofunction:: workflow_groups
+
+   .. autofunction:: add_macs_results
+
+   .. autofunction:: run_deconv
+
+   .. autofunction:: parallel_density_wig
+
+   .. autofunction:: parallel_density_sql
+   
    .. autofunction:: merge_sql
 
    .. autofunction:: macs
-
-   .. autofunction:: add_macs_results
 
    .. autofunction:: sql_prepare_deconv
 
    .. autofunction:: run_deconv_r
 
    .. autofunction:: sql_finish_deconv
-
-   .. autofunction:: run_deconv
 
    .. autofunction:: merge_two_bed
 
@@ -23,8 +29,4 @@
    .. autofunction:: cat
 
    .. autofunction:: bam_to_density
-
-   .. autofunction:: parallel_density_wig
-   
-   .. autofunction:: parallel_density_sql
 
