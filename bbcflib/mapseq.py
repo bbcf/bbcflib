@@ -189,17 +189,20 @@ def map_reads( ex, fastq_file, chromosomes, bowtie_index,
         samfile = future.wait()
         bam = add_nh_flag( samfile )
     sorted_bam = add_and_index_bam( ex, bam, "bam:"+name+"complete.bam" )
-    stats = bamstats( ex, sorted_bam )
+    full_stats = bamstats( ex, sorted_bam )
+    add_pickle( ex, full_stats, "py:"+name+"full_bamstat" )
+    return_dict = {"fullbam": sorted_bam}
     if remove_pcr_duplicates:
         thresh = poisson_threshold( antibody_enrichment*stats["actual_coverage"] )
         add_pickle( ex, thresh, "py:"+name+"Poisson_threshold" )
         bam2 = remove_duplicate_reads( sorted_bam, chromosomes,
                                        maxhits, thresh, convert=True )
         reduced_bam = add_and_index_bam( ex, bam2, "bam:"+name+"filtered.bam" )
-        stats2 = bamstats( ex, reduced_bam )
-        stats2['unmapped'] = stats['unmapped']
-        stats2['pcr_duplicates'] = stats['total']-stats2['total']
-        stats = stats2
+        filtered_stats = bamstats( ex, reduced_bam )
+        add_pickle( ex, filtered_stats, "py:"+name+"filter_bamstat" )
+        return_dict['bam'] = reduced_bam 
+        return_dict['fullstats'] = full_stats
+        return_dict['stats'] = filtered_stats
     else:
         infile = pysam.Samfile( sorted_bam, "rb" )
         reduced_bam = unique_filename_in()
@@ -217,8 +220,9 @@ def map_reads( ex, fastq_file, chromosomes, bowtie_index,
             outfile.write(read)
         outfile.close()
         infile.close()
-    add_pickle( ex, stats, "py:"+name+"bamstat" )
-    return {"fullbam": sorted_bam, "bam": reduced_bam, "stats": stats}
+        return_dict['bam'] = reduced_bam 
+        return_dict['stats'] = full_stats
+    return return_dict
 
 ############################################################ 
 
@@ -313,7 +317,11 @@ def add_pdf_stats( ex, processed, group_names, script_path,
                 name = mapped['libname']
             if name in all_stats:
                 name += ":"+str(i+1)
-            all_stats[name] = mapped['stats']
+            if 'fullstats' in mapped:
+                all_stats[name+":full"] = mapped['fullstats']
+                all_stats[name+":filter"] = mapped['stats']
+            else:
+                all_stats[name] = mapped['stats']
     pdf = plot_stats(ex, all_stats, script_path=script_path)
     ex.add(pdf,description)
     return pdf
