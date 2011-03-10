@@ -20,7 +20,7 @@ the 'parallel_density_sql' function to create quantitative sql tracks from bam f
         (processed, ms_job) = import_mapseq_results( job.options['mapseq_key'], M_ms, working_dir, gl_ms["hts_url"] )
         g_rep_assembly = g_rep.assembly( ms_job.assembly_id )
         job.groups = ms_job.groups
-        processed,gid2name = workflow_groups( ex, job, processed, g_rep_assembly.chromosomes, script_path=gl['script_path'] )
+        (p,g) = workflow_groups( ex, job, processed, g_rep_assembly.chromosomes, gl['script_path'] )
 
 """
 
@@ -99,11 +99,11 @@ def add_macs_results( ex, read_length, genome_size, bamfile,
         for j,cam in enumerate(ctrlbam):
             m = name['controls'][j]
             if m == None:
-                n = (n,)
+                nm = (n,)
             else:
-                n = (n,m)
-            futures[n] = macs.nonblocking( ex, read_length, genome_size, bam, 
-                                           cam, shift, via='lsf' )
+                nm = (n,m)
+            futures[nm] = macs.nonblocking( ex, read_length, genome_size, bam, 
+                                            cam, shift, via='lsf' )
     prefixes = dict((n,f.wait()) for n,f in futures.iteritems())
     for n,p in prefixes.iteritems():
         description = "_vs_".join(n)

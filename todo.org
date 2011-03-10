@@ -1,6 +1,4 @@
 * mapseq...
-  ISSUE: if remove_pcr_duplicates = True => stats$total is wrong 
-  if False, no convert => chipseq need to convert
-  make run_groups function with objects or dict as args and encapsulate what's in the run_.py script
 * chipseq...
-  same as mapseq
+  intersect bed if multiple controls for deconv
+  
