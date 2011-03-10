@@ -412,6 +412,9 @@ def workflow_groups( ex, job_or_dict, processed, chromosomes, script_path='' ):
     peak_deconvolution = False
     if 'peak_deconvolution' in options:
         peak_deconvolution = options['peak_deconvolution']
+    ucsc_bigwig = False
+    if 'ucsc_bigwig' in options:
+        ucsc_bigwig = options['ucsc_bigwig']
     if not isinstance(processed,dict):
         raise TypeError("processed must be a dictionary.")
     for gid,group in groups.iteritems():
@@ -465,6 +468,14 @@ def workflow_groups( ex, job_or_dict, processed, chromosomes, script_path='' ):
         processed[gid] = {'bam': merged_bam, 'wig': merged_wig,
                           'read_length': mapped.values()[0]['stats']['read_length'],
                           'genome_size': mapped.values()[0]['stats']['genome_size']}
+        if ucsc_bigwig:
+            bw_futures = [wigToBigWig.nonblocking( ex, f, via='lsf' ) 
+                          for f in merged_wig]
+            if length(bw_futures)>1:
+                ex.add(bw_futures[0].wait(),description='bigwig:'+group_name+'_fwd.bw')
+                ex.add(bw_futures[1].wait(),description='bigwig:'+group_name+'_rev.bw')
+            else:
+                ex.add(bw_futures[0].wait(),description='bigwig:'+group_name+'_merged.bw')
     if peak_calling:
         tests = []
         controls = []
