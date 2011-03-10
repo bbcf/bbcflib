@@ -205,6 +205,32 @@ def run_deconv(ex,sql,macs,chromosomes,read_length,script_path):
     
 ############################################################ 
 @program
+def wigToBigWig( sql ):
+    """Binds ``wigToBigWig`` from the UCSC tools.
+    """
+    chrsizes = unique_filename_in()
+    connection = sqlite3.connect( sql )
+    cur = connection.cursor()
+    with open(chrsizes,'w') as f:
+        cur = connection.cursor()
+        cur.execute('select * from chrNames')
+        connection.commit()
+        for sql_row in cur:
+            f.write(' '.join(sql_row)+"\n")
+        cur.close()
+    bedgraph = unique_filename_in()
+    with open(bedgraph,'w') as f:
+        for v in chromosomes.values():
+            cur.execute('select * from "'+v['name']+'"')
+            connection.commit()
+            for sql_row in cur:
+                f.write("\t".join([v['name']]+sql_row)+"\n")
+            cur.close()
+    bigwig = unique_filename_in()
+    return {"arguments": ['wigToBigWig',bedgraph,chrsizes,bigwig], 
+            "return_value": bigwig}
+
+@program
 def merge_two_bed(file1,file2):
     """Binds ``intersectBed`` from the 'BedTools' suite.
     """
@@ -346,8 +372,8 @@ def parallel_density_sql( ex, bamfile, chromosomes,
     ex.add( output, description='none:'+description+'.sql', alias=alias )
     for outf in results[0]:
         suffix = outf[len(output):len(outf)]
-        ex.add( outf, description='sql:'+description+'_'+suffix+'.sql',
-                associate_to_filename=output, template='%s_'+suffix+'.sql' )
+        ex.add( outf, description='sql:'+description+'_'+suffix,
+                associate_to_filename=output, template='%s_'+suffix )
     return output
 
 ###################### Workflow ####################
