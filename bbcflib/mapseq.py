@@ -193,7 +193,7 @@ def map_reads( ex, fastq_file, chromosomes, bowtie_index,
     add_pickle( ex, full_stats, "py:"+name+"full_bamstat" )
     return_dict = {"fullbam": sorted_bam}
     if remove_pcr_duplicates:
-        thresh = poisson_threshold( antibody_enrichment*stats["actual_coverage"] )
+        thresh = poisson_threshold( antibody_enrichment*full_stats["actual_coverage"] )
         add_pickle( ex, thresh, "py:"+name+"Poisson_threshold" )
         bam2 = remove_duplicate_reads( sorted_bam, chromosomes,
                                        maxhits, thresh, convert=True )
