@@ -209,6 +209,7 @@ def wigToBigWig( sql ):
     """Binds ``wigToBigWig`` from the UCSC tools.
     """
     chrsizes = unique_filename_in()
+    chromosomes = []
     connection = sqlite3.connect( sql )
     cur = connection.cursor()
     with open(chrsizes,'w') as f:
@@ -216,15 +217,16 @@ def wigToBigWig( sql ):
         cur.execute('select * from chrNames')
         connection.commit()
         for sql_row in cur:
-            f.write(' '.join(sql_row)+"\n")
+            chromosomes.append(sql_row[0])
+            f.write(' '.join([str(x) for x in sql_row])+"\n")
         cur.close()
     bedgraph = unique_filename_in()
     with open(bedgraph,'w') as f:
-        for v in chromosomes.values():
-            cur.execute('select * from "'+v['name']+'"')
+        for c in chromosomes:
+            cur.execute('select * from "'+c+'"')
             connection.commit()
             for sql_row in cur:
-                f.write("\t".join([v['name']]+sql_row)+"\n")
+                f.write("\t".join([c]+[str(x) for x in sql_row])+"\n")
             cur.close()
     bigwig = unique_filename_in()
     return {"arguments": ['wigToBigWig',bedgraph,chrsizes,bigwig], 
