@@ -140,12 +140,10 @@ class DAFLIMS(object):
         """
         self._check_description(facility, machine, run, lane)
         response = self._run_method("symlinkname", facility, machine, run, lane).splitlines()
-        if re.search('==DATA', response[0]) == None:
+        if re.search('==DATA', response[0]) == None or len(response)<2:
             raise ValueError(("symlinkname method failed on DAFLIMS (facility='%s', " + \
                               "machine='%s', run=%d, lane=%d): %s") % (facility, machine, run, lane,
                                                                      '\n'.join(response[1:])))
-        if len(response) > 2:
-            raise ValueError("symlinkname method returned multiple records: %s" % ('\n'.join(response[1:])))
         else:
             q = response[1].split('\t')
             return {'fastq': q[0], 'eland': q[1], 'qseq': q[2]}
