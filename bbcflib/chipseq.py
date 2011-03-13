@@ -473,7 +473,7 @@ def workflow_groups( ex, job_or_dict, processed, chromosomes, script_path='' ):
         if ucsc_bigwig:
             bw_futures = [wigToBigWig.nonblocking( ex, f, via='lsf' ) 
                           for f in merged_wig]
-            if length(bw_futures)>1:
+            if len(bw_futures)>1:
                 ex.add(bw_futures[0].wait(),description='bigwig:'+group_name+'_fwd.bw')
                 ex.add(bw_futures[1].wait(),description='bigwig:'+group_name+'_rev.bw')
             else:

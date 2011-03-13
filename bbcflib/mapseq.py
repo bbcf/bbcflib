@@ -362,7 +362,7 @@ def import_mapseq_results( hts_key, minilims, ex_root, url ):
             bam_bai_id = allfiles['bam:'+name+'_filtered.bam (BAM index)']
             minilims.export_file(bam_id,bamfile)
             minilims.export_file(bam_bai_id,bamfile+".bai")
-            stats_id = allfiles["py:"+name+"_bamstat"]
+            stats_id = allfiles["py:"+name+"_filter_bamstat"]
             with open(minilims.path_to_file(stats_id)) as q:
                 s = pickle.load(q)
             processed[gid][rid] = {'bam': bamfile, 'stats': s, 'libname': name}
