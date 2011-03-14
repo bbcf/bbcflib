@@ -35,7 +35,7 @@ def merge_sql( ex, sqls, ids, description="merged.sql" ):
     """Run ``gMiner``'s 'merge_score' function on a set of sql files
     """
     out = unique_filename_in()
-    req = "[gMiner]\nversion=0.1.3\n"
+    req = "[gMiner]\nversion=0.1.5\n"
     req += "\n".join(['track'+str(i+1)+'='+sqls[i]+"\ntrack"+str(i+1)+'_name="'+str(ids[i])+'"' for i in range(len(sqls))])
     req += '''
 operation_type=genomic_manip 
