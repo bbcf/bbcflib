@@ -280,6 +280,8 @@ def map_groups( ex, job_or_dict, daflims_or_files, fastq_root, genrep_or_dict ):
             group_name = re.sub(r'\s+','_',group['name'])
         else:
             group_name = gid
+        if not 'runs' in groups:
+            group = {'runs': group}
         for rid,run in group['runs'].iteritems():
             name = group_name
             if isinstance(dafl,daflims.DAFLIMS):
