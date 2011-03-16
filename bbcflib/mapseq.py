@@ -280,7 +280,7 @@ def map_groups( ex, job_or_dict, daflims_or_files, fastq_root, genrep_or_dict ):
             group_name = re.sub(r'\s+','_',group['name'])
         else:
             group_name = gid
-        if not 'runs' in groups:
+        if not 'runs' in group:
             group = {'runs': group}
         for rid,run in group['runs'].iteritems():
             name = group_name
@@ -330,32 +330,43 @@ def add_pdf_stats( ex, processed, group_names, script_path,
     ex.add(pdf,description)
     return pdf
 
-def import_mapseq_results( hts_key, minilims, ex_root, url ):
+def import_mapseq_results( key_or_id, minilims, ex_root, url_or_dict ):
     """Imports all files created by a previous 'mapseq' workflow into the current execution environement.
 
-    * ``'hts_key'`` is the previous execution's description in the MiniLIMS,
+    * ``'key_or_id'`` is the previous execution's description in the MiniLIMS or its id,
 
     * ``'minilims'`` is the MiniLIMS where that execution was saved,
 
     * ``'ex_root'`` is the current execution's directory (where files will be copied to),
 
-    * ``'url'`` is the 'Frontend' url, used to fetch the mapseq job's description
+    * ``'url_or_dict'`` is either the 'Frontend' url to fetch the mapseq job's description, or a job description dictionary (see ``map_groups``)
 
-    Returns a tuple with a dictionary similar to the output of 'map_groups' and a 'Frontend' 'job' object describing the mapseq runs.
+    Returns a tuple with a dictionary similar to the output of 'map_groups' and a 'job' object describing the mapseq runs.
     """
     processed = {}
-    htss = frontend.Frontend( url=url )
-    job = htss.job( hts_key )
-    try: 
-        exid = max(minilims.search_executions(with_text=hts_key))
-    except ValueError, v:
-        raise ValueError("No execution with key "+hts_key)
+    if isinstance(url_or_dict, str):
+        htss = frontend.Frontend( url=url_or_dict )
+        job = htss.job( key_or_id )
+        job_groups = job.groups
+        try: 
+            exid = max(minilims.search_executions(with_text=key_or_id))
+        except ValueError, v:
+            raise ValueError("No execution with key "+key_or_id)
+    else:
+        job = url_or_dict
+        job_groups = job['groups']
+        exid = key_or_id
     allfiles = dict((minilims.fetch_file(x)['description'],x)
                     for x in minilims.search_files(source=('execution',exid)))
     with open(minilims.path_to_file(allfiles['py:file_names'])) as q:
         file_names = pickle.load(q)
-    for gid, group in job.groups.iteritems():
-        group_name = re.sub(r'\s+','_',group['name'])
+    for gid, group in job_groups.iteritems():
+        if 'name' in group:
+            group_name = re.sub(r'\s+','_',group['name'])
+        else:
+            group_name = gid
+        if not 'runs' in group:
+            group = {'runs': group}
         processed[gid] = {}
         for rid,run in group['runs'].iteritems():
             bamfile = os.path.join(ex_root, unique_filename_in(ex_root))
