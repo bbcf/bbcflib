@@ -348,13 +348,15 @@ def import_mapseq_results( key_or_id, minilims, ex_root, url_or_dict ):
         htss = frontend.Frontend( url=url_or_dict )
         job = htss.job( key_or_id )
         job_groups = job.groups
+    else:
+        job = url_or_dict
+        job_groups = job['groups']
+    if isinstance(key_or_id, str):
         try: 
             exid = max(minilims.search_executions(with_text=key_or_id))
         except ValueError, v:
             raise ValueError("No execution with key "+key_or_id)
     else:
-        job = url_or_dict
-        job_groups = job['groups']
         exid = key_or_id
     allfiles = dict((minilims.fetch_file(x)['description'],x)
                     for x in minilims.search_files(source=('execution',exid)))
