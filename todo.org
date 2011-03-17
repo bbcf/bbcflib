@@ -1,4 +1,5 @@
+ - use config parser
+ - make a global config vor the 'via' parameter
 * mapseq...
 * chipseq...
-  intersect bed if multiple controls for deconv
   

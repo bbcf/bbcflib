@@ -507,7 +507,8 @@ def workflow_groups( ex, job_or_dict, processed, chromosomes, script_path='' ):
                 elif names['controls']==[None]:
                     macsbed = processed['macs'][(name,)]+"_peaks.bed"
                 else:
-                    macsbed = processed['macs'][(name,names['controls'][0])]+"_peaks.bed" 
+                    macsbed = merge_many_bed(ex,[processed['macs'][(name,x)]+"_peaks.bed" for x in names['controls']])
+                                             
                 deconv = run_deconv( ex, wigs[name], macsbed, chromosomes,
                                      read_length, script_path )
                 [ex.add(v, description=k+':'+name+'_deconv.'+k)
