@@ -1,5 +1,7 @@
  - use config parser
- - make a global config vor the 'via' parameter
+ - make a global config for the 'via' parameter
 * mapseq...
 * chipseq...
+   density: use read_length param
+   provide seed length param (auto: .7*read_length)
   
