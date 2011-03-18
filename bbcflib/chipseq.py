@@ -236,7 +236,7 @@ def wigToBigWig( sql ):
 def merge_two_bed(file1,file2):
     """Binds ``intersectBed`` from the 'BedTools' suite.
     """
-    return {"arguments": ['intersectBed','-a',file1,'-b',files2], "return_value": ''}
+    return {"arguments": ['intersectBed','-a',file1,'-b',file2], "return_value": None}
 
 def merge_many_bed(ex,files):
     """Runs ``intersectBed`` iteratively over a list of bed files.
