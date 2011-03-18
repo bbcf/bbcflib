@@ -46,6 +46,7 @@ With a ``ConfigParser``, the previous code would look like::
 
 .. autoclass:: Assembly
 """
+import sqlite3
 import urllib2
 import json
 import os
@@ -104,16 +105,17 @@ class GenRep(object):
         url = """%s/chromosomes/%i/get_sequence_part?slices=%s""" % (self.url, chr_id, slices)
         return urllib2.urlopen(url).read().split(',')
 
-    def fasta_from_bed(self, chromosomes, out=None, bed=None, sql=None, chunk=100000):
+    def fasta_from_bed(self, chromosomes, out=None, bed=None, sql=None, chunk=50000):
         """Get a fasta file with sequences corresponding to the features in the 
         bed or sqlite file.
 
         Returns the name of the file and the total sequence size.
         """
         def push_slices(slices,start,end,name,cur_chunk):
-            slices['coord'].append([start,end])
-            slices['names'].append(name)
-            cur_chunk += e-s
+            if end>start:
+                slices['coord'].append([start,end])
+                slices['names'].append(name)
+                cur_chunk += end-start
             return slices,cur_chunk
         def flush_slices(slices,cid,out):
             names=slices['names']
