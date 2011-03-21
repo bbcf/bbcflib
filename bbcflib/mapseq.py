@@ -163,7 +163,7 @@ def remove_duplicate_reads( bamfile, chromosomes,
  
 def map_reads( ex, fastq_file, chromosomes, bowtie_index,
                maxhits=5, antibody_enrichment=50, name='',
-               remove_pcr_duplicates=True ):
+               remove_pcr_duplicates=True, bwt_args=[] ):
     """Runs ``bowtie`` in parallel over lsf for the `fastq_file` input. 
     Returns the full bamfile, its filtered version (see 'remove_duplicate_reads') 
     and the mapping statistics dictionary (see 'bamstats').
@@ -179,7 +179,7 @@ def map_reads( ex, fastq_file, chromosomes, bowtie_index,
     The mapping statistics dictionary is pickled and added to the execution's 
     repository, as well as both the full and filtered bam files.
     """
-    bwtarg = ["-Sam",str(max(20,maxhits)),"--best","--strata"]
+    bwtarg = ["-Sam",str(max(20,maxhits)),"--best","--strata"]+bwt_args
     if count_lines( ex, fastq_file )>10000000:
         bam = parallel_bowtie( ex, bowtie_index, fastq_file,
                                n_lines=8000000,
@@ -228,7 +228,7 @@ def map_reads( ex, fastq_file, chromosomes, bowtie_index,
 
 ############################################################ 
 
-def map_groups( ex, job_or_dict, daflims_or_files, fastq_root, genrep_or_dict ):
+def map_groups( ex, job_or_dict, daflims_or_files, fastq_root, genrep_or_dict, map_args={} ):
     """Fetches fastq files and bowtie indexes, and runs the 'map_reads' function for 
     a collection of samples described in a 'Frontend' 'job'.
 
@@ -243,6 +243,8 @@ def map_groups( ex, job_or_dict, daflims_or_files, fastq_root, genrep_or_dict ):
     * ``'fastq_root'``: path where to download raw fastq files,
 
     * ``'genrep_or_dict'``: a 'GenRep' object, or a dictionary of 'chromosomes' and 'index_path'.
+
+    * ``'map_args'``: a dictionary of arguments passed to map_reads.
 
     Returns a dictionary with keys *group_id* from the job object and values dictionaries mapping *run_id* to the corresponding return value of the 'map_reads' function.
     """
@@ -295,7 +297,7 @@ def map_groups( ex, job_or_dict, daflims_or_files, fastq_root, genrep_or_dict ):
                 if len(group['runs'])>1:
                     name += "_"+str(rid)
             m = map_reads( ex, fq_file, chromosomes, index_path, name=name+"_",
-                           remove_pcr_duplicates=pcr_dupl )
+                           remove_pcr_duplicates=pcr_dupl, **map_args )
             file_names[gid][rid] = name
             m.update({'libname': name})
             processed[gid][rid] = m
