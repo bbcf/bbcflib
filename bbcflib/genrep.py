@@ -137,7 +137,7 @@ class GenRep(object):
             cur_chr = 0
             with open(bed,"r") as f:
                 for l in f:
-                    row = l.split("\t")
+                    row = l.rstrip('\n').split('\t')
                     cid = chr_ids[row[0]]
                     s = max(int(row[1]),0)
                     e = min(int(row[2]),chr_len[cid])
