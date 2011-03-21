@@ -89,6 +89,9 @@ def save_motif_profile( ex, motif, background, genrep, chromosomes,
                 connection.commit()
                 vals = []
             cur_chr = reg[0]
+    if len(vals)>0:
+        connection.executemany('insert into "'+cur_chr+'" (start,end,score,strand,name) values (?,?,?,?,?)',vals)
+        connection.commit()
     connection.close()
     ex.add( sqlout, description="sql:"+description+"motif_scan.sql" )
     return sqlout
