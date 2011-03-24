@@ -31,10 +31,11 @@ from bbcflib import frontend, mapseq
 import gMiner as gm
 
 ############ gMiner operations ############
-def merge_sql( ex, sqls, ids, description="merged.sql" ):
+def merge_sql( ex, sqls, ids, description="merged.sql", out=None ):
     """Run ``gMiner``'s 'merge_score' function on a set of sql files
     """
-    out = unique_filename_in()
+    if out == None:
+        out = unique_filename_in()
     req = "[gMiner]\nversion=0.1.5\n"
     req += "\n".join(['track'+str(i+1)+'='+sqls[i]+"\ntrack"+str(i+1)+'_name="'+str(ids[i])+'"' for i in range(len(sqls))])
     req += '''
@@ -405,8 +406,10 @@ def workflow_groups( ex, job_or_dict, processed, chromosomes, script_path='' ):
     else:
         raise TypeError("job_or_dict must be a frontend.Job object or a dictionary with key 'groups'.")
     merge_strands = -1
-    if 'merge_strands' in options:
+    suffixes = ["fwd","rev"]
+    if 'merge_strands' in options and options['merge_strands']>=0:
         merge_strands = options['merge_strands']
+        suffixes = ["merged"]
     peak_calling = False
     if 'peak_calling' in options:
         peak_calling = options['peak_calling']
@@ -446,40 +449,27 @@ def workflow_groups( ex, job_or_dict, processed, chromosomes, script_path='' ):
                    for m in mapped.values()]
             merged_bam = merge_bam(ex, [m['bam'] for m in mapped.values()])
             ids = [m['libname'] for m in mapped.values()]
-            if merge_strands>=0:
-                sqls = [x+"merged.sql" for x in wig]
-                merged_wig = [merge_sql(ex, sqls, ids,
-                                        description="sql:"+group_name+"_shift_merged.sql")]
-            else: 
-                sqls_fwd = [x+"fwd.sql" for x in wig]
-                sqls_rev = [x+"rev.sql" for x in wig]
-                merged_wig = [merge_sql(ex, sqls_fwd, ids,
-                                        description="sql:"+group_name+"_fwd.sql"),
-                              merge_sql(ex, sqls_rev, ids,
-                                        description="sql:"+group_name+"_rev.sql")]
+            out = unique_filename_in()
+            for s in suffixes:
+                merged_wig = merge_sql(ex, [x+s+".sql" for x in wig], ids,
+                                       description="sql:"+group_name+"_shift_"+s+".sql",out=out+s+".sql")
+            merged_wig = out
         else:
             m = mapped.values()[0]
             merged_bam = m['bam']
-            wig = parallel_density_sql( ex, merged_bam, chromosomes, 
-                                        nreads=m["stats"]["total"], 
-                                        merge=merge_strands, 
-                                        convert=False, 
-                                        description=group_name )
-            if merge_strands>=0:
-                merged_wig = [wig+"merged.sql"]
-            else: 
-                merged_wig = [wig+"fwd.sql",wig+"rev.sql"]
+            merged_wig = parallel_density_sql( ex, merged_bam, chromosomes, 
+                                               nreads=m["stats"]["total"], 
+                                               merge=merge_strands, 
+                                               convert=False, 
+                                               description=group_name )
         processed[gid] = {'bam': merged_bam, 'wig': merged_wig,
                           'read_length': mapped.values()[0]['stats']['read_length'],
                           'genome_size': mapped.values()[0]['stats']['genome_size']}
         if ucsc_bigwig:
-            bw_futures = [wigToBigWig.nonblocking( ex, f, via='lsf' ) 
-                          for f in merged_wig]
-            if len(bw_futures)>1:
-                ex.add(bw_futures[0].wait(),description='bigwig:'+group_name+'_fwd.bw')
-                ex.add(bw_futures[1].wait(),description='bigwig:'+group_name+'_rev.bw')
-            else:
-                ex.add(bw_futures[0].wait(),description='bigwig:'+group_name+'_merged.bw')
+            bw_futures = [wigToBigWig.nonblocking( ex, merged_wig+s+".sql", via='lsf' ) 
+                          for f in suffixes]
+            [ex.add(bw_futures[i].wait(),description='bigwig:'+group_name+'_'+s+'.bw')
+             for i,s in enumerate(suffixes)]
     if peak_calling:
         tests = []
         controls = []
