@@ -150,8 +150,8 @@ class GenRep(object):
                         slices = flush_slices(slices,cur_chr,out)
                         cur_chunk = 0
                     cur_chr = cid
-                size += cur_chunk
-                slices = flush_slices(slices,cur_chr,out)
+            size += cur_chunk
+            slices = flush_slices(slices,cur_chr,out)
         elif sql != None:
             if out == None:
                 out = sql+".fa"
@@ -170,8 +170,8 @@ class GenRep(object):
                         size += cur_chunk
                         slices = flush_slices(slices,k,f)
                         cur_chunk = 0
-                    size += cur_chunk
-                    slices = flush_slices(slices,k,f)
+                size += cur_chunk
+                slices = flush_slices(slices,k,f)
                 cur.close()
         else:
             raise TypeError("fasta_from_bed requires either a 'sqlite' or a 'bed' file.")
