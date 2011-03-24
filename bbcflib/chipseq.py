@@ -56,14 +56,12 @@ output_location='''+out
  
 ############ Peaks and annotation ############
 @program
-def macs( read_length, genome_size, bamfile, ctrlbam=None, shift=80 ):
+def macs( read_length, genome_size, bamfile, ctrlbam=None, shift=80, args=[] ):
     """Binding for the ``macs`` peak caller.
 
     takes one (optionally two) bam file(s) and
     the 'read_length', 'genome_size' and 'shift' parameters passed to ``macs``. 
     Other ``macs`` parameter are default or set as follows:
-
-    * ``'p'``: .001 (p-value threshold)
 
     * ``'bw'``: 200 ('bandwith')
 
@@ -77,13 +75,14 @@ def macs( read_length, genome_size, bamfile, ctrlbam=None, shift=80 ):
         macs_args += ["-c",ctrlbam]
     macs_args += ["-n",outname,"-f","BAM",
                   "-g",str(genome_size),"-s",str(read_length),
-                  "--nomodel","-m","5,50","-p",".001","--bw=200"]
+                  "--nomodel","-m","5,50","--bw=200"]
     if shift>0:
         macs_args += ["--shiftsize="+str(shift)]
-    return {"arguments": macs_args, "return_value": outname}
+    return {"arguments": macs_args+args, "return_value": outname}
 
 def add_macs_results( ex, read_length, genome_size, bamfile,
-                      ctrlbam=[None], name=None, shift=80, alias=None ):
+                      ctrlbam=[None], name=None, shift=80, alias=None,
+                      macs_args=[] ):
     """Calls the ``macs`` function on each possible pair 
     of test and control bam files and adds 
     the respective outputs to the execution repository.
@@ -103,7 +102,7 @@ def add_macs_results( ex, read_length, genome_size, bamfile,
             else:
                 nm = (n,m)
             futures[nm] = macs.nonblocking( ex, read_length, genome_size, bam, 
-                                            cam, shift, via='lsf' )
+                                            cam, shift, args=macs_args, via='lsf' )
     prefixes = dict((n,f.wait()) for n,f in futures.iteritems())
     for n,p in prefixes.iteritems():
         description = "_vs_".join(n)
@@ -417,6 +416,9 @@ def workflow_groups( ex, job_or_dict, processed, chromosomes, script_path='' ):
     ucsc_bigwig = False
     if 'ucsc_bigwig' in options:
         ucsc_bigwig = options['ucsc_bigwig']
+    macs_args = []
+    if 'macs_args' in options:
+        macs_args = options['macs_args']
     if not isinstance(processed,dict):
         raise TypeError("processed must be a dictionary.")
     for gid,group in groups.iteritems():
@@ -498,7 +500,8 @@ def workflow_groups( ex, job_or_dict, processed, chromosomes, script_path='' ):
             names['controls'] = [None]
         processed['macs'] = add_macs_results( ex, read_length, genome_size,
                                               tests, ctrlbam=controls, name=names, 
-                                              shift=merge_strands )
+                                              shift=merge_strands,
+                                              macs_args=macs_args )
         if peak_deconvolution:
             for name in names['tests']:
                 if len(names['controls'])>1:
