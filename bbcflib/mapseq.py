@@ -163,7 +163,7 @@ def remove_duplicate_reads( bamfile, chromosomes,
  
 def map_reads( ex, fastq_file, chromosomes, bowtie_index,
                maxhits=5, antibody_enrichment=50, name='',
-               remove_pcr_duplicates=True, bwt_args=[] ):
+               remove_pcr_duplicates=True, bwt_args=[], via='lsf' ):
     """Runs ``bowtie`` in parallel over lsf for the `fastq_file` input. 
     Returns the full bamfile, its filtered version (see 'remove_duplicate_reads') 
     and the mapping statistics dictionary (see 'bamstats').
@@ -184,10 +184,10 @@ def map_reads( ex, fastq_file, chromosomes, bowtie_index,
         bam = parallel_bowtie( ex, bowtie_index, fastq_file,
                                n_lines=8000000,
                                bowtie_args=bwtarg,
-                               add_nh_flags=True, via='lsf' )
+                               add_nh_flags=True, via=via )
     else:
         future = bowtie.nonblocking( ex, bowtie_index, fastq_file, 
-                                     bwtarg, via='lsf' )
+                                     bwtarg, via=via )
         samfile = future.wait()
         bam = add_nh_flag( samfile )
     sorted_bam = add_and_index_bam( ex, bam, "bam:"+name+"complete.bam" )

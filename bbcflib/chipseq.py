@@ -17,7 +17,7 @@ the 'parallel_density_sql' function to create quantitative sql tracks from bam f
         M_ms = MiniLIMS(ms_minilims)
         gl_ms = use_pickle(M_ms, "global variables")
         mapseq_url = gl_ms['hts_url']
-        (processed, ms_job) = import_mapseq_results( job.options['mapseq_key'], M_ms, working_dir, gl_ms["hts_url"] )
+        (processed, ms_job) = import_mapseq_results( job.options['mapseq_key'], M_ms, ex.working_directory, gl_ms["hts_url"] )
         g_rep_assembly = g_rep.assembly( ms_job.assembly_id )
         job.groups = ms_job.groups
         (p,g) = workflow_groups( ex, job, processed, g_rep_assembly.chromosomes, gl['script_path'] )
@@ -64,6 +64,8 @@ def macs( read_length, genome_size, bamfile, ctrlbam=None, shift=80, args=[] ):
     the 'read_length', 'genome_size' and 'shift' parameters passed to ``macs``. 
     Other ``macs`` parameter are default or set as follows:
 
+    * ``'--nomodel'``
+
     * ``'bw'``: 200 ('bandwith')
 
     * ``'m'``: 5,50 ('minimum and maximum enrichments relative to background or control)
@@ -83,7 +85,7 @@ def macs( read_length, genome_size, bamfile, ctrlbam=None, shift=80, args=[] ):
 
 def add_macs_results( ex, read_length, genome_size, bamfile,
                       ctrlbam=[None], name=None, shift=80, alias=None,
-                      macs_args=[] ):
+                      macs_args=[], via='lsf' ):
     """Calls the ``macs`` function on each possible pair 
     of test and control bam files and adds 
     the respective outputs to the execution repository.
@@ -103,7 +105,7 @@ def add_macs_results( ex, read_length, genome_size, bamfile,
             else:
                 nm = (n,m)
             futures[nm] = macs.nonblocking( ex, read_length, genome_size, bam, 
-                                            cam, shift, args=macs_args, via='lsf' )
+                                            cam, shift, args=macs_args, via=via )
     prefixes = dict((n,f.wait()) for n,f in futures.iteritems())
     for n,p in prefixes.iteritems():
         description = "_vs_".join(n)
@@ -157,7 +159,7 @@ def sql_finish_deconv(sqlout,rdata):
     return {"arguments": ["sql_finish_deconv.py",rdata,sqlout], 
             "return_value": sqlout}
 
-def run_deconv(ex,sql,macs,chromosomes,read_length,script_path):
+def run_deconv(ex,sql,macs,chromosomes,read_length,script_path, via='lsf'):
     """Runs the complete deconvolution process for a set of sql files and a bed file,
     parallelized over a set of chromosomes (a dictionary with keys 'chromosome_id' 
     and values a dictionary with chromosome names and lengths).
@@ -165,21 +167,21 @@ def run_deconv(ex,sql,macs,chromosomes,read_length,script_path):
     Returns a dictionary of file outputs with keys file types 
     ('pdf', 'sql' and 'bed') and values the file names.
     """
-    prep_futures = dict((chr['name'],
+    prep_futures = dict((c['name'],
                          sql_prepare_deconv.nonblocking( ex, sql, macs, 
-                                                         chr['name'], chr['length'],
+                                                         c['name'], c['length'],
                                                          1500, read_length, 
-                                                         via='lsf' ))
-                        for chr in chromosomes.values())
+                                                         via=via ))
+                        for c in chromosomes.values())
     rdeconv_futures = dict((chr,
                             run_deconv_r.nonblocking( ex, f.wait(), read_length,
-                                                      chr, script_path, via='lsf' ))
-                           for chr,f in prep_futures.iteritems())
+                                                      c, script_path, via=via ))
+                           for c,f in prep_futures.iteritems())
     rdeconv_out = dict((chr, f.wait()) for chr,f in rdeconv_futures.iteritems())
     if len(rdeconv_out)>0:
         pdf_future = join_pdf.nonblocking( ex,
                                            [x['pdf'] for x in rdeconv_out.values()],
-                                           via='lsf' )
+                                           via=via )
     sqlout = unique_filename_in()
     outfiles = {}
     conn = sqlite3.connect( sqlout )
@@ -193,7 +195,7 @@ def run_deconv(ex,sql,macs,chromosomes,read_length,script_path):
     conn.commit()
     conn.close()
     for fout in rdeconv_out.values():
-        f = sql_finish_deconv.nonblocking( ex, sqlout,fout['rdata'], via='lsf' )
+        f = sql_finish_deconv.nonblocking( ex, sqlout,fout['rdata'], via=via )
         f.wait()
     outfiles['sql'] = sqlout
     outfiles['bed'] = sqlout+'_deconv.bed'
@@ -238,13 +240,13 @@ def merge_two_bed(file1,file2):
     """
     return {"arguments": ['intersectBed','-a',file1,'-b',file2], "return_value": None}
 
-def merge_many_bed(ex,files):
+def merge_many_bed(ex,files,via='lsf'):
     """Runs ``intersectBed`` iteratively over a list of bed files.
     """
     out = files[0]
     for f in files[1:]:
         next = unique_filename_in()
-        null = merge_two_bed.nonblocking( ex, out, f, via='lsf', stdout=next ).wait()
+        null = merge_two_bed.nonblocking( ex, out, f, via=via, stdout=next ).wait()
         out = next
     return out
 
@@ -317,14 +319,14 @@ def compact_chromosome_name(key):
 
 def parallel_density_wig( ex, bamfile, chromosomes, 
                           nreads=1, merge=-1, read_length=-1, convert=True, 
-                          description="", alias=None ):
+                          description="", alias=None, via='lsf' ):
     """Runs 'bam_to_density' in parallel 
     for every chromosome in the 'chromosomes' list with 'sql' set to False.
     Returns produces a single text wig file.
     """
     futures = [bam_to_density.nonblocking( ex, bamfile, compact_chromosome_name(k),
                                            v['name'], unique_filename_in(), nreads, merge, 
-                                           read_length, convert, False, via='lsf' )
+                                           read_length, convert, False, via=via )
                for k,v in chromosomes.iteritems()]
     results = []
     for f in futures:
@@ -338,7 +340,7 @@ def parallel_density_wig( ex, bamfile, chromosomes,
 
 def parallel_density_sql( ex, bamfile, chromosomes, 
                           nreads=1, merge=-1, read_length=-1, convert=True, 
-                          description="", alias=None ):
+                          description="", alias=None, via='lsf' ):
     """Runs 'bam_to_density' for every chromosome in the 'chromosomes' list.
     
     Returns one or two sqlite files depending 
@@ -366,7 +368,7 @@ def parallel_density_sql( ex, bamfile, chromosomes,
     for k,v in chromosomes.iteritems():
         future = bam_to_density.nonblocking( ex, bamfile, compact_chromosome_name(k),
                                               v['name'], output, nreads, merge,
-                                              read_length, convert, True, via='lsf' )
+                                              read_length, convert, True, via=via )
         try: 
             results.append(future.wait())
         except ProgramFailed:
@@ -380,7 +382,8 @@ def parallel_density_sql( ex, bamfile, chromosomes,
 
 ###################### Workflow ####################
 
-def workflow_groups( ex, job_or_dict, processed, chromosomes, script_path='' ):
+def workflow_groups( ex, job_or_dict, processed, chromosomes, script_path='', 
+                     via='lsf' ):
     """Runs a chipseq workflow over bam files obtained by mapseq. Will optionally run ``macs`` and 'run_deconv'.
     
     Arguments are:
@@ -445,7 +448,7 @@ def workflow_groups( ex, job_or_dict, processed, chromosomes, script_path='' ):
                                          nreads=m["stats"]["total"], 
                                          merge=merge_strands, 
                                          convert=False, 
-                                         description=m['libname'] ) 
+                                         description=m['libname'], via=via ) 
                    for m in mapped.values()]
             merged_bam = merge_bam(ex, [m['bam'] for m in mapped.values()])
             ids = [m['libname'] for m in mapped.values()]
@@ -461,13 +464,13 @@ def workflow_groups( ex, job_or_dict, processed, chromosomes, script_path='' ):
                                                nreads=m["stats"]["total"], 
                                                merge=merge_strands, 
                                                convert=False, 
-                                               description=group_name )
+                                               description=group_name, via=via )
         processed[gid] = {'bam': merged_bam, 'wig': merged_wig,
                           'read_length': mapped.values()[0]['stats']['read_length'],
                           'genome_size': mapped.values()[0]['stats']['genome_size']}
         if ucsc_bigwig:
-            bw_futures = [wigToBigWig.nonblocking( ex, merged_wig+s+".sql", via='lsf' ) 
-                          for f in suffixes]
+            bw_futures = [wigToBigWig.nonblocking( ex, merged_wig+s+".sql", via=via ) 
+                          for s in suffixes]
             [ex.add(bw_futures[i].wait(),description='bigwig:'+group_name+'_'+s+'.bw')
              for i,s in enumerate(suffixes)]
     if peak_calling:
@@ -491,19 +494,19 @@ def workflow_groups( ex, job_or_dict, processed, chromosomes, script_path='' ):
         processed['macs'] = add_macs_results( ex, read_length, genome_size,
                                               tests, ctrlbam=controls, name=names, 
                                               shift=merge_strands,
-                                              macs_args=macs_args )
+                                              macs_args=macs_args, via=via )
         if peak_deconvolution:
             for name in names['tests']:
                 if len(names['controls'])>1:
                     macsbed = merged_many_bed([processed['macs'][(name,c)]+"_peaks.bed" 
-                                          for c in names['controls']])
+                                          for c in names['controls']], via=via)
                 elif names['controls']==[None]:
                     macsbed = processed['macs'][(name,)]+"_peaks.bed"
                 else:
-                    macsbed = merge_many_bed(ex,[processed['macs'][(name,x)]+"_peaks.bed" for x in names['controls']])
+                    macsbed = merge_many_bed(ex,[processed['macs'][(name,x)]+"_peaks.bed" for x in names['controls']],via=via)
                                              
                 deconv = run_deconv( ex, wigs[name], macsbed, chromosomes,
-                                     read_length, script_path )
+                                     read_length, script_path, via=via )
                 [ex.add(v, description=k+':'+name+'_deconv.'+k)
                  for k,v in deconv.iteritems()]
                 processed['deconv'][name] = deconv
