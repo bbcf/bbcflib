@@ -1,7 +1,7 @@
  - use config parser
  - make a global config for the 'via' parameter
+ - make a generic 'sql_create' with the table and chromosomes stuff for qual/quant data
 * mapseq...
 * chipseq...
    density: use read_length param
    provide seed length param (auto: .7*read_length)
-  

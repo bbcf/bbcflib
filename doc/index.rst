@@ -8,6 +8,8 @@ Welcome to bbcflib's documentation!
 
 Contents:
 
+* :doc:`tutorial`
+
 .. toctree::
    :maxdepth: 2
 
