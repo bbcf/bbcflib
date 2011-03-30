@@ -62,13 +62,6 @@ def macs( read_length, genome_size, bamfile, ctrlbam=None, shift=80, args=[] ):
 
     takes one (optionally two) bam file(s) and
     the 'read_length', 'genome_size' and 'shift' parameters passed to ``macs``. 
-    Other ``macs`` parameter are default or set as follows:
-
-    * ``'--nomodel'``
-
-    * ``'bw'``: 200 ('bandwith')
-
-    * ``'m'``: 5,50 ('minimum and maximum enrichments relative to background or control)
     
     Returns the file prefix ('-n' option of ``macs``)
     """
@@ -77,8 +70,7 @@ def macs( read_length, genome_size, bamfile, ctrlbam=None, shift=80, args=[] ):
     if ctrlbam != None:
         macs_args += ["-c",ctrlbam]
     macs_args += ["-n",outname,"-f","BAM",
-                  "-g",str(genome_size),"-s",str(read_length),
-                  "--nomodel","-m","5,50","--bw=200"]
+                  "-g",str(genome_size),"-s",str(read_length)]
     if shift>0:
         macs_args += ["--shiftsize="+str(shift)]
     return {"arguments": macs_args+args, "return_value": outname}
@@ -123,7 +115,7 @@ def add_macs_results( ex, read_length, genome_size, bamfile,
     return prefixes
 
 @program
-def sql_prepare_deconv(sql_prefix,macs_bed,chr_name,chr_length,cutoff,read_length):
+def sql_prepare_deconv(sql_prefix,peaks_bed,chr_name,chr_length,cutoff,read_length):
     """Prepares files for the deconvolution algorithm.
     Calls the stand-alone ``sql_prepare_deconv.py`` script which needs 
     a pair of sql files (quantitative tracks for forward and reverse strand) 
@@ -131,7 +123,7 @@ def sql_prepare_deconv(sql_prefix,macs_bed,chr_name,chr_length,cutoff,read_lengt
     Returns the name of an 'Rdata' file to be passed to the *R* deconvolution script.
     """
     out = unique_filename_in()
-    args = [sql_prefix,macs_bed,out,chr_name,str(chr_length),
+    args = [sql_prefix,peaks_bed,out,chr_name,str(chr_length),
             str(cutoff),str(read_length)]
     return {"arguments": ["sql_prepare_deconv.py"]+args, 
             "return_value": out}
@@ -159,7 +151,7 @@ def sql_finish_deconv(sqlout,rdata):
     return {"arguments": ["sql_finish_deconv.py",rdata,sqlout], 
             "return_value": sqlout}
 
-def run_deconv(ex,sql,macs,chromosomes,read_length,script_path, via='lsf'):
+def run_deconv(ex,sql,peaks,chromosomes,read_length,script_path, via='lsf'):
     """Runs the complete deconvolution process for a set of sql files and a bed file,
     parallelized over a set of chromosomes (a dictionary with keys 'chromosome_id' 
     and values a dictionary with chromosome names and lengths).
@@ -168,19 +160,20 @@ def run_deconv(ex,sql,macs,chromosomes,read_length,script_path, via='lsf'):
     ('pdf', 'sql' and 'bed') and values the file names.
     """
     prep_futures = dict((c['name'],
-                         sql_prepare_deconv.nonblocking( ex, sql, macs, 
+                         sql_prepare_deconv.nonblocking( ex, sql, peaks, 
                                                          c['name'], c['length'],
                                                          1500, read_length, 
                                                          via=via ))
                         for c in chromosomes.values())
-    rdeconv_futures = dict((chr,
+    rdeconv_futures = dict((c,
                             run_deconv_r.nonblocking( ex, f.wait(), read_length,
                                                       c, script_path, via=via ))
                            for c,f in prep_futures.iteritems())
-    rdeconv_out = dict((chr, f.wait()) for chr,f in rdeconv_futures.iteritems())
+    rdeconv_out = dict((c, f.wait()) for c,f in rdeconv_futures.iteritems())
     if len(rdeconv_out)>0:
         pdf_future = join_pdf.nonblocking( ex,
-                                           [x['pdf'] for x in rdeconv_out.values()],
+                                           [x['pdf'] for x in rdeconv_out.values()
+                                            if x != None],
                                            via=via )
     sqlout = unique_filename_in()
     outfiles = {}
@@ -396,6 +389,16 @@ def workflow_groups( ex, job_or_dict, processed, chromosomes, script_path='',
 
     * ``'script_path'``: only needed if 'run_deconv' is in the job options, must point to the location of the R scripts.
 
+    Defaults ``macs`` parameters (if not specified as a list in the job's options) are set as follows:
+
+    * ``'--nomodel'``
+
+    * ``'p'``: .001 (p-value threshold)
+
+    * ``'bw'``: 200 ('bandwith')
+
+    * ``'m'``: 3,60 ('minimum and maximum enrichments relative to background or control)
+
     Returns a tuple of a dictionary with keys *group_id* from the job groups, *macs* and *deconv* if applicable and values file description dictionaries and a dictionary of *group_ids* to *names* used in file descriptions.
 """
     gid2name = {}
@@ -422,7 +425,7 @@ def workflow_groups( ex, job_or_dict, processed, chromosomes, script_path='',
     ucsc_bigwig = False
     if 'ucsc_bigwig' in options:
         ucsc_bigwig = options['ucsc_bigwig']
-    macs_args = []
+    macs_args = ["--nomodel","-m","3,60","--bw=200","-p",".001"]
     if 'macs_args' in options:
         macs_args = options['macs_args']
     if not isinstance(processed,dict):
@@ -442,7 +445,7 @@ def workflow_groups( ex, job_or_dict, processed, chromosomes, script_path='',
             if not 'libname' in mapped[k]:
                 mapped[k]['libname'] = group_name+"_"+str(k)
             if not 'stats' in mapped[k]:
-                mapped[k]['stats'] = mapseq.bamstats( ex, m["bam"] )
+                mapped[k]['stats'] = mapseq.bamstats( ex, mapped[k]["bam"] )
         if len(mapped)>1:
             wig = [parallel_density_sql( ex, m["bam"], chromosomes, 
                                          nreads=m["stats"]["total"], 
@@ -496,6 +499,7 @@ def workflow_groups( ex, job_or_dict, processed, chromosomes, script_path='',
                                               shift=merge_strands,
                                               macs_args=macs_args, via=via )
         if peak_deconvolution:
+            processed['deconv'] = {}
             for name in names['tests']:
                 if len(names['controls'])>1:
                     macsbed = merged_many_bed([processed['macs'][(name,c)]+"_peaks.bed" 
