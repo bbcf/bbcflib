@@ -188,8 +188,8 @@ def run_deconv(ex,sql,peaks,chromosomes,read_length,script_path, via='lsf'):
     conn.commit()
     conn.close()
     for fout in rdeconv_out.values():
-        f = sql_finish_deconv.nonblocking( ex, sqlout,fout['rdata'], via=via )
-        f.wait()
+        if fout != None:
+            f = sql_finish_deconv.nonblocking( ex, sqlout, fout['rdata'], via=via ).wait()
     outfiles['sql'] = sqlout
     outfiles['bed'] = sqlout+'_deconv.bed'
     if len(rdeconv_out)>0:
