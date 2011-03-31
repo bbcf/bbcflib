@@ -31,26 +31,23 @@ from bbcflib import frontend, mapseq
 import gMiner as gm
 
 ############ gMiner operations ############
-def merge_sql( ex, sqls, ids, description="merged.sql", out=None ):
+def merge_sql( ex, sqls, ids, description="merged.sql", out=None):
     """Run ``gMiner``'s 'merge_score' function on a set of sql files
     """
-    if out == None:
-        out = unique_filename_in()
-    req = "[gMiner]\nversion=0.1.5\n"
-    req += "\n".join(['track'+str(i+1)+'='+sqls[i]+"\ntrack"+str(i+1)+'_name="'+str(ids[i])+'"' for i in range(len(sqls))])
-    req += '''
-operation_type=genomic_manip 
-manipulation=merge_scores
-output_location='''+out
-    job = gm.gmRequest(req)
-    error, result, type = job.prepare()
-    if error != 200: 
-        raise ValueError(result)
-    error, result, type = job.run()
-    if error != 200: 
-        raise RuntimeError(result)
-    ex.add( out, description=description )
+    if out == None: out = unique_filename_in() 
+    outdir = out + '/'
+    os.mkdir(outdir)
+    files = gMiner.run(
+        operation_type  = 'genomic_manip',
+        manipulation    = 'merge_scores',
+        output_location = outdir,
+        **dict([('track' + str(i+1),           sqls[i])     for i in range(len(sqls))]
+        +      [('track' + str(i+1) + '_name', str(ids[i])) for i in range(len(sqls))]))
+    file = files[0]
+    os.rename(file, out)
+    ex.add( out , description=description )
     return out
+
 
 ############################################################
 
