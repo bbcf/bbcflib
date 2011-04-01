@@ -1,7 +1,9 @@
-"""                                                                                                                                                                                                 
-===============                                                                                                                                                                                     
-bbcflib.gdv                                                                                                                                                                                         
-===============                                                                                                                                                                                     
+"""
+===============
+bbcflib.gdv
+===============
+
+Python API for the GDV genome viewer.
 """
 import urllib, urllib2
 import json
@@ -57,12 +59,8 @@ def add_gdv_track(gdv_key, gdv_email,
                 "project_id": project_id,
                 "url": url}
     if name: request['name']=name
+    return urllib2.urlopen( gdv_url+"/post", urllib.urlencode(request) ).read()
     
-    urllib2.urlopen( gdv_url+"/post", urllib.urlencode(request) ).read()
-    
-    
-
-
 def add_gdv_sqlite(gdv_key, gdv_email,
                    project_id,
                    url,
@@ -86,20 +84,20 @@ def add_gdv_sqlite(gdv_key, gdv_email,
                 "project_id": project_id,
                 "url": url,
                 "datatype":datatype}
-    if name: request['name']=name
-    
-    urllib2.urlopen( gdv_url+"/post", urllib.urlencode(request)).read()
-
+    if name != None: 
+        request['name'] = name
+    return urllib2.urlopen( gdv_url+"/post", urllib.urlencode(request)).read()
 
 
 def add_sql_files(gdv_key, gdv_email,
                   project_id,
-                  files,
+                  files, names,
                   serv_url="http://htsstation.vital-it.ch/chipseq",
                   gdv_url="http://svitsrv25.epfl.ch/gdv",
                   datatype="quantitative"):
-    for file in files:
-        url = serv_url+"/get_file?name="+file
-        add_gdv_sqlite(gdv_key,gdv_email,project_id,url)
+    return [add_gdv_sqlite(gdv_key,gdv_email,project_id,
+                           serv_url+"/get_file?name="+f, names[i],
+                           gdv_url,dataype) 
+            for i,f in enumerate(files)]
 
 ############################################################     
