@@ -28,26 +28,41 @@ import sqlite3
 from bein import *
 from bein.util import *
 from bbcflib import frontend, mapseq
-import gMiner as gm
+import pickle
 
 ############ gMiner operations ############
-def merge_sql( ex, sqls, ids, description="merged.sql", out=None):
+@program
+def run_gMiner( job ):
+    job_file = unique_filename_in()
+    with open(job_file,'w') as f:
+        pickle.dump(job,f)
+    def get_output_files(p):
+        with open(job_file,'r') as f:
+            job = pickle.load(f)
+        return job['output_files']
+    return {"arguments": ["run_gminer",job_file], "return_value": get_output_files}
+
+def merge_sql( ex, sqls, names, description="merged.sql", outdir=None, via='lsf' ):
     """Run ``gMiner``'s 'merge_score' function on a set of sql files
     """
-    if out == None: out = unique_filename_in() 
-    outdir = out + '/'
-    os.mkdir(outdir)
-    files = gMiner.run(
-        operation_type  = 'genomic_manip',
-        manipulation    = 'merge_scores',
-        output_location = outdir,
-        **dict([('track' + str(i+1),           sqls[i])     for i in range(len(sqls))]
-        +      [('track' + str(i+1) + '_name', str(ids[i])) for i in range(len(sqls))]))
-    file = files[0]
-    os.rename(file, out)
-    ex.add( out , description=description )
-    return out
-
+    if outdir == None: 
+        outdir = unique_filename_in() 
+    if not(os.path.exists(outdir)):
+        os.mkdir(outdir)
+    if not(isinstance(names,list)):
+        names = []
+    if len(names) < len(sqls):
+        n = sqls
+        n[:len(names)] = names
+        names = n
+    gMiner_job = dict([('track'+str(i+1),f) for i,f in enumerate(sqls)]
+                      +[('track'+str(i+1)+'_name',str(id)) for i,id in enumerate(names)]))
+    gMiner_job['operation_type'] = 'genomic_manip'
+    gMiner_job['manipulation'] = 'merge_scores'
+    gMiner_job['output_location'] = outdir
+    files = run_gMiner.nonblocking(ex,gMiner_job,via=via).wait()
+    ex.add( files[0], description=description )
+    return files[0]
 
 ############################################################
 
@@ -112,16 +127,16 @@ def add_macs_results( ex, read_length, genome_size, bamfile,
     return prefixes
 
 @program
-def sql_prepare_deconv(sql_prefix,peaks_bed,chr_name,chr_length,cutoff,read_length):
+def sql_prepare_deconv(sql_dict,peaks_bed,chr_name,chr_length,cutoff,read_length):
     """Prepares files for the deconvolution algorithm.
     Calls the stand-alone ``sql_prepare_deconv.py`` script which needs 
-    a pair of sql files (quantitative tracks for forward and reverse strand) 
+    a directory of sql files (quantitative tracks for forward and reverse strand) 
     and a bed file (*_peaks.bed file from ``macs``) of wnriched regions to consider.
     Returns the name of an 'Rdata' file to be passed to the *R* deconvolution script.
     """
     out = unique_filename_in()
-    args = [sql_prefix,peaks_bed,out,chr_name,str(chr_length),
-            str(cutoff),str(read_length)]
+    args = [sql_dict['fwd'],sql_dict['rev'],peaks_bed,out,chr_name,
+            str(chr_length),str(cutoff),str(read_length)]
     return {"arguments": ["sql_prepare_deconv.py"]+args, 
             "return_value": out}
 
@@ -236,7 +251,7 @@ def merge_many_bed(ex,files,via='lsf'):
     out = files[0]
     for f in files[1:]:
         next = unique_filename_in()
-        null = merge_two_bed.nonblocking( ex, out, f, via=via, stdout=next ).wait()
+        _ = merge_two_bed.nonblocking( ex, out, f, via=via, stdout=next ).wait()
         out = next
     return out
 
@@ -340,11 +355,11 @@ def parallel_density_sql( ex, bamfile, chromosomes,
     output = unique_filename_in()
     touch(ex,output)
     if merge<0:
-        suffix = ['fwd.sql','rev.sql']
+        suffix = ['fwd','rev']
     else:
-        suffix = ['merged.sql']
+        suffix = ['merged']
     for s in suffix:
-        conn1 = sqlite3.connect( output+s )
+        conn1 = sqlite3.connect( output+s+'.sql' )
         conn1.execute('create table chrNames (name text, length integer)')
         conn1.execute('create table attributes (key text, value text)')
         conn1.execute('insert into attributes (key,value) values ("datatype","quantitative")')
@@ -364,11 +379,10 @@ def parallel_density_sql( ex, bamfile, chromosomes,
         except ProgramFailed:
             pass
     ex.add( output, description='none:'+description+'.sql', alias=alias )
-    for outf in results[0]:
-        suffix = outf[len(output):len(outf)]
-        ex.add( outf, description='sql:'+description+'_'+suffix,
-                associate_to_filename=output, template='%s_'+suffix )
-    return output
+    [ex.add( output+s+'.sql', description='sql:'+description+'_'+s+'.sql',
+             associate_to_filename=output, template='%s_'+s+'.sql' ) 
+     for s in suffix]
+    return dict((s,output+s+'.sql') for s in suffix)
 
 ###################### Workflow ####################
 
@@ -452,11 +466,9 @@ def workflow_groups( ex, job_or_dict, processed, chromosomes, script_path='',
                    for m in mapped.values()]
             merged_bam = merge_bam(ex, [m['bam'] for m in mapped.values()])
             ids = [m['libname'] for m in mapped.values()]
-            out = unique_filename_in()
-            for s in suffixes:
-                merged_wig = merge_sql(ex, [x+s+".sql" for x in wig], ids,
-                                       description="sql:"+group_name+"_shift_"+s+".sql",out=out+s+".sql")
-            merged_wig = out
+            merged_wig = dict((s, merge_sql(ex, [x[s] for x in wig], ids,
+                                            description="sql:"+group_name+"_shift_"+s+".sql")) 
+                              for s in suffixes)
         else:
             m = mapped.values()[0]
             merged_bam = m['bam']
@@ -469,7 +481,7 @@ def workflow_groups( ex, job_or_dict, processed, chromosomes, script_path='',
                           'read_length': mapped.values()[0]['stats']['read_length'],
                           'genome_size': mapped.values()[0]['stats']['genome_size']}
         if ucsc_bigwig:
-            bw_futures = [wigToBigWig.nonblocking( ex, merged_wig+s+".sql", via=via ) 
+            bw_futures = [wigToBigWig.nonblocking( ex, merged_wig[s], via=via ) 
                           for s in suffixes]
             [ex.add(bw_futures[i].wait(),description='bigwig:'+group_name+'_'+s+'.bw')
              for i,s in enumerate(suffixes)]
