@@ -39,8 +39,9 @@ def run_gMiner( job ):
     def get_output_files(p):
         with open(job_file,'r') as f:
             job = pickle.load(f)
-        return job['output_files']
-    return {"arguments": ["run_gminer",job_file], "return_value": get_output_files}
+        return job['job_output']
+    return {"arguments": ["run_gminer.py",job_file], 
+            "return_value": get_output_files}
 
 def merge_sql( ex, sqls, names, description="merged.sql", outdir=None, via='lsf' ):
     """Run ``gMiner``'s 'merge_score' function on a set of sql files
@@ -56,7 +57,8 @@ def merge_sql( ex, sqls, names, description="merged.sql", outdir=None, via='lsf'
         n[:len(names)] = names
         names = n
     gMiner_job = dict([('track'+str(i+1),f) for i,f in enumerate(sqls)]
-                      +[('track'+str(i+1)+'_name',str(id)) for i,id in enumerate(names)]))
+                      +[('track'+str(i+1)+'_name',str(ni)) 
+                        for i,ni in enumerate(names)])
     gMiner_job['operation_type'] = 'genomic_manip'
     gMiner_job['manipulation'] = 'merge_scores'
     gMiner_job['output_location'] = outdir
