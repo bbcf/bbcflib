@@ -3,7 +3,7 @@ Tutorial
 
 Here is a typical workflow that uses both ``mapseq`` and ``chipseq``. First import all the relevant modules::
 
-    from bbcflib import daflims, genrep, frontend
+    from bbcflib import genrep
     from bbcflib.mapseq import *
     from bbcflib.chipseq import *
     
