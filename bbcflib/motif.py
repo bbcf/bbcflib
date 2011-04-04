@@ -45,8 +45,6 @@ def save_motif_profile( ex, motif, background, genrep, chromosomes,
     regions = {}
     if bed != None:
         chr_ids = dict((cn['name'],c[0]) for c,cn in chromosomes.iteritems())
-        cur_chunk = 0
-        cur_chr = 0
         with open(bed,"r") as f:
             for l in f:
                 row = l.rstrip('\n').split('\t')
