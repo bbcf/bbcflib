@@ -286,7 +286,8 @@ def cat(files):
 
 @program
 def bam_to_density( bamfile, chromosome_accession, chromosome_name, output,
-                    nreads=1, merge=-1, read_length=-1, convert=True, sql=False ):
+                    nreads=1, merge=-1, read_length=-1, convert=True, sql=False,
+                    args=[] ):
     """Runs the ``bam2wig`` program on a bam file and 
     normalizes for the total number of reads
     provided as argument 'nreads'. 
@@ -314,6 +315,7 @@ def bam_to_density( bamfile, chromosome_accession, chromosome_name, output,
         if merge<0:
             b2w_args += ["-6"]
         files = output
+    b2w_args += args
     return {"arguments": ["bam2wig"]+b2w_args, "return_value": files}
 
 def compact_chromosome_name(key):
@@ -326,14 +328,16 @@ def compact_chromosome_name(key):
 
 def parallel_density_wig( ex, bamfile, chromosomes, 
                           nreads=1, merge=-1, read_length=-1, convert=True, 
-                          description="", alias=None, via='lsf' ):
+                          description="", alias=None, 
+                          b2w_args=[], via='lsf' ):
     """Runs 'bam_to_density' in parallel 
     for every chromosome in the 'chromosomes' list with 'sql' set to False.
     Returns produces a single text wig file.
     """
     futures = [bam_to_density.nonblocking( ex, bamfile, compact_chromosome_name(k),
                                            v['name'], unique_filename_in(), nreads, merge, 
-                                           read_length, convert, False, via=via )
+                                           read_length, convert, False, 
+                                           args=b2w_args, via=via )
                for k,v in chromosomes.iteritems()]
     results = []
     for f in futures:
@@ -347,7 +351,7 @@ def parallel_density_wig( ex, bamfile, chromosomes,
 
 def parallel_density_sql( ex, bamfile, chromosomes, 
                           nreads=1, merge=-1, read_length=-1, convert=True, 
-                          description="", alias=None, via='lsf' ):
+                          description="", alias=None, b2w_args=[], via='lsf' ):
     """Runs 'bam_to_density' for every chromosome in the 'chromosomes' list.
     
     Returns one or two sqlite files depending 
@@ -374,8 +378,9 @@ def parallel_density_sql( ex, bamfile, chromosomes,
     results = []
     for k,v in chromosomes.iteritems():
         future = bam_to_density.nonblocking( ex, bamfile, compact_chromosome_name(k),
-                                              v['name'], output, nreads, merge,
-                                              read_length, convert, True, via=via )
+                                             v['name'], output, nreads, merge,
+                                             read_length, convert, True, 
+                                             args=b2w_args, via=via )
         try: 
             results.append(future.wait())
         except ProgramFailed:
@@ -438,6 +443,9 @@ def workflow_groups( ex, job_or_dict, processed, chromosomes, script_path='',
     ucsc_bigwig = False
     if 'ucsc_bigwig' in options:
         ucsc_bigwig = options['ucsc_bigwig']
+    b2w_args = []
+    if 'b2w_args' in options:
+        b2w_args = options['b2w_args']
     macs_args = ["--nomodel","-m","3,60","--bw=200","-p",".001"]
     if 'macs_args' in options:
         macs_args = options['macs_args']
@@ -464,7 +472,8 @@ def workflow_groups( ex, job_or_dict, processed, chromosomes, script_path='',
                                          nreads=m["stats"]["total"], 
                                          merge=merge_strands, 
                                          convert=False, 
-                                         description=m['libname'], via=via ) 
+                                         description=m['libname'], 
+                                         b2w_args=b2w_args, via=via ) 
                    for m in mapped.values()]
             merged_bam = merge_bam(ex, [m['bam'] for m in mapped.values()])
             ids = [m['libname'] for m in mapped.values()]
@@ -478,7 +487,8 @@ def workflow_groups( ex, job_or_dict, processed, chromosomes, script_path='',
                                                nreads=m["stats"]["total"], 
                                                merge=merge_strands, 
                                                convert=False, 
-                                               description=group_name, via=via )
+                                               description=group_name, 
+                                               b2w_args=b2w_args, via=via )
         processed[gid] = {'bam': merged_bam, 'wig': merged_wig,
                           'read_length': mapped.values()[0]['stats']['read_length'],
                           'genome_size': mapped.values()[0]['stats']['genome_size']}
