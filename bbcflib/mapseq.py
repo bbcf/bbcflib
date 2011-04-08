@@ -33,7 +33,7 @@ Below is the script used by the frontend::
                                          password=gl['lims']['passwd'][loc] ))
                    for loc in gl['lims']['passwd'].keys())
     with execution( M, description=hts_key, remote_working_directory=working_dir ) as ex:
-        processed = map_groups( ex, job, daflims, gl['fastq_root'], g_rep )
+        processed = map_groups( ex, job, daflims, ex.working_directory, g_rep )
         pdf = add_pdf_stats( ex, processed,
                              dict((k,v['name']) for k,v in job.groups.iteritems()),
                              gl['script_path'] )
