@@ -228,7 +228,7 @@ def map_reads( ex, fastq_file, chromosomes, bowtie_index,
 
 ############################################################ 
 
-def map_groups( ex, job_or_dict, daflims_or_files, fastq_root, genrep_or_dict, map_args={} ):
+def map_groups( ex, job_or_dict, daflims_or_files, fastq_root, assembly_or_dict, map_args={} ):
     """Fetches fastq files and bowtie indexes, and runs the 'map_reads' function for 
     a collection of samples described in a 'Frontend' 'job'.
 
@@ -236,13 +236,13 @@ def map_groups( ex, job_or_dict, daflims_or_files, fastq_root, genrep_or_dict, m
 
     * ``'ex'``: a 'bein' execution environment to run jobs in,
     
-    * ``'job_or_dict'``: a 'Frontend' 'job' object, or a dictionary with keys 'groups' and 'assembly_id',
+    * ``'job_or_dict'``: a 'Frontend' 'job' object, or a dictionary with keys 'groups',
     
     * ``'daflims_or_files'``: a dictionary of 'Daflims' objects (keys are the facility names), or a dictionary with run_ids as keys (same as in job.groups) and values file names,
 
     * ``'fastq_root'``: path where to download raw fastq files,
 
-    * ``'genrep_or_dict'``: a 'GenRep' object, or a dictionary of 'chromosomes' and 'index_path'.
+    * ``'assembly_or_dict'``: an 'Assembly' object, or a dictionary of 'chromosomes' and 'index_path'.
 
     * ``'map_args'``: a dictionary of arguments passed to map_reads.
 
@@ -254,27 +254,24 @@ def map_groups( ex, job_or_dict, daflims_or_files, fastq_root, genrep_or_dict, m
     if isinstance(job_or_dict,frontend.Job):
         options = job_or_dict.options
         groups = job_or_dict.groups
-        assembly_id = job_or_dict.assembly_id
-    elif isinstance(job_or_dict,dict) and 'groups' in job_or_dict and 'assembly_id' in job_or_dict:
+    elif isinstance(job_or_dict,dict) and 'groups' in job_or_dict:
         if 'options' in job_or_dict:
             options = job_or_dict['options']
         groups = job_or_dict['groups']
-        assembly_id = job_or_dict['assembly_id']
     else:
-        raise TypeError("job_or_dict must be a frontend.Job object or a dictionary with keys 'groups' and 'assembly_id'.")
+        raise TypeError("job_or_dict must be a frontend.Job object or a dictionary with keys 'groups'.")
     pcr_dupl = True
     if 'discard_pcr_duplicates' in options:
         pcr_dupl = options['discard_pcr_duplicates']
-    if isinstance(genrep_or_dict,genrep.GenRep):
-        g_rep_assembly = genrep_or_dict.assembly( assembly_id )
+    if isinstance(assembly_or_dict,genrep.Assembly):
         chromosomes = dict([(str(k[0])+"_"+k[1]+"."+str(k[2]),v) 
-                            for k,v in g_rep_assembly.chromosomes.iteritems()])
-        index_path = g_rep_assembly.index_path 
-    elif isinstance(genrep_or_dict,dict) and 'chromosomes' in genrep_or_dict:
-        chromosomes = genrep_or_dict['chromosomes']
-        index_path = genrep_or_dict['index_path ']
+                            for k,v in assembly_or_dict.chromosomes.iteritems()])
+        index_path = assembly_or_dict.index_path
+    elif isinstance(assembly_or_dict,dict) and 'chromosomes' in assembly_or_dict:
+        chromosomes = assembly_or_dict['chromosomes']
+        index_path = assembly_or_dict['index_path ']
     else:
-        raise TypeError("genrep_or_dict must be a genrep.GenRep object or a dictionary with keys 'chromosomes' and 'index_path'.")
+        raise TypeError("assembly_or_dict must be a genrep.Assembly object or a dictionary with keys 'chromosomes' and 'index_path'.")
     for gid,group in groups.iteritems():
         processed[gid] = {}
         file_names[gid] = {}
@@ -471,6 +468,96 @@ def parallel_density_sql( ex, bamfile, chromosomes,
     return dict((s,output+s+'.sql') for s in suffix)
 
 ############################################################ 
+
+def densities_groups( ex, job_or_dict, file_dict, assembly_or_dict, b2w_args={} ):
+    """
+    Arguments are:
+
+    * ``'ex'``: a 'bein' execution environment to run jobs in,
+    
+    * ``'job_or_dict'``: a 'Frontend' 'job' object, or a dictionary with keys 'groups',
+    
+    * ``'file_dict'``: a dictionary of files,
+
+    * ``'assembly_or_dict'``: a 'GenRep' object, or a dictionary of 'chromosomes' and 'index_path'.
+
+    * ``'b2w_args'``: a dictionary of arguments passed to bam_to_density.
+
+    Returns a dictionary with keys *group_id* from the job object and values dictionaries mapping *run_id* to the corresponding return value of the 'map_reads' function.
+    """
+    processed = {}
+    file_names = {}
+    options = {}
+    if isinstance(job_or_dict,frontend.Job):
+        options = job_or_dict.options
+        groups = job_or_dict.groups
+    elif isinstance(job_or_dict,dict) and 'groups' in job_or_dict:
+        if 'options' in job_or_dict:
+            options = job_or_dict['options']
+        groups = job_or_dict['groups']
+    else:
+        raise TypeError("job_or_dict must be a frontend.Job object or a dictionary with keys 'groups'.")
+    if isinstance(assembly_or_dict,genrep.Assembly):
+        chromosomes = dict([(str(k[0])+"_"+k[1]+"."+str(k[2]),v) 
+                            for k,v in assembly_or_dict.chromosomes.iteritems()])
+        index_path = assembly_or_dict.index_path
+    elif isinstance(assembly_or_dict,dict) and 'chromosomes' in assembly_or_dict:
+        chromosomes = assembly_or_dict['chromosomes']
+        index_path = assembly_or_dict['index_path ']
+    else:
+        raise TypeError("assembly_or_dict must be a genrep.Assembly object or a dictionary with keys 'chromosomes' and 'index_path'.")
+    ucsc_bigwig = False
+    if 'ucsc_bigwig' in options:
+        ucsc_bigwig = options['ucsc_bigwig']
+    processed = {}
+    for gid,group in groups.iteritems():
+        mapped = file_dict[gid]
+        if not isinstance(mapped,dict):
+            raise TypeError("processed values must be dictionaries with keys *run_ids* or 'bam'.")
+        if 'bam' in mapped:
+            mapped = {'_': mapped}
+        for k in mapped.keys():
+            if not 'libname' in mapped[k]:
+                if 'name' in group:
+                    group_name = re.sub(r'\s+','_',group['name'])
+                else:
+                    group_name = gid
+                mapped[k]['libname'] = group_name+"_"+str(k)
+            if not 'stats' in mapped[k]:
+                mapped[k]['stats'] = mapseq.bamstats( ex, mapped[k]["bam"] )
+        if len(mapped)>1:
+            wig = [parallel_density_sql( ex, m["bam"], chromosomes, 
+                                         nreads=m["stats"]["total"], 
+                                         merge=merge_strands, 
+                                         convert=False, 
+                                         description=m['libname'], 
+                                         b2w_args=b2w_args, via=via ) 
+                   for m in mapped.values()]
+            merged_bam = merge_bam(ex, [m['bam'] for m in mapped.values()])
+            ids = [m['libname'] for m in mapped.values()]
+            merged_wig = dict((s, merge_sql(ex, [x[s] for x in wig], ids,
+                                            description="sql:"+group_name+"_shift_"+s+".sql")) 
+                              for s in suffixes)
+        else:
+            m = mapped.values()[0]
+            merged_bam = m['bam']
+            merged_wig = parallel_density_sql( ex, merged_bam, chromosomes, 
+                                               nreads=m["stats"]["total"], 
+                                               merge=merge_strands, 
+                                               convert=False, 
+                                               description=group_name, 
+                                               b2w_args=b2w_args, via=via )
+        processed[gid] = {'bam': merged_bam, 'wig': merged_wig,
+                          'read_length': mapped.values()[0]['stats']['read_length'],
+                          'genome_size': mapped.values()[0]['stats']['genome_size']}
+        if ucsc_bigwig:
+            bw_futures = [wigToBigWig.nonblocking( ex, merged_wig[s], via=via ) 
+                          for s in suffixes]
+            [ex.add(bw_futures[i].wait(),description='bigwig:'+group_name+'_'+s+'.bw')
+             for i,s in enumerate(suffixes)]
+    return processed
+
+############################################################ 
 def import_mapseq_results( key_or_id, minilims, ex_root, url_or_dict ):
     """Imports all files created by a previous 'mapseq' workflow into the current execution environement.
 
@@ -512,7 +599,6 @@ def import_mapseq_results( key_or_id, minilims, ex_root, url_or_dict ):
             group = {'runs': group}
         processed[gid] = {}
         for rid,run in group['runs'].iteritems():
-######## sql files....
             bamfile = os.path.join(ex_root, unique_filename_in(ex_root))
             name = file_names[gid][rid] 
             bam_id = allfiles['bam:'+name+'_filtered.bam']
