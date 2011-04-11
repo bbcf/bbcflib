@@ -123,4 +123,27 @@ def cat(files):
         out = None
     return out
 
+
+def create_sql_track( sql_name, chromosomes, datatype="quantitative" ):
+    conn = sqlite3.connect( sql_name )
+    conn.execute('create table chrNames (name text, length integer)')
+    conn.execute('create table attributes (key text, value text)')
+    conn.execute('insert into attributes (key,value) values ("datatype",datatype)')
+    vals = [(v['name'],str(v['length'])) for v in chromosomes.values()]
+    conn.executemany('insert into chrNames (name,length) values (?,?)',vals)
+    if datatype=="quantitative":
+        [conn.execute('create table "'+v['name']+'" (start integer, end integer, score real)') 
+         for v in chromosomes.values()]
+        [conn.execute('create index '+v['name']+'_range_idx on "'+v['name']+'" (start, end)') 
+         for v in chromosomes.values()]
+    elif datatype=="qualitative":
+        [conn.execute('create table "'+v['name']+'" (start integer,end integer,score real,name text,strand integer,attributes text)') 
+         for v in chromosomes.values()]
+        [conn.execute('create index '+v['name']+'_name_idx on "'+v['name']+'" (name)') 
+         for v in chromosomes.values()] 
+    else:
+        raise ValueError("Supported datatypes are 'quantitative' and 'qualitative', not "+datatype)
+    conn.commit()
+    conn.close()
+    return sql_name
  
