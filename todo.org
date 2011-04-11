@@ -4,8 +4,12 @@
    provide seed length param (auto: .7*read_length)
    provide read_extend param
    make densities
+	import sql files
+	adapt map_groups
 
 * chipseq...
+	change workflow
+	check common stuff
    density: use read_length param
    use poisson thresholds for macs limits
    defaults macs params?
