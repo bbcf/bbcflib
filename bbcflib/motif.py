@@ -72,6 +72,8 @@ def save_motif_profile( ex, motif, background, genrep, chromosomes,
     [connection.execute('create table "'+v['name']
                         +'" (start integer, end integer, score real, strand char, name string)') 
      for v in chromosomes.values()]
+    [connection.execute('create index '+v['name']+'_range_idx on "'+v['name']+'" (start, end)') 
+     for v in chromosomes.values()]
     connection.commit()
     vals = []
     null = future.wait()

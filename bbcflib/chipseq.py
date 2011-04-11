@@ -199,6 +199,8 @@ def run_deconv(ex,sql,peaks,chromosomes,read_length,script_path, via='lsf'):
     conn.executemany('insert into chrNames (name,length) values (?,?)',vals)
     [conn.execute('create table "'+v['name']+'" (start integer, end integer, score real)') 
      for v in chromosomes.values()]
+    [conn.execute('create index '+v['name']+'_range_idx on "'+v['name']+'" (start, end)') 
+     for v in chromosomes.values()]
     conn.commit()
     conn.close()
     for fout in rdeconv_out.values():
@@ -373,6 +375,8 @@ def parallel_density_sql( ex, bamfile, chromosomes,
         conn1.executemany('insert into chrNames (name,length) values (?,?)',vals)
         [conn1.execute('create table "'+v['name']+'" (start integer, end integer, score real)') 
          for v in chromosomes.values()]
+        [conn.execute('create index '+v['name']+'_range_idx on "'+v['name']+'" (start, end)') 
+         for v in chromosomes.values()]
         conn1.commit()
         conn1.close()
     results = []
@@ -446,7 +450,7 @@ def workflow_groups( ex, job_or_dict, processed, chromosomes, script_path='',
     b2w_args = []
     if 'b2w_args' in options:
         b2w_args = options['b2w_args']
-    macs_args = ["--nomodel","-m","3,60","--bw=200","-p",".001"]
+    macs_args = ["--nomodel","-m","5,60","--bw=200","-p",".001"]
     if 'macs_args' in options:
         macs_args = options['macs_args']
     if not isinstance(processed,dict):
