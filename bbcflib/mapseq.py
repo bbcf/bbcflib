@@ -45,7 +45,7 @@ import re
 import json
 import os
 import pickle
-from bbcflib import frontend, genrep, daflims
+from bbcflib import frontend, genrep, daflims, common
 from numpy import *
 from scipy.misc import factorial
 from bein import *
@@ -332,6 +332,145 @@ def add_pdf_stats( ex, processed, group_names, script_path,
     ex.add(pdf,description)
     return pdf
 
+############################################################ 
+@program
+def wigToBigWig( sql ):
+    """Binds ``wigToBigWig`` from the UCSC tools.
+    """
+    chrsizes = unique_filename_in()
+    chromosomes = []
+    connection = sqlite3.connect( sql )
+    cur = connection.cursor()
+    with open(chrsizes,'w') as f:
+        cur = connection.cursor()
+        cur.execute('select * from chrNames')
+        connection.commit()
+        for sql_row in cur:
+            chromosomes.append(sql_row[0])
+            f.write(' '.join([str(x) for x in sql_row])+"\n")
+        cur.close()
+    bedgraph = unique_filename_in()
+    with open(bedgraph,'w') as f:
+        for c in chromosomes:
+            cur.execute('select * from "'+c+'"')
+            connection.commit()
+            for sql_row in cur:
+                f.write("\t".join([c]+[str(x) for x in sql_row])+"\n")
+            cur.close()
+    bigwig = unique_filename_in()
+    return {"arguments": ['wigToBigWig',bedgraph,chrsizes,bigwig], 
+            "return_value": bigwig}
+
+@program
+def bam_to_density( bamfile, chromosome_accession, chromosome_name, output,
+                    nreads=1, merge=-1, read_length=-1, convert=True, sql=False,
+                    args=[] ):
+    """Runs the ``bam2wig`` program on a bam file and 
+    normalizes for the total number of reads
+    provided as argument 'nreads'. 
+
+    Returns the name of the output wig or sql file(s) (if 'sql' is True).
+
+    Use 'convert'=False if the bam already uses chromosome names instead of ids.
+    """
+    b2w_args = ["-w",str(nreads),"-s",bamfile,"-o",output]
+    if convert:
+        b2w_args += ["-a",chromosome_accession,"-n",chromosome_name]
+    else:
+        b2w_args += ["-a",chromosome_name]
+    if merge>=0:
+        b2w_args += ["-p",str(merge)]
+    if read_length>0:
+        b2w_args += ["-q",str(read_length)]
+    if sql:
+        b2w_args += ["-d"]
+        if merge<0:
+            files = [output+"fwd.sql",output+"rev.sql"]
+        else:
+            files = [output+"merged.sql"]
+    else:
+        if merge<0:
+            b2w_args += ["-6"]
+        files = output
+    b2w_args += args
+    return {"arguments": ["bam2wig"]+b2w_args, "return_value": files}
+
+def compact_chromosome_name(key):
+    if isinstance(key,str):
+        return key
+    elif isinstance(key,tuple) and len(key)>2:
+        return str(key[0])+"_"+key[1]+"."+str(key[2])
+    else:
+        raise ValueError("Can't handle this chromosomes key ",key)
+
+def parallel_density_wig( ex, bamfile, chromosomes, 
+                          nreads=1, merge=-1, read_length=-1, convert=True, 
+                          description="", alias=None, 
+                          b2w_args=[], via='lsf' ):
+    """Runs 'bam_to_density' in parallel 
+    for every chromosome in the 'chromosomes' list with 'sql' set to False.
+    Returns produces a single text wig file.
+    """
+    futures = [bam_to_density.nonblocking( ex, bamfile, compact_chromosome_name(k),
+                                           v['name'], unique_filename_in(), nreads, merge, 
+                                           read_length, convert, False, 
+                                           args=b2w_args, via=via )
+               for k,v in chromosomes.iteritems()]
+    results = []
+    for f in futures:
+        try: 
+            results.append(f.wait())
+        except ProgramFailed:
+            pass
+    output = common.cat(results)
+    ex.add( output, description=description, alias=alias )
+    return output
+
+def parallel_density_sql( ex, bamfile, chromosomes, 
+                          nreads=1, merge=-1, read_length=-1, convert=True, 
+                          description="", alias=None, b2w_args=[], via='lsf' ):
+    """Runs 'bam_to_density' for every chromosome in the 'chromosomes' list.
+    
+    Returns one or two sqlite files depending 
+    if 'merge'>=0 (shift and merge strands into one tracks) 
+    or 'merge'<0 (keep seperate tracks for each strand).
+    """
+    output = unique_filename_in()
+    touch(ex,output)
+    if merge<0:
+        suffix = ['fwd','rev']
+    else:
+        suffix = ['merged']
+    for s in suffix:
+        conn1 = sqlite3.connect( output+s+'.sql' )
+        conn1.execute('create table chrNames (name text, length integer)')
+        conn1.execute('create table attributes (key text, value text)')
+        conn1.execute('insert into attributes (key,value) values ("datatype","quantitative")')
+        vals = [(v['name'],str(v['length'])) for v in chromosomes.values()]
+        conn1.executemany('insert into chrNames (name,length) values (?,?)',vals)
+        [conn1.execute('create table "'+v['name']+'" (start integer, end integer, score real)') 
+         for v in chromosomes.values()]
+        [conn.execute('create index '+v['name']+'_range_idx on "'+v['name']+'" (start, end)') 
+         for v in chromosomes.values()]
+        conn1.commit()
+        conn1.close()
+    results = []
+    for k,v in chromosomes.iteritems():
+        future = bam_to_density.nonblocking( ex, bamfile, compact_chromosome_name(k),
+                                             v['name'], output, nreads, merge,
+                                             read_length, convert, True, 
+                                             args=b2w_args, via=via )
+        try: 
+            results.append(future.wait())
+        except ProgramFailed:
+            pass
+    ex.add( output, description='none:'+description+'.sql', alias=alias )
+    [ex.add( output+s+'.sql', description='sql:'+description+'_'+s+'.sql',
+             associate_to_filename=output, template='%s_'+s+'.sql' ) 
+     for s in suffix]
+    return dict((s,output+s+'.sql') for s in suffix)
+
+############################################################ 
 def import_mapseq_results( key_or_id, minilims, ex_root, url_or_dict ):
     """Imports all files created by a previous 'mapseq' workflow into the current execution environement.
 
@@ -373,6 +512,7 @@ def import_mapseq_results( key_or_id, minilims, ex_root, url_or_dict ):
             group = {'runs': group}
         processed[gid] = {}
         for rid,run in group['runs'].iteritems():
+######## sql files....
             bamfile = os.path.join(ex_root, unique_filename_in(ex_root))
             name = file_names[gid][rid] 
             bam_id = allfiles['bam:'+name+'_filtered.bam']
@@ -385,26 +525,3 @@ def import_mapseq_results( key_or_id, minilims, ex_root, url_or_dict ):
             processed[gid][rid] = {'bam': bamfile, 'stats': s, 'libname': name}
     return (processed,job)
 
-def get_files( id_or_key, minilims ):
-    """Retrieves a dictionary of files created by the mapseq run identified by its key or bein id in a MiniLIMS.
-    
-    The dictionarie's keys are the file types (e.g. 'pdf', 'bam', 'py' for python objects), the values are dictionaries with keys repository file names and values actual file descriptions (names to provide in the user interface).
-    """
-    if isinstance(id_or_key, str):
-        try: 
-            exid = max(minilims.search_executions(with_text=id_or_key))
-        except ValueError, v:
-            raise ValueError("No execution with key "+id_or_key)
-    else:
-        exid = id_or_key
-    file_dict = {}
-    all = dict((y['repository_name'],y['description']) for y in
-               [minilims.fetch_file(x) for x in minilims.search_files(source=('execution',exid))])
-    for f,d in all.iteritems():
-        cat,name = re.search(r'([^:]+):(.*)$',d).groups()
-        name = re.sub(r'\s+\(BAM index\)','.bai',name)
-        if cat in file_dict:
-            file_dict[cat].update({f: name})
-        else:
-            file_dict[cat] = {f: name}
-    return file_dict
