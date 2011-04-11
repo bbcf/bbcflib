@@ -73,6 +73,9 @@ def add_gdv_sqlite( gdv_key, gdv_email,
                     name=None,
                     gdv_url="http://svitsrv25.epfl.ch/gdv",
                     datatype="quantitative" ):
+    '''
+    Backward compatible interface to `add_gdv_track` for sqlite files.
+    '''
     return add_gdv_track(gdv_key,gdv_email,project_id,url,name,gdv_url,datatype,True)
 
 
@@ -82,6 +85,9 @@ def add_sql_files( gdv_key, gdv_email,
                    serv_url="http://htsstation.vital-it.ch/lims/chipseq/chipseq_minilims.files",
                    gdv_url="http://svitsrv25.epfl.ch/gdv",
                    datatype="quantitative" ):
+    '''
+    Run `add_gdv_sqlite` on a list of files
+    '''
     serv_url = normalize_url(serv_url)
     return [add_gdv_track( gdv_key, gdv_email, project_id,
                            serv_url+"/"+f, names[i],
