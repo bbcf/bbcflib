@@ -438,19 +438,7 @@ def parallel_density_sql( ex, bamfile, chromosomes,
         suffix = ['fwd','rev']
     else:
         suffix = ['merged']
-    for s in suffix:
-        conn1 = sqlite3.connect( output+s+'.sql' )
-        conn1.execute('create table chrNames (name text, length integer)')
-        conn1.execute('create table attributes (key text, value text)')
-        conn1.execute('insert into attributes (key,value) values ("datatype","quantitative")')
-        vals = [(v['name'],str(v['length'])) for v in chromosomes.values()]
-        conn1.executemany('insert into chrNames (name,length) values (?,?)',vals)
-        [conn1.execute('create table "'+v['name']+'" (start integer, end integer, score real)') 
-         for v in chromosomes.values()]
-        [conn.execute('create index '+v['name']+'_range_idx on "'+v['name']+'" (start, end)') 
-         for v in chromosomes.values()]
-        conn1.commit()
-        conn1.close()
+    _ = [common.create_sql_track( output+s+'.sql', chromosomes ) for s in suffix]
     results = []
     for k,v in chromosomes.iteritems():
         future = bam_to_density.nonblocking( ex, bamfile, compact_chromosome_name(k),
@@ -469,7 +457,7 @@ def parallel_density_sql( ex, bamfile, chromosomes,
 
 ############################################################ 
 
-def densities_groups( ex, job_or_dict, file_dict, assembly_or_dict, b2w_args={} ):
+def densities_groups( ex, job_or_dict, file_dict, assembly_or_dict ):
     """
     Arguments are:
 
@@ -481,12 +469,9 @@ def densities_groups( ex, job_or_dict, file_dict, assembly_or_dict, b2w_args={} 
 
     * ``'assembly_or_dict'``: a 'GenRep' object, or a dictionary of 'chromosomes' and 'index_path'.
 
-    * ``'b2w_args'``: a dictionary of arguments passed to bam_to_density.
-
-    Returns a dictionary with keys *group_id* from the job object and values dictionaries mapping *run_id* to the corresponding return value of the 'map_reads' function.
+    Returns a dictionary with keys *group_id* from the job object and values the files fo each group ('bam' and 'wig').
     """
     processed = {}
-    file_names = {}
     options = {}
     if isinstance(job_or_dict,frontend.Job):
         options = job_or_dict.options
@@ -506,11 +491,25 @@ def densities_groups( ex, job_or_dict, file_dict, assembly_or_dict, b2w_args={} 
         index_path = assembly_or_dict['index_path ']
     else:
         raise TypeError("assembly_or_dict must be a genrep.Assembly object or a dictionary with keys 'chromosomes' and 'index_path'.")
+    merge_strands = -1
+    suffixes = ["fwd","rev"]
+    if 'merge_strands' in options and options['merge_strands']>=0:
+        merge_strands = options['merge_strands']
+        suffixes = ["merged"]
     ucsc_bigwig = False
     if 'ucsc_bigwig' in options:
         ucsc_bigwig = options['ucsc_bigwig']
+    b2w_args = []
+    if 'b2w_args' in options:
+        b2w_args = options['b2w_args']
+    if 'read_extend' in options and options['read_extend']>0:
+        b2w_args += ["-q",str(options['read_extend'])]
     processed = {}
     for gid,group in groups.iteritems():
+        if 'name' in group:
+            group_name = re.sub(r'\s+','_',group['name'])
+        else:
+            group_name = gid
         mapped = file_dict[gid]
         if not isinstance(mapped,dict):
             raise TypeError("processed values must be dictionaries with keys *run_ids* or 'bam'.")
@@ -518,10 +517,6 @@ def densities_groups( ex, job_or_dict, file_dict, assembly_or_dict, b2w_args={} 
             mapped = {'_': mapped}
         for k in mapped.keys():
             if not 'libname' in mapped[k]:
-                if 'name' in group:
-                    group_name = re.sub(r'\s+','_',group['name'])
-                else:
-                    group_name = gid
                 mapped[k]['libname'] = group_name+"_"+str(k)
             if not 'stats' in mapped[k]:
                 mapped[k]['stats'] = mapseq.bamstats( ex, mapped[k]["bam"] )
@@ -536,7 +531,7 @@ def densities_groups( ex, job_or_dict, file_dict, assembly_or_dict, b2w_args={} 
             merged_bam = merge_bam(ex, [m['bam'] for m in mapped.values()])
             ids = [m['libname'] for m in mapped.values()]
             merged_wig = dict((s, merge_sql(ex, [x[s] for x in wig], ids,
-                                            description="sql:"+group_name+"_shift_"+s+".sql")) 
+                                            description="sql:"+group_name+"_"+s+".sql")) 
                               for s in suffixes)
         else:
             m = mapped.values()[0]
@@ -572,13 +567,22 @@ def import_mapseq_results( key_or_id, minilims, ex_root, url_or_dict ):
     Returns a tuple with a dictionary similar to the output of 'map_groups' and a 'job' object describing the mapseq runs.
     """
     processed = {}
+    merge = -1
     if isinstance(url_or_dict, str):
         htss = frontend.Frontend( url=url_or_dict )
         job = htss.job( key_or_id )
         job_groups = job.groups
+        if 'merge_strands' in job.options and job.options['merge_strands']>=0:
+            merge = job.options['merge_strands']
     else:
         job = url_or_dict
         job_groups = job['groups']
+        if 'merge_strands' in job['options'] and job['options']['merge_strands']>=0:
+            merge = job['options']['merge_strands']
+    if merge<0:
+        suffix = ['fwd','rev']
+    else:
+        suffix = ['merged']
     if isinstance(key_or_id, str):
         try: 
             exid = max(minilims.search_executions(with_text=key_or_id))
@@ -588,13 +592,16 @@ def import_mapseq_results( key_or_id, minilims, ex_root, url_or_dict ):
         exid = key_or_id
     allfiles = dict((minilims.fetch_file(x)['description'],x)
                     for x in minilims.search_files(source=('execution',exid)))
+    if 'py:gdv_json' in allfiles:
+        with open(minilims.path_to_file(allfiles['py:gdv_json'])) as q:
+            gdv_json = pickle.load(q)
+        if isinstance(url_or_dict, str):
+            job.options['gdv_project'] = gdv_json
+        else:
+            job['options']['gdv_project'] = gdv_json
     with open(minilims.path_to_file(allfiles['py:file_names'])) as q:
         file_names = pickle.load(q)
     for gid, group in job_groups.iteritems():
-        if 'name' in group:
-            group_name = re.sub(r'\s+','_',group['name'])
-        else:
-            group_name = gid
         if not 'runs' in group:
             group = {'runs': group}
         processed[gid] = {}
@@ -608,6 +615,14 @@ def import_mapseq_results( key_or_id, minilims, ex_root, url_or_dict ):
             stats_id = allfiles["py:"+name+"_filter_bamstat"]
             with open(minilims.path_to_file(stats_id)) as q:
                 s = pickle.load(q)
-            processed[gid][rid] = {'bam': bamfile, 'stats': s, 'libname': name}
+            wigfile = os.path.join(ex_root, unique_filename_in(ex_root))
+            wig_ids = dict(((allfiles['sql:'+name+'_'+s+'.sql'],s),
+                            wigfile+'_'+s+'.sql') for s in suffix)
+            [minilims.export_file(x[0],s) for x,s in wig_ids.iteritems()]
+            processed[gid][rid] = {'bam': bamfile, 
+                                   'stats': s, 
+                                   'libname': name,
+                                   'wig': dict((x[1],s) 
+                                               for x,s in wig_ids.iteritems())}
     return (processed,job)
 

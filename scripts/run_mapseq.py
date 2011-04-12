@@ -1,4 +1,4 @@
-from bbcflib import daflims, genrep, frontend, email, common
+from bbcflib import daflims, genrep, frontend, email, gdv, common
 from bbcflib.mapseq import *
 import sys, getopt, os
 
@@ -18,19 +18,29 @@ dafl = dict((loc,daflims.DAFLIMS( username=gl['lims']['user'],
                                   password=gl['lims']['passwd'][loc] ))
             for loc in gl['lims']['passwd'].keys())
 job.options['ucsc_bigwig'] = True
+#_ = [M.delete_execution(x) for x in M.search_executions(with_text=hts_key)]
 with execution( M, description=hts_key, remote_working_directory=working_dir ) as ex:
     processed = map_groups( ex, job, dafl, ex.working_directory, assembly )
     pdf = add_pdf_stats( ex, processed,
                          dict((k,v['name']) for k,v in job.groups.iteritems()),
                          gl['script_path'] )
     if job.options['compute_densities']:
-        b2w_args = []
-        if 'b2w_args' in job.options:
-            b2w_args = job.options['b2w_args']
-        if 'read_extend' in job.options and job.options['b2w_args']>0:
-            b2w_args += ["-q",str(job.options['b2w_args'])]
-        processed = densities_groups( ex, job, processed, assembly, b2w_args )
+        processed = densities_groups( ex, job, processed, assembly )
+        gdv_project = gdv.create_gdv_project( gl['gdv']['key'], gl['gdv']['email'],
+                                              job.description, hts_key, 
+                                              g_rep_assembly.nr_assembly_id,
+                                              gdv_url=gl['gdv']['url'], public=True )
+        add_pickle( ex, gdv_project, description='py:gdv_json' )
 allfiles = common.get_files( ex.id, M )
+if job.options['compute_densities']:
+    allfiles['url'] = {gdv_project['public_url']: 'GDV view'}
+    download_url = gl['hts_download']
+    _ = [gdv.add_gdv_sqlite( gl['gdv']['key'], gl['gdv']['email'],
+                             gdv_project['project_id'],
+                             url=download_url+str(k), 
+                             name = re.sub('\.sql','',str(f)),
+                             gdv_url=gl['gdv']['url'], datatype="quantitative" ) 
+         for k,f in allfiles['sql'].iteritems()]
 print json.dumps(allfiles)
 r = email.EmailReport( sender=gl['email']['sender'],
                        to=str(job.email),
