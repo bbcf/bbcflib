@@ -1,5 +1,4 @@
  - use config parser
- - make a generic 'sql_create' with the table and chromosomes stuff for qual/quant data
 * mapseq...
    provide seed length param (auto: .7*read_length)
 

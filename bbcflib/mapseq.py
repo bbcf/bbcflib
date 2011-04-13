@@ -396,7 +396,7 @@ def compact_chromosome_name(key):
     if isinstance(key,str):
         return key
     elif isinstance(key,tuple) and len(key)>2:
-        return str(key[0])+"_"+key[1]+"."+str(key[2])
+        return str(key[0])+"_"+str(key[1])+"."+str(key[2])
     else:
         raise ValueError("Can't handle this chromosomes key ",key)
 
@@ -457,7 +457,7 @@ def parallel_density_sql( ex, bamfile, chromosomes,
 
 ############################################################ 
 
-def densities_groups( ex, job_or_dict, file_dict, assembly_or_dict ):
+def densities_groups( ex, job_or_dict, file_dict, assembly_or_dict, via='lsf' ):
     """
     Arguments are:
 
@@ -483,8 +483,7 @@ def densities_groups( ex, job_or_dict, file_dict, assembly_or_dict ):
     else:
         raise TypeError("job_or_dict must be a frontend.Job object or a dictionary with keys 'groups'.")
     if isinstance(assembly_or_dict,genrep.Assembly):
-        chromosomes = dict([(str(k[0])+"_"+k[1]+"."+str(k[2]),v) 
-                            for k,v in assembly_or_dict.chromosomes.iteritems()])
+        chromosomes = assembly_or_dict.chromosomes
         index_path = assembly_or_dict.index_path
     elif isinstance(assembly_or_dict,dict) and 'chromosomes' in assembly_or_dict:
         chromosomes = assembly_or_dict['chromosomes']
@@ -530,7 +529,7 @@ def densities_groups( ex, job_or_dict, file_dict, assembly_or_dict ):
                    for m in mapped.values()]
             merged_bam = merge_bam(ex, [m['bam'] for m in mapped.values()])
             ids = [m['libname'] for m in mapped.values()]
-            merged_wig = dict((s, merge_sql(ex, [x[s] for x in wig], ids,
+            merged_wig = dict((s, common.merge_sql(ex, [x[s] for x in wig], ids,
                                             description="sql:"+group_name+"_"+s+".sql")) 
                               for s in suffixes)
         else:

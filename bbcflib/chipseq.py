@@ -30,7 +30,6 @@ from bein import *
 from bein.util import *
 from bbcflib import frontend, mapseq
 from bbcflib.common import *
-import pickle
 
 ############ Peaks and annotation ############
 @program
@@ -158,12 +157,11 @@ def run_deconv(ex,sql,peaks,chromosomes,read_length,script_path, via='lsf'):
                                            [x['pdf'] for x in rdeconv_out.values()
                                             if x != None],
                                            via=via )
-    sqlout = unique_filename_in()
-    outfiles = {}
-    _ = create_sql_track( sqlout, chromosomes )
+    sqlout = create_sql_track( unique_filename_in(), chromosomes )
     for fout in rdeconv_out.values():
         if fout != None:
             f = sql_finish_deconv.nonblocking( ex, sqlout, fout['rdata'], via=via ).wait()
+    outfiles = {}
     outfiles['sql'] = sqlout
     outfiles['bed'] = sqlout+'_deconv.bed'
     if len(rdeconv_out)>0:
@@ -218,9 +216,9 @@ def workflow_groups( ex, job_or_dict, mapseq_files, chromosomes, script_path='',
     if options.get('merge_strands')>=0:
         merge_strands = options['merge_strands']
         suffixes = ["merged"]
-    peak_deconvolution = options('peak_deconvolution') or False
+    peak_deconvolution = options.get('peak_deconvolution') or False
     macs_args = options.get('macs_args') or ["--nomodel","-m","5,60","--bw=200","-p",".001"]
-    b2w_args = options['b2w_args'] or []
+    b2w_args = options.get('b2w_args') or []
     if not isinstance(mapseq_files,dict):
         raise TypeError("Mapseq_files must be a dictionary.")
     tests = []
@@ -234,11 +232,14 @@ def workflow_groups( ex, job_or_dict, mapseq_files, chromosomes, script_path='',
             raise TypeError("Mapseq_files values must be dictionaries with keys *run_ids* or 'bam'.")
         if 'bam' in mapped:
             mapped = {'_': mapped}
+        futures = {}
         for k in mapped.keys():
             if not 'libname' in mapped[k]:
                 mapped[k]['libname'] = group_name+"_"+str(k)
             if not 'stats' in mapped[k]:
-                mapped[k]['stats'] = mapseq.bamstats( ex, mapped[k]["bam"] )
+                futures[k] = mapseq.bamstats.nonblocking( ex, mapped[k]["bam"], via=via )
+        for k in futures.keys():
+            mapped[k]['stats'] = f.wait()
         if len(mapped)>1:
             bamfile = merge_bam(ex, [m['bam'] for m in mapped.values()])
         else:

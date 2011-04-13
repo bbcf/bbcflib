@@ -1,3 +1,13 @@
+"""
+===============
+bbcflib.common
+===============
+
+"""
+
+import pickle
+from bein import *
+
 def normalize_url(url):
     """Produce a fixed form for an HTTP URL.
 
@@ -128,18 +138,18 @@ def create_sql_track( sql_name, chromosomes, datatype="quantitative" ):
     conn = sqlite3.connect( sql_name )
     conn.execute('create table chrNames (name text, length integer)')
     conn.execute('create table attributes (key text, value text)')
-    conn.execute('insert into attributes (key,value) values ("datatype",datatype)')
+    conn.execute('insert into attributes (key,value) values ("datatype","%s")' %datatype)
     vals = [(v['name'],str(v['length'])) for v in chromosomes.values()]
     conn.executemany('insert into chrNames (name,length) values (?,?)',vals)
     if datatype=="quantitative":
         [conn.execute('create table "'+v['name']+'" (start integer, end integer, score real)') 
          for v in chromosomes.values()]
-        [conn.execute('create index '+v['name']+'_range_idx on "'+v['name']+'" (start, end)') 
+        [conn.execute('create index "range_idx_'+v['name']+'" on "'+v['name']+'" (start, end)') 
          for v in chromosomes.values()]
     elif datatype=="qualitative":
         [conn.execute('create table "'+v['name']+'" (start integer,end integer,score real,name text,strand integer,attributes text)') 
          for v in chromosomes.values()]
-        [conn.execute('create index '+v['name']+'_name_idx on "'+v['name']+'" (name)') 
+        [conn.execute('create index "name_idx_'+v['name']+'" on" "'+v['name']+'" (name)') 
          for v in chromosomes.values()] 
     else:
         raise ValueError("Supported datatypes are 'quantitative' and 'qualitative', not "+datatype)

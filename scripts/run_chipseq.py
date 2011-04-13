@@ -19,6 +19,7 @@ job.options['ucsc_bigwig'] = True
 g_rep = genrep.GenRep( gl["genrep_url"], gl["bwt_root"] )
 #_ = [M.delete_execution(x) for x in M.search_executions(with_text=hts_key)]
 with execution( M, description=hts_key, remote_working_directory=working_dir ) as ex:
+    # should remove this option
     if job.options['select_source'] == 'lims':
         g_rep_assembly = g_rep.assembly( job.assembly_id )
         dafl = dict((loc,daflims.DAFLIMS( username=gl['lims']['user'],
@@ -30,13 +31,24 @@ with execution( M, description=hts_key, remote_working_directory=working_dir ) a
                              dict((k,v['name']) for k,v in job.groups.iteritems()), 
                              gl['script_path'] )
     elif job.options['select_source'] == 'bam_url':
-#        bamfile = unique_filename_in(gl['fastq_root'])
-#        with open(bamfile,"w") as out:
-#            out.write(urllib2.urlopen(job.options['bam_url']).read())
-#        with open(bamfile+".bai","w") as out:
-#            out.write(urllib2.urlopen(job.options['bam_url']+".bai").read())
-#    ***run bamstat
-#        pdf = add_pdf_stats( ex, {??}, dict(??), gl['script_path'] )
+        ms_files = {}
+        for gid, group in job.groups:
+            my_files[gid] = {}
+            group_name = re.sub(r'\s+','_',group['name'])
+            for rid,run in group['runs'].iteritems():
+                bamfile = unique_filename_in(ex.working_directory)
+                with open(bamfile,"w") as out:
+                    out.write(urllib2.urlopen(run['url']).read())
+                with open(bamfile+".bai","w") as out:
+                    out.write(urllib2.urlopen(run['url']+".bai").read())
+                s = bamstats.nonblocking( ex, bamfile, via='lsf' )
+                ms_files[gid][rid] = {'bam': bamfile, 
+                                      'stats': s, 
+                                      'libname': name+'_'+str(rid),
+                                      'wig': {}}
+        for gid, group in job.groups:
+            for rid,run in group['runs'].iteritems():
+                ms_files[gid][rid]['stats'] = ms_files[gid][rid]['stats'].wait()
         raise RuntimeError("bam_url not implemented yet!")
     elif job.options['select_source'] == 'mapseq_key':
         M_ms = MiniLIMS(ms_minilims)
