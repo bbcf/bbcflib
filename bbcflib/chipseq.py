@@ -216,6 +216,7 @@ def workflow_groups( ex, job_or_dict, mapseq_files, chromosomes, script_path='',
     if options.get('merge_strands')>=0:
         merge_strands = options['merge_strands']
         suffixes = ["merged"]
+    compute_densities = options.get('compute_densities') or False
     peak_deconvolution = options.get('peak_deconvolution') or False
     macs_args = options.get('macs_args') or ["--nomodel","-m","5,60","--bw=200","-p",".001"]
     b2w_args = options.get('b2w_args') or []
@@ -250,15 +251,15 @@ def workflow_groups( ex, job_or_dict, mapseq_files, chromosomes, script_path='',
         else:
             tests.append(bamfile)
             names['tests'].append(group_name)
-            read_length.append(mapped[0]['stats']['read_length'])
-            genome_size.append(mapped[0]['stats']['genome_size'])
+            read_length.append(mapped.values()[0]['stats']['read_length'])
+            genome_size.append(mapped.values()[0]['stats']['genome_size'])
     if len(controls)<1:
         controls = [None]
         names['controls'] = [None]
-    processed['macs'] = add_macs_results( ex, read_length, genome_size,
-                                          tests, ctrlbam=controls, name=names, 
-                                          shift=merge_strands,
-                                          macs_args=macs_args, via=via )
+    processed = {'macs': add_macs_results( ex, read_length, genome_size,
+                                           tests, ctrlbam=controls, name=names, 
+                                           shift=merge_strands,
+                                           macs_args=macs_args, via=via ) }
     if peak_deconvolution:
         processed['deconv'] = {}
         wigs = {}
@@ -266,7 +267,7 @@ def workflow_groups( ex, job_or_dict, mapseq_files, chromosomes, script_path='',
             if groups[gid]['control']:
                 continue
             group_name = groups[gid]['name']
-            if merge_strands >= 0:
+            if merge_strands >= 0 or not(compute_densities):
                 wig = [parallel_density_sql( ex, m["bam"], chromosomes, 
                                              nreads=m["stats"]["total"], 
                                              merge=-1,
@@ -275,7 +276,7 @@ def workflow_groups( ex, job_or_dict, mapseq_files, chromosomes, script_path='',
                                              b2w_args=b2w_args, via=via ) 
                        for m in mapped.values()]
             else:
-                wig = [m['wig'] for m in mapped]
+                wig = [m['wig'] for m in mapped.values()]
             if len(wig) > 1:
                 merged_wig[group_name] = dict((s, 
                                                merge_sql(ex, [x[s] for x in wig],

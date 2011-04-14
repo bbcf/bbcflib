@@ -44,12 +44,15 @@ with execution( M, description=hts_key, remote_working_directory=working_dir ) a
                 s = bamstats.nonblocking( ex, bamfile, via='lsf' )
                 ms_files[gid][rid] = {'bam': bamfile, 
                                       'stats': s, 
-                                      'libname': name+'_'+str(rid),
-                                      'wig': {}}
+                                      'libname': name+'_'+str(rid)}
         for gid, group in job.groups:
             for rid,run in group['runs'].iteritems():
                 ms_files[gid][rid]['stats'] = ms_files[gid][rid]['stats'].wait()
-        raise RuntimeError("bam_url not implemented yet!")
+        pdf = add_pdf_stats( ex, ms_files,
+                             dict((k,v['name']) for k,v in job.groups.iteritems()), 
+                             gl['script_path'] )
+        job.options['compute_densities'] = False
+#        raise RuntimeError("bam_url not implemented yet!")
     elif job.options['select_source'] == 'mapseq_key':
         M_ms = MiniLIMS(ms_minilims)
         gl_ms = use_pickle(M_ms, "global variables")
@@ -61,6 +64,7 @@ with execution( M, description=hts_key, remote_working_directory=working_dir ) a
         for gid, group in job.groups:
             job.groups[gid]['name'] = re.sub(r'\s+','_',group['name'])
         job.options['merge_strand'] = ms.job.options['merge_strand']
+        job.options['compute_densities'] = ms.job.options['compute_densities']
         if 'read_extend' in ms.job.options and ms.job.options['read_extend']>0:
             job.options['b2w_args'] = ["-q",str(options['read_extend'])]
     else:

@@ -613,13 +613,13 @@ def import_mapseq_results( key_or_id, minilims, ex_root, url_or_dict ):
             minilims.export_file(bam_bai_id,bamfile+".bai")
             stats_id = allfiles["py:"+name+"_filter_bamstat"]
             with open(minilims.path_to_file(stats_id)) as q:
-                s = pickle.load(q)
+                stats = pickle.load(q)
             wigfile = os.path.join(ex_root, unique_filename_in(ex_root))
             wig_ids = dict(((allfiles['sql:'+name+'_'+s+'.sql'],s),
                             wigfile+'_'+s+'.sql') for s in suffix)
             [minilims.export_file(x[0],s) for x,s in wig_ids.iteritems()]
             processed[gid][rid] = {'bam': bamfile, 
-                                   'stats': s, 
+                                   'stats': stats, 
                                    'libname': name,
                                    'wig': dict((x[1],s) 
                                                for x,s in wig_ids.iteritems())}
