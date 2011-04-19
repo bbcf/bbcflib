@@ -52,8 +52,8 @@ def macs( read_length, genome_size, bamfile, ctrlbam=None, shift=80, args=[] ):
     return {"arguments": macs_args+args, "return_value": outname}
 
 def add_macs_results( ex, read_length, genome_size, bamfile,
-                      ctrlbam=[None], name=None, shift=80, alias=None,
-                      macs_args=[], via='lsf' ):
+                      ctrlbam=[None], name=None, shift=80, poisson_threshold={},
+                      alias=None, macs_args=[], via='lsf' ):
     """Calls the ``macs`` function on each possible pair 
     of test and control bam files and adds 
     the respective outputs to the execution repository.
@@ -68,10 +68,15 @@ def add_macs_results( ex, read_length, genome_size, bamfile,
     gs = genome_size
     for i,bam in enumerate(bamfile):
         n = name['tests'][i]
+        if poisson_threshold.get(n)>0:
+            low = poisson_threshold.get(n)
+            enrich_bounds = str(min(30,low+1))+","+str((low+1)*30)
+        else:
+            enrich_bounds = "5,60"
         if isinstance(read_length,list):
             rl = read_length[i]
         if isinstance(genome_size,list):
-            gs = read_length[i]
+            gs = genome_size[i]
         for j,cam in enumerate(ctrlbam):
             m = name['controls'][j]
             if m == None:
@@ -79,7 +84,8 @@ def add_macs_results( ex, read_length, genome_size, bamfile,
             else:
                 nm = (n,m)
             futures[nm] = macs.nonblocking( ex, rl, gs, bam, cam, shift, 
-                                            args=macs_args, via=via )
+                                            args=macs_args+["-m",enrich_bounds],
+                                            via=via )
     prefixes = dict((n,f.wait()) for n,f in futures.iteritems())
     for n,p in prefixes.iteritems():
         description = "_vs_".join(n)
@@ -218,7 +224,7 @@ def workflow_groups( ex, job_or_dict, mapseq_files, chromosomes, script_path='',
         suffixes = ["merged"]
     compute_densities = options.get('compute_densities') or False
     peak_deconvolution = options.get('peak_deconvolution') or False
-    macs_args = options.get('macs_args') or ["--nomodel","-m","5,60","--bw=200","-p",".001"]
+    macs_args = options.get('macs_args') or ["--nomodel","--bw=200","-p",".001"]
     b2w_args = options.get('b2w_args') or []
     if not isinstance(mapseq_files,dict):
         raise TypeError("Mapseq_files must be a dictionary.")
@@ -227,6 +233,7 @@ def workflow_groups( ex, job_or_dict, mapseq_files, chromosomes, script_path='',
     names = {'tests': [], 'controls': []}
     read_length = []
     genome_size = []
+    p_thresh = {}
     for gid,mapped in mapseq_files.iteritems():
         group_name = groups[gid]['name']
         if not isinstance(mapped,dict):
@@ -234,11 +241,16 @@ def workflow_groups( ex, job_or_dict, mapseq_files, chromosomes, script_path='',
         if 'bam' in mapped:
             mapped = {'_': mapped}
         futures = {}
+        ptruns = []
         for k in mapped.keys():
             if not 'libname' in mapped[k]:
                 mapped[k]['libname'] = group_name+"_"+str(k)
             if not 'stats' in mapped[k]:
                 futures[k] = mapseq.bamstats.nonblocking( ex, mapped[k]["bam"], via=via )
+            if mapped[k].get('poisson_threshold')>0:
+                ptruns.append(mapped[k]['poisson_threshold'])
+        if len(ptruns)>0:
+            p_thresh['group_name'] = sum(ptruns)/len(ptruns)
         for k in futures.keys():
             mapped[k]['stats'] = f.wait()
         if len(mapped)>1:
@@ -258,11 +270,12 @@ def workflow_groups( ex, job_or_dict, mapseq_files, chromosomes, script_path='',
         names['controls'] = [None]
     processed = {'macs': add_macs_results( ex, read_length, genome_size,
                                            tests, ctrlbam=controls, name=names, 
-                                           shift=merge_strands,
+                                           shift=merge_strands, 
+                                           poisson_threshold=p_thresh,
                                            macs_args=macs_args, via=via ) }
     if peak_deconvolution:
         processed['deconv'] = {}
-        wigs = {}
+        merged_wig = {}
         for gid,mapped in mapseq_files.iteritems():
             if groups[gid]['control']:
                 continue

@@ -285,8 +285,14 @@ def map_groups( ex, job_or_dict, daflims_or_files, fastq_root, assembly_or_dict,
             name = group_name
             if isinstance(daflims_or_files.values()[0],daflims.DAFLIMS):
                 dafl = daflims_or_files[run['facility']]
-                fq_file = dafl.fetch_fastq( str(run['facility']), str(run['machine']),
-                                            run['run'], run['lane'], to=fastq_root )['path']
+                daf_data = dafl.fetch_fastq( str(run['facility']), str(run['machine']),
+                                            run['run'], run['lane'], to=fastq_root )
+                fq_file = daf_data['path']
+                seed_len = max(28,int(0.7*daf_data['cycle']))
+                if 'bwt_args' in map_args:
+                    map_args['bwt_args'] = ["-l",str(seed_len)] 
+                else:
+                    map_args['bwt_args'] += ["-l",str(seed_len)] 
                 if len(group['runs'])>1:
                     name += "_".join(['',run['machine'],str(run['run']),str(run['lane'])])
             else:
@@ -614,12 +620,16 @@ def import_mapseq_results( key_or_id, minilims, ex_root, url_or_dict ):
             stats_id = allfiles["py:"+name+"_filter_bamstat"]
             with open(minilims.path_to_file(stats_id)) as q:
                 stats = pickle.load(q)
+            pickle_thresh = allfiles["py:"+name+"Poisson_threshold"]
+            with open(minilims.path_to_file(pickle_thresh)) as q:
+                p_thresh = pickle.load(q)
             wigfile = os.path.join(ex_root, unique_filename_in(ex_root))
             wig_ids = dict(((allfiles['sql:'+name+'_'+s+'.sql'],s),
                             wigfile+'_'+s+'.sql') for s in suffix)
             [minilims.export_file(x[0],s) for x,s in wig_ids.iteritems()]
             processed[gid][rid] = {'bam': bamfile, 
                                    'stats': stats, 
+                                   'poisson_threshold': p_thresh,
                                    'libname': name,
                                    'wig': dict((x[1],s) 
                                                for x,s in wig_ids.iteritems())}

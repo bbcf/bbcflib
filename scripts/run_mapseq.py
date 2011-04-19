@@ -20,12 +20,12 @@ dafl = dict((loc,daflims.DAFLIMS( username=gl['lims']['user'],
 job.options['ucsc_bigwig'] = True
 #_ = [M.delete_execution(x) for x in M.search_executions(with_text=hts_key)]
 with execution( M, description=hts_key, remote_working_directory=working_dir ) as ex:
-    processed = map_groups( ex, job, dafl, ex.working_directory, assembly )
-    pdf = add_pdf_stats( ex, processed,
+    files = map_groups( ex, job, dafl, ex.working_directory, assembly )
+    pdf = add_pdf_stats( ex, files,
                          dict((k,v['name']) for k,v in job.groups.iteritems()),
                          gl['script_path'] )
     if job.options['compute_densities']:
-        processed = densities_groups( ex, job, processed, assembly )
+        files = densities_groups( ex, job, files, assembly )
         gdv_project = gdv.create_gdv_project( gl['gdv']['key'], gl['gdv']['email'],
                                               job.description, hts_key, 
                                               g_rep_assembly.nr_assembly_id,
