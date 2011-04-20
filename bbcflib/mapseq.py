@@ -207,12 +207,12 @@ def map_reads( ex, fastq_file, chromosomes, bowtie_index,
         return_dict['stats'] = filtered_stats
     else:
         infile = pysam.Samfile( sorted_bam, "rb" )
-        reduced_bam = unique_filename_in()
+        bam2 = unique_filename_in()
         header = infile.header
         for h in header["SQ"]:
             if h["SN"] in chromosomes:
                 h["SN"] = chromosomes[h["SN"]]["name"]
-        outfile = pysam.Samfile( reduced_bam, "wb", header=header )
+        outfile = pysam.Samfile( bam2, "wb", header=header )
         for read in infile:
             nh = dict(read.tags).get('NH')
             if nh == None:
@@ -222,6 +222,7 @@ def map_reads( ex, fastq_file, chromosomes, bowtie_index,
             outfile.write(read)
         outfile.close()
         infile.close()
+        reduced_bam = add_and_index_bam( ex, bam2, "bam:"+name+"filtered.bam" )
         return_dict['bam'] = reduced_bam 
         return_dict['stats'] = full_stats
     return return_dict
@@ -617,7 +618,7 @@ def import_mapseq_results( key_or_id, minilims, ex_root, url_or_dict ):
             bam_bai_id = allfiles['bam:'+name+'_filtered.bam (BAM index)']
             minilims.export_file(bam_id,bamfile)
             minilims.export_file(bam_bai_id,bamfile+".bai")
-            stats_id = allfiles["py:"+name+"_filter_bamstat"]
+            stats_id = allfiles.get("py:"+name+"_filter_bamstat") or allfiles.get("py:"+name+"_full_bamstat")
             with open(minilims.path_to_file(stats_id)) as q:
                 stats = pickle.load(q)
             pickle_thresh = allfiles["py:"+name+"Poisson_threshold"]

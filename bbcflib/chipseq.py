@@ -33,11 +33,11 @@ from bbcflib.common import *
 
 ############ Peaks and annotation ############
 @program
-def macs( read_length, genome_size, bamfile, ctrlbam=None, shift=80, args=[] ):
+def macs( read_length, genome_size, bamfile, ctrlbam=None, args=[] ):
     """Binding for the ``macs`` peak caller.
 
     takes one (optionally two) bam file(s) and
-    the 'read_length', 'genome_size' and 'shift' parameters passed to ``macs``. 
+    the 'read_length' and 'genome_size' parameters passed to ``macs``. 
     
     Returns the file prefix ('-n' option of ``macs``)
     """
@@ -47,12 +47,10 @@ def macs( read_length, genome_size, bamfile, ctrlbam=None, shift=80, args=[] ):
         macs_args += ["-c",ctrlbam]
     macs_args += ["-n",outname,"-f","BAM",
                   "-g",str(genome_size),"-s",str(read_length)]
-    if shift>0:
-        macs_args += ["--shiftsize="+str(shift)]
     return {"arguments": macs_args+args, "return_value": outname}
 
 def add_macs_results( ex, read_length, genome_size, bamfile,
-                      ctrlbam=[None], name=None, shift=80, poisson_threshold={},
+                      ctrlbam=[None], name=None, poisson_threshold={},
                       alias=None, macs_args=[], via='lsf' ):
     """Calls the ``macs`` function on each possible pair 
     of test and control bam files and adds 
@@ -83,7 +81,7 @@ def add_macs_results( ex, read_length, genome_size, bamfile,
                 nm = (n,)
             else:
                 nm = (n,m)
-            futures[nm] = macs.nonblocking( ex, rl, gs, bam, cam, shift, 
+            futures[nm] = macs.nonblocking( ex, rl, gs, bam, cam, 
                                             args=macs_args+["-m",enrich_bounds],
                                             via=via )
     prefixes = dict((n,f.wait()) for n,f in futures.iteritems())
@@ -224,7 +222,7 @@ def workflow_groups( ex, job_or_dict, mapseq_files, chromosomes, script_path='',
         suffixes = ["merged"]
     compute_densities = options.get('compute_densities') or False
     peak_deconvolution = options.get('peak_deconvolution') or False
-    macs_args = options.get('macs_args') or ["--nomodel","--bw=200","-p",".001"]
+    macs_args = options.get('macs_args') or ["--bw=200","-p",".001"]
     b2w_args = options.get('b2w_args') or []
     if not isinstance(mapseq_files,dict):
         raise TypeError("Mapseq_files must be a dictionary.")
@@ -270,7 +268,6 @@ def workflow_groups( ex, job_or_dict, mapseq_files, chromosomes, script_path='',
         names['controls'] = [None]
     processed = {'macs': add_macs_results( ex, read_length, genome_size,
                                            tests, ctrlbam=controls, name=names, 
-                                           shift=merge_strands, 
                                            poisson_threshold=p_thresh,
                                            macs_args=macs_args, via=via ) }
     if peak_deconvolution:
