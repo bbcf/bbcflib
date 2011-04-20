@@ -1,7 +1,7 @@
 """
-===============
-bbcflib.gdv
-===============
+===================
+Module: bbcflib.gdv
+===================
 
 Python API for the GDV genome viewer.
 """

@@ -1,7 +1,7 @@
 """
-=============
-bbcflib.email
-=============
+=====================
+Module: bbcflib.email
+=====================
 
 This module provides an simple way to set up and send emails, possibly
 configuring the subject, sender, and SMTP server via an external

@@ -1,7 +1,7 @@
 """
-================
-bbcflib.frontend
-================
+========================
+Module: bbcflib.frontend
+========================
 
 This module provides access to Fabrice David's frontend code for
 deploying web interfaces to workflows.  It provides a class

@@ -1,7 +1,7 @@
 """
-==============
-bbcflib.genrep
-==============
+======================
+Module: bbcflib.genrep
+======================
 
 This module provides an interface to GenRep repositories.  It
 provides two classes. ``GenRep`` connects to a GenRep repository and
