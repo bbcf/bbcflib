@@ -300,7 +300,7 @@ class TestFrontend(TestCase):
                                       u'run_nber': None, u'input_file': None,
                                       u'from_controller': None, u'lane_nber': None,
                                       u'method': None, u'remote_ip': None, u'bein_id': None,
-                                      u'from_action': None, u'status_id': None,
+                                      u'from_action': None, u'status_id': 1,
                                       u'query_string': None, u'controller': None,
                                       u'referer': None, u'path': None, u'facility_id': None,
                                       u'user_agent': None, u'time': None, u'action': None,
