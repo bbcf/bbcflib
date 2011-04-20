@@ -6,7 +6,15 @@
 Welcome to bbcflib's documentation!
 ===================================
 
+Description:
+''''''''''''
+
+At the moment bbcflib provides modules for BBCF's GenRep, the LIMS of the
+DNA Array Facility at UNIL, the standard frontend code for workflows
+written by Fabrice David, and sending job description emails.
+
 Contents:
+'''''''''
 
 * :doc:`tutorial`
 
