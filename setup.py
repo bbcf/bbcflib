@@ -12,6 +12,7 @@ setup(
       install_requires = ['mailer'],
       classifiers      = ['Topic :: Scientific/Engineering :: Bio-Informatics']
       packages         = ['bbcflib'
+                          'bbcflib.tests'
                           'bbcflib.track'
                          ],
 )
