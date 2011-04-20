@@ -343,8 +343,5 @@ class TestFrontend(TestCase):
         [self.assertEqual(j.groups[g], self.frontend_job.groups[g])
          for g in j.groups.keys()]
 
-def test_all():
-    main()
-
 if __name__ == '__main__':
-    test_all()
+    main()
