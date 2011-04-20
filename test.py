@@ -1,10 +1,17 @@
+# This module #
 from bbcflib import *
-from unittest import TestCase, TestSuite, main
-from datetime import datetime
-import socket
-import re
-import os
 
+# Unitesting module #
+try:
+    from unittest2 import TestCase, TestSuite, main
+except ImportError:
+    from unittest import TestCase, TestSuite, main
+
+# Other modules #
+import socket, re, os
+from datetime import datetime
+
+################################################################################### 
 def hostname_contains(pattern):
     hostname = socket.gethostbyaddr(socket.gethostname())[0]
     if re.search(pattern, hostname) == None:
@@ -143,6 +150,10 @@ class TestDAFLIMS(TestCase):
         cp = ConfigParser()
         cp.read('test_data/test.cfg')
         self.d = DAFLIMS(config=cp)
+        try:
+            print self.d.symlinkname
+        except AttributeError:
+            self.skipTest("You don't have access to the DAFLIMBS, skipping appropriate tests")
 
     def test_symlinkname(self):
         self.assertEqual(self.d.symlinkname('lgtf', 'R2D2', 91, 3),
@@ -189,6 +200,7 @@ class TestDAFLIMS(TestCase):
 
 class TestFrontend(TestCase):
     def setUp(self):
+        self.maxDiff = None
         self.f = Frontend(url='http://htsstation.vital-it.ch/rnaseq/')
         self.key = '9pv1x7PamOj80eXnZa14'
         self.frontend_job = Job(id = 2,
