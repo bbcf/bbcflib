@@ -32,6 +32,8 @@ modules from bbcflib:
 * ``gdv`` from :doc:`bbcflib_gdv`
 """
 
+b'This module needs Python 2.6 or later.'
+
 __version__ = 1.1
 
 from ConfigParser import ConfigParser
