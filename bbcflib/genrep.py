@@ -64,14 +64,14 @@ class GenRep(object):
     Create a GenRep object with the base URL to the GenRep system, and
     the root path of GenRep's files.  For instance,
 
-    >>> g = GenRep('genrep.epfl.ch','/path/to/genrep/indices')
+        g = GenRep('genrep.epfl.ch','/path/to/genrep/indices')
 
     To get an assembly from the repository, call the get_assembly
     method with either the integer assembly ID or the string assembly
     name.  This returns an Assembly object.
 
-    >>> a = g.assembly(3)
-    >>> b = g.assembly('mus')
+        a = g.assembly(3)
+        b = g.assembly('mus')
     """
     def __init__(self, url=None, root=None, config=None, section='genrep'):
         if (url == None or root == None) and config == None:
