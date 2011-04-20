@@ -8,8 +8,38 @@ except ImportError:
     from unittest import TestCase, TestSuite, main
 
 # Other modules #
-import socket, re, os
+import socket, re, os, cStringIO
 from datetime import datetime
+
+# Configuration file #
+test_config_file = '''
+# test.cfg
+# A configuration file for testing bbcflib.
+
+[genrep]
+genrep_url=http://bbcftools.vital-it.ch/genrep/
+genrep_root=/scratch/frt/yearly/genrep/nr_assemblies/bowtie
+
+[daflims]:
+daflims_username=jrougemont
+daflims_password=cREThu6u
+
+[emailreport]:
+email_sender=nobody@localhost
+email_smtp_server=localhost
+email_default_subject=Default Subject
+
+[frontend]:
+frontend_url=http://htsstation.vital-it.ch/rnaseq/
+'''
+
+def get_config_file_parser():
+    file = cStringIO.StringIO()
+    file.write(test_config_file)
+    file.seek(0)
+    cp = ConfigParser()
+    cp.readfp(file)
+    return cp
 
 ################################################################################### 
 def hostname_contains(pattern):
@@ -42,9 +72,7 @@ class TestGenRep(TestCase):
     def setUp(self):
         self.genrep = GenRep('http://bbcftools.vital-it.ch/genrep/',
                              '/scratch/frt/yearly/genrep/nr_assemblies/bowtie')
-        cp = ConfigParser()
-        cp.read('test_data/test.cfg')
-        self.genrep_from_config = GenRep(config=cp)
+        self.genrep_from_config = GenRep(config=get_config_file_parser())
 
     def test_config_correctly_loaded(self):
         self.assertEqual(self.genrep.url, 'http://bbcftools.vital-it.ch/genrep')
@@ -102,15 +130,11 @@ class TestEmailReport(TestCase):
                                   to='ross@localhost',
                                   subject='Default Subject',
                                   smtp_server='localhost')
-        cp = ConfigParser()
-        cp.read('test_data/test.cfg')
-        self.report_from_config = EmailReport(config=cp, to='ross@localhost')
+        self.report_from_config = EmailReport(config=get_config_file_parser(), to='ross@localhost')
 
     def test_config_requires_to(self):
-        cp = ConfigParser()
-        cp.read('test_data/test.cfg')
         self.assertRaises(TypeError,
-                          lambda : EmailReport(config=cp))
+                          lambda : EmailReport(config=get_config_file_parser()))
 
 
     def test_init(self):
@@ -147,9 +171,7 @@ class TestEmailReport(TestCase):
 
 class TestDAFLIMS(TestCase):
     def setUp(self):
-        cp = ConfigParser()
-        cp.read('test_data/test.cfg')
-        self.d = DAFLIMS(config=cp)
+        self.d = DAFLIMS(config=get_config_file_parser())
         try:
             print self.d.symlinkname
         except AttributeError:
