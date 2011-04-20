@@ -1,7 +1,7 @@
 from distutils.core import setup
 
 setup(name='bbcflib',
-      version='1.0rc1',
+      version='1.1',
       description='Utility modules for deploying workflows in the BBCF',
       author='EPFL BBCF, Fred Ross, Jacques Rougemont',
       author_email='webmaster.bbcf@epfl.ch',
