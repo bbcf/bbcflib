@@ -6,7 +6,7 @@ bbcflib is a set of Python modules for accessing facilities used by
 the Bioinformatics and Biostatistics Core Facility˘(BBCF) at the EPFL.
 
 bbcflib is released under the GNU General Public License 3.0. A copy
-of this license is in the LICENSE file.
+of this license is in the LICENSE.txt file.
 
 Installation
 ============
