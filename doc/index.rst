@@ -6,25 +6,20 @@
 Welcome to bbcflib's documentation!
 ===================================
 
-Description:
-''''''''''''
-
-At the moment bbcflib provides modules for BBCF's GenRep, the LIMS of the
-DNA Array Facility at UNIL, the standard frontend code for workflows
-written by Fabrice David, and sending job description emails.
-
-Contents:
-'''''''''
-
-* :doc:`tutorial`
+Table of Contents:
+''''''''''''''''''
 
 .. toctree::
    :maxdepth: 2
 
-Indices and tables
-==================
+   tutorial
 
-* :ref:`genindex`
-* :ref:`modindex`
-* :ref:`search`
-
+   bbcflib
+   bbcflib_chipseq
+   bbcflib_daflims
+   bbcflib_email
+   bbcflib_frontend
+   bbcflib_gdv
+   bbcflib_genrep
+   bbcflib_mapseq
+   specification
