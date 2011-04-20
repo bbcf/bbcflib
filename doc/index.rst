@@ -22,4 +22,5 @@ Table of Contents:
    bbcflib_gdv
    bbcflib_genrep
    bbcflib_mapseq
+   bbcflib_track
    specification
