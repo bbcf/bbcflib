@@ -1,2 +1,2 @@
 .. automodule:: bbcflib
-
+   :members:
