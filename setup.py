@@ -7,7 +7,7 @@ setup(
       long_description = open('README.md').read()
       license          = open('LICENSE.txt').read(),
       url              = 'http://bbcf.epfl.ch/bbcflib',
-      author           = 'EPFL BBCF, Fred Ross, Jacques Rougemont, Lucas Sinclair',
+      author           = 'EPFL BBCF, Fred Ross, Jacques Rougemont, Lucas Sinclair.',
       author_email     = 'webmaster.bbcf@epfl.ch',
       install_requires = ['mailer'],
       classifiers      = ['Topic :: Scientific/Engineering :: Bio-Informatics']
