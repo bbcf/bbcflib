@@ -1,6 +1,6 @@
 """
 ===========
-bbcflib 0.1
+bbcflib 1.1
 ===========
 
 bbcflib is a set of Python modules for accessing facilities used by
