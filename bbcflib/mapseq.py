@@ -24,19 +24,31 @@ The most common workflow will use ``map_reads`` which takes the following argume
 
 The function ``map_groups`` will take a collection of sample as described in a *job* object from the ``frontend`` module and run fetch fastq files for each of them through using a ``daflims`` object, use ``genrep`` to get the bowtie indexes and run ``map_reads`` for each sample.
 Below is the script used by the frontend::
+    from bbcflib import daflims, genrep, frontend, gdv, common
+    from bbcflib.mapseq import *
     M = MiniLIMS( limspath )
-    gl = use_pickle(M, "global variables")
+    gl = use_pickle( M, "global variables" )
     htss = frontend.Frontend( url=gl["hts_url"] )
     job = htss.job( hts_key )
     g_rep = genrep.GenRep( gl["genrep_url"], gl["bwt_root"] )
     daflims = dict((loc,daflims.DAFLIMS( username=gl['lims']['user'], 
                                          password=gl['lims']['passwd'][loc] ))
                    for loc in gl['lims']['passwd'].keys())
+    job.options['ucsc_bigwig'] = True
     with execution( M, description=hts_key, remote_working_directory=working_dir ) as ex:
-        processed = map_groups( ex, job, daflims, ex.working_directory, g_rep )
-        pdf = add_pdf_stats( ex, processed,
+        files = map_groups( ex, job, dafl, ex.working_directory, assembly )
+        pdf = add_pdf_stats( ex, files,
                              dict((k,v['name']) for k,v in job.groups.iteritems()),
                              gl['script_path'] )
+        files = densities_groups( ex, job, files, assembly )
+        gdv_project = gdv.create_gdv_project( gl['gdv']['key'], gl['gdv']['email'],
+                                              job.description, hts_key, 
+                                              g_rep_assembly.nr_assembly_id,
+                                              gdv_url=gl['gdv']['url'], 
+                                              public=True )
+        add_pickle( ex, gdv_project, description='py:gdv_json' )
+    print ex.id
+    allfiles = common.get_files( ex.id, M )
 
 """
 
