@@ -1,7 +1,7 @@
 """
-===============
-bbcflib.chipseq
-===============
+=======================
+Module: bbcflib.chipseq
+=======================
 
 This module provides functions to run a basic ChIP-seq analysis from reads mapped on
 a reference genome.

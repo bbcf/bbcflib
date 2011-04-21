@@ -1,7 +1,7 @@
 """
-===============
-bbcflib.daflims
-===============
+=======================
+Module: bbcflib.daflims
+=======================
 
 The DNA Array Facility at the University of Lausanne provides all
 their data in a LIMS accessible from VITAL-IT.  This module hides the

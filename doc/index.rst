@@ -6,17 +6,21 @@
 Welcome to bbcflib's documentation!
 ===================================
 
-Contents:
-
-* :doc:`tutorial`
+Table of Contents:
+''''''''''''''''''
 
 .. toctree::
    :maxdepth: 2
 
-Indices and tables
-==================
+   tutorial
 
-* :ref:`genindex`
-* :ref:`modindex`
-* :ref:`search`
-
+   bbcflib
+   bbcflib_chipseq
+   bbcflib_daflims
+   bbcflib_email
+   bbcflib_frontend
+   bbcflib_gdv
+   bbcflib_genrep
+   bbcflib_mapseq
+   bbcflib_track
+   specification

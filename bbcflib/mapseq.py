@@ -1,7 +1,7 @@
 """
-===============
-bbcflib.mapseq
-===============
+======================
+Module: bbcflib.mapseq
+======================
 
 This module provides functions useful to map raw reads using bowtie. 
 The most common workflow will use ``map_reads`` which takes the following arguments:

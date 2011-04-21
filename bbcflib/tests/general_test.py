@@ -1,10 +1,47 @@
+# This module #
 from bbcflib import *
-from unittest import TestCase, TestSuite, main
-from datetime import datetime
-import socket
-import re
-import os
 
+# Unitesting module #
+try:
+    from unittest2 import TestCase, TestSuite, main
+except ImportError:
+    from unittest import TestCase, TestSuite, main
+
+# Other modules #
+import socket, re, os, cStringIO
+from datetime import datetime
+
+# Configuration file #
+test_config_file = '''
+# test.cfg
+# A configuration file for testing bbcflib.
+
+[genrep]
+genrep_url=http://bbcftools.vital-it.ch/genrep/
+genrep_root=/scratch/frt/yearly/genrep/nr_assemblies/bowtie
+
+[daflims]:
+daflims_username=jrougemont
+daflims_password=cREThu6u
+
+[emailreport]:
+email_sender=nobody@localhost
+email_smtp_server=localhost
+email_default_subject=Default Subject
+
+[frontend]:
+frontend_url=http://htsstation.vital-it.ch/rnaseq/
+'''
+
+def get_config_file_parser():
+    file = cStringIO.StringIO()
+    file.write(test_config_file)
+    file.seek(0)
+    cp = ConfigParser()
+    cp.readfp(file)
+    return cp
+
+################################################################################### 
 def hostname_contains(pattern):
     hostname = socket.gethostbyaddr(socket.gethostname())[0]
     if re.search(pattern, hostname) == None:
@@ -35,9 +72,7 @@ class TestGenRep(TestCase):
     def setUp(self):
         self.genrep = GenRep('http://bbcftools.vital-it.ch/genrep/',
                              '/scratch/frt/yearly/genrep/nr_assemblies/bowtie')
-        cp = ConfigParser()
-        cp.read('test_data/test.cfg')
-        self.genrep_from_config = GenRep(config=cp)
+        self.genrep_from_config = GenRep(config=get_config_file_parser())
 
     def test_config_correctly_loaded(self):
         self.assertEqual(self.genrep.url, 'http://bbcftools.vital-it.ch/genrep')
@@ -95,15 +130,11 @@ class TestEmailReport(TestCase):
                                   to='ross@localhost',
                                   subject='Default Subject',
                                   smtp_server='localhost')
-        cp = ConfigParser()
-        cp.read('test_data/test.cfg')
-        self.report_from_config = EmailReport(config=cp, to='ross@localhost')
+        self.report_from_config = EmailReport(config=get_config_file_parser(), to='ross@localhost')
 
     def test_config_requires_to(self):
-        cp = ConfigParser()
-        cp.read('test_data/test.cfg')
         self.assertRaises(TypeError,
-                          lambda : EmailReport(config=cp))
+                          lambda : EmailReport(config=get_config_file_parser()))
 
 
     def test_init(self):
@@ -140,9 +171,11 @@ class TestEmailReport(TestCase):
 
 class TestDAFLIMS(TestCase):
     def setUp(self):
-        cp = ConfigParser()
-        cp.read('test_data/test.cfg')
-        self.d = DAFLIMS(config=cp)
+        self.d = DAFLIMS(config=get_config_file_parser())
+        try:
+            print self.d.symlinkname
+        except AttributeError:
+            self.skipTest("You don't have access to the DAFLIMBS, skipping appropriate tests")
 
     def test_symlinkname(self):
         self.assertEqual(self.d.symlinkname('lgtf', 'R2D2', 91, 3),
@@ -189,6 +222,7 @@ class TestDAFLIMS(TestCase):
 
 class TestFrontend(TestCase):
     def setUp(self):
+        self.maxDiff = None
         self.f = Frontend(url='http://htsstation.vital-it.ch/rnaseq/')
         self.key = '9pv1x7PamOj80eXnZa14'
         self.frontend_job = Job(id = 2,
@@ -288,7 +322,7 @@ class TestFrontend(TestCase):
                                       u'run_nber': None, u'input_file': None,
                                       u'from_controller': None, u'lane_nber': None,
                                       u'method': None, u'remote_ip': None, u'bein_id': None,
-                                      u'from_action': None, u'status_id': None,
+                                      u'from_action': None, u'status_id': 1,
                                       u'query_string': None, u'controller': None,
                                       u'referer': None, u'path': None, u'facility_id': None,
                                       u'user_agent': None, u'time': None, u'action': None,
@@ -309,8 +343,5 @@ class TestFrontend(TestCase):
         [self.assertEqual(j.groups[g], self.frontend_job.groups[g])
          for g in j.groups.keys()]
 
-def test_all():
-    main()
-
 if __name__ == '__main__':
-    test_all()
+    main()

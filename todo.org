@@ -1,5 +1,9 @@
  - use config parser
  - move scripts/* to bbcfutils/Python!
+
+* track...
+   move functionality from gFeatMiner to bbcflib
+
 * mapseq...
 
 * chipseq...

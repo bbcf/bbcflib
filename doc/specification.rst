@@ -81,10 +81,6 @@ Marion's workflow is run from Fabrice's frontend with a run ID of 36.  Her workf
 
 She could also have written Frontend(cm, run=36) instead to load the URL from the Configuration.
 
-********
-Nongoals
-********
-
 *******
 Details
 *******

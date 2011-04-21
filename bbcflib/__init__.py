@@ -1,6 +1,6 @@
 """
 ===========
-bbcflib 0.1
+Description
 ===========
 
 bbcflib is a set of Python modules for accessing facilities used by
@@ -32,9 +32,12 @@ modules from bbcflib:
 * ``gdv`` from :doc:`bbcflib_gdv`
 """
 
+b'This module needs Python 2.6 or later.'
+
+__version__ = 1.1
+
 from ConfigParser import ConfigParser
 from genrep import GenRep, Assembly
 from email import EmailReport
 from daflims import DAFLIMS
 from frontend import Frontend, Job
-

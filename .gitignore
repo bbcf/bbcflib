@@ -1,10 +1,16 @@
-build
+# Temporary files #
 .DS_Store
 *.pyc
 *.swp
+*.swo
 *~
 \#*
 .#*
-MANIFEST
-dist
-_build
+._*
+
+# Build files #
+/MANIFEST
+
+# Build directories #
+/build/
+/dist/
