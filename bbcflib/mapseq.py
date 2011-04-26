@@ -378,7 +378,7 @@ def wigToBigWig( sql ):
             "return_value": bigwig}
 
 @program
-def bam_to_density( bamfile, chromosome_accession, chromosome_name, output,
+def bam_to_density( bamfile, output, chromosome_accession=None, chromosome_name=None, 
                     nreads=1, merge=-1, read_length=-1, convert=True, sql=False,
                     args=[] ):
     """Runs the ``bam2wig`` program on a bam file and 
@@ -390,10 +390,11 @@ def bam_to_density( bamfile, chromosome_accession, chromosome_name, output,
     Use 'convert'=False if the bam already uses chromosome names instead of ids.
     """
     b2w_args = ["-w",str(nreads),"-s",bamfile,"-o",output]
-    if convert:
-        b2w_args += ["-a",chromosome_accession,"-n",chromosome_name]
-    else:
-        b2w_args += ["-a",chromosome_name]
+    if chromosome_accession != None:
+        if convert and chromosome_name != None:
+            b2w_args += ["-a",chromosome_accession,"-n",chromosome_name]
+        else:
+            b2w_args += ["-a",chromosome_name]
     if merge>=0:
         b2w_args += ["-p",str(merge)]
     if read_length>0:
@@ -442,7 +443,7 @@ def parallel_density_wig( ex, bamfile, chromosomes,
     ex.add( output, description=description, alias=alias )
     return output
 
-def parallel_density_sql( ex, bamfile, chromosomes, 
+def parallel_density_sql( ex, bamfile, chromosomes=None, 
                           nreads=1, merge=-1, read_length=-1, convert=True, 
                           description="", alias=None, b2w_args=[], via='lsf' ):
     """Runs 'bam_to_density' for every chromosome in the 'chromosomes' list.
@@ -459,6 +460,8 @@ def parallel_density_sql( ex, bamfile, chromosomes,
         suffix = ['merged']
     _ = [common.create_sql_track( output+s+'.sql', chromosomes ) for s in suffix]
     results = []
+    if chromosomes = None:
+        chromosomes = {None: {'name': None}}
     for k,v in chromosomes.iteritems():
         future = bam_to_density.nonblocking( ex, bamfile, compact_chromosome_name(k),
                                              v['name'], output, nreads, merge,
@@ -539,7 +542,7 @@ def densities_groups( ex, job_or_dict, file_dict, assembly_or_dict, via='lsf' ):
             if not 'stats' in mapped[k]:
                 mapped[k]['stats'] = mapseq.bamstats( ex, mapped[k]["bam"] )
         if len(mapped)>1:
-            wig = [parallel_density_sql( ex, m["bam"], chromosomes, 
+            wig = [parallel_density_sql( ex, m["bam"], None, 
                                          nreads=m["stats"]["total"], 
                                          merge=merge_strands, 
                                          convert=False, 
@@ -554,7 +557,7 @@ def densities_groups( ex, job_or_dict, file_dict, assembly_or_dict, via='lsf' ):
         else:
             m = mapped.values()[0]
             merged_bam = m['bam']
-            merged_wig = parallel_density_sql( ex, merged_bam, chromosomes, 
+            merged_wig = parallel_density_sql( ex, merged_bam, None, 
                                                nreads=m["stats"]["total"], 
                                                merge=merge_strands, 
                                                convert=False, 
