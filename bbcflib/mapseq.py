@@ -24,6 +24,7 @@ The most common workflow will use ``map_reads`` which takes the following argume
 
 The function ``map_groups`` will take a collection of sample as described in a *job* object from the ``frontend`` module and run fetch fastq files for each of them through using a ``daflims`` object, use ``genrep`` to get the bowtie indexes and run ``map_reads`` for each sample.
 Below is the script used by the frontend::
+
     M = MiniLIMS( limspath )
     gl = use_pickle(M, "global variables")
     htss = frontend.Frontend( url=gl["hts_url"] )

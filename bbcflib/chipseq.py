@@ -8,6 +8,7 @@ a reference genome.
 The most important steps are the binding of ``macs`` via the 'add_macs_results' function, 
 the peak deconvolution algorithm with the 'run_deconv' function and
 the 'parallel_density_sql' function to create quantitative sql tracks from bam files. Below is the script used by the frontend::
+
     M = MiniLIMS( limspath )
     gl = use_pickle(M, "global variables")
     htss = frontend.Frontend( url=gl["hts_url"] )
