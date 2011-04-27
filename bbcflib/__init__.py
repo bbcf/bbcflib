@@ -31,11 +31,11 @@ modules from bbcflib:
 * ``chipseq`` from :doc:`bbcflib_chipseq`
 * ``gdv`` from :doc:`bbcflib_gdv`
 
-============
 Installation
 ============
 
 bbcflib requires:
+
 * Python >=2.6
 * mailer >=0.6 (http://pypi.python.org/pypi/mailer)
 * bein (http://bbcf.epfl.ch/bein/)
@@ -49,7 +49,7 @@ either by going to::
 
 and clicking on "Downloads", or by cloning the git repository with::
 
-    $ git clone https://github.com/bbcf/bein.git
+    $ git clone https://github.com/bbcf/bbcflib.git
 
 Once you have the source code, run::
 
@@ -68,7 +68,6 @@ To run the test suite, in the distribution directory, run::
 
     $ nosetests --with-doctest
 
-=======
 License
 =======
 
