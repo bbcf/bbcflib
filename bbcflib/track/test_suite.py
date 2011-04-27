@@ -60,6 +60,19 @@ class Test_SQL_Read(unittest.TestCase):
             data = t['track'].read('chr1', fields=['score'])
             expected = [(10.0,), (0.0,), (10.0,), (0.0,), (0.0,), (10.0,), (10.0,), (10.0,), (10.0,), (10.0,), (10.0,), (5.0,)]
             self.assertEqual(list(data), expected)
+            # Region #
+            expected =[(20, 30, u'Validation feature 3', 10.0),
+                       (25, 30, u'Validation feature 4',  0.0),
+                       (40, 45, u'Validation feature 6',  0.0),
+                       (40, 50, u'Validation feature 5', 10.0)]
+            data = t['track'].read({'chr':'chr1','start':22,'end':46})
+            self.assertEqual(list(data), expected)
+            # Strict region #
+            data = t['track'].read({'chr':'chr1','start':22,'end':46,'inclusion':'strict'})
+            self.assertEqual(list(data), expected[1:3])
+            # Empty result #
+            data = t['track'].read({'chr':'chr2','start':0,'end':10})
+            self.assertEqual(list(data), [])
 
 ################################################################################### 
 class Test_SQL_Write(unittest.TestCase):

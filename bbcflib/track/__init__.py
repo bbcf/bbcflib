@@ -64,18 +64,16 @@ import os, sys
 from .. import common as com
 
 #-----------------------------------------------------------------------------#   
-known_format_extensions = {
-    'SQLite 3.x database':                       'sql',
-    'SQLite database (Version 3)':               'sql',
-    'Hierarchical Data Format (version 5) data': 'hdf5',
-}
-
-#-----------------------------------------------------------------------------#   
 def _determine_format(path):
     '''Try to guess the format of a track given its path. Returns a three letter extension'''
     # Get extension #
     extension = os.path.splitext(path)[1][1:]
     # If no extension then try magic #
+    known_format_extensions = {
+        'SQLite 3.x database':                       'sql',
+        'SQLite database (Version 3)':               'sql',
+        'Hierarchical Data Format (version 5) data': 'hdf5',
+    }
     if not extension: 
         try:
             import magic
@@ -196,20 +194,21 @@ class Track(object):
     
     def __enter__(self):
         ''' Called when entering a <with> statement'''
-        print self
         return self
 
     def __exit__(self, type, value, traceback):
         '''Called when exiting a <with> statement'''
-        pass #TODO
+        self.unload(type, value, traceback)
 
     #-----------------------------------------------------------------------------#   
     def read(self, selection=None, fields=None):
         '''Read data from the genomic file.
 
-        * *selection* can be the name of a chromosome, in which case all the data on that chromosome will be returned. It can also be a dictionary specifying a region in which case only features contained in that region will be returned. To combine multiple selections you can specify a list including chromosome names and region dictionaries in which case the joined data from those selections will be returned with an added 'chr' field in front since the results could span several chromosomes. When *selection* is left empty, the data from all chromosome is returned.
+        * *selection* can be the name of a chromosome, in which case all the data on that chromosome will be returned. It can also be a dictionary specifying a region in which case only features contained in that region will be returned. To combine multiple selections you can specify a list including chromosome names and region dictionaries. As exepected, if such is the case, the joined data from those selections will be returned with an added 'chr' field in front since the results may span several chromosomes. When *selection* is left empty, the data from all chromosome is returned.
 
         * *fields* is a list of fields which will influence the order in which the information is returned. The default for quantitative tracks is ``['start', 'end', 'name', 'score', 'strand']`` and ``['start', 'end', 'score']`` for quantitative tracks.
+
+        Adding the parameter ``'inclusion':'strict'`` to a region dictionary will return only features exactly contained inside the interval instead of features simply included in the interval.
 
         Examples::
 
@@ -217,6 +216,7 @@ class Track(object):
             data = t.read('chr2')
             data = t.read(['chr1','chr2','chr3'])
             data = t.read({'chr':'chr1', 'start':10000, 'stop':15000})
+            data = t.read({'chr':'chr1', 'start':10000, 'stop':15000, 'inclusion':'strict'})
             data = t.read('chr3', ['name', 'strand'])
             data = t.read({'chr':'chr5', 'start':0, 'stop':200}, ['strand', 'start', 'score'])
 
@@ -299,7 +299,10 @@ class Track(object):
     #-----------------------------------------------------------------------------#
     def load(self):
         pass
-    
+   
+    def unload(self):
+        pass
+ 
     @property
     def default_fields(self):
         return getattr(Track, self.type + '_fields')

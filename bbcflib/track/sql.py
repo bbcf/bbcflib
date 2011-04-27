@@ -32,6 +32,11 @@ class GenomicFormat(Track):
         self.format   = "sql"
         self.all_chrs = self.chrs_from_tables
 
+    def unload(self, type, value, trackback):
+        if not type: self.connection.commit() 
+        self.cursor.close()
+        self.connection.close()
+
     #-----------------------------------------------------------------------------#
     @property
     def type(self):
@@ -81,7 +86,11 @@ class GenomicFormat(Track):
         if type(selection) == dict:
             chrom = selection['chr']
             if chrom not in self.chrs_from_tables: return ()
-            condition = "start < " + str(selection['end']) + " and " + "end > " + str(selection['start'])
+            if selection.get('inclusion') == 'strict':
+                condition = "start < " + str(selection['end'])   + " and " + "start >= " + str(selection['start']) + \
+                  " and " + "end   > " + str(selection['start']) + " and " + "end <= "   + str(selection['end'])
+            else:
+                condition = "start < " + str(selection['end']) + " and " + "end > " + str(selection['start'])
             sql_request = "select " + ','.join(fields) + " from '" + chrom + "' where " + condition
         # Return the results #
         order_by = 'order by start,end'
