@@ -12,9 +12,8 @@ Table of Contents:
 .. toctree::
    :maxdepth: 2
 
-   tutorial
-
    bbcflib
+   tutorial
    bbcflib_chipseq
    bbcflib_daflims
    bbcflib_email
