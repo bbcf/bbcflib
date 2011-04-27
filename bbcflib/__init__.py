@@ -78,7 +78,7 @@ of this license is in the LICENSE.txt file.
 
 b'This module needs Python 2.6 or later.'
 
-__version__ = 1.1.0
+__version__ = '1.1.0'
 
 from ConfigParser import ConfigParser
 from genrep import GenRep, Assembly
