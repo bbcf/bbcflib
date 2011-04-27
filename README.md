@@ -1,4 +1,5 @@
-bbcflib 1.1
+bbcflib 1.1.0
+
 Copyright 2010 Frederick Ross <bbcf at gmail dot com>,
 2011 BBCF <webmaster dot bbcf at epfl dot ch>
 
