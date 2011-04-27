@@ -34,6 +34,8 @@ track_collections = {
   '3': {'path':tracks_path+'qual/bed/validation3.bed', 'type':'qualitative', 'fields':Track.qualitative_fields,     'chrfile':yeast_chr_file},
   },
 }
+
+# Modify tracks collection #
 for col_name, col in sorted(track_collections.items()):
     for track_name, track in sorted(col.items()):
         # Make the SQL path #
@@ -48,8 +50,16 @@ class Test_SQL_Read(unittest.TestCase):
     def runTest(self):
         t = track_collections['Validation']['1']
         with Track(t['path_sql']) as t['track']:
-            data = t['track'].read(fields=t['fields'])
+            # Just the first feature #
+            data = t['track'].read()
             self.assertEqual(data.next(), ('chr1', 0, 10, 'Validation feature 1', 10.0))
+            # Number of features #
+            data = t['track'].read()
+            self.assertEqual(len(list(data)), 12)
+            # Different fields #
+            data = t['track'].read('chr1', fields=['score'])
+            expected = [(10.0,), (0.0,), (10.0,), (0.0,), (0.0,), (10.0,), (10.0,), (10.0,), (10.0,), (10.0,), (10.0,), (5.0,)]
+            self.assertEqual(list(data), expected)
 
 ################################################################################### 
 class Test_SQL_Write(unittest.TestCase):
@@ -67,8 +77,10 @@ class Test_SQL_Creation(unittest.TestCase):
         self.assertEqual(1, 1)
 
 ################################################################################### 
+Test_SQL_Read().runTest()
 
 #-----------------------------------------#
 # This code was written by Lucas Sinclair #
 # lucas.sinclair@epfl.ch                  #
 #-----------------------------------------#
+

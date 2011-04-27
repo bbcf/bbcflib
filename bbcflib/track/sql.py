@@ -20,10 +20,12 @@ class GenomicFormat(Track):
         # Test the file #
         try:
             self.type
-            self.all_tables
-            self.chrs_from_names
+            self.fields
             self.meta_chr    
             self.meta_track
+            self.all_tables
+            self.chrs_from_names
+            self.chrs_from_tables
         except sqlite3.OperationalError:
             raise Exception("The sql track '" + self.path + "' doesn't seem to have the correct format")
         # Set attributes #
@@ -38,7 +40,7 @@ class GenomicFormat(Track):
 
     @property
     def fields(self):
-        if self.chrs_from_tables: return get_fields(self.chrs_from_tables[0])
+        if self.chrs_from_tables: return self.get_fields(self.chrs_from_tables[0])
         else:                     return []
 
     @property
@@ -64,10 +66,10 @@ class GenomicFormat(Track):
     #-----------------------------------------------------------------------------#
     def read(self, selection=None, fields=None):
         # Default fields #
-        if fields == None:
-            fields = self.default_fields
+        if not fields:
+            fields = self.fields
         # Default selection #
-        if selection == None:
+        if not selection:
             selection = self.chrs_from_tables
         # Special case multi-chromosome #
         if type(selection) == list:
@@ -115,7 +117,7 @@ class GenomicFormat(Track):
 
     #-----------------------------------------------------------------------------#
     def get_fields(self, chrom):
-        self.fields = [x[1] for x in self.cursor.execute('pragma table_info("' + chrom + '")').fetchall()]
+        return [x[1] for x in self.cursor.execute('pragma table_info("' + chrom + '")').fetchall()]
 
     def make_indexes(self):
         for chrom in self.chrs_from_tables:
