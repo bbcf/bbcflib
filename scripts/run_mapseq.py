@@ -25,6 +25,8 @@ with execution( M, description=hts_key, remote_working_directory=working_dir ) a
                          dict((k,v['name']) for k,v in job.groups.iteritems()),
                          gl['script_path'] )
     if job.options['compute_densities']:
+        if not(job.options.get('read_extend')>0):
+            job.options['read_extend'] = files.values()[0].values()[0]['stats']['read_length']
         files = densities_groups( ex, job, files, assembly )
         gdv_project = gdv.create_gdv_project( gl['gdv']['key'], gl['gdv']['email'],
                                               job.description, hts_key, 

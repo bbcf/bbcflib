@@ -5,7 +5,7 @@
    move functionality from gFeatMiner to bbcflib
 
 * mapseq...
+   update doc 
 
 * chipseq...
-   use poisson thresholds for macs limits
-   defaults macs params?
+   update doc
