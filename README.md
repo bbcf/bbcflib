@@ -26,7 +26,7 @@ either by going to
 
 and clicking on "Downloads", or by cloning the git repository with
 
-    $ git clone https://github.com/bbcf/bein.git
+    $ git clone https://github.com/bbcf/bbcflib.git
 
 Once you have the source code, run
 
