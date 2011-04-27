@@ -6,14 +6,16 @@ Submodule: bbcflib.track.sql
 Implementation of the SQL format.
 """
 
-from ..track import Track
+import sqlite3
+from ..track import *
 
+###########################################################################   
 class GenomicFormat(Track):
     special_tables = ['attributes', 'chrNames']
 
-    def load():
+    def load(self):
         # Prepare the connection #
-        self.connection = sqlite3.connect(self.location)
+        self.connection = sqlite3.connect(self.path)
         self.cursor = self.connection.cursor()
         # Test the file #
         try:
@@ -24,7 +26,7 @@ class GenomicFormat(Track):
             self.meta_track
         except sqlite3.OperationalError:
             raise Exception("The sql track '" + self.path + "' doesn't seem to have the correct format")
-        # Set attributes #
+        # Set attributes #
         self.format   = "sql"
         self.all_chrs = self.chrs_from_tables
 
@@ -60,6 +62,43 @@ class GenomicFormat(Track):
         for k in data.keys(): self.cursor.execute('insert into attributes (key,value) values (?,?)',(k,data[k]))
 
     #-----------------------------------------------------------------------------#
+    def read(self, selection=None, fields=None):
+        # Default fields #
+        if fields == None:
+            fields = self.default_fields
+        # Default selection #
+        if selection == None:
+            selection = self.chrs_from_tables
+        # Special case multi-chromosome #
+        if type(selection) == list:
+            return join_read_queries(self, selection, fields)
+        # Other cases #
+        if type(selection) == str:
+            if selection not in self.chrs_from_tables: return ()
+            sql_request = "select " + ','.join(fields) + " from '" + selection + "'"
+        if type(selection) == dict:
+            chrom = selection['chr']
+            if chrom not in self.chrs_from_tables: return ()
+            condition = "start < " + str(selection['end']) + " and " + "end > " + str(selection['start'])
+            sql_request = "select " + ','.join(fields) + " from '" + chrom + "' where " + condition
+        # Return the results #
+        order_by = 'order by start,end'
+        return self.cursor.execute(sql_request + ' ' + order_by)
+
+    def write(self, chrom, data, fields):
+        # Default fields #
+        if fields == None:
+            fields = self.default_fields
+        # Get types #
+        columns = ','.join([field + ' ' + Track.field_types[field] for field in fields])
+        # Maybe create the table #
+        if chrom not in self.chrs_from_tables:
+            self.cursor.execute('create table "' + chrom + '" (' + columns + ')')
+        # Execute the insertion
+        sql_command = 'insert into "' + chrom + '" values (' + ','.join(['?' for x in range(len(fields))])+')' 
+        self.cursor.executemany(sql_command, data)
+    
+    #-----------------------------------------------------------------------------#
     @property
     def all_tables(self):
         self.cursor.execute("select name from sqlite_master where type='table'") 
@@ -74,12 +113,33 @@ class GenomicFormat(Track):
     def chrs_from_tables(self):
         return [x for x in self.all_tables if x not in self.special_tables]
 
-    def get_fields(self, chr):
-        self.fields = [x[1] for x in self.cursor.execute('pragma table_info("' + self.all_chrs[0] + '")').fetchall()]
-    
     #-----------------------------------------------------------------------------#
-    def read():
-        pass
+    def get_fields(self, chrom):
+        self.fields = [x[1] for x in self.cursor.execute('pragma table_info("' + chrom + '")').fetchall()]
 
-    def write():
-        pass 
+    def make_indexes(self):
+        for chrom in self.chrs_from_tables:
+            self.cursor.execute(    "create index '" + chrom + "_range_idx' on '" + chrom + "' (start,end)")
+            if 'score' in self.fields:
+                self.cursor.execute("create index '" + chrom + "_score_idx' on '" + chrom + "' (score)")
+            if 'name' in self.fields:
+                self.cursor.execute("create index '" + chrom + "_name_idx' on '" +  chrom + "' (name)")
+
+###########################################################################   
+def create(path, type, name):
+    connection = sqlite3.connect(path)
+    cursor = connection.cursor()
+    cursor.execute('create table chrNames (name text, length integer)') 
+    cursor.execute('create table attributes (key text, value text)')
+    if type == 'quantitative':
+        cursor.execute('insert into attributes (key,value) values ("datatype","quantitative")') 
+    if type == 'qualitative':
+        cursor.execute('insert into attributes (key,value) values ("datatype","qualitative")') 
+    connection.commit()
+    cursor.close()
+    connection.close()
+
+#-----------------------------------------#
+# This code was written by Lucas Sinclair #
+# lucas.sinclair@epfl.ch                  #
+#-----------------------------------------# 
