@@ -1,7 +1,7 @@
 """
-=================================
-Submodule: bbcflib.track.bedgraph
-=================================
+========================================
+Submodule: bbcflib.track.format_bedgraph
+========================================
 
 Implementation of the bedGraph format.
 """

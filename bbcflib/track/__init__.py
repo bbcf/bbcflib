@@ -108,11 +108,12 @@ def _determine_format(path):
 
 def _import_implementation(format):
     '''Try to import the implementation of a given format'''
+    format = 'format_' + format
     try:
         if not hasattr(sys.modules[__package__], format):
             __import__(__package__ + '.' + format)
         return sys.modules[__package__ + '.' + format]
-    except ImportError, AttributeError:
+    except (ImportError, AttributeError) as err:
         raise Exception("The format '" + format + "' is not supported at the moment")
 
 #-----------------------------------------------------------------------------#   
@@ -178,7 +179,7 @@ class Track(object):
         if cls is Track:
             if not format: format = _determine_format(path)
             implementation = _import_implementation(format)
-            instance       = implementation.GenomicFormat(path, name, chrfile)
+            instance       = implementation.GenomicFormat(path, format, name, chrfile)
         else:
             instance = super(Track, cls).__new__(cls)
         return instance
@@ -186,6 +187,7 @@ class Track(object):
     def __init__(self, path, format=None, name=None, chrfile=None):
         # Set attributes #
         self.path     = path
+        self.format   = format
         self.name     = name
         self.chr_file = chrfile
         # Check existance #
@@ -309,7 +311,15 @@ class Track(object):
         
            ``convert`` returns nothing.
         '''
-        raise NotImplementedError
+        if type != self.type: raise NotImplementedError 
+        implementation = _import_implementation(format)
+        if hasattr(implementation, dump):
+        
+        else:
+            with new(path, format, type, name) as t:
+                for chrom in self.all_chrs: t.write(chrom, self.read(chrom), self.fields)
+                t.meta_track = self.meta_track
+                t.meta_chr   = self.meta_chr            
 
     #-----------------------------------------------------------------------------#
     @property
@@ -348,7 +358,7 @@ class Track(object):
  
     @property
     def default_fields(self):
-        return getattr(Track, self.type + '_fields')
+        return getattr(Track, self._type + '_fields')
 
 ###########################################################################   
 def new(path, format=None, type='qualitative', name='Unnamed'):

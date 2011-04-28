@@ -7,10 +7,11 @@ Tests for the bbcflib.track subpackage.
 """
 
 # Genreral Modules #
-import os, tempfile
+import os
 
 # Specific Modules #
 from ..track import Track, new
+from ..common import named_temporary_path
 
 # Unittesting module #
 try:
@@ -45,13 +46,6 @@ for col_name, col in sorted(track_collections.items()):
         new_name = '.'.join(old_name.split('.')[:-1]  + ['sql'])
         track['path_sql'] = new_dir + new_name        
 
-# Get random file paths not file object #
-def named_temporary_path(suffix):
-    file = tempfile.NamedTemporaryFile(suffix=suffix, delete=False)
-    path = file.name
-    file.close()
-    os.remove(path)
-    return path
 
 ###################################################################################
 class Test_Read(unittest.TestCase):
