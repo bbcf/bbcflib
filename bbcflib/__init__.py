@@ -31,6 +31,7 @@ modules from bbcflib:
 * ``chipseq`` from :doc:`bbcflib_chipseq`
 * ``gdv`` from :doc:`bbcflib_gdv`
 
+============
 Installation
 ============
 
@@ -68,6 +69,7 @@ To run the test suite, in the distribution directory, run::
 
     $ nosetests --with-doctest
 
+=======
 License
 =======
 
