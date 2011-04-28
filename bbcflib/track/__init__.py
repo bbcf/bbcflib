@@ -40,24 +40,31 @@ To create a new track and then write to it, you would do the following::
 
     from bbcflib.track import new
     with new('tracks/rap1_peaks.sql', 'sql', name='Rap1 Peaks') as mypeaks:
-        mypeaks.write('chr1', [('10','20','A','0','+')])
+        mypeaks.write('chr1', [(10, 20, 'A', 0.0, 1)])
 
 For instance, to make a new track from an old one, and invert the strand of every feature::
 
     from bbcflib.track import Track, new
     def invert_strands(data):
         for feature in data:
-            yield (feature[0], feature[1], feature[2], feature[3], feature[4] == '+' and '-' or '+')
+            yield (feature[0], feature[1], feature[2], feature[3], feature[4] == 1 and -1 or 1)
     with Track('tracks/orig.sql', name='Normal strands') as a:
         with new('tracks/inverted.sql', name='Inverted strands') as b:
             for chrom in a:
                 b.write(chrom, invert_strands(a.read(chrom)))
 
-To convert a track from a slow format (e.g. BED) to a database format (e.g. SQL) you first create a track object and call the convert method on it::
+To convert a track from a format (e.g. BED) to an other format (e.g. SQL) you first create a track object and call the convert method on it::
 
     from bbcflib.track import Track
     with Track('tracks/rp_genes.bed') as rpgenes:
         rpgenes.convert('tracks/rp_genes.sql', 'sql')
+
+To set the chromosome metadata or the track metadata you simply asign to that attribute::
+
+    from bbcflib.track import Track
+    with Track('tracks/scores.sql') as t:
+        t.meta_chr   = [{'name': 'chr1', 'length': 1500}, {'name': 'chr2', 'length': 2000}] 
+        t.meta_track = {'datatype': 'quantitative', 'source': 'SGD'}
 """
 
 import os, sys
@@ -84,8 +91,12 @@ def _determine_format(path):
             m = magic.Magic('magic')
         else:
             m = magic.Magic()
+        # Does the file even exist ? #
+        try:
+            type = m.from_file(path)
+        except IOError:
+            raise Exception("The format of the path '" + path + "' cannot be determined. Please specify a format or add an extension.")
         # Check the result of magic #
-        type = m.from_file(path)
         try:
             extension = known_format_extensions[type]
         except KeyError as err:
@@ -104,6 +115,7 @@ def _import_implementation(format):
     except ImportError, AttributeError:
         raise Exception("The format '" + format + "' is not supported at the moment")
 
+#-----------------------------------------------------------------------------#   
 def join_read_queries(track, selections, fields):
     ''' Join read results when selection is a list'''
     def _add_chromsome(sel, data):
@@ -118,8 +130,9 @@ class Track(object):
     '''The class used to access genomic data. It can load a track from disk, whatever the format is.
 
             * *path* is the path to track file.
-            * *name* is an option string specifying the name of the track to load.
-            * *chrfile* is the path to chromosome file. This is specified when the underlying format is missing chromosome length information. 
+            * *format* is an optional string specifying the format of the track to load when it cannot be guessed from the file extension.
+            * *name* is an optional string specifying the name of the track to load.
+            * *chrfile* is the path to chromosome file. This is specified only when the underlying format is missing chromosome length information. 
         
         Examples::
 
@@ -141,8 +154,8 @@ class Track(object):
            * *chr_file* is the path to a chromosome file if one was given.
     '''
 
-    qualitative_fields = ['start', 'end', 'name', 'score', 'strand'] 
-    quantiative_fields = ['start', 'end', 'score'] 
+    qualitative_fields  = ['start', 'end', 'name', 'score', 'strand']
+    quantitative_fields = ['start', 'end', 'score']
     field_types = {
         'start':        'integer',
         'end':          'integer',
@@ -158,19 +171,19 @@ class Track(object):
     }
     
     #-----------------------------------------------------------------------------#   
-    def __new__(cls, path, name=None, chrfile=None):
+    def __new__(cls, path, format=None, name=None, chrfile=None):
         '''Internal factory-like method that is called before creating a new instance of Track.
            This function determines the format of the file that is provided and returns an
            instance of the appropriate child class.'''
         if cls is Track:
-            format         = _determine_format(path)
+            if not format: format = _determine_format(path)
             implementation = _import_implementation(format)
             instance       = implementation.GenomicFormat(path, name, chrfile)
         else:
             instance = super(Track, cls).__new__(cls)
         return instance
 
-    def __init__(self, path, name=None, chrfile=None):
+    def __init__(self, path, format=None, name=None, chrfile=None):
         # Set attributes #
         self.path     = path
         self.name     = name
@@ -201,24 +214,31 @@ class Track(object):
         self.unload(type, value, traceback)
 
     #-----------------------------------------------------------------------------#   
-    def read(self, selection=None, fields=None):
+    def read(self, selection=None, fields=None, order='start,end', cursor=False):
         '''Read data from the genomic file.
 
         * *selection* can be the name of a chromosome, in which case all the data on that chromosome will be returned. It can also be a dictionary specifying a region in which case only features contained in that region will be returned. To combine multiple selections you can specify a list including chromosome names and region dictionaries. As exepected, if such is the case, the joined data from those selections will be returned with an added 'chr' field in front since the results may span several chromosomes. When *selection* is left empty, the data from all chromosome is returned.
 
-        * *fields* is a list of fields which will influence the order in which the information is returned. The default for quantitative tracks is ``['start', 'end', 'name', 'score', 'strand']`` and ``['start', 'end', 'score']`` for quantitative tracks.
-
         Adding the parameter ``'inclusion':'strict'`` to a region dictionary will return only features exactly contained inside the interval instead of features simply included in the interval.
+
+        * *fields* is a list of fields which will influence the length of the tuples returned and the way in which the information is returned. The default for quantitative tracks is ``['start', 'end', 'name', 'score', 'strand']`` and ``['start', 'end', 'score']`` for quantitative tracks.
+
+        * *order* is a sublist of *fields* which will influence the order in which the tuples are yieled. By default results are sorted by ``start`` and, secondly, by ``end``.
+
+        * *cursor* is a boolean which should be set true if you are performing several operations on the same track at the same time. This is the case, for instance when you are chaining a read operation to a write operation.
 
         Examples::
 
-            data = t.read()
-            data = t.read('chr2')
-            data = t.read(['chr1','chr2','chr3'])
-            data = t.read({'chr':'chr1', 'start':10000, 'stop':15000})
-            data = t.read({'chr':'chr1', 'start':10000, 'stop':15000, 'inclusion':'strict'})
-            data = t.read('chr3', ['name', 'strand'])
-            data = t.read({'chr':'chr5', 'start':0, 'stop':200}, ['strand', 'start', 'score'])
+            with Track('tracks/example.sql') as t:
+                data = t.read()
+                data = t.read('chr2')
+                data = t.read(['chr1','chr2','chr3'])
+                data = t.read({'chr':'chr1', 'start':10000, 'stop':15000})
+                data = t.read({'chr':'chr1', 'start':10000, 'stop':15000, 'inclusion':'strict'})
+                data = t.read('chr3', ['name', 'strand'])
+                data = t.read({'chr':'chr5', 'start':0, 'stop':200}, ['strand', 'start', 'score'])
+            with Track('tracks/copychrs.sql') as t:
+                t.write('chrY', t.read('chrX', cursor=True))
 
         ``read`` returns a generator object yielding tuples.
         '''
@@ -235,13 +255,33 @@ class Track(object):
 
         Examples::
 
-            t.write('chr1', [('10','20','A','0','+'), ('40','50','B','0','-')])
-            def example_generator():
-                for i in xrange(5):
-                    yield ('10','20','X',i,'+') 
-            t.write('chr2', example_generator())
+            with Track('tracks/example.sql') as t:
+                t.write('chr1', [(10, 20, 'A', 0.0, 1), (40, 50, 'B', 0.0, -1)])
+                def example_generator():
+                    for i in xrange(5):
+                        yield (10, 20, 'X', i, 1) 
+                t.write('chr2', example_generator())
 
         ``write`` returns nothing.
+        '''
+        raise NotImplementedError
+
+    def remove(self, chrom=None):
+        '''Remove data from a given chromosome.
+
+        * *chrom* is the name of the chromosome that one whishes to delete or a list of chromosomes to delete.
+
+        Called with no arguments, will remove every chromosome.
+
+        Examples::
+
+            with Track('tracks/example.sql') as t:
+                t.remove('chr1')
+            with Track('tracks/example.sql') as t:
+                t.remove(['chr1', 'chr2', 'chr3'])
+            with Track('tracks/example.sql') as t:
+                t.remove()
+
         '''
         raise NotImplementedError
 
@@ -302,31 +342,38 @@ class Track(object):
    
     def unload(self):
         pass
+
+    def commit(self):
+        pass
  
     @property
     def default_fields(self):
         return getattr(Track, self.type + '_fields')
 
 ###########################################################################   
-def new(path, format='sql', type='qualitative', name='Unnamed'):
+def new(path, format=None, type='qualitative', name='Unnamed'):
     '''Create a new empty track in preparation for writing to it.
 
         * *path* is the file path where the new track will be created
 
-        * *format* is the format into which the *track* will be created.
+        * *format* is the format in which the new track will be created.
         
         * *name* is an optional name for the track.
 
         Examples::
             
-            t = new('tmp/track.sql')
-            t = new('tracks/peaks.sql', 'sql', name='High affinity peaks')
-            t = new('tracks/scores.sql', 'sql', type='quantitative', name='Signal along the genome')
-        
+            with new('tmp/track.sql') as t:
+                t.write('chr1', [(10, 20, 'A', 0.0, 1)])
+            with new('tracks/peaks.sql', 'sql', name='High affinity peaks') as t:
+                t.write('chr5', [(500, 1200, 'Peak1', 11.3, 0)])
+            with new('tracks/scores.sql', 'sql', type='quantitative', name='Signal along the genome') as t:
+                t.write('chr1', [(10, 20, 500.0)])
+
         ``new`` returns a Track instance.
     '''
     if os.path.exists(path):
         raise Exception("The location '" + path + "' is already taken")
+    if not format: format = _determine_format(path)
     implementation = _import_implementation(format)
     implementation.create(path, type, name)
     return Track(path, name=name)
