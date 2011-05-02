@@ -36,6 +36,7 @@ Installation
 ============
 
 bbcflib requires:
+
 * Python >=2.6
 * mailer >=0.6 (http://pypi.python.org/pypi/mailer)
 * bein (http://bbcf.epfl.ch/bein/)

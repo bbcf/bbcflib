@@ -1,8 +1,11 @@
- - use config parser
+ - use config parser and Fred's deepmap
  - move scripts/* to bbcfutils/Python!
 
 * track...
    move functionality from gFeatMiner to bbcflib
+
+* common...
+   change sql stuff to use gMiner tracks
 
 * mapseq...
    update doc 

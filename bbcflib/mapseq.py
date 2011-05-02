@@ -232,7 +232,8 @@ def map_reads( ex, fastq_file, chromosomes, bowtie_index,
                 nh = 1
             if nh < 1:
                 continue
-            outfile.write(read)
+            if maxhits == None or nh <= maxhits:
+                outfile.write(read)
         outfile.close()
         infile.close()
         reduced_bam = add_and_index_bam( ex, bam2, "bam:"+name+"filtered.bam" )

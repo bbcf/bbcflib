@@ -10,8 +10,8 @@ the peak deconvolution algorithm with the 'run_deconv' function and
 the 'parallel_density_sql' function to create quantitative sql tracks from bam files. Below is the script used by the frontend::
 
     hts_key = 'test_key'
-    M = MiniLIMS( limspath )
-    gl = use_pickle(M, "global variables")
+    M = MiniLIMS( '/path/to/chipseq/minilims' )
+    gl = use_pickle( M, "global variables" )
     htss = frontend.Frontend( url=gl["hts_url"] )
     job = htss.job( hts_key )
     g_rep = genrep.GenRep( gl["genrep_url"], gl["bwt_root"] )
