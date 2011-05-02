@@ -6,8 +6,13 @@ Submodule: bbcflib.track.format_wig
 Implementation of the WIG format.
 """
 
+# General modules #
+import sys, shlex
+
+# Specific module #
 from .track_proxy import ProxyTrack
 from .track_text import TextTrack
+from ..common import sentinelize
 
 ###########################################################################
 class GenomicFormat(ProxyTrack, TextTrack):
@@ -22,7 +27,7 @@ class GenomicFormat(ProxyTrack, TextTrack):
     def _read(self):
         def all_features():
             params = {}
-            for line in self.file:
+            for line in self._file:
                 line = line.strip("\n").lstrip()
                 if len(line) == 0:              continue
                 if line.startswith("#"):        continue
@@ -77,7 +82,7 @@ class GenomicFormat(ProxyTrack, TextTrack):
                     yield [params['chrom'], line[0], line[0] + params['span'], line[1]]
         def all_entries():
             sentinel = ('', sys.maxint, sys.maxint, 0.0)
-            X = gm_com.sentinelize(all_features(), sentinel)
+            X = sentinelize(all_features(), sentinel)
             x = X.next()
             if x == sentinel:
                 yield x
@@ -116,13 +121,15 @@ class GenomicFormat(ProxyTrack, TextTrack):
             chr = entry[0]
             if chr in self._seen_chr:
                 raise Exception("The track " + self.location + " is not sorted by chromosomes (" + chr + ").")
-            if not chr in self.all_chrs:
+            if not chr in self._all_chrs:
                 raise Exception("The track " + self.location + " has a value (" + chr + ") not specified in the chromosome file.")
             self._seen_chr.append(chr)
             yield chr, iter_until_different_chr()
 
-    def dump(self):
+    #-----------------------------------------------------------------------------#
+    def _output(self):
         raise NotImplementedError
+
 
 ###########################################################################
 def create(path):

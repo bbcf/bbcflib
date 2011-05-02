@@ -8,7 +8,7 @@ Implementation of the BED format.
 
 from .track_proxy import ProxyTrack
 from .track_text import TextTrack, strand_to_int, int_to_strand
-from ..common import memoize_once
+from ..common import memoized_method
 
 all_fields_possible = ['start', 'end', 'name', 'score', 'strand', 'thick_start', 'thick_end',
                        'item_rgb', 'block_count', 'block_sizes', 'block_starts']
@@ -20,7 +20,7 @@ class GenomicFormat(ProxyTrack, TextTrack):
         return 'qualitative' 
    
     @property
-    @memoize_once
+    @memoized_method
     def _fields(self):
         self._file.seek(0)
         while True:
@@ -103,7 +103,7 @@ class GenomicFormat(ProxyTrack, TextTrack):
             chrom = line[0]
             if chrom in self._seen_chr:
                 raise Exception("The track '" + self._path + "' is not sorted by chromosomes (" + chrom + ").")
-            if not chrom in [x['name'] for x in self._meta_chr]:
+            if not chrom in self._all_chrs:
                 raise Exception("The track '" + self._path + "' has a value (" + chrom + ") not specified in the chromosome file.")
             self._seen_chr.append(chrom)
             yield chrom, iter_until_different_chr()

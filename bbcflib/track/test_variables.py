@@ -15,10 +15,16 @@ except NameError:
 yeast_chr_file = tracks_path + 'chr/yeast.chr' 
 track_collections = {
 'Validation': {
-  '1': {'path':tracks_path+'qual/bed/validation1.bed', 'type':'qualitative', 'fields':Track.qualitative_fields[:4], 'chrfile':yeast_chr_file},
-  '2': {'path':tracks_path+'qual/bed/validation2.bed', 'type':'qualitative', 'fields':Track.qualitative_fields,     'chrfile':yeast_chr_file},
-  '3': {'path':tracks_path+'qual/bed/validation3.bed', 'type':'qualitative', 'fields':Track.qualitative_fields,     'chrfile':yeast_chr_file},
+  '1': {'path':tracks_path+'qual/bed/validation1.bed', 'type':'qualitative', ' fields':Track.qualitative_fields[:4], 'chrfile':yeast_chr_file},
+  '2': {'path':tracks_path+'qual/bed/validation2.bed', 'type':'qualitative',  'fields':Track.qualitative_fields,     'chrfile':yeast_chr_file},
+  '3': {'path':tracks_path+'qual/bed/validation3.bed', 'type':'qualitative',  'fields':Track.qualitative_fields,     'chrfile':yeast_chr_file},
   },
+'Scores': {
+  '1': {'path':tracks_path+'quan/wig/scores1.wig',     'type':'quantitative', 'fields':Track.quantitative_fields,    'chrfile':yeast_chr_file},
+  '2': {'path':tracks_path+'quan/wig/scores2.wig',     'type':'quantitative', 'fields':Track.quantitative_fields,    'chrfile':yeast_chr_file},
+  '3': {'path':tracks_path+'quan/wig/scores3.wig',     'type':'quantitative', 'fields':Track.quantitative_fields,    'chrfile':yeast_chr_file},
+  '4': {'path':tracks_path+'quan/wig/scores4.wig',     'type':'quantitative', 'fields':Track.quantitative_fields,    'chrfile':yeast_chr_file},
+    },
 }
 
 # Modify tracks collection #

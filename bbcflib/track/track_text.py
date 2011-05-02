@@ -10,7 +10,7 @@ Methods common to the text formats.
 import os, shlex
 
 # Specific Modules #
-from ..common import memoize_once
+from ..common import memoized_method
 
 #-----------------------------------------------------------------------------#
 def strand_to_int(strand):
@@ -26,7 +26,7 @@ def int_to_strand(num):
 ###########################################################################
 class TextTrack(object):
     @property
-    @memoize_once
+    @memoized_method
     def _meta_chr(self):
         if not self.chrfile:
             raise Exception("The track '" + self._path + "' does not have a chromosome file associated.")
@@ -58,7 +58,7 @@ class TextTrack(object):
         return result
 
     @property
-    @memoize_once
+    @memoized_method
     def _meta_track(self):
         self._file.seek(0)
         result = {}    
@@ -76,6 +76,10 @@ class TextTrack(object):
                     raise Exception("The <track> header line for the file '" + self._path + "' seams to be invalid", err)
             return result
 
+    @property
+    def _all_chrs(self):
+       return [x['name'] for x in self._meta_chr]
+ 
 #-----------------------------------------#
 # This code was written by Lucas Sinclair #
 # lucas.sinclair@epfl.ch                  #

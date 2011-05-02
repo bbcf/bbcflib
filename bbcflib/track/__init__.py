@@ -152,7 +152,7 @@ class Track(object):
                 ``[{'name': 'chr1', 'length': 197195432}, {'name': 'chr2', 'length': 129993255}]``
            * *meta_track* is a dictionary of meta data associated to the track (information like the source, etc). For instance:
                  ``{'datatype': 'quantitative', 'source': 'SGD'}``
-           * *chrfile* is the path to a chromosome file if one was given.
+           * *chrfile* is the path to a chromosome file if one is needed.
     '''
 
     qualitative_fields  = ['start', 'end', 'name', 'score', 'strand']
@@ -184,7 +184,8 @@ class Track(object):
             instance = super(Track, cls).__new__(cls)
         return instance
 
-    def __init__(self, path, format=None, name=None, chrfile=None):
+    def __init__(self, path, format=None, name=None, chrfile=None, type='qualitative'):
+        #TODO type=qualitative
         # Default format #
         if not format: format = _determine_format(path)
         # Set attributes #
