@@ -287,7 +287,7 @@ class Track(object):
         '''
         raise NotImplementedError
 
-    def convert(self, path, format='sql', mean_scores=False):
+    def convert(self, path, format='sql'):
         '''Convert a track to a given format.
        
            * *path* is the file path where the new track will be created
@@ -303,16 +303,12 @@ class Track(object):
         
            ``convert`` returns nothing.
         '''
-        if type != self.type:
-            raise NotImplementedError 
-        implementation = _import_implementation(format)
-        if hasattr(implementation, dump):
-            
-        else:
-            with new(path, format, type, name) as t:
-                for chrom in self.all_chrs: t.write(chrom, self.read(chrom), self.fields)
-                t.meta_track = self.meta_track
-                t.meta_chr   = self.meta_chr            
+        if format == self.format:
+            raise Exception("The track '" + path + "' cannot be converted to the " + format + " format because it is already in that format.")
+        with new(path, format, type, name) as t:
+            for chrom in self.all_chrs: t.write(chrom, self.read(chrom), self.fields)
+            t.meta_track = self.meta_track
+            t.meta_chr   = self.meta_chr            
 
     #-----------------------------------------------------------------------------#
     @property

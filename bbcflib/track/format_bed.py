@@ -109,7 +109,7 @@ class GenomicFormat(ProxyTrack, TextTrack):
             yield chrom, iter_until_different_chr()
 
     #-----------------------------------------------------------------------------#
-    def dump(self):
+    def _output(self):
         # Add info #
         self.attributes = old_track.attributes
         self.attributes['name']           = old_track.name
@@ -133,16 +133,15 @@ class GenomicFormat(ProxyTrack, TextTrack):
                     pass
                 yield chr + '\t' + '\t'.join([str(f) for f in line]) + '\n' 
         # Write everything #
-        with open(self.location, 'w') as self.file:
-            self.file.write(line)
-            for chr in old_track.all_chrs:
-                for line in old_track.get_data_qual({'type':'chr', 'chr':chr}, self.fields):
-                    elems = list(line)
-                    try:
-                        elems[4] = int_to_strand(line[4])
-                    except IndexError:
-                        pass
-                    self.file.writelines(chr + '\t' + '\t'.join([str(f) for f in elems]) + '\n')
+        yield line
+        for chr in old_track.all_chrs:
+            for line in old_track.get_data_qual({'type':'chr', 'chr':chr}, self.fields):
+                elems = list(line)
+                try:
+                    elems[4] = int_to_strand(line[4])
+                except IndexError:
+                    pass
+                yield chr + '\t' + '\t'.join([str(f) for f in elems]) + '\n'
 
 ###########################################################################
 def create(path):

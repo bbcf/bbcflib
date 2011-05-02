@@ -6,7 +6,12 @@ Submodule: bbcflib.track.track_proxy
 Methods that create an SQL file upon opening in the temporary directory and reconverts everything to a text file file upon closing, all transparently.
 """
 
+# General modules #
+import os
+
+# Specific module #
 from ..common import named_temporary_path
+from ..format_sql import SQLTrack
 from ..track import new
 
 ###########################################################################
@@ -43,8 +48,16 @@ class ProxyTrack(SQLTrack):
         super(ProxyTrack, self).unload(type, value, trackback)
         if self.modified: self.commit()
 
-    def commit(self):
+    def commit(self, path=None):
         self.dump()
+    
+    def dump(self, path=None):
+        if not path:
+            path = self._path
+        elif os.path.exists(path):
+            raise Exception("The location '" + path + "' is already taken")
+        with open(path, 'w') as file:
+            file.writelines(self._ouput())
 
     #-----------------------------------------------------------------------------#
     @meta_chr.setter
@@ -66,9 +79,11 @@ class ProxyTrack(SQLTrack):
         super(ProxyTrack, self).remove(chrom)
     
     #-----------------------------------------------------------------------------#
-    def convert(self, path, format='sql', type=None, mean_scores=False):
-        if format == 'sql' and type == self.type:
-            pass
+    def convert(self, path, format='sql'):
+        if os.path.exists(path):
+            raise Exception("The location '" + path + "' is already taken")
+        if format == 'sql':
+            os.rename(self.path, path)
         else:
             super(ProxyTrack, self).convert(path, format, type, mean_scores)
 
