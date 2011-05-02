@@ -1,11 +1,3 @@
-"""
-===============================
-Submodule: bbcflib.track._test_
-===============================
-
-Tests for the bbcflib.track subpackage.
-"""
-
 # Genreral Modules #
 import os
 
@@ -13,39 +5,14 @@ import os
 from ..track import Track, new
 from ..common import named_temporary_path
 
+# Specific Variables #
+from .test_variables import track_collections
+
 # Unittesting module #
 try:
     import unittest2 as unittest
 except ImportError:
     import unittest
-
-# Tracks path #
-tracks_path = 'extras/tracks/' 
-try:
-    tracks_path = os.path.abspath('/'.join(__file__.split('/')[:-1]) + '../../../' + tracks_path) + '/'
-except NameError:
-    pass
-
-# Tracks collection #
-yeast_chr_file = tracks_path + 'chr/yeast.chr' 
-track_collections = {
-'Validation': {
-  '1': {'path':tracks_path+'qual/bed/validation1.bed', 'type':'qualitative', 'fields':Track.qualitative_fields[:4], 'chrfile':yeast_chr_file},
-  '2': {'path':tracks_path+'qual/bed/validation2.bed', 'type':'qualitative', 'fields':Track.qualitative_fields,     'chrfile':yeast_chr_file},
-  '3': {'path':tracks_path+'qual/bed/validation3.bed', 'type':'qualitative', 'fields':Track.qualitative_fields,     'chrfile':yeast_chr_file},
-  },
-}
-
-# Modify tracks collection #
-for col_name, col in sorted(track_collections.items()):
-    for track_name, track in sorted(col.items()):
-        # Make the SQL path #
-        old_path = track['path']
-        old_name = old_path.split('/')[-1]
-        new_dir  = '/'.join(old_path.split('/')[:-2]) + '/' + 'sql' + '/'
-        new_name = '.'.join(old_name.split('.')[:-1]  + ['sql'])
-        track['path_sql'] = new_dir + new_name        
-
 
 ###################################################################################
 class Test_Read(unittest.TestCase):
@@ -162,9 +129,6 @@ class Test_Remove(unittest.TestCase):
 class Test_Conversion(unittest.TestCase):
     def runTest(self):
         self.assertEqual(1, 1)
-
-###################################################################################
-Test_Remove().runTest()
 
 #-----------------------------------------#
 # This code was written by Lucas Sinclair #
