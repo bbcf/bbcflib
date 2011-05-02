@@ -16,14 +16,6 @@ from ..common import sentinelize
 
 ###########################################################################
 class GenomicFormat(ProxyTrack, TextTrack):
-    @property
-    def _type(self):
-        return 'quantitative' 
-   
-    @property
-    def _fields(self):
-        return self.default_fields
-
     def _read(self):
         def all_features():
             params = {}
@@ -99,7 +91,7 @@ class GenomicFormat(ProxyTrack, TextTrack):
                         x[2] = x_next[2]
                         continue
                 if x[3] != 0.0: yield tuple(x)
-                x = x_next 
+                x = x_next
 
         global chr, entry, generator
         chr             = ''
@@ -126,9 +118,18 @@ class GenomicFormat(ProxyTrack, TextTrack):
             self._seen_chr.append(chr)
             yield chr, iter_until_different_chr()
 
+    def _write(self):
+        raise NotImplementedError #TODO
+
     #-----------------------------------------------------------------------------#
-    def _output(self):
-        raise NotImplementedError
+    @property
+    def _type(self): 
+        return self._type_
+
+    @_type.setter
+    def _type(self, datatype):
+        if not datatype: datatype = 'quantitative'
+        self._type_ = datatype
 
 
 ###########################################################################

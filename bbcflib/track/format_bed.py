@@ -16,10 +16,6 @@ all_fields_possible = ['start', 'end', 'name', 'score', 'strand', 'thick_start',
 ###########################################################################
 class GenomicFormat(ProxyTrack, TextTrack):
     @property
-    def _type(self):
-        return 'qualitative' 
-   
-    @property
     @memoized_method
     def _fields(self):
         self._file.seek(0)
@@ -108,8 +104,7 @@ class GenomicFormat(ProxyTrack, TextTrack):
             self._seen_chr.append(chrom)
             yield chrom, iter_until_different_chr()
 
-    #-----------------------------------------------------------------------------#
-    def _output(self):
+    def _write(self):
         # Add info #
         self.attributes = old_track.attributes
         self.attributes['name']           = old_track.name
@@ -142,6 +137,17 @@ class GenomicFormat(ProxyTrack, TextTrack):
                 except IndexError:
                     pass
                 yield chr + '\t' + '\t'.join([str(f) for f in elems]) + '\n'
+
+    #-----------------------------------------------------------------------------#
+    @property
+    def _type(self): 
+        return 'qualitative' 
+
+    @_type.setter
+    def _type(self, datatype):
+        if not datatype: datatype = 'qualitative'
+        if datatype != 'qualitative':
+            raise Exception("The track '" + self._path + "' cannot be loaded as a '" + datatype + "' data type.")
 
 ###########################################################################
 def create(path):

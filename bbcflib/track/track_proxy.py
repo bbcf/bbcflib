@@ -16,12 +16,13 @@ from .format_sql import GenomicFormat as SQLTrack
 
 ###########################################################################
 class ProxyTrack(SQLTrack):
-    def __init__(self, path, format=None, name=None, chrfile=None):
+    def __init__(self, path, format=None, name=None, chrfile=None, type=None):
         # Parameters with underscore refer to the underlying track #
         self._path    = path
         self._format  = format
+        self._type    = type 
         # Parameters without the underscore refer to the exposed track #
-        self.chrfile = chrfile
+        self.chrfile  = chrfile
         self.modified = False
         # Create the SQL track #
         tmp_path = named_temporary_path()
@@ -42,25 +43,25 @@ class ProxyTrack(SQLTrack):
                 t.meta_track = self._meta_track
                 # Copy meta chr #
                 t.meta_chr   = [chr for chr in self._meta_chr if chr['name'] in self._seen_chr]
-                t.meta_chr   = [chr for chr in self._meta_chr if chr['name'] in self._seen_chr]
-                t.meta_chr   = [chr for chr in self._meta_chr if chr['name'] in self._seen_chr]
         # Load the new SQL track as self #
         super(ProxyTrack, self).__init__(tmp_path, 'sql', name)
 
     def unload(self, type, value, trackback):
         super(ProxyTrack, self).unload(type, value, trackback)
-        if self.modified: self.commit()
+        if self.modified: self.dump()
 
-    def commit(self, path=None):
+    def commit(self):
+        super(ProxyTrack, self).commit()
         self.dump()
     
     def dump(self, path=None):
-        if not path:
-            path = self._path
-        elif os.path.exists(path):
-            raise Exception("The location '" + path + "' is already taken")
-        with open(path, 'w') as file:
-            file.writelines(self._ouput())
+        if not path: path = self._path
+        elif os.path.exists(path): raise Exception("The location '" + path + "' is already taken")
+        with open(path, 'w') as file: file.writelines(self._write())
+
+    @property
+    def _fields(self):
+        return self.default_fields
 
     #-----------------------------------------------------------------------------#
     @property

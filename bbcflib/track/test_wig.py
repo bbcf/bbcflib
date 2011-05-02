@@ -23,3 +23,8 @@ class Test_Read(unittest.TestCase):
             self.assertEqual(data.next(), ('chr1', 0, 10, 8.0))
 
 Test_Read().runTest()
+
+#-----------------------------------------#
+# This code was written by Lucas Sinclair #
+# lucas.sinclair@epfl.ch                  #
+#-----------------------------------------#

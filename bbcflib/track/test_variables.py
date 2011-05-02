@@ -35,4 +35,9 @@ for col_name, col in sorted(track_collections.items()):
         old_name = old_path.split('/')[-1]
         new_dir  = '/'.join(old_path.split('/')[:-2]) + '/' + 'sql' + '/'
         new_name = '.'.join(old_name.split('.')[:-1]  + ['sql'])
-        track['path_sql'] = new_dir + new_name        
+        track['path_sql'] = new_dir + new_name
+
+#-----------------------------------------#
+# This code was written by Lucas Sinclair #
+# lucas.sinclair@epfl.ch                  #
+#-----------------------------------------#

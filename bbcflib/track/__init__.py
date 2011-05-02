@@ -134,11 +134,18 @@ class Track(object):
             * *format* is an optional string specifying the format of the track to load when it cannot be guessed from the file extension.
             * *name* is an optional string specifying the name of the track to load.
             * *chrfile* is the path to chromosome file. This is specified only when the underlying format is missing chromosome length information. 
+            * *type* is an option variable that can take the value of either ``qualitative`` or ``quantitative``. It is only usefull when loading a track that is ambigous towards its type, as can be certain text files. For instance, In the case of WIG track becoming qualitative, all features will be missing names, but overlapping features will suddenly be authorized. 
         
         Examples::
 
             with Track('tracks/rp_genes.sql') as rpgenes:
-                data = rpgenes.read('chr3')
+                data = rpgenes.read()
+            with Track('tracks/yeast', 'sql', 'S. cer. genes') as yeast:
+                data = yeast.read()
+            with Track('tracks/peaks.bed', 'bed', chrfile='tracks/cser.chr') as peaks:
+                data = peaks.read()
+            with Track('tracks/scores.wig', 'wig', chrfile='tracks/cser.chr', type='qualitative') as scores:
+                data = scores.read()
 
         Once a track is loaded you have access to the following attributes:
 
@@ -172,20 +179,22 @@ class Track(object):
     }
     
     #-----------------------------------------------------------------------------#   
-    def __new__(cls, path, format=None, name=None, chrfile=None):
+    def __new__(cls, path, format=None, name=None, chrfile=None, type=None):
         '''Internal factory-like method that is called before creating a new instance of Track.
            This function determines the format of the file that is provided and returns an
            instance of the appropriate child class.'''
         if cls is Track:
             if not format: format = _determine_format(path)
             implementation = _import_implementation(format)
-            instance       = implementation.GenomicFormat(path, format, name, chrfile)
+            instance       = implementation.GenomicFormat(path, format, name, chrfile, type)
         else:
             instance = super(Track, cls).__new__(cls)
         return instance
 
-    def __init__(self, path, format=None, name=None, chrfile=None, type='qualitative'):
-        #TODO type=qualitative
+    def __init__(self, path, format=None, name=None, chrfile=None, type=None):
+        # Type can only mean something with text files #
+        if type:
+            raise Exception("You cannot specify the type: " + type + " for the track '" + path + "'.")
         # Default format #
         if not format: format = _determine_format(path)
         # Set attributes #
@@ -204,7 +213,7 @@ class Track(object):
         self.all_chrs.sort(key=com.natural_sort)
         # Test variables #
         if self.type not in ['quantitative', 'qualitative']:
-            raise Exception("The type of the track is invalid: " + type + ".")
+            raise Exception("The type of the track is invalid: " + self.type + ".")
 
     def __iter__(self):
         ''' Called when trying to iterate the class'''
@@ -338,7 +347,6 @@ class Track(object):
     def meta_track(self, value): 
         raise NotImplementedError
 
-    #-----------------------------------------------------------------------------#
     def load(self):
         pass
    
@@ -348,6 +356,7 @@ class Track(object):
     def commit(self):
         pass
  
+    #-----------------------------------------------------------------------------#
     @property
     def default_fields(self):
         return getattr(Track, self._type + '_fields')
