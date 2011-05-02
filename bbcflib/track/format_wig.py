@@ -6,13 +6,11 @@ Submodule: bbcflib.track.format_wig
 Implementation of the WIG format.
 """
 
-from .format_sql  import GenomicFormat as SQLTrack
-from .proxy_track import ProxyTrack
-from .text_format import TextTrack, strand_to_int, int_to_strand
-from ..common import memoize_once
+from .track_proxy import ProxyTrack
+from .track_text import TextTrack
 
 ###########################################################################
-class GenomicFormat(ProxyTrack, TextTrack, SQLTrack):
+class GenomicFormat(ProxyTrack, TextTrack):
     @property
     def _type(self):
         return 'quantitative' 
