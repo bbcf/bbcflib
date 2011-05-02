@@ -1,7 +1,7 @@
 """
-====================================
-Submodule: bbcflib.track.text_format
-====================================
+===================================
+Submodule: bbcflib.track.track_text
+===================================
 
 Methods common to the text formats.
 """
