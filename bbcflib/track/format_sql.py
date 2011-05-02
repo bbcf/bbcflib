@@ -59,7 +59,7 @@ class GenomicFormat(Track):
         return [dict([(k, e[i]) for i, k in enumerate(chrkeys)]) for e in self.cursor.fetchall()]
 
     @meta_chr.setter
-    def set_meta_chr(self, data):
+    def meta_chr(self, data):
         for x in data: self.cursor.execute('insert into chrNames (' + ','.join(x.keys()) + ') values (' + ','.join(['?' for y in range(len(x.keys()))])+')', tuple([x[k] for k in x.keys()]))
 
     @property
@@ -68,7 +68,7 @@ class GenomicFormat(Track):
         return dict(self.cursor.fetchall())
 
     @meta_track.setter
-    def set_meta_track(self, data): 
+    def meta_track(self, data): 
         for k in data.keys(): self.cursor.execute('insert into attributes (key,value) values (?,?)',(k,data[k]))
 
     #-----------------------------------------------------------------------------#
@@ -145,9 +145,9 @@ class GenomicFormat(Track):
     def make_missing_indexes(self):
         for chrom in self.chrs_from_tables:
             self.cursor.execute(    "create index IF NOT EXISTS '" + chrom + "_range_idx'  on '" + chrom + "' (start,end)")
-            if 'score' in get_fields(chrom):
+            if 'score' in self.get_fields(chrom):
                 self.cursor.execute("create index IF NOT EXISTS '" + chrom + "_score_idx'  on '" + chrom + "' (score)")
-            if 'name' in get_fields(chrom):
+            if 'name' in self.get_fields(chrom):
                 self.cursor.execute("create index IF NOT EXISTS '" + chrom + "_name_idx'   on '" + chrom + "' (name)")
 
 ###########################################################################   

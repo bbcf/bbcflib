@@ -24,7 +24,7 @@ class GenomicFormat(ProxyTrack, TextTrack):
     def _fields(self):
         self._file.seek(0)
         while True:
-            line = self.file.readline().strip("\n").lstrip()
+            line = self._file.readline().strip("\n").lstrip()
             if len(line) == 0:              continue
             if line.startswith("#"):        continue
             if line.endswith(" \\"):
@@ -32,9 +32,9 @@ class GenomicFormat(ProxyTrack, TextTrack):
             if line.startswith("track "):   continue
             if line.startswith("browser "): continue
             else:
-                if '\t' in line: self.seperator = '\t'
-                else:            self.seperator = ' '
-                line = line.split(self.seperator)
+                if '\t' in line:  self._seperator = '\t'
+                else:             self._seperator = ' '
+                line = line.split(self._seperator)
             self.num_fields = len(line) - 1
             if self.num_fields < 2:
                 raise Exception("The track '" + self._path + "' has less than three columns and is hence not a valid BED file.")
@@ -50,7 +50,7 @@ class GenomicFormat(ProxyTrack, TextTrack):
         def get_next_line():
             global line, chrom
             while True:
-                line = self.file.next().strip("\n").lstrip()
+                line = self._file.next().strip("\n").lstrip()
                 if len(line) == 0:              continue
                 if line.startswith("#"):        continue
                 if line.endswith(" \\"):
@@ -61,7 +61,7 @@ class GenomicFormat(ProxyTrack, TextTrack):
                 if line.startswith("browser "):
                     if not chrom: continue
                     raise Exception("The file '" + self._path + "' contains a 'browser' directive. This is not supported.")
-                line = line.split(self.seperator)
+                line = line.split(self._seperator)
                 if len(line) != self.num_fields + 1:
                     raise Exception("The track '" + self._path + "' has a varying number of columns. This is not supported.")
                 try:
@@ -96,14 +96,14 @@ class GenomicFormat(ProxyTrack, TextTrack):
                 if line[0] != chrom: break
                 yield line[1:]
                 get_next_line()
-        self.file.seek(0)
+        self._file.seek(0)
         get_next_line()
         while True:
             if line[0] == chrom: break
             chrom = line[0]
             if chrom in self._seen_chr:
                 raise Exception("The track '" + self._path + "' is not sorted by chromosomes (" + chrom + ").")
-            if not chrom in [x['name'] for x in self._chr_meta]:
+            if not chrom in [x['name'] for x in self._meta_chr]:
                 raise Exception("The track '" + self._path + "' has a value (" + chrom + ") not specified in the chromosome file.")
             self._seen_chr.append(chrom)
             yield chrom, iter_until_different_chr()

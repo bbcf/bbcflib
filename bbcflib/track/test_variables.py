@@ -1,6 +1,9 @@
 # Genreral Modules #
 import os
 
+# Specific module #
+from ..track import Track
+
 # Tracks path #
 tracks_path = 'extras/tracks/' 
 try:

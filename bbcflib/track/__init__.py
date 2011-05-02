@@ -152,7 +152,7 @@ class Track(object):
                 ``[{'name': 'chr1', 'length': 197195432}, {'name': 'chr2', 'length': 129993255}]``
            * *meta_track* is a dictionary of meta data associated to the track (information like the source, etc). For instance:
                  ``{'datatype': 'quantitative', 'source': 'SGD'}``
-           * *chr_file* is the path to a chromosome file if one was given.
+           * *chrfile* is the path to a chromosome file if one was given.
     '''
 
     qualitative_fields  = ['start', 'end', 'name', 'score', 'strand']
@@ -185,11 +185,13 @@ class Track(object):
         return instance
 
     def __init__(self, path, format=None, name=None, chrfile=None):
+        # Default format #
+        if not format: format = _determine_format(path)
         # Set attributes #
         self.path     = path
         self.format   = format
         self.name     = name
-        self.chr_file = chrfile
+        self.chrfile  = chrfile
         # Check existance #
         if not os.path.exists(path):
             raise Exception("The file '" + path + "' cannot be found")
@@ -350,7 +352,7 @@ class Track(object):
         return getattr(Track, self._type + '_fields')
 
 ###########################################################################   
-def new(path, format=None, type='qualitative', name='Unnamed'):
+def new(path, format=None, type='qualitative', name='Unnamed', chrfile=None):
     '''Create a new empty track in preparation for writing to it.
 
         * *path* is the file path where the new track will be created
@@ -358,6 +360,8 @@ def new(path, format=None, type='qualitative', name='Unnamed'):
         * *format* is the format in which the new track will be created.
         
         * *name* is an optional name for the track.
+        
+        *chrfile* is the path to a chromosome file if one is needed.
 
         Examples::
             
@@ -375,7 +379,7 @@ def new(path, format=None, type='qualitative', name='Unnamed'):
     if not format: format = _determine_format(path)
     implementation = _import_implementation(format)
     implementation.create(path, type, name)
-    return Track(path, name=name)
+    return Track(path, name=name, chrfile=chrfile)
 
 #-----------------------------------------#
 # This code was written by Lucas Sinclair #

@@ -11,8 +11,8 @@ import os
 
 # Specific module #
 from ..common import named_temporary_path
-from ..format_sql import SQLTrack
 from ..track import new
+from .format_sql import GenomicFormat as SQLTrack
 
 ###########################################################################
 class ProxyTrack(SQLTrack):
@@ -20,16 +20,17 @@ class ProxyTrack(SQLTrack):
         # Parameters with underscore refer to the underlying track #
         self._path    = path
         self._format  = format
-        self._chrfile = chrfile
         # Parameters without the underscore refer to the exposed track #
+        self.chrfile = chrfile
         self.modified = False
         # Create the SQL track #
         tmp_path = named_temporary_path()
         with open(self._path, 'r') as self._file:
             with new(tmp_path, 'sql', self._type, name) as t:
                 # Prepare meta data #
-                self._meta_chr   = self._get_meta_chr()
-                self._meta_track = self._get_meta_track()
+                self._meta_chr
+                self._meta_track
+                self._fields
                 # Copy data #
                 self._file.seek(0)
                 for chrom, data in self._read():
@@ -40,7 +41,9 @@ class ProxyTrack(SQLTrack):
                 self._meta_track['converted_from'] = self._path
                 t.meta_track = self._meta_track
                 # Copy meta chr #
-                t.meta_chr   = [chr for chr in self._chr_meta if chr['name'] in self._seen_chr]
+                t.meta_chr   = [chr for chr in self._meta_chr if chr['name'] in self._seen_chr]
+                t.meta_chr   = [chr for chr in self._meta_chr if chr['name'] in self._seen_chr]
+                t.meta_chr   = [chr for chr in self._meta_chr if chr['name'] in self._seen_chr]
         # Load the new SQL track as self #
         super(ProxyTrack, self).__init__(tmp_path, 'sql', name)
 
@@ -60,13 +63,21 @@ class ProxyTrack(SQLTrack):
             file.writelines(self._ouput())
 
     #-----------------------------------------------------------------------------#
+    @property
+    def meta_chr(self): 
+        return super(ProxyTrack, self).meta_chr
+
     @meta_chr.setter
-    def set_meta_chr(self, data):
+    def meta_chr(self, data):
         self.modified = True
         super(ProxyTrack, self).set_meta_chr(data)
 
+    @property
+    def meta_track(self): 
+        return super(ProxyTrack, self).meta_track
+    
     @meta_track.setter
-    def set_meta_track(self, data): 
+    def meta_track(self, data): 
         self.modified = True
         super(ProxyTrack, self).set_meta_track(data)
 

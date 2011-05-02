@@ -5,7 +5,7 @@ import os
 from ..track import Track, new
 
 # Specific Variables #
-from .test_variables import track_collections
+from .test_variables import track_collections, yeast_chr_file
 
 # Unittesting module #
 try:
@@ -17,7 +17,9 @@ except ImportError:
 class Test_Read(unittest.TestCase):
     def runTest(self):
         t = track_collections['Validation']['1']
-        with Track(t['orig_path']) as t['track']:
+        with Track(t['path'], chrfile=yeast_chr_file) as t['track']:
             # Just the first feature #
             data = t['track'].read()
             self.assertEqual(data.next(), ('chr1', 0, 10, 'Validation feature 1', 10.0))
+
+Test_Read().runTest()

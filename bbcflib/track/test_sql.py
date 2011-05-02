@@ -130,6 +130,7 @@ class Test_Conversion(unittest.TestCase):
     def runTest(self):
         self.assertEqual(1, 1)
 
+Test_Meta().runTest()
 #-----------------------------------------#
 # This code was written by Lucas Sinclair #
 # lucas.sinclair@epfl.ch                  #
