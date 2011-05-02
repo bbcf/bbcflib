@@ -43,6 +43,32 @@ def natural_sort(item):
         except: return s
     return map(try_int, re.findall(r'(\d+|\D+)', item))
 
+###############################################################################
+def named_temporary_path(suffix=''):
+    ''' Often, one needs a new random and temporary file path
+        instead of the random and tempory file object provided
+        by the tempfile module'''
+    import os, tempfile
+    file = tempfile.NamedTemporaryFile(suffix=suffix, delete=False)
+    path = file.name
+    file.close()
+    os.remove(path)
+    return path
+
+###############################################################################
+class memoize_once(object):
+    '''Decorator that caches a function's return value the first time
+    it is called. If called later, the cached value is returned, and
+    not re-evaluated'''
+    def __init__ (self, f):
+        self.f = f
+        self.mem = []
+    def __call__ (self, *args, **kwargs):
+        if len(self.mem) == 0:
+            self.mem.append(self.f(*args, **kwargs))
+        return self.mem[0]
+
+###############################################################################
 def get_files( id_or_key, minilims ):
     """Retrieves a dictionary of files created by htsstation job identified by its key or bein id in a MiniLIMS.
     

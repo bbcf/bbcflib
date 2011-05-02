@@ -1,4 +1,5 @@
-bbcflib 1.1
+bbcflib 1.1.0
+
 Copyright 2010 Frederick Ross <bbcf at gmail dot com>,
 2011 BBCF <webmaster dot bbcf at epfl dot ch>
 
@@ -25,7 +26,7 @@ either by going to
 
 and clicking on "Downloads", or by cloning the git repository with
 
-    $ git clone https://github.com/bbcf/bein.git
+    $ git clone https://github.com/bbcf/bbcflib.git
 
 Once you have the source code, run
 

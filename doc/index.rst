@@ -10,11 +10,12 @@ Table of Contents:
 ''''''''''''''''''
 
 .. toctree::
-   :maxdepth: 2
-
-   tutorial
+   :maxdepth: 1
 
    bbcflib
+   tutorial
+   specification
+   
    bbcflib_chipseq
    bbcflib_daflims
    bbcflib_email
@@ -23,4 +24,3 @@ Table of Contents:
    bbcflib_genrep
    bbcflib_mapseq
    bbcflib_track
-   specification

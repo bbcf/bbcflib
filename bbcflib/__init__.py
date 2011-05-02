@@ -50,7 +50,7 @@ either by going to::
 
 and clicking on "Downloads", or by cloning the git repository with::
 
-    $ git clone https://github.com/bbcf/bein.git
+    $ git clone https://github.com/bbcf/bbcflib.git
 
 Once you have the source code, run::
 
@@ -79,7 +79,7 @@ of this license is in the LICENSE.txt file.
 
 b'This module needs Python 2.6 or later.'
 
-__version__ = 1.1
+__version__ = '1.1.0'
 
 from ConfigParser import ConfigParser
 from genrep import GenRep, Assembly
