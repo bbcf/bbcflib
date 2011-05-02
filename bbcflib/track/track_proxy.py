@@ -1,6 +1,6 @@
 """
 ====================================
-Submodule: bbcflib.track.proxy_track
+Submodule: bbcflib.track.track_proxy
 ====================================
 
 Methods that create an SQL file upon opening in the temporary directory and reconverts everything to a text file file upon closing, all transparently.
@@ -10,7 +10,7 @@ from ..common import named_temporary_path
 from ..track import new
 
 ###########################################################################
-class ProxyTrack(object):
+class ProxyTrack(SQLTrack):
     def __init__(self, path, format=None, name=None, chrfile=None):
         # Parameters with underscore refer to the underlying track #
         self._path    = path
