@@ -6,16 +6,15 @@ Submodule: bbcflib.track.format_bed
 Implementation of the BED format.
 """
 
-from .format_sql  import GenomicFormat as SQLTrack
-from .proxy_track import ProxyTrack
-from .text_format import TextTrack, strand_to_int, int_to_strand
+from .track_proxy import ProxyTrack
+from .track_text import TextTrack, strand_to_int, int_to_strand
 from ..common import memoize_once
 
 all_fields_possible = ['start', 'end', 'name', 'score', 'strand', 'thick_start', 'thick_end',
                        'item_rgb', 'block_count', 'block_sizes', 'block_starts']
 
 ###########################################################################
-class GenomicFormat(ProxyTrack, TextTrack, SQLTrack):
+class GenomicFormat(ProxyTrack, TextTrack):
     @property
     def _type(self):
         return 'qualitative' 
