@@ -86,3 +86,13 @@ class memoized_method(object):
             res = cache[key] = self.func(*args, **kw)
         return res
 
+###############################################################################
+def sentinelize(iterable, sentinel):
+    '''
+    Add an item to the end of an iterable
+    
+    >>> list(sentinelize(range(4), 99))
+    [0, 1, 2, 3, 99]
+    ''' 
+    for item in iterable: yield item
+    yield sentinel
