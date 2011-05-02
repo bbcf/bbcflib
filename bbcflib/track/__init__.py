@@ -287,34 +287,27 @@ class Track(object):
         '''
         raise NotImplementedError
 
-    def convert(self, path, format='sql', type=None, mean_scores=False):
+    def convert(self, path, format='sql', mean_scores=False):
         '''Convert a track to a given format.
        
            * *path* is the file path where the new track will be created
 
            * *format* is the format into which the track will be converted.
            
-           * *type* is the datatype into which the track will be converted. It is either ``qualitative`` or ``quantitative``. Certain formats have default datatypes. For instance a BED file will become a qualitative SQL track, while a WIG file will become a quantitative SQL track. However, this can be overwritten. In the case of a quantitative BED track, the information contained in the names and strand columns will be discarded. In the case of qualitative WIG track, all features will be missing names.
-
-           * *mean_scores* is a boolean value that defaults to False. When converting a track to a non-natural datatype, in particular a BED file to a quantitative track, you might want to ignore the errors produced by overlapping features and resolve the conflicts by meaning the score in that region. This is done by setting *mean_scores* to True.
-
            Examples::
             
                with Track('tracks/rp_genes.bed') as t:
                    t.convert('tracks/rp_genes.sql', 'sql')
                with Track('tracks/ribi_genes.sql') as t:
                    t.convert('tracks/rp_genes.bed', 'bed')
-               with Track('tracks/yeast_genes.bed') as t:
-                   t.convert('tracks/yeast_genes.sql', 'sql', 'quantitative')
-               with Track('tracks/rap1_peaks.bed') as t:
-                   t.convert('tracks/rap1_peaks.sql', 'sql', 'quantitative', True)
         
            ``convert`` returns nothing.
         '''
-        if type != self.type: raise NotImplementedError 
+        if type != self.type:
+            raise NotImplementedError 
         implementation = _import_implementation(format)
         if hasattr(implementation, dump):
-        
+            
         else:
             with new(path, format, type, name) as t:
                 for chrom in self.all_chrs: t.write(chrom, self.read(chrom), self.fields)
