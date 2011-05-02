@@ -35,7 +35,7 @@ def natural_sort(item):
     return map(try_int, re.findall(r'(\d+|\D+)', item))
 
 ###############################################################################
-def named_temporary_path(suffix):
+def named_temporary_path(suffix=None):
     ''' Often, one needs a new random and temporary file path
         instead of the random and tempory file object provided
         by the tempfile module'''
