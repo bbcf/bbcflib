@@ -11,7 +11,7 @@ from ..track import *
 
 ###########################################################################   
 class GenomicFormat(Track):
-    special_tables = ['attributes', 'chrNames']
+    special_tables = ['attributes', 'chrNames', 'types']
 
     def load(self):
         # Prepare the connection #
