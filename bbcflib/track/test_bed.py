@@ -21,6 +21,9 @@ class Test_Read(unittest.TestCase):
             # Just the first feature #
             data = t['track'].read()
             self.assertEqual(data.next(), ('chr1', 0, 10, 'Validation feature 1', 10.0))
+            # Number of features #
+            data = t['track'].read()
+            self.assertEqual(len(list(data)), 12)
 
 Test_Read().runTest()
 
