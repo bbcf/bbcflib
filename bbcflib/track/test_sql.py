@@ -125,11 +125,6 @@ class Test_Remove(unittest.TestCase):
             t.remove()
             self.assertEqual(list(t.read()), [])
 
-#-----------------------------------------------------------------------------#   
-class Test_Conversion(unittest.TestCase):
-    def runTest(self):
-        pass #TODO
-
 #-----------------------------------------#
 # This code was written by Lucas Sinclair #
 # lucas.sinclair@epfl.ch                  #

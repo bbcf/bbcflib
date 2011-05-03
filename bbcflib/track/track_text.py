@@ -87,7 +87,7 @@ class TextTrack(object):
         return "track " + ' '.join([key + '="' + value + '"' for key, value in self.meta_track_dict.items()]) + '\n'
  
     #-----------------------------------------------------------------------------#
-    @staticmethod   
+    @staticmethod
     def create(path, type, name):
         open(path, 'w').close()
 

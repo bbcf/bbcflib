@@ -120,7 +120,8 @@ class GenomicFormat(TextTrack, ProxyTrack):
             yield chr, iter_until_different_chr()
 
     def _write(self):
-        raise NotImplementedError #TODO
+        yield self._header_line
+        for f in self.read(): yield "fixedStep chrom=%s start=%s span=%s\n%s\n" % (f[0],f[1],f[2]-f[1],f[3])
 
     #-----------------------------------------------------------------------------#
     @property

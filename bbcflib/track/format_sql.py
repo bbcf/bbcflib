@@ -154,7 +154,7 @@ class GenomicFormat(Track):
                 self.cursor.execute("create index IF NOT EXISTS '" + chrom + "_name_idx' on '" +  chrom + "' (name)")
 
     #-----------------------------------------------------------------------------#
-    @staticmethod   
+    @staticmethod
     def create(path, type, name):
         connection = sqlite3.connect(path)
         cursor = connection.cursor()
