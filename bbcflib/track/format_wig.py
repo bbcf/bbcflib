@@ -19,46 +19,51 @@ class GenomicFormat(TextTrack, ProxyTrack):
     def _all_features(self):
         self._file.seek(0)
         params = {}
+        seen_track = False
         for line in self._file:
             line = line.strip("\n").lstrip()
             if len(line) == 0:              continue
             if line.startswith("#"):        continue
-            if line.startswith("track "):   continue
-            if line.startswith("browser "): continue
             if line.endswith(" \\"):
-                raise Exception("The track " + self.location + " includes linebreaks ('\\') which are not supported.")
+                raise Exception("The file '" + self._path + "' includes linebreaks ('\\') which are not supported.")
+            if line.startswith("track "):
+                if not seen_track:
+                    seen_track = True
+                    continue
+                raise Exception("The file '" + self._path + "' contains a second 'track' directive. This is not supported.")
+            if line.startswith("browser "): continue
             if line.startswith("variableStep") or line.startswith("fixedStep"):
                 params = dict([p.split('=',1) for p in shlex.split('mode=' + line)])
                 if not params.get('chrom',False):
-                    raise Exception("The track " + self.location + " does not specify a chromosome and is hence not valid.")
+                    raise Exception("The file '" + self._path + "' does not specify a chromosome and is hence not valid.")
                 try:
                     params['span'] = int(params.get('span',1))
                 except ValueError:
-                    raise Exception("The track " + self.location + " has a non integer as span value.")
+                    raise Exception("The file '" + self._path + "' has a non integer as span value.")
                 if params['span'] < 1:
-                    raise Exception("The track " + self.location + " has a negative or null span value.")
+                    raise Exception("The file '" + self._path + "' has a negative or null span value.")
                 if line.startswith("fixedStep "):
                     if not 'start' in params:
-                        raise Exception("The track " + self.location + " has a fixedStep directive without a start.")
+                        raise Exception("The file '" + self._path + "' has a fixedStep directive without a start.")
                     try:
                         params['start'] = int(params['start'])
                     except ValueError:
-                        raise Exception("The track " + self.location + " has a non integer as start value.")
+                        raise Exception("The file '" + self._path + "' has a non integer as start value.")
                     try:
                         params['step'] = int(params.get('step',1))
                     except ValueError:
-                        raise Exception("The track " + self.location + " has a non integer as step value.")
+                        raise Exception("The file '" + self._path + "' has a non integer as step value.")
                     if params['step'] < 1:
-                        raise Exception("The track " + self.location + " has a negative or null step value.")
+                        raise Exception("The file '" + self._path + "' has a negative or null step value.")
                     params['count'] = 0
                 continue
             if not params:
-                raise Exception("The track " + self.location + " is missing a fixedStep or variableStep directive.")
+                raise Exception("The file '" + self._path + "' is missing a fixedStep or variableStep directive.")
             if params['mode'] == 'fixedStep':
                 try:
                     line = float(line)
                 except ValueError:
-                    raise Exception("The track " + self.location + " has non floats as score values and is hence not valid.")
+                    raise Exception("The file '" + self._path + "' has non floats as score values and is hence not valid.")
                 base = params['start'] + params['count'] * params['step'] 
                 yield [params['chrom'], base, base + params['span'], line]
                 params['count'] += 1
@@ -68,13 +73,13 @@ class GenomicFormat(TextTrack, ProxyTrack):
                     line[0] = int(line[0])
                     line[1] = float(line[1])
                 except ValueError:
-                    raise Exception("The track " + self.location + " has invalid values.")
+                    raise Exception("The file '" + self._path + "' has invalid values.")
                 except IndexError:
-                    raise Exception("The track " + self.location + " has missing values.")
+                    raise Exception("The file '" + self._path + "' has missing values.")
                 yield [params['chrom'], line[0], line[0] + params['span'], line[1]]
 
     def _all_entries(self):
-        # TODO: What if type is qual and overlaps ?
+        # TODO: What if type is 'qualitative' and the wig has overlaps ?
         sentinel = ('', sys.maxint, sys.maxint, 0.0)
         X = sentinelize(self._all_features(), sentinel)
         x = X.next()
@@ -88,7 +93,7 @@ class GenomicFormat(TextTrack, ProxyTrack):
                 break
             if x[0] == x_next[0]:
                 if x[2] > x_next[1]:
-                    raise Exception("The track " + self.location + " has a start larger than its end or a span larger than its step.") 
+                    raise Exception("The file '" + self._path + "' has a start larger than its end or a span larger than its step.") 
                 if x[2] == x_next[1] and x[3] == x_next[3]:
                     x[2] = x_next[2]
                     continue

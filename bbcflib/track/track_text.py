@@ -29,7 +29,7 @@ class TextTrack(object):
         chrom           = ''
         entry           = ['', '', '', '']
         generator       = self._all_entries()
-        self._seen_chr  = []
+        self._seen_chr  = set()
         def get_next_entry():
             global entry, generator
             entry = generator.next()    
@@ -43,11 +43,9 @@ class TextTrack(object):
         while True:
             if entry[0] == chrom: break
             chrom = entry[0]
-            if chrom in self._seen_chr:
-                raise Exception("The track '" + self._path + "' is not sorted by chromosomes (" + chrom + ").")
             if not chrom in self._all_chrs:
                 raise Exception("The track '" + self._path + "' has a value (" + chrom + ") not specified in the chromosome file.")
-            self._seen_chr.append(chrom)
+            self._seen_chr.add(chrom)
             yield chrom, iter_until_different_chr()
 
     #-----------------------------------------------------------------------------#
@@ -76,11 +74,11 @@ class TextTrack(object):
                 name = line[0]
                 try:
                     length = int(line[1])
-                except ValueError as err:
-                    raise Exception("The file '" + self.chrfile + "' has invalid values.", err)
+                except ValueError:
+                    raise Exception("The file '" + self.chrfile + "' has invalid values.")
                 result.append(dict([('name', name),('length', length)]))
         if not result:
-            raise Exception("The file '" + self.chrfile + "' does not seam to contain any information.", err)
+            raise Exception("The file '" + self.chrfile + "' does not seam to contain any information.")
         return result
 
     @property
@@ -98,8 +96,8 @@ class TextTrack(object):
             if line.startswith("track "):
                 try:
                     result = dict([p.split('=',1) for p in shlex.split(line[6:])])
-                except ValueError as err:
-                    raise Exception("The <track> header line for the file '" + self._path + "' seams to be invalid", err)
+                except ValueError:
+                    raise Exception("The <track> header line for the file '" + self._path + "' seams to be invalid")
         return result
 
     @property

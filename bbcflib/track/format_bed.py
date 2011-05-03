@@ -19,6 +19,7 @@ all_fields_possible = ['start', 'end', 'name', 'score', 'strand', 'thick_start',
 class GenomicFormat(TextTrack, ProxyTrack):
     def _all_entries(self):
         self._file.seek(0)
+        seen_track = False
         for line in self._file:
             line = line.strip("\n").lstrip()
             if len(line) == 0:              continue
@@ -26,11 +27,11 @@ class GenomicFormat(TextTrack, ProxyTrack):
             if line.endswith(" \\"):
                 raise Exception("The track '" + self._path + "' includes linebreaks ('\\') which is not supported.")
             if line.startswith("track "):
-                if not chrom: continue
+                if not seen_track:
+                    seen_track = True
+                    continue
                 raise Exception("The file '" + self._path + "' contains a second 'track' directive. This is not supported.")
-            if line.startswith("browser "):
-                if not chrom: continue
-                raise Exception("The file '" + self._path + "' contains a 'browser' directive. This is not supported.")
+            if line.startswith("browser "): continue
             line = line.split(self._seperator)
             if len(line) != self.num_fields + 1:
                 raise Exception("The track '" + self._path + "' has a varying number of columns. This is not supported.")
