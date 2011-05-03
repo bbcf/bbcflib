@@ -6,18 +6,17 @@ Submodule: bbcflib.track.track_text
 Methods common to the text formats.
 """
 
-# Genreral Modules #
+# General Modules #
 import os, shlex
 
 # Specific Modules #
 from ..common import memoized_method
 
-#-----------------------------------------------------------------------------#
+# Functions #
 def strand_to_int(strand):
     if strand == '+': return 1
     if strand == '-': return -1
     return 0
-
 def int_to_strand(num):
     if num == 1: return  '+'
     if num == -1: return '-'
@@ -74,12 +73,24 @@ class TextTrack(object):
                     result = dict([p.split('=',1) for p in shlex.split(line[6:])])
                 except ValueError as err:
                     raise Exception("The <track> header line for the file '" + self._path + "' seams to be invalid", err)
-            return result
+        return result
 
     @property
     def _all_chrs(self):
        return [x['name'] for x in self._meta_chr]
+   
+    @property
+    def _header_line(self):
+        self.meta_track_dict = self.meta_track
+        self.meta_track_dict['converted_by']   = __package__
+        self.meta_track_dict['converted_from'] = self.path
+        return "track " + ' '.join([key + '="' + value + '"' for key, value in self.meta_track_dict.items()]) + '\n'
  
+    #-----------------------------------------------------------------------------#
+    @staticmethod   
+    def create(path, type, name):
+        open(path, 'w').close()
+
 #-----------------------------------------#
 # This code was written by Lucas Sinclair #
 # lucas.sinclair@epfl.ch                  #

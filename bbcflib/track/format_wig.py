@@ -15,8 +15,9 @@ from .track_text import TextTrack
 from ..common import sentinelize
 
 ###########################################################################
-class GenomicFormat(ProxyTrack, TextTrack):
+class GenomicFormat(TextTrack, ProxyTrack):
     def _read(self):
+        # TODO: What if type is qual and overlaps ?
         def all_features():
             params = {}
             for line in self._file:
@@ -130,11 +131,6 @@ class GenomicFormat(ProxyTrack, TextTrack):
     def _type(self, datatype):
         if not datatype: datatype = 'quantitative'
         self._type_ = datatype
-
-
-###########################################################################
-def create(path):
-    open(path, 'w').close()
 
 #-----------------------------------------#
 # This code was written by Lucas Sinclair #

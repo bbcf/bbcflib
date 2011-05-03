@@ -6,21 +6,23 @@ Submodule: bbcflib.track.format_bed
 Implementation of the BED format.
 """
 
+# Specific Modules #
 from .track_proxy import ProxyTrack
 from .track_text import TextTrack, strand_to_int, int_to_strand
 from ..common import memoized_method
 
+# Global variables #
 all_fields_possible = ['start', 'end', 'name', 'score', 'strand', 'thick_start', 'thick_end',
                        'item_rgb', 'block_count', 'block_sizes', 'block_starts']
 
 ###########################################################################
-class GenomicFormat(ProxyTrack, TextTrack):
+class GenomicFormat(TextTrack, ProxyTrack):
     @property
     @memoized_method
     def _fields(self):
         self._file.seek(0)
-        while True:
-            line = self._file.readline().strip("\n").lstrip()
+        for line in self._file:
+            line = line.strip("\n").lstrip()
             if len(line) == 0:              continue
             if line.startswith("#"):        continue
             if line.endswith(" \\"):
@@ -45,8 +47,8 @@ class GenomicFormat(ProxyTrack, TextTrack):
         self._seen_chr = []
         def get_next_line():
             global line, chrom
-            while True:
-                line = self._file.next().strip("\n").lstrip()
+            for line in self._file:
+                line = line.strip("\n").lstrip()
                 if len(line) == 0:              continue
                 if line.startswith("#"):        continue
                 if line.endswith(" \\"):
@@ -94,49 +96,32 @@ class GenomicFormat(ProxyTrack, TextTrack):
                 get_next_line()
         self._file.seek(0)
         get_next_line()
-        while True:
-            if line[0] == chrom: break
-            chrom = line[0]
-            if chrom in self._seen_chr:
-                raise Exception("The track '" + self._path + "' is not sorted by chromosomes (" + chrom + ").")
-            if not chrom in self._all_chrs:
-                raise Exception("The track '" + self._path + "' has a value (" + chrom + ") not specified in the chromosome file.")
-            self._seen_chr.append(chrom)
-            yield chrom, iter_until_different_chr()
+        if line:
+            while True:
+                if line[0] == chrom: break
+                chrom = line[0]
+                if chrom in self._seen_chr:
+                    raise Exception("The track '" + self._path + "' is not sorted by chromosomes (" + chrom + ").")
+                if not chrom in self._all_chrs:
+                    raise Exception("The track '" + self._path + "' has a value (" + chrom + ") not specified in the chromosome file.")
+                self._seen_chr.append(chrom)
+                yield chrom, iter_until_different_chr()
 
     def _write(self):
-        # Add info #
-        self.attributes = old_track.attributes
-        self.attributes['name']           = old_track.name
-        self.attributes['type']           = 'bed'
-        self.attributes['converted_by']   = gm_project_long_name
-        self.attributes['converted_from'] = old_track.location
-        self.attributes['converted_at']   = time.asctime()        
-        # Make first line #
-        line = "track " + ' '.join([key + '="' + value + '"' for key, value in self.attributes.items()]) + '\n'
         # Get fields #
-        self.fields = ['start', 'end'] 
+        fields = ['start', 'end'] 
         for f in all_fields_possible[2:]:
-            if f in old_track.fields: self.fields.append(f)
+            if f in self.fields: fields.append(f)
             else: break
-        # Wrapper function #
-        def string_and_transform(chr, iterator):
-            for line in iterator:
-                try:
-                    line[4] = int_to_strand(line[4])
-                except IndexError:
-                    pass
-                yield chr + '\t' + '\t'.join([str(f) for f in line]) + '\n' 
         # Write everything #
-        yield line
-        for chr in old_track.all_chrs:
-            for line in old_track.get_data_qual({'type':'chr', 'chr':chr}, self.fields):
-                elems = list(line)
-                try:
-                    elems[4] = int_to_strand(line[4])
-                except IndexError:
-                    pass
-                yield chr + '\t' + '\t'.join([str(f) for f in elems]) + '\n'
+        yield self._header_line
+        for feature in self.read(fields=fields):
+            f = list(feature)
+            try:
+                f[5] = int_to_strand(feature[5])
+            except IndexError:
+                pass
+            yield '\t'.join([str(x) for x in f]) + '\n'
 
     #-----------------------------------------------------------------------------#
     @property
@@ -148,10 +133,6 @@ class GenomicFormat(ProxyTrack, TextTrack):
         if not datatype: datatype = 'qualitative'
         if datatype != 'qualitative':
             raise Exception("The track '" + self._path + "' cannot be loaded as a '" + datatype + "' data type.")
-
-###########################################################################
-def create(path):
-    open(path, 'w').close()
 
 #-----------------------------------------#
 # This code was written by Lucas Sinclair #

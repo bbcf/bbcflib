@@ -67,7 +67,10 @@ To set the chromosome metadata or the track metadata you simply asign to that at
         t.meta_track = {'datatype': 'quantitative', 'source': 'SGD'}
 """
 
+# General Modules #
 import os, sys
+
+# Specific Modules #
 from .. import common as com
 
 #-----------------------------------------------------------------------------#   
@@ -139,13 +142,13 @@ class Track(object):
         Examples::
 
             with Track('tracks/rp_genes.sql') as rpgenes:
-                data = rpgenes.read()
+                pass
             with Track('tracks/yeast', 'sql', 'S. cer. genes') as yeast:
-                data = yeast.read()
+                pass
             with Track('tracks/peaks.bed', 'bed', chrfile='tracks/cser.chr') as peaks:
-                data = peaks.read()
+                pass
             with Track('tracks/scores.wig', 'wig', chrfile='tracks/cser.chr', type='qualitative') as scores:
-                data = scores.read()
+                pass
 
         Once a track is loaded you have access to the following attributes:
 
@@ -159,7 +162,7 @@ class Track(object):
                 ``[{'name': 'chr1', 'length': 197195432}, {'name': 'chr2', 'length': 129993255}]``
            * *meta_track* is a dictionary of meta data associated to the track (information like the source, etc). For instance:
                  ``{'datatype': 'quantitative', 'source': 'SGD'}``
-           * *chrfile* is the path to a chromosome file if one is needed.
+           * *chrfile* is the path to a chromosomes file if one was included.
     '''
 
     qualitative_fields  = ['start', 'end', 'name', 'score', 'strand']
@@ -318,9 +321,9 @@ class Track(object):
         if format == self.format:
             raise Exception("The track '" + path + "' cannot be converted to the " + format + " format because it is already in that format.")
         with new(path, format, type, name) as t:
-            for chrom in self.all_chrs: t.write(chrom, self.read(chrom), self.fields)
             t.meta_track = self.meta_track
             t.meta_chr   = self.meta_chr            
+            for chrom in self.all_chrs: t.write(chrom, self.read(chrom), self.fields)
 
     #-----------------------------------------------------------------------------#
     @property
@@ -388,7 +391,7 @@ def new(path, format=None, type='qualitative', name='Unnamed', chrfile=None):
         raise Exception("The location '" + path + "' is already taken")
     if not format: format = _determine_format(path)
     implementation = _import_implementation(format)
-    implementation.create(path, type, name)
+    implementation.GenomicFormat.create(path, type, name)
     return Track(path, name=name, chrfile=chrfile)
 
 #-----------------------------------------#

@@ -1,4 +1,4 @@
-# Genreral Modules #
+# General Modules #
 import os
 
 # Specific Modules #
@@ -43,7 +43,7 @@ class Test_Read(unittest.TestCase):
             data = t['track'].read({'chr':'chr2','start':0,'end':10})
             self.assertEqual(list(data), [])
 
-###################################################################################
+#-----------------------------------------------------------------------------#   
 class Test_Creation(unittest.TestCase):
     def runTest(self):
         format = 'sql'
@@ -61,7 +61,7 @@ class Test_Creation(unittest.TestCase):
             self.assertEqual(t.meta_track, {'datatype':'quantitative'})
         os.remove(path)
 
-###################################################################################
+#-----------------------------------------------------------------------------#   
 class Test_Write(unittest.TestCase):
     def runTest(self):
         format = 'sql'
@@ -94,7 +94,7 @@ class Test_Write(unittest.TestCase):
             self.assertEqual(list(t.read(chrom)), features)
         os.remove(path)
 
-###################################################################################
+#-----------------------------------------------------------------------------#   
 class Test_Meta(unittest.TestCase):
     def runTest(self):
         path = named_temporary_path('.sql')
@@ -113,7 +113,7 @@ class Test_Meta(unittest.TestCase):
             self.assertEqual(t.meta_track, info)
         os.remove(path)
 
-###################################################################################
+#-----------------------------------------------------------------------------#   
 class Test_Remove(unittest.TestCase):
     def runTest(self):
         path = '/tmp/tracktest.sql' #named_temporary_path('.sql')
@@ -125,12 +125,11 @@ class Test_Remove(unittest.TestCase):
             t.remove()
             self.assertEqual(list(t.read()), [])
 
-###################################################################################
+#-----------------------------------------------------------------------------#   
 class Test_Conversion(unittest.TestCase):
     def runTest(self):
-        self.assertEqual(1, 1)
+        pass #TODO
 
-Test_Meta().runTest()
 #-----------------------------------------#
 # This code was written by Lucas Sinclair #
 # lucas.sinclair@epfl.ch                  #

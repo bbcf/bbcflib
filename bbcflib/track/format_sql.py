@@ -6,7 +6,10 @@ Submodule: bbcflib.track.format_sql
 Implementation of the SQL format.
 """
 
+# General Modules #
 import sqlite3
+
+# Specific Modules #
 from ..track import *
 
 ###########################################################################   
@@ -144,25 +147,26 @@ class GenomicFormat(Track):
 
     def make_missing_indexes(self):
         for chrom in self.chrs_from_tables:
-            self.cursor.execute(    "create index IF NOT EXISTS '" + chrom + "_range_idx'  on '" + chrom + "' (start,end)")
+            self.cursor.execute(    "create index IF NOT EXISTS '" + chrom + "_range_idx' on '" + chrom + "' (start,end)")
             if 'score' in self.get_fields(chrom):
-                self.cursor.execute("create index IF NOT EXISTS '" + chrom + "_score_idx'  on '" + chrom + "' (score)")
+                self.cursor.execute("create index IF NOT EXISTS '" + chrom + "_score_idx' on '" + chrom + "' (score)")
             if 'name' in self.get_fields(chrom):
-                self.cursor.execute("create index IF NOT EXISTS '" + chrom + "_name_idx'   on '" + chrom + "' (name)")
+                self.cursor.execute("create index IF NOT EXISTS '" + chrom + "_name_idx' on '" +  chrom + "' (name)")
 
-###########################################################################   
-def create(path, type, name):
-    connection = sqlite3.connect(path)
-    cursor = connection.cursor()
-    cursor.execute('create table chrNames (name text, length integer)') 
-    cursor.execute('create table attributes (key text, value text)')
-    if type == 'quantitative':
-        cursor.execute('insert into attributes (key,value) values ("datatype","quantitative")') 
-    if type == 'qualitative':
-        cursor.execute('insert into attributes (key,value) values ("datatype","qualitative")') 
-    connection.commit()
-    cursor.close()
-    connection.close()
+    #-----------------------------------------------------------------------------#
+    @staticmethod   
+    def create(path, type, name):
+        connection = sqlite3.connect(path)
+        cursor = connection.cursor()
+        cursor.execute('create table chrNames (name text, length integer)') 
+        cursor.execute('create table attributes (key text, value text)')
+        if type == 'quantitative':
+            cursor.execute('insert into attributes (key,value) values ("datatype","quantitative")') 
+        if type == 'qualitative':
+            cursor.execute('insert into attributes (key,value) values ("datatype","qualitative")') 
+        connection.commit()
+        cursor.close()
+        connection.close()
 
 #-----------------------------------------#
 # This code was written by Lucas Sinclair #

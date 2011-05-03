@@ -7,7 +7,7 @@ Methods that create an SQL file upon opening in the temporary directory and reco
 """
 
 # General modules #
-import os
+import os, shutil
 
 # Specific module #
 from ..common import named_temporary_path
@@ -37,18 +37,20 @@ class ProxyTrack(SQLTrack):
                 for chrom, data in self._read():
                     t.write(chrom, data, self._fields)
                 # Copy meta track #
-                self._meta_track['datatype']       = self._type
-                self._meta_track['converted_by']   = __package__
-                self._meta_track['converted_from'] = self._path
-                t.meta_track = self._meta_track
+                self._meta_track_dict = self._meta_track
+                self._meta_track_dict['datatype']       = self._type
+                self._meta_track_dict['converted_by']   = __package__
+                self._meta_track_dict['converted_from'] = self._path
+                t.meta_track = self._meta_track_dict
                 # Copy meta chr #
                 t.meta_chr   = [chr for chr in self._meta_chr if chr['name'] in self._seen_chr]
         # Load the new SQL track as self #
         super(ProxyTrack, self).__init__(tmp_path, 'sql', name)
 
+    #-----------------------------------------------------------------------------#
     def unload(self, type, value, trackback):
-        super(ProxyTrack, self).unload(type, value, trackback)
         if self.modified: self.dump()
+        super(ProxyTrack, self).unload(type, value, trackback)
 
     def commit(self):
         super(ProxyTrack, self).commit()
@@ -59,9 +61,32 @@ class ProxyTrack(SQLTrack):
         elif os.path.exists(path): raise Exception("The location '" + path + "' is already taken")
         with open(path, 'w') as file: file.writelines(self._write())
 
+    def convert(self, path, format='sql'):
+        if os.path.exists(path):
+            raise Exception("The location '" + path + "' is already taken")
+        if format == 'sql':
+            shutil.move(self.path, path)
+        else:
+            super(ProxyTrack, self).convert(path, format, type, mean_scores)
+
+    #-----------------------------------------------------------------------------#
+    def _read(self):
+        raise NotImplementedError
+
+    def _write(self):
+        raise NotImplementedError
+
     @property
     def _fields(self):
         return self.default_fields
+    
+    @property
+    def _type(self): 
+        raise NotImplementedError
+
+    @_type.setter
+    def _type(self, datatype):
+        raise NotImplementedError
 
     #-----------------------------------------------------------------------------#
     @property
@@ -89,16 +114,7 @@ class ProxyTrack(SQLTrack):
     def remove(self, chrom=None):
         self.modified = True
         super(ProxyTrack, self).remove(chrom)
-    
-    #-----------------------------------------------------------------------------#
-    def convert(self, path, format='sql'):
-        if os.path.exists(path):
-            raise Exception("The location '" + path + "' is already taken")
-        if format == 'sql':
-            os.rename(self.path, path)
-        else:
-            super(ProxyTrack, self).convert(path, format, type, mean_scores)
-
+   
 #-----------------------------------------#
 # This code was written by Lucas Sinclair #
 # lucas.sinclair@epfl.ch                  #
