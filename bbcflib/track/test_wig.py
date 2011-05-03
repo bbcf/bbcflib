@@ -18,7 +18,7 @@ except ImportError:
 class Test_Read(unittest.TestCase):
     def runTest(self):
         t = track_collections['Scores']['1']
-        with Track(t['path'], chrfile=yeast_chr_file) as t['track']:
+        with Track(t['path'], chrfile=t['chrfile']) as t['track']:
             # Just the first feature #
             data = t['track'].read()
             self.assertEqual(data.next(), ('chr1', 0, 10, 8.0))
@@ -37,11 +37,22 @@ class Test_Write(unittest.TestCase):
                                 (120, 130,   0)]
             for chrom, data in sorted(features.items()):
                 t.write(chrom, data)
-        with open(path,'r') as f: A = f.read().split('\n')
+        with open(path,                                    'r') as f: A = f.read().split('\n')
         with open(track_collections['Scores']['3']['path'],'r') as f: B = f.read().split('\n')
-        self.assertEqual(A[-4:], B[-4:])
+        self.assertEqual(A[1:], B)
 
-Test_Write().runTest()
+#-----------------------------------------------------------------------------#   
+class Test_Roundtrips(unittest.TestCase):
+    def runTest(self):
+        path = named_temporary_path('.wig')
+        for track_num, track in sorted(track_collections['Scores'].items()):
+            if track_num == '3': continue
+            with Track(track['path'], chrfile=track['chrfile']) as t:
+                t.dump(path)
+            with open(path,         'r') as f: A = f.read().split('\n')
+            with open(track['path'],'r') as f: B = f.read().split('\n')
+            self.assertEqual(A[1:], B)
+            os.remove(path)
 
 #-----------------------------------------#
 # This code was written by Lucas Sinclair #

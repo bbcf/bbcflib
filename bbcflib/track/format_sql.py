@@ -139,7 +139,7 @@ class GenomicFormat(Track):
 
     @property
     def chrs_from_tables(self):
-        return [x for x in self.all_tables if x not in self.special_tables]
+        return [x for x in self.all_tables if x not in self.special_tables and not x.endswith('_idx')]
 
     #-----------------------------------------------------------------------------#
     def get_fields(self, chrom):

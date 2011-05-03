@@ -18,7 +18,7 @@ except ImportError:
 class Test_Read(unittest.TestCase):
     def runTest(self):
         t = track_collections['Validation']['1']
-        with Track(t['path'], chrfile=yeast_chr_file) as t['track']:
+        with Track(t['path'], chrfile=t['chrfile']) as t['track']:
             # Just the first feature #
             data = t['track'].read()
             self.assertEqual(data.next(), ('chr1', 0, 10, 'Validation feature 1', 10.0))
@@ -37,21 +37,22 @@ class Test_Write(unittest.TestCase):
             features['chr2'] = [(10, 20, 'Dolor', 3.0, 1)]
             for chrom, data in sorted(features.items()):
                 t.write(chrom, data)
-        with open(path,'r') as f: A = f.read().split('\n')
+        with open(path,                                        'r') as f: A = f.read().split('\n')
         with open(track_collections['Validation']['4']['path'],'r') as f: B = f.read().split('\n')
-        self.assertEqual(A[-4:], B[-4:])
+        self.assertEqual(A[1:], B)
+        os.remove(path)
 
 #-----------------------------------------------------------------------------#   
-class Test_Conversion(unittest.TestCase):
+class Test_Roundtrips(unittest.TestCase):
     def runTest(self):
-        pass
-
-#-----------------------------------------------------------------------------#   
-class Test_Roundtrip(unittest.TestCase):
-    def runTest(self):
-        pass
-
-Test_Write().runTest()
+        path = named_temporary_path('.bed')
+        for track_num, track in sorted(track_collections['Validation'].items()):
+            with Track(track['path'], chrfile=track['chrfile']) as t:
+                t.dump(path)
+            with open(path,         'r') as f: A = f.read().split('\n')
+            with open(track['path'],'r') as f: B = f.read().split('\n')
+            self.assertEqual(A[1:], B)
+            os.remove(path)
 
 #-----------------------------------------#
 # This code was written by Lucas Sinclair #

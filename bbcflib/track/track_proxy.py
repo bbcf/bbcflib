@@ -33,7 +33,6 @@ class ProxyTrack(SQLTrack):
                 self._meta_track
                 self._fields
                 # Copy data #
-                self._file.seek(0)
                 for chrom, data in self._read():
                     t.write(chrom, data, self._fields)
                 # Copy meta track #
@@ -51,6 +50,7 @@ class ProxyTrack(SQLTrack):
     def unload(self, type, value, trackback):
         if self.modified: self.dump()
         super(ProxyTrack, self).unload(type, value, trackback)
+        if os.path.exists(self.path): os.remove(self.path)
 
     def commit(self):
         super(ProxyTrack, self).commit()

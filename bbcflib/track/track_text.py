@@ -24,6 +24,33 @@ def int_to_strand(num):
 
 ###########################################################################
 class TextTrack(object):
+    def _read(self):
+        global chrom, entry, generator
+        chrom           = ''
+        entry           = ['', '', '', '']
+        generator       = self._all_entries()
+        self._seen_chr  = []
+        def get_next_entry():
+            global entry, generator
+            entry = generator.next()    
+        def iter_until_different_chr():
+            global chrom, entry
+            while True:
+                if entry[0] != chrom: break
+                yield entry[1:]
+                get_next_entry()
+        get_next_entry()
+        while True:
+            if entry[0] == chrom: break
+            chrom = entry[0]
+            if chrom in self._seen_chr:
+                raise Exception("The track '" + self._path + "' is not sorted by chromosomes (" + chrom + ").")
+            if not chrom in self._all_chrs:
+                raise Exception("The track '" + self._path + "' has a value (" + chrom + ") not specified in the chromosome file.")
+            self._seen_chr.append(chrom)
+            yield chrom, iter_until_different_chr()
+
+    #-----------------------------------------------------------------------------#
     @property
     @memoized_method
     def _meta_chr(self):

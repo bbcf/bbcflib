@@ -116,14 +116,14 @@ class Test_Meta(unittest.TestCase):
 #-----------------------------------------------------------------------------#   
 class Test_Remove(unittest.TestCase):
     def runTest(self):
-        path = '/tmp/tracktest.sql' #named_temporary_path('.sql')
-        os.remove(path)
+        path = named_temporary_path('.sql')
         with new(path) as t:
             chrom = 'chr1'
             features = [(i*10, i*10+5, 'X', 0.0, 0) for i in xrange(5)]
             t.write(chrom, features)
             t.remove()
             self.assertEqual(list(t.read()), [])
+        os.remove(path)
 
 #-----------------------------------------#
 # This code was written by Lucas Sinclair #
