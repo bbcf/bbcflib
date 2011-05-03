@@ -4,8 +4,8 @@
 
 * Run parser challange:
     To run the parser challange tests for both BED and WIG files, you can type:
-        [1] import bbcflib.tests.parsers as p
-        [2] p.run_challange()
+        [1] import bbcflib.tests.track_parsers as p
+        [2] p.run()
 
 * Incrementing the version number
    To change the version number of bbcflib you need to change an entry in each of the following files:

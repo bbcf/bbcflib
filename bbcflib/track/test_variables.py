@@ -38,6 +38,12 @@ for col_name, col in sorted(track_collections.items()):
         new_name = '.'.join(old_name.split('.')[:-1]  + ['sql'])
         track['path_sql'] = new_dir + new_name
 
+# Extra test tracks #
+parser_tests  = [(path + b, True)  for path in [tracks_path + 'qual/bed/should_pass/'] for b in os.listdir(path) if b.endswith(".bed")]
+parser_tests += [(path + b, False) for path in [tracks_path + 'qual/bed/should_fail/'] for b in os.listdir(path) if b.endswith(".bed")]
+parser_tests += [(path + w, True)  for path in [tracks_path + 'quan/wig/should_pass/'] for w in os.listdir(path) if w.endswith(".wig")]
+parser_tests += [(path + w, False) for path in [tracks_path + 'quan/wig/should_fail/'] for w in os.listdir(path) if w.endswith(".wig")]
+
 #-----------------------------------------#
 # This code was written by Lucas Sinclair #
 # lucas.sinclair@epfl.ch                  #
