@@ -17,7 +17,7 @@ except ImportError:
 ###################################################################################
 class Test_Read(unittest.TestCase):
     def runTest(self):
-        t = track_collections['Validation']['1']
+        t = track_collections['Validation'][1]
         with Track(t['path'], chrfile=t['chrfile']) as t['track']:
             # Just the first feature #
             data = t['track'].read()
@@ -37,8 +37,8 @@ class Test_Write(unittest.TestCase):
             features['chr2'] = [(10, 20, 'Dolor', 3.0, 1)]
             for chrom, data in sorted(features.items()):
                 t.write(chrom, data)
-        with open(path,                                        'r') as f: A = f.read().split('\n')
-        with open(track_collections['Validation']['4']['path'],'r') as f: B = f.read().split('\n')
+        with open(path,                                      'r') as f: A = f.read().split('\n')
+        with open(track_collections['Validation'][4]['path'],'r') as f: B = f.read().split('\n')
         self.assertEqual(A[1:], B)
         os.remove(path)
 

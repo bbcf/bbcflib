@@ -11,7 +11,7 @@ import os, shutil
 
 # Specific module #
 from ..common import named_temporary_path
-from ..track import new
+from ..track import Track, new
 from .format_sql import GenomicFormat as SQLTrack
 
 ###########################################################################
@@ -113,6 +113,11 @@ class ProxyTrack(SQLTrack):
     def remove(self, chrom=None):
         self.modified = True
         super(ProxyTrack, self).remove(chrom)
+
+    #-----------------------------------------------------------------------------#
+    @property
+    def default_fields(self):
+        return getattr(Track, self._type + '_fields')
    
 #-----------------------------------------#
 # This code was written by Lucas Sinclair #

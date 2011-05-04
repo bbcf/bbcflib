@@ -17,7 +17,7 @@ except ImportError:
 ###################################################################################
 class Test_Read(unittest.TestCase):
     def runTest(self):
-        t = track_collections['Validation']['1']
+        t = track_collections['Validation'][1]
         with Track(t['path_sql']) as t['track']:
             # Just the first feature #
             data = t['track'].read()

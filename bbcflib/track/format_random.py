@@ -50,7 +50,7 @@ class GenomicFormat(Track):
 
     @property
     def meta_track(self): 
-        return {'tyoe':'random'}
+        return {'type':'random'}
 
 #-----------------------------------------#
 # This code was written by Lucas Sinclair #

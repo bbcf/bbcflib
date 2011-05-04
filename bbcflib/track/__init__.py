@@ -320,7 +320,7 @@ class Track(object):
         '''
         if format == self.format:
             raise Exception("The track '" + path + "' cannot be converted to the " + format + " format because it is already in that format.")
-        with new(path, format, type, name) as t:
+        with new(path, format, self.type, self.name) as t:
             t.meta_track = self.meta_track
             t.meta_chr   = self.meta_chr            
             for chrom in self.all_chrs: t.write(chrom, self.read(chrom), self.fields)
@@ -353,7 +353,7 @@ class Track(object):
     def load(self):
         pass
    
-    def unload(self):
+    def unload(self, type, value, traceback):
         pass
 
     def commit(self):
@@ -362,7 +362,7 @@ class Track(object):
     #-----------------------------------------------------------------------------#
     @property
     def default_fields(self):
-        return getattr(Track, self._type + '_fields')
+        return getattr(Track, self.type + '_fields')
 
 ###########################################################################   
 def new(path, format=None, type='qualitative', name='Unnamed', chrfile=None):

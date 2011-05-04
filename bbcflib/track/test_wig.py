@@ -17,7 +17,7 @@ except ImportError:
 ###################################################################################
 class Test_Read(unittest.TestCase):
     def runTest(self):
-        t = track_collections['Scores']['1']
+        t = track_collections['Scores'][1]
         with Track(t['path'], chrfile=t['chrfile']) as t['track']:
             # Just the first feature #
             data = t['track'].read()
@@ -38,7 +38,7 @@ class Test_Write(unittest.TestCase):
             for chrom, data in sorted(features.items()):
                 t.write(chrom, data)
         with open(path,                                    'r') as f: A = f.read().split('\n')
-        with open(track_collections['Scores']['3']['path'],'r') as f: B = f.read().split('\n')
+        with open(track_collections['Scores'][3]['path'],'r') as f: B = f.read().split('\n')
         self.assertEqual(A[1:], B)
 
 #-----------------------------------------------------------------------------#   
@@ -46,7 +46,7 @@ class Test_Roundtrips(unittest.TestCase):
     def runTest(self):
         path = named_temporary_path('.wig')
         for track_num, track in sorted(track_collections['Scores'].items()):
-            if track_num == '3': continue
+            if track_num == 3: continue
             with Track(track['path'], chrfile=track['chrfile']) as t:
                 t.dump(path)
             with open(path,         'r') as f: A = f.read().split('\n')
