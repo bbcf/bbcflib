@@ -37,7 +37,7 @@ def natural_sort(item):
 ###############################################################################
 def named_temporary_path(suffix=''):
     ''' Often, one needs a new random and temporary file path
-        instead of the random and tempory file object provided
+        instead of the random and temporary file object provided
         by the tempfile module'''
     import os, tempfile
     file = tempfile.NamedTemporaryFile(suffix=suffix, delete=False)
