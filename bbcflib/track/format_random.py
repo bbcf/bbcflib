@@ -23,6 +23,7 @@ class GenomicFormat(Track):
         self.all_chrs = [chrsuffix + str(x) for x in range(10)]
         # Other parameters #
         self.name_gen = tempfile._RandomNameSequence()
+        self.name_gen.rng.seed(0)
         self.size = 500
  
     def read(self, selection=None, fields=None):
