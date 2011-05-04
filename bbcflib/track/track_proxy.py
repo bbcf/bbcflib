@@ -37,7 +37,6 @@ class ProxyTrack(SQLTrack):
                     t.write(chrom, data, self._fields)
                 # Copy meta track #
                 self._meta_track_dict = self._meta_track
-                self._meta_track_dict['datatype']       = self._type
                 self._meta_track_dict['converted_by']   = __package__
                 self._meta_track_dict['converted_from'] = self._path
                 t.meta_track = self._meta_track_dict
