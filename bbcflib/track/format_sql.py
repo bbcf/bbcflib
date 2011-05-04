@@ -63,6 +63,7 @@ class GenomicFormat(Track):
 
     @meta_chr.setter
     def meta_chr(self, data):
+        if data == []: self.cursor.execute('delete from chrNames')  
         for x in data: self.cursor.execute('insert into chrNames (' + ','.join(x.keys()) + ') values (' + ','.join(['?' for y in range(len(x.keys()))])+')', tuple([x[k] for k in x.keys()]))
 
     @property
@@ -72,6 +73,7 @@ class GenomicFormat(Track):
 
     @meta_track.setter
     def meta_track(self, data): 
+        if data == {}: self.cursor.execute('delete from attributes') 
         for k in data.keys(): self.cursor.execute('insert into attributes (key,value) values (?,?)',(k,data[k]))
 
     #-----------------------------------------------------------------------------#

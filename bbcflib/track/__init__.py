@@ -158,7 +158,7 @@ class Track(object):
            * *format* is either ``sql``, ``bed`` or ``wig``
            * *all_chrs* is a list of all available chromosome. For instance:
                 ``['chr1, 'chr2', 'chr3']``
-           * *meta_chr* is a dictionary of chromosome meta data (information like length, etc). For instance: 
+           * *meta_chr* is a list of dictionaries of chromosome meta data (information like length, etc). For instance: 
                 ``[{'name': 'chr1', 'length': 197195432}, {'name': 'chr2', 'length': 129993255}]``
            * *meta_track* is a dictionary of meta data associated to the track (information like the source, etc). For instance:
                  ``{'datatype': 'quantitative', 'source': 'SGD'}``
