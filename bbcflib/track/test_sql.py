@@ -32,8 +32,8 @@ class Test_Read(unittest.TestCase):
             # Region #
             expected =[(20, 30, u'Validation feature 3', 10.0),
                        (25, 30, u'Validation feature 4',  0.0),
-                       (40, 45, u'Validation feature 6',  0.0),
-                       (40, 50, u'Validation feature 5', 10.0)]
+                       (40, 45, u'Validation feature 5',  0.0),
+                       (40, 50, u'Validation feature 6', 10.0)]
             data = t['track'].read({'chr':'chr1','start':22,'end':46})
             self.assertEqual(list(data), expected)
             # Strict region #
