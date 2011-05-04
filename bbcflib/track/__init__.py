@@ -250,10 +250,10 @@ class Track(object):
                 data = t.read()
                 data = t.read('chr2')
                 data = t.read(['chr1','chr2','chr3'])
-                data = t.read({'chr':'chr1', 'start':10000, 'stop':15000})
-                data = t.read({'chr':'chr1', 'start':10000, 'stop':15000, 'inclusion':'strict'})
+                data = t.read({'chr':'chr1', 'start':10000, 'end':15000})
+                data = t.read({'chr':'chr1', 'start':10000, 'end':15000, 'inclusion':'strict'})
                 data = t.read('chr3', ['name', 'strand'])
-                data = t.read({'chr':'chr5', 'start':0, 'stop':200}, ['strand', 'start', 'score'])
+                data = t.read({'chr':'chr5', 'start':0, 'end':200}, ['strand', 'start', 'score'])
             with Track('tracks/copychrs.sql') as t:
                 t.write('chrY', t.read('chrX', cursor=True))
 
