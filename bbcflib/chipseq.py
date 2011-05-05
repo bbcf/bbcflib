@@ -5,9 +5,12 @@ Module: bbcflib.chipseq
 
 This module provides functions to run a basic ChIP-seq analysis from reads mapped on
 a reference genome.
-The most important steps are the binding of ``macs`` via the 'add_macs_results' function, 
-the peak deconvolution algorithm with the 'run_deconv' function and
-the 'parallel_density_sql' function to create quantitative sql tracks from bam files. Below is the script used by the frontend::
+The most important steps are the binding of ``macs`` via the 'add_macs_results' function and
+the peak deconvolution algorithm with the 'run_deconv' function. 
+
+The whole workflow can be run via the function ``workflow_groups`` with appropriate options in 'job.options'.
+
+Below is the script used by the frontend::
 
     hts_key = 'test_key'
     M = MiniLIMS( '/path/to/chipseq/minilims' )
@@ -56,6 +59,11 @@ def add_macs_results( ex, read_length, genome_size, bamfile,
     """Calls the ``macs`` function on each possible pair 
     of test and control bam files and adds 
     the respective outputs to the execution repository.
+
+    ``macs`` options can be controlled with `macs_args`. 
+    If a dictionary of Poisson thresholds for each sample is given, then the enrichment bounds ('-m' option)
+    are computed from them otherwise the default is '-m 5,60'.
+
     Returns the set of file prefixes.
     """
     if not(isinstance(bamfile,list)):
@@ -102,8 +110,8 @@ def add_macs_results( ex, read_length, genome_size, bamfile,
 def sql_prepare_deconv(sql_dict,peaks_bed,chr_name,chr_length,cutoff,read_extend):
     """Prepares files for the deconvolution algorithm.
     Calls the stand-alone ``sql_prepare_deconv.py`` script which needs 
-    a directory of sql files (quantitative tracks for forward and reverse strand) 
-    and a bed file (*_peaks.bed file from ``macs``) of wnriched regions to consider.
+    a dictionary of sql files (quantitative tracks for forward and reverse strand) 
+    and a bed file (*_peaks.bed file from ``macs``) of enriched regions to consider.
     Returns the name of an 'Rdata' file to be passed to the *R* deconvolution script.
     """
     out = unique_filename_in()
@@ -190,13 +198,12 @@ def workflow_groups( ex, job_or_dict, mapseq_files, chromosomes, script_path='',
 
     Defaults ``macs`` parameters (overriden by job_or_dict['options']['macs_args']) are set as follows:
 
-    * ``'--nomodel'``
+    * ``'-p'``: .001 (p-value threshold)
 
-    * ``'p'``: .001 (p-value threshold)
+    * ``'-bw'``: 200 ('bandwith')
 
-    * ``'bw'``: 200 ('bandwith')
-
-    * ``'m'``: 5,60 ('minimum and maximum enrichments relative to background or control)
+    * ``'-m'``: 5,60 ('minimum and maximum enrichments relative to background or control')
+    The enrichment bounds will be computed from a Poisson threshold *T*, if available, as *(min(30,T+1),30(T+1))*.
 
     Returns a tuple of a dictionary with keys *group_id* from the job groups, *macs* and *deconv* if applicable and values file description dictionaries and a dictionary of *group_ids* to *names* used in file descriptions.
 """

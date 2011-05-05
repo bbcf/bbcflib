@@ -4,13 +4,13 @@ Module: bbcflib.mapseq
 ======================
 
 This module provides functions useful to map raw reads using bowtie. 
-The most common workflow will use ``map_reads`` which takes the following arguments:
+The most common workflow will first use ``map_reads`` which takes the following arguments:
 
   * ``'ex'``: an execution environment to run jobs in,
 
   * ``'fastq_file'``: the raw reads as a fastq file, 
 
-  * ``'chromosomes'``: a dictionary with keys 'chromosome_id' as used in the bowtie indexes and values a dictionary with common chromosome names and lengths,
+  * ``'chromosomes'``: a dictionary with keys 'chromosome_id' as used in the bowtie indexes and values a dictionary with usual chromosome names and their lengths,
 
   * ``'bowtie_index'``: the file prefix to the bowtie index,
 
@@ -20,9 +20,14 @@ The most common workflow will use ``map_reads`` which takes the following argume
 
   * ``'name'``: sample name to be used in descriptions and file names,
 
-  * ``'remove_pcr_duplicates'``: whether to remove probable PCR amplification artifacts based on a Poisson confidence threshold (default *True*).
+  * ``'remove_pcr_duplicates'``: whether to remove probable PCR amplification artifacts based on a Poisson confidence threshold (default *True*),
 
-The function ``map_groups`` will take a collection of sample as described in a *job* object from the ``frontend`` module and run fetch fastq files for each of them through using a ``daflims`` object, use ``genrep`` to get the bowtie indexes and run ``map_reads`` for each sample.
+  * ``'bwt_args'``: a list of specific arguments for bowtie (in addition to ["-Sam",str(max(20,maxhits)),"--best","--strata"]).
+
+The function ``map_groups`` will take a collection of sample as described in a *job* object from the ``frontend`` module and run fetch fastq files for each of them through using a ``daflims`` object, use an 'Assembly' object from ``genrep`` to get the bowtie indexes and run ``map_reads`` for each sample.
+
+The second step in the workflow consists in generating genome-wide density maps with ``densities_groups`` which needs a 'bein' execution environment, the same *job* and *assembly* as above and a dictionary 'file_dict' as returned by ``map_groups``. The function then runs ``parallel_density_sql`` on each 'bam' file to obtain a normalized read density profile as a 'sqlite' file.
+
 Below is the script used by the frontend::
 
     from bbcflib import daflims, genrep, frontend, gdv, common
@@ -107,7 +112,7 @@ def plot_stats(sample_stats,script_path="./"):
     a pdf report of the mapping statistics.
 
     The input is the dictionary return by the ``bamstats`` call. 
-    This is passed as a json string to the R script. 
+    This is passed as a json file to the R script. 
     Returns the pdf file created by the script.
     """
     stats_file = unique_filename_in()
@@ -428,7 +433,7 @@ def parallel_density_wig( ex, bamfile, chromosomes,
                           b2w_args=[], via='lsf' ):
     """Runs 'bam_to_density' in parallel 
     for every chromosome in the 'chromosomes' list with 'sql' set to False.
-    Returns produces a single text wig file.
+    Returns a single text wig file.
     """
     futures = [bam_to_density.nonblocking( ex, bamfile, compact_chromosome_name(k),
                                            v['name'], unique_filename_in(), nreads, merge, 
@@ -450,7 +455,7 @@ def parallel_density_sql( ex, bamfile, chromosomes=None,
                           description="", alias=None, b2w_args=[], via='lsf' ):
     """Runs 'bam_to_density' for every chromosome in the 'chromosomes' list.
     
-    Returns one or two sqlite files depending 
+    Returns a dictionary with one or two sqlite files depending 
     if 'merge'>=0 (shift and merge strands into one tracks) 
     or 'merge'<0 (keep seperate tracks for each strand).
     """
@@ -462,7 +467,7 @@ def parallel_density_sql( ex, bamfile, chromosomes=None,
         suffix = ['merged']
     _ = [common.create_sql_track( output+s+'.sql', chromosomes ) for s in suffix]
     results = []
-    if chromosomes = None:
+    if chromosomes == None:
         chromosomes = {None: {'name': None}}
     for k,v in chromosomes.iteritems():
         future = bam_to_density.nonblocking( ex, bamfile, compact_chromosome_name(k),
@@ -569,7 +574,7 @@ def densities_groups( ex, job_or_dict, file_dict, assembly_or_dict, via='lsf' ):
                                                convert=False, 
                                                description=group_name, 
                                                b2w_args=b2w_args, via=via )
-        processed[gid] = {'bam': merged_bam, 'wig': merged_wig,,
+        processed[gid] = {'bam': merged_bam, 'wig': merged_wig,
                           'read_length': mapped.values()[0]['stats']['read_length']}
         if ucsc_bigwig:
             bw_futures = [wigToBigWig.nonblocking( ex, merged_wig[s], via=via ) 
