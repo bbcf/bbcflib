@@ -1,6 +1,6 @@
 """
 ======================
-Module: bbcflib.mapseq
+Module: bbcflib.rnaseq
 ======================
 
 """
