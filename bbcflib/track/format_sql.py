@@ -34,7 +34,7 @@ class GenomicFormat(Track):
         # Set attributes #
         self.all_chrs = self.chrs_from_tables
 
-    def unload(self, type, value, trackback):
+    def unload(self, type=None, value=None, trackback=None):
         self.make_missing_indexes()
         self.connection.commit()
         self.cursor.close()

@@ -46,7 +46,7 @@ class ProxyTrack(SQLTrack):
         super(ProxyTrack, self).__init__(tmp_path, 'sql', name)
 
     #-----------------------------------------------------------------------------#
-    def unload(self, type, value, trackback):
+    def unload(self, type=None, value=None, trackback=None):
         if self.modified: self.dump()
         super(ProxyTrack, self).unload(type, value, trackback)
         if os.path.exists(self.path): os.remove(self.path)

@@ -53,7 +53,7 @@ for col_name, col in sorted(track_collections.items()):
         track['path_sql'] = new_dir + new_name
         # Make a name #
         track['name'] = col_name + ' ' + str(track_num) 
-        
+
 # Extra test tracks #
 parser_tests  = [(path + b, True)  for path in [tracks_path + 'qual/bed/should_pass/'] for b in os.listdir(path) if b.endswith(".bed")]
 parser_tests += [(path + b, False) for path in [tracks_path + 'qual/bed/should_fail/'] for b in os.listdir(path) if b.endswith(".bed")]
