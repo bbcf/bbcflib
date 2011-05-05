@@ -6,7 +6,10 @@ Submodule: bbcflib.track.format_sql
 Implementation of the SQL format.
 """
 
+# General Modules #
 import sqlite3
+
+# Specific Modules #
 from ..track import *
 
 ###########################################################################   
@@ -31,7 +34,7 @@ class GenomicFormat(Track):
         # Set attributes #
         self.all_chrs = self.chrs_from_tables
 
-    def unload(self, type, value, trackback):
+    def unload(self, type=None, value=None, trackback=None):
         self.make_missing_indexes()
         self.connection.commit()
         self.cursor.close()
@@ -60,6 +63,7 @@ class GenomicFormat(Track):
 
     @meta_chr.setter
     def meta_chr(self, data):
+        if data == []: self.cursor.execute('delete from chrNames')  
         for x in data: self.cursor.execute('insert into chrNames (' + ','.join(x.keys()) + ') values (' + ','.join(['?' for y in range(len(x.keys()))])+')', tuple([x[k] for k in x.keys()]))
 
     @property
@@ -69,6 +73,7 @@ class GenomicFormat(Track):
 
     @meta_track.setter
     def meta_track(self, data): 
+        if data == {}: self.cursor.execute('delete from attributes') 
         for k in data.keys(): self.cursor.execute('insert into attributes (key,value) values (?,?)',(k,data[k]))
 
     #-----------------------------------------------------------------------------#
@@ -136,7 +141,7 @@ class GenomicFormat(Track):
 
     @property
     def chrs_from_tables(self):
-        return [x for x in self.all_tables if x not in self.special_tables]
+        return [x for x in self.all_tables if x not in self.special_tables and not x.endswith('_idx')]
 
     #-----------------------------------------------------------------------------#
     def get_fields(self, chrom):
@@ -144,25 +149,26 @@ class GenomicFormat(Track):
 
     def make_missing_indexes(self):
         for chrom in self.chrs_from_tables:
-            self.cursor.execute(    "create index IF NOT EXISTS '" + chrom + "_range_idx'  on '" + chrom + "' (start,end)")
+            self.cursor.execute(    "create index IF NOT EXISTS '" + chrom + "_range_idx' on '" + chrom + "' (start,end)")
             if 'score' in self.get_fields(chrom):
-                self.cursor.execute("create index IF NOT EXISTS '" + chrom + "_score_idx'  on '" + chrom + "' (score)")
+                self.cursor.execute("create index IF NOT EXISTS '" + chrom + "_score_idx' on '" + chrom + "' (score)")
             if 'name' in self.get_fields(chrom):
-                self.cursor.execute("create index IF NOT EXISTS '" + chrom + "_name_idx'   on '" + chrom + "' (name)")
+                self.cursor.execute("create index IF NOT EXISTS '" + chrom + "_name_idx' on '" +  chrom + "' (name)")
 
-###########################################################################   
-def create(path, type, name):
-    connection = sqlite3.connect(path)
-    cursor = connection.cursor()
-    cursor.execute('create table chrNames (name text, length integer)') 
-    cursor.execute('create table attributes (key text, value text)')
-    if type == 'quantitative':
-        cursor.execute('insert into attributes (key,value) values ("datatype","quantitative")') 
-    if type == 'qualitative':
-        cursor.execute('insert into attributes (key,value) values ("datatype","qualitative")') 
-    connection.commit()
-    cursor.close()
-    connection.close()
+    #-----------------------------------------------------------------------------#
+    @staticmethod
+    def create(path, type, name):
+        connection = sqlite3.connect(path)
+        cursor = connection.cursor()
+        cursor.execute('create table chrNames (name text, length integer)') 
+        cursor.execute('create table attributes (key text, value text)')
+        if type == 'quantitative':
+            cursor.execute('insert into attributes (key,value) values ("datatype","quantitative")') 
+        if type == 'qualitative':
+            cursor.execute('insert into attributes (key,value) values ("datatype","qualitative")') 
+        connection.commit()
+        cursor.close()
+        connection.close()
 
 #-----------------------------------------#
 # This code was written by Lucas Sinclair #

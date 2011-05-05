@@ -1,4 +1,4 @@
-# Genreral Modules #
+# General Modules #
 import os
 
 # Specific Modules #
@@ -17,7 +17,7 @@ except ImportError:
 ###################################################################################
 class Test_Read(unittest.TestCase):
     def runTest(self):
-        t = track_collections['Validation']['1']
+        t = track_collections['Validation'][1]
         with Track(t['path_sql']) as t['track']:
             # Just the first feature #
             data = t['track'].read()
@@ -32,8 +32,8 @@ class Test_Read(unittest.TestCase):
             # Region #
             expected =[(20, 30, u'Validation feature 3', 10.0),
                        (25, 30, u'Validation feature 4',  0.0),
-                       (40, 45, u'Validation feature 6',  0.0),
-                       (40, 50, u'Validation feature 5', 10.0)]
+                       (40, 45, u'Validation feature 5',  0.0),
+                       (40, 50, u'Validation feature 6', 10.0)]
             data = t['track'].read({'chr':'chr1','start':22,'end':46})
             self.assertEqual(list(data), expected)
             # Strict region #
@@ -43,7 +43,7 @@ class Test_Read(unittest.TestCase):
             data = t['track'].read({'chr':'chr2','start':0,'end':10})
             self.assertEqual(list(data), [])
 
-###################################################################################
+#-----------------------------------------------------------------------------#   
 class Test_Creation(unittest.TestCase):
     def runTest(self):
         format = 'sql'
@@ -61,7 +61,7 @@ class Test_Creation(unittest.TestCase):
             self.assertEqual(t.meta_track, {'datatype':'quantitative'})
         os.remove(path)
 
-###################################################################################
+#-----------------------------------------------------------------------------#   
 class Test_Write(unittest.TestCase):
     def runTest(self):
         format = 'sql'
@@ -94,7 +94,7 @@ class Test_Write(unittest.TestCase):
             self.assertEqual(list(t.read(chrom)), features)
         os.remove(path)
 
-###################################################################################
+#-----------------------------------------------------------------------------#   
 class Test_Meta(unittest.TestCase):
     def runTest(self):
         path = named_temporary_path('.sql')
@@ -113,24 +113,18 @@ class Test_Meta(unittest.TestCase):
             self.assertEqual(t.meta_track, info)
         os.remove(path)
 
-###################################################################################
+#-----------------------------------------------------------------------------#   
 class Test_Remove(unittest.TestCase):
     def runTest(self):
-        path = '/tmp/tracktest.sql' #named_temporary_path('.sql')
-        os.remove(path)
+        path = named_temporary_path('.sql')
         with new(path) as t:
             chrom = 'chr1'
             features = [(i*10, i*10+5, 'X', 0.0, 0) for i in xrange(5)]
             t.write(chrom, features)
             t.remove()
             self.assertEqual(list(t.read()), [])
+        os.remove(path)
 
-###################################################################################
-class Test_Conversion(unittest.TestCase):
-    def runTest(self):
-        self.assertEqual(1, 1)
-
-Test_Meta().runTest()
 #-----------------------------------------#
 # This code was written by Lucas Sinclair #
 # lucas.sinclair@epfl.ch                  #

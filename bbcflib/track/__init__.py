@@ -67,7 +67,10 @@ To set the chromosome metadata or the track metadata you simply asign to that at
         t.meta_track = {'datatype': 'quantitative', 'source': 'SGD'}
 """
 
+# General Modules #
 import os, sys
+
+# Specific Modules #
 from .. import common as com
 
 #-----------------------------------------------------------------------------#   
@@ -134,11 +137,18 @@ class Track(object):
             * *format* is an optional string specifying the format of the track to load when it cannot be guessed from the file extension.
             * *name* is an optional string specifying the name of the track to load.
             * *chrfile* is the path to chromosome file. This is specified only when the underlying format is missing chromosome length information. 
+            * *type* is an option variable that can take the value of either ``qualitative`` or ``quantitative``. It is only usefull when loading a track that is ambigous towards its type, as can be certain text files. For instance, In the case of WIG track becoming qualitative, all features will be missing names, but overlapping features will suddenly be authorized. 
         
         Examples::
 
             with Track('tracks/rp_genes.sql') as rpgenes:
-                data = rpgenes.read('chr3')
+                pass
+            with Track('tracks/yeast', 'sql', 'S. cer. genes') as yeast:
+                pass
+            with Track('tracks/peaks.bed', 'bed', chrfile='tracks/cser.chr') as peaks:
+                pass
+            with Track('tracks/scores.wig', 'wig', chrfile='tracks/cser.chr', type='qualitative') as scores:
+                pass
 
         Once a track is loaded you have access to the following attributes:
 
@@ -148,11 +158,11 @@ class Track(object):
            * *format* is either ``sql``, ``bed`` or ``wig``
            * *all_chrs* is a list of all available chromosome. For instance:
                 ``['chr1, 'chr2', 'chr3']``
-           * *meta_chr* is a dictionary of chromosome meta data (information like length, etc). For instance: 
+           * *meta_chr* is a list of dictionaries of chromosome meta data (information like length, etc). For instance: 
                 ``[{'name': 'chr1', 'length': 197195432}, {'name': 'chr2', 'length': 129993255}]``
            * *meta_track* is a dictionary of meta data associated to the track (information like the source, etc). For instance:
                  ``{'datatype': 'quantitative', 'source': 'SGD'}``
-           * *chrfile* is the path to a chromosome file if one was given.
+           * *chrfile* is the path to a chromosomes file if one was included.
     '''
 
     qualitative_fields  = ['start', 'end', 'name', 'score', 'strand']
@@ -172,19 +182,22 @@ class Track(object):
     }
     
     #-----------------------------------------------------------------------------#   
-    def __new__(cls, path, format=None, name=None, chrfile=None):
+    def __new__(cls, path, format=None, name=None, chrfile=None, type=None):
         '''Internal factory-like method that is called before creating a new instance of Track.
            This function determines the format of the file that is provided and returns an
            instance of the appropriate child class.'''
         if cls is Track:
             if not format: format = _determine_format(path)
             implementation = _import_implementation(format)
-            instance       = implementation.GenomicFormat(path, format, name, chrfile)
+            instance       = implementation.GenomicFormat(path, format, name, chrfile, type)
         else:
             instance = super(Track, cls).__new__(cls)
         return instance
 
-    def __init__(self, path, format=None, name=None, chrfile=None):
+    def __init__(self, path, format=None, name=None, chrfile=None, type=None):
+        # Type can only mean something with text files #
+        if type:
+            raise Exception("You cannot specify the type: " + type + " for the track '" + path + "'.")
         # Default format #
         if not format: format = _determine_format(path)
         # Set attributes #
@@ -203,7 +216,7 @@ class Track(object):
         self.all_chrs.sort(key=com.natural_sort)
         # Test variables #
         if self.type not in ['quantitative', 'qualitative']:
-            raise Exception("The type of the track is invalid: " + type + ".")
+            raise Exception("The type of the track is invalid: " + self.type + ".")
 
     def __iter__(self):
         ''' Called when trying to iterate the class'''
@@ -237,10 +250,10 @@ class Track(object):
                 data = t.read()
                 data = t.read('chr2')
                 data = t.read(['chr1','chr2','chr3'])
-                data = t.read({'chr':'chr1', 'start':10000, 'stop':15000})
-                data = t.read({'chr':'chr1', 'start':10000, 'stop':15000, 'inclusion':'strict'})
+                data = t.read({'chr':'chr1', 'start':10000, 'end':15000})
+                data = t.read({'chr':'chr1', 'start':10000, 'end':15000, 'inclusion':'strict'})
                 data = t.read('chr3', ['name', 'strand'])
-                data = t.read({'chr':'chr5', 'start':0, 'stop':200}, ['strand', 'start', 'score'])
+                data = t.read({'chr':'chr5', 'start':0, 'end':200}, ['strand', 'start', 'score'])
             with Track('tracks/copychrs.sql') as t:
                 t.write('chrY', t.read('chrX', cursor=True))
 
@@ -307,10 +320,10 @@ class Track(object):
         '''
         if format == self.format:
             raise Exception("The track '" + path + "' cannot be converted to the " + format + " format because it is already in that format.")
-        with new(path, format, type, name) as t:
-            for chrom in self.all_chrs: t.write(chrom, self.read(chrom), self.fields)
+        with new(path, format, self.type, self.name) as t:
             t.meta_track = self.meta_track
             t.meta_chr   = self.meta_chr            
+            for chrom in self.all_chrs: t.write(chrom, self.read(chrom), self.fields)
 
     #-----------------------------------------------------------------------------#
     @property
@@ -337,19 +350,19 @@ class Track(object):
     def meta_track(self, value): 
         raise NotImplementedError
 
-    #-----------------------------------------------------------------------------#
     def load(self):
         pass
    
-    def unload(self):
+    def unload(self, type, value, traceback):
         pass
 
     def commit(self):
         pass
  
+    #-----------------------------------------------------------------------------#
     @property
     def default_fields(self):
-        return getattr(Track, self._type + '_fields')
+        return getattr(Track, self.type + '_fields')
 
 ###########################################################################   
 def new(path, format=None, type='qualitative', name='Unnamed', chrfile=None):
@@ -378,7 +391,7 @@ def new(path, format=None, type='qualitative', name='Unnamed', chrfile=None):
         raise Exception("The location '" + path + "' is already taken")
     if not format: format = _determine_format(path)
     implementation = _import_implementation(format)
-    implementation.create(path, type, name)
+    implementation.GenomicFormat.create(path, type, name)
     return Track(path, name=name, chrfile=chrfile)
 
 #-----------------------------------------#
