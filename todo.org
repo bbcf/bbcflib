@@ -1,15 +1,14 @@
- - use config parser
+ - use config parser and Fred's deepmap
+ - move scripts/* to bbcfutils/Python!
 
 * track...
    move functionality from gFeatMiner to bbcflib
 
+* common...
+   change sql stuff to use gMiner tracks
+
 * mapseq...
-   provide seed length param (auto: .7*read_length)
-   provide read_extend param
-   make densities
+   update doc 
 
 * chipseq...
-   density: use read_length param
-   use poisson thresholds for macs limits
-   defaults macs params?
-   generate split densities if not available rather than constraint on input
+   update doc
