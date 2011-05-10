@@ -63,6 +63,7 @@ import re
 import json
 import os
 import pickle
+import urllib, urllib2
 from bbcflib import frontend, genrep, daflims, common
 from numpy import *
 from scipy.misc import factorial
@@ -248,7 +249,40 @@ def map_reads( ex, fastq_file, chromosomes, bowtie_index,
 
 ############################################################ 
 
-def map_groups( ex, job_or_dict, daflims_or_files, fastq_root, assembly_or_dict, map_args={} ):
+def get_fastq_files( ex, job, daflims, fastq_root, set_seed_length=True ):
+    """
+    Will replace file references by actual file names in the 'job' object.
+    These references are either 'daflims' run descriptions or urls.
+    Argument 'daflims' is a dictionary of 'Daflims' objects (keys are the facility names).
+    If 'set_seed_length' is true, a dictionary job.groups[gid]['seed_lengths'] of seed lengths is constructed 
+    with values corresponding to 70% of the read length.
+    """
+    if not(isinstance(daflims_or_files.values()[0],daflims.DAFLIMS)):
+        raise ValueError("Need DAFLIMS objects in get_fastq_files.")
+    for gid,group in job.groups.iteritems():
+        job.groups[gid]['seed_lengths'] = {}
+        job.groups[gid]['run_names'] = {}
+        for rid,run in group['runs'].iteritems():
+            if isinstance(run,dict) and all([x in run for x in ['facility','machine','run','lane']]):
+                dafl = daflims[run['facility']]
+                daf_data = dafl.fetch_fastq( str(run['facility']), str(run['machine']),
+                                             run['run'], run['lane'], to=fastq_root )
+                job.groups[gid]['runs'][rid] = daf_data['path']
+                if (set_seed_length):
+                    job.groups[gid]['seed_lengths'][rid] = max(28,int(0.7*daf_data['cycle']))
+                job.groups[gid]['run_names'][rid] = "_".join(['',run['machine'],str(run['run']),str(run['lane'])])
+            elif isinstance(run,str):
+                url = common.normalize_url(run)
+                fq_file = unique_filename_in(fastq_root)
+                with open(os.path.join(fastq_root,fq_file),"w") as out:
+                    out.write(urllib2.urlopen(url).read())
+                job.groups[gid]['runs'][rid] = fq_file
+                job.groups[gid]['run_names'][rid] = url.split("/")[-1]
+    return job
+    
+############################################################ 
+
+def map_groups( ex, job_or_dict, fastq_root, assembly_or_dict, map_args={} ):
     """Fetches fastq files and bowtie indexes, and runs the 'map_reads' function for 
     a collection of samples described in a 'Frontend' 'job'.
 
@@ -258,9 +292,7 @@ def map_groups( ex, job_or_dict, daflims_or_files, fastq_root, assembly_or_dict,
     
     * ``'job_or_dict'``: a 'Frontend' 'job' object, or a dictionary with keys 'groups',
     
-    * ``'daflims_or_files'``: a dictionary of 'Daflims' objects (keys are the facility names), or a dictionary with run_ids as keys (same as in job.groups) and values file names,
-
-    * ``'fastq_root'``: path where to download raw fastq files,
+    * ``'fastq_root'``: path to raw fastq files,
 
     * ``'assembly_or_dict'``: an 'Assembly' object, or a dictionary of 'chromosomes' and 'index_path'.
 
@@ -302,23 +334,19 @@ def map_groups( ex, job_or_dict, daflims_or_files, fastq_root, assembly_or_dict,
         if not 'runs' in group:
             group = {'runs': group}
         for rid,run in group['runs'].iteritems():
-            name = group_name
-            if isinstance(daflims_or_files.values()[0],daflims.DAFLIMS):
-                dafl = daflims_or_files[run['facility']]
-                daf_data = dafl.fetch_fastq( str(run['facility']), str(run['machine']),
-                                            run['run'], run['lane'], to=fastq_root )
-                fq_file = daf_data['path']
-                seed_len = max(28,int(0.7*daf_data['cycle']))
+            fq_file = os.path.join(fastq_root,run[rid])
+            if 'seed_lengths' in group and group['seed_lengths'].get(rid) > 0:
+                seed_len = str(group['seed_lengths'][rid])
                 if 'bwt_args' in map_args:
-                    map_args['bwt_args'] = ["-l",str(seed_len)] 
+                    if "-l" in map_args['bwt_args']:
+                        map_args['bwt_args'][map_args['bwt_args'].index("-l")+1] = seed_len
+                    else:
+                        map_args['bwt_args'] += ["-l",seed_len] 
                 else:
-                    map_args['bwt_args'] += ["-l",str(seed_len)] 
-                if len(group['runs'])>1:
-                    name += "_".join(['',run['machine'],str(run['run']),str(run['lane'])])
-            else:
-                fq_file = os.path.join(fastq_root,daflims_or_files[gid][rid])
-                if len(group['runs'])>1:
-                    name += "_"+str(rid)
+                    map_args['bwt_args'] = ["-l",seed_len] 
+            name = group_name
+            if len(group['runs'])>1:
+                name += group['run_names'].get(rid) or "_"+str(rid)
             m = map_reads( ex, fq_file, chromosomes, index_path, name=name+"_",
                            remove_pcr_duplicates=pcr_dupl, **map_args )
             file_names[gid][rid] = name
