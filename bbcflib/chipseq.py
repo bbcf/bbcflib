@@ -26,6 +26,9 @@ Below is the script used by the frontend::
         g_rep_assembly = g_rep.assembly( ms_job.assembly_id )
         job.groups = ms_job.groups
         files = workflow_groups( ex, job, ms_files, g_rep_assembly.chromosomes, gl['script_path'] )
+    print ex.id
+    allfiles = common.get_files( ex.id, M )
+
 
 """
 
@@ -203,6 +206,7 @@ def workflow_groups( ex, job_or_dict, mapseq_files, chromosomes, script_path='',
     * ``'-bw'``: 200 ('bandwith')
 
     * ``'-m'``: 5,60 ('minimum and maximum enrichments relative to background or control')
+    
     The enrichment bounds will be computed from a Poisson threshold *T*, if available, as *(min(30,T+1),30(T+1))*.
 
     Returns a tuple of a dictionary with keys *group_id* from the job groups, *macs* and *deconv* if applicable and values file description dictionaries and a dictionary of *group_ids* to *names* used in file descriptions.

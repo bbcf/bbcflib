@@ -12,8 +12,9 @@ It provides modules for BBCF's
 * the standard frontend code for workflows written by Fabrice David, 
 * sending job completion emails.
 * the *GDV* api for viewing genome tracks
-* *mapseq* to map reads to reference genomes or transcriptomes
+* *mapseq* to map reads to reference genomes
 * *chipseq* to run ChIP-seq analyses
+* *rnaseq* to map reads to reference transcriptomes and compute statistics of differential expression
 
 All the functionality can be imported with::
 
@@ -29,6 +30,7 @@ modules from bbcflib:
 * ``Frontend`` from :doc:`bbcflib_frontend`
 * ``mapseq`` from :doc:`bbcflib_mapseq`
 * ``chipseq`` from :doc:`bbcflib_chipseq`
+* ``rnaseq`` from :doc:`bbcflib_rnaseq` 
 * ``gdv`` from :doc:`bbcflib_gdv`
 
 ============
