@@ -103,14 +103,14 @@ class GenomicFormat(TextTrack, ProxyTrack):
             return all_fields_possible[0:self.num_fields]
 
     @property
-    def _type(self): 
+    def _datatype(self): 
         return 'qualitative' 
 
-    @_type.setter
-    def _type(self, datatype):
+    @_datatype.setter
+    def _datatype(self, datatype):
         if not datatype: datatype = 'qualitative'
         if datatype != 'qualitative':
-            raise Exception("The track '" + self._path + "' cannot be loaded as a '" + datatype + "' data type.")
+            raise Exception("The track '" + self._path + "' cannot be loaded as a '" + datatype + "' datatype.")
 
 ###########################################################################
 def random_track(number_of_features=15000000, size=1000, jump=1000, orig_start=0, chrs=20):

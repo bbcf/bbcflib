@@ -96,14 +96,14 @@ def _determine_format(path):
             m = magic.Magic()
         # Does the file even exist ? #
         try:
-            type = m.from_file(path)
+            filetype = m.from_file(path)
         except IOError:
             raise Exception("The format of the path '" + path + "' cannot be determined. Please specify a format or add an extension.")
         # Check the result of magic #
         try:
-            extension = known_format_extensions[type]
+            extension = known_format_extensions[filetype]
         except KeyError as err:
-            raise Exception("The format of the track '" + path + "' resolves to " + type + " which is not supported at the moment.")
+            raise Exception("The format of the track '" + path + "' resolves to " + filetype + " which is not supported at the moment.")
     # Synonyms #
     if extension == 'db': extension = 'sql'
     # Return the format #
@@ -137,7 +137,7 @@ class Track(object):
             * *format* is an optional string specifying the format of the track to load when it cannot be guessed from the file extension.
             * *name* is an optional string specifying the name of the track to load.
             * *chrfile* is the path to chromosome file. This is specified only when the underlying format is missing chromosome length information. 
-            * *type* is an option variable that can take the value of either ``qualitative`` or ``quantitative``. It is only usefull when loading a track that is ambigous towards its type, as can be certain text files. For instance, In the case of WIG track becoming qualitative, all features will be missing names, but overlapping features will suddenly be authorized. 
+            * *datatype* is an option variable that can take the value of either ``qualitative`` or ``quantitative``. It is only usefull when loading a track that is ambigous towards its datatype, as can be certain text files. For instance, In the case of WIG track becoming qualitative, all features will be missing names, but overlapping features will suddenly be authorized. 
         
         Examples::
 
@@ -147,13 +147,13 @@ class Track(object):
                 pass
             with Track('tracks/peaks.bed', 'bed', chrfile='tracks/cser.chr') as peaks:
                 pass
-            with Track('tracks/scores.wig', 'wig', chrfile='tracks/cser.chr', type='qualitative') as scores:
+            with Track('tracks/scores.wig', 'wig', chrfile='tracks/cser.chr', datatype='qualitative') as scores:
                 pass
 
         Once a track is loaded you have access to the following attributes:
 
            * *path* is the file system path to the underlying file.
-           * *type* is either ``qualitative`` or ``quantitative``.
+           * *datatype* is either ``qualitative`` or ``quantitative``.
            * *name* is given upon creation of the track.
            * *format* is either ``sql``, ``bed`` or ``wig``
            * *all_chrs* is a list of all available chromosome. For instance:
@@ -182,22 +182,22 @@ class Track(object):
     }
     
     #-----------------------------------------------------------------------------#   
-    def __new__(cls, path, format=None, name=None, chrfile=None, type=None):
+    def __new__(cls, path, format=None, name=None, chrfile=None, datatype=None):
         '''Internal factory-like method that is called before creating a new instance of Track.
            This function determines the format of the file that is provided and returns an
            instance of the appropriate child class.'''
         if cls is Track:
             if not format: format = _determine_format(path)
             implementation = _import_implementation(format)
-            instance       = implementation.GenomicFormat(path, format, name, chrfile, type)
+            instance       = implementation.GenomicFormat(path, format, name, chrfile, datatype)
         else:
             instance = super(Track, cls).__new__(cls)
         return instance
 
-    def __init__(self, path, format=None, name=None, chrfile=None, type=None):
+    def __init__(self, path, format=None, name=None, chrfile=None, datatype=None):
         # Type can only mean something with text files #
-        if type:
-            raise Exception("You cannot specify the type: " + type + " for the track '" + path + "'.")
+        if datatype:
+            raise Exception("You cannot specify the datatype: " + datatype + " for the track '" + path + "'.")
         # Default format #
         if not format: format = _determine_format(path)
         # Set attributes #
@@ -215,8 +215,8 @@ class Track(object):
         # Sort chromosomes #
         self.all_chrs.sort(key=com.natural_sort)
         # Test variables #
-        if self.type not in ['quantitative', 'qualitative']:
-            raise Exception("The type of the track is invalid: " + self.type + ".")
+        if self.datatype not in ['quantitative', 'qualitative']:
+            raise Exception("The datatype of the track is invalid: " + self.datatype + ".")
 
     def __iter__(self):
         ''' Called when trying to iterate the class'''
@@ -226,9 +226,9 @@ class Track(object):
         ''' Called when entering a <with> statement'''
         return self
 
-    def __exit__(self, type, value, traceback):
+    def __exit__(self, errtype, value, traceback):
         '''Called when exiting a <with> statement'''
-        self.unload(type, value, traceback)
+        self.unload(errtype, value, traceback)
 
     #-----------------------------------------------------------------------------#   
     def read(self, selection=None, fields=None, order='start,end', cursor=False):
@@ -320,14 +320,14 @@ class Track(object):
         '''
         if format == self.format:
             raise Exception("The track '" + path + "' cannot be converted to the " + format + " format because it is already in that format.")
-        with new(path, format, self.type, self.name) as t:
+        with new(path, format, self.datatype, self.name) as t:
             t.meta_track = self.meta_track
             t.meta_chr   = self.meta_chr            
             for chrom in self.all_chrs: t.write(chrom, self.read(chrom), self.fields)
 
     #-----------------------------------------------------------------------------#
     @property
-    def type(self):
+    def datatype(self):
         raise NotImplementedError
 
     @property
@@ -353,7 +353,7 @@ class Track(object):
     def load(self):
         pass
    
-    def unload(self, type, value, traceback):
+    def unload(self, errtype, value, traceback):
         pass
 
     def commit(self):
@@ -362,16 +362,18 @@ class Track(object):
     #-----------------------------------------------------------------------------#
     @property
     def default_fields(self):
-        return getattr(Track, self.type + '_fields')
+        return getattr(Track, self.datatype + '_fields')
 
 ###########################################################################   
-def new(path, format=None, type='qualitative', name='Unnamed', chrfile=None):
+def new(path, format=None, datatype='qualitative', name='Unnamed', chrfile=None):
     '''Create a new empty track in preparation for writing to it.
 
         * *path* is the file path where the new track will be created
 
         * *format* is the format in which the new track will be created.
         
+        * *datatype*  is either ``qualitative`` or ``quantitative``.
+
         * *name* is an optional name for the track.
         
         *chrfile* is the path to a chromosome file if one is needed.
@@ -382,7 +384,7 @@ def new(path, format=None, type='qualitative', name='Unnamed', chrfile=None):
                 t.write('chr1', [(10, 20, 'A', 0.0, 1)])
             with new('tracks/peaks.sql', 'sql', name='High affinity peaks') as t:
                 t.write('chr5', [(500, 1200, 'Peak1', 11.3, 0)])
-            with new('tracks/scores.sql', 'sql', type='quantitative', name='Signal along the genome') as t:
+            with new('tracks/scores.sql', 'sql', datatype='quantitative', name='Signal along the genome') as t:
                 t.write('chr1', [(10, 20, 500.0)])
 
         ``new`` returns a Track instance.
@@ -391,7 +393,7 @@ def new(path, format=None, type='qualitative', name='Unnamed', chrfile=None):
         raise Exception("The location '" + path + "' is already taken")
     if not format: format = _determine_format(path)
     implementation = _import_implementation(format)
-    implementation.GenomicFormat.create(path, type, name)
+    implementation.GenomicFormat.create(path, datatype, name)
     return Track(path, name=name, chrfile=chrfile)
 
 #-----------------------------------------#

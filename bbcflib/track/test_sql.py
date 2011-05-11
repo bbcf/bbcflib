@@ -57,7 +57,7 @@ class Test_Creation(unittest.TestCase):
             self.assertEqual(t.format, format)
         os.remove(path)
         # Different datatype #
-        with new(path=path, format=format, type='quantitative') as t:
+        with new(path=path, format=format, datatype='quantitative') as t:
             self.assertEqual(t.meta_track, {'datatype':'quantitative'})
         os.remove(path)
 

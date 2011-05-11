@@ -22,7 +22,7 @@ class GenomicFormat(Track):
         self.cursor = self.connection.cursor()
         # Test the file #
         try:
-            self.type
+            self.datatype
             self.fields
             self.meta_chr    
             self.meta_track
@@ -34,7 +34,7 @@ class GenomicFormat(Track):
         # Set attributes #
         self.all_chrs = self.chrs_from_tables
 
-    def unload(self, type=None, value=None, trackback=None):
+    def unload(self, datatype=None, value=None, trackback=None):
         self.make_missing_indexes()
         self.connection.commit()
         self.cursor.close()
@@ -45,7 +45,7 @@ class GenomicFormat(Track):
 
     #-----------------------------------------------------------------------------#
     @property
-    def type(self):
+    def datatype(self):
         self.cursor.execute("select value from attributes where key='datatype'")
         return self.cursor.fetchall()[0][0].encode('ascii')
 
@@ -108,8 +108,8 @@ class GenomicFormat(Track):
 
     def write(self, chrom, data, fields=None):
         # Default fields #
-        if self.type == 'quantitative': fields = Track.quantitative_fields
-        if fields    == None:           fields = Track.qualitative_fields
+        if self.datatype == 'quantitative': fields = Track.quantitative_fields
+        if fields        == None:           fields = Track.qualitative_fields
         # Get types #
         columns = ','.join([field + ' ' + Track.field_types.get(field, 'text') for field in fields])
         # Maybe create the table #
@@ -157,14 +157,14 @@ class GenomicFormat(Track):
 
     #-----------------------------------------------------------------------------#
     @staticmethod
-    def create(path, type, name):
+    def create(path, datatype, name):
         connection = sqlite3.connect(path)
         cursor = connection.cursor()
         cursor.execute('create table chrNames (name text, length integer)') 
         cursor.execute('create table attributes (key text, value text)')
-        if type == 'quantitative':
+        if datatype == 'quantitative':
             cursor.execute('insert into attributes (key,value) values ("datatype","quantitative")') 
-        if type == 'qualitative':
+        if datatype == 'qualitative':
             cursor.execute('insert into attributes (key,value) values ("datatype","qualitative")') 
         connection.commit()
         cursor.close()
