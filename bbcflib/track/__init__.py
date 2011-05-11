@@ -189,9 +189,9 @@ class Track(object):
         if cls is Track:
             if not format: format = _determine_format(path)
             implementation = _import_implementation(format)
-            instance       = implementation.GenomicFormat(path, format, name, chrfile, datatype)
+            instance       = super(Track, cls).__new__(implementation.GenomicFormat)
         else:
-            instance = super(Track, cls).__new__(cls)
+            instance       = super(Track, cls).__new__(cls)
         return instance
 
     def __init__(self, path, format=None, name=None, chrfile=None, datatype=None):
