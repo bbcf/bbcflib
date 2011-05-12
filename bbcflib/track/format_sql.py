@@ -6,10 +6,10 @@ Submodule: bbcflib.track.format_sql
 Implementation of the SQL format.
 """
 
-# General Modules #
+# General modules #
 import sqlite3
 
-# Specific Modules #
+# Internal modules #
 from ..track import *
 
 ###########################################################################   
@@ -81,14 +81,15 @@ class GenomicFormat(Track):
         # Default selection #
         if not selection:
             selection = self.chrs_from_tables
-        # Special case multi-chromosome #
+        # Case multi-chromosome #
         if type(selection) == list:
             return join_read_queries(self, selection, fields)
-        # Other cases #
+        # Case chromsome name #
         if type(selection) == str:
             if selection not in self.chrs_from_tables: return ()
             if not fields: fields = self.get_fields(selection)
             sql_request = "select " + ','.join(fields) + " from '" + selection + "'"
+        # Case span dictionary #
         if type(selection) == dict:
             chrom = selection['chr']
             if chrom not in self.chrs_from_tables: return ()

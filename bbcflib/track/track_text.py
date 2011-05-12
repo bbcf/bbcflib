@@ -9,7 +9,7 @@ Methods common to the text formats.
 # General Modules #
 import os, shlex
 
-# Specific Modules #
+# Internal Modules #
 from ..common import memoized_method
 
 # Functions #

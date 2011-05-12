@@ -9,7 +9,7 @@ Methods that create an SQL file upon opening in the temporary directory and reco
 # General modules #
 import os, shutil
 
-# Specific module #
+# Internal modules #
 from ..common import named_temporary_path
 from ..track import Track, new
 from .format_sql import GenomicFormat as SQLTrack
