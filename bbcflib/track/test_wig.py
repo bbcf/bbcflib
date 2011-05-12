@@ -37,9 +37,10 @@ class Test_Write(unittest.TestCase):
                                 (120, 130,   0)]
             for chrom, data in sorted(features.items()):
                 t.write(chrom, data)
-        with open(path,                                    'r') as f: A = f.read().split('\n')
+        with open(path,                                  'r') as f: A = f.read().split('\n')
         with open(track_collections['Scores'][3]['path'],'r') as f: B = f.read().split('\n')
         self.assertEqual(A[1:], B)
+        os.remove(path)
 
 #-----------------------------------------------------------------------------#   
 class Test_Roundtrips(unittest.TestCase):

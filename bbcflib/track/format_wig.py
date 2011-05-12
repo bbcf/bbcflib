@@ -79,7 +79,7 @@ class GenomicFormat(TextTrack, ProxyTrack):
                 yield [params['chrom'], line[0], line[0] + params['span'], line[1]]
 
     def _all_entries(self):
-        # TODO: What if type is 'qualitative' and the wig has overlaps ?
+        # TODO: What if datatype is 'qualitative' and the wig has overlaps ?
         sentinel = ('', sys.maxint, sys.maxint, 0.0)
         X = sentinelize(self._all_features(), sentinel)
         x = X.next()
@@ -106,19 +106,19 @@ class GenomicFormat(TextTrack, ProxyTrack):
 
     #-----------------------------------------------------------------------------#
     @property
-    def _type(self): 
-        return self._type_
+    def _datatype(self): 
+        return self._datatype_
 
-    @_type.setter
-    def _type(self, datatype):
+    @_datatype.setter
+    def _datatype(self, datatype):
         if not datatype: datatype = 'quantitative'
-        self._type_ = datatype
+        self._datatype_ = datatype
 
 ###########################################################################
-def random_track(type='fixed', number_of_features=32, size=100, range=1000, jump=10000, small_jump=200, orig_start=0, chrs=16):
+def random_track(kind='fixed', number_of_features=32, size=100, range=1000, jump=10000, small_jump=200, orig_start=0, chrs=16):
     import random
     chr = 0
-    if type == 'fixed':
+    if kind == 'fixed':
         yield 'track type=wiggle_0 name="Pol2 Signal" description="Chip-Seq" source="Random generator"\n'
         for i in xrange(number_of_features):
             if i % (number_of_features / chrs) == 0:
@@ -137,7 +137,7 @@ def random_track(type='fixed', number_of_features=32, size=100, range=1000, jump
             multiplier = random.randint(1,range) 
             for x in xrange(start,end):
                 yield str(multiplier + multiplier * random.random()) + '\n'
-    if type == 'variable':
+    if kind == 'variable':
         yield 'track type=wiggle_0 name="Rap1 Peaks" description="Chip-Seq" source="Random generator"\n'
         for i in xrange(number_of_features*2):
             if i % ((number_of_features*2) / chrs) == 0:

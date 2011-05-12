@@ -38,7 +38,7 @@ class GenomicFormat(Track):
             yield [start, end, self.name_gen.next(), score, strand]
 
     @property
-    def type(self):
+    def datatype(self):
         return 'qualitative'
     
     @property

@@ -113,7 +113,7 @@ class TextTrack(object):
  
     #-----------------------------------------------------------------------------#
     @staticmethod
-    def create(path, type, name):
+    def create(path, datatype, name):
         open(path, 'w').close()
 
 #-----------------------------------------#

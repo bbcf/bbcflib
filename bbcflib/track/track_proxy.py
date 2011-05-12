@@ -16,18 +16,18 @@ from .format_sql import GenomicFormat as SQLTrack
 
 ###########################################################################
 class ProxyTrack(SQLTrack):
-    def __init__(self, path, format=None, name=None, chrfile=None, type=None):
+    def __init__(self, path, format=None, name=None, chrfile=None, datatype=None):
         # Parameters with underscore refer to the underlying track #
-        self._path    = path
-        self._format  = format
-        self._type    = type 
+        self._path     = path
+        self._format   = format
+        self._datatype = datatype 
         # Parameters without the underscore refer to the exposed track #
         self.chrfile  = chrfile
         self.modified = False
         # Create the SQL track #
         tmp_path = named_temporary_path()
         with open(self._path, 'r') as self._file:
-            with new(tmp_path, 'sql', self._type, name) as t:
+            with new(tmp_path, 'sql', self._datatype, name) as t:
                 # Prepare meta data #
                 self._meta_chr
                 self._meta_track
@@ -46,9 +46,9 @@ class ProxyTrack(SQLTrack):
         super(ProxyTrack, self).__init__(tmp_path, 'sql', name)
 
     #-----------------------------------------------------------------------------#
-    def unload(self, type=None, value=None, trackback=None):
+    def unload(self, datatype=None, value=None, trackback=None):
         if self.modified: self.dump()
-        super(ProxyTrack, self).unload(type, value, trackback)
+        super(ProxyTrack, self).unload(datatype, value, trackback)
         if os.path.exists(self.path): os.remove(self.path)
 
     def commit(self):
@@ -66,7 +66,7 @@ class ProxyTrack(SQLTrack):
         if format == 'sql':
             shutil.move(self.path, path)
         else:
-            super(ProxyTrack, self).convert(path, format, type, mean_scores)
+            super(ProxyTrack, self).convert(path, format, datatype, mean_scores)
 
     #-----------------------------------------------------------------------------#
     def _read(self):
@@ -80,11 +80,11 @@ class ProxyTrack(SQLTrack):
         return self.default_fields
     
     @property
-    def _type(self): 
+    def _datatype(self): 
         raise NotImplementedError
 
-    @_type.setter
-    def _type(self, datatype):
+    @_datatype.setter
+    def _datatype(self, datatype):
         raise NotImplementedError
 
     #-----------------------------------------------------------------------------#
@@ -117,7 +117,7 @@ class ProxyTrack(SQLTrack):
     #-----------------------------------------------------------------------------#
     @property
     def default_fields(self):
-        return getattr(Track, self._type + '_fields')
+        return getattr(Track, self._datatype + '_fields')
    
 #-----------------------------------------#
 # This code was written by Lucas Sinclair #
