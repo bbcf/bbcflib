@@ -33,16 +33,26 @@ Below is the script used by the frontend::
     from bbcflib import daflims, genrep, frontend, gdv, common
     from bbcflib.mapseq import *
     M = MiniLIMS( limspath )
-    gl = use_pickle( M, "global variables" )
-    htss = frontend.Frontend( url=gl["hts_url"] )
+    gl = { 'hts_url': 'http://htsstation.vital-it.ch/mapseq/',
+           'genrep_url': 'http://bbcftools.vital-it.ch/genrep/',
+           'bwt_root': '/scratch/frt/yearly/genrep/nr_assemblies/bowtie',
+           'script_path': '/srv/chipseq/lib',
+           'lims': {'user': 'alice',
+                     'passwd': {'lgtf': 'bob123',
+                                'gva': 'joe456'}},
+            'gdv': {'url': 'http://svitsrv25.epfl.ch/gdv',
+                    'email': 'alice.ecila@somewhere.edu',
+                    'key': 'xxxxxxxxxxxxxxxxxxxxxxxx'} }
+    htss = frontend.Frontend( url=gl['hts_url'] )
     job = htss.job( hts_key )
-    g_rep = genrep.GenRep( gl["genrep_url"], gl["bwt_root"] )
+    g_rep = genrep.GenRep( gl['genrep_url'], gl['bwt_root'] )
     daflims = dict((loc,daflims.DAFLIMS( username=gl['lims']['user'], 
                                          password=gl['lims']['passwd'][loc] ))
                    for loc in gl['lims']['passwd'].keys())
     job.options['ucsc_bigwig'] = True
     with execution( M, description=hts_key, remote_working_directory=working_dir ) as ex:
-        files = map_groups( ex, job, dafl, ex.working_directory, assembly )
+        job = get_fastq_files( job, daflims, ex.working_directory )
+        files = map_groups( ex, job, ex.working_directory, assembly )
         pdf = add_pdf_stats( ex, files,
                              dict((k,v['name']) for k,v in job.groups.iteritems()),
                              gl['script_path'] )

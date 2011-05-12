@@ -12,17 +12,23 @@ The whole workflow can be run via the function ``workflow_groups`` with appropri
 
 Below is the script used by the frontend::
 
-    hts_key = 'test_key'
+    from bbcflib import daflims, genrep, frontend, email, gdv, common
+    from bbcflib.mapseq import *
+    from bbcflib.chipseq import *
     M = MiniLIMS( '/path/to/chipseq/minilims' )
-    gl = use_pickle( M, "global variables" )
-    htss = frontend.Frontend( url=gl["hts_url"] )
+    hts_key = 'test_key'
+    gl = { 'hts_url_cs': 'http://htsstation.vital-it.ch/chipseq/',
+           'hts_url_ms': 'http://htsstation.vital-it.ch/mapseq/',
+           'genrep_url': 'http://bbcftools.vital-it.ch/genrep/',
+           'bwt_root': '/scratch/frt/yearly/genrep/nr_assemblies/bowtie',
+           'script_path': '/srv/chipseq/lib' }
+    htss = frontend.Frontend( url=gl['hts_url_cs'] )
     job = htss.job( hts_key )
-    g_rep = genrep.GenRep( gl["genrep_url"], gl["bwt_root"] )
+    g_rep = genrep.GenRep( gl['genrep_url'], gl['bwt_root'] )
     with execution( M, description=hts_key, remote_working_directory=working_dir ) as ex:
         M_ms = MiniLIMS( '/path/to/mapseq/minilims' )
-        gl_ms = use_pickle( M_ms, "global variables" )
-        mapseq_url = gl_ms['hts_url']
-        (ms_files, ms_job) = import_mapseq_results( job.options['mapseq_key'], M_ms, ex.working_directory, gl_ms["hts_url"] )
+        mapseq_url = gl['hts_url']
+        (ms_files, ms_job) = import_mapseq_results( job.options['mapseq_key'], M_ms, ex.working_directory, gl_ms['hts_url'] )
         g_rep_assembly = g_rep.assembly( ms_job.assembly_id )
         job.groups = ms_job.groups
         files = workflow_groups( ex, job, ms_files, g_rep_assembly.chromosomes, gl['script_path'] )
