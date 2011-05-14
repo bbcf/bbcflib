@@ -72,6 +72,9 @@ import pysam
 import re
 import json
 import os
+import shutil
+import gzip
+import tarfile
 import pickle
 import urllib, urllib2
 from bbcflib import frontend, genrep, daflims, common
@@ -282,12 +285,41 @@ def get_fastq_files( ex, job, daflims, fastq_root, set_seed_length=True ):
                     job.groups[gid]['seed_lengths'][rid] = max(28,int(0.7*daf_data['cycle']))
                 job.groups[gid]['run_names'][rid] = "_".join(['',run['machine'],str(run['run']),str(run['lane'])])
             elif isinstance(run,str):
-                url = common.normalize_url(run)
                 fq_file = unique_filename_in(fastq_root)
-                with open(os.path.join(fastq_root,fq_file),"w") as out:
-                    out.write(urllib2.urlopen(url).read())
+                target = os.path.join(fastq_root,fq_file)
+                if run.startswith("http://"):
+                    url = common.normalize_url(run)
+                    with open(target,"wb") as output_file:
+                        output_file.write(urllib2.urlopen(url).read())
+                else:
+                    shutil.copy(run,target)
+                base, ext1 = os.path.splitext(run)
+                ext = ''.join([os.path.splitext(base)[1],ext1])
+                if ext in ['.tar.gz','tar.gzip']:
+                    fq_file2 = unique_filename_in(fastq_root)
+                    target2 = os.path.join(fastq_root,fq_file2)
+                    tar = tarfile.open(fileobj=target, mode='r|gz')
+                    tar_filename = tar.next()
+                    input_file = tar.extractfile(tar_filename)
+                    with open(target2, 'w') as output_file:
+                        while True:
+                            chunk = input_file.read(4096)
+                            if chunk == '':
+                                break
+                            else:
+                                output_file.write(chunk)
+                    input_file.close()
+                    tar.close()
+                    fq_file = fq_file2
+                elif ext in ['.gz','.gzip']:
+                    fq_file2 = unique_filename_in(fastq_root)
+                    target2 = os.path.join(fastq_root,fq_file2)
+                    with open(target2,'w') as output_file:
+                        with gzip.open(target, 'rb') as input_file:
+                            output_file.write(input_file.read())
+                    fq_file = fq_file2
                 job.groups[gid]['runs'][rid] = fq_file
-                job.groups[gid]['run_names'][rid] = url.split("/")[-1]
+                job.groups[gid]['run_names'][rid] = run.split("/")[-1]
     return job
     
 ############################################################ 
@@ -569,7 +601,7 @@ def densities_groups( ex, job_or_dict, file_dict, assembly_or_dict, via='lsf' ):
     if 'b2w_args' in options:
         b2w_args = options['b2w_args']
     if options.get('read_extend')>0 and not('-q' in b2w_args):
-        b2w_args += ["-q",str(options['read_extend'])]
+        b2w_args += ["-q",str(options['read_extension'])]
     processed = {}
     for gid,group in groups.iteritems():
         if 'name' in group:
@@ -587,9 +619,9 @@ def densities_groups( ex, job_or_dict, file_dict, assembly_or_dict, via='lsf' ):
             if not 'stats' in mapped[k]:
                 mapped[k]['stats'] = mapseq.bamstats( ex, mapped[k]["bam"] )
             if not(options.get('read_extend')>0):
-                options['read_extend'] = mapped[k]['stats']['read_length']
+                options['read_extension'] = mapped[k]['stats']['read_length']
                 if not('-q' in b2w_args):
-                    b2w_args += ["-q",str(options['read_extend'])]
+                    b2w_args += ["-q",str(options['read_extension'])]
         if len(mapped)>1:
             wig = [parallel_density_sql( ex, m["bam"], None, 
                                          nreads=m["stats"]["total"], 
