@@ -76,14 +76,15 @@ from .. import common as com
 #-----------------------------------------------------------------------------#   
 def _determine_format(path):
     '''Try to guess the format of a track given its path. Returns a three letter extension'''
-    # Get extension #
-    extension = os.path.splitext(path)[1][1:]
-    # If no extension then try magic #
+    # List of names to three letter extension #
     known_format_extensions = {
         'SQLite 3.x database':                       'sql',
         'SQLite database (Version 3)':               'sql',
         'Hierarchical Data Format (version 5) data': 'hdf5',
     }
+    # Get extension #
+    extension = os.path.splitext(path)[1][1:]
+    # If no extension found then try magic #
     if not extension: 
         try:
             import magic
@@ -102,7 +103,7 @@ def _determine_format(path):
         # Check the result of magic #
         try:
             extension = known_format_extensions[filetype]
-        except KeyError as err:
+        except KeyError:
             raise Exception("The format of the track '" + path + "' resolves to " + filetype + " which is not supported at the moment.")
     # Synonyms #
     if extension == 'db': extension = 'sql'
@@ -116,7 +117,7 @@ def _import_implementation(format):
         if not hasattr(sys.modules[__package__], format):
             __import__(__package__ + '.' + format)
         return sys.modules[__package__ + '.' + format]
-    except (ImportError, AttributeError) as err:
+    except (ImportError, AttributeError):
         raise Exception("The format '" + format + "' is not supported at the moment")
 
 #-----------------------------------------------------------------------------#   

@@ -1,11 +1,8 @@
  - use config parser and Fred's deepmap
  - move scripts/* to bbcfutils/Python!
 
-* track...
-   move functionality from gFeatMiner to bbcflib
-
 * common...
-   change sql stuff to use gMiner tracks
+   change sql stuff to use bbcflib "Track" object
 
 * mapseq...
    update doc 

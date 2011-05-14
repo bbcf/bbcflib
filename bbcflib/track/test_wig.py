@@ -1,7 +1,7 @@
 # General Modules #
 import os
 
-# Specific Modules #
+# Internal Modules #
 from ..track import Track, new
 from ..common import named_temporary_path
 
