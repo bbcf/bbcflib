@@ -17,6 +17,8 @@ all_fields_possible = ['start', 'end', 'name', 'score', 'strand', 'thick_start',
 
 ###########################################################################
 class GenomicFormat(TextTrack, ProxyTrack):
+    type_identifier = 'bed'
+
     def _all_entries(self):
         self._file.seek(0)
         seen_track = False
@@ -25,7 +27,7 @@ class GenomicFormat(TextTrack, ProxyTrack):
             if len(line) == 0:              continue
             if line.startswith("#"):        continue
             if line.endswith(" \\"):
-                raise Exception("The track '" + self._path + "' includes linebreaks ('\\') which is not supported.")
+                raise Exception("The file '" + self._path + "' includes linebreaks ('\\') which is not supported.")
             if line.startswith("track "):
                 if not seen_track:
                     seen_track = True
@@ -34,32 +36,32 @@ class GenomicFormat(TextTrack, ProxyTrack):
             if line.startswith("browser "): continue
             line = line.split(self._seperator)
             if len(line) != self.num_fields + 1:
-                raise Exception("The track '" + self._path + "' has a varying number of columns. This is not supported.")
+                raise Exception("The file '" + self._path + "' has a varying number of columns. This is not supported.")
             try:
                 line[1] = int(line[1])
                 line[2] = int(line[2])
             except ValueError:
-                raise Exception("The track '" + self._path + "' has non integers as interval bounds and is hence not valid.")
+                raise Exception("The file '" + self._path + "' has non integers as interval bounds and is hence not valid.")
             if line[2] <= line[1]:
-                raise Exception("The track '" + self._path + "' has negative or null intervals and is hence not valid.")
+                raise Exception("The file '" + self._path + "' has negative or null intervals and is hence not valid.")
             if len(line) > 4:
                 if line[4] == '.': line[4] = 0.0
                 try:
                     line[4] = float(line[4])
                 except ValueError:
-                    raise Exception("The track '" + self._path + "' has non floats as score values and is hence not valid.")
+                    raise Exception("The file '" + self._path + "' has non floats as score values and is hence not valid.")
             if len(line) > 5:
                 line[5] = strand_to_int(line[5])
             if len(line) > 6:
                 try:
                     line[6] = float(line[6])
                 except ValueError:
-                    raise Exception("The track '" + self._path + "' has non integers as thick starts and is hence not valid.")
+                    raise Exception("The file '" + self._path + "' has non integers as thick starts and is hence not valid.")
             if len(line) > 7:
                 try:
                     line[7] = float(line[7])
                 except ValueError:
-                    raise Exception("The track '" + self._path + "' has non integers as thick ends and is hence not valid.")
+                    raise Exception("The file '" + self._path + "' has non integers as thick ends and is hence not valid.")
             yield line
 
     def _write(self):
@@ -88,7 +90,7 @@ class GenomicFormat(TextTrack, ProxyTrack):
             if len(line) == 0:              continue
             if line.startswith("#"):        continue
             if line.endswith(" \\"):
-                raise Exception("The track '" + self._path + "' includes linebreaks ('\\') which are not supported.")
+                raise Exception("The file '" + self._path + "' includes linebreaks ('\\') which are not supported.")
             if line.startswith("track "):   continue
             if line.startswith("browser "): continue
             else:
@@ -97,11 +99,14 @@ class GenomicFormat(TextTrack, ProxyTrack):
                 line = line.split(self._seperator)
             self.num_fields = len(line) - 1
             if self.num_fields < 2:
-                raise Exception("The track '" + self._path + "' has less than three columns and is hence not a valid BED file.")
+                raise Exception("The file '" + self._path + "' has less than three columns and is hence not a valid BED file.")
             if self.num_fields > len(all_fields_possible):
-                raise Exception("The track '" + self._path + "' has too many columns and is hence not a valid BED file.")
+                raise Exception("The file '" + self._path + "' has too many columns and is hence not a valid BED file.")
             return all_fields_possible[0:self.num_fields]
 
+
+
+    #-----------------------------------------------------------------------------#
     @property
     def _datatype(self): 
         return 'qualitative' 

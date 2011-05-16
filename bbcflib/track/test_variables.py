@@ -27,10 +27,13 @@ track_collections = {
   4: {'path':tracks_path+'quan/wig/scores4.wig',     'type':'quantitative', 'fields':Track.quantitative_fields,    'chrfile':yeast_chr_file},
     },
 'Random': {
-  1: {'path':tracks_path+'qual/bed/random1.bed', 'type':'qualitative', ' fields':Track.qualitative_fields},
-  2: {'path':tracks_path+'qual/bed/random2.bed', 'type':'qualitative',  'fields':Track.qualitative_fields},
-  3: {'path':tracks_path+'qual/bed/random3.bed', 'type':'qualitative',  'fields':Track.qualitative_fields},
-  4: {'path':tracks_path+'qual/bed/random4.bed', 'type':'qualitative',  'fields':Track.qualitative_fields},
+  1: {'path':tracks_path+'qual/bed/random1.bed',     'type':'qualitative',  'fields':Track.qualitative_fields},
+  2: {'path':tracks_path+'qual/bed/random2.bed',     'type':'qualitative',  'fields':Track.qualitative_fields},
+  3: {'path':tracks_path+'qual/bed/random3.bed',     'type':'qualitative',  'fields':Track.qualitative_fields},
+  4: {'path':tracks_path+'qual/bed/random4.bed',     'type':'qualitative',  'fields':Track.qualitative_fields},
+    },
+'Signals': {
+  1: {'path':tracks_path+'quan/bedgraph/test1.bedgraph', 'type':'quantitative', 'fields':Track.quantitative_fields, 'chrfile':yeast_chr_file},
     },
 'Yeast': {
   'All genes':  {'path':tracks_path+'qual/bed/all_yeast_genes.bed',   'type':'quantitative',
@@ -55,10 +58,13 @@ for col_name, col in sorted(track_collections.items()):
         track['name'] = col_name + ' ' + str(track_num) 
 
 # Extra test tracks #
-parser_tests  = [(path + b, True)  for path in [tracks_path + 'qual/bed/should_pass/'] for b in os.listdir(path) if b.endswith(".bed")]
-parser_tests += [(path + b, False) for path in [tracks_path + 'qual/bed/should_fail/'] for b in os.listdir(path) if b.endswith(".bed")]
-parser_tests += [(path + w, True)  for path in [tracks_path + 'quan/wig/should_pass/'] for w in os.listdir(path) if w.endswith(".wig")]
-parser_tests += [(path + w, False) for path in [tracks_path + 'quan/wig/should_fail/'] for w in os.listdir(path) if w.endswith(".wig")]
+parser_tests = []
+for f in ['bed']:
+    parser_tests += [(path + t, True)   for path in [tracks_path + 'qual/' +f+ '/should_pass/'] for t in os.listdir(path) if t.endswith('.'+f)]
+    parser_tests += [(path + t, False)  for path in [tracks_path + 'qual/' +f+ '/should_fail/'] for t in os.listdir(path) if t.endswith('.'+f)]
+for f in ['wig', 'bedgraph']:
+    parser_tests += [(path + t, True)   for path in [tracks_path + 'quan/' +f+ '/should_pass/'] for t in os.listdir(path) if t.endswith('.'+f)]
+    parser_tests += [(path + t, False)  for path in [tracks_path + 'quan/' +f+ '/should_fail/'] for t in os.listdir(path) if t.endswith('.'+f)]
 
 #-----------------------------------------#
 # This code was written by Lucas Sinclair #

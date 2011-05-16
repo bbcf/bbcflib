@@ -107,6 +107,7 @@ class TextTrack(object):
     @property
     def _header_line(self):
         self.meta_track_dict = self.meta_track
+        self.meta_track_dict['type']           = self.type_identifier
         self.meta_track_dict['converted_by']   = __package__
         self.meta_track_dict['converted_from'] = self.path
         return "track " + ' '.join([key + '="' + value + '"' for key, value in self.meta_track_dict.items()]) + '\n'

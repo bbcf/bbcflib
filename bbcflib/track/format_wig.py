@@ -16,6 +16,8 @@ from ..common import sentinelize
 
 ###########################################################################
 class GenomicFormat(TextTrack, ProxyTrack):
+    type_identifier = 'wiggle_0'
+    
     def _all_features(self):
         self._file.seek(0)
         params = {}
@@ -113,6 +115,7 @@ class GenomicFormat(TextTrack, ProxyTrack):
     def _datatype(self, datatype):
         if not datatype: datatype = 'quantitative'
         self._datatype_ = datatype
+
 
 ###########################################################################
 def random_track(kind='fixed', number_of_features=32, size=100, range=1000, jump=10000, small_jump=200, orig_start=0, chrs=16):
