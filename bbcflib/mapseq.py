@@ -46,17 +46,17 @@ Below is the script used by the frontend::
     htss = frontend.Frontend( url=gl['hts_url'] )
     job = htss.job( hts_key )
     g_rep = genrep.GenRep( gl['genrep_url'], gl['bwt_root'] )
-    daflims = dict((loc,daflims.DAFLIMS( username=gl['lims']['user'], 
-                                         password=gl['lims']['passwd'][loc] ))
-                   for loc in gl['lims']['passwd'].keys())
+    daflims1 = dict((loc,daflims.DAFLIMS( username=gl['lims']['user'], 
+                                          password=gl['lims']['passwd'][loc] ))
+                    for loc in gl['lims']['passwd'].keys())
     job.options['ucsc_bigwig'] = True
     with execution( M, description=hts_key, remote_working_directory=working_dir ) as ex:
-        job = get_fastq_files( job, daflims, ex.working_directory )
+        job = get_fastq_files( job, daflims1, ex.working_directory )
         files = map_groups( ex, job, ex.working_directory, assembly )
         pdf = add_pdf_stats( ex, files,
                              dict((k,v['name']) for k,v in job.groups.iteritems()),
                              gl['script_path'] )
-        files = densities_groups( ex, job, files, assembly )
+        files = densities_groups( ex, job, files, assembly.chromosomes )
         gdv_project = gdv.create_gdv_project( gl['gdv']['key'], gl['gdv']['email'],
                                               job.description, hts_key, 
                                               g_rep_assembly.nr_assembly_id,
@@ -262,23 +262,23 @@ def map_reads( ex, fastq_file, chromosomes, bowtie_index,
 
 ############################################################ 
 
-def get_fastq_files( ex, job, daflims, fastq_root, set_seed_length=True ):
+def get_fastq_files( job, dafl, fastq_root, set_seed_length=True ):
     """
     Will replace file references by actual file names in the 'job' object.
-    These references are either 'daflims' run descriptions or urls.
-    Argument 'daflims' is a dictionary of 'Daflims' objects (keys are the facility names).
+    These references are either 'dafl' run descriptions or urls.
+    Argument 'dafl' is a dictionary of 'Daflims' objects (keys are the facility names).
     If 'set_seed_length' is true, a dictionary job.groups[gid]['seed_lengths'] of seed lengths is constructed 
     with values corresponding to 70% of the read length.
     """
-    if not(isinstance(daflims_or_files.values()[0],daflims.DAFLIMS)):
+    if not(isinstance(dafl.values()[0],daflims.DAFLIMS)):
         raise ValueError("Need DAFLIMS objects in get_fastq_files.")
     for gid,group in job.groups.iteritems():
         job.groups[gid]['seed_lengths'] = {}
         job.groups[gid]['run_names'] = {}
         for rid,run in group['runs'].iteritems():
             if isinstance(run,dict) and all([x in run for x in ['facility','machine','run','lane']]):
-                dafl = daflims[run['facility']]
-                daf_data = dafl.fetch_fastq( str(run['facility']), str(run['machine']),
+                dafl1 = dafl[run['facility']]
+                daf_data = dafl1.fetch_fastq( str(run['facility']), str(run['machine']),
                                              run['run'], run['lane'], to=fastq_root )
                 job.groups[gid]['runs'][rid] = daf_data['path']
                 if (set_seed_length):
@@ -376,7 +376,7 @@ def map_groups( ex, job_or_dict, fastq_root, assembly_or_dict, map_args={} ):
         if not 'runs' in group:
             group = {'runs': group}
         for rid,run in group['runs'].iteritems():
-            fq_file = os.path.join(fastq_root,run[rid])
+            fq_file = os.path.join(fastq_root,run)
             if 'seed_lengths' in group and group['seed_lengths'].get(rid) > 0:
                 seed_len = str(group['seed_lengths'][rid])
                 if 'bwt_args' in map_args:
@@ -456,7 +456,7 @@ def wigToBigWig( sql ):
 
 @program
 def bam_to_density( bamfile, output, chromosome_accession=None, chromosome_name=None, 
-                    nreads=1, merge=-1, read_extend=-1, convert=True, sql=False,
+                    nreads=1, merge=-1, read_extension=-1, convert=True, sql=False,
                     args=[] ):
     """Runs the ``bam2wig`` program on a bam file and 
     normalizes for the total number of reads
@@ -474,8 +474,8 @@ def bam_to_density( bamfile, output, chromosome_accession=None, chromosome_name=
             b2w_args += ["-a",chromosome_name]
     if merge>=0 and not('-p' in b2w_args):
         b2w_args += ["-p",str(merge)]
-    if read_extend>0 and not('-q' in b2w_args):
-        b2w_args += ["-q",str(read_extend)]
+    if read_extension>0 and not('-q' in b2w_args):
+        b2w_args += ["-q",str(read_extension)]
     if sql:
         b2w_args += ["-d"]
         if merge<0:
@@ -490,7 +490,7 @@ def bam_to_density( bamfile, output, chromosome_accession=None, chromosome_name=
     return {"arguments": ["bam2wig"]+b2w_args, "return_value": files}
 
 def compact_chromosome_name(key):
-    if isinstance(key,str):
+    if key == None or isinstance(key,str):
         return key
     elif isinstance(key,tuple) and len(key)>2:
         return str(key[0])+"_"+str(key[1])+"."+str(key[2])
@@ -498,17 +498,17 @@ def compact_chromosome_name(key):
         raise ValueError("Can't handle this chromosomes key ",key)
 
 def parallel_density_wig( ex, bamfile, chromosomes, 
-                          nreads=1, merge=-1, read_extend=-1, convert=True, 
+                          nreads=1, merge=-1, read_extension=-1, convert=True, 
                           description="", alias=None, 
                           b2w_args=[], via='lsf' ):
     """Runs 'bam_to_density' in parallel 
     for every chromosome in the 'chromosomes' list with 'sql' set to False.
     Returns a single text wig file.
     """
-    futures = [bam_to_density.nonblocking( ex, bamfile, compact_chromosome_name(k),
-                                           v['name'], unique_filename_in(), nreads, merge, 
-                                           read_extend, convert, False, 
-                                           args=b2w_args, via=via )
+    futures = [bam_to_density.nonblocking( ex, bamfile, unique_filename_in(), 
+                                           compact_chromosome_name(k), v['name'], 
+                                           nreads, merge, read_extension, convert, 
+                                           False, args=b2w_args, via=via )
                for k,v in chromosomes.iteritems()]
     results = []
     for f in futures:
@@ -520,43 +520,31 @@ def parallel_density_wig( ex, bamfile, chromosomes,
     ex.add( output, description=description, alias=alias )
     return output
 
-def parallel_density_sql( ex, bamfile, chromosomes=None, 
-                          nreads=1, merge=-1, read_extend=-1, convert=True, 
-                          description="", alias=None, b2w_args=[], via='lsf' ):
+def parallel_density_sql( ex, bamfile, output, chromosomes, 
+                          nreads=1, merge=-1, read_extension=-1, convert=True, 
+                          b2w_args=[], via='lsf' ):
     """Runs 'bam_to_density' for every chromosome in the 'chromosomes' list.
     
     Returns a dictionary with one or two sqlite files depending 
     if 'merge'>=0 (shift and merge strands into one tracks) 
     or 'merge'<0 (keep seperate tracks for each strand).
     """
-    output = unique_filename_in()
-    touch(ex,output)
-    if merge<0:
-        suffix = ['fwd','rev']
-    else:
-        suffix = ['merged']
-    _ = [common.create_sql_track( output+s+'.sql', chromosomes ) for s in suffix]
-    results = []
     if chromosomes == None:
         chromosomes = {None: {'name': None}}
     for k,v in chromosomes.iteritems():
-        future = bam_to_density.nonblocking( ex, bamfile, compact_chromosome_name(k),
-                                             v['name'], output, nreads, merge,
-                                             read_extend, convert, True, 
-                                             args=b2w_args, via=via )
+        future = bam_to_density.nonblocking( ex, bamfile, output, 
+                                             compact_chromosome_name(k), v['name'], 
+                                             nreads, merge, read_extension, convert,
+                                             True, args=b2w_args, via=via )
         try: 
-            results.append(future.wait())
+            _ = future.wait()
         except ProgramFailed:
             pass
-    ex.add( output, description='none:'+description+'.sql', alias=alias )
-    [ex.add( output+s+'.sql', description='sql:'+description+'_'+s+'.sql',
-             associate_to_filename=output, template='%s_'+s+'.sql' ) 
-     for s in suffix]
-    return dict((s,output+s+'.sql') for s in suffix)
+    return output
 
 ############################################################ 
 
-def densities_groups( ex, job_or_dict, file_dict, assembly_or_dict, via='lsf' ):
+def densities_groups( ex, job_or_dict, file_dict, chromosomes, via='lsf' ):
     """
     Arguments are:
 
@@ -566,7 +554,7 @@ def densities_groups( ex, job_or_dict, file_dict, assembly_or_dict, via='lsf' ):
     
     * ``'file_dict'``: a dictionary of files,
 
-    * ``'assembly_or_dict'``: a 'GenRep' object, or a dictionary of 'chromosomes' and 'index_path'.
+    * ``'chromosomes'``: a dictionary with keys 'chromosome_id' as used in the bowtie indexes and values a dictionary with usual chromosome names and their lengths,
 
     Returns a dictionary with keys *group_id* from the job object and values the files fo each group ('bam' and 'wig').
     """
@@ -581,14 +569,6 @@ def densities_groups( ex, job_or_dict, file_dict, assembly_or_dict, via='lsf' ):
         groups = job_or_dict['groups']
     else:
         raise TypeError("job_or_dict must be a frontend.Job object or a dictionary with keys 'groups'.")
-    if isinstance(assembly_or_dict,genrep.Assembly):
-        chromosomes = assembly_or_dict.chromosomes
-        index_path = assembly_or_dict.index_path
-    elif isinstance(assembly_or_dict,dict) and 'chromosomes' in assembly_or_dict:
-        chromosomes = assembly_or_dict['chromosomes']
-        index_path = assembly_or_dict['index_path ']
-    else:
-        raise TypeError("assembly_or_dict must be a genrep.Assembly object or a dictionary with keys 'chromosomes' and 'index_path'.")
     merge_strands = -1
     suffixes = ["fwd","rev"]
     if options.get('merge_strands')>=0:
@@ -600,7 +580,7 @@ def densities_groups( ex, job_or_dict, file_dict, assembly_or_dict, via='lsf' ):
     b2w_args = []
     if 'b2w_args' in options:
         b2w_args = options['b2w_args']
-    if options.get('read_extend')>0 and not('-q' in b2w_args):
+    if options.get('read_extension')>0 and not('-q' in b2w_args):
         b2w_args += ["-q",str(options['read_extension'])]
     processed = {}
     for gid,group in groups.iteritems():
@@ -618,32 +598,33 @@ def densities_groups( ex, job_or_dict, file_dict, assembly_or_dict, via='lsf' ):
                 mapped[k]['libname'] = group_name+"_"+str(k)
             if not 'stats' in mapped[k]:
                 mapped[k]['stats'] = mapseq.bamstats( ex, mapped[k]["bam"] )
-            if not(options.get('read_extend')>0):
+            if not(options.get('read_extension')>0):
                 options['read_extension'] = mapped[k]['stats']['read_length']
                 if not('-q' in b2w_args):
                     b2w_args += ["-q",str(options['read_extension'])]
+        wig = []
+        for m in mapped.values():
+            output = unique_filename_in()
+            touch(ex,output)
+            [common.create_sql_track( output+s+'.sql', chromosomes ) for s in suffixes]
+            wig.append(parallel_density_sql( ex, m["bam"], output, None,
+                                             nreads=m["stats"]["total"], 
+                                             merge=merge_strands, 
+                                             convert=False,
+                                             b2w_args=b2w_args, via=via ))
+            ex.add( output, description='none:'+m['libname']+'.sql' )
+            [ex.add( output+s+'.sql', description='sql:'+m['libname']+'_'+s+'.sql',
+                     associate_to_filename=output, template='%s_'+s+'.sql' ) 
+             for s in suffixes]
         if len(mapped)>1:
-            wig = [parallel_density_sql( ex, m["bam"], None, 
-                                         nreads=m["stats"]["total"], 
-                                         merge=merge_strands, 
-                                         convert=False, 
-                                         description=m['libname'], 
-                                         b2w_args=b2w_args, via=via ) 
-                   for m in mapped.values()]
             merged_bam = merge_bam(ex, [m['bam'] for m in mapped.values()])
             ids = [m['libname'] for m in mapped.values()]
-            merged_wig = dict((s, common.merge_sql(ex, [x[s] for x in wig], ids,
-                                            description="sql:"+group_name+"_"+s+".sql")) 
+            merged_wig = dict((s, common.merge_sql(ex, [x+s+".sql" for x in wig], ids,
+                                                   description="sql:"+group_name+"_"+s+".sql")) 
                               for s in suffixes)
         else:
-            m = mapped.values()[0]
-            merged_bam = m['bam']
-            merged_wig = parallel_density_sql( ex, merged_bam, None, 
-                                               nreads=m["stats"]["total"], 
-                                               merge=merge_strands, 
-                                               convert=False, 
-                                               description=group_name, 
-                                               b2w_args=b2w_args, via=via )
+            merged_bam = mapped.values()[0]['bam']
+            merged_wig =  dict((s, wig[0]+s+".sql") for s in suffixes)
         processed[gid] = {'bam': merged_bam, 'wig': merged_wig,
                           'read_length': mapped.values()[0]['stats']['read_length']}
         if ucsc_bigwig:
@@ -651,7 +632,7 @@ def densities_groups( ex, job_or_dict, file_dict, assembly_or_dict, via='lsf' ):
                           for s in suffixes]
             [ex.add(bw_futures[i].wait(),description='bigwig:'+group_name+'_'+s+'.bw')
              for i,s in enumerate(suffixes)]
-    processed.update({'read_extend': options.get('read_extend'),
+    processed.update({'read_extension': options.get('read_extension'),
                       'genome_size': mapped.values()[0]['stats']['genome_size']})
     return processed
 
