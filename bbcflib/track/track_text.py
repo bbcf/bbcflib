@@ -44,7 +44,7 @@ class TextTrack(object):
             if entry[0] == chrom: break
             chrom = entry[0]
             if not chrom in self._all_chrs:
-                raise Exception("The track '" + self._path + "' has a value (" + chrom + ") not specified in the chromosome file.")
+                raise Exception("The file '" + self._path + "' has a value (" + chrom + ") not specified in the chromosome file.")
             self._seen_chr.add(chrom)
             yield chrom, iter_until_different_chr()
 
@@ -53,7 +53,7 @@ class TextTrack(object):
     @memoized_method
     def _meta_chr(self):
         if not self.chrfile:
-            raise Exception("The track '" + self._path + "' does not have a chromosome file associated.")
+            raise Exception("The file '" + self._path + "' does not have a chromosome file associated.")
         if not os.path.exists(self.chrfile):
             raise Exception("The file '" + self.chrfile + "' cannot be found")
         if os.path.isdir(self.chrfile):
@@ -91,7 +91,7 @@ class TextTrack(object):
             if len(line) == 0:              continue
             if line.startswith("#"):        continue
             if line.endswith(" \\"):
-                raise Exception("The track '" + self._path + "' includes linebreaks ('\\') which are not supported.")
+                raise Exception("The file '" + self._path + "' includes linebreaks ('\\') which are not supported.")
             if line.startswith("browser "): continue
             if line.startswith("track "):
                 try:
@@ -107,6 +107,7 @@ class TextTrack(object):
     @property
     def _header_line(self):
         self.meta_track_dict = self.meta_track
+        self.meta_track_dict['type']           = self.type_identifier
         self.meta_track_dict['converted_by']   = __package__
         self.meta_track_dict['converted_from'] = self.path
         return "track " + ' '.join([key + '="' + value + '"' for key, value in self.meta_track_dict.items()]) + '\n'

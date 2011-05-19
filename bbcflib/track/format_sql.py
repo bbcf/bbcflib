@@ -30,7 +30,7 @@ class GenomicFormat(Track):
             self.chrs_from_names
             self.chrs_from_tables
         except sqlite3.OperationalError:
-            raise Exception("The sql track '" + self.path + "' doesn't seem to have the correct format")
+            raise Exception("The track '" + self.path + "' doesn't seem to have the correct format")
         # Set attributes #
         self.all_chrs = self.chrs_from_tables
 
