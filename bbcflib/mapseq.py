@@ -43,23 +43,25 @@ Below is the script used by the frontend::
             'gdv': {'url': 'http://svitsrv25.epfl.ch/gdv',
                     'email': 'alice.ecila@somewhere.edu',
                     'key': 'xxxxxxxxxxxxxxxxxxxxxxxx'} }
+    assembly_id = 'mm9'
     htss = frontend.Frontend( url=gl['hts_url'] )
     job = htss.job( hts_key )
     g_rep = genrep.GenRep( gl['genrep_url'], gl['bwt_root'] )
+    assembly = g_rep.assembly( assembly_id )
     daflims1 = dict((loc,daflims.DAFLIMS( username=gl['lims']['user'], 
                                           password=gl['lims']['passwd'][loc] ))
                     for loc in gl['lims']['passwd'].keys())
     job.options['ucsc_bigwig'] = True
     with execution( M, description=hts_key, remote_working_directory=working_dir ) as ex:
         job = get_fastq_files( job, daflims1, ex.working_directory )
-        files = map_groups( ex, job, ex.working_directory, assembly )
-        pdf = add_pdf_stats( ex, files,
+        mapped_files = map_groups( ex, job, ex.working_directory, assembly )
+        pdf = add_pdf_stats( ex, mapped_files,
                              dict((k,v['name']) for k,v in job.groups.iteritems()),
                              gl['script_path'] )
-        files = densities_groups( ex, job, files, assembly.chromosomes )
+        density_files = densities_groups( ex, job, mapped_files, assembly.chromosomes )
         gdv_project = gdv.create_gdv_project( gl['gdv']['key'], gl['gdv']['email'],
                                               job.description, hts_key, 
-                                              g_rep_assembly.nr_assembly_id,
+                                              assembly.nr_assembly_id,
                                               gdv_url=gl['gdv']['url'], 
                                               public=True )
         add_pickle( ex, gdv_project, description='py:gdv_json' )
