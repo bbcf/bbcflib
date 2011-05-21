@@ -390,11 +390,12 @@ def map_groups( ex, job_or_dict, fastq_root, assembly_or_dict, map_args={} ):
                     map_args['bwt_args'] = ["-l",seed_len] 
             name = group_name
             if len(group['runs'])>1:
-                name += group['run_names'].get(rid) or "_"+str(rid)
+                name += "_"
+                name += group['run_names'].get(rid) or str(rid)
             m = map_reads( ex, fq_file, chromosomes, index_path, name=name+"_",
                            remove_pcr_duplicates=pcr_dupl, **map_args )
-            file_names[gid][rid] = name
-            m.update({'libname': name})
+            file_names[gid][rid] = str(name)
+            m.update({'libname': str(name)})
             processed[gid][rid] = m
     add_pickle( ex, file_names, "py:file_names" )
     return processed
