@@ -278,6 +278,8 @@ def get_fastq_files( job, dafl, fastq_root, set_seed_length=True ):
         job.groups[gid]['seed_lengths'] = {}
         job.groups[gid]['run_names'] = {}
         for rid,run in group['runs'].iteritems():
+            if len(run['fastq_url'])>0:
+                run = str(run['fastq_url'])
             if isinstance(run,dict) and all([x in run for x in ['facility','machine','run','lane']]):
                 dafl1 = dafl[run['facility']]
                 daf_data = dafl1.fetch_fastq( str(run['facility']), str(run['machine']),
@@ -289,29 +291,32 @@ def get_fastq_files( job, dafl, fastq_root, set_seed_length=True ):
             elif isinstance(run,str):
                 fq_file = unique_filename_in(fastq_root)
                 target = os.path.join(fastq_root,fq_file)
-                if run.startswith("http://"):
-                    url = common.normalize_url(run)
-                    with open(target,"wb") as output_file:
-                        output_file.write(urllib2.urlopen(url).read())
+                if run.startswith("http://") or run.startswith("https://"):
+                    urllib.urlretrieve( run, target )
                 else:
                     shutil.copy(run,target)
+                run = re.sub('.seq.gz','_seq.tar',run)
                 base, ext1 = os.path.splitext(run)
                 ext = ''.join([os.path.splitext(base)[1],ext1])
-                if ext in ['.tar.gz','tar.gzip']:
+                if ext in ['.tar','.tar.gz','.tar.gzip']:
+                    mode = 'r'
+                    if ext in ['.tar.gz','.tar.gzip']:
+                        mode += '|gz'
                     fq_file2 = unique_filename_in(fastq_root)
                     target2 = os.path.join(fastq_root,fq_file2)
-                    tar = tarfile.open(fileobj=target, mode='r|gz')
-                    tar_filename = tar.next()
-                    input_file = tar.extractfile(tar_filename)
-                    with open(target2, 'w') as output_file:
-                        while True:
-                            chunk = input_file.read(4096)
-                            if chunk == '':
-                                break
-                            else:
-                                output_file.write(chunk)
-                    input_file.close()
-                    tar.close()
+                    with open(target,'rb') as tf:
+                        tar = tarfile.open(fileobj=tf, mode=mode)
+                        tar_filename = tar.next()
+                        input_file = tar.extractfile(tar_filename)
+                        with open(target2, 'w') as output_file:
+                            while True:
+                                chunk = input_file.read(4096)
+                                if chunk == '':
+                                    break
+                                else:
+                                    output_file.write(chunk)
+                        input_file.close()
+                        tar.close()
                     fq_file = fq_file2
                 elif ext in ['.gz','.gzip']:
                     fq_file2 = unique_filename_in(fastq_root)
