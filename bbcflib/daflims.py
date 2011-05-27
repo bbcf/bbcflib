@@ -9,10 +9,10 @@ details of fetching files from that LIMS.  Files are identified by
 four fields:
 
   * The facility where they were generated (either ``'lgtf'`` for Lausanne,
-    or [FIXME: what is the string for Geneva?] at the University of Geneva).
+    or ``'gva'`` at the University of Geneva).
 
   * The machine at the facility on which they were generated (``'R2D2'`` or
-    ``'C3PO'`` in Lausanne, or [FIXME: sequencer in Geneva?] in Geneva).
+    ``'C3PO'`` in Lausanne, or ``'HWUSI-EAS691'`` in Geneva).
 
   * The run number on that machine (an integer).
 
@@ -158,7 +158,7 @@ class DAFLIMS(object):
           * ``'lane'`` (integer)
           * ``'cycle'`` (integer)
           * ``'quantity (/pM)'`` (float, the concentration of DNA in picomolar)
-          * ``'library'`` [FIXME: what is this?]
+          * ``'library'`` 
           * ``'project'`` 
           * ``'protocol'`` 
           * ``'run type'`` (``'ChipSeq'``, etc.)
@@ -260,7 +260,7 @@ class DAFLIMS(object):
           * ``'lane'`` (integer)
           * ``'cycle'`` (integer)
           * ``'quantity (/pM)'`` (float, the concentration of DNA in picomolar)
-          * ``'library'`` [FIXME: what is this?]
+          * ``'library'`` 
           * ``'project'`` 
           * ``'protocol'`` 
           * ``'run type'`` (``'ChipSeq'``, etc.)
@@ -299,7 +299,7 @@ class DAFLIMS(object):
           * ``'lane'`` (integer)
           * ``'cycle'`` (integer)
           * ``'quantity (/pM)'`` (float, the concentration of DNA in picomolar)
-          * ``'library'`` [FIXME: what is this?]
+          * ``'library'`` 
           * ``'project'`` 
           * ``'protocol'`` 
           * ``'run type'`` (``'ChipSeq'``, etc.)
@@ -330,7 +330,7 @@ class DAFLIMS(object):
           * ``'lane'`` (integer)
           * ``'cycle'`` (integer)
           * ``'quantity (/pM)'`` (float, the concentration of DNA in picomolar)
-          * ``'library'`` [FIXME: what is this?]
+          * ``'library'`` 
           * ``'project'`` 
           * ``'protocol'`` 
           * ``'run type'`` (``'ChipSeq'``, etc.)
@@ -361,7 +361,7 @@ class DAFLIMS(object):
           * ``'lane'`` (integer)
           * ``'cycle'`` (integer)
           * ``'quantity (/pM)'`` (float, the concentration of DNA in picomolar)
-          * ``'library'`` [FIXME: what is this?]
+          * ``'library'`` 
           * ``'project'`` 
           * ``'protocol'`` 
           * ``'run type'`` (``'ChipSeq'``, etc.)
