@@ -262,7 +262,7 @@ class Track(object):
         '''
         raise NotImplementedError
 
-    def write(self, chrom, data, fields):
+    def write(self, chrom, data, fields=None):
         '''Writes data to a genomic file.
 
         * *chrom* is the name of the chromosome on which one wants to write. For instance, if one is using the BED format this will become the first column, while if one is using the SQL format this will become the name of the table to be created.
