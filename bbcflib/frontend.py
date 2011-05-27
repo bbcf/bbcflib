@@ -59,21 +59,22 @@ class Frontend(object):
                     'created_at': datetime.strptime(a['created_at'],
                                                     '%Y-%m-%dT%H:%M:%SZ'),
                     'id': a['id'],
-                    'name': a['name'],
+                    'name': str(a['name']),
                     'job_id': a['job_id']}
         return [_f(g) for g in json.load(urllib2.urlopen(self.query_url('groups', key)))]
 
     def _fetch_runs(self, key):
         def _f(r):
             a = r['run']
-            return {'facility_name': a['facility_name'],
+            return {'facility_name': str(a['facility_name']),
                     'id': a['id'],
                     'group_id': a['group_id'],
-                    'machine_name': a['machine_name'],
+                    'machine_name': str(a['machine_name']),
                     'machine_id': a['machine_id'],
                     'lane': a['lane_nber'],
                     'run': a['run_nber'],
-                    'facility_location': a['facility_location'],
+                    'facility_location': str(a['facility_location']),
+                    'fastq_url': str(a['fastq_url']),
                     'created_at': datetime.strptime(a['created_at'],
                                                     '%Y-%m-%dT%H:%M:%SZ')}
         return [_f(r) for r in json.load(urllib2.urlopen(self.query_url('runs', key)))]
@@ -97,8 +98,8 @@ class Frontend(object):
                 created_at = x['created_at'],
                 key = key,
                 assembly_id = x['assembly_id'],
-                description = x['description'],
-                email = x['email'],
+                description = str(x['description']),
+                email = str(x['email']),
                 options = x['options'])
         [j.add_group(id=g['id'], control=g['control'], name=g['name'])
          for g in self._fetch_groups(key)]
@@ -107,7 +108,8 @@ class Frontend(object):
                    facility_location=r['facility_location'],
                    machine=r['machine_name'], 
                    machine_id=r['machine_id'],
-                   run=r['run'], lane=r['lane'])
+                   run=r['run'], lane=r['lane'],
+                   url=r['fastq_url'])
          for r in self._fetch_runs(key)]
         return j
                    
@@ -148,7 +150,7 @@ class Job(object):
                                'name': name,
                                'runs': {}}
 
-    def add_run(self, id, group, facility, facility_location, machine, machine_id, run, lane):
+    def add_run(self, id, group, facility, facility_location, machine, machine_id, run, lane, url):
         try:
             runs = self.groups[group]['runs']
             if runs.has_key(id):
@@ -159,6 +161,7 @@ class Job(object):
                             'machine': machine,
                             'machine_id': machine_id,
                             'run': run,
-                            'lane': lane}
+                            'lane': lane,
+                            'fastq_url': url}
         except KeyError, k:
             raise KeyError("No such group with ID %d" % group)
