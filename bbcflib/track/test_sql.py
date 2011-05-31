@@ -95,6 +95,14 @@ class Test_Write(unittest.TestCase):
         os.remove(path)
 
 #-----------------------------------------------------------------------------#   
+class Test_Count(unittest.TestCase):
+    def runTest(self):
+        t = track_collections['Yeast']['All genes']
+        with Track(t['path_sql']) as t['track']:
+            num = t['track'].count()
+            self.assertEqual(num, 6717)
+
+#-----------------------------------------------------------------------------#   
 class Test_Meta(unittest.TestCase):
     def runTest(self):
         path = named_temporary_path('.sql')

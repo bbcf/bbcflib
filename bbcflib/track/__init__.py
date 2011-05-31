@@ -122,13 +122,21 @@ def _import_implementation(format):
 
 #-----------------------------------------------------------------------------#   
 def join_read_queries(track, selections, fields):
-    ''' Join read results when selection is a list'''
+    '''Join read results when selection is a list'''
     def _add_chromsome(sel, data):
         if type(sel) == str: chrom = (sel,)
         else:                chrom = (sel['chr'],)
         for f in data: yield chrom + f
     for sel in selections:
         for f in _add_chromsome(sel, track.read(sel, fields)): yield f
+
+def make_cond_from_sel(selection):
+    '''Make an SQL condition string from a selection dictionary'''
+    if selection.get('inclusion') == 'strict':
+        return "start < " + str(selection['end'])   + " and " + "start >= " + str(selection['start']) + \
+          " and " + "end   > " + str(selection['start']) + " and " + "end <= "   + str(selection['end'])
+    else:
+        return "start < " + str(selection['end']) + " and " + "end > " + str(selection['start'])
 
 ###########################################################################   
 class Track(object):
@@ -300,6 +308,24 @@ class Track(object):
             with Track('tracks/example.sql') as t:
                 t.remove()
 
+        '''
+        raise NotImplementedError
+
+    def count(self, selection=None):
+        '''Counts the number of features or entries in a given selection.
+
+        * *selection* is the name of a chromosome, a list of chromosomes, a particular span or a list of spans. In other words, a value similar to the *selection* parameter of the *read* method. 
+
+        Called with no arguments, will count every feature in a track.
+
+        Examples::
+
+            with Track('tracks/example.sql') as t:
+                num = t.count('chr1')
+            with Track('tracks/example.sql') as t:
+                num = t.count(['chr1','chr2','chr3'])
+            with Track('tracks/example.sql') as t:
+                num = t.count({'chr':'chr1', 'start':10000, 'end':15000})
         '''
         raise NotImplementedError
 

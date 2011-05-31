@@ -94,12 +94,7 @@ class GenomicFormat(Track):
             chrom = selection['chr']
             if chrom not in self.chrs_from_tables: return ()
             if not fields: fields = self.get_fields(chrom)
-            if selection.get('inclusion') == 'strict':
-                condition = "start < " + str(selection['end'])   + " and " + "start >= " + str(selection['start']) + \
-                  " and " + "end   > " + str(selection['start']) + " and " + "end <= "   + str(selection['end'])
-            else:
-                condition = "start < " + str(selection['end']) + " and " + "end > " + str(selection['start'])
-            sql_request = "select " + ','.join(fields) + " from '" + chrom + "' where " + condition
+            sql_request = "select " + ','.join(fields) + " from '" + chrom + "' where " + make_cond_from_sel(selection)
         # Ordering #
         order_by = 'order by ' + order
         # Return the results #
@@ -128,6 +123,25 @@ class GenomicFormat(Track):
                 self.remove(ch)
         else:
             self.cursor.execute("DROP table '" + chrom + "'")
+
+    def count(self, selection=None):
+        # Default selection #
+        if not selection:
+            selection = self.chrs_from_tables
+        # Case multi-chromosome #
+        if type(selection) == list:
+            return sum([self.count(s) for s in selection])
+        # Case chromsome name #
+        if type(selection) == str:
+            if selection not in self.chrs_from_tables: return 0
+            sql_request = "select COUNT(*) from '" + selection + "'"
+        # Case span dictionary #
+        if type(selection) == dict:
+            chrom = selection['chr']
+            if chrom not in self.chrs_from_tables: return 0
+            sql_request = "select COUNT(*) from '" + chrom + "' where " + make_cond_from_sel(selection)
+        # Return the results #
+        return self.cursor.execute(sql_request).fetchone()[0]
 
     #-----------------------------------------------------------------------------#
     @property
