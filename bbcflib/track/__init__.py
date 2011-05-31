@@ -308,6 +308,7 @@ class Track(object):
             with Track('tracks/example.sql') as t:
                 t.remove()
 
+        ``remove`` returns nothing.
         '''
         raise NotImplementedError
 
@@ -326,6 +327,8 @@ class Track(object):
                 num = t.count(['chr1','chr2','chr3'])
             with Track('tracks/example.sql') as t:
                 num = t.count({'chr':'chr1', 'start':10000, 'end':15000})
+
+        ``count`` returns an integer.
         '''
         raise NotImplementedError
 
