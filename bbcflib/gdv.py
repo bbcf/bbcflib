@@ -17,7 +17,7 @@ def create_gdv_project( gdv_key, gdv_email,
     Create a new project on GDV interface
     :param gdv_email: your login in TEQUILA
     :param gdv_key: your user key (get it from your GDV account)
-    :param rn_assembly_id: the nrAssembly identifier of the species in Genrep
+    :param nr_assembly_id: the nrAssembly identifier of the species in Genrep
     :param name: name of the project
     :param public: 'true' to make the project public -optionnal-
     :rtype: a json : {'project_id':<the id>,'public_url':<the public url>} or {'project_id':<the id>} if you didn't make the 
