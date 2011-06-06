@@ -16,6 +16,7 @@ Below is the script used by the frontend::
     from bbcflib.mapseq import *
     from bbcflib.chipseq import *
     M = MiniLIMS( '/path/to/chipseq/minilims' )
+    M_ms = MiniLIMS( '/path/to/mapseq/minilims' )
     hts_key = 'test_key'
     gl = { 'hts_url_cs': 'http://htsstation.vital-it.ch/chipseq/',
            'hts_url_ms': 'http://htsstation.vital-it.ch/mapseq/',
@@ -26,19 +27,21 @@ Below is the script used by the frontend::
     job = htss.job( hts_key )
     g_rep = genrep.GenRep( gl['genrep_url'], gl['bwt_root'] )
     with execution( M, description=hts_key, remote_working_directory=working_dir ) as ex:
-        M_ms = MiniLIMS( '/path/to/mapseq/minilims' )
-        mapseq_url = gl['hts_url']
-        (ms_files, ms_job) = import_mapseq_results( job.options['mapseq_key'], M_ms, ex.working_directory, gl_ms['hts_url'] )
+        (ms_files, ms_job) = import_mapseq_results( job.options['mapseq_key'], M_ms, ex.working_directory, gl['hts_url_ms'] )
         g_rep_assembly = g_rep.assembly( ms_job.assembly_id )
         job.groups = ms_job.groups
         files = workflow_groups( ex, job, ms_files, g_rep_assembly.chromosomes, gl['script_path'] )
     print ex.id
     allfiles = common.get_files( ex.id, M )
+    print allfiles
 
 
 """
 
 import sqlite3
+import shutil
+import pickle
+import urllib, urllib2
 from bein import *
 from bein.util import *
 from bbcflib import frontend, mapseq
@@ -191,6 +194,95 @@ def run_deconv(ex,sql,peaks,chromosomes,read_extension,script_path, via='lsf'):
     
 ###################### Workflow ####################
 
+def get_bam_wig_files( ex, job, minilims=None, hts_url=None, 
+                       script_path = './', via='lsf' ):
+    """
+    Will replace file references by actual file paths in the 'job' object.
+    These references are either 'mapseq' keys or urls.
+    """
+    mapped_files = {}
+    read_exts = {}
+    suffix = ['fwd','rev']
+    for gid,group in job.groups.iteritems():
+        mapped_files[gid] = {}
+        if 'name' in group:
+            group_name = re.sub(r'\s+','_',group['name'])
+        else:
+            group_name = str(gid)
+        job.groups[gid]['name'] = group_name
+        for rid,run in group['runs'].iteritems():
+            file_loc = str(run['url'])
+            bamfile = unique_filename_in()
+            wig = {}
+            name = group_name
+            s = None
+            p_thresh = None
+            if len(group['runs'])>1:
+                if all([x in run for x in ['machine','run','lane']]):
+                    name += "_".join(['',run['machine'],str(run['run']),str(run['lane'])])
+                else:
+                    name += "_"+file_loc.split("/")[-1]
+            if file_loc.startswith("http://") or file_loc.startswith("https://"):
+                urllib.urlretrieve( file_loc, bamfile )
+                urllib.urlretrieve( file_loc+".bai", bamfile+".bai" )
+            elif os.path.exists(file_loc):
+                shutil.copy( file_loc, bamfile )
+                shutil.copy( file_loc+".bai", bamfile+".bai" )
+            elif os.path.exists(minilims) and os.path.exists(os.path.join(minilims+".files",file_loc)):
+                MMS = MiniLIMS(minilims)
+                file_loc = os.path.join(minilims+".files",file_loc)
+                shutil.copy( file_loc, bamfile )
+                shutil.copy( file_loc+".bai", bamfile+".bai" )
+                exid = max(MMS.search_executions(with_text=run['key']))
+                allfiles = dict((MMS.fetch_file(x)['description'],x)
+                                for x in MMS.search_files(source=('execution',exid)))
+                with open(MMS.path_to_file(allfiles['py:file_names'])) as q:
+                    file_names = pickle.load(q)
+#                ms_name = file_names[gid][rid] 
+                stats_id = allfiles.get("py:"+name+"_filter_bamstat") or allfiles.get("py:"+name+"_full_bamstat")
+                with open(MMS.path_to_file(stats_id)) as q:
+                    s = pickle.load(q)
+                pickle_thresh = allfiles["py:"+name+"_Poisson_threshold"]
+                with open(MMS.path_to_file(pickle_thresh)) as q:
+                    p_thresh = pickle.load(q)
+                htss = frontend.Frontend( url=hts_url )
+                ms_job = htss.job( run['key'] )
+                if ms_job.options.get('read_extension')>0 and ms_job.options.get('read_extension')<80:
+                    read_exts[rid] = ms_job.options['read_extension']
+                else:
+                    read_exts[rid] = s['read_length']
+                if ms_job.options.get('compute_densities') and ms_job.options.get('merge_strands')<0:
+                    wigfile = unique_filename_in()
+                    wig_ids = dict(((allfiles['sql:'+name+'_'+s+'.sql'],s),
+                                    wigfile+'_'+s+'.sql') for s in suffix)
+                    [MMS.export_file(x[0],s) for x,s in wig_ids.iteritems()]
+                    wig = dict((x[1],s) for x,s in wig_ids.iteritems())
+            else:
+                raise ValueError("Couldn't find this bam file anywhere: %s." %file_loc)
+            mapped_files[gid][rid] = {'bam': bamfile, 
+                                      'stats': s or bamstats.nonblocking( ex, bamfile, via=via ),
+                                      'poisson_threshold': p_thresh, 
+                                      'libname': name, 
+                                      'wig': wig}
+    if not('read_extension' in job.options): 
+        c = dict((x,0) for x in read_exts.values())
+        for x in read_exts.values():
+            c[x]+=1
+        job.options['read_extension'] = [k for k,v in c.iteritems() if v==max(c.values())][0]
+    for gid, group in job.groups.iteritems():
+        for rid,run in group['runs'].iteritems():
+            if read_exts.get(rid) != job.options['read_extension']:
+                mapped_files[gid][rid]['wig'] = []
+            if not(isinstance(mapped_files[gid][rid]['stats'],dict)):
+                stats = mapped_files[gid][rid]['stats'].wait()
+                mapped_files[gid][rid]['stats'] = stats
+                pdf = add_pdf_stats( ex, {gid:{rid:{'stats':stats}}},
+                                     {gid: mapped_files[gid][rid]['libname']}, 
+                                     script_path )
+                mapped_files[gid][rid]['p_thresh'] = poisson_threshold( 50*stats["actual_coverage"] )
+    return (mapped_files,job)
+
+
 def workflow_groups( ex, job_or_dict, mapseq_files, chromosomes, script_path='', 
                      via='lsf' ):
     """Runs a chipseq workflow over bam files obtained by mapseq. Will optionally run ``macs`` and 'run_deconv'.
@@ -226,7 +318,7 @@ def workflow_groups( ex, job_or_dict, mapseq_files, chromosomes, script_path='',
             options = job_or_dict['options']
         groups = job_or_dict['groups']
         for gid in groups.keys():
-            if not 'name' in groups[gid]:
+            if not('name' in groups[gid]):
                 groups[gid]['name'] = gid
     else:
         raise TypeError("job_or_dict must be a frontend.Job object or a dictionary with key 'groups'.")
@@ -234,12 +326,10 @@ def workflow_groups( ex, job_or_dict, mapseq_files, chromosomes, script_path='',
     suffixes = ["fwd","rev"]
     if options.get('merge_strands')>=0:
         merge_strands = options['merge_strands']
-        suffixes = ["merged"]
-    compute_densities = options.get('compute_densities') or False
     peak_deconvolution = options.get('peak_deconvolution') or False
     macs_args = options.get('macs_args') or ["--bw=200","-p",".001"]
     b2w_args = options.get('b2w_args') or []
-    if not isinstance(mapseq_files,dict):
+    if not(isinstance(mapseq_files,dict)):
         raise TypeError("Mapseq_files must be a dictionary.")
     tests = []
     controls = []
@@ -248,7 +338,7 @@ def workflow_groups( ex, job_or_dict, mapseq_files, chromosomes, script_path='',
     p_thresh = {}
     for gid,mapped in mapseq_files.iteritems():
         group_name = groups[gid]['name']
-        if not isinstance(mapped,dict):
+        if not(isinstance(mapped,dict)):
             raise TypeError("Mapseq_files values must be dictionaries with keys *run_ids* or 'bam'.")
         if 'bam' in mapped:
             mapped = {'_': mapped}
@@ -289,22 +379,28 @@ def workflow_groups( ex, job_or_dict, mapseq_files, chromosomes, script_path='',
         merged_wig = {}
         if not(options.get('read_extension')>0):
             options['read_extension'] = read_length[0]
+        if not('-q' in b2w_args):
+            b2w_args += ["-q",str(options['read_extension'])]
         for gid,mapped in mapseq_files.iteritems():
             if groups[gid]['control']:
                 continue
             group_name = groups[gid]['name']
-            if merge_strands >= 0 or not(compute_densities):
-                if not('-q' in b2w_args):
-                    b2w_args += ["-q",str(options['read_extension'])]
-                wig = [parallel_density_sql( ex, m["bam"], None,
-                                             nreads=m["stats"]["total"], 
-                                             merge=-1,
-                                             convert=False, 
-                                             description=m['libname'], 
-                                             b2w_args=b2w_args, via=via ) 
-                       for m in mapped.values()]
-            else:
-                wig = [m['wig'] for m in mapped.values()]
+            wig = []
+            for m in mapped.values():
+                if merge_strands >= 0 or not('wig' in m) or len(m['wig'])<2:
+                    output = unique_filename_in()
+                    touch(ex,output)
+                    [create_sql_track( output+s+'.sql', chromosomes ) 
+                     for s in suffixes]
+                    mapseq.parallel_density_sql( ex, m["bam"], 
+                                                 output, None,
+                                                 nreads=m["stats"]["total"], 
+                                                 merge=-1,
+                                                 convert=False, 
+                                                 b2w_args=b2w_args, via=via )
+                    wig.append(dict((s,output+s+'.sql') for s in suffixes))
+                else:
+                    wig.append(m['wig'])
             if len(wig) > 1:
                 merged_wig[group_name] = dict((s, 
                                                merge_sql(ex, [x[s] for x in wig],
