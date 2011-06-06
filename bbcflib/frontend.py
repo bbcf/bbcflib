@@ -24,6 +24,7 @@ method with a job key.::
 """
 import urllib2
 import json
+from ConfigParser import ConfigParser
 from datetime import datetime
 
 from common import normalize_url
@@ -74,7 +75,8 @@ class Frontend(object):
                     'lane': a['lane_nber'],
                     'run': a['run_nber'],
                     'facility_location': str(a['facility_location']),
-                    'fastq_url': str(a['fastq_url']),
+                    'url': str(a.get('fastq_url') or a.get('bam_url')),
+                    'key': str(a.get('mapseq_key')),
                     'created_at': datetime.strptime(a['created_at'],
                                                     '%Y-%m-%dT%H:%M:%SZ')}
         return [_f(r) for r in json.load(urllib2.urlopen(self.query_url('runs', key)))]
@@ -109,7 +111,8 @@ class Frontend(object):
                    machine=r['machine_name'], 
                    machine_id=r['machine_id'],
                    run=r['run'], lane=r['lane'],
-                   url=r['fastq_url'])
+                   url=r['url'],
+                   key=r['key'])
          for r in self._fetch_runs(key)]
         return j
                    
@@ -150,7 +153,7 @@ class Job(object):
                                'name': name,
                                'runs': {}}
 
-    def add_run(self, id, group, facility, facility_location, machine, machine_id, run, lane, url):
+    def add_run(self, id, group, facility, facility_location, machine, machine_id, run, lane, url, key):
         try:
             runs = self.groups[group]['runs']
             if runs.has_key(id):
@@ -162,6 +165,47 @@ class Job(object):
                             'machine_id': machine_id,
                             'run': run,
                             'lane': lane,
-                            'fastq_url': url}
+                            'url': url,
+                            'key': key}
         except KeyError, k:
             raise KeyError("No such group with ID %d" % group)
+
+
+def parseConfig( file ):
+    """Constructs a Job object from parsing a text config file with ConfigObj.
+    """
+    from configobj import ConfigObj
+    import time
+    
+    config = ConfigObj( file )
+    if not('Job' in config and 'Groups' in config and 'Runs' in config):
+        raise ValueError("Need 'Job', 'Groups' and 'Runs' sections in the configuration, only had: "+", ".join(config.keys()))
+    job = Job(
+        id = int(config['Job'].get('id') or 0),
+        created_at = int(time.time()),
+        key = config['Job'].get('key') or 'localconfig',
+        assembly_id = config['Job']['assembly_id'],
+        description = str(config['Job'].get('description')),
+        email = str(config['Job'].get('email')),
+        options = config.get('Options') or {})
+    if not('name' in config['Groups']):
+        raise ValueError("Each entry in 'Groups' must have a 'name'")
+    for gid, group in config['groups'].iteritems():
+        job.add_group(id=int(gid), 
+                      control=group.get('control').lower() in ['1','true','t'],
+                      name=str(group['name']))
+    if not('group_id' in config['Groups']):
+        raise ValueError("Each entry in 'Groups' must have a 'group_id'")
+    for rid, run in config['runs'].iteritems():
+        job.add_run(id=int(rid), 
+                    group=int(run['group_id']), 
+                    facility=str(run.get('facility_name')), 
+                    facility_location=str(run.get('facility_location')),
+                    machine=str(run.get('machine_name')), 
+                    machine_id=int(run.get('machine_id')),
+                    run=int(run.get('run')), 
+                    lane=int(run.get('lane')),
+                    url=str(run.get('url')),
+                    key=str(run.get('key')))
+    globals = config.get('Global variables') or {}
+    return (job,globals)
