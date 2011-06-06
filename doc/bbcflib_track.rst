@@ -10,6 +10,10 @@ Main class
 
     .. automethod:: Track.write
 
+    .. automethod:: Track.remove
+
+    .. automethod:: Track.count
+
     .. automethod:: Track.convert
  
 Other functions
