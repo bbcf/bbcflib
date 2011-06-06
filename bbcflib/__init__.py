@@ -18,11 +18,9 @@ It provides modules for BBCF's
 
 All the functionality can be imported with::
 
-    import bbcflib
+    import bbcflib.module
 
-which reexports the important functions from all the submodules.  It
-reexports ``ConfigParser`` from ``ConfigParser``, and the following
-modules from bbcflib:
+where module is one of:
 
 * ``GenRep`` and ``Assembly`` from  :doc:`bbcflib_genrep`
 * ``EmailReport`` from :doc:`bbcflib_email`
@@ -83,8 +81,3 @@ b'This module needs Python 2.6 or later.'
 
 __version__ = '1.2.0'
 
-from ConfigParser import ConfigParser
-from genrep import GenRep, Assembly
-from email import EmailReport
-from daflims import DAFLIMS
-from frontend import Frontend, Job
