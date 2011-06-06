@@ -53,7 +53,7 @@ Below is the script used by the frontend::
                     for loc in gl['lims']['passwd'].keys())
     job.options['ucsc_bigwig'] = True
     with execution( M, description=hts_key, remote_working_directory=working_dir ) as ex:
-        job = get_fastq_files( job, daflims1, ex.working_directory )
+        job = get_fastq_files( job, ex.working_directory, daflims1 )
         mapped_files = map_groups( ex, job, ex.working_directory, assembly )
         pdf = add_pdf_stats( ex, mapped_files,
                              dict((k,v['name']) for k,v in job.groups.iteritems()),
@@ -67,6 +67,8 @@ Below is the script used by the frontend::
         add_pickle( ex, gdv_project, description='py:gdv_json' )
     print ex.id
     allfiles = common.get_files( ex.id, M )
+    print allfiles
+
 
 """
 
@@ -264,22 +266,23 @@ def map_reads( ex, fastq_file, chromosomes, bowtie_index,
 
 ############################################################ 
 
-def get_fastq_files( job, dafl, fastq_root, set_seed_length=True ):
+def get_fastq_files( job, fastq_root, dafl=None, set_seed_length=True ):
     """
-    Will replace file references by actual file names in the 'job' object.
+    Will replace file references by actual file paths in the 'job' object.
     These references are either 'dafl' run descriptions or urls.
     Argument 'dafl' is a dictionary of 'Daflims' objects (keys are the facility names).
-    If 'set_seed_length' is true, a dictionary job.groups[gid]['seed_lengths'] of seed lengths is constructed 
-    with values corresponding to 70% of the read length.
+    If 'set_seed_length' is true, a dictionary job.groups[gid]['seed_lengths'] 
+    of seed lengths is constructed with values corresponding to 70% of the 
+    read length.
     """
-    if not(isinstance(dafl.values()[0],daflims.DAFLIMS)):
+    if  not(dafl == None or isinstance(dafl.values()[0],daflims.DAFLIMS)):
         raise ValueError("Need DAFLIMS objects in get_fastq_files.")
     for gid,group in job.groups.iteritems():
         job.groups[gid]['seed_lengths'] = {}
         job.groups[gid]['run_names'] = {}
         for rid,run in group['runs'].iteritems():
-            if len(run['fastq_url'])>0:
-                run = str(run['fastq_url'])
+            if len(run['url'])>0:
+                run = str(run['url'])
             if isinstance(run,dict) and all([x in run for x in ['facility','machine','run','lane']]):
                 dafl1 = dafl[run['facility']]
                 daf_data = dafl1.fetch_fastq( str(run['facility']), str(run['machine']),
@@ -295,12 +298,15 @@ def get_fastq_files( job, dafl, fastq_root, set_seed_length=True ):
                     urllib.urlretrieve( run, target )
                 else:
                     shutil.copy(run,target)
-                run = re.sub('.seq.gz','_seq.tar',run)
-                base, ext1 = os.path.splitext(run)
-                ext = ''.join([os.path.splitext(base)[1],ext1])
-                if ext in ['.tar','.tar.gz','.tar.gzip']:
+#                run = re.sub('.seq.gz','_seq.tar',run)
+                is_gz = run.endswith(".gz") or run.endswith(".gzip")
+                run_strip = run
+                if is_gz:
+                    run_strip = re.sub('.gz[ip]*','',run)
+                is_tar = run_strip.endswith(".tar")
+                if is_tar:
                     mode = 'r'
-                    if ext in ['.tar.gz','.tar.gzip']:
+                    if is_gz:
                         mode += '|gz'
                     fq_file2 = unique_filename_in(fastq_root)
                     target2 = os.path.join(fastq_root,fq_file2)
@@ -318,7 +324,7 @@ def get_fastq_files( job, dafl, fastq_root, set_seed_length=True ):
                         input_file.close()
                         tar.close()
                     fq_file = fq_file2
-                elif ext in ['.gz','.gzip']:
+                elif is_gz:
                     fq_file2 = unique_filename_in(fastq_root)
                     target2 = os.path.join(fastq_root,fq_file2)
                     with open(target2,'w') as output_file:
@@ -379,7 +385,7 @@ def map_groups( ex, job_or_dict, fastq_root, assembly_or_dict, map_args={} ):
         if 'name' in group:
             group_name = re.sub(r'\s+','_',group['name'])
         else:
-            group_name = gid
+            group_name = str(gid)
         if not 'runs' in group:
             group = {'runs': group}
         for rid,run in group['runs'].iteritems():
@@ -419,7 +425,7 @@ def add_pdf_stats( ex, processed, group_names, script_path,
     all_stats = {}
     for gid, p in processed.iteritems():
         for i,mapped in enumerate(p.values()):
-            name = group_names[gid]
+            name = group_names.get(gid)
             if 'libname' in mapped:
                 name = mapped['libname']
             if name in all_stats:
@@ -707,7 +713,7 @@ def import_mapseq_results( key_or_id, minilims, ex_root, url_or_dict ):
             stats_id = allfiles.get("py:"+name+"_filter_bamstat") or allfiles.get("py:"+name+"_full_bamstat")
             with open(minilims.path_to_file(stats_id)) as q:
                 stats = pickle.load(q)
-            pickle_thresh = allfiles["py:"+name+"Poisson_threshold"]
+            pickle_thresh = allfiles["py:"+name+"_Poisson_threshold"]
             with open(minilims.path_to_file(pickle_thresh)) as q:
                 p_thresh = pickle.load(q)
             wigfile = os.path.join(ex_root, unique_filename_in(ex_root))
