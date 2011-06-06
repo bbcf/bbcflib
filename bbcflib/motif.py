@@ -7,7 +7,7 @@ import os
 import sqlite3
 from bein import *
 from bein.util import *
-from bbcflib import common
+from bbcflib import common, genrep
 
 @program
 def meme( fasta, maxsize=10000000, args=[] ):
