@@ -91,3 +91,38 @@ def save_motif_profile( ex, motifs, background, genrep, chromosomes,
     connection.close()
     ex.add( sqlout, description="sql:"+description+"motif_scan.sql" )
     return sqlout
+    
+def false_discovery_rate_p_value(false_positive_list, true_positive_list, index, factor):
+    """
+    Return false discovery rate
+    """
+    tn = 0
+    fn = 0
+    if index < len(true_positive_list):
+        tn = len(true_positive_list[index:])
+    if index < len(false_positive_list):
+        fn = len(false_positive_list[index:]) * (1/float(factor))
+    return fn / float(tn + fn)
+
+def false_discovery_rate(false_positive_list, true_positive_list, alpha=1, factor=1.0):
+    """
+    Return false discovery rate
+    """
+    index       = min( len(true_positive_list), len(false_positive_list) )
+    index       -=  1
+    p_value     = 0
+
+    isRunning = True
+    while isRunning:
+        if index < 0:
+            isRunning = False
+        else:
+            p_value = false_discovery_rate_p_value(false_positive_list, true_positive_list, index, factor)
+            if p_value == alpha:
+                isRunning = False
+            elif 1 - p_value > alpha:
+                isRunning = False
+                index       = (index + 1 < len(true_positive_list)) and index + 1 or index
+            else:
+                index -= 1
+    return true_positive_list[index]
