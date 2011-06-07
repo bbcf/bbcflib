@@ -19,10 +19,10 @@ def meme( fasta, maxsize=10000000, args=[] ):
 
 def add_meme_files( ex, genrep, chromosomes, description='',
                     bed=None, sql=None, meme_args=[], via='lsf' ):
-    """Fetches sequences, then calls ``meme`` 
+    """Fetches sequences, then calls ``meme``
     on them and finally saves the results in the repository.
     """
-    fasta,size = genrep.fasta_from_bed( chromosomes, out=unique_filename_in(), 
+    fasta,size = genrep.fasta_from_bed( chromosomes, out=unique_filename_in(),
                                         bed=bed, sql=sql )
     meme_out = meme.nonblocking( ex, fasta, maxsize=size*1.5, args=meme_args, via=via ).wait()
     html = os.path.join(meme_out,"meme.html")
@@ -49,7 +49,7 @@ def save_motif_profile( ex, motifs, background, genrep, chromosomes,
     for name,pwm in motifs.iteritems():
         output = unique_filename_in()
         futures[name] = (output,
-                         motif_scan.nonblocking( ex, fasta, pwm, background, threshold, 
+                         motif_scan.nonblocking( ex, fasta, pwm, background, threshold,
                                                  via=via, stdout=output ))
     regions = {}
     if bed != None:
@@ -91,23 +91,37 @@ def save_motif_profile( ex, motifs, background, genrep, chromosomes,
     connection.close()
     ex.add( sqlout, description="sql:"+description+"motif_scan.sql" )
     return sqlout
-    
-def false_discovery_rate_p_value(false_positive_list, true_positive_list, index, factor_fp, factor_tn):
+
+def false_discovery_rate_p_value(false_positive_list, true_positive_list, index, factor_fp, factor_tp):
     """
     Return false discovery rate
     """
     tn = 0
     fn = 0
     if index < len(true_positive_list):
-        tn = len(true_positive_list[index:]) * (1/float(factor_tn))
+        for i in true_positive_list[index:]
+            tp += i * (1/float(factor_tp))
     if index < len(false_positive_list):
-        fp = len(false_positive_list[index:]) * (1/float(factor_fp))
-    return fp / float(tn + fn)
+        for i in false_positive_list[index:]
+            fp += false_positive_list[index:] * (1/float(factor_fp))
+    return fp / float(tp + fp)
 
-def false_discovery_rate(false_positive_list, true_positive_list, alpha=1, factor_fp=1.0, factor_tn=1.0):
+def false_discovery_rate(false_positive, true_positive, alpha=1, factor_fp=1.0, factor_tp=1.0):
     """
     Return false discovery rate
     """
+    if isinstance(false_positive, tuple) or isinstance(false_positive, list):
+        false_positive_list = false_positive
+    elif isinstance(false_positive, dict):
+        false_positive_list = [ false_positive[f] for f in false_positive ]
+    else:
+        raise TypeError(u"Allowed type for false_positive: tuple, list, dict. Type subited: %s" %type(false_positive))
+    if isinstance(true_positive, tuple) or isinstance(true_positive, list):
+        true_positive_list = true_positive
+    elif isinstance(true_positive, dict):
+        true_positive_list = [ true_positive[f] for f in true_positive ]
+    else:
+        raise TypeError(u"Allowed type for true_positive: tuple, list, dict. Type subited: %s" %type(true_positive))
     index       = min( len(true_positive_list), len(false_positive_list) )
     index       -=  1
     p_value     = 0
@@ -117,7 +131,7 @@ def false_discovery_rate(false_positive_list, true_positive_list, alpha=1, facto
         if index < 0:
             isRunning = False
         else:
-            p_value = false_discovery_rate_p_value(false_positive_list, true_positive_list, index, factor_fp, factor_tn)
+            p_value = false_discovery_rate_p_value(false_positive_list, true_positive_list, index, factor_fp, factor_tp)
             if p_value == alpha:
                 isRunning = False
             elif 1 - p_value > alpha:
@@ -126,3 +140,71 @@ def false_discovery_rate(false_positive_list, true_positive_list, alpha=1, facto
             else:
                 index -= 1
     return true_positive_list[index]
+
+def sqlite_to_false_discovery_rate  (
+                                        ex, motifs, background, genrep, chromosomes,
+                                        description='',
+                                        sqls=None,      beds=None,
+                                        threshold=0,    via='lsf',
+                                        alpha=1, factor_fp=1.0, factor_tp=1.0
+                                    ):
+    """
+    sqls or beds take an array (list or tuple) like:
+    sqls = (sql, sql_random)
+    beds = (bed, bed_random)
+    """
+    if sqls is None and beds is None:
+        raise ValueError(u"Variables sqls and beds is set to None! Set one of these variables")
+    elif sqls is not None and beds is not None:
+        raise ValueError(u"Variables sqls and beds is not None! Set only one of these variables, sqls or beds")
+
+    true_positive_result    = None
+    false_positive_result   = None
+
+    if sqls is not None:
+        # original
+        true_positive_result    = save_motif_profile(
+                                                        ex, motifs, background, genrep, chromosomes,
+                                                        description='',
+                                                        sql=sqls[0], bed=None, threshold=threshold, via=via
+                                                    )
+        # random
+        false_positive_result   = save_motif_profile(
+                                                        ex, motifs, background, genrep, chromosomes,
+                                                        description='',
+                                                        sql=sqls[1], bed=None, threshold=threshold, via=via
+                                                    )
+    else:
+        # original
+        true_positive_result    = save_motif_profile(
+                                                        ex, motifs, background, genrep, chromosomes,
+                                                        description='',
+                                                        sql=None, bed=beds[0], threshold=threshold, via=via
+                                                    )
+        # random
+        false_positive_result   = save_motif_profile(
+                                                        ex, motifs, background, genrep, chromosomes,
+                                                        description='',
+                                                        sql=None, bed=beds[1], threshold=threshold, via=via
+                                                    )
+
+    fp_scores = get_score(false_positive_result)
+    tp_scores = get_score(true_positive_result)
+
+    fdr = false_discovery_rate  (
+                                    fp_scores, tp_scores,
+                                    alpha=1, factor_fp=1.0, factor_tp=1.0
+                                )
+
+
+def get_score( sql ):
+    connection          = sqlite3.connect(sql)
+    chromosomes_names   = [ chromosome[0] for chromosome in connection.execute(u"SELECT name FROM chrNames;").fetchall() ]
+    scores              = {}
+    for chromosome_name in chromosomes_names:
+        for result in connection.execute(u"SELECT count (*), score FROM "+chromosome_name+u" GROUP BY score;"):
+            if result[1] not in scores:
+                scores[ result[1] ] = result[0]
+            else:
+                scores[ result[1] ] += result[0]
+    return scores
