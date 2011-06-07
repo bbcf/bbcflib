@@ -92,19 +92,19 @@ def save_motif_profile( ex, motifs, background, genrep, chromosomes,
     ex.add( sqlout, description="sql:"+description+"motif_scan.sql" )
     return sqlout
     
-def false_discovery_rate_p_value(false_positive_list, true_positive_list, index, factor):
+def false_discovery_rate_p_value(false_positive_list, true_positive_list, index, factor_fp, factor_tn):
     """
     Return false discovery rate
     """
     tn = 0
     fn = 0
     if index < len(true_positive_list):
-        tn = len(true_positive_list[index:])
+        tn = len(true_positive_list[index:]) * (1/float(factor_tn))
     if index < len(false_positive_list):
-        fn = len(false_positive_list[index:]) * (1/float(factor))
-    return fn / float(tn + fn)
+        fp = len(false_positive_list[index:]) * (1/float(factor_fp))
+    return fp / float(tn + fn)
 
-def false_discovery_rate(false_positive_list, true_positive_list, alpha=1, factor=1.0):
+def false_discovery_rate(false_positive_list, true_positive_list, alpha=1, factor_fp=1.0, factor_tn=1.0):
     """
     Return false discovery rate
     """
@@ -117,7 +117,7 @@ def false_discovery_rate(false_positive_list, true_positive_list, alpha=1, facto
         if index < 0:
             isRunning = False
         else:
-            p_value = false_discovery_rate_p_value(false_positive_list, true_positive_list, index, factor)
+            p_value = false_discovery_rate_p_value(false_positive_list, true_positive_list, index, factor_fp, factor_tn)
             if p_value == alpha:
                 isRunning = False
             elif 1 - p_value > alpha:
