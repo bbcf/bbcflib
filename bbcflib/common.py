@@ -60,12 +60,12 @@ class memoized_method(object):
     '''Decorator that caches a function's return value the first time
     it is called. If called later, the cached value is returned, and
     not re-evaluated
-    
+
     This class is meant to be used as a decorator of methods. The return value
     from a given method invocation will be cached on the instance whose method
     was invoked. All arguments passed to a method decorated with memoize must
     be hashable.
-    
+
     If a memoized method is invoked directly on its class the result will not
     be cached. Instead the method will be invoked like a static method:
     class Obj(object):
@@ -98,10 +98,10 @@ class memoized_method(object):
 def sentinelize(iterable, sentinel):
     '''
     Add an item to the end of an iterable
-    
+
     >>> list(sentinelize(range(4), 99))
     [0, 1, 2, 3, 99]
-    ''' 
+    '''
     for item in iterable: yield item
     yield sentinel
 
@@ -153,12 +153,12 @@ terminal_colors = {
 
 ###############################################################################
 def get_files( id_or_key, minilims ):
-    """Retrieves a dictionary of files created by htsstation job identified by its key or bein id in a MiniLIMS.
-    
+    """Retrieves a dictionary of files CREATEd by htsstation job identified by its key or bein id in a MiniLIMS.
+
     The dictionarie's keys are the file types (e.g. 'pdf', 'bam', 'py' for python objects), the values are dictionaries with keys repository file names and values actual file descriptions (names to provide in the user interface).
     """
     if isinstance(id_or_key, str):
-        try: 
+        try:
             exid = max(minilims.search_executions(with_text=id_or_key))
         except ValueError, v:
             raise ValueError("No execution with key "+id_or_key)
@@ -169,7 +169,7 @@ def get_files( id_or_key, minilims ):
                [minilims.fetch_file(x) for x in minilims.search_files(source=('execution',exid))])
     for f,d in all.iteritems():
         cat,name = re.search(r'([^:]+):(.*)$',d).groups()
-        name = re.sub(r'\s+\(BAM index\)','.bai',name)
+        name = re.sub(r'\s+\(BAM INDEX\)','.bai',name)
         if cat in file_dict:
             file_dict[cat].update({f: name})
         else:
@@ -186,14 +186,14 @@ def run_gMiner( job ):
         with open(job_file,'r') as f:
             job = pickle.load(f)
         return job['job_output']
-    return {"arguments": ["run_gminer.py",job_file], 
+    return {"arguments": ["run_gminer.py",job_file],
             "return_value": get_output_files}
 
 def merge_sql( ex, sqls, names, description="merged.sql", outdir=None, via='lsf' ):
     """Run ``gMiner``'s 'merge_score' function on a set of sql files
     """
-    if outdir == None: 
-        outdir = unique_filename_in() 
+    if outdir == None:
+        outdir = unique_filename_in()
     if not(os.path.exists(outdir)):
         os.mkdir(outdir)
     if not(isinstance(names,list)):
@@ -203,7 +203,7 @@ def merge_sql( ex, sqls, names, description="merged.sql", outdir=None, via='lsf'
         n[:len(names)] = names
         names = n
     gMiner_job = dict([('track'+str(i+1),f) for i,f in enumerate(sqls)]
-                      +[('track'+str(i+1)+'_name',str(ni)) 
+                      +[('track'+str(i+1)+'_name',str(ni))
                         for i,ni in enumerate(names)])
     gMiner_job['operation_type'] = 'genomic_manip'
     gMiner_job['manipulation'] = 'merge_scores'
@@ -246,7 +246,7 @@ def cat(files):
     if len(files) > 1:
         out = unique_filename_in()
         with open(out,"w") as f1:
-            for inf in files: 
+            for inf in files:
                 with open(inf,"r") as f2:
                     [f1.write(l) for l in f2]
                     f2.close()
@@ -260,21 +260,21 @@ def cat(files):
 
 def create_sql_track( sql_name, chromosomes, datatype="quantitative" ):
     conn = sqlite3.connect( sql_name )
-    conn.execute('create table chrNames (name text, length integer)')
-    conn.execute('create table attributes (key text, value text)')
-    conn.execute('insert into attributes (key,value) values ("datatype","%s")' %datatype)
+    conn.execute('CREATE TABLE chrNames (name text, length integer)')
+    conn.execute('CREATE TABLE attributes (key text, value text)')
+    conn.execute('INSERT INTO attributes (key,value) VALUES ("datatype","%s")' %datatype)
     vals = [(v['name'],str(v['length'])) for v in chromosomes.values()]
-    conn.executemany('insert into chrNames (name,length) values (?,?)',vals)
+    conn.executemany('INSERT INTO chrNames (name,length) VALUES (?,?)',vals)
     if datatype=="quantitative":
-        [conn.execute('create table "'+v['name']+'" (start integer, end integer, score real)') 
+        [conn.execute('CREATE TABLE "'+v['name']+'" (start integer, end integer, score real)')
          for v in chromosomes.values()]
-        [conn.execute('create index "range_idx_'+v['name']+'" on "'+v['name']+'" (start, end)') 
+        [conn.execute('CREATE INDEX "range_idx_'+v['name']+'" ON "'+v['name']+'"(start, end)')
          for v in chromosomes.values()]
     elif datatype=="qualitative":
-        [conn.execute('create table "'+v['name']+'" (start integer,end integer,score real,name text,strand integer,attributes text)') 
+        [conn.execute('CREATE TABLE "'+v['name']+'" (start integer,end integer,score real,name text,strand integer,attributes text)')
          for v in chromosomes.values()]
-        [conn.execute('create index "name_idx_'+v['name']+'" on" "'+v['name']+'" (name)') 
-         for v in chromosomes.values()] 
+        [conn.execute('CREATE INDEX "name_idx_'+ v['name'] +'" ON "'+ v['name'] +'"(name)')
+         for v in chromosomes.values()]
     else:
         raise ValueError("Supported datatypes are 'quantitative' and 'qualitative', not "+datatype)
     conn.commit()

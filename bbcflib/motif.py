@@ -4,6 +4,7 @@ bbcflib.motif
 ===============
 """
 import os
+from operator import add
 import sqlite3
 from bein import *
 from bein.util import *
@@ -96,14 +97,12 @@ def false_discovery_rate_p_value(false_positive_list, true_positive_list, index,
     """
     Return false discovery rate
     """
-    tn = 0
+    tp = 0
     fn = 0
     if index < len(true_positive_list):
-        for i in true_positive_list[index:]
-            tp += i * (1/float(factor_tp))
+        tp = reduce(add, true_positive_list[index:]) * (1/float(factor_tp))
     if index < len(false_positive_list):
-        for i in false_positive_list[index:]
-            fp += false_positive_list[index:] * (1/float(factor_fp))
+        fp = reduce(add, false_positive_list[index:]) * (1/float(factor_fp))
     return fp / float(tp + fp)
 
 def false_discovery_rate(false_positive, true_positive, alpha=1, factor_fp=1.0, factor_tp=1.0):
@@ -178,13 +177,13 @@ def sqlite_to_false_discovery_rate  (
         # original
         true_positive_result    = save_motif_profile(
                                                         ex, motifs, background, genrep, chromosomes,
-                                                        description='',
+                                                        description=description,
                                                         sql=None, bed=beds[0], threshold=threshold, via=via
                                                     )
         # random
         false_positive_result   = save_motif_profile(
                                                         ex, motifs, background, genrep, chromosomes,
-                                                        description='',
+                                                        description=description,
                                                         sql=None, bed=beds[1], threshold=threshold, via=via
                                                     )
 
@@ -195,14 +194,14 @@ def sqlite_to_false_discovery_rate  (
                                     fp_scores, tp_scores,
                                     alpha=1, factor_fp=1.0, factor_tp=1.0
                                 )
-
+    return fdr
 
 def get_score( sql ):
     connection          = sqlite3.connect(sql)
     chromosomes_names   = [ chromosome[0] for chromosome in connection.execute(u"SELECT name FROM chrNames;").fetchall() ]
     scores              = {}
     for chromosome_name in chromosomes_names:
-        for result in connection.execute(u"SELECT count (*), score FROM "+chromosome_name+u" GROUP BY score;"):
+        for result in connection.execute(u"SELECT count (*), score FROM '"+chromosome_name+u"' GROUP BY score;"):
             if result[1] not in scores:
                 scores[ result[1] ] = result[0]
             else:

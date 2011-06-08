@@ -107,7 +107,7 @@ class GenRep(object):
         return urllib2.urlopen(url).read().split(',')
 
     def fasta_from_bed(self, chromosomes, out=None, bed=None, sql=None, chunk=50000):
-        """Get a fasta file with sequences corresponding to the features in the 
+        """Get a fasta file with sequences corresponding to the features in the
         bed or sqlite file.
 
         Returns the name of the file and the total sequence size.
@@ -193,7 +193,7 @@ class GenRep(object):
 
         a = Assembly(assembly_id = int(assembly_info['assembly']['id']),
                      assembly_name = assembly_info['assembly']['name'],
-                     index_path = os.path.join(self.root, 
+                     index_path = os.path.join(self.root,
                                                str(assembly_info['assembly']['md5'])),
                      bbcf_valid = assembly_info['assembly']['bbcf_valid'],
                      updated_at = datetime.strptime(assembly_info['assembly']['updated_at'],
@@ -216,8 +216,8 @@ class GenRep(object):
                              name_dictionary[a.id],
                              c['chromosome']['length'])
         return a
-                                    
-            
+
+
 
 
 class Assembly(object):
@@ -250,11 +250,11 @@ class Assembly(object):
     .. attribute:: bbcf_valid
 
       Boolean.
-    
+
     .. attribute:: updated_at
 
     .. attribute:: created_at
-   
+
       ``datetime`` objects.
 
     .. attribute:: nr_assembly_id
@@ -290,10 +290,10 @@ class Assembly(object):
         self.chromosomes[(chromosome_id, refseq_locus, refseq_version)] = \
             {'name': name, 'length': length}
 
-        
 
 
-        
+
+
 if __name__ == '__main__':
     import doctest
     doctest.testmod()
