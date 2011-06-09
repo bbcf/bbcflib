@@ -34,8 +34,6 @@ Below is the script used by the frontend::
     print ex.id
     allfiles = common.get_files( ex.id, M )
     print allfiles
-
-
 """
 
 import sqlite3

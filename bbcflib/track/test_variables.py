@@ -5,11 +5,15 @@ import os
 from ..track import Track
 
 # Tracks path #
-tracks_path = 'extras/tracks/' 
-try:
-    tracks_path = os.path.abspath('/'.join(os.path.realpath(__file__).split('/')[:-1]) + '../../../' + tracks_path) + '/'
-except NameError:
-    pass
+if os.environ.has_key('TRACKSPATH'):
+    tracks_path = os.environ['TRACKSPATH']
+    if not tracks_path.endswith('/'): tracks_path += '/'
+else:
+    try:
+        tracks_path = 'extras/tracks/'
+        tracks_path = os.path.abspath('/'.join(os.path.realpath(__file__).split('/')[:-1]) + '../../../' + tracks_path) + '/'
+    except NameError:
+        pass
 
 # Tracks collection #
 yeast_chr_file = tracks_path + 'chr/yeast.chr' 
