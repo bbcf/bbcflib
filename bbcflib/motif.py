@@ -90,7 +90,7 @@ def save_motif_profile( ex, motifs, background, genrep, chromosomes,
             connection.executemany('insert into "'+cur_chr+'" (start,end,score,strand,name) values (?,?,?,?,?)',vals)
             connection.commit()
     connection.close()
-    ex.add( sqlout, description="sql:"+description+"motif_scan.sql" )
+    ex.add( sqlout, description="sql:"+description+"motif_scan.sql", alias="alias_"+sqlout )
     return sqlout
 
 def false_discovery_rate_p_value(false_positive_list, true_positive_list, index, factor_fp, factor_tp):
@@ -156,39 +156,53 @@ def sqlite_to_false_discovery_rate  (
         raise ValueError(u"Variables sqls and beds is set to None! Set one of these variables")
     elif sqls is not None and beds is not None:
         raise ValueError(u"Variables sqls and beds is not None! Set only one of these variables, sqls or beds")
-
+    background  = os.path.expanduser(background)
+    if not os.path.isabs(background):
+        background = os.path.normcase("../"+background)
     true_positive_result    = None
     false_positive_result   = None
 
     if sqls is not None:
+        new_sql0 = os.path.expanduser(sqls[0])
+        new_sql1 = os.path.expanduser(sqls[1])
+        if not os.path.isabs(new_sql0):
+            new_sql0 = os.path.normcase("../"+new_sql0)
+        if not os.path.isabs(new_sql1):
+            new_sql1 = os.path.normcase("../"+new_sql1)
         # original
         true_positive_result    = save_motif_profile(
                                                         ex, motifs, background, genrep, chromosomes,
                                                         description='',
-                                                        sql=sqls[0], bed=None, threshold=threshold, via=via
+                                                        sql=new_sql0, bed=None, threshold=threshold, via=via
                                                     )
         # random
         false_positive_result   = save_motif_profile(
                                                         ex, motifs, background, genrep, chromosomes,
                                                         description='',
-                                                        sql=sqls[1], bed=None, threshold=threshold, via=via
+                                                        sql=new_sql1, bed=None, threshold=threshold, via=via
                                                     )
     else:
+        new_bed0 = os.path.expanduser(beds[0])
+        new_bed1 = os.path.expanduser(beds[1])
+        if not os.path.isabs(new_bed0):
+            new_bed0 = os.path.normcase("../"+new_bed0)
+        if not os.path.isabs(new_bed1):
+            new_bed1 = os.path.normcase("../"+new_bed1)
         # original
         true_positive_result    = save_motif_profile(
                                                         ex, motifs, background, genrep, chromosomes,
                                                         description=description,
-                                                        sql=None, bed=beds[0], threshold=threshold, via=via
+                                                        sql=None, bed=new_bed0, threshold=threshold, via=via
                                                     )
         # random
         false_positive_result   = save_motif_profile(
                                                         ex, motifs, background, genrep, chromosomes,
                                                         description=description,
-                                                        sql=None, bed=beds[1], threshold=threshold, via=via
+                                                        sql=None, bed=new_bed1, threshold=threshold, via=via
                                                     )
 
-    fp_scores = get_score(false_positive_result)
-    tp_scores = get_score(true_positive_result)
+    fp_scores = get_score(ex.working_directory+"/"+false_positive_result)
+    tp_scores = get_score(ex.working_directory+"/"+true_positive_result)
 
     fdr = false_discovery_rate  (
                                     fp_scores, tp_scores,
@@ -198,12 +212,16 @@ def sqlite_to_false_discovery_rate  (
 
 def get_score( sql ):
     connection          = sqlite3.connect(sql)
-    chromosomes_names   = [ chromosome[0] for chromosome in connection.execute(u"SELECT name FROM chrNames;").fetchall() ]
+    cursor              = connection.cursor()
+    cursor.execute(u"SELECT name FROM chrNames;")
+    chromosomes_names   = [ chromosome[0] for chromosome in cursor ]
     scores              = {}
     for chromosome_name in chromosomes_names:
-        for result in connection.execute(u"SELECT count (*), score FROM '"+chromosome_name+u"' GROUP BY score;"):
+        cursor.execute(u"SELECT count (*), score FROM '"+chromosome_name+u"' GROUP BY score;")
+        for result in cursor:
             if result[1] not in scores:
                 scores[ result[1] ] = result[0]
             else:
                 scores[ result[1] ] += result[0]
+    connection.close()
     return scores
