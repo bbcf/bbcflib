@@ -9,6 +9,7 @@ import pickle
 import json
 import pysam
 import numpy
+import urllib
 from itertools import combinations
 from bein.util import *
 from bbcflib import *
@@ -17,6 +18,8 @@ import rpy2.robjects as robjects
 import rpy2.robjects.packages as rpackages
 import rpy2.robjects.numpy2ri
 import rpy2.rlike.container as rlc
+import maplot
+#import pudb #pudb.set_trace()
 
 def path_to_bowtie_index(ex, assembly_id):
     """Return full path to usable bowtie index.
@@ -35,8 +38,8 @@ def path_to_bowtie_index(ex, assembly_id):
         genrep = GenRep('http://bbcftools.vital-it.ch/genrep/',
                         '/db/genrep/nr_assemblies/exons_bowtie')
         assembly = genrep.assembly(assembly_id)
+        print "Assembly found on GenRep"
         return assembly.index_path
-
 
 def fetch_read_files(ex, runs):
     """Return a dictionary of full paths to FASTQ files of reads.
@@ -59,7 +62,7 @@ def fetch_read_files(ex, runs):
                 if not(os.path.exists(file_path)):
                     raise ValueError("File %s in group %d does not exist" % (file_path,group_id))
                 else:
-                    files[group_id].append(file_path)
+                    files[group_id].append({"path":file_path})
         elif all(isinstance(x, dict) for x in run_list):
             daflims = DAFLIMS(username='jrougemont', password='cREThu6u')
             for run in run_list:
@@ -95,21 +98,24 @@ def fetch_transcript_mapping(ex, assembly_id):
 
 
 def map_runs(fun, runs):
+    """Parallelization of fun(run) executions"""
     futures = {}
     for group_id, run_list in runs.iteritems():
         futures[group_id] = [fun(run) for run in run_list]
     results = {}
     for group_id, future_list in futures.iteritems():
         results[group_id] = [f.wait() for f in future_list]
+    print "Results:", results.values()
     return results
 
-def align_reads(ex, index, read_files, via="local"):
+def align_reads(ex, index, read_files, via="lsf"):
     """Align each member of *read_files* to *index*.
 
-    Returns a dictionary of {integer:
-    ['filename','filename',...]}, each filename pointing to an indexed
-    BAM file of the alignments, in the same order as *read_files*.
+    Returns a dictionary of {integer:['filename','filename',...]},
+    each filename pointing to an indexed BAM file of the alignments,
+    in the same order as *read_files*.
     """
+    print "Aligning reads..."
     def _bowtie(filename):
         return bowtie.nonblocking(ex, index, filename['path'], args=['--best','--strata','-Sqam','100'], via=via)
     def _add_nh(filename):
@@ -120,9 +126,13 @@ def align_reads(ex, index, read_files, via="local"):
         return index_bam.nonblocking(ex, filename, via=via)
 
     sam_files = map_runs(_bowtie, read_files)
+    print "Sam files obtained."
     bam_files = map_runs(_add_nh, sam_files)
+    print "Bam files obtained."
     sorted_files = map_runs(_sort, bam_files)
+    print "Sorted."
     map_runs(_index, sorted_files)
+    print "Indexed."
 
     return sorted_files
 
@@ -130,7 +140,7 @@ def align_reads(ex, index, read_files, via="local"):
 def exons_labels(bamfile):
     """List of the exons labels in *bamfile*."""
     sam = pysam.Samfile(bamfile, 'rb')
-    labels = [(t['SN'],t['LN']) for t in sam.header['SQ']]
+    labels = [(t['SN'],t['LN']) for t in sam.header['SQ']] #SN: sequence name; LN: sequence length
     sam.close()
     return labels
 
@@ -169,7 +179,8 @@ def pairs_to_test(controls):
                 if controls[x] and not(controls[y])]
 
 @program
-def external_deseq( cond1_label, cond1, cond2_label, cond2, transcript_names, method="normal" ):
+def external_deseq(cond1_label, cond1, cond2_label, cond2, transcript_names, method="normal", assembly_id=None):
+    """ DOC """
     result_filename = unique_filename_in()
     c1 = unique_filename_in()
     with open(c1,'wb') as f:
@@ -180,47 +191,8 @@ def external_deseq( cond1_label, cond1, cond2_label, cond2, transcript_names, me
     tn = unique_filename_in()
     with open(tn,'wb') as f:
         pickle.dump(transcript_names,f,pickle.HIGHEST_PROTOCOL)
-    call = ["run_deseq.py", c1, c2, tn, cond1_label, cond2_label, method, result_filename]
+    call = ["run_deseq.py", c1, c2, tn, cond1_label, cond2_label, method, result_filename, assembly_id]
     return {"arguments": call, "return_value": result_filename}
-
-def inference(cond1_label, cond1, cond2_label, cond2, transcript_names, method="normal"):
-    """Runs DESeq comparing the counts in *cond1* and *cond2*.
-
-    
-    The arguments *cond1* and *cond2* are lists of numpy arrays.  Each
-    array lists the number of reads mapping to a particular
-    transcript.  *cond1_label* and *cond2_label* are string which will
-    be used to identify the two conditions in R.  *transcript_names*
-    is a list of strings, in the same order as the numpy arrays, used
-    to name the transcripts in R.
-
-    ``deseq_inference`` writes a tab delimited text file of the
-    conditions to R, the first column being the transcript name,
-    followed by one column for each numpy array in *cond1*, then one
-    column for each numpy array in *cond2*.
-
-    Then it calls DESeq in R, writes out the results in a new,
-    randomly named file, and returns that filename.
-    """
-    # Pass the data into R as a data frame
-    data_frame_contents = rlc.OrdDict([(cond1_label+'-'+str(i), robjects.IntVector(c))
-                                       for i,c in enumerate(cond1)] +
-                                      [(cond2_label+'-'+str(i), robjects.IntVector(c))
-                                       for i,c in enumerate(cond2)])
-    data_frame = robjects.DataFrame(data_frame_contents)
-    data_frame.rownames = transcript_names
-
-    conds = robjects.StrVector([cond1_label for x in cond1] + [cond2_label for x in cond2]).factor()
-
-    # Import the library
-    deseq = rpackages.importr('DESeq')
-    cds = deseq.newCountDataSet(data_frame, conds)
-    cds = deseq.estimateSizeFactors(cds)
-    cds = deseq.estimateVarianceFunctions(cds,method=method)
-    res = deseq.nbinomTest(cds, cond1_label, cond2_label)
-    result_filename = unique_filename_in()
-    res.to_csvfile(result_filename)
-    return result_filename
 
 def results_to_json(lims, exid):
     """Create a JSON string describing the results of execution *exid*.
@@ -234,13 +206,95 @@ def results_to_json(lims, exid):
     j = json.dumps(d)
     return j
 
-def rnaseq_workflow(job, lims_path="rnaseq", via="local"):
+def inference(cond1_label, cond1, cond2_label, cond2, transcript_names, method="normal", output=None, assembly_id=None, maplot=None):
+    """Runs DESeq comparing the counts in *cond1* and *cond2*.
+
+    Arguments *cond1* and *cond2* are lists of numpy arrays. Each
+    array lists the number of reads mapping to a particular
+    transcript. *cond1_label* and *cond2_label* are string which will
+    be used to identify the two conditions in R.  *transcript_names*
+    is a list of strings, in the same order as the numpy arrays, used
+    to name the transcripts in R.
+
+    ``deseq_inference`` writes a tab delimited text file of the
+    conditions to R, the first column being the transcript name,
+    followed by one column for each numpy array in *cond1*, then one
+    column for each numpy array in *cond2*.
+
+    Then it calls DESeq in R, writes out the results in a new,
+    randomly named file, and returns that filename.
+    """
+    ######
+    ### FAILS IF TOO FEW READS 
+    ######
+    print "Inference..."
+    print cond1
+    # Pass the data into R as a data frame
+    data_frame_contents = rlc.OrdDict([(cond1_label+'-'+str(i), robjects.IntVector(c))
+                                       for i,c in enumerate(cond1)] +
+                                      [(cond2_label+'-'+str(i), robjects.IntVector(c))
+                                       for i,c in enumerate(cond2)])
+    data_frame = robjects.DataFrame(data_frame_contents)
+    r = robjects.r
+    print "rownames:", transcript_names[1100:1110]
+    data_frame.rownames = transcript_names
+    print "rownames dne"
+    
+    conds = robjects.StrVector([cond1_label for x in cond1] + [cond2_label for x in cond2]).factor()
+
+    ## DESeq full analysis
+    deseq = rpackages.importr('DESeq')    
+    print data_frame.rx(robjects.FloatVector(range(10)),True)
+    print "- countdataset:"
+    cds = deseq.newCountDataSet(data_frame, conds)
+    print "\n", cds
+    print "- estimatesizefactors:"
+    cds = deseq.estimateSizeFactors(cds)
+    print "\n", deseq.sizeFactors(cds)
+    print "- estimatevariancefunctions:"
+    cds = deseq.estimateVarianceFunctions(cds,method=method)
+    print "- nbinomtest:"
+    res = deseq.nbinomTest(cds, cond1_label, cond2_label)
+    print "- done"
+
+    ## Replace (unique) gene IDs by (not unique) gene names
+    ## if assembly_id:
+    ##     gene_ids = res[0]
+    ##     gene_names = []
+    ##     assem = urllib.urlopen("http://bbcftools.vital-it.ch/genrep/nr_assemblies/" + assembly_id + ".gtf")
+    ##     #(assem,headers) = urllib.urlretrieve("http://bbcftools.vital-it.ch/genrep/nr_assemblies/" + assembly_id + ".gtf")
+    ##     gid = None
+    ##     for l in assem:
+    ##         gid = l.split("gene_id")[1].split(";")[0].strip(" \"")
+    ##         assem.readline()
+    ##         if gid in gene_ids:
+    ##             gene_names.append( l.split("gene_name")[1].split(";")[0].strip(" \"") )
+    ##             gene_ids.pop(gene_ids.index(gid))
+    ##             if len(gene_ids)==0: break
+    ##     res[0] = gene_names
+
+    if maplot:
+        print "MAplot"
+        maplot(res, mode="interactive")
+
+    if output:
+        print "changed output:", output
+        result_filename = output
+    else:
+        result_filename = unique_filename_in()
+    print "to csv:"
+    res.to_csvfile(result_filename)
+    print "Inference finished"
+    return result_filename
+
+def rnaseq_workflow(job, lims_path="rnaseq", via="lsf", job_or_dict="job", maplot=None):
     """Run RNASeq inference according to *job_info*.
 
     Whatever script calls this function should have looked up the job
     description from HTSStation.  The job description from HTSStation
     is returned as JSON, but should have been changed into a
-    bbcflib.frontend.Job object, which is what ``workflow`` expects.
+    bbcflib.frontend.Job object (or a dictionary of the same form),
+    which is what ``workflow`` expects.
     The object must have the fields:
 
         * ``assembly_id``, which ``path_to_bowtie_index`` uses to get
@@ -262,45 +316,59 @@ def rnaseq_workflow(job, lims_path="rnaseq", via="local"):
     it returns in some sensible way.  For the usual HTSStation
     frontend, this just means printing it to stdout.
     """
-    # Groups as given by the frontend is not that useful.  Pull it apart
+    
+    # Groups as given by the frontend is not that useful. Pull it apart
     # into more useful pieces.
+
     names = {}
     runs = {}
     controls = {}
-    for i,v in job.groups.iteritems():
+    
+    if job_or_dict == "job":
+        groups = job.groups
+        assembly_id = job.assembly_id
+    elif job_or_dict == "dict":
+        groups = job["groups"]
+        assembly_id = job["assembly_id"]
+
+    for i,v in groups.iteritems():
         names[i] = str(v['name'])
         runs[i] = v['runs'].values()
         controls[i] = v['control']
 
     M = MiniLIMS(lims_path)
-    with execution(M) as ex:
-        bowtie_index = path_to_bowtie_index(ex, job.assembly_id)
+    with execution(M) as ex: ##,remote_working_directory="/scratch/cluster/monthly/jdelafon/rnaseq"
+        print "Current working directory:", os.getcwd()
+        bowtie_index = path_to_bowtie_index(ex, assembly_id)
+        print "Bowtie index:", bowtie_index
         # gene_labels is a list whose ith entry is a string giving
-        # the name of the gene assigned id i.  The ids are arbitrary.
+        # the name of the gene assigned id i. The ids are arbitrary.
         # exon_mapping is a list whose ith entry is the integer id in
         # gene_labels exon i maps to.
-        (gene_labels,exon_mapping) = fetch_transcript_mapping(ex, job.assembly_id)
+        
+        (gene_labels,exon_mapping) = fetch_transcript_mapping(ex, assembly_id)
         exon_mapping = numpy.array(exon_mapping)
-
+        
         fastq_files = fetch_read_files(ex, runs)
+        print "FastQ files:", [os.path.basename(f[0]['path']) for f in fastq_files.values()]
         bam_files = align_reads(ex, bowtie_index, fastq_files, via=via)
-
-        stats = {}
-        for group_id,files in bam_files.iteritems():
-            for i,f in enumerate(files):
-                run_info = runs[group_id][i]
-                if isinstance(run_info, str):
-                    run_description = 'Group %d, run %d' % (group_id, i)
-                else:
-                    run_description = 'groupd %d, facility %s, machine %s, run %d, lane %d' % \
-                        (group_id, run_info['facility'], run_info['machine'],
-                         run_info['run'], run_info['lane'])
-                stats[run_description] = bamstats(ex, f)
-        stats_plots = plot_stats(ex, stats, '/archive/epfl/bbcf/share/')
-        ex.add(stats_plots,
-               description="Plot of alignment statistics (PDF)")
-
-
+        print "Reads aligned."
+        
+        ## print "Stats..."
+        ## stats = {}
+        ## for group_id,files in bam_files.iteritems():
+        ##     for i,f in enumerate(files):
+        ##         run_info = runs[group_id][i]
+        ##         if isinstance(run_info, str):
+        ##             run_description = 'Group %d, run %d' % (group_id, i)
+        ##         else:
+        ##             run_description = 'groupd %d, facility %s, machine %s, run %d, lane %d' % \
+        ##                 (group_id, run_info['facility'], run_info['machine'],
+        ##                  run_info['run'], run_info['lane'])
+        ##         stats[run_description] = bamstats(ex, f)
+        ## stats_plots = plot_stats(ex, stats, '/archive/epfl/bbcf/share/')
+        ## ex.add(stats_plots,
+        ##        description="Plot of alignment statistics (PDF)")
 
         # All the bam_files were created against the same index, so
         # they all have the same header in the same order.  I can take
@@ -324,22 +392,27 @@ def rnaseq_workflow(job, lims_path="rnaseq", via="local"):
         futures = {}
         for (c1,c2) in pairs_to_test(controls):
             if len(runs[c1]) + len(runs[c2]) > 2:
-                method = "normal"
+                method = "normal"; print "Method: normal."
             else:
-                method = "blind"
-            futures[(c1,c2)] = [external_deseq.nonblocking(ex, 
-                                                           names[c1], exon_pileups[c1], 
-                                                           names[c2], exon_pileups[c2], 
-                                                           [x[0] for x in exons], method, via=via),
-                                external_deseq.nonblocking(ex, 
-                                                           names[c1], gene_pileups[c1], 
-                                                           names[c2], gene_pileups[c2], 
-                                                           gene_labels, method, via=via)]
-
+                method = "blind"; print "Method: blind."
+            print len(exon_pileups[c1]), len(exon_pileups[c2])
+            print len(exons)
+            print len(gene_labels)
+            futures[(c1,c2)] = [inference(names[c1], exon_pileups[c1], 
+                                          names[c2], exon_pileups[c2],
+                                          [x[0].split("|")[0]+"|"+x[0].split("|")[1] for x in exons],
+                                          method=method, assembly_id=assembly_id),
+                                inference(names[c1], exon_pileups[c1], 
+                                          names[c2], exon_pileups[c2],
+                                          [g for g in gene_labels if isinstance(g,str)], 
+                                          method=method, assembly_id=assembly_id)
+                                ]
+        print "aaa"
         for c,f in futures.iteritems():
             ex.add(f[0].wait(), 
                    description="Comparison of exons in conditions '%s' and '%s' (CSV)" % (names[c[0]], names[c[1]]))
             ex.add(f[1].wait(), 
                    description="Comparison of genes in conditions '%s' and '%s' (CSV)" % (names[c[0]], names[c[1]]))
+        print "bbb"
             
     return results_to_json(M, ex.id)
