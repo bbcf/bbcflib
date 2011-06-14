@@ -100,7 +100,7 @@ def false_discovery_rate_p_value(false_positive_list, true_positive_list, index,
     tp = 0
     fn = 0
     if index < len(true_positive_list):
-        tp = pow(reduce(add, true_positive_list[index:]),nb_false_positive_hypotesis)
+        tp = reduce(add, true_positive_list[index:]) * nb_false_positive_hypotesis
     if index < len(false_positive_list):
         fp = reduce(add, false_positive_list[index:])
     return fp / float(tp + fp)

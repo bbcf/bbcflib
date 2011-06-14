@@ -364,8 +364,7 @@ class GenRep(object):
         except TypeError:
             raise TypeError(u"Assembly type must be an integer for id or an tring for name or a Assembly object! Type submited was: "+unicode(type(assembly)))
 
-
-        return json.load(urllib2.urlopen("""%s/nr_assemblies/%d.json?data_type=counts""" % (self.url, a.nr_assembly_id))
+        return json.load(urllib2.urlopen("""%s/nr_assemblies/%d.json?data_type=counts""" % (self.url, a.nr_assembly_id)))
 
     def assembly_statistic_to_file(self, assembly, output):
         getcontext().prec   = 15
