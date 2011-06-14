@@ -67,7 +67,7 @@ class GenRep(object):
 
         g = GenRep('genrep.epfl.ch','/path/to/genrep/indices')
 
-    To get an assembly from the repository, call the get_assembly
+    To get an assembly from the repository, call the assembly
     method with either the integer assembly ID or the string assembly
     name.  This returns an Assembly object.
 
@@ -217,6 +217,172 @@ class GenRep(object):
                              c['chromosome']['length'])
         return a
 
+    def get_chromosome(self, chromosome):
+        """
+        Give a chromosome id or directly a dictionary from json file (genrep format)
+        return a Chromosome object
+        """
+        chromosomeInfo  = None
+
+        if isinstance(chromosome,int): # is an id
+            chromosomeInfo = json.load(urllib2.urlopen("""%s/chromosomes/%d.json""" % (self.url, chromosome)))
+        elif isinstance(chromosome,dict):
+            chromosomeInfo = chromosome
+        else:# is not a tuple (json)
+            TypeError(u"chromosome type must be an integer for id or a dict from json! Type submited was: "+unicode(type(chromosome)))
+
+        return chromosomeInfo
+
+    def get_chromosomes_from_assembly(self, assemblyQuery):
+        """
+        Assembly is:
+            - id
+            - name
+            - object
+        return a list of chromosome object
+        """
+        assembly        = None
+        chromosomeList  = []
+        if isinstance(assemblyQuery, Assembly):
+            assembly = assemblyQuery
+        else:
+            assembly = self.assembly(assemblyQuery)
+
+        query = json.load(urllib2.urlopen("""%s/chromosomes.json?assembly_name=%s""" % (self.url, assembly.name)))
+        for chromosome in query:
+            chromosomeList.append(chromosome)
+        return chromosomeList
+
+    def get_chromosome_sequence_range(self, chromosome, location):
+        query           = u""
+        chromosomeId    = None
+        results         = []
+        if isinstance(chromosome, Chromosome):  # is a Chromosome object
+            chromosomeId = chromosome.id
+        elif isinstance(chromosome, int):       # is an integer
+            chromosomeId    = chromosome
+            chromosome      = self.get_chromosome(chromosomeId)
+        else:                                   # is not an integer or a Chromosome object
+            TypeError(u"Chromosome type must be an integer or a Chromosome object! Type submited was: "+unicode(type(chromosome)))
+        for position in location:
+            query += unicode(position[0]) + u"," + unicode(position[1]) + u","
+        query       = query[:-1]
+        sequences   = None
+        try:
+            sequences =  json.load(urllib2.urlopen("""%s/chromosomes/%d/get_sequence_part.json?slices=%s""" % (self.url, chromosomeId, query)))
+        except urllib2.HTTPError, e:
+            print e.message
+        if sequences is not None:
+            if "error" in sequences:
+                raise urllib2.HTTPError(sequences["error"])
+            else:
+                for sequence in sequences:
+                    results.append( Sequence(u"DNA", sequence) )
+        return results
+
+    def get_chromosome_sequence(self, chromosome):
+        """
+        This methode take an integer (id) or a Chromosome object
+        return full chromosome sequence
+        """
+        ## @warning this method could be too overload the server get instead the compressed fasta file from assembly_to_compressed_fasta method
+        chromosomeId    = None
+        if isinstance(chromosome, Chromosome):  # is a Chromosome object
+            chromosomeId = chromosome.id
+        elif not isinstance(chromosome, int):   # is an integer
+            chromosomeId    = chromosome
+            chromosome      = self.get_chromosome(chromosomeId)
+        else:                                   # is not an integer or a Chromosome object
+            TypeError(u"chromosome type must be an integer or a Chromosome object! Type submited was: "+unicode(type(chromosome)))
+        return self.get_chromosome_sequence_range( chromosomeId, [[0, chromosome.length -1]] )
+
+    def assembly_to_compressed_fasta(self, assembly):
+        """
+        Fields:
+        - assembly could be an assembly object or an assembly id or r an assembly name
+        return the path to compressed fasta file (tar.gz)
+        """
+        a       = None
+        path    = None
+
+        try:
+            if isinstance(assembly, Assembly):
+                a = assembly
+            else:
+                a = self.assembly(assembly)
+        except TypeError:
+            raise TypeError(u"Assembly type must be an integer for id or an tring for name or a Assembly object! Type submited was: "+unicode(type(assembly)))
+
+        url         = self.url + "/" + "data/nr_assemblies/fasta/" + a.md5 + ".tar.gz"
+        with urllib2.urlopen(url) as webFile:
+            tempfilename = tempfile.NamedTemporaryFile(suffix=".tar.gz")
+            with open(tempfilename.name, 'w') as tempfile:
+                tempfile.write(webFile.read())
+            path = tempfilename.name
+        return path
+
+    def assembly_statistic(self, assembly):
+        """
+        Return statistic about an assembly
+        Example of result:
+        {
+            "TT": 13574667
+            "GG": 3344762
+            "CC": 3365555
+            "AA": 13571722
+            "A": 32370285
+            "TA": 6362526
+            "GT": 4841536
+            "AC": 4846697
+            "N": 0
+            "C": 17781115
+            "TC": 6228639
+            "GA": 6231575
+            "CG": 3131283
+            "GC: 3340219
+            "CT": 5079814
+            "AG": 5075950
+            "G": 17758095
+            "TG": 6206098
+            "CA": 6204462
+            "AT": 8875914
+            "T": 32371931
+        }
+        Total = A + T + G + C
+        """
+        a               = None
+        genrepObject    = "nr_assemblies"
+        query           = None
+        genrepFormat    = "json"
+        parameter       = "data_type=counts"
+
+        try:
+            if isinstance(assembly, Assembly):
+                a = assembly
+            else:
+                a = self.assembly(assembly)
+        except TypeError:
+            raise TypeError(u"Assembly type must be an integer for id or an tring for name or a Assembly object! Type submited was: "+unicode(type(assembly)))
+
+
+        return json.load(urllib2.urlopen("""%s/nr_assemblies/%d.json?data_type=counts""" % (self.url, a.nr_assembly_id))
+
+    def assembly_statistic_to_file(self, assembly, output):
+        getcontext().prec   = 15
+        statistic           = self.assembly_statistic( assembly )
+        total               = Decimal(statistic["A"] + statistic["T"] + statistic["G"] + statistic["C"])
+        name                = (isinstance(assembly, Assembly)) and assembly.name or assembly
+        with open(os.path.expanduser(output), "w") as f:
+                f.write(u">Assembly: %s\n" %name)
+                f.write(u"1\t%s\t%s\t%s\t%s" % ( statistic["A"] / total, statistic["T"] / total,statistic["G"] / total, statistic["C"] / total ) )
+
+    def assemblies_available(self):
+        """
+        Return list of assemblies available on genrep
+        """
+        assembly_info   = json.load(urllib2.urlopen(self.url + "/assemblies.json"))
+        assembly_list   = [self._assembly(a) for a in assembly_info]
+        return [ a for a in assembly_list if a is not None ]
 
 
 

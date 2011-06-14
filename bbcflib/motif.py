@@ -93,54 +93,56 @@ def save_motif_profile( ex, motifs, background, genrep, chromosomes,
     ex.add( sqlout, description="sql:"+description+"motif_scan.sql" )
     return sqlout
 
-def false_discovery_rate_p_value(false_positive_list, true_positive_list, index):
+def false_discovery_rate_p_value(false_positive_list, true_positive_list, index, nb_false_positive_hypotesis=1.0):
     """
     Return false discovery rate
     """
     tp = 0
     fn = 0
     if index < len(true_positive_list):
-        tp = reduce(add, true_positive_list[index:])
+        tp = pow(reduce(add, true_positive_list[index:]),nb_false_positive_hypotesis)
     if index < len(false_positive_list):
         fp = reduce(add, false_positive_list[index:])
     return fp / float(tp + fp)
 
-def false_discovery_rate(false_positive, true_positive, alpha=1, factor_fp=1.0, factor_tp=1.0):
+def false_discovery_rate(false_positive, true_positive, alpha=1, nb_false_positive_hypotesis=1.0):
     """
     Return false discovery rate
     """
+    result      = 0
+    p_value     = 0
     if isinstance(false_positive, tuple) or isinstance(false_positive, list):
         if isinstance(false_positive[0], tuple) or isinstance(false_positive[0], list):
-            false_positive_list = [len(i)* (1/float(factor_fp)) for i in false_positive]
+            false_positive_list = [len(i) for i in false_positive]
         else:
-            false_positive_list = [i* (1/float(factor_fp)) for i in false_positive]
+            false_positive_list = false_positive
     elif isinstance(false_positive, dict):
-        false_positive_list = [ false_positive[f] * (1/float(factor_fp)) for f in false_positive ]
+        keys =  sorted(false_positive.keys()) # sort keys
+        false_positive_list = [ false_positive[f]  for f in false_positive ]
     else:
         raise TypeError(u"Allowed type for false_positive: tuple, list, dict. Type subited: %s" %type(false_positive))
     if isinstance(true_positive, tuple) or isinstance(true_positive, list):
         if isinstance(true_positive[0], tuple) or isinstance(true_positive[0], list):
-            true_positive_list = [len(i)* (1/float(factor_tp)) for i in true_positive]
+            true_positive_list = [len(i) for i in true_positive]
         else:
-            true_positive_list = [i* (1/float(factor_tp)) for i in true_positive]
+            true_positive_list = true_positive
     elif isinstance(true_positive, dict):
-        true_positive_list = [ true_positive[f]* (1/float(factor_tp)) for f in true_positive ]
+        result = sorted(true_positive.keys()) # for keep same order and sort by key
+        true_positive_list = [ true_positive[f] for f in result ]
     else:
         raise TypeError(u"Allowed type for true_positive: tuple, list, dict. Type subited: %s" %type(true_positive))
     index       = min( len(true_positive_list), len(false_positive_list) )
     index       -=  1
-    p_value     = 0
-    result      = 0
 
     isRunning = True
     while isRunning:
         if index < 0:
             isRunning = False
         else:
-            p_value = false_discovery_rate_p_value(false_positive_list, true_positive_list, index)
-            if 1 - p_value == alpha:
+            p_value = false_discovery_rate_p_value(false_positive_list, true_positive_list, index, nb_false_positive_hypotesis=nb_false_positive_hypotesis)
+            if p_value == alpha:
                 isRunning = False
-            elif 1 - p_value > alpha:
+            elif p_value > alpha:
                 isRunning = False
                 index       = (index + 1 < len(true_positive_list)) and index + 1 or index
             else:
@@ -151,7 +153,7 @@ def false_discovery_rate(false_positive, true_positive, alpha=1, factor_fp=1.0, 
         else:
             result =  index
     elif isinstance(true_positive, dict):
-        result = true_positive.keys()[index]
+        result = result[index]
     return result
 
 def sqlite_to_false_discovery_rate  (
@@ -159,7 +161,7 @@ def sqlite_to_false_discovery_rate  (
                                         description='',
                                         sqls=None,      beds=None,
                                         threshold=0,    via='lsf',
-                                        alpha=1, factor_fp=1.0, factor_tp=1.0
+                                        alpha=0.05, nb_false_positive_hypotesis=1.0
                                     ):
     """
     sqls or beds take an array (list or tuple) like:
@@ -218,11 +220,10 @@ def sqlite_to_false_discovery_rate  (
     fp_scores = get_score(ex.working_directory+"/"+false_positive_result)
     tp_scores = get_score(ex.working_directory+"/"+true_positive_result)
 
-    fdr = false_discovery_rate  (
+    return false_discovery_rate (
                                     fp_scores, tp_scores,
-                                    alpha=alpha, factor_fp=factor_fp, factor_tp=factor_tp
+                                    alpha=alpha, nb_false_positive_hypotesis=nb_false_positive_hypotesis
                                 )
-    return fdr
 
 def get_score( sql ):
     connection          = sqlite3.connect(sql)
