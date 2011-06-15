@@ -63,6 +63,7 @@ class GenomicFormat(Track):
 
     @meta_chr.setter
     def meta_chr(self, data):
+        if self.readonly: return
         if data == []: self.cursor.execute('delete from chrNames')  
         for x in data: self.cursor.execute('insert into chrNames (' + ','.join(x.keys()) + ') values (' + ','.join(['?' for y in range(len(x.keys()))])+')', tuple([x[k] for k in x.keys()]))
 
@@ -73,6 +74,7 @@ class GenomicFormat(Track):
 
     @meta_track.setter
     def meta_track(self, data): 
+        if self.readonly: return
         if data == {}: self.cursor.execute('delete from attributes') 
         for k in data.keys(): self.cursor.execute('insert into attributes (key,value) values (?,?)',(k,data[k]))
 
@@ -103,6 +105,7 @@ class GenomicFormat(Track):
         return cur.execute(sql_request + ' ' + order_by)
 
     def write(self, chrom, data, fields=None):
+        if self.readonly: return
         # Default fields #
         if self.datatype == 'quantitative': fields = Track.quantitative_fields
         if fields        == None:           fields = Track.qualitative_fields
@@ -112,10 +115,14 @@ class GenomicFormat(Track):
         if chrom not in self.chrs_from_tables:
             self.cursor.execute('create table "' + chrom + '" (' + columns + ')')
         # Execute the insertion
-        sql_command = 'insert into "' + chrom + '" values (' + ','.join(['?' for x in range(len(fields))])+')' 
-        self.cursor.executemany(sql_command, data)
+        sql_command = 'insert into "' + chrom + '" values (' + ','.join(['?' for x in range(len(fields))])+')'
+        try: 
+            self.cursor.executemany(sql_command, data)
+        except sqlite3.OperationalError as err:
+            raise Exception("The command '" + sql_command + "' on the database '" + self.path + "' failed with error: " + str(err))
 
     def remove(self, chrom=None):
+        if self.readonly: return
         if not chrom:
             chrom = self.chrs_from_tables
         if type(chrom) == list:
@@ -163,12 +170,16 @@ class GenomicFormat(Track):
         return [x[1] for x in self.cursor.execute('pragma table_info("' + chrom + '")').fetchall()]
 
     def make_missing_indexes(self):
-        for chrom in self.chrs_from_tables:
-            self.cursor.execute(    "create index IF NOT EXISTS '" + chrom + "_range_idx' on '" + chrom + "' (start,end)")
-            if 'score' in self.get_fields(chrom):
-                self.cursor.execute("create index IF NOT EXISTS '" + chrom + "_score_idx' on '" + chrom + "' (score)")
-            if 'name' in self.get_fields(chrom):
-                self.cursor.execute("create index IF NOT EXISTS '" + chrom + "_name_idx' on '" +  chrom + "' (name)")
+        if self.readonly: return
+        try: 
+            for chrom in self.chrs_from_tables:
+                self.cursor.execute(    "create index IF NOT EXISTS '" + chrom + "_range_idx' on '" + chrom + "' (start,end)")
+                if 'score' in self.get_fields(chrom):
+                    self.cursor.execute("create index IF NOT EXISTS '" + chrom + "_score_idx' on '" + chrom + "' (score)")
+                if 'name' in self.get_fields(chrom):
+                    self.cursor.execute("create index IF NOT EXISTS '" + chrom + "_name_idx' on '" +  chrom + "' (name)")
+        except sqlite3.OperationalError as err:
+            raise Exception("The index creation on the database '" + self.path + "' failed with error: " + str(err))
 
     #-----------------------------------------------------------------------------#
     @staticmethod

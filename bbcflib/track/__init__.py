@@ -146,7 +146,8 @@ class Track(object):
             * *format* is an optional string specifying the format of the track to load when it cannot be guessed from the file extension.
             * *name* is an optional string specifying the name of the track to load.
             * *chrfile* is the path to chromosome file. This is specified only when the underlying format is missing chromosome length information. 
-            * *datatype* is an option variable that can take the value of either ``qualitative`` or ``quantitative``. It is only usefull when loading a track that is ambigous towards its datatype, as can be certain text files. For instance, In the case of WIG track becoming qualitative, all features will be missing names, but overlapping features will suddenly be authorized. 
+            * *datatype* is an optional variable that can take the value of either ``qualitative`` or ``quantitative``. It is only usefull when loading a track that is ambigous towards its datatype, as can be certain text files. For instance, In the case of WIG track becoming qualitative, all features will be missing names, but overlapping features will suddenly be authorized. 
+            * *readonly* is an optional boolean variable that defaults to ``False``. When set to ``True``, any operation attempting to write to the track will sliently be ignored. 
         
         Examples::
 
@@ -157,6 +158,8 @@ class Track(object):
             with Track('tracks/peaks.bed', 'bed', chrfile='tracks/cser.chr') as peaks:
                 pass
             with Track('tracks/scores.wig', 'wig', chrfile='tracks/cser.chr', datatype='qualitative') as scores:
+                pass
+            with Track('tracks/repeats.sql', readonly=True) as rpgenes:
                 pass
 
         Once a track is loaded you have access to the following attributes:
@@ -191,7 +194,7 @@ class Track(object):
     }
     
     #-----------------------------------------------------------------------------#   
-    def __new__(cls, path, format=None, name=None, chrfile=None, datatype=None):
+    def __new__(cls, path, format=None, name=None, chrfile=None, datatype=None, readonly=False):
         '''Internal factory-like method that is called before creating a new instance of Track.
            This function determines the format of the file that is provided and returns an
            instance of the appropriate child class.'''
@@ -203,7 +206,7 @@ class Track(object):
             instance       = super(Track, cls).__new__(cls)
         return instance
 
-    def __init__(self, path, format=None, name=None, chrfile=None, datatype=None):
+    def __init__(self, path, format=None, name=None, chrfile=None, datatype=None, readonly=False):
         # Type can only mean something with text files #
         if datatype:
             raise Exception("You cannot specify the datatype: " + datatype + " for the track '" + path + "'.")
@@ -214,6 +217,7 @@ class Track(object):
         self.format   = format
         self.name     = name
         self.chrfile  = chrfile
+        self.readonly = readonly
         # Check existance #
         if not os.path.exists(path):
             raise Exception("The file '" + path + "' cannot be found")
