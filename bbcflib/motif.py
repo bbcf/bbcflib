@@ -3,12 +3,12 @@
 bbcflib.motif
 ===============
 """
-import os
 from operator import add
-import sqlite3
+import sqlite3, re, os
 from bein import *
 from bein.util import *
 from bbcflib import common, genrep
+from BeautifulSoup import BeautifulSoup
 
 @program
 def meme( fasta, maxsize=10000000, args=[] ):
@@ -17,6 +17,21 @@ def meme( fasta, maxsize=10000000, args=[] ):
     outname = unique_filename_in()
     call = ["meme",fasta,"-o",outname,"-dna","-maxsize",str(maxsize),"-revcomp"]+args
     return {"arguments": call, "return_value": outname}
+
+def parse_meme_html_output(ex, file_path):
+    soup = None
+    with open(file_path, "r") as f:
+        soup = BeautifulSoup("".join(f.readlines()))
+    html_matrices = soup.findAll('input',  id=re.compile('^pspm\d+'))
+    #~ raw_matrices = [item.attrs[3][1].lstrip("\n").rstrip("\n\n") for item in html_matrices]
+    for item in html_matrices:
+        matrix_file = unique_filename_in()
+        raws = item.attrs[3][1].lstrip("\n").rstrip("\n\n").split("\n")
+        raws[0] = ">" + raws[0]
+        raws[1:] = [ "1 "+raws[i] for i in xrange(1,len(raws))]
+        with open(matrix_file, "w") as f:
+            f.write(",".join(raws))
+        ex.add( matrix_file, description="matrix:"+raws[0] )
 
 def add_meme_files( ex, genrep, chromosomes, description='',
                     bed=None, sql=None, meme_args=[], via='lsf' ):
