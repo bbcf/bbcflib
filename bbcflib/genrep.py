@@ -98,6 +98,38 @@ class GenRep(object):
             raise ValueError("Argument 'assembly' to must be a " + \
                                  "string or integer, got " + str(assembly))
 
+    def get_chromosome(self, chromosome):
+        """
+        Give a chromosome id or directly a dictionary from json file (genrep format)
+        return a Chromosome object
+        """
+        chromosomeInfo  = None
+
+        if isinstance(chromosome,int): # is an id
+            chromosomeInfo = json.load(urllib2.urlopen("""%s/chromosomes/%d.json""" % (self.url, chromosome)))
+        elif isinstance(chromosome,dict):
+            chromosomeInfo = chromosome
+        else:# is not a tuple (json)
+            TypeError(u"chromosome type must be an integer for id or a dict from json! Type submited was: "+unicode(type(chromosome)))
+
+        return chromosomeInfo
+
+    def get_chromosome_sequence(self, chromosome):
+        """
+        This methode take an integer (id) or a Chromosome object
+        return full chromosome sequence
+        """
+        ## @warning this method could be too overload the server get instead the compressed fasta file from assembly_to_compressed_fasta method
+        chromosomeId    = None
+        if isinstance(chromosome, Chromosome):  # is a Chromosome object
+            chromosomeId = chromosome.id
+        elif not isinstance(chromosome, int):   # is an integer
+            chromosomeId    = chromosome
+            chromosome      = self.get_chromosome(chromosomeId)
+        else:                                   # is not an integer or a Chromosome object
+            TypeError(u"chromosome type must be an integer or a Chromosome object! Type submited was: "+unicode(type(chromosome)))
+        return self.get_sequence( chromosomeId, [[0, chromosome.length -1]] )
+
     def get_sequence(self, chr_id, coord_list):
         """Parses a slice request to the repository."""
         if len(coord_list) == 0:
@@ -216,85 +248,6 @@ class GenRep(object):
                              name_dictionary[a.id],
                              c['chromosome']['length'])
         return a
-
-    def get_chromosome(self, chromosome):
-        """
-        Give a chromosome id or directly a dictionary from json file (genrep format)
-        return a Chromosome object
-        """
-        chromosomeInfo  = None
-
-        if isinstance(chromosome,int): # is an id
-            chromosomeInfo = json.load(urllib2.urlopen("""%s/chromosomes/%d.json""" % (self.url, chromosome)))
-        elif isinstance(chromosome,dict):
-            chromosomeInfo = chromosome
-        else:# is not a tuple (json)
-            TypeError(u"chromosome type must be an integer for id or a dict from json! Type submited was: "+unicode(type(chromosome)))
-
-        return chromosomeInfo
-
-    def get_chromosomes_from_assembly(self, assemblyQuery):
-        """
-        Assembly is:
-            - id
-            - name
-            - object
-        return a list of chromosome object
-        """
-        assembly        = None
-        chromosomeList  = []
-        if isinstance(assemblyQuery, Assembly):
-            assembly = assemblyQuery
-        else:
-            assembly = self.assembly(assemblyQuery)
-
-        query = json.load(urllib2.urlopen("""%s/chromosomes.json?assembly_name=%s""" % (self.url, assembly.name)))
-        for chromosome in query:
-            chromosomeList.append(chromosome)
-        return chromosomeList
-
-    def get_chromosome_sequence_range(self, chromosome, location):
-        query           = u""
-        chromosomeId    = None
-        results         = []
-        if isinstance(chromosome, Chromosome):  # is a Chromosome object
-            chromosomeId = chromosome.id
-        elif isinstance(chromosome, int):       # is an integer
-            chromosomeId    = chromosome
-            chromosome      = self.get_chromosome(chromosomeId)
-        else:                                   # is not an integer or a Chromosome object
-            TypeError(u"Chromosome type must be an integer or a Chromosome object! Type submited was: "+unicode(type(chromosome)))
-        for position in location:
-            query += unicode(position[0]) + u"," + unicode(position[1]) + u","
-        query       = query[:-1]
-        sequences   = None
-        try:
-            sequences =  json.load(urllib2.urlopen("""%s/chromosomes/%d/get_sequence_part.json?slices=%s""" % (self.url, chromosomeId, query)))
-        except urllib2.HTTPError, e:
-            print e.message
-        if sequences is not None:
-            if "error" in sequences:
-                raise urllib2.HTTPError(sequences["error"])
-            else:
-                for sequence in sequences:
-                    results.append( Sequence(u"DNA", sequence) )
-        return results
-
-    def get_chromosome_sequence(self, chromosome):
-        """
-        This methode take an integer (id) or a Chromosome object
-        return full chromosome sequence
-        """
-        ## @warning this method could be too overload the server get instead the compressed fasta file from assembly_to_compressed_fasta method
-        chromosomeId    = None
-        if isinstance(chromosome, Chromosome):  # is a Chromosome object
-            chromosomeId = chromosome.id
-        elif not isinstance(chromosome, int):   # is an integer
-            chromosomeId    = chromosome
-            chromosome      = self.get_chromosome(chromosomeId)
-        else:                                   # is not an integer or a Chromosome object
-            TypeError(u"chromosome type must be an integer or a Chromosome object! Type submited was: "+unicode(type(chromosome)))
-        return self.get_chromosome_sequence_range( chromosomeId, [[0, chromosome.length -1]] )
 
     def assembly_to_compressed_fasta(self, assembly):
         """
