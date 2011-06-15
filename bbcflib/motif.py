@@ -23,6 +23,14 @@ def add_meme_files( ex, genrep, chromosomes, description='',
     """Fetches sequences, then calls ``meme``
     on them and finally saves the results in the repository.
     """
+    if bed not None:
+        bed = os.path.expanduser(bed)
+        if not os.path.isabs(bed):
+            bed = os.path.normcase("../"+bed)
+    elif sql not None:
+        sql = os.path.expanduser(sql)
+        if not os.path.isabs(sql):
+            sql = os.path.normcase("../"+sql)
     fasta,size = genrep.fasta_from_bed( chromosomes, out=unique_filename_in(),
                                         bed=bed, sql=sql )
     meme_out = meme.nonblocking( ex, fasta, maxsize=size*1.5, args=meme_args, via=via ).wait()
@@ -43,6 +51,22 @@ def save_motif_profile( ex, motifs, background, genrep, chromosomes,
     The 'motifs' argument is a dictionary with keys motif names and values PWM with 'n' rows like:
     "1 p(A) p(C) p(G) p(T)" where the sum of the 'p's is 1 and the first column allows to skip a position with a '0'.
     """
+    if bed not None:
+        bed = os.path.expanduser(bed)
+        if not os.path.isabs(bed):
+            bed = os.path.normcase("../"+bed)
+    elif sql not None:
+        sql = os.path.expanduser(sql)
+        if not os.path.isabs(sql):
+            sql = os.path.normcase("../"+sql)
+    if motifs not None:
+        motifs = os.path.expanduser(motifs)
+        if not os.path.isabs(motifs):
+            motifs = os.path.normcase("../"+motifs)
+    if background not None:
+        background = os.path.expanduser(background)
+        if not os.path.isabs(background):
+            background = os.path.normcase("../"+background)
     fasta,size = genrep.fasta_from_bed( chromosomes, out=unique_filename_in(), bed=bed, sql=sql )
     futures= {}
     if not(isinstance(motifs,dict)):
