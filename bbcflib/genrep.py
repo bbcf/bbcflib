@@ -50,8 +50,9 @@ import sqlite3
 import urllib2
 import json
 import os
-from ConfigParser import ConfigParser
-from datetime import datetime
+from ConfigParser   import ConfigParser
+from datetime       import datetime
+from decimal        import Decimal, getcontext
 
 from common import normalize_url
 
