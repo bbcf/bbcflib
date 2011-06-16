@@ -19,30 +19,33 @@ def meme( fasta, maxsize=10000000, args=[] ):
     return {"arguments": call, "return_value": outname}
 
 def parse_meme_html_output(ex, file_path):
-    soup = None
+    soup    = None
+    files   = []
     with open(file_path, "r") as f:
         soup = BeautifulSoup("".join(f.readlines()))
     html_matrices = soup.findAll('input',  id=re.compile('^pspm\d+'))
     #~ raw_matrices = [item.attrs[3][1].lstrip("\n").rstrip("\n\n") for item in html_matrices]
     for item in html_matrices:
         matrix_file = unique_filename_in()
+        files.append(matrix_file)
         raws = item.attrs[3][1].lstrip("\n").rstrip("\n\n").split("\n")
         raws[0] = ">" + raws[0]
         raws[1:] = [ "1 "+raws[i] for i in xrange(1,len(raws))]
         with open(matrix_file, "w") as f:
-            f.write(",".join(raws))
+            f.write("\n".join(raws))
         ex.add( matrix_file, description="matrix:"+raws[0] )
+    return files
 
 def add_meme_files( ex, genrep, chromosomes, description='',
                     bed=None, sql=None, meme_args=[], via='lsf' ):
     """Fetches sequences, then calls ``meme``
     on them and finally saves the results in the repository.
     """
-    if bed not None:
+    if bed is not None:
         bed = os.path.expanduser(bed)
         if not os.path.isabs(bed):
             bed = os.path.normcase("../"+bed)
-    elif sql not None:
+    elif sql is not None:
         sql = os.path.expanduser(sql)
         if not os.path.isabs(sql):
             sql = os.path.normcase("../"+sql)
@@ -66,19 +69,19 @@ def save_motif_profile( ex, motifs, background, genrep, chromosomes,
     The 'motifs' argument is a dictionary with keys motif names and values PWM with 'n' rows like:
     "1 p(A) p(C) p(G) p(T)" where the sum of the 'p's is 1 and the first column allows to skip a position with a '0'.
     """
-    if bed not None:
+    if bed is not None:
         bed = os.path.expanduser(bed)
         if not os.path.isabs(bed):
             bed = os.path.normcase("../"+bed)
-    elif sql not None:
+    elif sql is not None:
         sql = os.path.expanduser(sql)
         if not os.path.isabs(sql):
             sql = os.path.normcase("../"+sql)
-    if motifs not None:
+    if motifs is not None:
         motifs = os.path.expanduser(motifs)
         if not os.path.isabs(motifs):
             motifs = os.path.normcase("../"+motifs)
-    if background not None:
+    if background is not None:
         background = os.path.expanduser(background)
         if not os.path.isabs(background):
             background = os.path.normcase("../"+background)
