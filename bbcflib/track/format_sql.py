@@ -78,6 +78,16 @@ class GenomicFormat(Track):
         if data == {}: self.cursor.execute('delete from attributes') 
         for k in data.keys(): self.cursor.execute('insert into attributes (key,value) values (?,?)',(k,data[k]))
 
+    @property
+    def name(self):
+        if self._name: return self.name
+        if 'name' in self.meta_track: return self.meta_track['name']
+        return 'Unamed'
+
+    @name.setter
+    def name(self, value): 
+        self._name = value
+
     #-----------------------------------------------------------------------------#
     def read(self, selection=None, fields=None, order='start,end', cursor=False):
         # Default selection #

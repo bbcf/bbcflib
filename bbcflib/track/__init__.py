@@ -73,7 +73,7 @@ import os, sys
 # Specific Modules #
 from .. import common as com
 
-#-----------------------------------------------------------------------------#   
+#-----------------------------------------------------------------------------#
 def _determine_format(path):
     '''Try to guess the format of a track given its path. Returns a three letter extension'''
     # List of names to three letter extension #
@@ -120,7 +120,7 @@ def _import_implementation(format):
     except (ImportError, AttributeError):
         raise Exception("The format '" + format + "' is not supported at the moment")
 
-#-----------------------------------------------------------------------------#   
+#-----------------------------------------------------------------------------#
 def join_read_queries(track, selections, fields):
     '''Join read results when selection is a list'''
     def _add_chromsome(sel, data):
@@ -193,7 +193,7 @@ class Track(object):
         'block_starts': 'text',
     }
     
-    #-----------------------------------------------------------------------------#   
+    #-----------------------------------------------------------------------------#
     def __new__(cls, path, format=None, name=None, chrfile=None, datatype=None, readonly=False):
         '''Internal factory-like method that is called before creating a new instance of Track.
            This function determines the format of the file that is provided and returns an
@@ -215,7 +215,7 @@ class Track(object):
         # Set attributes #
         self.path     = path
         self.format   = format
-        self.name     = name
+        self._name    = name
         self.chrfile  = chrfile
         self.readonly = readonly
         # Check existance #
@@ -243,7 +243,7 @@ class Track(object):
         '''Called when exiting a <with> statement'''
         self.unload(errtype, value, traceback)
 
-    #-----------------------------------------------------------------------------#   
+    #-----------------------------------------------------------------------------#
     def read(self, selection=None, fields=None, order='start,end', cursor=False):
         '''Read data from the genomic file.
 
