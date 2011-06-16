@@ -56,16 +56,16 @@ def parse_meme_html_output(ex, meme, fasta, genrep):
                     if line.startswith(">"):
                         header = line[1:].split(" ")
                         if header[0] == strand_name:
-                            isSearchingHeader = False
-                            chromosome_name, feature_position = header[1].split(":")]
-                            feature_start, feature_end feature_position.split("-")
+                            isSearchingHeader                   = False
+                            chromosome_name, feature_position   = header[1].split(":")
+                            feature_start, feature_end          = feature_position.split("-")
             if strand_side == "+":
                 start   = int(feature_start) + int(strand_start)
                 end     = start + motif_length
             elif strand_side == "-":
                 start   = int(feature_end) - (strand_start + motif_length + 1)
                 end     = int(feature_end) - int(strand_start)
-            else
+            else:
                 raise ValueError("Unknow strand side value: %s!" %(strand_side))
             chromosomes[dict_chromosome["name"]] += (
                                                         genrep.get_chromosome(chromosome_name),
