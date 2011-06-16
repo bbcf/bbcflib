@@ -23,17 +23,30 @@ def parse_meme_html_output(ex, file_path):
     files   = []
     with open(file_path, "r") as f:
         soup = BeautifulSoup("".join(f.readlines()))
-    html_matrices = soup.findAll('input',  id=re.compile('^pspm\d+'))
-    #~ raw_matrices = [item.attrs[3][1].lstrip("\n").rstrip("\n\n") for item in html_matrices]
+    pattern         = re.compile("^pspm(\d+)")
+    html_matrices   = soup.html.body.form.findAll({"input" : True},  attrs={"id" : pattern})
+
     for item in html_matrices:
+        result_id   = pattern.match(item["id"]).group(1)
+        motif_lenght= int(item["w"])
         matrix_file = unique_filename_in()
-        files.append(matrix_file)
-        raws = item.attrs[3][1].lstrip("\n").rstrip("\n\n").split("\n")
-        raws[0] = ">" + raws[0]
-        raws[1:] = [ "1 "+raws[i] for i in xrange(1,len(raws))]
+        sqlout      = unique_filename_in()
+        # write martix
+        raws        = item["value"].lstrip("\n").rstrip("\n\n").split("\n")
+        raws[0]     = ">" + raws[0]
+        raws[1:]    = [ "1 "+raws[i] for i in xrange(1,len(raws))]
         with open(matrix_file, "w") as f:
             f.write("\n".join(raws))
-        ex.add( matrix_file, description="matrix:"+raws[0] )
+        # write motif position
+        motif_position  = soup.html.body.form.find( {"table" : True}, attrs={"id" : re.compile("tbl_sites_%s" %(result_id))} )
+        #~ tds             = motif_position.findChildren({"td" : True}, limit=4) # strand_name, strand_side, strand_start, strand_pvalue
+        strand_name     = motif_position.find({"td" : True}, { "class" : "strand_name"})
+        strand_side     = motif_position.find({"td" : True}, { "class" : "strand_side"})
+        strand_start    = motif_position.find({"td" : True}, { "class" : "strand_start"})
+        strand_pvalue   = motif_position.find({"td" : True}, { "class" : "strand_pvalue"})
+
+        files.append((matrix_file, sqlout))
+        ex.add( matrix_file, description="matrix:"+item["name"] )
     return files
 
 def add_meme_files( ex, genrep, chromosomes, description='',
