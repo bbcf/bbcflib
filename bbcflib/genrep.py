@@ -172,10 +172,10 @@ class GenRep(object):
             features_names.add(feature_name)
             return features_names, feature_name
 
-        slices = {'coord':[],'names':[]}
-        chr_names = dict((c[0],cn['name']) for c,cn in chromosomes.iteritems())
-        chr_len = dict((c[0],cn['length']) for c,cn in chromosomes.iteritems())
-        size = 0
+        slices      = {'coord':[],'names':[]}
+        chr_names   = dict((c[0],cn['name']) for c,cn in chromosomes.iteritems())
+        chr_len     = dict((c[0],cn['length']) for c,cn in chromosomes.iteritems())
+        size        = 0
         if bed != None:
             if out == None:
                 out = bed+".fa"

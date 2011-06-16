@@ -18,33 +18,64 @@ def meme( fasta, maxsize=10000000, args=[] ):
     call = ["meme",fasta,"-o",outname,"-dna","-maxsize",str(maxsize),"-revcomp"]+args
     return {"arguments": call, "return_value": outname}
 
-def parse_meme_html_output(ex, file_path):
+def parse_meme_html_output(ex, meme, fasta, genrep):
     soup    = None
     files   = []
-    with open(file_path, "r") as f:
-        soup = BeautifulSoup("".join(f.readlines()))
+    with open(meme, "r") as meme_in:
+        soup = BeautifulSoup("".join(meme_in.readlines()))
     pattern         = re.compile("^pspm(\d+)")
     html_matrices   = soup.html.body.form.findAll({"input" : True},  attrs={"id" : pattern})
 
     for item in html_matrices:
-        result_id   = pattern.match(item["id"]).group(1)
-        motif_lenght= int(item["w"])
-        matrix_file = unique_filename_in()
-        sqlout      = unique_filename_in()
+        isSearchingHeader   = True
+        chromosomes         = {}
+        start               = 0
+        end                 = 0
+        result_id           = pattern.match(item["id"]).group(1)
+        motif_length        = int(item["w"])
+        matrix_file         = unique_filename_in()
+        sqlout              = None
         # write martix
-        raws        = item["value"].lstrip("\n").rstrip("\n\n").split("\n")
-        raws[0]     = ">" + raws[0]
-        raws[1:]    = [ "1 "+raws[i] for i in xrange(1,len(raws))]
+        raws                = item["value"].lstrip("\n").rstrip("\n\n").split("\n")
+        raws[0]             = ">" + raws[0]
+        raws[1:]            = [ "1 "+raws[i] for i in xrange(1,len(raws))]
         with open(matrix_file, "w") as f:
             f.write("\n".join(raws))
         # write motif position
         motif_position  = soup.html.body.form.find( {"table" : True}, attrs={"id" : re.compile("tbl_sites_%s" %(result_id))} )
         #~ tds             = motif_position.findChildren({"td" : True}, limit=4) # strand_name, strand_side, strand_start, strand_pvalue
-        strand_name     = motif_position.find({"td" : True}, { "class" : "strand_name"})
-        strand_side     = motif_position.find({"td" : True}, { "class" : "strand_side"})
-        strand_start    = motif_position.find({"td" : True}, { "class" : "strand_start"})
-        strand_pvalue   = motif_position.find({"td" : True}, { "class" : "strand_pvalue"})
-
+        for tds in motif_position.findAll("tr"):
+            strand_name     = tds.find({"td" : True}, { "class" : "strand_name"})
+            strand_side     = tds.find({"td" : True}, { "class" : "strand_side"})
+            strand_start    = tds.find({"td" : True}, { "class" : "strand_start"})
+            strand_pvalue   = tds.find({"td" : True}, { "class" : "strand_pvalue"})
+            with open(fasta, "r") as fasta_in:
+                # search fasta header
+                while isSearchingHeader:
+                    line = fasta_in.readline()
+                    if line.startswith(">"):
+                        header = line[1:].split(" ")
+                        if header[0] == strand_name:
+                            isSearchingHeader = False
+                            chromosome_name, feature_position = header[1].split(":")]
+                            feature_start, feature_end feature_position.split("-")
+            if strand_side == "+":
+                start   = int(feature_start) + int(strand_start)
+                end     = start + motif_length
+            elif strand_side == "-":
+                start   = int(feature_end) - (strand_start + motif_length + 1)
+                end     = int(feature_end) - int(strand_start)
+            else
+                raise ValueError("Unknow strand side value: %s!" %(strand_side))
+            chromosomes[dict_chromosome["name"]] += (
+                                                        genrep.get_chromosome(chromosome_name),
+                                                        (start,end, float(strand_pvalue), strand_side, strand_name)
+                                                    )
+        sqlout      =  common.create_sql_track( unique_filename_in(), [chromosomes[c_name][0] for c_name in chromosomes], datatype="qualitative" )
+        connection  = sqlite3.connect( sqlout )
+        for chromosome_name in chromosomes:
+            connection.executemany('insert into "'+chromosome_name+'" (start,end,score,strand,name) values (?,?,?,?,?)', chromosomes[chromosome_name][1])
+            connection.commit()
         files.append((matrix_file, sqlout))
         ex.add( matrix_file, description="matrix:"+item["name"] )
     return files
