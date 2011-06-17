@@ -47,7 +47,7 @@ class ProxyTrack(SQLTrack):
 
     #-----------------------------------------------------------------------------#
     def unload(self, datatype=None, value=None, trackback=None):
-        if self.modified: self.dump()
+        if self.modified and not self.readonly: self.dump()
         super(ProxyTrack, self).unload(datatype, value, trackback)
         if os.path.exists(self.path): os.remove(self.path)
 
