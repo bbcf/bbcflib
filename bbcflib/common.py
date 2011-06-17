@@ -301,3 +301,12 @@ def compress(path, compression_type="lxzma"):
     else:
         raise ValueError("Compression type: %s not yet supported!" %(compression_type))
     return {"arguments": call, "return_value": archive}
+
+@program
+def uncompress(path):
+    """
+    uncompress tar archive
+    """
+    output = unique_filename_in()
+    call = ["tar", "xvf", path]
+    return {"arguments": call, "return_value": output}
