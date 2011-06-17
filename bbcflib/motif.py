@@ -4,7 +4,7 @@ bbcflib.motif
 ===============
 """
 from operator import add
-import sqlite3, re, os
+import sqlite3, re, os, pdb
 from bein import *
 from bein.util import *
 from bbcflib import common, genrep
@@ -18,7 +18,7 @@ def meme( fasta, maxsize=10000000, args=[] ):
     call = ["meme",fasta,"-o",outname,"-dna","-maxsize",str(maxsize),"-revcomp"]+args
     return {"arguments": call, "return_value": outname}
 
-def parse_meme_html_output(ex, meme, fasta, genrep):
+def parse_meme_html_output(ex, meme, fasta, chromosomes):
     soup    = None
     files   = []
     with open(meme, "r") as meme_in:
@@ -27,33 +27,36 @@ def parse_meme_html_output(ex, meme, fasta, genrep):
     html_matrices   = soup.html.body.form.findAll({"input" : True},  attrs={"id" : pattern})
 
     for item in html_matrices:
-        isSearchingHeader   = True
-        chromosomes         = {}
+        dict_chromosomes    = {}
         start               = 0
         end                 = 0
         result_id           = pattern.match(item["id"]).group(1)
-        motif_length        = int(item["w"])
         matrix_file         = unique_filename_in()
         sqlout              = None
         # write martix
         raws                = item["value"].lstrip("\n").rstrip("\n\n").split("\n")
         raws[0]             = ">" + raws[0]
         raws[1:]            = [ "1 "+raws[i] for i in xrange(1,len(raws))]
+        motif_length        = len(raws[1:])
         with open(matrix_file, "w") as f:
             f.write("\n".join(raws))
         # write motif position
         motif_position  = soup.html.body.form.find( {"table" : True}, attrs={"id" : re.compile("tbl_sites_%s" %(result_id))} )
         #~ tds             = motif_position.findChildren({"td" : True}, limit=4) # strand_name, strand_side, strand_start, strand_pvalue
-        for tds in motif_position.findAll("tr"):
-            strand_name     = tds.find({"td" : True}, { "class" : "strand_name"})
-            strand_side     = tds.find({"td" : True}, { "class" : "strand_side"})
-            strand_start    = tds.find({"td" : True}, { "class" : "strand_start"})
-            strand_pvalue   = tds.find({"td" : True}, { "class" : "strand_pvalue"})
+        for tds in motif_position.tbody.findAll("tr"):
+            isSearchingHeader   = True
+            chromosome_name     = ""
+            strand_name         = tds.find({"td" : True}, { "class" : "strand_name"}).text
+            strand_side         = tds.find({"td" : True}, { "class" : "strand_side"}).text
+            strand_start        = tds.find({"td" : True}, { "class" : "strand_start"}).text
+            strand_pvalue       = tds.find({"td" : True}, { "class" : "strand_pvalue"}).text
+            # search fasta header
             with open(fasta, "r") as fasta_in:
-                # search fasta header
                 while isSearchingHeader:
                     line = fasta_in.readline()
-                    if line.startswith(">"):
+                    if line is None:
+                        isSearchingHeader = False
+                    elif line.startswith(">"):
                         header = line[1:].split(" ")
                         if header[0] == strand_name:
                             isSearchingHeader                   = False
@@ -63,22 +66,28 @@ def parse_meme_html_output(ex, meme, fasta, genrep):
                 start   = int(feature_start) + int(strand_start)
                 end     = start + motif_length
             elif strand_side == "-":
-                start   = int(feature_end) - (strand_start + motif_length + 1)
+                start   = int(feature_end) - (int(strand_start) + motif_length + 1)
                 end     = int(feature_end) - int(strand_start)
             else:
                 raise ValueError("Unknow strand side value: %s!" %(strand_side))
-            chromosomes[dict_chromosome["name"]] += (
-                                                        genrep.get_chromosome(chromosome_name),
-                                                        (start,end, float(strand_pvalue), strand_side, strand_name)
-                                                    )
-        sqlout      =  common.create_sql_track( unique_filename_in(), [chromosomes[c_name][0] for c_name in chromosomes], datatype="qualitative" )
+            if chromosome_name in dict_chromosomes:
+                dict_chromosomes[chromosome_name]+= [
+                                                        (int(start), int(end), float(strand_pvalue), strand_side, strand_name)
+                                                    ]
+            else:
+                dict_chromosomes[chromosome_name]=  [
+                                                        (int(start), int(end), float(strand_pvalue), strand_side, strand_name)
+                                                    ]
+        sqlout      =  common.create_sql_track( unique_filename_in(), chromosomes, datatype="qualitative" )
         connection  = sqlite3.connect( sqlout )
-        for chromosome_name in chromosomes:
-            connection.executemany('insert into "'+chromosome_name+'" (start,end,score,strand,name) values (?,?,?,?,?)', chromosomes[chromosome_name][1])
+        for chromosome in dict_chromosomes:
+            feature = dict_chromosomes[chromosome]
+            connection.executemany('insert into "'+chromosome+'" (start,end,score,strand,name) values (?,?,?,?,?)', feature)
             connection.commit()
-        files.append((matrix_file, sqlout))
+        #files.append((matrix_file, sqlout))
         ex.add( matrix_file, description="matrix:"+item["name"] )
-    return files
+        ex.add( sqlout,  description="sql:"+sqlout)
+    #return files
 
 def add_meme_files( ex, genrep, chromosomes, description='',
                     bed=None, sql=None, meme_args=[], via='lsf' ):
@@ -95,9 +104,12 @@ def add_meme_files( ex, genrep, chromosomes, description='',
             sql = os.path.normcase("../"+sql)
     fasta,size = genrep.fasta_from_bed( chromosomes, out=unique_filename_in(),
                                         bed=bed, sql=sql )
-    meme_out = meme.nonblocking( ex, fasta, maxsize=size*1.5, args=meme_args, via=via ).wait()
-    html = os.path.join(meme_out,"meme.html")
+    meme_out    = meme.nonblocking( ex, fasta, maxsize=size*1.5, args=meme_args, via=via ).wait()
+    html        = os.path.join(meme_out,"meme.html")
+    files       = parse_meme_html_output(ex, meme_out+"/meme.html", fasta, chromosomes) # return or not?
+    archive     = common.compress.nonblocking(ex, meme_out).wait()
     ex.add( html, description="html:"+description+"meme.html" )
+    ex.add( archive, description="archive:"+description )
     return meme_out
 
 @program

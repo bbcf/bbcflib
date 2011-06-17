@@ -128,7 +128,7 @@ class GenRep(object):
             chromosomeId    = chromosome
             chromosome      = self.get_chromosome(chromosomeId)
         else:                                   # is not an integer or a Chromosome object
-            TypeError(u"chromosome type must be an integer or a Chromosome object! Type submited was: "+unicode(type(chromosome)))
+            raise TypeError(u"chromosome type must be an integer or a Chromosome object! Type submited was: "+unicode(type(chromosome)))
         return self.get_sequence( chromosomeId, [[0, chromosome.length -1]] )
 
     def get_sequence(self, chr_id, coord_list):
@@ -194,7 +194,7 @@ class GenRep(object):
                         name = row[3]
                     else:
                         name = "feature"
-                    name            = set_feature_name(features_names, name)
+                    features_names, name    = set_feature_name(features_names, name)
                     slices,cur_chunk= push_slices(slices,s,e,name,cur_chunk)
                     if (cur_chr>0 and cur_chr != cid) or cur_chunk > chunk:
                         size += cur_chunk
@@ -216,7 +216,7 @@ class GenRep(object):
                 for row in cur:
                     s               = max(row[0],0)
                     e               = min(row[1],chr_len[cid])
-                    name            = set_feature_name(features_names, row[2])
+                    features_names, name            = set_feature_name(features_names, row[2])
                     slices,cur_chunk= push_slices(slices,s,e,name,cur_chunk)
                     if cur_chunk > chunk:
                         size        += cur_chunk
