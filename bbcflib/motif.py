@@ -3,12 +3,13 @@
 bbcflib.motif
 ===============
 """
-from operator import add
 import sqlite3, re, os, pdb
-from bein import *
-from bein.util import *
-from bbcflib import common, genrep
-from BeautifulSoup import BeautifulSoup
+from operator       import add
+from BeautifulSoup  import BeautifulSoup
+from bein           import *
+from bein.util      import *
+from bbcflib        import common, genrep
+from bbcflib.track.format_sql import Track, new
 
 @program
 def meme( fasta, maxsize=10000000, args=[] ):
@@ -78,12 +79,14 @@ def parse_meme_html_output(ex, meme, fasta, chromosomes):
                 dict_chromosomes[chromosome_name]=  [
                                                         (int(start), int(end), float(strand_pvalue), strand_side, strand_name)
                                                     ]
-        sqlout      =  common.create_sql_track( unique_filename_in(), chromosomes, datatype="qualitative" )
-        connection  = sqlite3.connect( sqlout )
-        for chromosome in dict_chromosomes:
-            feature = dict_chromosomes[chromosome]
-            connection.executemany('insert into "'+chromosome+'" (start,end,score,strand,name) values (?,?,?,?,?)', feature)
-            connection.commit()
+        sqlout      =  unique_filename_in()
+        with new(sqlout,  format="sql", datatype="qualitative") as track:
+            # Chromosome #
+            track.meta_chr  = [chromosomes[info] for info in chromosomes]
+            track.meta_track= {'datatype': 'qualitative', 'source': 'meme'}
+            track.meta_track.update({'k':'v'})
+            for chromosome in dict_chromosomes:
+                track.write(chromosome, dict_chromosomes[chromosome])
         #files.append((matrix_file, sqlout))
         ex.add( matrix_file, description="matrix:"+item["name"] )
         ex.add( sqlout,  description="sql:"+sqlout)
@@ -141,8 +144,9 @@ def save_motif_profile( ex, motifs, background, genrep, chromosomes,
         background = os.path.expanduser(background)
         if not os.path.isabs(background):
             background = os.path.normcase("../"+background)
-    fasta,size = genrep.fasta_from_bed( chromosomes, out=unique_filename_in(), bed=bed, sql=sql )
-    futures= {}
+    fasta,size  = genrep.fasta_from_bed( chromosomes, out=unique_filename_in(), bed=bed, sql=sql )
+    sqlout      = unique_filename_in()
+    futures     = {}
     if not(isinstance(motifs,dict)):
         raise ValueError("'Motifs' must be a dictionary with keys 'motif_names' and values the PWMs.")
     for name,pwm in motifs.iteritems():
@@ -167,8 +171,11 @@ def save_motif_profile( ex, motifs, background, genrep, chromosomes,
         connection.close()
     else:
         raise TypeError("save_motif_profile requires either a 'sqlite' or a 'bed' file.")
-    sqlout = common.create_sql_track( unique_filename_in(), chromosomes, datatype="qualitative" )
-    connection = sqlite3.connect( sqlout )
+    with new(sqlout,  format="sql", datatype="qualitative") as track:
+        # Chromosome #
+        track.meta_chr  =  [chromosomes[info] for info in chromosomes]
+        track.meta_track= {'datatype': 'qualitative', 'source': 'S1K'}
+        track.meta_track.update({'k':'v'})
     for name,f in futures.iteritems():
         vals        = []
         _           = f[1].wait()
@@ -181,8 +188,8 @@ def save_motif_profile( ex, motifs, background, genrep, chromosomes,
                 reg     = regions[s[0]]
                 start   = reg[1]+int(s[3])
                 if cur_chr != '' and reg[0] != cur_chr:
-                    connection.executemany('insert into "'+cur_chr+'" (start,end,score,strand,name) values (?,?,?,?,?)',vals)
-                    connection.commit()
+                    with new(sqlout) as track:
+                        track.write(cur_chr, vals)
                     index           = 0
                     vals            = [(start-1,start+len(s[1]),float(s[2]),s[4],name+":"+s[1])]
                     previous_feature= s[0]
@@ -200,9 +207,8 @@ def save_motif_profile( ex, motifs, background, genrep, chromosomes,
                         index           += 1
                         vals.append((start-1,start+len(s[1]),float(s[2]),s[4],name+":"+s[1]))
         if len(vals)>0:
-            connection.executemany('insert into "'+cur_chr+'" (start,end,score,strand,name) values (?,?,?,?,?)',vals)
-            connection.commit()
-    connection.close()
+            with new(sqlout) as track:
+                track.write(cur_chr, vals)
     ex.add( sqlout, description="sql:"+description+"motif_scan.sql" )
     return sqlout
 
