@@ -50,8 +50,9 @@ import sqlite3
 import urllib2
 import json
 import os
-from ConfigParser import ConfigParser
-from datetime import datetime
+from ConfigParser   import ConfigParser
+from datetime       import datetime
+from decimal        import Decimal, getcontext
 
 from common import normalize_url
 
@@ -67,7 +68,7 @@ class GenRep(object):
 
         g = GenRep('genrep.epfl.ch','/path/to/genrep/indices')
 
-    To get an assembly from the repository, call the get_assembly
+    To get an assembly from the repository, call the assembly
     method with either the integer assembly ID or the string assembly
     name.  This returns an Assembly object.
 
@@ -98,6 +99,38 @@ class GenRep(object):
             raise ValueError("Argument 'assembly' to must be a " + \
                                  "string or integer, got " + str(assembly))
 
+    def get_chromosome(self, chromosome):
+        """
+        Give a chromosome id or directly a dictionary from json file (genrep format)
+        return a Chromosome object
+        """
+        chromosomeInfo  = None
+
+        if isinstance(chromosome,int): # is an id
+            chromosomeInfo = json.load(urllib2.urlopen("""%s/chromosomes/%d.json""" % (self.url, chromosome)))
+        elif isinstance(chromosome,dict):
+            chromosomeInfo = chromosome
+        else:# is not a tuple (json)
+            TypeError(u"chromosome type must be an integer for id or a dict from json! Type submited was: "+unicode(type(chromosome)))
+
+        return chromosomeInfo
+
+    def get_chromosome_sequence(self, chromosome):
+        """
+        This methode take an integer (id) or a Chromosome object
+        return full chromosome sequence
+        """
+        ## @warning this method could be too overload the server get instead the compressed fasta file from assembly_to_compressed_fasta method
+        chromosomeId    = None
+        if isinstance(chromosome, Chromosome):  # is a Chromosome object
+            chromosomeId = chromosome.id
+        elif not isinstance(chromosome, int):   # is an integer
+            chromosomeId    = chromosome
+            chromosome      = self.get_chromosome(chromosomeId)
+        else:                                   # is not an integer or a Chromosome object
+            raise TypeError(u"chromosome type must be an integer or a Chromosome object! Type submited was: "+unicode(type(chromosome)))
+        return self.get_sequence( chromosomeId, [[0, chromosome.length -1]] )
+
     def get_sequence(self, chr_id, coord_list):
         """Parses a slice request to the repository."""
         if len(coord_list) == 0:
@@ -126,10 +159,23 @@ class GenRep(object):
                 for i,s in enumerate(self.get_sequence(cid,coord)):
                     f.write(">"+names[i]+" "+chr+":"+str(coord[i][0])+"-"+str(coord[i][1])+"\n"+s+"\n")
             return {'coord':[],'names':[]}
-        slices = {'coord':[],'names':[]}
-        chr_names = dict((c[0],cn['name']) for c,cn in chromosomes.iteritems())
-        chr_len = dict((c[0],cn['length']) for c,cn in chromosomes.iteritems())
-        size = 0
+        def set_feature_name(features_names, feature_name):
+            num             = 0
+            isSearchingName = True
+            if feature_name in features_names:
+                while isSearchingName:
+                    num +=1
+                    tmp_name = feature_name+"_"+str(num)
+                    if tmp_name not in features_names:
+                        isSearchingName = False
+                        feature_name    = tmp_name
+            features_names.add(feature_name)
+            return features_names, feature_name
+
+        slices      = {'coord':[],'names':[]}
+        chr_names   = dict((c[0],cn['name']) for c,cn in chromosomes.iteritems())
+        chr_len     = dict((c[0],cn['length']) for c,cn in chromosomes.iteritems())
+        size        = 0
         if bed != None:
             if out == None:
                 out = bed+".fa"
@@ -138,14 +184,18 @@ class GenRep(object):
             cur_chr = 0
             with open(bed,"r") as f:
                 for l in f:
-                    row = l.rstrip('\n').split('\t')
-                    cid = chr_ids[row[0]]
-                    s = max(int(row[1]),0)
-                    e = min(int(row[2]),chr_len[cid])
-                    name = ''
+                    row             = l.rstrip('\n').split('\t')
+                    cid             = chr_ids[row[0]]
+                    s               = max(int(row[1]),0)
+                    e               = min(int(row[2]),chr_len[cid])
+                    name            = ''
+                    features_names  = set()
                     if len(row)>3:
                         name = row[3]
-                    slices,cur_chunk = push_slices(slices,s,e,name,cur_chunk)
+                    else:
+                        name = "feature"
+                    features_names, name    = set_feature_name(features_names, name)
+                    slices,cur_chunk= push_slices(slices,s,e,name,cur_chunk)
                     if (cur_chr>0 and cur_chr != cid) or cur_chunk > chunk:
                         size += cur_chunk
                         slices = flush_slices(slices,cur_chr,out)
@@ -156,21 +206,22 @@ class GenRep(object):
         elif sql != None:
             if out == None:
                 out = sql+".fa"
-            cur_chunk = 0
-            connection = sqlite3.connect( sql )
-            cur = connection.cursor()
+            cur_chunk       = 0
+            connection      = sqlite3.connect( sql )
+            cur             = connection.cursor()
+            features_names  = set()
             for k in chromosomes.keys():
                 cur.execute('select start,end,name from "'+chr_names[k]+'"')
                 connection.commit()
                 for row in cur:
-                    s = max(row[0],0)
-                    e = min(row[1],chr_len[cid])
-                    name = row[2]
-                    slices,cur_chunk = push_slices(slices,s,e,name,cur_chunk)
+                    s               = max(row[0],0)
+                    e               = min(row[1],chr_len[cid])
+                    features_names, name            = set_feature_name(features_names, row[2])
+                    slices,cur_chunk= push_slices(slices,s,e,name,cur_chunk)
                     if cur_chunk > chunk:
-                        size += cur_chunk
-                        slices = flush_slices(slices,k,f)
-                        cur_chunk = 0
+                        size        += cur_chunk
+                        slices      = flush_slices(slices,k,f)
+                        cur_chunk   = 0
                 size += cur_chunk
                 slices = flush_slices(slices,k,f)
                 cur.close()
@@ -217,7 +268,92 @@ class GenRep(object):
                              c['chromosome']['length'])
         return a
 
+    def assembly_to_compressed_fasta(self, assembly):
+        """
+        Fields:
+        - assembly could be an assembly object or an assembly id or r an assembly name
+        return the path to compressed fasta file (tar.gz)
+        """
+        a       = None
+        path    = None
 
+        try:
+            if isinstance(assembly, Assembly):
+                a = assembly
+            else:
+                a = self.assembly(assembly)
+        except TypeError:
+            raise TypeError(u"Assembly type must be an integer for id or an tring for name or a Assembly object! Type submited was: "+unicode(type(assembly)))
+
+        url         = self.url + "/" + "data/nr_assemblies/fasta/" + a.md5 + ".tar.gz"
+        with urllib2.urlopen(url) as webFile:
+            tempfilename = tempfile.NamedTemporaryFile(suffix=".tar.gz")
+            with open(tempfilename.name, 'w') as tempfile:
+                tempfile.write(webFile.read())
+            path = tempfilename.name
+        return path
+
+    def assembly_statistic(self, assembly):
+        """
+        Return statistic about an assembly
+        Example of result:
+        {
+            "TT": 13574667
+            "GG": 3344762
+            "CC": 3365555
+            "AA": 13571722
+            "A": 32370285
+            "TA": 6362526
+            "GT": 4841536
+            "AC": 4846697
+            "N": 0
+            "C": 17781115
+            "TC": 6228639
+            "GA": 6231575
+            "CG": 3131283
+            "GC: 3340219
+            "CT": 5079814
+            "AG": 5075950
+            "G": 17758095
+            "TG": 6206098
+            "CA": 6204462
+            "AT": 8875914
+            "T": 32371931
+        }
+        Total = A + T + G + C
+        """
+        a               = None
+        genrepObject    = "nr_assemblies"
+        query           = None
+        genrepFormat    = "json"
+        parameter       = "data_type=counts"
+
+        try:
+            if isinstance(assembly, Assembly):
+                a = assembly
+            else:
+                a = self.assembly(assembly)
+        except TypeError:
+            raise TypeError(u"Assembly type must be an integer for id or an tring for name or a Assembly object! Type submited was: "+unicode(type(assembly)))
+
+        return json.load(urllib2.urlopen("""%s/nr_assemblies/%d.json?data_type=counts""" % (self.url, a.nr_assembly_id)))
+
+    def assembly_statistic_to_file(self, assembly, output):
+        getcontext().prec   = 15
+        statistic           = self.assembly_statistic( assembly )
+        total               = Decimal(statistic["A"] + statistic["T"] + statistic["G"] + statistic["C"])
+        name                = (isinstance(assembly, Assembly)) and assembly.name or assembly
+        with open(os.path.expanduser(output), "w") as f:
+                f.write(u">Assembly: %s\n" %name)
+                f.write(u"1\t%s\t%s\t%s\t%s" % ( statistic["A"] / total, statistic["T"] / total,statistic["G"] / total, statistic["C"] / total ) )
+
+    def assemblies_available(self):
+        """
+        Return list of assemblies available on genrep
+        """
+        assembly_info   = json.load(urllib2.urlopen(self.url + "/assemblies.json"))
+        assembly_list   = [self._assembly(a) for a in assembly_info]
+        return [ a for a in assembly_list if a is not None ]
 
 
 class Assembly(object):
@@ -289,9 +425,6 @@ class Assembly(object):
     def add_chromosome(self, chromosome_id, refseq_locus, refseq_version, name, length):
         self.chromosomes[(chromosome_id, refseq_locus, refseq_version)] = \
             {'name': name, 'length': length}
-
-
-
 
 
 if __name__ == '__main__':

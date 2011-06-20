@@ -12,7 +12,7 @@ import sqlite3
 # Internal modules #
 from ..track import *
 
-###########################################################################   
+###########################################################################
 class GenomicFormat(Track):
     special_tables = ['attributes', 'chrNames', 'types']
 
@@ -24,7 +24,7 @@ class GenomicFormat(Track):
         try:
             self.datatype
             self.fields
-            self.meta_chr    
+            self.meta_chr
             self.meta_track
             self.all_tables
             self.chrs_from_names
@@ -43,6 +43,19 @@ class GenomicFormat(Track):
     def commit(self):
         self.connection.commit()
 
+    def get_scores_frequencies(self):
+        self.cursor.execute(u"SELECT name FROM chrNames;")
+        chromosomes_names   = [ chromosome[0] for chromosome in self.cursor ]
+        scores              = {}
+        for chromosome_name in chromosomes_names:
+            self.cursor.execute(u"SELECT count (*), score FROM '"+chromosome_name+u"' GROUP BY score;")
+            for result in self.cursor:
+                if result[1] not in scores:
+                    scores[ result[1] ] = result[0]
+                else:
+                    scores[ result[1] ] += result[0]
+        return scores
+
     #-----------------------------------------------------------------------------#
     @property
     def datatype(self):
@@ -55,7 +68,7 @@ class GenomicFormat(Track):
         else:                     return []
 
     @property
-    def meta_chr(self): 
+    def meta_chr(self):
         self.cursor.execute("pragma table_info(chrNames)")
         chrkeys = [x[1] for x in self.cursor.fetchall()]
         self.cursor.execute("select * from chrNames")
@@ -63,18 +76,30 @@ class GenomicFormat(Track):
 
     @meta_chr.setter
     def meta_chr(self, data):
-        if data == []: self.cursor.execute('delete from chrNames')  
+        if self.readonly: return
+        if data == []: self.cursor.execute('delete from chrNames')
         for x in data: self.cursor.execute('insert into chrNames (' + ','.join(x.keys()) + ') values (' + ','.join(['?' for y in range(len(x.keys()))])+')', tuple([x[k] for k in x.keys()]))
 
     @property
-    def meta_track(self): 
+    def meta_track(self):
         self.cursor.execute("select key, value from attributes")
         return dict(self.cursor.fetchall())
 
     @meta_track.setter
-    def meta_track(self, data): 
-        if data == {}: self.cursor.execute('delete from attributes') 
+    def meta_track(self, data):
+        if self.readonly: return
+        if data == {}: self.cursor.execute('delete from attributes')
         for k in data.keys(): self.cursor.execute('insert into attributes (key,value) values (?,?)',(k,data[k]))
+
+    @property
+    def name(self):
+        if self._name: return self.name
+        if 'name' in self.meta_track: return self.meta_track['name']
+        return 'Unamed'
+
+    @name.setter
+    def name(self, value):
+        self._name = value
 
     #-----------------------------------------------------------------------------#
     def read(self, selection=None, fields=None, order='start,end', cursor=False):
@@ -103,6 +128,7 @@ class GenomicFormat(Track):
         return cur.execute(sql_request + ' ' + order_by)
 
     def write(self, chrom, data, fields=None):
+        if self.readonly: return
         # Default fields #
         if self.datatype == 'quantitative': fields = Track.quantitative_fields
         if fields        == None:           fields = Track.qualitative_fields
@@ -112,10 +138,14 @@ class GenomicFormat(Track):
         if chrom not in self.chrs_from_tables:
             self.cursor.execute('create table "' + chrom + '" (' + columns + ')')
         # Execute the insertion
-        sql_command = 'insert into "' + chrom + '" values (' + ','.join(['?' for x in range(len(fields))])+')' 
-        self.cursor.executemany(sql_command, data)
+        sql_command = 'insert into "' + chrom + '" values (' + ','.join(['?' for x in range(len(fields))])+')'
+        try:
+            self.cursor.executemany(sql_command, data)
+        except sqlite3.OperationalError as err:
+            raise Exception("The command '" + sql_command + "' on the database '" + self.path + "' failed with error: " + str(err))
 
     def remove(self, chrom=None):
+        if self.readonly: return
         if not chrom:
             chrom = self.chrs_from_tables
         if type(chrom) == list:
@@ -146,9 +176,9 @@ class GenomicFormat(Track):
     #-----------------------------------------------------------------------------#
     @property
     def all_tables(self):
-        self.cursor.execute("select name from sqlite_master where type='table'") 
+        self.cursor.execute("select name from sqlite_master where type='table'")
         return [x[0].encode('ascii') for x in self.cursor.fetchall()]
-    
+
     @property
     def chrs_from_names(self):
         self.cursor.execute("select name from chrNames")
@@ -163,24 +193,28 @@ class GenomicFormat(Track):
         return [x[1] for x in self.cursor.execute('pragma table_info("' + chrom + '")').fetchall()]
 
     def make_missing_indexes(self):
-        for chrom in self.chrs_from_tables:
-            self.cursor.execute(    "create index IF NOT EXISTS '" + chrom + "_range_idx' on '" + chrom + "' (start,end)")
-            if 'score' in self.get_fields(chrom):
-                self.cursor.execute("create index IF NOT EXISTS '" + chrom + "_score_idx' on '" + chrom + "' (score)")
-            if 'name' in self.get_fields(chrom):
-                self.cursor.execute("create index IF NOT EXISTS '" + chrom + "_name_idx' on '" +  chrom + "' (name)")
+        if self.readonly: return
+        try:
+            for chrom in self.chrs_from_tables:
+                self.cursor.execute(    "create index IF NOT EXISTS '" + chrom + "_range_idx' on '" + chrom + "' (start,end)")
+                if 'score' in self.get_fields(chrom):
+                    self.cursor.execute("create index IF NOT EXISTS '" + chrom + "_score_idx' on '" + chrom + "' (score)")
+                if 'name' in self.get_fields(chrom):
+                    self.cursor.execute("create index IF NOT EXISTS '" + chrom + "_name_idx' on '" +  chrom + "' (name)")
+        except sqlite3.OperationalError as err:
+            raise Exception("The index creation on the database '" + self.path + "' failed with error: " + str(err))
 
     #-----------------------------------------------------------------------------#
     @staticmethod
     def create(path, datatype, name):
         connection = sqlite3.connect(path)
         cursor = connection.cursor()
-        cursor.execute('create table chrNames (name text, length integer)') 
+        cursor.execute('create table chrNames (name text, length integer)')
         cursor.execute('create table attributes (key text, value text)')
         if datatype == 'quantitative':
-            cursor.execute('insert into attributes (key,value) values ("datatype","quantitative")') 
+            cursor.execute('insert into attributes (key,value) values ("datatype","quantitative")')
         if datatype == 'qualitative':
-            cursor.execute('insert into attributes (key,value) values ("datatype","qualitative")') 
+            cursor.execute('insert into attributes (key,value) values ("datatype","qualitative")')
         connection.commit()
         cursor.close()
         connection.close()
@@ -188,4 +222,4 @@ class GenomicFormat(Track):
 #-----------------------------------------#
 # This code was written by Lucas Sinclair #
 # lucas.sinclair@epfl.ch                  #
-#-----------------------------------------# 
+#-----------------------------------------#

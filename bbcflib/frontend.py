@@ -67,6 +67,14 @@ class Frontend(object):
     def _fetch_runs(self, key):
         def _f(r):
             a = r['run']
+            if not(a.get('url') == None):
+                a['url'] = str(a['url'])
+            else:
+                a['url'] = None
+            if not(a.get('key') == None):
+                a['key'] = str(a['key'])
+            else:
+                a['key'] = None
             return {'facility_name': str(a['facility_name']),
                     'id': a['id'],
                     'group_id': a['group_id'],
@@ -75,8 +83,8 @@ class Frontend(object):
                     'lane': a['lane_nber'],
                     'run': a['run_nber'],
                     'facility_location': str(a['facility_location']),
-                    'url': str(a.get('fastq_url') or a.get('bam_url')),
-                    'key': str(a.get('mapseq_key')),
+                    'url': a['url'],
+                    'key': a['key'],
                     'created_at': datetime.strptime(a['created_at'],
                                                     '%Y-%m-%dT%H:%M:%SZ')}
         return [_f(r) for r in json.load(urllib2.urlopen(self.query_url('runs', key)))]
@@ -205,7 +213,7 @@ def parseConfig( file ):
                     machine_id=int(run.get('machine_id')),
                     run=int(run.get('run')), 
                     lane=int(run.get('lane')),
-                    url=str(run.get('url')),
-                    key=str(run.get('key')))
+                    url=run.get('url'),
+                    key=run.get('key'))
     globals = config.get('Global variables') or {}
     return (job,globals)

@@ -281,3 +281,32 @@ def create_sql_track( sql_name, chromosomes, datatype="quantitative" ):
     conn.close()
     return sql_name
 
+
+@program
+def compress(path, compression_type="lxzma"):
+    """
+    compression type allowed:
+    - gunzip, gz
+    - bzip2, bz
+    - lxzma, xz
+    """
+    archive = unique_filename_in()
+    call    = None
+    if compression_type == "lxzma" or compression_type == "xz":
+        call = ["tar", "cJvf", archive, path]
+    elif compression_type == "bzip2" or compression_type == "bz2":
+        call = ["tar", "cjvf", archive, path]
+    elif compression_type == "gunzip" or compression_type == "gz":
+        call = ["tar", "czvf", archive, path]
+    else:
+        raise ValueError("Compression type: %s not yet supported!" %(compression_type))
+    return {"arguments": call, "return_value": archive}
+
+@program
+def uncompress(path):
+    """
+    uncompress tar archive
+    """
+    output = unique_filename_in()
+    call = ["tar", "xvf", path]
+    return {"arguments": call, "return_value": output}

@@ -16,7 +16,7 @@ from .format_sql import GenomicFormat as SQLTrack
 
 ###########################################################################
 class ProxyTrack(SQLTrack):
-    def __init__(self, path, format=None, name=None, chrfile=None, datatype=None):
+    def __init__(self, path, format=None, name=None, chrfile=None, datatype=None, readonly=False):
         # Parameters with underscore refer to the underlying track #
         self._path     = path
         self._format   = format
@@ -43,11 +43,11 @@ class ProxyTrack(SQLTrack):
                 # Copy meta chr #
                 t.meta_chr   = [chr for chr in self._meta_chr if chr['name'] in self._seen_chr]
         # Load the new SQL track as self #
-        super(ProxyTrack, self).__init__(tmp_path, 'sql', name)
+        super(ProxyTrack, self).__init__(tmp_path, 'sql', name, readonly=readonly)
 
     #-----------------------------------------------------------------------------#
     def unload(self, datatype=None, value=None, trackback=None):
-        if self.modified: self.dump()
+        if self.modified and not self.readonly: self.dump()
         super(ProxyTrack, self).unload(datatype, value, trackback)
         if os.path.exists(self.path): os.remove(self.path)
 
@@ -66,7 +66,7 @@ class ProxyTrack(SQLTrack):
         if format == 'sql':
             shutil.move(self.path, path)
         else:
-            super(ProxyTrack, self).convert(path, format, datatype, mean_scores)
+            super(ProxyTrack, self).convert(path, format)
 
     #-----------------------------------------------------------------------------#
     def _read(self):
