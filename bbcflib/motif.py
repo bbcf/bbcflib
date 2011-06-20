@@ -33,7 +33,7 @@ def parse_meme_html_output(ex, meme, fasta, chromosomes):
         end                 = 0
         result_id           = pattern.match(item["id"]).group(1)
         matrix_file         = unique_filename_in()
-        sqlout              = None
+        sqlout              = unique_filename_in()
         # write martix
         raws                = item["value"].lstrip("\n").rstrip("\n\n").split("\n")
         raws[0]             = ">" + raws[0]
@@ -79,13 +79,22 @@ def parse_meme_html_output(ex, meme, fasta, chromosomes):
                 dict_chromosomes[chromosome_name]=  [
                                                         (int(start), int(end), float(strand_pvalue), strand_side, strand_name)
                                                     ]
-        sqlout      =  unique_filename_in()
         with new(sqlout,  format="sql", datatype="qualitative") as track:
-            # Chromosome #
-            track.meta_chr  = [chromosomes[info] for info in chromosomes]
             track.meta_track= {'datatype': 'qualitative', 'source': 'meme'}
             track.meta_track.update({'k':'v'})
             for chromosome in dict_chromosomes:
+                isSearchingChromosome   = True
+                keys                    = chromosomes.keys()
+                index                   = 0
+                while isSearchingChromosome:
+                    info = chromosomes[keys[index]]
+                    if index >= len(keys):
+                        raise ValueError("Chromosomes named: %s not found in select assembly!"%(chromosome))
+                    elif info["name"] == chromosome:
+                        isSearchingChromosome   = False
+                        track.meta_chr += [ info ]
+                    else:
+                        index +=1
                 track.write(chromosome, dict_chromosomes[chromosome])
         #files.append((matrix_file, sqlout))
         ex.add( matrix_file, description="matrix:"+item["name"] )
@@ -137,9 +146,10 @@ def save_motif_profile( ex, motifs, background, genrep, chromosomes,
         if not os.path.isabs(sql):
             sql = os.path.normcase("../"+sql)
     if motifs is not None:
-        motifs = os.path.expanduser(motifs)
-        if not os.path.isabs(motifs):
-            motifs = os.path.normcase("../"+motifs)
+        for name in motifs:
+            motifs[name] = os.path.expanduser(motifs[name])
+            if not os.path.isabs(motifs[name]):
+                motifs[name] = os.path.normcase("../"+motifs[name])
     if background is not None:
         background = os.path.expanduser(background)
         if not os.path.isabs(background):
@@ -172,9 +182,8 @@ def save_motif_profile( ex, motifs, background, genrep, chromosomes,
     else:
         raise TypeError("save_motif_profile requires either a 'sqlite' or a 'bed' file.")
     with new(sqlout,  format="sql", datatype="qualitative") as track:
-        # Chromosome #
-        track.meta_chr  =  [chromosomes[info] for info in chromosomes]
-        track.meta_track= {'datatype': 'qualitative', 'source': 'S1K'}
+        track.meta_chr  = []
+        track.meta_track= {'source': 'S1K'}
         track.meta_track.update({'k':'v'})
     for name,f in futures.iteritems():
         vals        = []
@@ -182,13 +191,25 @@ def save_motif_profile( ex, motifs, background, genrep, chromosomes,
         cur_chr     = ''
         index       = 0
         previous_feature=""
-        with open(f[0],'r') as f:
-            for l in f:
+        with open(f[0],'r') as f_in:
+            for l in f_in:
                 s       = l.rstrip('\n').split('\t')
                 reg     = regions[s[0]]
                 start   = reg[1]+int(s[3])
                 if cur_chr != '' and reg[0] != cur_chr:
-                    with new(sqlout) as track:
+                    with Track(sqlout,  format="sql") as track:
+                        isSearchingChromosome   = True
+                        keys                    = chromosomes.keys()
+                        index                   = 0
+                        while isSearchingChromosome:
+                            info = chromosomes[keys[index]]
+                            if index > len(keys):
+                                raise ValueError("Chromosomes named: %s not found in select assembly!"%(chromosome))
+                            elif info["name"] == cur_chr:
+                                isSearchingChromosome   = False
+                                track.meta_chr          += [ info ]
+                            else:
+                                index +=1
                         track.write(cur_chr, vals)
                     index           = 0
                     vals            = [(start-1,start+len(s[1]),float(s[2]),s[4],name+":"+s[1])]
@@ -207,7 +228,7 @@ def save_motif_profile( ex, motifs, background, genrep, chromosomes,
                         index           += 1
                         vals.append((start-1,start+len(s[1]),float(s[2]),s[4],name+":"+s[1]))
         if len(vals)>0:
-            with new(sqlout) as track:
+            with Track(sqlout,  format="sql") as track:
                 track.write(cur_chr, vals)
     ex.add( sqlout, description="sql:"+description+"motif_scan.sql" )
     return sqlout
@@ -280,9 +301,6 @@ def sqlite_to_false_discovery_rate  (
         raise ValueError(u"Variables sqls and beds is set to None! Set one of these variables")
     elif sqls is not None and beds is not None:
         raise ValueError(u"Variables sqls and beds is not None! Set only one of these variables, sqls or beds")
-    background  = os.path.expanduser(background)
-    if not os.path.isabs(background):
-        background = os.path.normcase("../"+background)
     true_positive_result    = None
     false_positive_result   = None
 
