@@ -3,7 +3,7 @@
 bbcflib.motif
 ===============
 """
-import sqlite3, re, os, pdb
+import sqlite3, re, os
 from operator       import add
 from BeautifulSoup  import BeautifulSoup
 from bein           import *
@@ -73,29 +73,30 @@ def parse_meme_html_output(ex, meme, fasta, chromosomes):
                 raise ValueError("Unknow strand side value: %s!" %(strand_side))
             if chromosome_name in dict_chromosomes:
                 dict_chromosomes[chromosome_name]+= [
-                                                        (int(start), int(end), float(strand_pvalue), strand_side, strand_name)
+                                                        (int(start), int(end), strand_name, float(strand_pvalue), strand_side )
                                                     ]
             else:
                 dict_chromosomes[chromosome_name]=  [
-                                                        (int(start), int(end), float(strand_pvalue), strand_side, strand_name)
+                                                        (int(start), int(end), strand_name, float(strand_pvalue), strand_side)
                                                     ]
         with new(sqlout,  format="sql", datatype="qualitative") as track:
+            keys            = chromosomes.keys()
+            chomosomes_used = []
             track.meta_track= {'datatype': 'qualitative', 'source': 'meme'}
             track.meta_track.update({'k':'v'})
             for chromosome in dict_chromosomes:
                 isSearchingChromosome   = True
-                keys                    = chromosomes.keys()
                 index                   = 0
                 while isSearchingChromosome:
-                    info = chromosomes[keys[index]]
                     if index >= len(keys):
                         raise ValueError("Chromosomes named: %s not found in select assembly!"%(chromosome))
-                    elif info["name"] == chromosome:
+                    elif chromosomes[keys[index]]["name"] == chromosome:
                         isSearchingChromosome   = False
-                        track.meta_chr += [ info ]
+                        chomosomes_used.append( chromosomes[keys[index]] )
                     else:
                         index +=1
                 track.write(chromosome, dict_chromosomes[chromosome])
+            track.meta_chr = chomosomes_used
         #files.append((matrix_file, sqlout))
         ex.add( matrix_file, description="matrix:"+item["name"] )
         ex.add( sqlout,  description="sql:"+sqlout)
@@ -154,9 +155,13 @@ def save_motif_profile( ex, motifs, background, genrep, chromosomes,
         background = os.path.expanduser(background)
         if not os.path.isabs(background):
             background = os.path.normcase("../"+background)
-    fasta,size  = genrep.fasta_from_bed( chromosomes, out=unique_filename_in(), bed=bed, sql=sql )
-    sqlout      = unique_filename_in()
-    futures     = {}
+    fasta,size      = genrep.fasta_from_bed( chromosomes, out=unique_filename_in(), bed=bed, sql=sql )
+    sqlout          = unique_filename_in()
+    futures         = {}
+    regions         = {}
+    chromosomes_set = set()
+    chomosomes_used = []
+    keys            = chromosomes.keys()
     if not(isinstance(motifs,dict)):
         raise ValueError("'Motifs' must be a dictionary with keys 'motif_names' and values the PWMs.")
     for name,pwm in motifs.iteritems():
@@ -164,7 +169,7 @@ def save_motif_profile( ex, motifs, background, genrep, chromosomes,
         futures[name] = (output,
                          motif_scan.nonblocking( ex, fasta, pwm, background, threshold,
                                                  via=via, stdout=output ))
-    regions = {}
+
     if bed != None:
         chr_ids = dict((cn['name'],c[0]) for c,cn in chromosomes.iteritems())
         with open(bed,"r") as f:
@@ -182,14 +187,13 @@ def save_motif_profile( ex, motifs, background, genrep, chromosomes,
     else:
         raise TypeError("save_motif_profile requires either a 'sqlite' or a 'bed' file.")
     with new(sqlout,  format="sql", datatype="qualitative") as track:
-        track.meta_chr  = []
         track.meta_track= {'source': 'S1K'}
         track.meta_track.update({'k':'v'})
     for name,f in futures.iteritems():
-        vals        = []
-        _           = f[1].wait()
-        cur_chr     = ''
-        index       = 0
+        vals            = []
+        _               = f[1].wait()
+        cur_chr         = ''
+        index           = 0
         previous_feature=""
         with open(f[0],'r') as f_in:
             for l in f_in:
@@ -197,39 +201,41 @@ def save_motif_profile( ex, motifs, background, genrep, chromosomes,
                 reg     = regions[s[0]]
                 start   = reg[1]+int(s[3])
                 if cur_chr != '' and reg[0] != cur_chr:
+                    chromosomes_set.add(cur_chr)
                     with Track(sqlout,  format="sql") as track:
-                        isSearchingChromosome   = True
-                        keys                    = chromosomes.keys()
-                        index                   = 0
-                        while isSearchingChromosome:
-                            info = chromosomes[keys[index]]
-                            if index > len(keys):
-                                raise ValueError("Chromosomes named: %s not found in select assembly!"%(chromosome))
-                            elif info["name"] == cur_chr:
-                                isSearchingChromosome   = False
-                                track.meta_chr          += [ info ]
-                            else:
-                                index +=1
                         track.write(cur_chr, vals)
                     index           = 0
-                    vals            = [(start-1,start+len(s[1]),float(s[2]),s[4],name+":"+s[1])]
+                    vals            = [(start-1,start+len(s[1]),name+":"+s[1],float(s[2]),s[4])]
                     previous_feature= s[0]
                 cur_chr = reg[0]
                 if not keep_max_only:
-                    vals.append((start-1,start+len(s[1]),float(s[2]),s[4],name+":"+s[1]))
+                    vals.append((start-1,start+len(s[1]),name+":"+s[1],float(s[2]),s[4]))
                 else:
                     if previous_feature == "":
                         previous_feature= s[0]
                         vals.append((start-1,start+len(s[1]),float(s[2]),s[4],name+":"+s[1]))
                     elif previous_feature == s[0] and vals[index][2] < float(s[2]):
-                            vals[index] = (start-1,start+len(s[1]),float(s[2]),s[4],name+":"+s[1])
+                            vals[index] = (start-1,start+len(s[1]),name+":"+s[1],float(s[2]),s[4])
                     elif previous_feature != s[0]:
                         previous_feature= s[0]
                         index           += 1
-                        vals.append((start-1,start+len(s[1]),float(s[2]),s[4],name+":"+s[1]))
+                        vals.append((start-1,start+len(s[1]),name+":"+s[1],float(s[2]),s[4]))
         if len(vals)>0:
             with Track(sqlout,  format="sql") as track:
                 track.write(cur_chr, vals)
+    for chromosome in chromosomes_set:
+        isSearchingChromosome   = True
+        i                       = 0
+        while isSearchingChromosome:
+            if i >= len(keys):
+                raise ValueError("Chromosomes named: %s not found in selected assembly!"%(chromosome))
+            elif chromosomes[keys[i]]["name"] == chromosome:
+                isSearchingChromosome   = False
+                chomosomes_used.append( chromosomes[keys[i]] )
+            else:
+                i +=1
+    with Track(sqlout,  format="sql") as track:
+        track.meta_chr = chomosomes_used
     ex.add( sqlout, description="sql:"+description+"motif_scan.sql" )
     return sqlout
 
@@ -347,26 +353,13 @@ def sqlite_to_false_discovery_rate  (
                                                         via             = via, keep_max_only=keep_max_only
                                                     )
 
-    fp_scores = get_score(ex.working_directory+"/"+false_positive_result)
-    tp_scores = get_score(ex.working_directory+"/"+true_positive_result)
-
+    fp_scores = None
+    tp_scores = None
+    with Track(ex.working_directory+"/"+false_positive_result,  format="sql") as track:
+        fp_scores = track.get_scores_frequencies()
+    with Track(ex.working_directory+"/"+true_positive_result,  format="sql") as track:
+        tp_scores = track.get_scores_frequencies()
     return false_discovery_rate (
                                     fp_scores, tp_scores,
                                     alpha=alpha, nb_false_positive_hypotesis=nb_false_positive_hypotesis
                                 )
-
-def get_score( sql ):
-    connection          = sqlite3.connect(sql)
-    cursor              = connection.cursor()
-    cursor.execute(u"SELECT name FROM chrNames;")
-    chromosomes_names   = [ chromosome[0] for chromosome in cursor ]
-    scores              = {}
-    for chromosome_name in chromosomes_names:
-        cursor.execute(u"SELECT count (*), score FROM '"+chromosome_name+u"' GROUP BY score;")
-        for result in cursor:
-            if result[1] not in scores:
-                scores[ result[1] ] = result[0]
-            else:
-                scores[ result[1] ] += result[0]
-    connection.close()
-    return scores
