@@ -3,7 +3,7 @@
 bbcflib.motif
 ===============
 """
-import sqlite3, re, os
+import re, os
 from operator       import add
 from BeautifulSoup  import BeautifulSoup
 from bein           import *
@@ -313,10 +313,6 @@ def sqlite_to_false_discovery_rate  (
     if sqls is not None:
         new_sql0 = os.path.expanduser(sqls[0])
         new_sql1 = os.path.expanduser(sqls[1])
-        if not os.path.isabs(new_sql0):
-            new_sql0 = os.path.normcase("../"+new_sql0)
-        if not os.path.isabs(new_sql1):
-            new_sql1 = os.path.normcase("../"+new_sql1)
         # original
         true_positive_result    = save_motif_profile(
                                                         ex, motifs, background, genrep, chromosomes,
@@ -334,10 +330,6 @@ def sqlite_to_false_discovery_rate  (
     else:
         new_bed0 = os.path.expanduser(beds[0])
         new_bed1 = os.path.expanduser(beds[1])
-        if not os.path.isabs(new_bed0):
-            new_bed0 = os.path.normcase("../"+new_bed0)
-        if not os.path.isabs(new_bed1):
-            new_bed1 = os.path.normcase("../"+new_bed1)
         # original
         true_positive_result    = save_motif_profile(
                                                         ex, motifs, background, genrep, chromosomes,
@@ -355,9 +347,9 @@ def sqlite_to_false_discovery_rate  (
 
     fp_scores = None
     tp_scores = None
-    with Track(ex.working_directory+"/"+false_positive_result,  format="sql") as track:
+    with Track(false_positive_result,  format="sql") as track:
         fp_scores = track.get_scores_frequencies()
-    with Track(ex.working_directory+"/"+true_positive_result,  format="sql") as track:
+    with Track(true_positive_result,  format="sql") as track:
         tp_scores = track.get_scores_frequencies()
     return false_discovery_rate (
                                     fp_scores, tp_scores,
