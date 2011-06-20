@@ -93,7 +93,7 @@ class GenomicFormat(Track):
 
     @property
     def name(self):
-        if self._name: return self.name
+        if self._name: return self._name
         if 'name' in self.meta_track: return self.meta_track['name']
         return 'Unamed'
 
