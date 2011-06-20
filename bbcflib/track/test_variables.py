@@ -70,7 +70,8 @@ for f in ['wig', 'bedgraph']:
     parser_tests += [(path + t, True)   for path in [tracks_path + 'quan/' +f+ '/should_pass/'] for t in os.listdir(path) if t.endswith('.'+f)]
     parser_tests += [(path + t, False)  for path in [tracks_path + 'quan/' +f+ '/should_fail/'] for t in os.listdir(path) if t.endswith('.'+f)]
 
-#-----------------------------------------#
-# This code was written by Lucas Sinclair #
-# lucas.sinclair@epfl.ch                  #
-#-----------------------------------------#
+#-----------------------------------#
+# This code was written by the BBCF #
+# http://bbcf.epfl.ch/              #
+# webmaster.bbcf@epfl.ch            #
+#-----------------------------------#
