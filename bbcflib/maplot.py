@@ -1,10 +1,12 @@
+from bein import *
+from bein.util import *
 from numpy import *
 from scipy import stats
 from scipy.interpolate import UnivariateSpline
 import matplotlib.pyplot as plt
 from interactive_plot import *
-import rpy2.robjects as ro
-import rpy2.robjects.packages as rp
+import rpy2.robjects as robjects
+import rpy2.robjects.packages as rpackages
 import rpy2.robjects.numpy2ri
 import rpy2.rlike.container as rlc
 
@@ -14,28 +16,36 @@ def MAplot(data, mode="interactive"):
           [gene name, expression under condition 2, epression under condition 2]
     bins: number of intervals for quantile splines
     mode: if "interactive", click on points to display its name
-          if "normal", name of genes over the 99% quantile re displayed
+          if "normal", name of genes over the 99% quantile are displayed
     """
-    ###
+    #####
     ### TO IMPLEMENT: GROUPS OF GENES
-    ###
-    names = list(data[0])
-    ratios = array(data[1])/array(data[2])
-    means = sqrt(array(data[1])*array(data[2]))
+    #####
+
+    if isinstance(data[0],rpy2.robjects.vectors.FactorVector):
+        a = array(data[0])        
+        b = array(data[0].levels)
+        names = b[a-1]           
+    if isinstance(data[0],rpy2.robjects.vectors.StrVector):
+        names = list(data[0])
+    d1 = array(data[1])+0.5 # to avoid divisions by zero counts
+    d2 = array(data[2])+0.5 # to avoid divisions by zero counts
+    ratios = d1/d2
+    means = sqrt(d1*d2)
     points = zip(names,ratios,means)
-    bins = len(ratios)/10
-    intervals = linspace(min(means),max(means),bins)
-    annotes = []
-    spline_annotes = []
+    bins = 20 #50 #len(ratios)/5000 #floor(log(len(ratios)+1))
+    xmin = min(means); xmax = max(means); ymin = min(ratios); ymax = max(ratios)
+    intervals = linspace(xmin,xmax,bins)
+    annotes = []; spline_annotes = []
 
     fig = plt.figure(figsize=[14,10])
     ax = fig.add_subplot(111)
     fig.subplots_adjust(left=0.08, right=0.98, bottom=0.08, top=0.98)
 
-    #Points
-    ax.plot(log10(means), log2(ratios), ".", color="black")
+    ### Points
+    ax.plot(means, ratios, ".", color="black")
 
-    #Lines (best fit of percentiles)
+    ### Lines (best fit of percentiles)
     for k in [1,5,25,50,75,95,99]:
         h = ones(bins)*0.0001
         for b in range(bins):
@@ -50,42 +60,43 @@ def MAplot(data, mode="interactive"):
             if k==99:
                 for p in points_in_b:
                     if p[1]>h[b]: annotes.append(p)
-        x = log10(intervals)
-        y = log2(h)
-        #coeffs = polyfit(x,y,4)
-        #fit = polyval(coeffs,x)
-        ax.plot(x,y, color="green", linestyle="--", alpha=0.3)
-        spline = UnivariateSpline(x, y, k=3)
-        xs = linspace(min(x), max(x), 10*len(x)) #to increase spline smoothness
+
+        #ax.plot(intervals, h, color="green", linestyle="--", alpha=0.3)
+        spline = UnivariateSpline(intervals, h, k=3)
+        xs = linspace(min(intervals), max(intervals), 10*bins) #to increase spline smoothness
         ys = spline(xs)
-        #ax.plot(x, fit, color="blue")
-        #spline_annotes.append((k,x[0],fit[0]))
         ax.plot(xs, ys, color="blue")
         spline_annotes.append((k,xs[0],ys[0]))
 
-    #Decoration
+    ### Decoration
     ax.set_xlabel("Log10 of sqrt(x1*x2)")
     ax.set_ylabel("Log2 of x1/x2")
+    ax.set_xlim(xmin-0.05*xmin,xmax+0.01*xmax)
+    ax.set_xscale('log', basey=10)
+    ax.set_yscale('log', basey=2)
+    for l in spline_annotes:
+        ax.annotate(str(l[0])+"%", xy=(l[1],l[2]), xytext=(-27,-5), textcoords='offset points')
     if mode == "interactive":
-        af = AnnoteFinder( log10(means), log2(ratios), names )
+        af = AnnoteFinder( means, ratios, names )
         plt.connect('button_press_event', af)
+        plt.draw()
+        plt.show()
     if mode == "normal":
         for p in annotes:
-            ax.annotate( p[0], xy=(log10(p[2]),log2(p[1])) )
-    for l in spline_annotes:
-        ax.annotate( str(l[0])+"%", xy=(l[1],l[2]), xytext=(-27,-5), textcoords='offset points' )
-
-    #Display
-    plt.draw()
-    plt.show()
-
+            ax.annotate(p[0], xy=(p[2],p[1]) )
+        fig.savefig("MAplot.png")
 
 def rs(len):
     import string
     import random
     return "".join([random.choice(string.letters+string.digits) for x in range(len)])
-    
 
+
+## Real data from rnaseq
+#G = robjects.DataFrame.from_csvfile("temp/R6WQfpkFSWMhdWAoHFUT")
+#E = robjects.DataFrame.from_csvfile("temp/GJ4eAQAGafRCIdv9eMt4")
+
+## Sample data
 ## N=500
 ## data = random.rand(N,3)
 ## names = array([rs(6) for k in range(len(data))])
@@ -97,6 +108,11 @@ def rs(len):
 ## MAplot(D, mode="interactive")
 
 
+
+#coeffs = polyfit(x,y,3)
+#fit = polyval(coeffs,x)
+#ax.plot(x, fit, color="blue")
+#spline_annotes.append((k,x[0],fit[0]))
 
 
 ## #*************
