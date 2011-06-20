@@ -430,3 +430,9 @@ class Assembly(object):
 if __name__ == '__main__':
     import doctest
     doctest.testmod()
+
+#-----------------------------------#
+# This code was written by the BBCF #
+# http://bbcf.epfl.ch/              #
+# webmaster.bbcf@epfl.ch            #
+#-----------------------------------#

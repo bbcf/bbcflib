@@ -50,3 +50,9 @@ main()
 ## 7|141|7566||0||
 ## 8|141|8398||0|locfit 1.5-6 	 2010-01-20 
 ## |PyTables not found.  Skipping.
+
+#-----------------------------------#
+# This code was written by the BBCF #
+# http://bbcf.epfl.ch/              #
+# webmaster.bbcf@epfl.ch            #
+#-----------------------------------#

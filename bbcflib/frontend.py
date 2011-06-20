@@ -217,3 +217,9 @@ def parseConfig( file ):
                     key=run.get('key'))
     globals = config.get('Global variables') or {}
     return (job,globals)
+
+#-----------------------------------#
+# This code was written by the BBCF #
+# http://bbcf.epfl.ch/              #
+# webmaster.bbcf@epfl.ch            #
+#-----------------------------------#

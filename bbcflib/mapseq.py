@@ -728,3 +728,8 @@ def import_mapseq_results( key_or_id, minilims, ex_root, url_or_dict ):
                                                for x,s in wig_ids.iteritems())}
     return (processed,job)
 
+#-----------------------------------#
+# This code was written by the BBCF #
+# http://bbcf.epfl.ch/              #
+# webmaster.bbcf@epfl.ch            #
+#-----------------------------------#

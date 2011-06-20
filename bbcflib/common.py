@@ -310,3 +310,9 @@ def uncompress(path):
     output = unique_filename_in()
     call = ["tar", "xvf", path]
     return {"arguments": call, "return_value": output}
+
+#-----------------------------------#
+# This code was written by the BBCF #
+# http://bbcf.epfl.ch/              #
+# webmaster.bbcf@epfl.ch            #
+#-----------------------------------#

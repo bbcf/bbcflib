@@ -374,4 +374,9 @@ class DAFLIMS(object):
           * ``'NCBI ID'`` (the genome Eland aligns against)
         """
         return self._fetch_structured('qseq', facility, machine, run, lane, to)
-        
+
+#-----------------------------------#
+# This code was written by the BBCF #
+# http://bbcf.epfl.ch/              #
+# webmaster.bbcf@epfl.ch            #
+#-----------------------------------# 

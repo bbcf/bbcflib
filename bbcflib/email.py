@@ -101,3 +101,8 @@ class EmailReport(object):
         mailer = Mailer(self.smtp_server)
         mailer.send(message)
 
+#-----------------------------------#
+# This code was written by the BBCF #
+# http://bbcf.epfl.ch/              #
+# webmaster.bbcf@epfl.ch            #
+#-----------------------------------#

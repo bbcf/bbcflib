@@ -84,3 +84,9 @@ def main(argv=None):
 
 if __name__ == '__main__':
     sys.exit(main())
+
+#-----------------------------------#
+# This code was written by the BBCF #
+# http://bbcf.epfl.ch/              #
+# webmaster.bbcf@epfl.ch            #
+#-----------------------------------#

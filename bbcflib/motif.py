@@ -355,3 +355,9 @@ def sqlite_to_false_discovery_rate  (
                                     fp_scores, tp_scores,
                                     alpha=alpha, nb_false_positive_hypotesis=nb_false_positive_hypotesis
                                 )
+
+#-----------------------------------#
+# This code was written by the BBCF #
+# http://bbcf.epfl.ch/              #
+# webmaster.bbcf@epfl.ch            #
+#-----------------------------------#
