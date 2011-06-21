@@ -37,7 +37,7 @@ track_collections = {
   4: {'path':tracks_path+'qual/bed/random4.bed',     'type':'qualitative',  'fields':Track.qualitative_fields},
     },
 'Signals': {
-  1: {'path':tracks_path+'quan/bedgraph/test1.bedgraph', 'type':'quantitative', 'fields':Track.quantitative_fields, 'chrfile':yeast_chr_file},
+  1: {'path':tracks_path+'quan/bedgraph/test1.bedGraph', 'type':'quantitative', 'fields':Track.quantitative_fields, 'chrfile':yeast_chr_file},
     },
 'Yeast': {
   'All genes':  {'path':tracks_path+'qual/bed/all_yeast_genes.bed',   'type':'quantitative',

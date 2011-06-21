@@ -29,7 +29,7 @@ class Test_Read(unittest.TestCase):
 #-----------------------------------------------------------------------------#   
 class Test_Write(unittest.TestCase):
     def runTest(self):
-        path = named_temporary_path('.bedgraph')
+        path = named_temporary_path('.bedGraph')
         with new(path, chrfile=yeast_chr_file) as t:
             features = {}
             features['chr1'] = [(0,  10, -1.0),
@@ -45,7 +45,7 @@ class Test_Write(unittest.TestCase):
 #-----------------------------------------------------------------------------#   
 class Test_Roundtrips(unittest.TestCase):
     def runTest(self):
-        path = named_temporary_path('.bedgraph')
+        path = named_temporary_path('.bedGraph')
         for track_num, track in sorted(track_collections['Signals'].items()):
             with Track(track['path'], chrfile=track['chrfile']) as t:
                 t.dump(path)
