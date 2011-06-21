@@ -117,7 +117,8 @@ class GenomicFormat(TextTrack, ProxyTrack):
         if datatype != 'quantitative':
             raise Exception("The track '" + self._path + "' cannot be loaded as a '" + datatype + "' datatype.")
 
-#-----------------------------------------#
-# This code was written by Lucas Sinclair #
-# lucas.sinclair@epfl.ch                  #
-#-----------------------------------------#
+#-----------------------------------#
+# This code was written by the BBCF #
+# http://bbcf.epfl.ch/              #
+# webmaster.bbcf@epfl.ch            #
+#-----------------------------------#

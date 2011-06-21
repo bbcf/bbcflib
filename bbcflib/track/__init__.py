@@ -430,9 +430,8 @@ def new(path, format=None, datatype='qualitative', name='Unnamed', chrfile=None)
     implementation.GenomicFormat.create(path, datatype, name)
     return Track(path, format=format, name=name, chrfile=chrfile)
 
-#-----------------------------------------#
-# This code was written by Lucas Sinclair #
-# and BUG fixed by Jonathan Mercier       #
-# lucas.sinclair@epfl.ch                  #
-# jonathan.mercier@epfl.ch                #
-#-----------------------------------------#
+#-----------------------------------#
+# This code was written by the BBCF #
+# http://bbcf.epfl.ch/              #
+# webmaster.bbcf@epfl.ch            #
+#-----------------------------------#

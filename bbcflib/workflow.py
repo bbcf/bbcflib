@@ -46,4 +46,8 @@ class workflow(object):
 
         return execution_ids
 
-
+#-----------------------------------#
+# This code was written by the BBCF #
+# http://bbcf.epfl.ch/              #
+# webmaster.bbcf@epfl.ch            #
+#-----------------------------------#

@@ -53,7 +53,8 @@ class GenomicFormat(Track):
     def meta_track(self): 
         return {'type':'random'}
 
-#-----------------------------------------#
-# This code was written by Lucas Sinclair #
-# lucas.sinclair@epfl.ch                  #
-#-----------------------------------------# 
+#-----------------------------------#
+# This code was written by the BBCF #
+# http://bbcf.epfl.ch/              #
+# webmaster.bbcf@epfl.ch            #
+#-----------------------------------#

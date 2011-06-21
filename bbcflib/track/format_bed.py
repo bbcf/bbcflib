@@ -137,7 +137,8 @@ def random_track(number_of_features=15000000, size=1000, jump=1000, orig_start=0
         line        = ['chr' + str(chr), str(start), str(end), name, score, strand, str(thick_start), str(thick_end)]
         yield ('\t'.join(line) + '\n')
 
-#-----------------------------------------#
-# This code was written by Lucas Sinclair #
-# lucas.sinclair@epfl.ch                  #
-#-----------------------------------------#
+#-----------------------------------#
+# This code was written by the BBCF #
+# http://bbcf.epfl.ch/              #
+# webmaster.bbcf@epfl.ch            #
+#-----------------------------------#

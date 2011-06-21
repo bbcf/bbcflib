@@ -111,8 +111,6 @@ class Test_Meta(unittest.TestCase):
             info = [{'name': 'chr1', 'length': 1500}, {'name': 'chr2', 'length': 2000}]
             t.meta_chr = info
             self.assertEqual(t.meta_chr, info)
-            t.meta_chr.append({'name': 'chr5', 'length': 400})
-            self.assertEqual(t.meta_chr, info)
             # Track attributes #
             info = {'datatype': 'quantitative', 'source': 'SGD'}
             t.meta_track = info

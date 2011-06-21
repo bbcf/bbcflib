@@ -472,3 +472,9 @@ def rnaseq_workflow(job, lims_path="rnaseq", via="lsf", job_or_dict="job", maplo
         ##     ex.add(f[1].wait(), description="Comparison of genes in conditions '%s' and '%s' (CSV)" % (names[c[0]], names[c[1]]))
             
     return results_to_json(M, ex.id)
+
+#-----------------------------------#
+# This code was written by the BBCF #
+# http://bbcf.epfl.ch/              #
+# webmaster.bbcf@epfl.ch            #
+#-----------------------------------#

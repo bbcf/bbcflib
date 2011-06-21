@@ -93,7 +93,7 @@ class GenomicFormat(Track):
 
     @property
     def name(self):
-        if self._name: return self.name
+        if self._name: return self._name
         if 'name' in self.meta_track: return self.meta_track['name']
         return 'Unamed'
 
@@ -219,7 +219,8 @@ class GenomicFormat(Track):
         cursor.close()
         connection.close()
 
-#-----------------------------------------#
-# This code was written by Lucas Sinclair #
-# lucas.sinclair@epfl.ch                  #
-#-----------------------------------------#
+#-----------------------------------#
+# This code was written by the BBCF #
+# http://bbcf.epfl.ch/              #
+# webmaster.bbcf@epfl.ch            #
+#-----------------------------------#

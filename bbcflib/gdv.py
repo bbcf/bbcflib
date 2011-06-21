@@ -94,4 +94,8 @@ def add_sql_files( gdv_key, gdv_email,
                            gdv_url, dataype, True ) 
             for i,f in enumerate(files)]
 
-############################################################     
+#-----------------------------------#
+# This code was written by the BBCF #
+# http://bbcf.epfl.ch/              #
+# webmaster.bbcf@epfl.ch            #
+#-----------------------------------#

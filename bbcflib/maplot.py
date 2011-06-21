@@ -186,3 +186,9 @@ def rs(len):
 ## segments(x0=retro.ratio[O],y0=ypos,x1=5.5,y1=ypos,col='red',lty=2)
 ## text(x=5.5,y=ypos,lab=paste(retro.data$name,", p=",round(prob,3),sep='')[O],col='red',cex=.6,pos=4,offset=0)
 ## dev.off()
+
+#-----------------------------------#
+# This code was written by the BBCF #
+# http://bbcf.epfl.ch/              #
+# webmaster.bbcf@epfl.ch            #
+#-----------------------------------#

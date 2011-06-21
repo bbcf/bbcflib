@@ -153,7 +153,8 @@ def random_track(kind='fixed', chrs=16, number_of_regions=32, orig_start=0, leng
             for x in xrange(start,end):
                 yield str(x) + ' ' + str(multiplier + multiplier * random.random()) + '\n'
 
-#-----------------------------------------#
-# This code was written by Lucas Sinclair #
-# lucas.sinclair@epfl.ch                  #
-#-----------------------------------------#
+#-----------------------------------#
+# This code was written by the BBCF #
+# http://bbcf.epfl.ch/              #
+# webmaster.bbcf@epfl.ch            #
+#-----------------------------------#

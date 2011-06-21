@@ -391,7 +391,7 @@ def workflow_groups( ex, job_or_dict, mapseq_files, chromosomes, script_path='',
                     [create_sql_track( output+s+'.sql', chromosomes ) 
                      for s in suffixes]
                     mapseq.parallel_density_sql( ex, m["bam"], 
-                                                 output, None,
+                                                 output, chromosomes,
                                                  nreads=m["stats"]["total"], 
                                                  merge=-1,
                                                  convert=False, 
@@ -419,3 +419,9 @@ def workflow_groups( ex, job_or_dict, mapseq_files, chromosomes, script_path='',
              for k,v in deconv.iteritems()]
             processed['deconv'][name] = deconv
     return processed
+
+#-----------------------------------#
+# This code was written by the BBCF #
+# http://bbcf.epfl.ch/              #
+# webmaster.bbcf@epfl.ch            #
+#-----------------------------------#
