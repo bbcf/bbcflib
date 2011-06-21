@@ -6,7 +6,7 @@ Module: bbcflib.chipseq
 This module provides functions to run a basic ChIP-seq analysis from reads mapped on
 a reference genome.
 The most important steps are the binding of ``macs`` via the 'add_macs_results' function and
-the peak deconvolution algorithm with the 'run_deconv' function. 
+the peak deconvolution algorithm with the 'run_deconv' function.
 
 The whole workflow can be run via the function ``workflow_groups`` with appropriate options in 'job.options'.
 
@@ -51,8 +51,8 @@ def macs( read_length, genome_size, bamfile, ctrlbam=None, args=[] ):
     """Binding for the ``macs`` peak caller.
 
     takes one (optionally two) bam file(s) and
-    the 'read_length' and 'genome_size' parameters passed to ``macs``. 
-    
+    the 'read_length' and 'genome_size' parameters passed to ``macs``.
+
     Returns the file prefix ('-n' option of ``macs``)
     """
     outname = unique_filename_in()
@@ -66,11 +66,11 @@ def macs( read_length, genome_size, bamfile, ctrlbam=None, args=[] ):
 def add_macs_results( ex, read_length, genome_size, bamfile,
                       ctrlbam=[None], name=None, poisson_threshold={},
                       alias=None, macs_args=[], via='lsf' ):
-    """Calls the ``macs`` function on each possible pair 
-    of test and control bam files and adds 
+    """Calls the ``macs`` function on each possible pair
+    of test and control bam files and adds
     the respective outputs to the execution repository.
 
-    ``macs`` options can be controlled with `macs_args`. 
+    ``macs`` options can be controlled with `macs_args`.
     If a dictionary of Poisson thresholds for each sample is given, then the enrichment bounds ('-m' option)
     are computed from them otherwise the default is '-m 5,60'.
 
@@ -97,7 +97,7 @@ def add_macs_results( ex, read_length, genome_size, bamfile,
                 nm = (n,)
             else:
                 nm = (n,m)
-            futures[nm] = macs.nonblocking( ex, rl, genome_size, bam, cam, 
+            futures[nm] = macs.nonblocking( ex, rl, genome_size, bam, cam,
                                             args=macs_args+["-m",enrich_bounds],
                                             via=via )
     prefixes = dict((n,f.wait()) for n,f in futures.iteritems())
@@ -119,26 +119,26 @@ def add_macs_results( ex, read_length, genome_size, bamfile,
 @program
 def sql_prepare_deconv(sql_dict,peaks_bed,chr_name,chr_length,cutoff,read_extension):
     """Prepares files for the deconvolution algorithm.
-    Calls the stand-alone ``sql_prepare_deconv.py`` script which needs 
-    a dictionary of sql files (quantitative tracks for forward and reverse strand) 
+    Calls the stand-alone ``sql_prepare_deconv.py`` script which needs
+    a dictionary of sql files (quantitative tracks for forward and reverse strand)
     and a bed file (*_peaks.bed file from ``macs``) of enriched regions to consider.
     Returns the name of an 'Rdata' file to be passed to the *R* deconvolution script.
     """
     out = unique_filename_in()
     args = [sql_dict['fwd'],sql_dict['rev'],peaks_bed,out,chr_name,
             str(chr_length),str(cutoff),str(read_extension)]
-    return {"arguments": ["sql_prepare_deconv.py"]+args, 
+    return {"arguments": ["sql_prepare_deconv.py"]+args,
             "return_value": out}
 
 @program
 def run_deconv_r( counts_file, read_extension, chr_name, script_path ):
-    """Runs the 'deconv.R' script (found under 'script_path') on the 'counts_file' 
+    """Runs the 'deconv.R' script (found under 'script_path') on the 'counts_file'
     input with parameters 'chr_name' (name of chromosome to process) and 'read_extension'.
-    Returns the pdf file and the 'Rdata' output. 
+    Returns the pdf file and the 'Rdata' output.
     """
     pdf_file = unique_filename_in()
     output_file = unique_filename_in()
-    rargs = [counts_file, pdf_file, str(read_extension), 
+    rargs = [counts_file, pdf_file, str(read_extension),
              chr_name, output_file, script_path]
     return {'arguments': ["R","--vanilla","--slave","-f",
                           os.path.join(script_path,"deconv.R"),
@@ -148,23 +148,23 @@ def run_deconv_r( counts_file, read_extension, chr_name, script_path ):
 @program
 def sql_finish_deconv(sqlout,rdata):
     """Binds the ``sql_finish_deconv.py`` scripts which creates an sqlite file from
-    'run_deconv''s output. 
+    'run_deconv''s output.
     """
-    return {"arguments": ["sql_finish_deconv.py",rdata,sqlout], 
+    return {"arguments": ["sql_finish_deconv.py",rdata,sqlout],
             "return_value": sqlout}
 
 def run_deconv(ex,sql,peaks,chromosomes,read_extension,script_path, via='lsf'):
     """Runs the complete deconvolution process for a set of sql files and a bed file,
-    parallelized over a set of chromosomes (a dictionary with keys 'chromosome_id' 
+    parallelized over a set of chromosomes (a dictionary with keys 'chromosome_id'
     and values a dictionary with chromosome names and lengths).
-   
-    Returns a dictionary of file outputs with keys file types 
+
+    Returns a dictionary of file outputs with keys file types
     ('pdf', 'sql' and 'bed') and values the file names.
     """
     prep_futures = dict((c['name'],
-                         sql_prepare_deconv.nonblocking( ex, sql, peaks, 
+                         sql_prepare_deconv.nonblocking( ex, sql, peaks,
                                                          c['name'], c['length'],
-                                                         1500, read_extension, 
+                                                         1500, read_extension,
                                                          via=via ))
                         for c in chromosomes.values())
     rdeconv_futures = dict((c,
@@ -189,10 +189,10 @@ def run_deconv(ex,sql,peaks,chromosomes,read_extension,script_path, via='lsf'):
     else:
         outfiles['pdf'] = rdeconv_out.values()[0]['pdf']
     return outfiles
-    
+
 ###################### Workflow ####################
 
-def get_bam_wig_files( ex, job, minilims=None, hts_url=None, 
+def get_bam_wig_files( ex, job, minilims=None, hts_url=None,
                        script_path = './', via='lsf' ):
     """
     Will replace file references by actual file paths in the 'job' object.
@@ -236,7 +236,7 @@ def get_bam_wig_files( ex, job, minilims=None, hts_url=None,
                                 for x in MMS.search_files(source=('execution',exid)))
                 with open(MMS.path_to_file(allfiles['py:file_names'])) as q:
                     file_names = pickle.load(q)
-#                ms_name = file_names[gid][rid] 
+#                ms_name = file_names[gid][rid]
                 stats_id = allfiles.get("py:"+name+"_filter_bamstat") or allfiles.get("py:"+name+"_full_bamstat")
                 with open(MMS.path_to_file(stats_id)) as q:
                     s = pickle.load(q)
@@ -257,12 +257,12 @@ def get_bam_wig_files( ex, job, minilims=None, hts_url=None,
                     wig = dict((x[1],s) for x,s in wig_ids.iteritems())
             else:
                 raise ValueError("Couldn't find this bam file anywhere: %s." %file_loc)
-            mapped_files[gid][rid] = {'bam': bamfile, 
+            mapped_files[gid][rid] = {'bam': bamfile,
                                       'stats': s or bamstats.nonblocking( ex, bamfile, via=via ),
-                                      'poisson_threshold': p_thresh, 
-                                      'libname': name, 
+                                      'poisson_threshold': p_thresh,
+                                      'libname': name,
                                       'wig': wig}
-    if not('read_extension' in job.options): 
+    if not('read_extension' in job.options):
         c = dict((x,0) for x in read_exts.values())
         for x in read_exts.values():
             c[x]+=1
@@ -275,22 +275,22 @@ def get_bam_wig_files( ex, job, minilims=None, hts_url=None,
                 stats = mapped_files[gid][rid]['stats'].wait()
                 mapped_files[gid][rid]['stats'] = stats
                 pdf = add_pdf_stats( ex, {gid:{rid:{'stats':stats}}},
-                                     {gid: mapped_files[gid][rid]['libname']}, 
+                                     {gid: mapped_files[gid][rid]['libname']},
                                      script_path )
                 mapped_files[gid][rid]['p_thresh'] = poisson_threshold( 50*stats["actual_coverage"] )
     return (mapped_files,job)
 
 
-def workflow_groups( ex, job_or_dict, mapseq_files, chromosomes, script_path='', 
+def workflow_groups( ex, job_or_dict, mapseq_files, chromosomes, script_path='',
                      via='lsf' ):
     """Runs a chipseq workflow over bam files obtained by mapseq. Will optionally run ``macs`` and 'run_deconv'.
-    
+
     Arguments are:
 
     * ``'ex'``: a 'bein' execution environment to run jobs in,
-    
+
     * ``'job_or_dict'``: a 'Frontend' 'job' object, or a dictionary with key 'groups' and 'options' if applicable,
-    
+
     * ``'chromosomes'``: a dictionary with keys 'chromosome_id' and values a dictionary with chromosome names and lengths,
 
     * ``'script_path'``: only needed if 'run_deconv' is in the job options, must point to the location of the R scripts.
@@ -302,7 +302,7 @@ def workflow_groups( ex, job_or_dict, mapseq_files, chromosomes, script_path='',
     * ``'-bw'``: 200 ('bandwith')
 
     * ``'-m'``: 5,60 ('minimum and maximum enrichments relative to background or control')
-    
+
     The enrichment bounds will be computed from a Poisson threshold *T*, if available, as *(min(30,T+1),30(T+1))*.
 
     Returns a tuple of a dictionary with keys *group_id* from the job groups, *macs* and *deconv* if applicable and values file description dictionaries and a dictionary of *group_ids* to *names* used in file descriptions.
@@ -369,7 +369,7 @@ def workflow_groups( ex, job_or_dict, mapseq_files, chromosomes, script_path='',
         controls = [None]
         names['controls'] = [None]
     processed = {'macs': add_macs_results( ex, read_length, genome_size,
-                                           tests, ctrlbam=controls, name=names, 
+                                           tests, ctrlbam=controls, name=names,
                                            poisson_threshold=p_thresh,
                                            macs_args=macs_args, via=via ) }
     if peak_deconvolution:
@@ -388,22 +388,22 @@ def workflow_groups( ex, job_or_dict, mapseq_files, chromosomes, script_path='',
                 if merge_strands >= 0 or not('wig' in m) or len(m['wig'])<2:
                     output = unique_filename_in()
                     touch(ex,output)
-                    [create_sql_track( output+s+'.sql', chromosomes ) 
+                    [create_sql_track( output+s+'.sql', chromosomes )
                      for s in suffixes]
-                    mapseq.parallel_density_sql( ex, m["bam"], 
+                    mapseq.parallel_density_sql( ex, m["bam"],
                                                  output, chromosomes,
-                                                 nreads=m["stats"]["total"], 
+                                                 nreads=m["stats"]["total"],
                                                  merge=-1,
-                                                 convert=False, 
+                                                 convert=False,
                                                  b2w_args=b2w_args, via=via )
                     wig.append(dict((s,output+s+'.sql') for s in suffixes))
                 else:
                     wig.append(m['wig'])
             if len(wig) > 1:
-                merged_wig[group_name] = dict((s, 
+                merged_wig[group_name] = dict((s,
                                                merge_sql(ex, [x[s] for x in wig],
                                                          [m['libname'] for m in mapped.values()] ,
-                                                         description="sql:"+group_name+"_"+s+".sql")) 
+                                                         description="sql:"+group_name+"_"+s+".sql"))
                                               for s in suffixes)
             else:
                 merged_wig[group_name] = wig[0]
@@ -411,7 +411,7 @@ def workflow_groups( ex, job_or_dict, mapseq_files, chromosomes, script_path='',
             if names['controls']==[None]:
                 macsbed = processed['macs'][(name,)]+"_peaks.bed"
             else:
-                macsbed = merge_many_bed(ex,[processed['macs'][(name,x)]+"_peaks.bed" 
+                macsbed = merge_many_bed(ex,[processed['macs'][(name,x)]+"_peaks.bed"
                                              for x in names['controls']],via=via)
             deconv = run_deconv( ex, merged_wig[name], macsbed, chromosomes,
                                  options['read_extension'], script_path, via=via )

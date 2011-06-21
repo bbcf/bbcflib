@@ -27,11 +27,11 @@ def get_config_file_parser():
     file = cStringIO.StringIO()
     file.write(test_config_file)
     file.seek(0)
-    config = ConfigParser.ConfigParser() 
+    config = ConfigParser.ConfigParser()
     config.readfp(file)
     return config
 
-################################################################################### 
+###################################################################################
 class TestEmailReport(unittest.TestCase):
     def setUp(self):
         self.report = EmailReport(sender='nobody@localhost',
