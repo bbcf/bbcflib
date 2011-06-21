@@ -51,7 +51,6 @@ import tarfile
 import re
 import os
 from urlparse import urlparse
-from ConfigParser import ConfigParser
 from bein import unique_filename_in
 
 class DAFLIMS(object):

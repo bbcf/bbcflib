@@ -80,7 +80,7 @@ import shutil
 import gzip
 import tarfile
 import pickle
-import urllib, urllib2
+import urllib
 from bbcflib import frontend, genrep, daflims, common
 from numpy import *
 from scipy.misc import factorial

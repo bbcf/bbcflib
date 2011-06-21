@@ -8,7 +8,7 @@ from operator       import add
 from BeautifulSoup  import BeautifulSoup
 from bein           import *
 from bein.util      import *
-from bbcflib        import common, genrep
+from bbcflib        import common
 from bbcflib.track.format_sql import Track, new
 
 @program
