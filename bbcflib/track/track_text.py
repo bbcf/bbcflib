@@ -32,7 +32,7 @@ class TextTrack(object):
         self._seen_chr  = set()
         def get_next_entry():
             global entry, generator
-            entry = generator.next()    
+            entry = generator.next()
         def iter_until_different_chr():
             global chrom, entry
             while True:
@@ -61,7 +61,7 @@ class TextTrack(object):
         result = []
         with open(self.chrfile, 'r') as f:
             for line in f:
-                line = line.strip('\n')            
+                line = line.strip('\n')
                 if len(line) == 0:       continue
                 if line.startswith("#"): continue
                 if line.endswith(" \\"):
@@ -85,7 +85,7 @@ class TextTrack(object):
     @memoized_method
     def _meta_track(self):
         self._file.seek(0)
-        result = {}    
+        result = {}
         for line in self._file:
             line = line.strip("\n").lstrip()
             if len(line) == 0:              continue
@@ -103,7 +103,7 @@ class TextTrack(object):
     @property
     def _all_chrs(self):
        return [x['name'] for x in self._meta_chr]
-   
+
     @property
     def _header_line(self):
         self.meta_track_dict = self.meta_track
@@ -111,7 +111,7 @@ class TextTrack(object):
         self.meta_track_dict['converted_by']   = __package__
         self.meta_track_dict['converted_from'] = self.path
         return "track " + ' '.join([key + '="' + value + '"' for key, value in self.meta_track_dict.items()]) + '\n'
- 
+
     #-----------------------------------------------------------------------------#
     @staticmethod
     def create(path, datatype, name):

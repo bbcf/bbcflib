@@ -32,7 +32,7 @@ def path_to_bowtie_index(ex, assembly_id):
     for a in nr_assemblies:
         if a['nr_assembly']['id'] == assembly_id:
             mdfive = a['nr_assembly']['md5']; break
-            
+
     if isinstance(assembly_id, str):
         if os.path.exists(assembly_id + ".1.ebwt"):
             print "Index found in", os.path.dirname(assembly_id)
@@ -75,7 +75,7 @@ def fetch_read_files(ex, runs):
             daflims = DAFLIMS(username='jrougemont', password='cREThu6u')
             for run in run_list:
                 filename = unique_filename_in()
-                files[group_id].append(daflims.fetch_fastq(str(run['facility']), str(run['machine']), 
+                files[group_id].append(daflims.fetch_fastq(str(run['facility']), str(run['machine']),
                                                     run['run'], run['lane'], filename))
     return files
 
@@ -93,7 +93,7 @@ def fetch_transcript_mapping(ex, assembly_id):
     for a in nr_assemblies:
         if a['nr_assembly']['id'] == assembly_id:
             mdfive = a['nr_assembly']['md5']
-    
+
     if isinstance(assembly_id, str):
         pickle_path = assembly_id + '.pickle'
         if os.path.exists(pickle_path):
@@ -159,7 +159,7 @@ def align_reads(ex, index, read_files, via="lsf"):
     ##     ex.add(sorted_files.values()[1][0], alias="bam2_bb27")
     ##     ex.add(indexes.values()[0][0], alias="index1_bb27")
     ##     ex.add(indexes.values()[1][0], alias="index2_bb27")
-    
+
     return sorted_files
 
 def exons_labels(bamfile):
@@ -206,7 +206,7 @@ def pairs_to_test(controls):
 def external_deseq(cond1_label, cond1, cond2_label, cond2, transcript_names, method="normal", assembly_id=None, output=None, maplot=None):
     if output:
         result_filename = output
-    else: 
+    else:
         result_filename = unique_filename_in()
     c1 = unique_filename_in()
     with open(c1,'wb') as f:
@@ -258,7 +258,7 @@ def inference(cond1_label, cond1, cond2_label, cond2, transcript_names, method="
                                       [(cond2_label+'-'+str(i), robjects.IntVector(c))
                                        for i,c in enumerate(cond2)])
     data_frame = robjects.DataFrame(data_frame_contents)
-    data_frame.rownames = transcript_names    
+    data_frame.rownames = transcript_names
     conds = robjects.StrVector([cond1_label for x in cond1] + [cond2_label for x in cond2]).factor()
 
     ## DESeq full analysis
@@ -337,13 +337,13 @@ def rnaseq_workflow(job, lims_path="rnaseq", via="lsf", job_or_dict="job", maplo
     it returns in some sensible way.  For the usual HTSStation
     frontend, this just means printing it to stdout.
     """
-    
+
     """ Groups as given by the frontend is not that useful. Pull it apart
     into more useful pieces. """
     names = {}
     runs = {}
     controls = {}
-    
+
     if job_or_dict == "job":
         groups = job.groups
         assembly_id = job.assembly_id
@@ -361,14 +361,14 @@ def rnaseq_workflow(job, lims_path="rnaseq", via="lsf", job_or_dict="job", maplo
         print "Current working directory:", os.getcwd()
         bowtie_index = path_to_bowtie_index(ex, assembly_id)
         print "Bowtie index:", bowtie_index
-        
+
         """ gene_labels is a list whose ith entry is a string giving
         the name of the gene assigned id i. The ids are arbitrary.
         exon_mapping is a list whose ith entry is the integer id in
         gene_labels exon i maps to."""
         (gene_labels,exon_mapping) = fetch_transcript_mapping(ex, assembly_id)
         exon_mapping = numpy.array(exon_mapping)
-        
+
         fastq_files = fetch_read_files(ex, runs)
         print "FastQ files:", [os.path.basename(f[0]['path']) for f in fastq_files.values()]
         bam_files = align_reads(ex, bowtie_index, fastq_files, via=via)
@@ -378,7 +378,7 @@ def rnaseq_workflow(job, lims_path="rnaseq", via="lsf", job_or_dict="job", maplo
         #index1 = ex.use("index1"); index2 = ex.use("index2")
         #bam_files = {1:[bam1], 2:[bam2]}
         #os.rename(index1, bam1+".bai"); os.rename(index2, bam2+".bai")
-        
+
         print "Stats..."
         stats = {}
         for group_id,files in bam_files.iteritems():
@@ -414,7 +414,7 @@ def rnaseq_workflow(job, lims_path="rnaseq", via="lsf", job_or_dict="job", maplo
                 for i,c in enumerate(exon_pileup):
                     gene_pileup[exon_mapping[i]] += c
                 gene_pileups[condition].append(gene_pileup)
-                
+
         futures = {}
         for (c1,c2) in pairs_to_test(controls):
             if len(runs[c1]) + len(runs[c2]) > 2:
@@ -423,29 +423,29 @@ def rnaseq_workflow(job, lims_path="rnaseq", via="lsf", job_or_dict="job", maplo
                 method = "blind";
             print "Inference..."
             output = None
-            
+
             try:
                 csvfile = external_deseq.nonblocking(ex,
-                                          names[c1], gene_pileups[c1], 
+                                          names[c1], gene_pileups[c1],
                                           names[c2], gene_pileups[c2],
-                                          gene_labels, 
+                                          gene_labels,
                                           method, assembly_id, output, maplot,
                                           via=via)
                 print "Wait for results..."
                 a = ex.add(csvfile.wait(), description="Comparison of exons in conditions '%s' and '%s' (CSV)" % (names[c[0]], names[c[1]]))
                 print a
             except: print "Failed during Inference"
-            
+
         ##     futures[(c1,c2)] = [external_deseq.nonblocking(ex,
-        ##                                   names[c1], exon_pileups[c1], 
+        ##                                   names[c1], exon_pileups[c1],
         ##                                   names[c2], exon_pileups[c2],
         ##                                   [x[0].split("|")[0]+"|"+x[0].split("|")[1] for x in exons],
         ##                                   method, assembly_id, output, maplot,
         ##                                   via=via)
         ##                         ,external_deseq.nonblocking(ex,
-        ##                                   names[c1], gene_pileups[c1], 
+        ##                                   names[c1], gene_pileups[c1],
         ##                                   names[c2], gene_pileups[c2],
-        ##                                   gene_labels, 
+        ##                                   gene_labels,
         ##                                   method, assembly_id, output, maplot,
         ##                                   via=via)
         ##                         ]
@@ -454,5 +454,5 @@ def rnaseq_workflow(job, lims_path="rnaseq", via="lsf", job_or_dict="job", maplo
         ## for c,f in futures.iteritems():
         ##     ex.add(f[0].wait(), description="Comparison of exons in conditions '%s' and '%s' (CSV)" % (names[c[0]], names[c[1]]))
         ##     ex.add(f[1].wait(), description="Comparison of genes in conditions '%s' and '%s' (CSV)" % (names[c[0]], names[c[1]]))
-            
+
     return results_to_json(M, ex.id)

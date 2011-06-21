@@ -16,7 +16,7 @@ else:
         pass
 
 # Tracks collection #
-yeast_chr_file = tracks_path + 'chr/yeast.chr' 
+yeast_chr_file = tracks_path + 'chr/yeast.chr'
 track_collections = {
 'Validation': {
   1: {'path':tracks_path+'qual/bed/validation1.bed', 'type':'qualitative', ' fields':Track.qualitative_fields[:4], 'chrfile':yeast_chr_file},
@@ -59,7 +59,7 @@ for col_name, col in sorted(track_collections.items()):
         new_name = '.'.join(old_name.split('.')[:-1]  + ['sql'])
         track['path_sql'] = new_dir + new_name
         # Make a name #
-        track['name'] = col_name + ' ' + str(track_num) 
+        track['name'] = col_name + ' ' + str(track_num)
 
 # Extra test tracks #
 parser_tests = []

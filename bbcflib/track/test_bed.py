@@ -26,7 +26,7 @@ class Test_Read(unittest.TestCase):
             data = t['track'].read()
             self.assertEqual(len(list(data)), 12)
 
-#-----------------------------------------------------------------------------#   
+#-----------------------------------------------------------------------------#
 class Test_Write(unittest.TestCase):
     def runTest(self):
         path = named_temporary_path('.bed')
@@ -42,7 +42,7 @@ class Test_Write(unittest.TestCase):
         self.assertEqual(A[1:], B)
         os.remove(path)
 
-#-----------------------------------------------------------------------------#   
+#-----------------------------------------------------------------------------#
 class Test_Roundtrips(unittest.TestCase):
     def runTest(self):
         path = named_temporary_path('.bed')

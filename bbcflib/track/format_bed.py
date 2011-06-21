@@ -66,7 +66,7 @@ class GenomicFormat(TextTrack, ProxyTrack):
 
     def _write(self):
         # Get fields #
-        fields = ['start', 'end'] 
+        fields = ['start', 'end']
         for f in all_fields_possible[2:]:
             if f in self.fields: fields.append(f)
             else: break
@@ -108,8 +108,8 @@ class GenomicFormat(TextTrack, ProxyTrack):
 
     #-----------------------------------------------------------------------------#
     @property
-    def _datatype(self): 
-        return 'qualitative' 
+    def _datatype(self):
+        return 'qualitative'
 
     @_datatype.setter
     def _datatype(self, datatype):
@@ -129,7 +129,7 @@ def random_track(number_of_features=15000000, size=1000, jump=1000, orig_start=0
             start = orig_start
         start       =   start + (random.randint(0,jump))
         end         =   start + (random.randint(1,size))
-        thick_start =   start + (random.randint(-size*0.25,size*0.25)) 
+        thick_start =   start + (random.randint(-size*0.25,size*0.25))
         thick_end   =   end   + (random.randint(-size*0.25,size*0.25))
         name        = name_gen.next() + name_gen.next()
         strand      = random.random() < 0.5 and '+' or '-'

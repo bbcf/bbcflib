@@ -24,11 +24,11 @@ ce6 = Assembly(assembly_id = 14,
                index_path = '/scratch/frt/yearly/genrep/nr_assemblies/bowtie/fd5631288b9cd427bf329e8868fb4c988752b2c5')
 
 ce6.chromosomes = {(3067, u'NC_003280', 7): {'length': 15279323, 'name': u'chrII'},
-                   (3069, u'NC_003282', 5): {'length': 17493785, 'name': u'chrIV'}, 
-                   (3068, u'NC_003281', 8): {'length': 13783681, 'name': u'chrIII'}, 
+                   (3069, u'NC_003282', 5): {'length': 17493785, 'name': u'chrIV'},
+                   (3068, u'NC_003281', 8): {'length': 13783681, 'name': u'chrIII'},
                    (3070, u'NC_003283', 8): {'length': 20919568, 'name': u'chrV'},
-                   (3071, u'NC_003284', 7): {'length': 17718854, 'name': u'chrX'}, 
-                   (3066, u'NC_003279', 6): {'length': 15072421, 'name': u'chrI'}, 
+                   (3071, u'NC_003284', 7): {'length': 17718854, 'name': u'chrX'},
+                   (3066, u'NC_003279', 6): {'length': 15072421, 'name': u'chrI'},
                    (2948, u'NC_001328', 1): {'length': 13794, 'name': u'chrM'}}
 
 #--------------------------------------------------------------------------------#
@@ -39,11 +39,11 @@ def get_config_file_parser():
     file = cStringIO.StringIO()
     file.write(test_config_file)
     file.seek(0)
-    config = ConfigParser.ConfigParser() 
+    config = ConfigParser.ConfigParser()
     config.readfp(file)
     return config
 
-################################################################################### 
+###################################################################################
 class TestGenRep(unittest.TestCase):
     def setUp(self):
         self.genrep = GenRep('http://bbcftools.vital-it.ch/genrep/',
@@ -81,7 +81,7 @@ class TestGenRep(unittest.TestCase):
         self.assertEqual(a.md5, b.md5)
         self.assertEqual(a.source_id, b.source_id)
         self.assertEqual(a.created_at, b.created_at)
-        self.assertEqual(a.chromosomes, b.chromosomes)        
+        self.assertEqual(a.chromosomes, b.chromosomes)
 
     def test_assembly_with_name(self):
         a = self.genrep.assembly('ce6')

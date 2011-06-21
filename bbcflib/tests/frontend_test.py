@@ -10,7 +10,7 @@ from ..frontend import Frontend
 # Other modules #
 import datetime
 
-################################################################################### 
+###################################################################################
 class TestFrontend(unittest.TestCase):
     def setUp(self):
         self.skipTest("The frontend is currently under heavy changes")
@@ -46,13 +46,13 @@ class TestFrontend(unittest.TestCase):
         self.frontend_job.add_group(id=3,
                                     control=False,
                                     name=u'My first group')
-        self.frontend_job.add_run(id=5, group=3, 
+        self.frontend_job.add_run(id=5, group=3,
                                   facility=u"lgtf", facility_location=u"Lausanne",
-                                  machine=u"C3PO", machine_id=1, 
+                                  machine=u"C3PO", machine_id=1,
                                   run=36, lane=1)
-        self.frontend_job.add_run(id=6, group=3, 
+        self.frontend_job.add_run(id=6, group=3,
                                   facility=u"lgtf", facility_location=u"Lausanne",
-                                  machine=u"C3PO", machine_id=1, 
+                                  machine=u"C3PO", machine_id=1,
                                   run=36, lane=2)
         self.frontend_job.add_group(id=4, control=True, name=u'Other group')
         self.frontend_job.add_run(id=7, group=4,
@@ -75,15 +75,15 @@ class TestFrontend(unittest.TestCase):
 
     def test_fetch_groups(self):
         self.assertEqual(self.f._fetch_groups(self.key),
-                         [{'control': False, 
-                           'created_at': datetime.datetime(2010, 12, 30, 13, 29, 54), 
+                         [{'control': False,
+                           'created_at': datetime.datetime(2010, 12, 30, 13, 29, 54),
                            'id': 3,
                            'job_id': 2,
-                           'name': u'My first group'}, 
-                          {'control': True, 
+                           'name': u'My first group'},
+                          {'control': True,
                            'created_at': datetime.datetime(2010, 12, 30, 13, 29, 54),
-                           'id': 4, 
-                           'job_id': 2, 
+                           'id': 4,
+                           'job_id': 2,
                            'name': u'Other group'}])
 
     def test_fetch_runs(self):
@@ -93,19 +93,19 @@ class TestFrontend(unittest.TestCase):
                            'run': 36, 'facility_name': u'lgtf', 'group_id': 3, 'id': 5,
                            'facility_location': u'Lausanne'},
                           {'created_at': datetime.datetime(2010, 12, 30, 13, 29, 54),
-                           'lane': 2, 'machine_name': u'C3PO', 'machine_id': 1, 
+                           'lane': 2, 'machine_name': u'C3PO', 'machine_id': 1,
                            'run': 36, 'facility_name': u'lgtf', 'group_id': 3, 'id': 6,
-                           'facility_location': u'Lausanne'}, 
-                          {'created_at': datetime.datetime(2010, 12, 30, 13, 29, 54), 
+                           'facility_location': u'Lausanne'},
+                          {'created_at': datetime.datetime(2010, 12, 30, 13, 29, 54),
                            'lane': 3, 'machine_name': u'C3PO', 'machine_id': 1,
                            'run': 37, 'facility_name': u'lgtf', 'group_id': 4, 'id': 7,
                            'facility_location': u'Lausanne'}])
 
     def test_fetch_job(self):
         self.assertEqual(self.f._fetch_job(self.key),
-                         {'description': u'Job for testing Frontend module', 
+                         {'description': u'Job for testing Frontend module',
                           'assembly_id': 14,
-                          'created_at': datetime.datetime(2010, 12, 30, 13, 29, 54), 
+                          'created_at': datetime.datetime(2010, 12, 30, 13, 29, 54),
                           'id': 2,
                           'key': u'9pv1x7PamOj80eXnZa14',
                           'email': u'madhadron@gmail.com',

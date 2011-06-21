@@ -20,7 +20,7 @@ class ProxyTrack(SQLTrack):
         # Parameters with underscore refer to the underlying track #
         self._path     = path
         self._format   = format
-        self._datatype = datatype 
+        self._datatype = datatype
         # Parameters without the underscore refer to the exposed track #
         self.chrfile  = chrfile
         self.modified = False
@@ -54,7 +54,7 @@ class ProxyTrack(SQLTrack):
     def commit(self):
         super(ProxyTrack, self).commit()
         self.dump()
-    
+
     def dump(self, path=None):
         if not path: path = self._path
         elif os.path.exists(path): raise Exception("The location '" + path + "' is already taken")
@@ -78,9 +78,9 @@ class ProxyTrack(SQLTrack):
     @property
     def _fields(self):
         return self.default_fields
-    
+
     @property
-    def _datatype(self): 
+    def _datatype(self):
         raise NotImplementedError
 
     @_datatype.setter
@@ -89,7 +89,7 @@ class ProxyTrack(SQLTrack):
 
     #-----------------------------------------------------------------------------#
     @property
-    def meta_chr(self): 
+    def meta_chr(self):
         return super(ProxyTrack, self).meta_chr
 
     @meta_chr.setter
@@ -98,11 +98,11 @@ class ProxyTrack(SQLTrack):
         super(ProxyTrack, self).set_meta_chr(data)
 
     @property
-    def meta_track(self): 
+    def meta_track(self):
         return super(ProxyTrack, self).meta_track
-    
+
     @meta_track.setter
-    def meta_track(self, data): 
+    def meta_track(self, data):
         self.modified = True
         super(ProxyTrack, self).set_meta_track(data)
 
@@ -118,7 +118,7 @@ class ProxyTrack(SQLTrack):
     @property
     def default_fields(self):
         return getattr(Track, self._datatype + '_fields')
-   
+
 #-----------------------------------#
 # This code was written by the BBCF #
 # http://bbcf.epfl.ch/              #

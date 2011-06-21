@@ -9,7 +9,7 @@ import urllib, urllib2
 import json
 from bbcflib.common import normalize_url
 ############ GDV requests ############
-                                                                                                                                  
+
 def create_gdv_project( gdv_key, gdv_email,
                         name, run_key, nr_assembly_id,
                         gdv_url="http://svitsrv25.epfl.ch/gdv", public=False ):
@@ -20,18 +20,18 @@ def create_gdv_project( gdv_key, gdv_email,
     :param nr_assembly_id: the nrAssembly identifier of the species in Genrep
     :param name: name of the project
     :param public: 'true' to make the project public -optionnal-
-    :rtype: a json : {'project_id':<the id>,'public_url':<the public url>} or {'project_id':<the id>} if you didn't make the 
-    project public 
+    :rtype: a json : {'project_id':<the id>,'public_url':<the public url>} or {'project_id':<the id>} if you didn't make the
+    project public
     '''
-    request = { "id": "gdv_post", 
+    request = { "id": "gdv_post",
                 "mail": gdv_email,
-                "key": gdv_key, 
+                "key": gdv_key,
                 "command": "new_project",
                 "name": str(name),
                 "seq_id": str(nr_assembly_id),
                 "public": str(public).lower() }
     gdv_url = normalize_url(gdv_url)+"/post"
-    return json.load(urllib2.urlopen( gdv_url, urllib.urlencode(request))) 
+    return json.load(urllib2.urlopen( gdv_url, urllib.urlencode(request)))
 
 def get_project_id(json):
     return json['project_id']
@@ -62,11 +62,11 @@ def add_gdv_track( gdv_key, gdv_email,
     if sqlite:
         request["command"] = "add_sqlite"
         request["datatype"] = datatype
-    if name != None: 
+    if name != None:
         request['name']=name
     gdv_url = normalize_url(gdv_url)+"/post"
     return urllib2.urlopen( gdv_url, urllib.urlencode(request) ).read()
-    
+
 def add_gdv_sqlite( gdv_key, gdv_email,
                     project_id,
                     url,
@@ -91,7 +91,7 @@ def add_sql_files( gdv_key, gdv_email,
     serv_url = normalize_url(serv_url)
     return [add_gdv_track( gdv_key, gdv_email, project_id,
                            serv_url+"/"+f, names[i],
-                           gdv_url, dataype, True ) 
+                           gdv_url, dataype, True )
             for i,f in enumerate(files)]
 
 #-----------------------------------#
