@@ -24,7 +24,6 @@ method with a job key.::
 """
 import urllib2
 import json
-from ConfigParser import ConfigParser
 from datetime import datetime
 
 from common import normalize_url

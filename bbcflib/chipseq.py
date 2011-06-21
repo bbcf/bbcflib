@@ -36,10 +36,9 @@ Below is the script used by the frontend::
     print allfiles
 """
 
-import sqlite3
 import shutil
 import pickle
-import urllib, urllib2
+import urllib
 from bein import *
 from bein.util import *
 from bbcflib import frontend, mapseq
