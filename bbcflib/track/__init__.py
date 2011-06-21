@@ -71,7 +71,7 @@ To set the chromosome metadata or the track metadata you simply asign to that at
 import os, sys
 
 # Specific Modules #
-import bbcflib.common as com
+from .. import common as com
 
 #-----------------------------------------------------------------------------#
 def _determine_format(path):
