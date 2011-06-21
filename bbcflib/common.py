@@ -153,7 +153,7 @@ terminal_colors = {
 
 ###############################################################################
 def get_files( id_or_key, minilims ):
-    """Retrieves a dictionary of files CREATEd by htsstation job identified by its key or bein id in a MiniLIMS.
+    """Retrieves a dictionary of files created by htsstation job identified by its key or bein id in a MiniLIMS.
 
     The dictionarie's keys are the file types (e.g. 'pdf', 'bam', 'py' for python objects), the values are dictionaries with keys repository file names and values actual file descriptions (names to provide in the user interface).
     """
@@ -310,6 +310,7 @@ def uncompress(path):
     output = unique_filename_in()
     call = ["tar", "xvf", path]
     return {"arguments": call, "return_value": output}
+
 
 #-----------------------------------#
 # This code was written by the BBCF #

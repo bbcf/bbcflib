@@ -621,7 +621,7 @@ def densities_groups( ex, job_or_dict, file_dict, chromosomes, via='lsf' ):
             output = unique_filename_in()
             touch(ex,output)
             [common.create_sql_track( output+s+'.sql', chromosomes ) for s in suffixes]
-            wig.append(parallel_density_sql( ex, m["bam"], output, None,
+            wig.append(parallel_density_sql( ex, m["bam"], output, chromosomes,
                                              nreads=m["stats"]["total"], 
                                              merge=merge_strands, 
                                              convert=False,
@@ -727,6 +727,7 @@ def import_mapseq_results( key_or_id, minilims, ex_root, url_or_dict ):
                                    'wig': dict((x[1],s) 
                                                for x,s in wig_ids.iteritems())}
     return (processed,job)
+
 
 #-----------------------------------#
 # This code was written by the BBCF #
