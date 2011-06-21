@@ -336,12 +336,14 @@ class Track(object):
         '''
         raise NotImplementedError
 
-    def convert(self, path, format='sql'):
+    def convert(self, path, format='sql', chrfile=None):
         '''Convert a track to a given format.
 
            * *path* is the file path where the new track will be created
 
            * *format* is the format into which the track will be converted.
+
+           * *chrfile* is the path to a chromosomes file if one is needed.
 
            Examples::
 
@@ -354,7 +356,7 @@ class Track(object):
         '''
         if format == self.format:
             raise Exception("The track '" + path + "' cannot be converted to the " + format + " format because it is already in that format.")
-        with new(path, format, self.datatype, self.name) as t:
+        with new(path, format, self.datatype, self.name, chrfile) as t:
             t.meta_track = self.meta_track
             t.meta_chr   = self.meta_chr
             for chrom in self.all_chrs: t.write(chrom, self.read(chrom), self.fields)
