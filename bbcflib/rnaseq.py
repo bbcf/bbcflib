@@ -1,5 +1,3 @@
-#!/bin/env python
-
 """
 ======================
 Module: bbcflib.rnaseq
@@ -12,7 +10,6 @@ import json
 import pysam
 import numpy
 import urllib
-import time
 from itertools import combinations
 from bein.util import *
 from bbcflib import *
@@ -21,7 +18,6 @@ import rpy2.robjects as robjects
 import rpy2.robjects.packages as rpackages
 import rpy2.robjects.numpy2ri
 import rpy2.rlike.container as rlc
-from maplot import MAplot
 
 def path_to_bowtie_index(ex, assembly_id):
     """Return full path to usable bowtie index.
@@ -36,7 +32,6 @@ def path_to_bowtie_index(ex, assembly_id):
     for a in nr_assemblies:
         if a['nr_assembly']['id'] == assembly_id:
             mdfive = a['nr_assembly']['md5']; break
-    #mdfive = "bb27b89826b88823423282438077cdb836e1e6e5"
             
     if isinstance(assembly_id, str):
         if os.path.exists(assembly_id + ".1.ebwt"):
@@ -98,7 +93,6 @@ def fetch_transcript_mapping(ex, assembly_id):
     for a in nr_assemblies:
         if a['nr_assembly']['id'] == assembly_id:
             mdfive = a['nr_assembly']['md5']
-    #mdfive = "bb27b89826b88823423282438077cdb836e1e6e5"
     
     if isinstance(assembly_id, str):
         pickle_path = assembly_id + '.pickle'
@@ -161,19 +155,17 @@ def align_reads(ex, index, read_files, via="lsf"):
     indexes = map_runs(_index, sorted_files)
     print "Indexed."
 
-    ## try:
     ##     ex.add(sorted_files.values()[0][0], alias="bam1_bb27")
     ##     ex.add(sorted_files.values()[1][0], alias="bam2_bb27")
     ##     ex.add(indexes.values()[0][0], alias="index1_bb27")
     ##     ex.add(indexes.values()[1][0], alias="index2_bb27")
-    ## except: print "Failed to add bam files"
     
     return sorted_files
 
 def exons_labels(bamfile):
     """List of the exons labels in *bamfile*."""
     sam = pysam.Samfile(bamfile, 'rb')
-    labels = [(t['SN'],t['LN']) for t in sam.header['SQ']] #SN: "reference sequence name"; LN: "sequence length", for each genome sequence SQ.
+    labels = [(t['SN'],t['LN']) for t in sam.header['SQ']] #SN: "reference sequence name"; LN: "sequence length"
     sam.close()
     return labels
 
@@ -225,7 +217,7 @@ def external_deseq(cond1_label, cond1, cond2_label, cond2, transcript_names, met
     tn = unique_filename_in()
     with open(tn,'wb') as f:
         pickle.dump(transcript_names,f,pickle.HIGHEST_PROTOCOL)
-    call = ["run_deseq", c1, c2, tn, cond1_label, cond2_label, method, str(assembly_id), result_filename, str(maplot)]
+    call = ["run_deseq.py", c1, c2, tn, cond1_label, cond2_label, method, str(assembly_id), result_filename, str(maplot)]
     return {"arguments": call, "return_value": result_filename}
 
 def results_to_json(lims, exid):
@@ -278,31 +270,30 @@ def inference(cond1_label, cond1, cond2_label, cond2, transcript_names, method="
 
     ## Replace (unique) gene IDs by (not unique) gene names
     try:
-        if assembly_id:
-            print "Translate gene IDs to gene names..."
-            res_ids = list(res[0])
-            gene_names = {}; gid = None; l = None
-            #assem = urllib.urlopen("http://bbcftools.vital-it.ch/genrep/nr_assemblies/" + str(assembly_id) + ".gtf")
-            (assem,headers) = urllib.urlretrieve("http://bbcftools.vital-it.ch/genrep/nr_assemblies/" + str(76) + ".gtf")
-            with open(assem) as assembly:
-                for l in [line for line in assembly.readlines() if (line!='' and line!='\n')]:
-                    if l.find("gene_id")!=-1:
-                        gid = l.split("gene_id")[1].split(";")[0].strip(" \"")
-                    if gid in res_ids:
-                        idx = res_ids.index(gid)
-                        gene_names[idx] = l.split("gene_name")[1].split(";")[0].strip(" \"")
-            urllib.urlcleanup()
-            for i in range(len(res_ids)):
-                if i not in gene_names.keys(): gene_names[i] = res_ids[i]
-            data_frame = res.rx(2)
-            for i in range(3,len(res)+1):
-                data_frame = data_frame.cbind(res.rx(i))
-            data_frame.rownames = [gene_names[i] for i in range(len(gene_names))]
-            res = data_frame
-    except: print "Failed while changing names"
+        print "Translate gene IDs to gene names..."
+        res_ids = list(res[0])
+        gene_names = {}; gid = None; l = None
+        #assem = urllib.urlopen("http://bbcftools.vital-it.ch/genrep/nr_assemblies/" + str(assembly_id) + ".gtf")
+        (assem,headers) = urllib.urlretrieve("http://bbcftools.vital-it.ch/genrep/nr_assemblies/" + str(assembly_id) + ".gtf")
+        with open(assem) as assembly:
+            for l in [line for line in assembly.readlines() if line.find("gene_name")!=-1]:
+                gid = l.split("gene_id")[1].split(";")[0].strip(" \"")
+                if gid in res_ids:
+                    idx = res_ids.index(gid)
+                    gene_names[idx] = l.split("gene_name")[1].split(";")[0].strip(" \"")
+        urllib.urlcleanup()
+        for i in range(len(res_ids)):
+            if i not in gene_names.keys(): gene_names[i] = res_ids[i]
+        data_frame = res.rx(2)
+        for i in range(3,len(res)+1):
+            data_frame = data_frame.cbind(res.rx(i))
+        data_frame.rownames = [gene_names[i] for i in range(len(gene_names))]
+        res = data_frame
+    except: print "Failed while translating to gene names"
 
     ## MA-plot
     try:
+        from maplot import MAplot
         if maplot:
             print "MAplot"
             MAplot(res, mode="normal")
@@ -366,7 +357,7 @@ def rnaseq_workflow(job, lims_path="rnaseq", via="lsf", job_or_dict="job", maplo
         controls[i] = v['control']
 
     M = MiniLIMS(lims_path)
-    with execution(M) as ex:    #,remote_working_directory="/scratch/cluster/monthly/jdelafon/rnaseq"
+    with execution(M) as ex:    #,remote_working_directory="..."
         print "Current working directory:", os.getcwd()
         bowtie_index = path_to_bowtie_index(ex, assembly_id)
         print "Bowtie index:", bowtie_index
@@ -433,13 +424,6 @@ def rnaseq_workflow(job, lims_path="rnaseq", via="lsf", job_or_dict="job", maplo
             print "Inference..."
             output = None
             
-            ## csvfile = inference(names[c1], gene_pileups[c1], 
-            ##                               names[c2], gene_pileups[c2],
-            ##                               gene_labels, 
-            ##                               method, assembly_id,output, maplot)
-            ## print csvfile
-            ## a = ex.add(csvfile)
-            
             try:
                 csvfile = external_deseq.nonblocking(ex,
                                           names[c1], gene_pileups[c1], 
@@ -448,9 +432,9 @@ def rnaseq_workflow(job, lims_path="rnaseq", via="lsf", job_or_dict="job", maplo
                                           method, assembly_id, output, maplot,
                                           via=via)
                 print "Wait for results..."
-                a = ex.add(csvfile.wait())
+                a = ex.add(csvfile.wait(), description="Comparison of exons in conditions '%s' and '%s' (CSV)" % (names[c[0]], names[c[1]]))
                 print a
-            except: print "Failed in Inference"
+            except: print "Failed during Inference"
             
         ##     futures[(c1,c2)] = [external_deseq.nonblocking(ex,
         ##                                   names[c1], exon_pileups[c1], 
@@ -472,9 +456,3 @@ def rnaseq_workflow(job, lims_path="rnaseq", via="lsf", job_or_dict="job", maplo
         ##     ex.add(f[1].wait(), description="Comparison of genes in conditions '%s' and '%s' (CSV)" % (names[c[0]], names[c[1]]))
             
     return results_to_json(M, ex.id)
-
-#-----------------------------------#
-# This code was written by the BBCF #
-# http://bbcf.epfl.ch/              #
-# webmaster.bbcf@epfl.ch            #
-#-----------------------------------#
