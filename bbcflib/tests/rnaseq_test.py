@@ -5,12 +5,12 @@ except ImportError:
     import unittest
 
 # Tested module #
-from ..rnaseq.rnaseq import rnaseq_workflow
+from .. import rnaseq
 
 # Other modules #
-import re, sys, os, random
+import os
 
 #--------------------------------------------------------------------------------#
 class TestWorkflow(unittest.TestCase):
     def runTest(self):
-        pass
+        self.skipTest("No tests yet")
