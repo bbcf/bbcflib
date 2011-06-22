@@ -63,7 +63,7 @@ Then comes the job description::
 
 We next look at how the python script is using these configuration and processing the files. First it imports all the relevant modules::
 
-    from bbcflib import daflims, genrep, frontend, email, gdv, common
+    from bbcflib import daflims, genrep, frontend, gdv, common
     from bbcflib.mapseq import *
     from bbcflib.chipseq import *
     
@@ -79,6 +79,7 @@ This returns two dictionaries, one with the job description and one with the glo
     dafl = dict((loc,daflims.DAFLIMS( username=gl['lims']['user'], password=pwd )) for loc,pwd in gl['lims']['passwd'].iteritems())
     job.options['ucsc_bigwig'] = job.options.get('ucsc_bigwig') or True
     job.options['gdv_project'] = job.options.get('gdv_project') or False
+    via = 'lsf'
 
 then start an execution environment in which we
 
@@ -88,7 +89,7 @@ then start an execution environment in which we
 * if requested, make a density profile using :func:`bbcflib.mapseq.densities_groups`
 * and finally create the corresponfing project and tracks in :doc:`GDV <bbcflib_gdv>`::
 
-    with execution( M, description=hts_key, remote_working_directory=working_dir ) as ex:
+    with execution( M, description='test_mapseq' ) as ex:
         job = get_fastq_files( job, ex.working_directory, dafl )
         mapped_files = map_groups( ex, job, ex.working_directory, assembly, {'via': via} )
         pdf = add_pdf_stats( ex, mapped_files,
@@ -117,4 +118,11 @@ this dictionary will be organized by file type and provide a descriptive name an
     'bigwig': {'UjaseL2p8Z1RnDetZ2YX': 'test_merged.bw'},
     'pdf': {'13wUAjrQEikA5hXEgTt': 'mapping_report.pdf'}, 
     'bam': {'mJP4dqP1f2K6Pw2iZ2LZ': 'test_filtered.bam', 'IRn3o49zIZ2JOOkMxAJl.bai': 'test_complete.bam.bai', 'IRn3o49zIZ2JOOkMxAJl': 'test_complete.bam', 'mJP4dqP1f2K6Pw2iZ2LZ.bai': 'test_filtered.bam.bai'}}
+
+If you then want to continue with a ChIP-seq analysis, you can start a new execution, collect the files with :func:`bbcflib.chipseq.get_bam_wig_files` and run :func:`bbcflib.chipseq.workflow_groups`::
+
+        with execution( M, description='test_chipseq' ) as ex:
+            (mapped_files, job) = get_bam_wig_files( ex, job, 'test_lims', gl['hts_mapseq']['url'], gl['script_path'], via=via )
+            chipseq_files = workflow_groups( ex, job, mapped_files, assembly.chromosomes, gl['script_path'] )
+
 
