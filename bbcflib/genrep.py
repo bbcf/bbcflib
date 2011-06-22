@@ -10,12 +10,11 @@ handles all queries.  A query via the ``GenRep`` object returns an
 
 The primary GenRep repository on VITAL-IT has URL
 ``http://bbcftools.vital-it.ch/genrep/`` and root directory
-``/scratch/frt/yearly/genrep/nr_assemblies/bowtie``.  To connect to
+``/db/genrep/nr_assemblies/bowtie``.  To connect to
 this GenRep repository and fetch an ``Assembly`` named ``ce6``, we
 would write::
 
-    g = GenRep('http://bbcftools.vital-it.ch/genrep/',
-               '/scratch/frt/yearly/genrep/nr_assemblies/bowtie')
+    g = GenRep(url='http://bbcftools.vital-it.ch/genrep/',root='/db/genrep/nr_assemblies/bowtie')
     g.assembly('ce6')
 
 Assemblies in GenRep are also assigned unique integer IDs.  The unique
@@ -50,31 +49,32 @@ import sqlite3
 import urllib2
 import json
 import os
+from ConfigParser   import ConfigParser
 from datetime       import datetime
-from decimal        import Decimal, getcontext
 
 from common import normalize_url
 
 class GenRep(object):
-    """Create an object to query a GenRep repository.
-
-    GenRep is the in-house repository for sequence assemblies for the
-    BBCF in Lausanne.  This is an object that wraps its use in Python
-    in an idiomatic way.
-
-    Create a GenRep object with the base URL to the GenRep system, and
-    the root path of GenRep's files.  For instance,
-
-        g = GenRep('genrep.epfl.ch','/path/to/genrep/indices')
-
-    To get an assembly from the repository, call the assembly
-    method with either the integer assembly ID or the string assembly
-    name.  This returns an Assembly object.
-
-        a = g.assembly(3)
-        b = g.assembly('mus')
-    """
-    def __init__(self, url=None, root=None, config=None, section='genrep'):
+    def __init__(self, url=None, root=None, intype=0, config=None, section='genrep'):
+        """Create an object to query a GenRep repository.
+        
+        GenRep is the in-house repository for sequence assemblies for the
+        BBCF in Lausanne.  This is an object that wraps its use in Python
+        in an idiomatic way.
+        
+        Create a GenRep object with the base URL to the GenRep system, and
+        the root path of GenRep's files.  For instance,
+        
+            g = GenRep('genrep.epfl.ch','/path/to/genrep/indices')
+        
+            To get an assembly from the repository, call the assembly
+            method with either the integer assembly ID or the string assembly
+            name.  This returns an Assembly object.
+            
+                a = g.assembly(3)
+                b = g.assembly('mus')
+                
+        """
         if (url == None or root == None) and config == None:
             raise TypeError("GenRep requires either a 'url' and 'root', or a 'config'")
         elif config != None:
@@ -87,6 +87,11 @@ class GenRep(object):
         else:
             self.url = normalize_url(url)
             self.root = os.path.abspath(root)
+        self.root = os.path.join(self.root,"bowtie")
+        if intype == 1:
+            self.root = os.path.join(self.root,"exons_bowtie")
+        elif intype == 10:
+            self.root = os.path.join(self.root,"fasta")
 
     def query_url(self, method, assembly):
         """Assemble a URL to call *method* for *assembly* on the repository."""
@@ -97,38 +102,6 @@ class GenRep(object):
         else:
             raise ValueError("Argument 'assembly' to must be a " + \
                                  "string or integer, got " + str(assembly))
-
-    def get_chromosome(self, chromosome):
-        """
-        Give a chromosome id or directly a dictionary from json file (genrep format)
-        return a Chromosome object
-        """
-        chromosomeInfo  = None
-
-        if isinstance(chromosome,int): # is an id
-            chromosomeInfo = json.load(urllib2.urlopen("""%s/chromosomes/%d.json""" % (self.url, chromosome)))
-        elif isinstance(chromosome,dict):
-            chromosomeInfo = chromosome
-        else:# is not a tuple (json)
-            TypeError(u"chromosome type must be an integer for id or a dict from json! Type submited was: "+unicode(type(chromosome)))
-
-        return chromosomeInfo
-
-    def get_chromosome_sequence(self, chromosome):
-        """
-        This methode take an integer (id) or a Chromosome object
-        return full chromosome sequence
-        """
-        ## @warning this method could be too overload the server get instead the compressed fasta file from assembly_to_compressed_fasta method
-        chromosomeId    = None
-        if isinstance(chromosome, Chromosome):  # is a Chromosome object
-            chromosomeId = chromosome.id
-        elif not isinstance(chromosome, int):   # is an integer
-            chromosomeId    = chromosome
-            chromosome      = self.get_chromosome(chromosomeId)
-        else:                                   # is not an integer or a Chromosome object
-            raise TypeError(u"chromosome type must be an integer or a Chromosome object! Type submited was: "+unicode(type(chromosome)))
-        return self.get_sequence( chromosomeId, [[0, chromosome.length -1]] )
 
     def get_sequence(self, chr_id, coord_list):
         """Parses a slice request to the repository."""
@@ -267,88 +240,9 @@ class GenRep(object):
                              c['chromosome']['length'])
         return a
 
-    def assembly_to_compressed_fasta(self, assembly):
-        """
-        Fields:
-        - assembly could be an assembly object or an assembly id or r an assembly name
-        return the path to compressed fasta file (tar.gz)
-        """
-        a       = None
-        path    = None
-
-        try:
-            if isinstance(assembly, Assembly):
-                a = assembly
-            else:
-                a = self.assembly(assembly)
-        except TypeError:
-            raise TypeError(u"Assembly type must be an integer for id or an tring for name or a Assembly object! Type submited was: "+unicode(type(assembly)))
-
-        url         = self.url + "/" + "data/nr_assemblies/fasta/" + a.md5 + ".tar.gz"
-        with urllib2.urlopen(url) as webFile:
-            tempfilename = tempfile.NamedTemporaryFile(suffix=".tar.gz")
-            with open(tempfilename.name, 'w') as tempfile:
-                tempfile.write(webFile.read())
-            path = tempfilename.name
-        return path
-
-    def assembly_statistic(self, assembly):
-        """
-        Return statistic about an assembly
-        Example of result:
-        {
-            "TT": 13574667
-            "GG": 3344762
-            "CC": 3365555
-            "AA": 13571722
-            "A": 32370285
-            "TA": 6362526
-            "GT": 4841536
-            "AC": 4846697
-            "N": 0
-            "C": 17781115
-            "TC": 6228639
-            "GA": 6231575
-            "CG": 3131283
-            "GC: 3340219
-            "CT": 5079814
-            "AG": 5075950
-            "G": 17758095
-            "TG": 6206098
-            "CA": 6204462
-            "AT": 8875914
-            "T": 32371931
-        }
-        Total = A + T + G + C
-        """
-        a               = None
-        genrepObject    = "nr_assemblies"
-        query           = None
-        genrepFormat    = "json"
-        parameter       = "data_type=counts"
-
-        try:
-            if isinstance(assembly, Assembly):
-                a = assembly
-            else:
-                a = self.assembly(assembly)
-        except TypeError:
-            raise TypeError(u"Assembly type must be an integer for id or an tring for name or a Assembly object! Type submited was: "+unicode(type(assembly)))
-
-        return json.load(urllib2.urlopen("""%s/nr_assemblies/%d.json?data_type=counts""" % (self.url, a.nr_assembly_id)))
-
-    def assembly_statistic_to_file(self, assembly, output):
-        getcontext().prec   = 15
-        statistic           = self.assembly_statistic( assembly )
-        total               = Decimal(statistic["A"] + statistic["T"] + statistic["G"] + statistic["C"])
-        name                = (isinstance(assembly, Assembly)) and assembly.name or assembly
-        with open(os.path.expanduser(output), "w") as f:
-                f.write(u">Assembly: %s\n" %name)
-                f.write(u"1\t%s\t%s\t%s\t%s" % ( statistic["A"] / total, statistic["T"] / total,statistic["G"] / total, statistic["C"] / total ) )
-
     def assemblies_available(self):
         """
-        Return list of assemblies available on genrep
+        Returns a list of assemblies available on genrep
         """
         assembly_info   = json.load(urllib2.urlopen(self.url + "/assemblies.json"))
         assembly_list   = [self._assembly(a) for a in assembly_info]
@@ -424,6 +318,54 @@ class Assembly(object):
     def add_chromosome(self, chromosome_id, refseq_locus, refseq_version, name, length):
         self.chromosomes[(chromosome_id, refseq_locus, refseq_version)] = \
             {'name': name, 'length': length}
+
+    def statistics(self, assembly, output=None):
+        """
+        Return (di-)nucleotide statistics for an assembly, writes in file ``output`` if provided.
+        Example of result:
+        {
+            "TT": 13574667
+            "GG": 3344762
+            "CC": 3365555
+            "AA": 13571722
+            "A": 32370285
+            "TA": 6362526
+            "GT": 4841536
+            "AC": 4846697
+            "N": 0
+            "C": 17781115
+            "TC": 6228639
+            "GA": 6231575
+            "CG": 3131283
+            "GC: 3340219
+            "CT": 5079814
+            "AG": 5075950
+            "G": 17758095
+            "TG": 6206098
+            "CA": 6204462
+            "AT": 8875914
+            "T": 32371931
+        }
+        Total = A + T + G + C
+        """
+        stat = json.load(urllib2.urlopen("%s/nr_assemblies/%d.json?data_type=counts" % (self.url, self.nr_assembly_id)))
+        if output == None:
+            return stat
+        else:
+            total = float(stat["A"] + stat["T"] + stat["G"] + stat["C"])
+            with open(output, "w") as f:
+                f.write("#Assembly: %s\n" %self.name)
+                [f.write("%s\t%s\n" % (x,stat[x]/total)) for x in ["A","C","G","T"]]
+                f.write("#\n")
+                [[f.write("%s\t%s\n" % (x+y,stat[x+y]/total)) for y in ["A","C","G","T"]] for x in ["A","C","G","T"]]
+            return output
+
+    def assembly_fasta(self):
+        """
+        returns the path to the compressed fasta file (tar.gz)
+        """
+        return os.path.join(self.root,self.md5+".tar.gz")
+
 
 
 if __name__ == '__main__':
