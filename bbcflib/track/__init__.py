@@ -167,7 +167,7 @@ class Track(object):
            * *path* is the file system path to the underlying file.
            * *datatype* is either ``qualitative`` or ``quantitative``.
            * *name* is given upon creation of the track.
-           * *format* is either ``sql``, ``bed`` or ``wig``
+           * *format* is always ``sql`` as, when loading a ``bed`` track for instance, a transparent underlying Bio SQLite track is sliently created.
            * *all_chrs* is a list of all available chromosome. For instance:
                 ``['chr1, 'chr2', 'chr3']``
            * *meta_chr* is a list of dictionaries of chromosome meta data (information like length, etc). For instance:
