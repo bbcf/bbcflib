@@ -54,7 +54,7 @@ class TextTrack(object):
     @memoized_method
     def _meta_chr(self):
         def parse_dict(info):
-            return [dict([("name", self.chrmeta[chr]["name"]),("length", self.chrmeta[chr]["length"])]) for chr in self.chrmeta]
+            return [dict([("name", info[chr]["name"]),("length", info[chr]["length"])]) for chr in info]
         # Is a dictionary #
         if isinstance(self.chrmeta, dict):
             return parse_dict(self.chrmeta)
@@ -93,7 +93,7 @@ class TextTrack(object):
             g = GenRep()
             if not g.is_available(self.chrmeta):
                 raise Exception("The genrep server does not know about the assembly '" + self.chrmeta + "'.")
-            return parse_dict(g.assembly(self.chrmeta).chromosomes())
+            return parse_dict(g.assembly(self.chrmeta).chromosomes)
 
     @property
     @memoized_method
