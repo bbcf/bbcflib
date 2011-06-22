@@ -145,7 +145,7 @@ class GenRep(object):
         chr_names   = dict((c[0],cn['name']) for c,cn in chromosomes.iteritems())
         chr_len     = dict((c[0],cn['length']) for c,cn in chromosomes.iteritems())
         size        = 0
-        with Track(data_path, chromosomes_data=chromosomes) as track:
+        with Track(data_path, chrmeta=chromosomes) as track:
             cur_chunk       = 0
             features_names  = set()
             for k in chromosomes.keys():

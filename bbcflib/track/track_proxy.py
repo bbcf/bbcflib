@@ -16,13 +16,13 @@ from .format_sql import GenomicFormat as SQLTrack
 
 ###########################################################################
 class ProxyTrack(SQLTrack):
-    def __init__(self, path, format=None, name=None, chromosomes_data=None, datatype=None, readonly=False):
+    def __init__(self, path, format=None, name=None, chrmeta=None, datatype=None, readonly=False):
         # Parameters with underscore refer to the underlying track #
         self._path     = path
         self._format   = self.type_identifier
         self._datatype = datatype
         # Parameters without the underscore refer to the exposed track #
-        self.chromosomes_data  = chromosomes_data
+        self.chrmeta  = chrmeta
         self.modified = False
         # Create the SQL track #
         tmp_path = named_temporary_path()
@@ -43,7 +43,7 @@ class ProxyTrack(SQLTrack):
                 # Copy meta chr #
                 t.meta_chr   = [chr for chr in self._meta_chr if chr['name'] in self._seen_chr]
         # Load the new SQL track as self #
-        super(ProxyTrack, self).__init__(tmp_path, 'sql', name, chromosomes_data=None, datatype=None, readonly=readonly)
+        super(ProxyTrack, self).__init__(tmp_path, 'sql', name, chrmeta=None, datatype=None, readonly=readonly)
 
     #-----------------------------------------------------------------------------#
     def unload(self, datatype=None, value=None, trackback=None):
