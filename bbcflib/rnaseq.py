@@ -8,6 +8,7 @@ import pickle
 import json
 import pysam
 import numpy
+from numpy import *
 import urllib
 from itertools import combinations
 from bein.util import *
@@ -17,6 +18,12 @@ import rpy2.robjects as robjects
 import rpy2.robjects.packages as rpackages
 import rpy2.robjects.numpy2ri
 import rpy2.rlike.container as rlc
+from scipy import stats
+from scipy.interpolate import UnivariateSpline
+import matplotlib
+import pylab
+import matplotlib.pyplot as plt
+import math
 
 def path_to_bowtie_index(ex, assembly_id):
     """Return full path to usable bowtie index.
@@ -31,7 +38,7 @@ def path_to_bowtie_index(ex, assembly_id):
     for a in nr_assemblies:
         if a['nr_assembly']['id'] == assembly_id:
             mdfive = a['nr_assembly']['md5']; break
-            
+
     if isinstance(assembly_id, str):
         if os.path.exists(assembly_id + ".1.ebwt"):
             print "Index found in", os.path.dirname(assembly_id)
@@ -74,7 +81,7 @@ def fetch_read_files(ex, runs):
             daflims = DAFLIMS(username='jrougemont', password='cREThu6u')
             for run in run_list:
                 filename = unique_filename_in()
-                files[group_id].append(daflims.fetch_fastq(str(run['facility']), str(run['machine']), 
+                files[group_id].append(daflims.fetch_fastq(str(run['facility']), str(run['machine']),
                                                     run['run'], run['lane'], filename))
     return files
 
@@ -91,7 +98,7 @@ def fetch_transcript_mapping(ex, assembly_id):
     for a in nr_assemblies:
         if a['nr_assembly']['id'] == assembly_id:
             mdfive = a['nr_assembly']['md5']; break
-    
+
     if isinstance(assembly_id, str):
         pickle_path = assembly_id + '.pickle'
         if os.path.exists(pickle_path):
@@ -153,11 +160,11 @@ def align_reads(ex, index, read_files, via="lsf"):
     indexes = map_runs(_index, sorted_files)
     print "Indexed."
 
-    ##     ex.add(sorted_files.values()[0][0], alias="bam1_bb27")
-    ##     ex.add(sorted_files.values()[1][0], alias="bam2_bb27")
-    ##     ex.add(indexes.values()[0][0], alias="index1_bb27")
-    ##     ex.add(indexes.values()[1][0], alias="index2_bb27")
-    
+    ##     ex.add(sorted_files.values()[0][0], alias="bam1")
+    ##     ex.add(sorted_files.values()[1][0], alias="bam2")
+    ##     ex.add(indexes.values()[0][0], alias="index1")
+    ##     ex.add(indexes.values()[1][0], alias="index2")
+
     return sorted_files
 
 def exons_labels(bamfile):
@@ -205,7 +212,7 @@ def external_deseq(cond1_label, cond1, cond2_label, cond2, transcript_names, met
                    assembly_id=None, output=None, maplot=None, translate=None):
     if output:
         result_filename = output
-    else: 
+    else:
         result_filename = unique_filename_in()
     c1 = unique_filename_in()
     with open(c1,'wb') as f:
@@ -258,7 +265,7 @@ def inference(cond1_label, cond1, cond2_label, cond2, transcript_names, method="
                                       [(cond2_label+'-'+str(i), robjects.IntVector(c))
                                        for i,c in enumerate(cond2)])
     data_frame = robjects.DataFrame(data_frame_contents)
-    data_frame.rownames = transcript_names    
+    data_frame.rownames = transcript_names
     conds = robjects.StrVector([cond1_label for x in cond1] + [cond2_label for x in cond2]).factor()
 
     ## DESeq full analysis
@@ -269,37 +276,32 @@ def inference(cond1_label, cond1, cond2_label, cond2, transcript_names, method="
     res = deseq.nbinomTest(cds, cond1_label, cond2_label)
 
     ## Replace (unique) gene IDs by (not unique) gene names
-    try:
-        if translate:
-            print "Translate gene IDs to gene names..."
-            res_ids = list(res[0])
-            gene_names = {}; gid = None; l = None
-            #assem = urllib.urlopen("http://bbcftools.vital-it.ch/genrep/nr_assemblies/" + str(assembly_id) + ".gtf")
-            (assem,headers) = urllib.urlretrieve("http://bbcftools.vital-it.ch/genrep/nr_assemblies/" + str(assembly_id) + ".gtf")
-            with open(assem) as assembly:
-                for l in [line for line in assembly.readlines() if line.find("gene_name")!=-1]:
-                    gid = l.split("gene_id")[1].split(";")[0].strip(" \"")
-                    if gid in res_ids:
-                        idx = res_ids.index(gid)
-                        gene_names[idx] = l.split("gene_name")[1].split(";")[0].strip(" \"")
-            urllib.urlcleanup()
-            for i in range(len(res_ids)):
-                if i not in gene_names.keys(): gene_names[i] = res_ids[i]
-            data_frame = res.rx(2)
-            for i in range(3,len(res)+1):
-                data_frame = data_frame.cbind(res.rx(i))
-            data_frame.rownames = [gene_names[i] for i in range(len(gene_names))]
-            res = data_frame
-    except: print "Failed while translating to gene names"
+
+    if translate:
+        print "Translate gene IDs to gene names..."
+        #if not assembly_id: raise
+        res_ids = list(res[0])
+        gene_names = {}; gid = None; l = None
+        (assem,headers) = urllib.urlretrieve("http://bbcftools.vital-it.ch/genrep/nr_assemblies/" + str(assembly_id) + ".gtf")
+        with open(assem) as assembly:
+            for l in [line for line in assembly.readlines() if line.find("gene_name")!=-1]:
+                gid = l.split("gene_id")[1].split(";")[0].strip(" \"")
+                if gid in res_ids:
+                    idx = res_ids.index(gid)
+                    gene_names[idx] = l.split("gene_name")[1].split(";")[0].strip(" \"")
+        urllib.urlcleanup()
+        for i in range(len(res_ids)):
+            if i not in gene_names.keys(): gene_names[i] = res_ids[i]
+        data_frame = res.rx(2)
+        for i in range(3,len(res)+1):
+            data_frame = data_frame.cbind(res.rx(i))
+        data_frame.rownames = [gene_names[i] for i in range(len(gene_names))]
 
     ## MA-plot
-    try:
-        from maplot import MAplot
-        if maplot:
-            print "MAplot"
-            MAplot(res, mode="normal")
-            ex.add("MAplot.png")
-    except: print "Failed in MA-plot"
+    if maplot:
+        print "MAplot"
+        MAplot(res, mode=maplot)
+        ex.add("MAplot.png")
 
     if output:
         result_filename = output
@@ -309,7 +311,7 @@ def inference(cond1_label, cond1, cond2_label, cond2, transcript_names, method="
     res.to_csvfile(result_filename)
     return result_filename
 
-def rnaseq_workflow(ex, job, lims_path="rnaseq", via="lsf", job_or_dict="job", maplot=None, translate=None):
+def rnaseq_workflow(ex, job, lims_path="rnaseq", via="lsf", job_or_dict="job", output=None, maplot=None, translate=None):
     """Run RNASeq inference according to *job_info*.
 
     Whatever script calls this function should have looked up the job
@@ -338,13 +340,13 @@ def rnaseq_workflow(ex, job, lims_path="rnaseq", via="lsf", job_or_dict="job", m
     it returns in some sensible way.  For the usual HTSStation
     frontend, this just means printing it to stdout.
     """
-    
+
     """ Groups as given by the frontend is not that useful. Pull it apart
     into more useful pieces. """
     names = {}
     runs = {}
     controls = {}
-    
+
     if job_or_dict == "job":
         groups = job.groups
         assembly_id = job.assembly_id
@@ -420,31 +422,28 @@ def rnaseq_workflow(ex, job, lims_path="rnaseq", via="lsf", job_or_dict="job", m
             method = "normal";
         else:
             method = "blind";
-        print "Inference..."
-        output = None
 
-        try:
-            csvfile = external_deseq.nonblocking(ex,
-                                      names[c1], gene_pileups[c1], 
-                                      names[c2], gene_pileups[c2],
-                                      gene_labels, 
-                                      method, assembly_id, output, maplot,
-                                      via=via)
-            print "Wait for results..."
-            a = ex.add(csvfile.wait(), description="Comparison of exons in conditions '%s' and '%s' (CSV)" % (names[c[0]], names[c[1]]))
-            print a
-        except: print "Failed during Inference"
+        print "Inference..."
+        csvfile = external_deseq.nonblocking(ex,
+                                    names[c1], gene_pileups[c1],
+                                    names[c2], gene_pileups[c2],
+                                    gene_labels,
+                                    method, assembly_id, output, maplot, translate,
+                                    via=via)
+        print "Wait for results..."
+        ex.add(csvfile.wait())
+        print "Done."
 
     ##     futures[(c1,c2)] = [external_deseq.nonblocking(ex,
-    ##                                   names[c1], exon_pileups[c1], 
+    ##                                   names[c1], exon_pileups[c1],
     ##                                   names[c2], exon_pileups[c2],
     ##                                   [x[0].split("|")[0]+"|"+x[0].split("|")[1] for x in exons],
     ##                                   method, assembly_id, output, maplot,
     ##                                   via=via)
     ##                         ,external_deseq.nonblocking(ex,
-    ##                                   names[c1], gene_pileups[c1], 
+    ##                                   names[c1], gene_pileups[c1],
     ##                                   names[c2], gene_pileups[c2],
-    ##                                   gene_labels, 
+    ##                                   gene_labels,
     ##                                   method, assembly_id, output, maplot,
     ##                                   via=via)
     ##                         ]
@@ -453,8 +452,6 @@ def rnaseq_workflow(ex, job, lims_path="rnaseq", via="lsf", job_or_dict="job", m
     ##     ex.add(f[0].wait(), description="Comparison of exons in conditions '%s' and '%s' (CSV)" % (names[c[0]], names[c[1]]))
     ##     ex.add(f[1].wait(), description="Comparison of genes in conditions '%s' and '%s' (CSV)" % (names[c[0]], names[c[1]]))
 
-#return results_to_json(M, ex.id)
-
 
 def MAplot(data, mode="normal"):
     """
@@ -462,16 +459,12 @@ def MAplot(data, mode="normal"):
     in two different conditions. It returns a list of triplets (name, x, y) for each point,
     and a dictionary containing a list of couples for each quantile spline, each couple (xs,ys)
     being a point the corresponding spline passes through. Input:
-    
+
     data: rpy DataFrame object; two columns, each for a different condition.
     mode: if "interactive", click on a point to display its name
           if "normal", name of genes over 99%/under 1% quantile are displayed
     """
-    from numpy import *
-    from scipy import stats
-    from scipy.interpolate import UnivariateSpline
-    import matplotlib.pyplot as plt
-    
+
     #####
     # TO IMPLEMENT:
     # - Groups of genes
@@ -479,19 +472,19 @@ def MAplot(data, mode="normal"):
     #####
 
     if isinstance(data[0],rpy2.robjects.vectors.FactorVector):
-        a = array(data[0])         
+        a = array(data[0])
         b = array(data[0].levels)
         names = list(b[a-1])
-        d1 = array(data[1])+0.5 
-        d2 = array(data[2])+0.5 
+        d1 = array(data[1])+0.5
+        d2 = array(data[2])+0.5
     if isinstance(data[0],rpy2.robjects.vectors.StrVector):
         names = list(data[0])
-        d1 = array(data[1])+0.5 
-        d2 = array(data[2])+0.5 
+        d1 = array(data[1])+0.5
+        d2 = array(data[2])+0.5
     else:
         names = list(data.rownames)
-        d1 = array(data[0])+0.5 
-        d2 = array(data[1])+0.5 
+        d1 = array(data[0])+0.5
+        d2 = array(data[1])+0.5
     d1 = d1.view("float64"); d2 = d2.view("float64")
     ratios = d1/d2
     means = sqrt(d1*d2)
@@ -549,15 +542,10 @@ def MAplot(data, mode="normal"):
     if mode == "normal":
         for p in annotes:
             ax.annotate(p[0], xy=(p[2],p[1]) )
-        fig.savefig("MAplot.png")
-        
-    return points#, spline_coords
+        f = fig.savefig("MAplot.png")
 
-def rs(len):
-    import string
-    import random
-    return "".join([random.choice(string.letters+string.digits) for x in range(len)])
- 
+    return f, points#, spline_coords
+
 class AnnoteFinder:
   """
   callback for matplotlib to display an annotation when points are clicked on.  The
@@ -569,10 +557,7 @@ class AnnoteFinder:
   af = AnnoteFinder(xdata, ydata, annotes)
   connect('button_press_event', af)
   """
-  import math 
-  import pylab
-  import matplotlib
-  
+
   def __init__(self, xdata, ydata, annotes, axis=None, xtol=None, ytol=None):
     self.data = zip(xdata, ydata, annotes)
     self.xrange = max(xdata) - min(xdata)

@@ -54,6 +54,14 @@ class Test_Roundtrips(unittest.TestCase):
             self.assertEqual(A[1:], B)
             os.remove(path)
 
+#-----------------------------------------------------------------------------#
+class Test_Format(unittest.TestCase):
+    def runTest(self):
+        t = track_collections['Signals'][1]
+        with Track(t['path'], chrfile=t['chrfile']) as t:
+            self.assertEqual(t.format, 'sql')
+            self.assertEqual(t._format, 'bedGraph')
+
 #-----------------------------------#
 # This code was written by the BBCF #
 # http://bbcf.epfl.ch/              #
