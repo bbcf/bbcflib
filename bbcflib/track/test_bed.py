@@ -62,6 +62,13 @@ class Test_Format(unittest.TestCase):
             self.assertEqual(t.format, 'sql')
             self.assertEqual(t._format, 'bed')
 
+#-----------------------------------------------------------------------------#
+class Test_Genrep(unittest.TestCase):
+    def runTest(self):
+        t = track_collections['Validation'][1]
+        with Track(t['path'], chrmeta='sacCer2') as t:
+            self.assertEqual(t.meta_chr, 'lol')
+
 #-----------------------------------#
 # This code was written by the BBCF #
 # http://bbcf.epfl.ch/              #

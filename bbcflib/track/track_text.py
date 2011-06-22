@@ -11,6 +11,7 @@ import os, shlex
 
 # Internal Modules #
 from ..common import memoized_method
+from ..genrep import GenRep
 
 # Functions #
 def strand_to_int(strand):
@@ -52,9 +53,13 @@ class TextTrack(object):
     @property
     @memoized_method
     def _meta_chr(self):
+        def parse_dict(info):
+            return [dict([("name", self.chrmeta[chr]["name"]),("length", self.chrmeta[chr]["length"])]) for chr in self.chrmeta]
+        # Is a dictionary #
         if isinstance(self.chrmeta, dict):
-            result = [dict([("name", self.chrmeta[chr]["name"]),("length", self.chrmeta[chr]["length"])]) for chr in self.chrmeta]
-        else:
+            return parse_dict(self.chrmeta)
+        # Is a path #
+        elif os.path.exists(self.chrmeta):
             if not self.chrmeta:
                 raise Exception("The file '" + self._path + "' does not have a chromosome file associated.")
             if not os.path.exists(self.chrmeta):
@@ -80,9 +85,15 @@ class TextTrack(object):
                     except ValueError:
                         raise Exception("The file '" + self.chrmeta + "' has invalid values.")
                     result.append(dict([('name', name),('length', length)]))
-        if not result:
-            raise Exception("The file '" + self.chrmeta + "' does not seam to contain any information.")
-        return result
+            if not result:
+                raise Exception("The file '" + self.chrmeta + "' does not seam to contain any information.")
+            return result
+        # Is a string assembly #
+        else:
+            g = GenRep()
+            if not g.is_available(self.chrmeta):
+                raise Exception("The genrep server does not know about the assembly '" + self.chrmeta + "'.")
+            return parse_dict(g.assembly(self.chrmeta).chromosomes())
 
     @property
     @memoized_method

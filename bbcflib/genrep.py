@@ -46,13 +46,12 @@ With a ``ConfigParser``, the previous code would look like::
 .. autoclass:: Assembly
 """
 import urllib2, json, os
-from ConfigParser               import ConfigParser
 from datetime                   import datetime
 from bbcflib.track.format_sql   import Track
 from bbcflib.common             import normalize_url
 
 class GenRep(object):
-    def __init__(self, url=None, root=None, intype=0, config=None, section='genrep'):
+    def __init__(self, url='http://bbcftools.vital-it.ch/genrep/', root='/db/genrep/nr_assemblies/bowtie', intype=0, config=None, section='genrep'):
         """Create an object to query a GenRep repository.
 
         GenRep is the in-house repository for sequence assemblies for the
@@ -92,7 +91,7 @@ class GenRep(object):
 
     def query_url(self, method, assembly):
         """Assemble a URL to call *method* for *assembly* on the repository."""
-        if isinstance(assembly, str):
+        if isinstance(assembly, basestring):
             return """%s/%s.json?assembly_name=%s""" % (self.url, method, assembly)
         elif isinstance(assembly, int):
             return """%s/%s.json?assembly_id=%d""" % (self.url, method, assembly)
@@ -168,7 +167,7 @@ class GenRep(object):
         *assembly* may be an integer giving the assembly ID, or a
         string giving the assembly name.
         """
-        if isinstance(assembly, str):
+        if isinstance(assembly, basestring):
             assembly_info = json.load(urllib2.urlopen(self.query_url('assemblies', assembly)))[0]
         elif isinstance(assembly, int):
             assembly_info = json.load(urllib2.urlopen("""%s/assemblies/%d.json""" % (self.url, assembly)))
@@ -206,8 +205,14 @@ class GenRep(object):
         Returns a list of assemblies available on genrep
         """
         assembly_info   = json.load(urllib2.urlopen(self.url + "/assemblies.json"))
-        assembly_list   = [self._assembly(a) for a in assembly_info]
+        assembly_list   = [a['assembly']['name'] for a in assembly_info]
         return [ a for a in assembly_list if a is not None ]
+
+    def is_available(self, assembly):
+        """
+        Returns a list of assemblies available on genrep
+        """
+        return assembly in [a['name'] for a in self.assemblies_available()]
 
 class Assembly(object):
     """A representation of a GenRep assembly.
