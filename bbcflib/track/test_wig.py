@@ -59,7 +59,7 @@ class Test_Roundtrips(unittest.TestCase):
 class Test_Format(unittest.TestCase):
     def runTest(self):
         t = track_collections['Scores'][1]
-        with Track(t['path'], chrfile=t['chrfile']) as t:
+        with Track(t['path'], chromosomes_data=t['chromosomes_data']) as t:
             self.assertEqual(t.format, 'sql')
             self.assertEqual(t._format, 'wiggle_0')
 

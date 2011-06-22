@@ -43,7 +43,7 @@ class ProxyTrack(SQLTrack):
                 # Copy meta chr #
                 t.meta_chr   = [chr for chr in self._meta_chr if chr['name'] in self._seen_chr]
         # Load the new SQL track as self #
-        super(ProxyTrack, self).__init__(tmp_path, 'sql', name, chrfile=None, datatype=None, readonly=readonly)
+        super(ProxyTrack, self).__init__(tmp_path, 'sql', name, chromosomes_data=None, datatype=None, readonly=readonly)
 
     #-----------------------------------------------------------------------------#
     def unload(self, datatype=None, value=None, trackback=None):

@@ -159,9 +159,9 @@ def save_motif_profile( ex, motifs, background, genrep, chromosomes, data_path,
                          motif_scan.nonblocking( ex, fasta, pwm, background, threshold,
                                                  via=via, stdout=output ))
 
-    with Track(data_path) as track:
+    with Track(data_path, chromosomes_data=chromosomes) as track:
         for v in chromosomes.values():
-                for row in track.read(v['name'], fields=["start","name"]):
+                for row in track.read(selection=v['name'], fields=["start","name"]):
                     name = re.search(r'(\S+)\s*',row[1]).groups()[0]
                     regions[name] = (v['name'],int(row[0]))
 

@@ -140,7 +140,7 @@ class GenRep(object):
                         feature_name    = tmp_name
             features_names.add(feature_name)
             return features_names, feature_name
-
+        out         = os.path.splitext(data_path)[0]+".fa"
         slices      = {'coord':[],'names':[]}
         chr_names   = dict((c[0],cn['name']) for c,cn in chromosomes.iteritems())
         chr_len     = dict((c[0],cn['length']) for c,cn in chromosomes.iteritems())
@@ -151,15 +151,15 @@ class GenRep(object):
             for k in chromosomes.keys():
                 for row in track.read(selection=chr_names[k[0]],fields=["start","end","name"]):
                     s               = max(row[0],0)
-                    e               = min(row[1],chr_len[cid])
+                    e               = min(row[1],chr_len[k[0]])
                     features_names, name            = set_feature_name(features_names, row[2])
                     slices,cur_chunk= push_slices(slices,s,e,name,cur_chunk)
                     if cur_chunk > chunk:
                         size        += cur_chunk
-                        slices      = flush_slices(slices,k,f)
+                        slices      = flush_slices(slices,k[0],out)
                         cur_chunk   = 0
                 size += cur_chunk
-                slices = flush_slices(slices,k,f)
+                slices = flush_slices(slices,k[0],out)
         return (out,size)
 
     def assembly(self, assembly):
