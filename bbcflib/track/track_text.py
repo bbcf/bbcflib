@@ -52,33 +52,36 @@ class TextTrack(object):
     @property
     @memoized_method
     def _meta_chr(self):
-        if not self.chrfile:
-            raise Exception("The file '" + self._path + "' does not have a chromosome file associated.")
-        if not os.path.exists(self.chrfile):
-            raise Exception("The file '" + self.chrfile + "' cannot be found")
-        if os.path.isdir(self.chrfile):
-            raise Exception("The location '" + self.chrfile + "' is a directory (a file was expected).")
-        result = []
-        with open(self.chrfile, 'r') as f:
-            for line in f:
-                line = line.strip('\n')
-                if len(line) == 0:       continue
-                if line.startswith("#"): continue
-                if line.endswith(" \\"):
-                    raise Exception("The file '" + self.chrfile + "' includes linebreaks ('\\') which are not supported.")
-                if '\t' in line: seperator = '\t'
-                else:            seperator = ' '
-                line = line.split(seperator)
-                if len(line) != 2:
-                    raise Exception("The file " + self.chrfile + " does not seam to be a valid chromosome file.")
-                name = line[0]
-                try:
-                    length = int(line[1])
-                except ValueError:
-                    raise Exception("The file '" + self.chrfile + "' has invalid values.")
-                result.append(dict([('name', name),('length', length)]))
+        if isinstance(self.chromosomes_data, dict):
+            result = [dict([("name", self.chromosomes_data[chr]["name"]),("length", self.chromosomes_data[chr]["length"])]) for chr in self.chromosomes_data]
+        else:
+            if not self.chromosomes_data:
+                raise Exception("The file '" + self._path + "' does not have a chromosome file associated.")
+            if not os.path.exists(self.chromosomes_data):
+                raise Exception("The file '" + self.chromosomes_data + "' cannot be found")
+            if os.path.isdir(self.chromosomes_data):
+                raise Exception("The location '" + self.chromosomes_data + "' is a directory (a file was expected).")
+            result = []
+            with open(self.chromosomes_data, 'r') as f:
+                for line in f:
+                    line = line.strip('\n')
+                    if len(line) == 0:       continue
+                    if line.startswith("#"): continue
+                    if line.endswith(" \\"):
+                        raise Exception("The file '" + self.chromosomes_data + "' includes linebreaks ('\\') which are not supported.")
+                    if '\t' in line: seperator = '\t'
+                    else:            seperator = ' '
+                    line = line.split(seperator)
+                    if len(line) != 2:
+                        raise Exception("The file " + self.chromosomes_data + " does not seam to be a valid chromosome file.")
+                    name = line[0]
+                    try:
+                        length = int(line[1])
+                    except ValueError:
+                        raise Exception("The file '" + self.chromosomes_data + "' has invalid values.")
+                    result.append(dict([('name', name),('length', length)]))
         if not result:
-            raise Exception("The file '" + self.chrfile + "' does not seam to contain any information.")
+            raise Exception("The file '" + self.chromosomes_data + "' does not seam to contain any information.")
         return result
 
     @property

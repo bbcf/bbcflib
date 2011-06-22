@@ -18,7 +18,7 @@ except ImportError:
 class Test_Read(unittest.TestCase):
     def runTest(self):
         t = track_collections['Scores'][1]
-        with Track(t['path'], chrfile=t['chrfile']) as t['track']:
+        with Track(t['path'], chromosomes_data=t['chromosomes_data']) as t['track']:
             # Just the first feature #
             data = t['track'].read()
             self.assertEqual(data.next(), ('chr1', 0, 10, 8.0))
@@ -30,7 +30,7 @@ class Test_Read(unittest.TestCase):
 class Test_Write(unittest.TestCase):
     def runTest(self):
         path = named_temporary_path('.wig')
-        with new(path, chrfile=yeast_chr_file) as t:
+        with new(path, chromosomes_data=yeast_chr_file) as t:
             features = {}
             features['chr1'] = [(20,   50,  20),
                                 (50,   80, 300),
@@ -48,7 +48,7 @@ class Test_Roundtrips(unittest.TestCase):
         path = named_temporary_path('.wig')
         for track_num, track in sorted(track_collections['Scores'].items()):
             if track_num == 3: continue
-            with Track(track['path'], chrfile=track['chrfile']) as t:
+            with Track(track['path'], chromosomes_data=track['chromosomes_data']) as t:
                 t.dump(path)
             with open(path,         'r') as f: A = f.read().split('\n')
             with open(track['path'],'r') as f: B = f.read().split('\n')

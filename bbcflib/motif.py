@@ -4,13 +4,13 @@ bbcflib.motif
 ===============
 """
 import re, os
-from operator       import add
-from BeautifulSoup  import BeautifulSoup
-from bein           import *
-from bein.util      import *
-from bbcflib        import common
-from bbcflib.track.format_sql import Track, new
-
+from operator                           import add
+from BeautifulSoup                      import BeautifulSoup
+from bein                               import *
+from bein.util                          import *
+from bbcflib                            import common
+from bbcflib.track.format_sql           import Track, new
+from bbcflib.track.format_sql_extras    import SQLExtras
 @program
 def meme( fasta, maxsize=10000000, args=[] ):
     """Binding for the ``meme`` motif finder.
@@ -132,30 +132,18 @@ def motif_scan( fasta, motif, background, description='', threshold=0 ):
     call = ["S1K",motif,background,str(threshold),fasta]
     return {"arguments": call, "return_value": None}
 
-def save_motif_profile( ex, motifs, background, genrep, chromosomes,
-                        description='', sql=None, bed=None, threshold=0, via='lsf', keep_max_only=False ):
+def save_motif_profile( ex, motifs, background, genrep, chromosomes, data_path,
+                        description='', threshold=0, via='lsf', keep_max_only=False ):
     """Scan a set of motifs on a set of chromosomes and saves the results as an sql file.
     The 'motifs' argument is a dictionary with keys motif names and values PWM with 'n' rows like:
     "1 p(A) p(C) p(G) p(T)" where the sum of the 'p's is 1 and the first column allows to skip a position with a '0'.
     """
-    if bed is not None:
-        bed = os.path.expanduser(bed)
-        if not os.path.isabs(bed):
-            bed = os.path.normcase(bed)
-    elif sql is not None:
-        sql = os.path.expanduser(sql)
-        if not os.path.isabs(sql):
-            sql = os.path.normcase(sql)
     if motifs is not None:
         for name in motifs:
-            motifs[name] = os.path.expanduser(motifs[name])
-            if not os.path.isabs(motifs[name]):
-                motifs[name] = os.path.normcase(motifs[name])
+            motifs[name] = os.path.normcase(os.path.expanduser(motifs[name]))
     if background is not None:
-        background = os.path.expanduser(background)
-        if not os.path.isabs(background):
-            background = os.path.normcase(background)
-    fasta,size      = genrep.fasta_from_bed( chromosomes, out=unique_filename_in(), bed=bed, sql=sql )
+        background = os.path.normcase(os.path.expanduser(background))
+    fasta,size      = genrep.fasta_from_bed( chromosomes, data_path, out=unique_filename_in() )
     sqlout          = unique_filename_in()
     futures         = {}
     regions         = {}
@@ -164,31 +152,23 @@ def save_motif_profile( ex, motifs, background, genrep, chromosomes,
     keys            = chromosomes.keys()
     if not(isinstance(motifs,dict)):
         raise ValueError("'Motifs' must be a dictionary with keys 'motif_names' and values the PWMs.")
+
     for name,pwm in motifs.iteritems():
         output = unique_filename_in()
         futures[name] = (output,
                          motif_scan.nonblocking( ex, fasta, pwm, background, threshold,
                                                  via=via, stdout=output ))
 
-    if bed != None:
-        chr_ids = dict((cn['name'],c[0]) for c,cn in chromosomes.iteritems())
-        with open(bed,"r") as f:
-            for l in f:
-                row = l.rstrip('\n').split('\t')
-                name = re.search(r'(\S+)\s*',row[3]).groups()[0]
-                regions[name] = (row[0],int(row[1]))
-    elif sql != None:
-        connection = sqlite3.connect( sql )
+    with Track(data_path) as track:
         for v in chromosomes.values():
-            for row in connection.execute('select start,name from "'+v['name']+'"'):
-                name = re.search(r'(\S+)\s*',row[1]).groups()[0]
-                regions[name] = (v['name'],int(row[0]))
-        connection.close()
-    else:
-        raise TypeError("save_motif_profile requires either a 'sqlite' or a 'bed' file.")
+                for row in track.read(v['name'], fields=["start","name"]):
+                    name = re.search(r'(\S+)\s*',row[1]).groups()[0]
+                    regions[name] = (v['name'],int(row[0]))
+
     with new(sqlout,  format="sql", datatype="qualitative") as track:
         track.meta_track= {'source': 'S1K'}
         track.meta_track.update({'k':'v'})
+
     for name,f in futures.iteritems():
         vals            = []
         _               = f[1].wait()
@@ -223,6 +203,7 @@ def save_motif_profile( ex, motifs, background, genrep, chromosomes,
         if len(vals)>0:
             with Track(sqlout,  format="sql") as track:
                 track.write(cur_chr, vals)
+
     for chromosome in chromosomes_set:
         isSearchingChromosome   = True
         i                       = 0
@@ -234,8 +215,10 @@ def save_motif_profile( ex, motifs, background, genrep, chromosomes,
                 chomosomes_used.append( chromosomes[keys[i]] )
             else:
                 i +=1
+
     with Track(sqlout,  format="sql") as track:
         track.meta_chr = chomosomes_used
+
     ex.add( sqlout, description="sql:"+description+"motif_scan.sql" )
     return sqlout
 
@@ -293,8 +276,8 @@ def false_discovery_rate(false_positive, true_positive, alpha=1, nb_false_positi
 
 def sqlite_to_false_discovery_rate  (
                                         ex, motifs, background, genrep, chromosomes,
+                                        true_positive_data_path, false_positive_data_path,
                                         description='',
-                                        sqls=None,      beds=None,
                                         threshold=0,    via='lsf', keep_max_only=False,
                                         alpha=0.05, nb_false_positive_hypotesis=1.0
                                     ):
@@ -303,47 +286,25 @@ def sqlite_to_false_discovery_rate  (
     sqls = (sql, sql_random)
     beds = (bed, bed_random)
     """
-    if sqls is None and beds is None:
-        raise ValueError(u"Variables sqls and beds is set to None! Set one of these variables")
-    elif sqls is not None and beds is not None:
-        raise ValueError(u"Variables sqls and beds is not None! Set only one of these variables, sqls or beds")
+    if true_positive_data_path is None or false_positive_data_path is None:
+        raise ValueError(u"Variables true_positive_data_path or false_positive_data_path is set to None!")
+    true_positive_data_path = os.path.normcase(os.path.expanduser(true_positive_data_path))
+    false_positive_data_path= os.path.normcase(os.path.expanduser(false_positive_data_path))
     true_positive_result    = None
     false_positive_result   = None
 
-    if sqls is not None:
-        new_sql0 = os.path.expanduser(sqls[0])
-        new_sql1 = os.path.expanduser(sqls[1])
-        # original
-        true_positive_result    = save_motif_profile(
-                                                        ex, motifs, background, genrep, chromosomes,
-                                                        description     = description,
-                                                        sql             = new_sql0, bed=None, threshold=threshold,
-                                                        via             = via, keep_max_only = keep_max_only
-                                                    )
-        # random
-        false_positive_result   = save_motif_profile(
-                                                        ex, motifs, background, genrep, chromosomes,
-                                                        description     = description,
-                                                        sql             = new_sql1, bed=None, threshold=threshold,
-                                                        via             = via, keep_max_only=keep_max_only
-                                                    )
-    else:
-        new_bed0 = os.path.expanduser(beds[0])
-        new_bed1 = os.path.expanduser(beds[1])
-        # original
-        true_positive_result    = save_motif_profile(
-                                                        ex, motifs, background, genrep, chromosomes,
-                                                        description     = description,
-                                                        sql             = None, bed=new_bed0, threshold=threshold,
-                                                        via             = via, keep_max_only=keep_max_only
-                                                    )
-        # random
-        false_positive_result   = save_motif_profile(
-                                                        ex, motifs, background, genrep, chromosomes,
-                                                        description     = description,
-                                                        sql             = None, bed=new_bed1, threshold=threshold,
-                                                        via             = via, keep_max_only=keep_max_only
-                                                    )
+    # original
+    true_positive_result    = save_motif_profile(
+                                                    ex, motifs, background, genrep, chromosomes, true_positive_data_path,
+                                                    description     = description, threshold=threshold,
+                                                    via             = via, keep_max_only = keep_max_only
+                                                )
+    # random
+    false_positive_result   = save_motif_profile(
+                                                    ex, motifs, background, genrep, chromosomes, false_positive_data_path,
+                                                    description     = description, threshold=threshold,
+                                                    via             = via, keep_max_only=keep_max_only
+                                                )
 
     fp_scores = None
     tp_scores = None

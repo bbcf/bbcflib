@@ -30,7 +30,7 @@ def run(create_sql_files=False):
         dest = dir + name.split('.')[0] + '.sql'
         if os.path.exists(dest): os.remove(dest)
         try:
-            with Track(path, name=name, chrfile=yeast_chr_file) as t:
+            with Track(path, name=name, chromosomes_data=yeast_chr_file) as t:
                 if create_sql_files: t.convert(dest)
         except Exception as err:
             message(path, name, False, expected, str(err))
