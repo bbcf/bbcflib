@@ -212,7 +212,7 @@ class GenRep(object):
         """
         Returns a list of assemblies available on genrep
         """
-        return assembly in [a['name'] for a in self.assemblies_available()]
+        return assembly in self.assemblies_available()
 
 class Assembly(object):
     """A representation of a GenRep assembly.
