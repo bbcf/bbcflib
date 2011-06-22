@@ -16,21 +16,22 @@ Below is the script used by the frontend::
     from bbcflib.mapseq import *
     from bbcflib.chipseq import *
     M = MiniLIMS( '/path/to/chipseq/minilims' )
-    M_ms = MiniLIMS( '/path/to/mapseq/minilims' )
+    ms_limspath = '/path/to/mapseq/minilims'
+    working_dir = '/path/to/scratch/on/cluster'
     hts_key = 'test_key'
-    gl = { 'hts_url_cs': 'http://htsstation.vital-it.ch/chipseq/',
-           'hts_url_ms': 'http://htsstation.vital-it.ch/mapseq/',
+    assembly_id = 'mm9'
+    gl = { 'hts_chipseq': {'url': 'http://htsstation.vital-it.ch/chipseq/'},
+           'hts_mapseq': {'url': 'http://htsstation.vital-it.ch/mapseq/'},
            'genrep_url': 'http://bbcftools.vital-it.ch/genrep/',
-           'bwt_root': '/scratch/frt/yearly/genrep/nr_assemblies/bowtie',
            'script_path': '/srv/chipseq/lib' }
-    htss = frontend.Frontend( url=gl['hts_url_cs'] )
+    htss = frontend.Frontend( url=gl['hts_chipseq']['url'] )
+    g_rep = genrep.GenRep( gl['genrep_url'], "" )
     job = htss.job( hts_key )
-    g_rep = genrep.GenRep( gl['genrep_url'], gl['bwt_root'] )
+    g_rep = genrep.GenRep( gl['genrep_url'], "" )
+    assembly = g_rep.assembly( assembly_id )
     with execution( M, description=hts_key, remote_working_directory=working_dir ) as ex:
-        (ms_files, ms_job) = import_mapseq_results( job.options['mapseq_key'], M_ms, ex.working_directory, gl['hts_url_ms'] )
-        g_rep_assembly = g_rep.assembly( ms_job.assembly_id )
-        job.groups = ms_job.groups
-        files = workflow_groups( ex, job, ms_files, g_rep_assembly.chromosomes, gl['script_path'] )
+        (ms_files, job) = get_bam_wig_files( ex, job, ms_limspath, gl['hts_mapseq']['url'], gl['script_path'], via=via )
+        files = workflow_groups( ex, job, ms_files, assembly.chromosomes, gl['script_path'] )
     print ex.id
     allfiles = common.get_files( ex.id, M )
     print allfiles

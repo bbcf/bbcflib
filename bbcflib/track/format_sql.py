@@ -11,9 +11,10 @@ import sqlite3
 
 # Internal modules #
 from ..track import *
+from .format_sql_extras import SQLExtras
 
 ###########################################################################
-class GenomicFormat(Track):
+class GenomicFormat(Track, SQLExtras):
     special_tables = ['attributes', 'chrNames', 'types']
 
     def load(self):
@@ -43,18 +44,6 @@ class GenomicFormat(Track):
     def commit(self):
         self.connection.commit()
 
-    def get_scores_frequencies(self):
-        self.cursor.execute(u"SELECT name FROM chrNames;")
-        chromosomes_names   = [ chromosome[0] for chromosome in self.cursor ]
-        scores              = {}
-        for chromosome_name in chromosomes_names:
-            self.cursor.execute(u"SELECT count (*), score FROM '"+chromosome_name+u"' GROUP BY score;")
-            for result in self.cursor:
-                if result[1] not in scores:
-                    scores[ result[1] ] = result[0]
-                else:
-                    scores[ result[1] ] += result[0]
-        return scores
 
     #-----------------------------------------------------------------------------#
     @property

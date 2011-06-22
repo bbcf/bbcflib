@@ -110,17 +110,17 @@ def add_meme_files( ex, genrep, chromosomes, description='',
     if bed is not None:
         bed = os.path.expanduser(bed)
         if not os.path.isabs(bed):
-            bed = os.path.normcase("../"+bed)
+            bed = os.path.normcase(bed)
     elif sql is not None:
         sql = os.path.expanduser(sql)
         if not os.path.isabs(sql):
-            sql = os.path.normcase("../"+sql)
+            sql = os.path.normcase(sql)
     fasta,size = genrep.fasta_from_bed( chromosomes, out=unique_filename_in(),
                                         bed=bed, sql=sql )
     meme_out    = meme.nonblocking( ex, fasta, maxsize=size*1.5, args=meme_args, via=via ).wait()
     html        = os.path.join(meme_out,"meme.html")
     files       = parse_meme_html_output(ex, meme_out+"/meme.html", fasta, chromosomes) # return or not?
-    archive     = common.compress.nonblocking(ex, meme_out).wait()
+    archive     = common.compress(ex, meme_out)
     ex.add( html, description="html:"+description+"meme.html" )
     ex.add( archive, description="archive:"+description )
     return meme_out
@@ -141,20 +141,20 @@ def save_motif_profile( ex, motifs, background, genrep, chromosomes,
     if bed is not None:
         bed = os.path.expanduser(bed)
         if not os.path.isabs(bed):
-            bed = os.path.normcase("../"+bed)
+            bed = os.path.normcase(bed)
     elif sql is not None:
         sql = os.path.expanduser(sql)
         if not os.path.isabs(sql):
-            sql = os.path.normcase("../"+sql)
+            sql = os.path.normcase(sql)
     if motifs is not None:
         for name in motifs:
             motifs[name] = os.path.expanduser(motifs[name])
             if not os.path.isabs(motifs[name]):
-                motifs[name] = os.path.normcase("../"+motifs[name])
+                motifs[name] = os.path.normcase(motifs[name])
     if background is not None:
         background = os.path.expanduser(background)
         if not os.path.isabs(background):
-            background = os.path.normcase("../"+background)
+            background = os.path.normcase(background)
     fasta,size      = genrep.fasta_from_bed( chromosomes, out=unique_filename_in(), bed=bed, sql=sql )
     sqlout          = unique_filename_in()
     futures         = {}
