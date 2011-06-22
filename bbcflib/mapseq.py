@@ -33,9 +33,11 @@ Below is the script used by the frontend::
     from bbcflib import daflims, genrep, frontend, gdv, common
     from bbcflib.mapseq import *
     M = MiniLIMS( limspath )
-    gl = { 'hts_url': 'http://htsstation.vital-it.ch/mapseq/',
+    working_dir = '/path/to/scratch/on/cluster'
+    hts_key = 'test_key'
+    gl = { 'hts_mapseq': {'url': 'http://htsstation.vital-it.ch/mapseq/'},
            'genrep_url': 'http://bbcftools.vital-it.ch/genrep/',
-           'bwt_root': '/scratch/frt/yearly/genrep/nr_assemblies/bowtie',
+           'bwt_root': '/db/genrep/nr_assemblies',
            'script_path': '/srv/chipseq/lib',
            'lims': {'user': 'alice',
                      'passwd': {'lgtf': 'bob123',
@@ -44,7 +46,7 @@ Below is the script used by the frontend::
                     'email': 'alice.ecila@somewhere.edu',
                     'key': 'xxxxxxxxxxxxxxxxxxxxxxxx'} }
     assembly_id = 'mm9'
-    htss = frontend.Frontend( url=gl['hts_url'] )
+    htss = frontend.Frontend( url=gl['hts_mapseq']['url'] )
     job = htss.job( hts_key )
     g_rep = genrep.GenRep( gl['genrep_url'], gl['bwt_root'] )
     assembly = g_rep.assembly( assembly_id )
