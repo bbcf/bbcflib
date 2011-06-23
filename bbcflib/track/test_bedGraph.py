@@ -18,7 +18,7 @@ except ImportError:
 class Test_Read(unittest.TestCase):
     def runTest(self):
         t = track_collections['Signals'][1]
-        with Track(t['path'], chrfile=t['chrfile']) as t['track']:
+        with Track(t['path'], chrmeta=t['chrmeta']) as t['track']:
             # Just the first feature #
             data = t['track'].read()
             self.assertEqual(data.next(), ('chr1', 0, 10, -1.0))
@@ -30,7 +30,7 @@ class Test_Read(unittest.TestCase):
 class Test_Write(unittest.TestCase):
     def runTest(self):
         path = named_temporary_path('.bedGraph')
-        with new(path, chrfile=yeast_chr_file) as t:
+        with new(path, chrmeta=yeast_chr_file) as t:
             features = {}
             features['chr1'] = [(0,  10, -1.0),
                                 (20, 30, -1.75),
@@ -47,12 +47,20 @@ class Test_Roundtrips(unittest.TestCase):
     def runTest(self):
         path = named_temporary_path('.bedGraph')
         for track_num, track in sorted(track_collections['Signals'].items()):
-            with Track(track['path'], chrfile=track['chrfile']) as t:
+            with Track(track['path'], chrmeta=track['chrmeta']) as t:
                 t.dump(path)
             with open(path,         'r') as f: A = f.read().split('\n')
             with open(track['path'],'r') as f: B = f.read().split('\n')
             self.assertEqual(A[1:], B)
             os.remove(path)
+
+#-----------------------------------------------------------------------------#
+class Test_Format(unittest.TestCase):
+    def runTest(self):
+        t = track_collections['Signals'][1]
+        with Track(t['path'], chrmeta=t['chrmeta']) as t:
+            self.assertEqual(t.format, 'sql')
+            self.assertEqual(t._format, 'bedGraph')
 
 #-----------------------------------#
 # This code was written by the BBCF #

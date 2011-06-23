@@ -45,35 +45,31 @@ With a ``ConfigParser``, the previous code would look like::
 
 .. autoclass:: Assembly
 """
-import sqlite3
-import urllib2
-import json
-import os
-from ConfigParser   import ConfigParser
-from datetime       import datetime
-
-from common import normalize_url
+import urllib2, json, os
+from datetime                   import datetime
+from bbcflib.track.format_sql   import Track
+from bbcflib.common             import normalize_url
 
 class GenRep(object):
-    def __init__(self, url=None, root=None, intype=0, config=None, section='genrep'):
+    def __init__(self, url='http://bbcftools.vital-it.ch/genrep/', root='/db/genrep/nr_assemblies/bowtie', intype=0, config=None, section='genrep'):
         """Create an object to query a GenRep repository.
-        
+
         GenRep is the in-house repository for sequence assemblies for the
         BBCF in Lausanne.  This is an object that wraps its use in Python
         in an idiomatic way.
-        
+
         Create a GenRep object with the base URL to the GenRep system, and
         the root path of GenRep's files.  For instance,
-        
+
             g = GenRep('genrep.epfl.ch','/path/to/genrep/indices')
-        
+
             To get an assembly from the repository, call the assembly
             method with either the integer assembly ID or the string assembly
             name.  This returns an Assembly object.
-            
+
                 a = g.assembly(3)
                 b = g.assembly('mus')
-                
+
         """
         if (url == None or root == None) and config == None:
             raise TypeError("GenRep requires either a 'url' and 'root', or a 'config'")
@@ -95,7 +91,7 @@ class GenRep(object):
 
     def query_url(self, method, assembly):
         """Assemble a URL to call *method* for *assembly* on the repository."""
-        if isinstance(assembly, str):
+        if isinstance(assembly, basestring):
             return """%s/%s.json?assembly_name=%s""" % (self.url, method, assembly)
         elif isinstance(assembly, int):
             return """%s/%s.json?assembly_id=%d""" % (self.url, method, assembly)
@@ -111,7 +107,7 @@ class GenRep(object):
         url = """%s/chromosomes/%i/get_sequence_part?slices=%s""" % (self.url, chr_id, slices)
         return urllib2.urlopen(url).read().split(',')
 
-    def fasta_from_bed(self, chromosomes, out=None, bed=None, sql=None, chunk=50000):
+    def fasta_from_bed(self, chromosomes, data_path, out=None, chunk=50000):
         """Get a fasta file with sequences corresponding to the features in the
         bed or sqlite file.
 
@@ -143,62 +139,26 @@ class GenRep(object):
                         feature_name    = tmp_name
             features_names.add(feature_name)
             return features_names, feature_name
-
+        out         = os.path.splitext(data_path)[0]+".fa"
         slices      = {'coord':[],'names':[]}
         chr_names   = dict((c[0],cn['name']) for c,cn in chromosomes.iteritems())
         chr_len     = dict((c[0],cn['length']) for c,cn in chromosomes.iteritems())
         size        = 0
-        if bed != None:
-            if out == None:
-                out = bed+".fa"
-            chr_ids = dict((cn['name'],c[0]) for c,cn in chromosomes.iteritems())
-            cur_chunk = 0
-            cur_chr = 0
-            with open(bed,"r") as f:
-                for l in f:
-                    row             = l.rstrip('\n').split('\t')
-                    cid             = chr_ids[row[0]]
-                    s               = max(int(row[1]),0)
-                    e               = min(int(row[2]),chr_len[cid])
-                    name            = ''
-                    features_names  = set()
-                    if len(row)>3:
-                        name = row[3]
-                    else:
-                        name = "feature"
-                    features_names, name    = set_feature_name(features_names, name)
-                    slices,cur_chunk= push_slices(slices,s,e,name,cur_chunk)
-                    if (cur_chr>0 and cur_chr != cid) or cur_chunk > chunk:
-                        size += cur_chunk
-                        slices = flush_slices(slices,cur_chr,out)
-                        cur_chunk = 0
-                    cur_chr = cid
-            size += cur_chunk
-            slices = flush_slices(slices,cur_chr,out)
-        elif sql != None:
-            if out == None:
-                out = sql+".fa"
+        with Track(data_path, chrmeta=chromosomes) as track:
             cur_chunk       = 0
-            connection      = sqlite3.connect( sql )
-            cur             = connection.cursor()
             features_names  = set()
             for k in chromosomes.keys():
-                cur.execute('select start,end,name from "'+chr_names[k]+'"')
-                connection.commit()
-                for row in cur:
+                for row in track.read(selection=chr_names[k[0]],fields=["start","end","name"]):
                     s               = max(row[0],0)
-                    e               = min(row[1],chr_len[cid])
+                    e               = min(row[1],chr_len[k[0]])
                     features_names, name            = set_feature_name(features_names, row[2])
                     slices,cur_chunk= push_slices(slices,s,e,name,cur_chunk)
                     if cur_chunk > chunk:
                         size        += cur_chunk
-                        slices      = flush_slices(slices,k,f)
+                        slices      = flush_slices(slices,k[0],out)
                         cur_chunk   = 0
                 size += cur_chunk
-                slices = flush_slices(slices,k,f)
-                cur.close()
-        else:
-            raise TypeError("fasta_from_bed requires either a 'sqlite' or a 'bed' file.")
+                slices = flush_slices(slices,k[0],out)
         return (out,size)
 
     def assembly(self, assembly):
@@ -207,7 +167,7 @@ class GenRep(object):
         *assembly* may be an integer giving the assembly ID, or a
         string giving the assembly name.
         """
-        if isinstance(assembly, str):
+        if isinstance(assembly, basestring):
             assembly_info = json.load(urllib2.urlopen(self.query_url('assemblies', assembly)))[0]
         elif isinstance(assembly, int):
             assembly_info = json.load(urllib2.urlopen("""%s/assemblies/%d.json""" % (self.url, assembly)))
@@ -245,9 +205,14 @@ class GenRep(object):
         Returns a list of assemblies available on genrep
         """
         assembly_info   = json.load(urllib2.urlopen(self.url + "/assemblies.json"))
-        assembly_list   = [self._assembly(a) for a in assembly_info]
+        assembly_list   = [a['assembly']['name'] for a in assembly_info]
         return [ a for a in assembly_list if a is not None ]
 
+    def is_available(self, assembly):
+        """
+        Returns a list of assemblies available on genrep
+        """
+        return assembly in self.assemblies_available()
 
 class Assembly(object):
     """A representation of a GenRep assembly.
@@ -365,8 +330,6 @@ class Assembly(object):
         returns the path to the compressed fasta file (tar.gz)
         """
         return os.path.join(self.root,self.md5+".tar.gz")
-
-
 
 if __name__ == '__main__':
     import doctest

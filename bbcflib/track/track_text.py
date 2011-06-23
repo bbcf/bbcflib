@@ -11,6 +11,7 @@ import os, shlex
 
 # Internal Modules #
 from ..common import memoized_method
+from ..genrep import GenRep
 
 # Functions #
 def strand_to_int(strand):
@@ -52,34 +53,47 @@ class TextTrack(object):
     @property
     @memoized_method
     def _meta_chr(self):
-        if not self.chrfile:
-            raise Exception("The file '" + self._path + "' does not have a chromosome file associated.")
-        if not os.path.exists(self.chrfile):
-            raise Exception("The file '" + self.chrfile + "' cannot be found")
-        if os.path.isdir(self.chrfile):
-            raise Exception("The location '" + self.chrfile + "' is a directory (a file was expected).")
-        result = []
-        with open(self.chrfile, 'r') as f:
-            for line in f:
-                line = line.strip('\n')
-                if len(line) == 0:       continue
-                if line.startswith("#"): continue
-                if line.endswith(" \\"):
-                    raise Exception("The file '" + self.chrfile + "' includes linebreaks ('\\') which are not supported.")
-                if '\t' in line: seperator = '\t'
-                else:            seperator = ' '
-                line = line.split(seperator)
-                if len(line) != 2:
-                    raise Exception("The file " + self.chrfile + " does not seam to be a valid chromosome file.")
-                name = line[0]
-                try:
-                    length = int(line[1])
-                except ValueError:
-                    raise Exception("The file '" + self.chrfile + "' has invalid values.")
-                result.append(dict([('name', name),('length', length)]))
-        if not result:
-            raise Exception("The file '" + self.chrfile + "' does not seam to contain any information.")
-        return result
+        def parse_dict(info):
+            return [dict([("name", self.chrmeta[chr]["name"]),("length", self.chrmeta[chr]["length"])]) for chr in self.chrmeta]
+        # Is a dictionary #
+        if isinstance(self.chrmeta, dict):
+            return parse_dict(self.chrmeta)
+        # Is a path #
+        elif os.path.exists(self.chrmeta):
+            if not self.chrmeta:
+                raise Exception("The file '" + self._path + "' does not have a chromosome file associated.")
+            if not os.path.exists(self.chrmeta):
+                raise Exception("The file '" + self.chrmeta + "' cannot be found")
+            if os.path.isdir(self.chrmeta):
+                raise Exception("The location '" + self.chrmeta + "' is a directory (a file was expected).")
+            result = []
+            with open(self.chrmeta, 'r') as f:
+                for line in f:
+                    line = line.strip('\n')
+                    if len(line) == 0:       continue
+                    if line.startswith("#"): continue
+                    if line.endswith(" \\"):
+                        raise Exception("The file '" + self.chrmeta + "' includes linebreaks ('\\') which are not supported.")
+                    if '\t' in line: seperator = '\t'
+                    else:            seperator = ' '
+                    line = line.split(seperator)
+                    if len(line) != 2:
+                        raise Exception("The file " + self.chrmeta + " does not seam to be a valid chromosome file.")
+                    name = line[0]
+                    try:
+                        length = int(line[1])
+                    except ValueError:
+                        raise Exception("The file '" + self.chrmeta + "' has invalid values.")
+                    result.append(dict([('name', name),('length', length)]))
+            if not result:
+                raise Exception("The file '" + self.chrmeta + "' does not seam to contain any information.")
+            return result
+        # Is a string assembly #
+        else:
+            g = GenRep()
+            if not g.is_available(self.chrmeta):
+                raise Exception("The genrep server does not know about the assembly '" + self.chrmeta + "'.")
+            return parse_dict(g.assembly(self.chrmeta).chromosomes())
 
     @property
     @memoized_method

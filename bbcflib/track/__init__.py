@@ -27,7 +27,7 @@ Optionally you can supply a name for every track you load, to help you keep trac
 If your track is in a format that is missing chromosome information, you will need to supply an extra chromosome file::
 
     from bbcflib.track import Track
-    with Track('tracks/yeast_genes.bed', chrfile='tracks/chrs/yeast.chr') as saccer:
+    with Track('tracks/yeast_genes.bed', chrmeta='tracks/chrs/yeast.chr') as saccer:
         data = saccer.read('chr4')
 
 For instance, the cumulative base coverage of features on chromosome two can be calculated like this::
@@ -145,7 +145,7 @@ class Track(object):
             * *path* is the path to track file.
             * *format* is an optional string specifying the format of the track to load when it cannot be guessed from the file extension.
             * *name* is an optional string specifying the name of the track to load.
-            * *chrfile* is the path to chromosome file. This is specified only when the underlying format is missing chromosome length information.
+            * *chrmeta* is the path to chromosome file. This is specified only when the underlying format is missing chromosome length information.
             * *datatype* is an optional variable that can take the value of either ``qualitative`` or ``quantitative``. It is only usefull when loading a track that is ambigous towards its datatype, as can be certain text files. For instance, In the case of WIG track becoming qualitative, all features will be missing names, but overlapping features will suddenly be authorized.
             * *readonly* is an optional boolean variable that defaults to ``False``. When set to ``True``, any operation attempting to write to the track will sliently be ignored.
 
@@ -155,9 +155,9 @@ class Track(object):
                 pass
             with Track('tracks/yeast', 'sql', 'S. cer. genes') as yeast:
                 pass
-            with Track('tracks/peaks.bed', 'bed', chrfile='tracks/cser.chr') as peaks:
+            with Track('tracks/peaks.bed', 'bed', chrmeta='tracks/cser.chr') as peaks:
                 pass
-            with Track('tracks/scores.wig', 'wig', chrfile='tracks/cser.chr', datatype='qualitative') as scores:
+            with Track('tracks/scores.wig', 'wig', chrmeta='tracks/cser.chr', datatype='qualitative') as scores:
                 pass
             with Track('tracks/repeats.sql', readonly=True) as rpgenes:
                 pass
@@ -167,14 +167,14 @@ class Track(object):
            * *path* is the file system path to the underlying file.
            * *datatype* is either ``qualitative`` or ``quantitative``.
            * *name* is given upon creation of the track.
-           * *format* is either ``sql``, ``bed`` or ``wig``
+           * *format* is always ``sql`` as, when loading a ``bed`` track for instance, a transparent underlying Bio SQLite track is sliently created.
            * *all_chrs* is a list of all available chromosome. For instance:
                 ``['chr1, 'chr2', 'chr3']``
            * *meta_chr* is a list of dictionaries of chromosome meta data (information like length, etc). For instance:
                 ``[{'name': 'chr1', 'length': 197195432}, {'name': 'chr2', 'length': 129993255}]``
            * *meta_track* is a dictionary of meta data associated to the track (information like the source, etc). For instance:
                  ``{'datatype': 'quantitative', 'source': 'SGD'}``
-           * *chrfile* is the path to a chromosomes file if one was included.
+           * *chrmeta* is the path to a chromosomes file if one was included.
     '''
 
     qualitative_fields  = ['start', 'end', 'name', 'score', 'strand']
@@ -194,7 +194,7 @@ class Track(object):
     }
 
     #-----------------------------------------------------------------------------#
-    def __new__(cls, path, format=None, name=None, chrfile=None, datatype=None, readonly=False):
+    def __new__(cls, path, format=None, name=None, chrmeta=None, datatype=None, readonly=False):
         '''Internal factory-like method that is called before creating a new instance of Track.
            This function determines the format of the file that is provided and returns an
            instance of the appropriate child class.'''
@@ -206,7 +206,7 @@ class Track(object):
             instance       = super(Track, cls).__new__(cls)
         return instance
 
-    def __init__(self, path, format=None, name=None, chrfile=None, datatype=None, readonly=False):
+    def __init__(self, path, format=None, name=None, chrmeta=None, datatype=None, readonly=False):
         # Type can only mean something with text files #
         if datatype:
             raise Exception("You cannot specify the datatype: " + datatype + " for the track '" + path + "'.")
@@ -216,7 +216,7 @@ class Track(object):
         self.path     = path
         self.format   = format
         self._name    = name
-        self.chrfile  = chrfile
+        self.chrmeta  = chrmeta
         self.readonly = readonly
         # Check existance #
         if not os.path.exists(path):
@@ -336,14 +336,14 @@ class Track(object):
         '''
         raise NotImplementedError
 
-    def convert(self, path, format='sql', chrfile=None):
+    def convert(self, path, format='sql', chrmeta=None):
         '''Convert a track to a given format.
 
            * *path* is the file path where the new track will be created
 
            * *format* is the format into which the track will be converted.
 
-           * *chrfile* is the path to a chromosomes file if one is needed.
+           * *chrmeta* is the path to a chromosomes file if one is needed.
 
            Examples::
 
@@ -356,7 +356,7 @@ class Track(object):
         '''
         if format == self.format:
             raise Exception("The track '" + path + "' cannot be converted to the " + format + " format because it is already in that format.")
-        with new(path, format, self.datatype, self.name, chrfile) as t:
+        with new(path, format, self.datatype, self.name, chrmeta) as t:
             t.meta_track = self.meta_track
             t.meta_chr   = self.meta_chr
             for chrom in self.all_chrs: t.write(chrom, self.read(chrom), self.fields)
@@ -401,7 +401,7 @@ class Track(object):
         return getattr(Track, self.datatype + '_fields')
 
 ###########################################################################
-def new(path, format=None, datatype='qualitative', name='Unnamed', chrfile=None):
+def new(path, format=None, datatype='qualitative', name='Unnamed', chrmeta=None):
     '''Create a new empty track in preparation for writing to it.
 
         * *path* is the file path where the new track will be created
@@ -412,7 +412,7 @@ def new(path, format=None, datatype='qualitative', name='Unnamed', chrfile=None)
 
         * *name* is an optional name for the track.
 
-        *chrfile* is the path to a chromosome file if one is needed.
+        *chrmeta* is the path to a chromosome file if one is needed.
 
         Examples::
 
@@ -430,7 +430,7 @@ def new(path, format=None, datatype='qualitative', name='Unnamed', chrfile=None)
     if not format: format = _determine_format(path)
     implementation = _import_implementation(format)
     implementation.GenomicFormat.create(path, datatype, name)
-    return Track(path, format=format, name=name, chrfile=chrfile)
+    return Track(path, format=format, name=name, chrmeta=chrmeta)
 
 #-----------------------------------#
 # This code was written by the BBCF #
