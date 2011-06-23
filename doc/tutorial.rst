@@ -45,20 +45,25 @@ Then comes the job description::
     compute_densities=True
     discard_pcr_duplicates=True
     
+Experimental conditions correspond to `groups` which are numbered, each condition may have any number of replicates (called `runs`) which are associated with their respective group via its numeric `group_id`::
+
     [Groups]
     [[1]]
     control=True
-    name=control
+    name=unstimulated
     [[2]]
     control=False
     name=stimulated
     
     [Runs]
     [[1]]
-    url=http://some.place.edu/my_file1.fastq
+    url=http://some.place.edu/my_control.fastq
     group_id=1
     [[2]]
-    url=http://some.place.edu/my_file2.fastq
+    url=http://some.place.edu/my_test1.fastq
+    group_id=2
+    [[3]]
+    url=http://some.place.edu/my_test2.fastq
     group_id=2
 
 We next look at how the python script is using these configuration and processing the files. First it imports all the relevant modules::
