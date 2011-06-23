@@ -12,7 +12,7 @@ from numpy import *
 import urllib
 from itertools import combinations
 from bein.util import *
-from bbcflib import daflims, common, frontend, genrep, workflow
+from bbcflib import daflims, genrep
 from bbcflib.mapseq import plot_stats, bamstats
 import rpy2.robjects as robjects
 import rpy2.robjects.packages as rpackages
@@ -122,7 +122,6 @@ def fetch_transcript_mapping(ex, assembly_id):
         print "Exon to ORF mapping found on GenRep"
         return mapping
 
-
 def map_runs(fun, runs):
     """Parallelization of fun(run) executions"""
     futures = {}
@@ -131,7 +130,7 @@ def map_runs(fun, runs):
     results = {}
     for group_id, future_list in futures.iteritems():
         results[group_id] = [f.wait() for f in future_list]
-    print "Results:", results.values()
+    #print "Results:", results.values()
     return results
 
 def align_reads(ex, index, read_files, via="lsf"):
@@ -209,7 +208,7 @@ def pairs_to_test(controls):
 
 @program
 def external_deseq(cond1_label, cond1, cond2_label, cond2, transcript_names, method="normal",
-                   assembly_id=None, output=None, maplot=None, translate=None):
+                   assembly_id=None, output=None, maplot=None):
     if output:
         result_filename = output
     else:
@@ -223,7 +222,7 @@ def external_deseq(cond1_label, cond1, cond2_label, cond2, transcript_names, met
     tn = unique_filename_in()
     with open(tn,'wb') as f:
         pickle.dump(transcript_names,f,pickle.HIGHEST_PROTOCOL)
-    call = ["run_deseq.py", c1, c2, tn, cond1_label, cond2_label, method, str(assembly_id), result_filename, str(maplot), str(translate)]
+    call = ["run_deseq.py", c1, c2, tn, cond1_label, cond2_label, method, str(assembly_id), result_filename, str(maplot)]
     return {"arguments": call, "return_value": result_filename}
 
 def results_to_json(lims, exid):
@@ -239,7 +238,7 @@ def results_to_json(lims, exid):
     return j
 
 def inference(cond1_label, cond1, cond2_label, cond2, transcript_names, method="normal",
-              assembly_id=None, output=None, maplot=None, translate=None):
+              assembly_id=None, output=None, maplot=None):
     """Runs DESeq comparing the counts in *cond1* and *cond2*.
 
     Arguments *cond1* and *cond2* are lists of numpy arrays. Each
@@ -277,25 +276,23 @@ def inference(cond1_label, cond1, cond2_label, cond2, transcript_names, method="
 
     ## Replace (unique) gene IDs by (not unique) gene names
 
-    if translate:
+    if assembly_id:
         print "Translate gene IDs to gene names..."
-        #if not assembly_id: raise
         res_ids = list(res[0])
-        gene_names = {}; gid = None; l = None
+        idtoname = {}; res_names = []; gid = None; l = None
         (assem,headers) = urllib.urlretrieve("http://bbcftools.vital-it.ch/genrep/nr_assemblies/" + str(assembly_id) + ".gtf")
         with open(assem) as assembly:
             for l in [line for line in assembly.readlines() if line.find("gene_name")!=-1]:
                 gid = l.split("gene_id")[1].split(";")[0].strip(" \"")
-                if gid in res_ids:
-                    idx = res_ids.index(gid)
-                    gene_names[idx] = l.split("gene_name")[1].split(";")[0].strip(" \"")
+                gname = l.split("gene_name")[1].split(";")[0].strip(" \"")
+                idtoname[gid] = gname
         urllib.urlcleanup()
-        for i in range(len(res_ids)):
-            if i not in gene_names.keys(): gene_names[i] = res_ids[i]
-        data_frame = res.rx(2)
-        for i in range(3,len(res)+1):
+        for i in res_ids:
+            res_names.append(idtoname.get(i, i))
+        data_frame = robjects.DataFrame({"GeneName":robjects.StrVector(res_names)})
+        for i in range(2,len(res)+1):
             data_frame = data_frame.cbind(res.rx(i))
-        data_frame.rownames = [gene_names[i] for i in range(len(gene_names))]
+        res = data_frame
 
     ## MA-plot
     if maplot:
@@ -311,9 +308,16 @@ def inference(cond1_label, cond1, cond2_label, cond2, transcript_names, method="
     res.to_csvfile(result_filename)
     return result_filename
 
-def rnaseq_workflow(ex, job, lims_path="rnaseq", via="lsf", job_or_dict="job", output=None, maplot=None, translate=None):
+def rnaseq_workflow(ex, job, lims_path="rnaseq", via="lsf", job_or_dict="job",
+                    output=None, maplot=None, with_exons=None):
     """Run RNASeq inference according to *job_info*.
 
+    output: alternative name for output file. Otherwise it is random.
+    maplot: MA-plot of data.
+          if "interactive", one can click on a point (gene or exon) to display its name;
+          if "normal", name of genes over 99%/under 1% quantile are displayed.
+    with_exons: run inference (DESeq) on exon mapping in addition to gene mapping.
+    
     Whatever script calls this function should have looked up the job
     description from HTSStation.  The job description from HTSStation
     is returned as JSON, but should have been changed into a
@@ -359,7 +363,6 @@ def rnaseq_workflow(ex, job, lims_path="rnaseq", via="lsf", job_or_dict="job", o
         runs[i] = v['runs'].values()
         controls[i] = v['control']
 
-
     print "Current working directory:", os.getcwd()
     bowtie_index = path_to_bowtie_index(ex, assembly_id)
     print "Bowtie index:", bowtie_index
@@ -403,8 +406,7 @@ def rnaseq_workflow(ex, job, lims_path="rnaseq", via="lsf", job_or_dict="job", o
 
     exons = exons_labels(bam_files[bam_files.keys()[0]][0])
 
-    exon_pileups = {}
-    gene_pileups = {}
+    exon_pileups = {}; gene_pileups = {}
     for condition,files in bam_files.iteritems():
         gene_pileups[condition] = []
         exon_pileups[condition] = []
@@ -423,39 +425,43 @@ def rnaseq_workflow(ex, job, lims_path="rnaseq", via="lsf", job_or_dict="job", o
         else:
             method = "blind";
 
-        print "Inference..."
-        csvfile = external_deseq.nonblocking(ex,
+        if with_exons:
+            print "Inference (genes+exons)..."
+            futures[(c1,c2)] = [external_deseq.nonblocking(ex,
+                                      names[c1], exon_pileups[c1],
+                                      names[c2], exon_pileups[c2],
+                                      [x[0].split("|")[0]+"|"+x[0].split("|")[1] for x in exons],
+                                      method, assembly_id, output, maplot,
+                                      via=via),
+                                external_deseq.nonblocking(ex,
+                                      names[c1], gene_pileups[c1],
+                                      names[c2], gene_pileups[c2],
+                                      gene_labels,
+                                      method, assembly_id, output, maplot,
+                                      via=via)]
+            print "Wait for results....."
+            for c,f in futures.iteritems():
+                ex.add(f[0].wait(),
+                       description="Comparison of exons in conditions '%s' and '%s' (CSV)" % (names[c[0]], names[c[1]]))
+                ex.add(f[1].wait(),
+                       description="Comparison of genes in conditions '%s' and '%s' (CSV)" % (names[c[0]], names[c[1]]))
+        else:
+            print "Inference (genes only)..."
+            csvfile = external_deseq.nonblocking(ex,
                                     names[c1], gene_pileups[c1],
                                     names[c2], gene_pileups[c2],
                                     gene_labels,
-                                    method, assembly_id, output, maplot, translate,
+                                    method, assembly_id, output, maplot,
                                     via=via)
-        print "Wait for results..."
-        ex.add(csvfile.wait())
+            print "Wait for results..."
+            ex.add(csvfile.wait(),
+                   description="Comparison of exons in conditions '%s' and '%s' (CSV)" % (names[c1], names[c2]))
         print "Done."
-
-    ##     futures[(c1,c2)] = [external_deseq.nonblocking(ex,
-    ##                                   names[c1], exon_pileups[c1],
-    ##                                   names[c2], exon_pileups[c2],
-    ##                                   [x[0].split("|")[0]+"|"+x[0].split("|")[1] for x in exons],
-    ##                                   method, assembly_id, output, maplot,
-    ##                                   via=via)
-    ##                         ,external_deseq.nonblocking(ex,
-    ##                                   names[c1], gene_pileups[c1],
-    ##                                   names[c2], gene_pileups[c2],
-    ##                                   gene_labels,
-    ##                                   method, assembly_id, output, maplot,
-    ##                                   via=via)
-    ##                         ]
-    ## print "Results....."
-    ## for c,f in futures.iteritems():
-    ##     ex.add(f[0].wait(), description="Comparison of exons in conditions '%s' and '%s' (CSV)" % (names[c[0]], names[c[1]]))
-    ##     ex.add(f[1].wait(), description="Comparison of genes in conditions '%s' and '%s' (CSV)" % (names[c[0]], names[c[1]]))
 
 
 def MAplot(data, mode="normal"):
     """
-    Creates an "MA-plot" to compare the transcription level of a set of genes
+    Creates an "MA-plot" to compare transcription levels of a set of genes
     in two different conditions. It returns a list of triplets (name, x, y) for each point,
     and a dictionary containing a list of couples for each quantile spline, each couple (xs,ys)
     being a point the corresponding spline passes through. Input:
@@ -468,7 +474,7 @@ def MAplot(data, mode="normal"):
     #####
     # TO IMPLEMENT:
     # - Groups of genes
-    # - Output coords etc.
+    # - automatically determine number of bins
     #####
 
     if isinstance(data[0],rpy2.robjects.vectors.FactorVector):
@@ -530,8 +536,8 @@ def MAplot(data, mode="normal"):
     ax.set_xlabel("Log10 of sqrt(x1*x2)")
     ax.set_ylabel("Log2 of x1/x2")
     ax.set_xlim(xmin-0.08*xmin,xmax+0.01*xmax)
-    #ax.set_xscale('log', basey=10)
-    #ax.set_yscale('log', basey=2)
+    ax.set_xscale('log', basey=10)
+    ax.set_yscale('log', basey=2)
     for l in spline_annotes:
         ax.annotate(str(l[0])+"%", xy=(l[1],l[2]), xytext=(-27,-5), textcoords='offset points')
     if mode == "interactive":
@@ -544,7 +550,7 @@ def MAplot(data, mode="normal"):
             ax.annotate(p[0], xy=(p[2],p[1]) )
         f = fig.savefig("MAplot.png")
 
-    return f, points#, spline_coords
+    return f, points, spline_coords
 
 class AnnoteFinder:
   """
@@ -576,10 +582,8 @@ class AnnoteFinder:
     self.links = []
 
   def distance(self, x1, x2, y1, y2):
-    """
-    return the distance between two points
-    """
-    return math.hypot(x1 - x2, y1 - y2)
+    """distance between two points"""
+    return math.sqrt((x1 - x2)**2 + (y1 - y2)**2)
 
   def __call__(self, event):
     if event.inaxes:
