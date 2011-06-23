@@ -10,11 +10,11 @@ handles all queries.  A query via the ``GenRep`` object returns an
 
 The primary GenRep repository on VITAL-IT has URL
 ``http://bbcftools.vital-it.ch/genrep/`` and root directory
-``/db/genrep/nr_assemblies/bowtie``.  To connect to
+``/db/genrep/nr_assemblies``.  To connect to
 this GenRep repository and fetch an ``Assembly`` named ``ce6``, we
 would write::
 
-    g = GenRep(url='http://bbcftools.vital-it.ch/genrep/',root='/db/genrep/nr_assemblies/bowtie')
+    g = GenRep(url='http://bbcftools.vital-it.ch/genrep/',root='/db/genrep/nr_assemblies')
     g.assembly('ce6')
 
 Assemblies in GenRep are also assigned unique integer IDs.  The unique
@@ -51,7 +51,7 @@ from bbcflib.track.format_sql   import Track
 from bbcflib.common             import normalize_url
 
 class GenRep(object):
-    def __init__(self, url='http://bbcftools.vital-it.ch/genrep/', root='/db/genrep/nr_assemblies/bowtie', intype=0, config=None, section='genrep'):
+    def __init__(self, url='http://bbcftools.vital-it.ch/genrep/', root='/db/genrep/nr_assemblies', intype=0, config=None, section='genrep'):
         """Create an object to query a GenRep repository.
 
         GenRep is the in-house repository for sequence assemblies for the
