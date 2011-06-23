@@ -92,7 +92,9 @@ then start an execution environment in which we
 * launch the bowtie mapping via :func:`bbcflib.mapseq.map_groups`
 * generate a pdf report of the mapping statistics with :func:`bbcflib.mapseq.add_pdf_stats`
 * if requested, make a density profile using :func:`bbcflib.mapseq.densities_groups`
-* and finally create the corresponfing project and tracks in :doc:`GDV <bbcflib_gdv>`::
+* create the corresponfing project and tracks in :doc:`GDV <bbcflib_gdv>`.
+
+This corresponds to the code below::
 
     with execution( M, description='test_mapseq' ) as ex:
         job = get_fastq_files( job, ex.working_directory, dafl )
@@ -126,8 +128,8 @@ this dictionary will be organized by file type and provide a descriptive name an
 
 If you then want to continue with a ChIP-seq analysis, you can start a new execution, collect the files with :func:`bbcflib.chipseq.get_bam_wig_files` and run :func:`bbcflib.chipseq.workflow_groups`::
 
-        with execution( M, description='test_chipseq' ) as ex:
-            (mapped_files, job) = get_bam_wig_files( ex, job, 'test_lims', gl['hts_mapseq']['url'], gl['script_path'], via=via )
-            chipseq_files = workflow_groups( ex, job, mapped_files, assembly.chromosomes, gl['script_path'] )
+    with execution( M, description='test_chipseq' ) as ex:
+        (mapped_files, job) = get_bam_wig_files( ex, job, 'test_lims', gl['hts_mapseq']['url'], gl['script_path'], via=via )
+        chipseq_files = workflow_groups( ex, job, mapped_files, assembly.chromosomes, gl['script_path'] )
 
 
