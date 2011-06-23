@@ -53,6 +53,7 @@ class TextTrack(object):
     @property
     @memoized_method
     def _meta_chr(self):
+        # Parse GenRep JSONs #
         def parse_dict(info):
             return [dict([("name", info[chr]["name"]),("length", info[chr]["length"])]) for chr in info]
         # Is a dictionary #
@@ -88,7 +89,7 @@ class TextTrack(object):
             if not result:
                 raise Exception("The file '" + self.chrmeta + "' does not seam to contain any information.")
             return result
-        # Is a string assembly #
+        # Is a string describing an assembly #
         else:
             g = GenRep()
             if not g.is_available(self.chrmeta):
