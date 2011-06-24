@@ -9,6 +9,7 @@ Currently the following formats are implemented as read/write:
 * Bio SQLite (http://bbcf.epfl.ch/twiki/bin/view/BBCF/SqLite)
 * BED        (http://genome.ucsc.edu/FAQ/FAQformat.html#format1)
 * WIG        (http://genome.ucsc.edu/goldenPath/help/wiggle.html)
+* bedGraph   (http://genome.ucsc.edu/goldenPath/help/bedgraph.html)
 
 More formats can be added easily.
 
