@@ -98,7 +98,7 @@ def get_job_status(gdv_key,gdv_email,job_id):
                 "key": gdv_key,
                 "command": "status",
                 "job_id": job_id,
-                gdv_url="http://svitsrv25.epfl.ch/gdv"}
+                "gdv_url":"http://svitsrv25.epfl.ch/gdv"}
     gdv_url = normalize_url(gdv_url)+"/post"
     return urllib2.urlopen( gdv_url, urllib.urlencode(request) ).read()
 
