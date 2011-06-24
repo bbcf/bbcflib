@@ -34,7 +34,7 @@ ce6.chromosomes = {(3067, u'NC_003280', 7): {'length': 15279323, 'name': u'chrII
 #--------------------------------------------------------------------------------#
 test_config_file = '''[genrep]
 genrep_url=http://bbcftools.vital-it.ch/genrep/
-genrep_root=/db/genrep/nr_assemblies/'''
+genrep_root=/db/genrep'''
 def get_config_file_parser():
     file = cStringIO.StringIO()
     file.write(test_config_file)
@@ -52,7 +52,7 @@ class TestGenRep(unittest.TestCase):
 
     def test_config_correctly_loaded(self):
         self.assertEqual(self.genrep.url, 'http://bbcftools.vital-it.ch/genrep')
-        self.assertEqual(self.genrep.root, '/db/genrep/nr_assemblies/bowtie')
+        self.assertEqual(self.genrep.root, '/db/genrep')
 
     def test_query_url(self):
         def check_with_url(url):
