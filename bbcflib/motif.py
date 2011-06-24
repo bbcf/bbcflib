@@ -312,10 +312,11 @@ def sqlite_to_false_discovery_rate  (
         fp_scores = track.get_scores_frequencies()
     with Track(true_positive_result,  format="sql") as track:
         tp_scores = track.get_scores_frequencies()
-    return false_discovery_rate (
+    fdr = false_discovery_rate  (
                                     fp_scores, tp_scores,
                                     alpha=alpha, nb_false_positive_hypotesis=nb_false_positive_hypotesis
                                 )
+    return true_positive_result,fdr
 
 #-----------------------------------#
 # This code was written by the BBCF #
