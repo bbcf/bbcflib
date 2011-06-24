@@ -66,13 +66,17 @@ Experimental conditions correspond to `groups` which are numbered, each conditio
     url=http://some.place.edu/my_test2.fastq
     group_id=2
 
-We next look at how the python script is using these configuration and processing the files. First it imports all the relevant modules::
+Such a configuration file can be passed as command-line argument to the scripts `run_mapseq.py <https://github.com/bbcf/bbcfutils/blob/master/Python/run_mapseq.py>`_ and `run_chipseq.py <https://github.com/bbcf/bbcfutils/blob/master/Python/run_chipseq.py>`_, e.g.::
+
+    python run_mapseq.py -c my_config.txt -d test_lims
+
+We next analyse how these python scripts are using these configuration and processing the files. First we import all the relevant modules::
 
     from bbcflib import daflims, genrep, frontend, gdv, common
     from bbcflib.mapseq import *
     from bbcflib.chipseq import *
     
-Then it connects to a ``MiniLIMS`` and parses your configuration files::
+Then connect to a ``MiniLIMS`` and parse the configuration file::
 
     M = MiniLIMS( 'test_lims' )
     (job,gl) = frontend.parseConfig( 'my_config.txt' )
