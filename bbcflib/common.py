@@ -281,6 +281,22 @@ def create_sql_track( sql_name, chromosomes, datatype="quantitative" ):
     conn.close()
     return sql_name
 
+@program
+def _mymetype(file_path):
+    """
+    return myme type from a file eg:
+    """
+    output = unique_filename_in()
+    call = ["file", file_path]
+    return {"arguments": call, "return_value": output}
+
+def mymetype(ex, file_path):
+    output  = _mymetype(file_path)
+    myme    = ""
+    with open(output, "r") as f:
+        line = f.readline()
+        myme = line.split(":")[1][1:]
+    return myme
 
 @program
 def compress(path, compression_type="lxzma"):
@@ -320,7 +336,7 @@ def ssh_add(keyfile):
 @program
 def scp(source, destination, user, host):
     output = unique_filename_in()
-    call = ["scp", source, user+"@"+host, destination]
+    call = ["scp", source, "%s@%s:%s"%(user, host, destination)]
     return {"arguments": call, "return_value": output}
 #-----------------------------------#
 # This code was written by the BBCF #
