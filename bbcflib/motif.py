@@ -95,7 +95,7 @@ def parse_meme_html_output(ex, meme, fasta, chromosomes):
                         chomosomes_used.append( chromosomes[keys[index]] )
                     else:
                         index +=1
-                track.write(chromosome, dict_chromosomes[chromosome])
+                track.write(chromosome, dict_chromosomes[chromosome], fields=Track.qualitative_fields)
             track.meta_chr = chomosomes_used
         #files.append((matrix_file, sqlout))
         ex.add( matrix_file, description="matrix:"+item["name"] )
@@ -165,7 +165,7 @@ def save_motif_profile( ex, motifs, background, genrep, chromosomes, data_path,
                     name = re.search(r'(\S+)\s*',row[1]).groups()[0]
                     regions[name] = (v['name'],int(row[0]))
 
-    with new(sqlout,  format="sql", datatype="qualitative") as track:
+    with new(sqlout,  format="sql", datatype="qualitative",) as track:
         track.meta_track= {'source': 'S1K'}
         track.meta_track.update({'k':'v'})
 
@@ -202,7 +202,7 @@ def save_motif_profile( ex, motifs, background, genrep, chromosomes, data_path,
                         vals.append((start-1,start+len(s[1]),name+":"+s[1],float(s[2]),s[4]))
         if len(vals)>0:
             with Track(sqlout,  format="sql") as track:
-                track.write(cur_chr, vals)
+                track.write(cur_chr, vals, fields=Track.qualitative_fields)
 
     for chromosome in chromosomes_set:
         isSearchingChromosome   = True

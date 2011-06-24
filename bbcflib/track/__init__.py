@@ -139,11 +139,12 @@ def join_read_queries(track, selections, fields):
 def make_cond_from_sel(selection):
     '''Make an SQL condition string from a selection dictionary'''
     query = ""
-    if selection.get('inclusion') == 'strict':
-        query = "start < " + str(selection['end'])   + " and " + "start >= " + str(selection['start']) + \
-          " and " + "end   > " + str(selection['start']) + " and " + "end <= "   + str(selection['end'])
-    else:
-        query = "start < " + str(selection['end']) + " and " + "end > " + str(selection['start'])
+    if "end" in selection and "start" in selection:
+        if selection.get('inclusion') == 'strict':
+            query = "start < " + str(selection['end'])   + " and " + "start >= " + str(selection['start']) + \
+              " and " + "end   > " + str(selection['start']) + " and " + "end <= "   + str(selection['end'])
+        else:
+            query = "start < " + str(selection['end']) + " and " + "end > " + str(selection['start'])
     if "score" in selection:
         statements  = [i for i in selection["score"].split(" ") if i != ""]
         symbol      = None
@@ -153,9 +154,9 @@ def make_cond_from_sel(selection):
                 number = float(i)
             except ValueError:
                 symbol = i
-        symbol = (symbol is None) and "="
-        if query != "":
-            query += " and score "+symbol+" "+str(number)
+        if symbol is None: symbol = "="
+        if query != "": query += " and "
+        query += "score "+symbol+" "+str(number)
     return query
 
 ###########################################################################
@@ -240,7 +241,7 @@ class Track(object):
         # Check existance #
         if not os.path.exists(path):
             raise Exception("The file '" + path + "' cannot be found")
-        if os.path.isdir(path):
+        elif os.path.isdir(path):
             raise Exception("The location '" + path + "' is a directory")
         # Call child function #
         self.load()

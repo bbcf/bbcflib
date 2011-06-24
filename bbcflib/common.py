@@ -311,7 +311,17 @@ def uncompress(path):
     call = ["tar", "xvf", path]
     return {"arguments": call, "return_value": output}
 
+@program
+def ssh_add(keyfile):
+    output = unique_filename_in()
+    call = ["ssh-add", keyfile]
+    return {"arguments": call, "return_value": output}
 
+@program
+def scp(source, destination, user, host):
+    output = unique_filename_in()
+    call = ["scp", source, user+"@"+host, destination]
+    return {"arguments": call, "return_value": output}
 #-----------------------------------#
 # This code was written by the BBCF #
 # http://bbcf.epfl.ch/              #
