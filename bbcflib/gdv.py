@@ -42,9 +42,7 @@ def add_gdv_track( gdv_key, gdv_email,
                    project_id,
                    url,
                    name=None,
-                   gdv_url="http://svitsrv25.epfl.ch/gdv",
-                   datatype="quantitative",
-                   sqlite = False ):
+                   gdv_url="http://svitsrv25.epfl.ch/gdv"):
     '''
     Add a new track on a project on GDV
     :param gdv_email: your login in TEQUILA
@@ -52,16 +50,14 @@ def add_gdv_track( gdv_key, gdv_email,
     :param name: name of the track -optionnal- (will take the file name by default)
     :param project_id: the project id to add the track
     :param url : the URL where to fetch the file
+    :rtype: a json {job_id:<the job id>}
     '''
     request = { "id": "gdv_post",
                 "mail": gdv_email,
                 "key": gdv_key,
-                "command": "add_track",
+                "command": "new_track",
                 "project_id": str(project_id),
                 "url": normalize_url(str(url)) }
-    if sqlite:
-        request["command"] = "add_sqlite"
-        request["datatype"] = datatype
     if name != None:
         request['name']=name
     gdv_url = normalize_url(gdv_url)+"/post"
@@ -71,28 +67,43 @@ def add_gdv_sqlite( gdv_key, gdv_email,
                     project_id,
                     url,
                     name=None,
-                    gdv_url="http://svitsrv25.epfl.ch/gdv",
-                    datatype="quantitative" ):
+                    gdv_url="http://svitsrv25.epfl.ch/gdv"):
     '''
-    Backward compatible interface to `add_gdv_track` for sqlite files.
+    Deprecated :  use add_gdv_track instead
     '''
-    return add_gdv_track(gdv_key,gdv_email,project_id,url,name,gdv_url,datatype,True)
+    return add_gdv_track(gdv_key,gdv_email,project_id,url,name,gdv_url)
 
 
 def add_sql_files( gdv_key, gdv_email,
                    project_id,
                    files, names,
                    serv_url="http://htsstation.vital-it.ch/lims/chipseq/chipseq_minilims.files",
-                   gdv_url="http://svitsrv25.epfl.ch/gdv",
-                   datatype="quantitative" ):
+                   gdv_url="http://svitsrv25.epfl.ch/gdv"):
     '''
     Run `add_gdv_sqlite` on a list of files
     '''
     serv_url = normalize_url(serv_url)
     return [add_gdv_track( gdv_key, gdv_email, project_id,
                            serv_url+"/"+f, names[i],
-                           gdv_url, dataype, True )
+                           gdv_url)
             for i,f in enumerate(files)]
+
+def get_job_status(gdv_key,gdv_email,job_id):
+    '''
+    Get the status of a job in GDV
+    :rtype: a json {job_id:<the job id>, status:<running,error or success>}
+    '''
+    request = { "id": "gdv_post",
+                "mail": gdv_email,
+                "key": gdv_key,
+                "command": "status",
+                "job_id": job_id,
+                gdv_url="http://svitsrv25.epfl.ch/gdv"}
+    gdv_url = normalize_url(gdv_url)+"/post"
+    return urllib2.urlopen( gdv_url, urllib.urlencode(request) ).read()
+
+
+
 
 #-----------------------------------#
 # This code was written by the BBCF #
