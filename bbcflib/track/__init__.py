@@ -138,11 +138,25 @@ def join_read_queries(track, selections, fields):
 
 def make_cond_from_sel(selection):
     '''Make an SQL condition string from a selection dictionary'''
+    query = ""
     if selection.get('inclusion') == 'strict':
-        return "start < " + str(selection['end'])   + " and " + "start >= " + str(selection['start']) + \
+        query = "start < " + str(selection['end'])   + " and " + "start >= " + str(selection['start']) + \
           " and " + "end   > " + str(selection['start']) + " and " + "end <= "   + str(selection['end'])
     else:
-        return "start < " + str(selection['end']) + " and " + "end > " + str(selection['start'])
+        query = "start < " + str(selection['end']) + " and " + "end > " + str(selection['start'])
+    if "score" in selection:
+        statements  = [i for i in selection["score"].split(" ") if i != ""]
+        symbol      = None
+        number      = None
+        for i in statements:
+            try:
+                number = float(i)
+            except ValueError:
+                symbol = i
+        symbol = (symbol is None) and "="
+        if query != "":
+            query += " and score "+symbol+" "+str(number)
+    return query
 
 ###########################################################################
 class Track(object):
