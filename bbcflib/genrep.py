@@ -282,7 +282,7 @@ class Assembly(object):
         a GenRep object.
 
         An Assembly has the following fields:
-        
+
         .. attribute:: id
 
         An integer giving the assembly ID in GenRep.
@@ -301,7 +301,7 @@ class Assembly(object):
         values are tuples of the form (chromsome id, RefSeq locus,
         RefSeq version), and the values are dictionaries with the keys
         'name' and 'length'.
-        
+
         .. attribute:: bbcf_valid
 
         Boolean.
