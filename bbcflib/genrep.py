@@ -88,9 +88,9 @@ class GenRep(object):
     def query_url(self, method, assembly):
         """Assemble a URL to call *method* for *assembly* on the repository."""
         if isinstance(assembly, basestring):
-            return """%s/%s.json?assembly_name=%s""" % (self.url, method, assembly)
+            return urllib2.Request("""%s/%s.json?assembly_name=%s""" % (self.url, method, assembly))
         elif isinstance(assembly, int):
-            return """%s/%s.json?assembly_id=%d""" % (self.url, method, assembly)
+            return urllib2.Request("""%s/%s.json?assembly_id=%d""" % (self.url, method, assembly))
         else:
             raise ValueError("Argument 'assembly' to must be a " + \
                                  "string or integer, got " + str(assembly))
@@ -99,9 +99,10 @@ class GenRep(object):
         """Parses a slice request to the repository."""
         if len(coord_list) == 0:
             return []
-        slices = ",".join([",".join([str(y) for y in x]) for x in coord_list])
-        url = """%s/chromosomes/%i/get_sequence_part?slices=%s""" % (self.url, chr_id, slices)
-        return urllib2.urlopen(url).read().split(',')
+        slices  = ",".join([",".join([str(y) for y in x]) for x in coord_list])
+        url     = """%s/chromosomes/%i/get_sequence_part?slices=%s""" % (self.url, chr_id, slices)
+        request = urllib2.Request(url)
+        return urllib2.urlopen(request).read().split(',')
 
     def fasta_from_bed(self, chromosomes, data_path, out=None, chunk=50000):
         """Get a fasta file with sequences corresponding to the features in the
@@ -202,7 +203,8 @@ class GenRep(object):
         """
         Returns a list of assemblies available on genrep
         """
-        assembly_info   = json.load(urllib2.urlopen(self.url + "/assemblies.json"))
+        request         = urllib2.Request(self.url + "/assemblies.json")
+        assembly_info   = json.load(urllib2.urlopen(request))
         assembly_list   = [a['assembly']['name'] for a in assembly_info]
         return [ a for a in assembly_list if a is not None ]
 
@@ -241,8 +243,9 @@ class GenRep(object):
         }
         Total = A + T + G + C
         """
-        stat = json.load(urllib2.urlopen("%s/nr_assemblies/%d.json?data_type=counts" % (self.url, assembly.nr_assembly_id)))
-        total = float(stat["A"] + stat["T"] + stat["G"] + stat["C"])
+        request = urllib2.Request("%s/nr_assemblies/%d.json?data_type=counts" % (self.url, assembly.nr_assembly_id))
+        stat    = json.load(urllib2.urlopen(request))
+        total   = float(stat["A"] + stat["T"] + stat["G"] + stat["C"])
         if frequency:
             stat = dict((k,x/total) for k,x in stat.iteritems())
         else:
