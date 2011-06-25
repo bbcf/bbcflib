@@ -246,7 +246,7 @@ class GenRep(object):
         if frequency:
             stat = dict((k,x/total) for k,x in stat.iteritems())
         else:
-            stats.update
+            stat.update
         if output == None:
             return stat
         else:
