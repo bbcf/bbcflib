@@ -45,7 +45,7 @@ With a ``ConfigParser``, the previous code would look like::
 
 .. autoclass:: Assembly
 """
-import urllib2, json, os
+import urllib2, httplib2, json, os
 from datetime                   import datetime
 from bbcflib.track.format_sql   import Track
 from bbcflib.common             import normalize_url
@@ -84,6 +84,16 @@ class GenRep(object):
             self.url = normalize_url(url)
             self.root = os.path.abspath(root)
         self.intype = intype
+
+    def is_up(self):
+        try:
+            urllib2.urlopen(self.url + "/nr_assemblies.json", timeout=2)
+        except urllib2.URLError:
+            return False
+        return True
+
+    def is_down(self):
+        return not self.is_up()
 
     def query_url(self, method, assembly):
         """Assemble a URL to call *method* for *assembly* on the repository."""

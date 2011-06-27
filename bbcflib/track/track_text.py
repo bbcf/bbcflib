@@ -92,6 +92,8 @@ class TextTrack(object):
         # Is a string describing an assembly #
         else:
             g = GenRep()
+            if g.is_down():
+                raise Exception("The Genrep server is down.")
             if not g.is_available(self.chrmeta):
                 raise Exception("The genrep server does not know about the assembly '" + self.chrmeta + "'.")
             return parse_dict(g.assembly(self.chrmeta).chromosomes)
