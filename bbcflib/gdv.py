@@ -103,6 +103,19 @@ def get_job_status(gdv_key,gdv_email,job_id):
     return urllib2.urlopen( gdv_url, urllib.urlencode(request) ).read()
 
 
+def get_assemblies(gdv_key,gdv_email):
+    '''
+    Get all assemblies that are used in GDV
+    :rtype: a JSON list [{id:<assembly id>,name:<assembly name>}
+    '''
+    request = { "id": "gdv_post",
+                "mail": gdv_email,
+                "key": gdv_key,
+                "command":"assemblies"
+        }
+    gdv_url = normalize_url(gdv_url)+"/post"
+    return urllib2.urlopen( gdv_url, urllib.urlencode(request) ).read()
+
 
 
 #-----------------------------------#
