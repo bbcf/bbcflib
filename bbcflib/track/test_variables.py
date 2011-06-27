@@ -38,6 +38,7 @@ track_collections = {
     },
 'Signals': {
   1: {'path':tracks_path+'quan/bedgraph/test1.bedGraph', 'type':'quantitative', 'fields':Track.quantitative_fields, 'chrmeta':yeast_chr_file},
+  2: {'path':tracks_path+'quan/bedgraph/test2.bedGraph', 'type':'quantitative', 'fields':Track.quantitative_fields, 'chrmeta':yeast_chr_file},
     },
 'Yeast': {
   'All genes':  {'path':tracks_path+'qual/bed/all_yeast_genes.bed',   'type':'quantitative',
