@@ -45,7 +45,7 @@ With a ``ConfigParser``, the previous code would look like::
 
 .. autoclass:: Assembly
 """
-import urllib2, httplib2, json, os
+import urllib2, json, os
 from datetime                   import datetime
 from bbcflib.track.format_sql   import Track
 from bbcflib.common             import normalize_url
