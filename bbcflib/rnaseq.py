@@ -4,26 +4,25 @@ Module: bbcflib.rnaseq
 ======================
 
 """
-import pickle
-import json
-import pysam
-import numpy
-from numpy import *
-import urllib
+
+# General modules #
+import pickle, json, pysam, numpy, urllib, math
 from itertools import combinations
-from bein.util import *
-from bbcflib import daflims, genrep
-from bbcflib.mapseq import plot_stats, bamstats
-import rpy2.robjects as robjects
+from scipy import stats
+from scipy.interpolate import UnivariateSpline
+from rpy2 import robjects
 import rpy2.robjects.packages as rpackages
 import rpy2.robjects.numpy2ri
 import rpy2.rlike.container as rlc
-from scipy import stats
-from scipy.interpolate import UnivariateSpline
-import matplotlib
-import pylab
-import matplotlib.pyplot as plt
-import math
+
+# Internal modules #
+from bbcflib.mapseq import plot_stats, bamstats
+from bbcflib.dafilms import DAFLIMS
+from bbcflib.genrep import GenRep
+
+# Don't do this #
+from numpy import *
+from bein.util import *
 
 def path_to_bowtie_index(ex, assembly_id):
     """Return full path to usable bowtie index.
@@ -317,7 +316,7 @@ def rnaseq_workflow(ex, job, lims_path="rnaseq", via="lsf", job_or_dict="job",
           if "interactive", one can click on a point (gene or exon) to display its name;
           if "normal", name of genes over 99%/under 1% quantile are displayed.
     with_exons: run inference (DESeq) on exon mapping in addition to gene mapping.
-    
+
     Whatever script calls this function should have looked up the job
     description from HTSStation.  The job description from HTSStation
     is returned as JSON, but should have been changed into a
@@ -477,6 +476,8 @@ def MAplot(data, mode="normal"):
     # - automatically determine number of bins
     #####
 
+    import matplotlib.pyplot as plt
+
     if isinstance(data[0],rpy2.robjects.vectors.FactorVector):
         a = array(data[0])
         b = array(data[0].levels)
@@ -565,6 +566,7 @@ class AnnoteFinder:
   """
 
   def __init__(self, xdata, ydata, annotes, axis=None, xtol=None, ytol=None):
+    import pylab
     self.data = zip(xdata, ydata, annotes)
     self.xrange = max(xdata) - min(xdata)
     self.yrange = max(ydata) - min(ydata)
