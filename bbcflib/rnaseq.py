@@ -17,7 +17,7 @@ import rpy2.rlike.container as rlc
 
 # Internal modules #
 from bbcflib.mapseq import plot_stats, bamstats
-from bbcflib.dafilms import DAFLIMS
+from bbcflib.daflims import DAFLIMS
 from bbcflib.genrep import GenRep
 
 # Don't do this #
