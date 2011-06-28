@@ -355,10 +355,6 @@ class Assembly(object):
         self.chromosomes[(chromosome_id, refseq_locus, refseq_version)] = \
             {'name': name, 'length': length}
 
-if __name__ == '__main__':
-    import doctest
-    doctest.testmod()
-
 #-----------------------------------#
 # This code was written by the BBCF #
 # http://bbcf.epfl.ch/              #
