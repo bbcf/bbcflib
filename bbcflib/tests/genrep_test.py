@@ -48,7 +48,7 @@ class TestGenRep(unittest.TestCase):
     def setUp(self):
         self.genrep = GenRep('http://bbcftools.vital-it.ch/genrep/',
                              '/db/genrep/nr_assemblies')
-        if self.genrep.is_down:
+        if self.genrep.is_down():
             self.skipTest("The Genrep server is down")
         self.genrep_from_config = GenRep(config=get_config_file_parser())
 
