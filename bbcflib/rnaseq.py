@@ -297,8 +297,7 @@ def inference(cond1_label, cond1, cond2_label, cond2, transcript_names, method="
     ## MA-plot
     if maplot:
         print "MAplot"
-        MAplot(res, mode=maplot)
-        ex.add("MAplot.png")
+        f,p,s = MAplot(res, mode=maplot, deg=3, bins=100)
 
     if output:
         result_filename = output
@@ -376,6 +375,7 @@ def rnaseq_workflow(ex, job, lims_path="rnaseq", via="lsf", job_or_dict="job",
 
     fastq_files = fetch_read_files(ex, runs)
     print "FastQ files:", [os.path.basename(f[0]['path']) for f in fastq_files.values()]
+
     bam_files = align_reads(ex, bowtie_index, fastq_files, via=via)
     print "Reads aligned."
 
@@ -457,9 +457,10 @@ def rnaseq_workflow(ex, job, lims_path="rnaseq", via="lsf", job_or_dict="job",
             ex.add(csvfile.wait(),
                    description="Comparison of exons in conditions '%s' and '%s' (CSV)" % (names[c1], names[c2]))
         print "Done."
+        ex.add("MAplot.png")
 
 
-def MAplot(data, mode="normal"):
+def MAplot(data, mode="normal", deg=3, bins=100):
     """
     Creates an "MA-plot" to compare transcription levels of a set of genes
     in two different conditions. It returns a list of triplets (name, x, y) for each point,
@@ -469,6 +470,8 @@ def MAplot(data, mode="normal"):
     data: rpy DataFrame object; two columns, each for a different condition.
     mode: if "interactive", click on a point to display its name
           if "normal", name of genes over 99%/under 1% quantile are displayed
+    deg:  degree of the interpolant polynomial
+    bins: number of bins for quantile splines
     """
 
     #####
@@ -495,7 +498,6 @@ def MAplot(data, mode="normal"):
     ratios = d1/d2
     means = sqrt(d1*d2)
     points = zip(names,ratios,means)
-    bins = 50 #len(ratios)/5000 #floor(log(len(ratios)+1))
     xmin = min(means); xmax = max(means); ymin = min(ratios); ymax = max(ratios)
     intervals = linspace(xmin,xmax,bins)
     annotes = []; spline_annotes = []; spline_coords = {}
@@ -509,14 +511,15 @@ def MAplot(data, mode="normal"):
 
     ### Lines (best fit of percentiles)
     for k in [1,5,25,50,75,95,99]:
-        h = ones(bins)*0.0001
-        for b in range(bins):
-            points_in_b = [p for p in points if p[2]>=intervals[b] and p[2]<intervals[b]+1./bins]
+        h = ones(bins)
+        for b in range(bins-1):
+            points_in_b = [p for p in points if p[2]>=intervals[b] and p[2]<intervals[b+1]]
             perc = [p[1] for p in points_in_b]
             if points_in_b != []:
                 h[b] = stats.scoreatpercentile(perc, k)
-            else: h[b] = h[b-1]
-            for p in points_in_b: annotes.append(p)
+            else:
+                h[b] = h[b-1]
+                #if b<=20: print h[b],b, "failed"
             if k==1:
                 for p in points_in_b:
                     if p[1]<h[b]: annotes.append(p)
@@ -524,18 +527,19 @@ def MAplot(data, mode="normal"):
                 for p in points_in_b:
                     if p[1]>h[b]: annotes.append(p)
 
-        ax.plot(intervals, h, color="green", linestyle="--", alpha=0.3)
-        spline = UnivariateSpline(intervals, h, k=3)
-        xs = linspace(min(intervals), max(intervals), 10*bins) #to increase spline smoothness
+        #ax.plot(intervals, h, color="green", linestyle="--", alpha=0.3)
+        spline = UnivariateSpline(intervals, h, k=deg)
+        xs = linspace(xmin, xmax, 10*bins) #to increase spline smoothness
         ys = spline(xs)
-        ax.plot(xs, ys, color="blue")
+        ax.plot(intervals, h, "o")
+        ax.plot(xs, ys, "-", color="blue")
         spline_annotes.append((k,xs[0],ys[0]))
         spline_coords[k] = zip(xs,ys)
 
     ### Decoration
     ax.set_xlabel("Log10 of sqrt(x1*x2)")
     ax.set_ylabel("Log2 of x1/x2")
-    ax.set_xlim(xmin-0.08*xmin,xmax+0.01*xmax)
+    ax.set_xlim(xmin-0.1*xmin,xmax+0.1*xmax)
     ax.set_xscale('log', basey=10)
     ax.set_yscale('log', basey=2)
     for l in spline_annotes:
@@ -620,3 +624,4 @@ class AnnoteFinder:
     annotesToDraw = [(x,y,a) for x,y,a in self.data if a==annote]
     for x,y,a in annotesToDraw:
       self.drawAnnote(self.axis, x, y, a)
+
