@@ -16,7 +16,7 @@ import rpy2.robjects.numpy2ri
 import rpy2.rlike.container as rlc
 
 # Internal modules #
-from bbcflib.mapseq import plot_stats, bamstats
+from bbcflib.mapseq import plot_stats, bamstats, map_groups
 from bbcflib.daflims import DAFLIMS
 from bbcflib.genrep import GenRep
 
@@ -307,7 +307,7 @@ def inference(cond1_label, cond1, cond2_label, cond2, transcript_names, method="
     res.to_csvfile(result_filename)
     return result_filename
 
-def rnaseq_workflow(ex, job, lims_path="rnaseq", via="lsf", output=None, maplot=None, with_exons=None):
+def rnaseq_workflow(ex, job, assembly, via="lsf", output=None, maplot=None, with_exons=None):
     """Run RNASeq inference according to *job_info*.
 
     output: alternative name for output file. Otherwise it is random.
@@ -318,8 +318,7 @@ def rnaseq_workflow(ex, job, lims_path="rnaseq", via="lsf", output=None, maplot=
 
     Whatever script calls this function should have looked up the job
     description from HTSStation.  The job description from HTSStation
-    is returned as JSON, but should have been changed into a
-    bbcflib.frontend.Job object (or a dictionary of the same form),
+    is returned as Job object (or a dictionary of the same form),
     which is what ``workflow`` expects.
     The object must have the fields:
 
@@ -351,17 +350,11 @@ def rnaseq_workflow(ex, job, lims_path="rnaseq", via="lsf", output=None, maplot=
     assembly_id = int(job.assembly_id)
     for i,group in groups.iteritems():
         names[i] = str(group['name'])
-        runs[i] = group['runs'].values()
+        runs[i] = group['runs'].values()[0]
         controls[i] = group['control']
     for i,run in runs.iteritems():
-        pass
-    print "names",names
-    print "groups",groups
-    print "runs", runs, "\n"
-    print "runs",runs.iteritems()
-    print "controls",controls
-    print "paths", paths
-    print "gids", gids
+        paths[i] = run['url']
+        gids[i] = i
 
     print "Current working directory:", os.getcwd()
     bowtie_index = path_to_bowtie_index(ex, assembly_id)
@@ -374,11 +367,7 @@ def rnaseq_workflow(ex, job, lims_path="rnaseq", via="lsf", output=None, maplot=
     (gene_labels,exon_mapping) = fetch_transcript_mapping(ex, assembly_id)
     exon_mapping = numpy.array(exon_mapping)
 
-    ## fastq_files = fetch_read_files(ex, runs)
-    ## print "FastQ files:", [os.path.basename(f[0]['path']) for f in fastq_files.values()]
-    ## bam_files = align_reads(ex, bowtie_index, fastq_files, via=via)
-
-    fastq_files = os.path.dirname(paths[0])
+    fastq_files = os.path.dirname(paths.values()[0])
     bam_files = map_groups(ex, job, fastq_files, assembly_or_dict = assembly)
     print "Reads aligned."
 
