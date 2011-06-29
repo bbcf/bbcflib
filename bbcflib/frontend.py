@@ -195,15 +195,9 @@ def parseConfig( file ):
         description = str(config['Job'].get('description')),
         email = str(config['Job'].get('email')),
         options = config.get('Options') or {})
-<<<<<<< HEAD
-    if not('name' in config['Groups']):
-        raise ValueError("Each entry in 'Groups' must have a 'name'")
-    for gid, group in config['Groups'].iteritems():
-=======
     for gid, group in config['Groups'].iteritems():
         if not('name' in group):
             raise ValueError("Each entry in 'Groups' must have a 'name'")
->>>>>>> 0e10a88118bedf0c0b24a476db804019285ecec6
         job.add_group(id=int(gid),
                       control=group.get('control').lower() in ['1','true','t'],
                       name=str(group['name']))
