@@ -21,7 +21,7 @@ ce6 = Assembly(assembly_id = 14,
                md5 = 'fd5631288b9cd427bf329e8868fb4c988752b2c5',
                source_id = 4,
                created_at = datetime.datetime.strptime('2010-12-19T20:52:31Z', '%Y-%m-%dT%H:%M:%SZ'),
-               index_path = '/scratch/frt/yearly/genrep/nr_assemblies/bowtie/fd5631288b9cd427bf329e8868fb4c988752b2c5')
+               index_path = '/db/genrep/nr_assemblies/bowtie/fd5631288b9cd427bf329e8868fb4c988752b2c5')
 
 ce6.chromosomes = {(3067, u'NC_003280', 7): {'length': 15279323, 'name': u'chrII'},
                    (3069, u'NC_003282', 5): {'length': 17493785, 'name': u'chrIV'},
@@ -34,7 +34,7 @@ ce6.chromosomes = {(3067, u'NC_003280', 7): {'length': 15279323, 'name': u'chrII
 #--------------------------------------------------------------------------------#
 test_config_file = '''[genrep]
 genrep_url=http://bbcftools.vital-it.ch/genrep/
-genrep_root=/scratch/frt/yearly/genrep/nr_assemblies/bowtie'''
+genrep_root=/db/genrep'''
 def get_config_file_parser():
     file = cStringIO.StringIO()
     file.write(test_config_file)
@@ -47,12 +47,14 @@ def get_config_file_parser():
 class TestGenRep(unittest.TestCase):
     def setUp(self):
         self.genrep = GenRep('http://bbcftools.vital-it.ch/genrep/',
-                             '/scratch/frt/yearly/genrep/nr_assemblies/bowtie')
+                             '/db/genrep/nr_assemblies')
+        if self.genrep.is_down():
+            self.skipTest("The Genrep server is down")
         self.genrep_from_config = GenRep(config=get_config_file_parser())
 
     def test_config_correctly_loaded(self):
         self.assertEqual(self.genrep.url, 'http://bbcftools.vital-it.ch/genrep')
-        self.assertEqual(self.genrep.root, '/scratch/frt/yearly/genrep/nr_assemblies/bowtie')
+        self.assertEqual(self.genrep.root, '/db/genrep')
 
     def test_query_url(self):
         def check_with_url(url):

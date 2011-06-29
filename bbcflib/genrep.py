@@ -10,11 +10,11 @@ handles all queries.  A query via the ``GenRep`` object returns an
 
 The primary GenRep repository on VITAL-IT has URL
 ``http://bbcftools.vital-it.ch/genrep/`` and root directory
-``/db/genrep/nr_assemblies/bowtie``.  To connect to
+``/db/genrep``.  To connect to
 this GenRep repository and fetch an ``Assembly`` named ``ce6``, we
 would write::
 
-    g = GenRep(url='http://bbcftools.vital-it.ch/genrep/',root='/db/genrep/nr_assemblies/bowtie')
+    g = GenRep(url='http://bbcftools.vital-it.ch/genrep/',root='/db/genrep')
     g.assembly('ce6')
 
 Assemblies in GenRep are also assigned unique integer IDs.  The unique
@@ -51,7 +51,7 @@ from bbcflib.track.format_sql   import Track
 from bbcflib.common             import normalize_url
 
 class GenRep(object):
-    def __init__(self, url='http://bbcftools.vital-it.ch/genrep/', root='/db/genrep/nr_assemblies/bowtie', intype=0, config=None, section='genrep'):
+    def __init__(self, url='http://bbcftools.vital-it.ch/genrep/', root='/db/genrep', intype=0, config=None, section='genrep'):
         """Create an object to query a GenRep repository.
 
         GenRep is the in-house repository for sequence assemblies for the
@@ -59,16 +59,16 @@ class GenRep(object):
         in an idiomatic way.
 
         Create a GenRep object with the base URL to the GenRep system, and
-        the root path of GenRep's files.  For instance,
+        the root path of GenRep's files.  For instance::
 
             g = GenRep('genrep.epfl.ch','/path/to/genrep/indices')
 
-            To get an assembly from the repository, call the assembly
-            method with either the integer assembly ID or the string assembly
-            name.  This returns an Assembly object.
+        To get an assembly from the repository, call the assembly
+        method with either the integer assembly ID or the string assembly
+        name.  This returns an Assembly object::
 
-                a = g.assembly(3)
-                b = g.assembly('mus')
+            a = g.assembly(3)
+            b = g.assembly('mus')
 
         """
         if (url == None or root == None) and config == None:
@@ -83,18 +83,24 @@ class GenRep(object):
         else:
             self.url = normalize_url(url)
             self.root = os.path.abspath(root)
-        self.root = os.path.join(self.root,"bowtie")
-        if intype == 1:
-            self.root = os.path.join(self.root,"exons_bowtie")
-        elif intype == 10:
-            self.root = os.path.join(self.root,"fasta")
+        self.intype = intype
+
+    def is_up(self):
+        try:
+            urllib2.urlopen(self.url + "/nr_assemblies.json", timeout=2)
+        except urllib2.URLError:
+            return False
+        return True
+
+    def is_down(self):
+        return not self.is_up()
 
     def query_url(self, method, assembly):
         """Assemble a URL to call *method* for *assembly* on the repository."""
         if isinstance(assembly, basestring):
-            return """%s/%s.json?assembly_name=%s""" % (self.url, method, assembly)
+            return urllib2.Request("""%s/%s.json?assembly_name=%s""" % (self.url, method, assembly))
         elif isinstance(assembly, int):
-            return """%s/%s.json?assembly_id=%d""" % (self.url, method, assembly)
+            return urllib2.Request("""%s/%s.json?assembly_id=%d""" % (self.url, method, assembly))
         else:
             raise ValueError("Argument 'assembly' to must be a " + \
                                  "string or integer, got " + str(assembly))
@@ -103,9 +109,10 @@ class GenRep(object):
         """Parses a slice request to the repository."""
         if len(coord_list) == 0:
             return []
-        slices = ",".join([",".join([str(y) for y in x]) for x in coord_list])
-        url = """%s/chromosomes/%i/get_sequence_part?slices=%s""" % (self.url, chr_id, slices)
-        return urllib2.urlopen(url).read().split(',')
+        slices  = ",".join([",".join([str(y) for y in x]) for x in coord_list])
+        url     = """%s/chromosomes/%i/get_sequence_part?slices=%s""" % (self.url, chr_id, slices)
+        request = urllib2.Request(url)
+        return urllib2.urlopen(request).read().split(',')
 
     def fasta_from_bed(self, chromosomes, data_path, out=None, chunk=50000):
         """Get a fasta file with sequences corresponding to the features in the
@@ -174,10 +181,12 @@ class GenRep(object):
         else:
             raise ValueError("Argument 'assembly' must be a string or integer, got " + str(assembly))
 
+        root = os.path.join(self.root,"nr_assemblies/bowtie")
+        if self.intype == 1:
+            root = os.path.join(self.root,"nr_assemblies/exons_bowtie")
         a = Assembly(assembly_id = int(assembly_info['assembly']['id']),
                      assembly_name = assembly_info['assembly']['name'],
-                     index_path = os.path.join(self.root,
-                                               str(assembly_info['assembly']['md5'])),
+                     index_path = os.path.join(root,str(assembly_info['assembly']['md5'])),
                      bbcf_valid = assembly_info['assembly']['bbcf_valid'],
                      updated_at = datetime.strptime(assembly_info['assembly']['updated_at'],
                                                     '%Y-%m-%dT%H:%M:%SZ'),
@@ -204,7 +213,8 @@ class GenRep(object):
         """
         Returns a list of assemblies available on genrep
         """
-        assembly_info   = json.load(urllib2.urlopen(self.url + "/assemblies.json"))
+        request         = urllib2.Request(self.url + "/assemblies.json")
+        assembly_info   = json.load(urllib2.urlopen(request))
         assembly_list   = [a['assembly']['name'] for a in assembly_info]
         return [ a for a in assembly_list if a is not None ]
 
@@ -214,79 +224,9 @@ class GenRep(object):
         """
         return assembly in self.assemblies_available()
 
-class Assembly(object):
-    """A representation of a GenRep assembly.
-
-    In general, Assembly objects should always be created by calls to
-    a GenRep object.
-
-    An Assembly has the following fields:
-
-    .. attribute:: id
-
-      An integer giving the assembly ID in GenRep.
-
-    .. attribute:: name
-
-      A string giving the name of the assembly in GenRep.
-
-    .. attribute:: index_path
-
-      The absolute path to the bowtie index for this assembly.
-
-    .. attribute:: chromosomes
-
-      A dictionary of chromosomes in the assembly.  The dictionary
-      values are tuples of the form (chromsome id, RefSeq locus,
-      RefSeq version), and the values are dictionaries with the keys
-      'name' and 'length'.
-
-    .. attribute:: bbcf_valid
-
-      Boolean.
-
-    .. attribute:: updated_at
-
-    .. attribute:: created_at
-
-      ``datetime`` objects.
-
-    .. attribute:: nr_assembly_id
-
-    .. attribute:: genome_id
-
-    .. attribute:: source_id
-
-      All integers.
-
-    .. attribute:: source_name
-
-    .. attribute:: md5
-
-    """
-    def __init__(self, assembly_id, assembly_name, index_path,
-                 bbcf_valid, updated_at, nr_assembly_id, genome_id,
-                 source_name, md5, source_id, created_at):
-        self.id = int(assembly_id)
-        self.name = assembly_name
-        self.chromosomes = {}
-        self.index_path = os.path.abspath(index_path)
-        self.bbcf_valid = bbcf_valid
-        self.updated_at = updated_at
-        self.nr_assembly_id = nr_assembly_id
-        self.genome_id = genome_id
-        self.source_name = source_name
-        self.md5 = md5
-        self.source_id = source_id
-        self.created_at = created_at
-
-    def add_chromosome(self, chromosome_id, refseq_locus, refseq_version, name, length):
-        self.chromosomes[(chromosome_id, refseq_locus, refseq_version)] = \
-            {'name': name, 'length': length}
-
-    def statistics(self, assembly, output=None):
+    def statistics(self, assembly, output=None, frequency=False):
         """
-        Return (di-)nucleotide statistics for an assembly, writes in file ``output`` if provided.
+        Return (di-)nucleotide counts or frequencies for an assembly, writes in file ``output`` if provided.
         Example of result:
         {
             "TT": 13574667
@@ -313,27 +253,107 @@ class Assembly(object):
         }
         Total = A + T + G + C
         """
-        stat = json.load(urllib2.urlopen("%s/nr_assemblies/%d.json?data_type=counts" % (self.url, self.nr_assembly_id)))
+        request = urllib2.Request("%s/nr_assemblies/%d.json?data_type=counts" % (self.url, assembly.nr_assembly_id))
+        stat    = json.load(urllib2.urlopen(request))
+        total   = float(stat["A"] + stat["T"] + stat["G"] + stat["C"])
+        if frequency:
+            stat = dict((k,x/total) for k,x in stat.iteritems())
+        else:
+            stat.update
         if output == None:
             return stat
         else:
-            total = float(stat["A"] + stat["T"] + stat["G"] + stat["C"])
             with open(output, "w") as f:
-                f.write("#Assembly: %s\n" %self.name)
-                [f.write("%s\t%s\n" % (x,stat[x]/total)) for x in ["A","C","G","T"]]
+                f.write("#Assembly: %s\n" % assembly.name)
+                [f.write("%s\t%s\n" % (x,stat[x])) for x in ["A","C","G","T"]]
                 f.write("#\n")
-                [[f.write("%s\t%s\n" % (x+y,stat[x+y]/total)) for y in ["A","C","G","T"]] for x in ["A","C","G","T"]]
+                [[f.write("%s\t%s\n" % (x+y,stat[x+y])) for y in ["A","C","G","T"]] for x in ["A","C","G","T"]]
             return output
 
-    def assembly_fasta(self):
+    def fasta_path(self, assembly, chromosome=None):
         """
-        returns the path to the compressed fasta file (tar.gz)
+        Returns the path to the compressed fasta file, for the whole assembly or for a single chromosome.
         """
-        return os.path.join(self.root,self.md5+".tar.gz")
+        root = os.path.join(self.root,"nr_assemblies/fasta")
+        path = os.path.join(root,assembly.md5+".tar.gz")
+        if chromosome != None:
+            chr_id = str(chromosome[0])+"_"+str(chromosome[1])+"."+str(chromosome[2])
+            root = os.path.join(self.root,"chromosomes/fasta")
+            path = os.path.join(root,chr_id+".fa.gz")
+        elif self.intype == 1:
+            root = os.path.join(self.root,"nr_assemblies/exons_fasta")
+            path = os.path.join(root,assembly.md5+".fa.gz")
+        return path
 
-if __name__ == '__main__':
-    import doctest
-    doctest.testmod()
+class Assembly(object):
+    def __init__(self, assembly_id, assembly_name, index_path,
+                 bbcf_valid, updated_at, nr_assembly_id, genome_id,
+                 source_name, md5, source_id, created_at):
+        """A representation of a GenRep assembly.
+
+        In general, Assembly objects should always be created by calls to
+        a GenRep object.
+
+        An Assembly has the following fields:
+
+        .. attribute:: id
+
+        An integer giving the assembly ID in GenRep.
+
+        .. attribute:: name
+
+        A string giving the name of the assembly in GenRep.
+
+        .. attribute:: index_path
+
+        The absolute path to the bowtie index for this assembly.
+
+        .. attribute:: chromosomes
+
+        A dictionary of chromosomes in the assembly.  The dictionary
+        values are tuples of the form (chromsome id, RefSeq locus,
+        RefSeq version), and the values are dictionaries with the keys
+        'name' and 'length'.
+
+        .. attribute:: bbcf_valid
+
+        Boolean.
+
+        .. attribute:: updated_at
+
+        .. attribute:: created_at
+
+        ``datetime`` objects.
+
+        .. attribute:: nr_assembly_id
+
+        .. attribute:: genome_id
+
+        .. attribute:: source_id
+
+        All integers.
+
+        .. attribute:: source_name
+
+        .. attribute:: md5
+
+        """
+        self.id = int(assembly_id)
+        self.name = assembly_name
+        self.chromosomes = {}
+        self.index_path = os.path.abspath(index_path)
+        self.bbcf_valid = bbcf_valid
+        self.updated_at = updated_at
+        self.nr_assembly_id = nr_assembly_id
+        self.genome_id = genome_id
+        self.source_name = source_name
+        self.md5 = md5
+        self.source_id = source_id
+        self.created_at = created_at
+
+    def add_chromosome(self, chromosome_id, refseq_locus, refseq_version, name, length):
+        self.chromosomes[(chromosome_id, refseq_locus, refseq_version)] = \
+            {'name': name, 'length': length}
 
 #-----------------------------------#
 # This code was written by the BBCF #

@@ -4,26 +4,25 @@ Module: bbcflib.rnaseq
 ======================
 
 """
-import pickle
-import json
-import pysam
-import numpy
-from numpy import *
-import urllib
+
+# General modules #
+import pickle, json, pysam, numpy, urllib, math
 from itertools import combinations
-from bein.util import *
-from bbcflib import daflims, genrep
-from bbcflib.mapseq import plot_stats, bamstats
-import rpy2.robjects as robjects
+from scipy import stats
+from scipy.interpolate import UnivariateSpline
+from rpy2 import robjects
 import rpy2.robjects.packages as rpackages
 import rpy2.robjects.numpy2ri
 import rpy2.rlike.container as rlc
-from scipy import stats
-from scipy.interpolate import UnivariateSpline
-import matplotlib
-import pylab
-import matplotlib.pyplot as plt
-import math
+
+# Internal modules #
+from bbcflib.mapseq import plot_stats, bamstats
+from bbcflib.daflims import DAFLIMS
+from bbcflib.genrep import GenRep
+
+# Don't do this #
+from numpy import *
+from bein.util import *
 
 def path_to_bowtie_index(ex, assembly_id):
     """Return full path to usable bowtie index.
@@ -297,7 +296,8 @@ def inference(cond1_label, cond1, cond2_label, cond2, transcript_names, method="
     ## MA-plot
     if maplot:
         print "MAplot"
-        f,p,s = MAplot(res, mode=maplot, deg=3, bins=100)
+        MAplot(res, mode=maplot)
+        ex.add("MAplot.png")
 
     if output:
         result_filename = output
@@ -316,7 +316,7 @@ def rnaseq_workflow(ex, job, lims_path="rnaseq", via="lsf", job_or_dict="job",
           if "interactive", one can click on a point (gene or exon) to display its name;
           if "normal", name of genes over 99%/under 1% quantile are displayed.
     with_exons: run inference (DESeq) on exon mapping in addition to gene mapping.
-    
+
     Whatever script calls this function should have looked up the job
     description from HTSStation.  The job description from HTSStation
     is returned as JSON, but should have been changed into a
@@ -375,7 +375,6 @@ def rnaseq_workflow(ex, job, lims_path="rnaseq", via="lsf", job_or_dict="job",
 
     fastq_files = fetch_read_files(ex, runs)
     print "FastQ files:", [os.path.basename(f[0]['path']) for f in fastq_files.values()]
-
     bam_files = align_reads(ex, bowtie_index, fastq_files, via=via)
     print "Reads aligned."
 
@@ -457,10 +456,9 @@ def rnaseq_workflow(ex, job, lims_path="rnaseq", via="lsf", job_or_dict="job",
             ex.add(csvfile.wait(),
                    description="Comparison of exons in conditions '%s' and '%s' (CSV)" % (names[c1], names[c2]))
         print "Done."
-        ex.add("MAplot.png")
 
 
-def MAplot(data, mode="normal", deg=3, bins=100):
+def MAplot(data, mode="normal", deg=3, bins=20):
     """
     Creates an "MA-plot" to compare transcription levels of a set of genes
     in two different conditions. It returns a list of triplets (name, x, y) for each point,
@@ -470,8 +468,6 @@ def MAplot(data, mode="normal", deg=3, bins=100):
     data: rpy DataFrame object; two columns, each for a different condition.
     mode: if "interactive", click on a point to display its name
           if "normal", name of genes over 99%/under 1% quantile are displayed
-    deg:  degree of the interpolant polynomial
-    bins: number of bins for quantile splines
     """
 
     #####
@@ -479,6 +475,8 @@ def MAplot(data, mode="normal", deg=3, bins=100):
     # - Groups of genes
     # - automatically determine number of bins
     #####
+
+    import matplotlib.pyplot as plt
 
     if isinstance(data[0],rpy2.robjects.vectors.FactorVector):
         a = array(data[0])
@@ -527,11 +525,12 @@ def MAplot(data, mode="normal", deg=3, bins=100):
                 for p in points_in_b:
                     if p[1]>h[b]: annotes.append(p)
 
-        #ax.plot(intervals, h, color="green", linestyle="--", alpha=0.3)
+        #ax.plot(intervals, h, linestyle="--", alpha=0.3)
         spline = UnivariateSpline(intervals, h, k=deg)
+        print spline.get_knots()
         xs = linspace(xmin, xmax, 10*bins) #to increase spline smoothness
         ys = spline(xs)
-        ax.plot(intervals, h, "o")
+        ax.plot(intervals, h, "o", color="blue")
         ax.plot(xs, ys, "-", color="blue")
         spline_annotes.append((k,xs[0],ys[0]))
         spline_coords[k] = zip(xs,ys)
@@ -554,7 +553,7 @@ def MAplot(data, mode="normal", deg=3, bins=100):
             ax.annotate(p[0], xy=(p[2],p[1]) )
         f = fig.savefig("MAplot.png")
 
-    return f, points, spline_coords
+    #return f, points, spline_coords
 
 class AnnoteFinder:
   """

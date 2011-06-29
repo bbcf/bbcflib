@@ -195,23 +195,30 @@ def parseConfig( file ):
         description = str(config['Job'].get('description')),
         email = str(config['Job'].get('email')),
         options = config.get('Options') or {})
+<<<<<<< HEAD
     if not('name' in config['Groups']):
         raise ValueError("Each entry in 'Groups' must have a 'name'")
     for gid, group in config['Groups'].iteritems():
+=======
+    for gid, group in config['Groups'].iteritems():
+        if not('name' in group):
+            raise ValueError("Each entry in 'Groups' must have a 'name'")
+>>>>>>> 0e10a88118bedf0c0b24a476db804019285ecec6
         job.add_group(id=int(gid),
                       control=group.get('control').lower() in ['1','true','t'],
                       name=str(group['name']))
-    if not('group_id' in config['Groups']):
-        raise ValueError("Each entry in 'Groups' must have a 'group_id'")
-    for rid, run in config['runs'].iteritems():
+
+    for rid, run in config['Runs'].iteritems():
+        if not('group_id' in run):
+            raise ValueError("Each entry in 'Runs' must have a 'group_id'")
         job.add_run(id=int(rid),
                     group=int(run['group_id']),
                     facility=str(run.get('facility_name')),
                     facility_location=str(run.get('facility_location')),
                     machine=str(run.get('machine_name')),
-                    machine_id=int(run.get('machine_id')),
-                    run=int(run.get('run')),
-                    lane=int(run.get('lane')),
+                    machine_id=int((run.get('machine_id') is None) and "0" or run.get('machine_id')),
+                    run =int((run.get('run') is None) and "0" or run.get('run')),
+                    lane=int((run.get('lane') is None) and "0" or run.get('lane')),
                     url=run.get('url'),
                     key=run.get('key'))
     globals = config.get('Global variables') or {}

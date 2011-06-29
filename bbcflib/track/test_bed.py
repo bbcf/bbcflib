@@ -66,8 +66,8 @@ class Test_Format(unittest.TestCase):
 class Test_Genrep(unittest.TestCase):
     def runTest(self):
         t = track_collections['Validation'][1]
-        with Track(t['path'], chrmeta='sacCer2') as t:
-            self.assertEqual(t.meta_chr, 'lol')
+        with Track(t['path'], chrmeta='hg19') as t:
+            self.assertEqual(t.meta_chr[0]['length'], 249250621)
 
 #-----------------------------------#
 # This code was written by the BBCF #
