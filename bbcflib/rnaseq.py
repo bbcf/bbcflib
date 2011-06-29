@@ -307,23 +307,13 @@ def inference(cond1_label, cond1, cond2_label, cond2, transcript_names, method="
     res.to_csvfile(result_filename)
     return result_filename
 
-<<<<<<< HEAD
 def rnaseq_workflow(ex, job, lims_path="rnaseq", via="lsf", output=None, maplot=None, with_exons=None):
-=======
-def rnaseq_workflow(ex, job, lims_path="rnaseq", via="lsf", job_or_dict="job",
-                    output=None, maplot=None, with_exons=None):
->>>>>>> 346cc9313c18bab25f77fe48df361f837296c315
     """Run RNASeq inference according to *job_info*.
 
     output: alternative name for output file. Otherwise it is random.
     maplot: MA-plot of data.
-<<<<<<< HEAD
             If "interactive", one can click on a point (gene or exon) to display its name;
             if "normal", name of genes over 99%/under 1% quantile are displayed.
-=======
-          if "interactive", one can click on a point (gene or exon) to display its name;
-          if "normal", name of genes over 99%/under 1% quantile are displayed.
->>>>>>> 346cc9313c18bab25f77fe48df361f837296c315
     with_exons: run inference (DESeq) on exon mapping in addition to gene mapping.
 
     Whatever script calls this function should have looked up the job
@@ -355,7 +345,6 @@ def rnaseq_workflow(ex, job, lims_path="rnaseq", via="lsf", job_or_dict="job",
 
     """ Groups as given by the frontend is not that useful. Pull it apart
     into more useful pieces. """
-<<<<<<< HEAD
     names = {}; runs = {}; controls = {}; paths = {}; gids = {}
 
     groups = job.groups
@@ -373,23 +362,6 @@ def rnaseq_workflow(ex, job, lims_path="rnaseq", via="lsf", job_or_dict="job",
     print "controls",controls
     print "paths", paths
     print "gids", gids
-=======
-    names = {}
-    runs = {}
-    controls = {}
-
-    if job_or_dict == "job":
-        groups = job.groups
-        assembly_id = job.assembly_id
-    elif job_or_dict == "dict":
-        groups = job["groups"]
-        assembly_id = job["assembly_id"]
-
-    for i,v in groups.iteritems():
-        names[i] = str(v['name'])
-        runs[i] = v['runs'].values()
-        controls[i] = v['control']
->>>>>>> 346cc9313c18bab25f77fe48df361f837296c315
 
     print "Current working directory:", os.getcwd()
     bowtie_index = path_to_bowtie_index(ex, assembly_id)
@@ -402,18 +374,12 @@ def rnaseq_workflow(ex, job, lims_path="rnaseq", via="lsf", job_or_dict="job",
     (gene_labels,exon_mapping) = fetch_transcript_mapping(ex, assembly_id)
     exon_mapping = numpy.array(exon_mapping)
 
-<<<<<<< HEAD
     ## fastq_files = fetch_read_files(ex, runs)
     ## print "FastQ files:", [os.path.basename(f[0]['path']) for f in fastq_files.values()]
     ## bam_files = align_reads(ex, bowtie_index, fastq_files, via=via)
 
     fastq_files = os.path.dirname(paths[0])
     bam_files = map_groups(ex, job, fastq_files, assembly_or_dict = assembly)
-=======
-    fastq_files = fetch_read_files(ex, runs)
-    print "FastQ files:", [os.path.basename(f[0]['path']) for f in fastq_files.values()]
-    bam_files = align_reads(ex, bowtie_index, fastq_files, via=via)
->>>>>>> 346cc9313c18bab25f77fe48df361f837296c315
     print "Reads aligned."
 
     #bam1 = ex.use("bam1"); bam2 = ex.use("bam2")
@@ -662,4 +628,3 @@ class AnnoteFinder:
     annotesToDraw = [(x,y,a) for x,y,a in self.data if a==annote]
     for x,y,a in annotesToDraw:
       self.drawAnnote(self.axis, x, y, a)
-
