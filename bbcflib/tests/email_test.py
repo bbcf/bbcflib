@@ -8,7 +8,7 @@ except ImportError:
 from ..email import EmailReport
 
 # Other modules #
-import ConfigParser, cStringIO, socket, re
+import ConfigParser, cStringIO, socket, re, socket
 
 #--------------------------------------------------------------------------------#
 def hostname_contains(pattern):
@@ -34,11 +34,8 @@ def get_config_file_parser():
 ###################################################################################
 class TestEmailReport(unittest.TestCase):
     def setUp(self):
-        self.report = EmailReport(sender='nobody@localhost',
-                                  to='ross@localhost',
-                                  subject='Default Subject',
-                                  smtp_server='localhost')
-        self.report_from_config = EmailReport(config=get_config_file_parser(), to='ross@localhost')
+        self.report = EmailReport(sender='nobody@localhost', to='boris@localhost', subject='Default Subject', smtp_server='localhost')
+        self.report_from_config = EmailReport(config=get_config_file_parser(), to='boris@localhost')
 
     def test_config_requires_to(self):
         self.assertRaises(TypeError,
@@ -47,13 +44,13 @@ class TestEmailReport(unittest.TestCase):
 
     def test_init(self):
         self.assertEqual(self.report.sender, 'nobody@localhost')
-        self.assertEqual(self.report.to, 'ross@localhost')
+        self.assertEqual(self.report.to, 'boris@localhost')
         self.assertEqual(self.report.subject, 'Default Subject')
         self.assertEqual(self.report.smtp_server, 'localhost')
 
     def test_init_from_config(self):
         self.assertEqual(self.report_from_config.sender, 'nobody@localhost')
-        self.assertEqual(self.report_from_config.to, 'ross@localhost')
+        self.assertEqual(self.report_from_config.to, 'boris@localhost')
         self.assertEqual(self.report_from_config.subject, 'Default Subject')
         self.assertEqual(self.report_from_config.smtp_server, 'localhost')
 
@@ -67,11 +64,14 @@ class TestEmailReport(unittest.TestCase):
     def test_dump(self):
         self.assertEqual(self.report.dump(),
                          {'sender': 'nobody@localhost',
-                          'to': 'ross@localhost',
+                          'to': 'boris@localhost',
                           'subject': 'Default Subject',
                           'smtp_server': 'localhost',
                           'body': self.report.body})
 
     def test_send(self):
-        if not(hostname_contains('vital-it.ch')):
-            self.report_from_config.send()
+        try:
+            socket.create_connection(('localhost', 25))
+        except:
+            self.skipTest("Email send tests skipped because you can't send messages.")
+        self.report_from_config.send()
