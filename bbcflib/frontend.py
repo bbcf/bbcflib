@@ -24,7 +24,6 @@ method with a job key.::
 """
 import urllib2
 import json
-from ConfigParser import ConfigParser
 from datetime import datetime
 
 from common import normalize_url
@@ -49,7 +48,7 @@ class Frontend(object):
             self.url = normalize_url(url)
         else:
             self.url = normalize_url(config.get(section, 'frontend_url'))
-        
+
     def query_url(self, method, key):
         return """%s/%s.json?key=%s""" % (self.url, method, key)
 
@@ -113,17 +112,17 @@ class Frontend(object):
                 options = x['options'])
         [j.add_group(id=g['id'], control=g['control'], name=g['name'])
          for g in self._fetch_groups(key)]
-        [j.add_run(id=r['id'], group=r['group_id'], 
-                   facility=r['facility_name'], 
+        [j.add_run(id=r['id'], group=r['group_id'],
+                   facility=r['facility_name'],
                    facility_location=r['facility_location'],
-                   machine=r['machine_name'], 
+                   machine=r['machine_name'],
                    machine_id=r['machine_id'],
                    run=r['run'], lane=r['lane'],
                    url=r['url'],
                    key=r['key'])
          for r in self._fetch_runs(key)]
         return j
-                   
+
 
 
 class Job(object):
@@ -184,7 +183,7 @@ def parseConfig( file ):
     """
     from configobj import ConfigObj
     import time
-    
+
     config = ConfigObj( file )
     if not('Job' in config and 'Groups' in config and 'Runs' in config):
         raise ValueError("Need 'Job', 'Groups' and 'Runs' sections in the configuration, only had: "+", ".join(config.keys()))
@@ -196,23 +195,25 @@ def parseConfig( file ):
         description = str(config['Job'].get('description')),
         email = str(config['Job'].get('email')),
         options = config.get('Options') or {})
-    if not('name' in config['Groups']):
-        raise ValueError("Each entry in 'Groups' must have a 'name'")
-    for gid, group in config['groups'].iteritems():
-        job.add_group(id=int(gid), 
+    for gid, group in config['Groups'].iteritems():
+        if not('name' in group):
+            print "aa"
+            raise ValueError("Each entry in 'Groups' must have a 'name'")
+        job.add_group(id=int(gid),
                       control=group.get('control').lower() in ['1','true','t'],
                       name=str(group['name']))
-    if not('group_id' in config['Groups']):
-        raise ValueError("Each entry in 'Groups' must have a 'group_id'")
-    for rid, run in config['runs'].iteritems():
-        job.add_run(id=int(rid), 
-                    group=int(run['group_id']), 
-                    facility=str(run.get('facility_name')), 
+
+    for rid, run in config['Runs'].iteritems():
+        if not('group_id' in run):
+            raise ValueError("Each entry in 'Runs' must have a 'group_id'")
+        job.add_run(id=int(rid),
+                    group=int(run['group_id']),
+                    facility=str(run.get('facility_name')),
                     facility_location=str(run.get('facility_location')),
-                    machine=str(run.get('machine_name')), 
-                    machine_id=int(run.get('machine_id')),
-                    run=int(run.get('run')), 
-                    lane=int(run.get('lane')),
+                    machine=str(run.get('machine_name')),
+                    machine_id=int((run.get('machine_id') is None) and "0" or run.get('machine_id')),
+                    run =int((run.get('run') is None) and "0" or run.get('run')),
+                    lane=int((run.get('lane') is None) and "0" or run.get('lane')),
                     url=run.get('url'),
                     key=run.get('key'))
     globals = config.get('Global variables') or {}
