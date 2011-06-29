@@ -457,6 +457,8 @@ def rnaseq_workflow(ex, job, lims_path="rnaseq", via="lsf", job_or_dict="job",
                    description="Comparison of exons in conditions '%s' and '%s' (CSV)" % (names[c1], names[c2]))
         print "Done."
 
+        if maplot: ex.add("MAplot.png")
+
 
 def MAplot(data, mode="normal", deg=3, bins=20):
     """
@@ -517,7 +519,7 @@ def MAplot(data, mode="normal", deg=3, bins=20):
                 h[b] = stats.scoreatpercentile(perc, k)
             else:
                 h[b] = h[b-1]
-                #if b<=20: print h[b],b, "failed"
+                #if b<=20: print "no points in bin", b
             if k==1:
                 for p in points_in_b:
                     if p[1]<h[b]: annotes.append(p)
@@ -527,7 +529,6 @@ def MAplot(data, mode="normal", deg=3, bins=20):
 
         #ax.plot(intervals, h, linestyle="--", alpha=0.3)
         spline = UnivariateSpline(intervals, h, k=deg)
-        print spline.get_knots()
         xs = linspace(xmin, xmax, 10*bins) #to increase spline smoothness
         ys = spline(xs)
         ax.plot(intervals, h, "o", color="blue")
@@ -553,7 +554,7 @@ def MAplot(data, mode="normal", deg=3, bins=20):
             ax.annotate(p[0], xy=(p[2],p[1]) )
         f = fig.savefig("MAplot.png")
 
-    #return f, points, spline_coords
+    return f, points, spline_coords
 
 class AnnoteFinder:
   """
