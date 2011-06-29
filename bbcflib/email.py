@@ -30,7 +30,6 @@ with::
 
 .. autoclass:: EmailReport
 """
-from ConfigParser import ConfigParser
 from mailer import Mailer, Message
 
 class EmailReport(object):

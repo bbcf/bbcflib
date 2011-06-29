@@ -51,7 +51,6 @@ import tarfile
 import re
 import os
 from urlparse import urlparse
-from ConfigParser import ConfigParser
 from bein import unique_filename_in
 
 class DAFLIMS(object):
@@ -105,7 +104,7 @@ class DAFLIMS(object):
 
     def _run_method(self, method, facility, *args):
         """Returns a string from running *method* on the LIMS.
-        
+
         Methods on the LIMS are accessed with a uniform URL format.
         *method* is the method to run (for example ``"symlinkname"`` or
         ``"lanedesc"``).  *facility* is the facility to run against, and
@@ -159,9 +158,9 @@ class DAFLIMS(object):
           * ``'lane'`` (integer)
           * ``'cycle'`` (integer)
           * ``'quantity (/pM)'`` (float, the concentration of DNA in picomolar)
-          * ``'library'`` 
-          * ``'project'`` 
-          * ``'protocol'`` 
+          * ``'library'``
+          * ``'project'``
+          * ``'protocol'``
           * ``'run type'`` (``'ChipSeq'``, etc.)
           * ``'PI firstname'``
           * ``'PI lastname'``
@@ -261,9 +260,9 @@ class DAFLIMS(object):
           * ``'lane'`` (integer)
           * ``'cycle'`` (integer)
           * ``'quantity (/pM)'`` (float, the concentration of DNA in picomolar)
-          * ``'library'`` 
-          * ``'project'`` 
-          * ``'protocol'`` 
+          * ``'library'``
+          * ``'project'``
+          * ``'protocol'``
           * ``'run type'`` (``'ChipSeq'``, etc.)
           * ``'PI firstname'``
           * ``'PI lastname'``
@@ -300,9 +299,9 @@ class DAFLIMS(object):
           * ``'lane'`` (integer)
           * ``'cycle'`` (integer)
           * ``'quantity (/pM)'`` (float, the concentration of DNA in picomolar)
-          * ``'library'`` 
-          * ``'project'`` 
-          * ``'protocol'`` 
+          * ``'library'``
+          * ``'project'``
+          * ``'protocol'``
           * ``'run type'`` (``'ChipSeq'``, etc.)
           * ``'PI firstname'``
           * ``'PI lastname'``
@@ -331,9 +330,9 @@ class DAFLIMS(object):
           * ``'lane'`` (integer)
           * ``'cycle'`` (integer)
           * ``'quantity (/pM)'`` (float, the concentration of DNA in picomolar)
-          * ``'library'`` 
-          * ``'project'`` 
-          * ``'protocol'`` 
+          * ``'library'``
+          * ``'project'``
+          * ``'protocol'``
           * ``'run type'`` (``'ChipSeq'``, etc.)
           * ``'PI firstname'``
           * ``'PI lastname'``
@@ -362,9 +361,9 @@ class DAFLIMS(object):
           * ``'lane'`` (integer)
           * ``'cycle'`` (integer)
           * ``'quantity (/pM)'`` (float, the concentration of DNA in picomolar)
-          * ``'library'`` 
-          * ``'project'`` 
-          * ``'protocol'`` 
+          * ``'library'``
+          * ``'project'``
+          * ``'protocol'``
           * ``'run type'`` (``'ChipSeq'``, etc.)
           * ``'PI firstname'``
           * ``'PI lastname'``
@@ -379,4 +378,4 @@ class DAFLIMS(object):
 # This code was written by the BBCF #
 # http://bbcf.epfl.ch/              #
 # webmaster.bbcf@epfl.ch            #
-#-----------------------------------# 
+#-----------------------------------#

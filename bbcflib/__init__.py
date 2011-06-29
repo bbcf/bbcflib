@@ -5,11 +5,11 @@ Description
 
 bbcflib is a set of Python modules for accessing facilities used by
 the Bioinformatics and Biostatistics Core Facility (BBCF) at the EPFL.
-It provides modules for BBCF's 
+It provides modules for BBCF's
 
-* *GenRep* (genome data repository), 
-* the LIMS of the DNA Array Facilities at UNIL and UNIGE, 
-* the standard frontend code for workflows written by Fabrice David, 
+* *GenRep* (genome data repository),
+* the LIMS of the DNA Array Facilities at UNIL and UNIGE,
+* the standard frontend code for workflows written by Fabrice David,
 * sending job completion emails.
 * the *GDV* api for viewing genome tracks
 * *mapseq* to map reads to reference genomes
@@ -28,7 +28,7 @@ where module is one of:
 * ``Frontend`` from :doc:`bbcflib_frontend`
 * ``mapseq`` from :doc:`bbcflib_mapseq`
 * ``chipseq`` from :doc:`bbcflib_chipseq`
-* ``rnaseq`` from :doc:`bbcflib_rnaseq` 
+* ``rnaseq`` from :doc:`bbcflib_rnaseq`
 * ``gdv`` from :doc:`bbcflib_gdv`
 
 ============

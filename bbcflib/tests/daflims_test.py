@@ -18,18 +18,18 @@ def get_config_file_parser():
     file = cStringIO.StringIO()
     file.write(test_config_file)
     file.seek(0)
-    config = ConfigParser.ConfigParser() 
+    config = ConfigParser.ConfigParser()
     config.readfp(file)
     return config
 
-################################################################################### 
+###################################################################################
 class TestDAFLIMS(unittest.TestCase):
     def setUp(self):
         self.d = DAFLIMS(config=get_config_file_parser())
         try:
             print self.d.symlinkname
         except AttributeError:
-            self.skipTest("You don't have access to the DAFLIMBS, skipping appropriate tests")
+            self.skipTest("You don't have access to the DAFLIMBS, skipping all tests.")
 
     def test_symlinkname(self):
         self.assertEqual(self.d.symlinkname('lgtf', 'R2D2', 91, 3),
@@ -47,7 +47,7 @@ class TestDAFLIMS(unittest.TestCase):
                           'run type': 'single read', 'submitter lastname': 'Harshman',
                           'machine': 'R2D2', 'organism': 'Homo sapiens'})
         self.assertRaises(ValueError, self.d.lanedesc, 'lgtf', 'boris', 91, 3)
-        
+
     def test_fetch_symlink(self):
         fastq = self.d.symlinkname('lgtf','R2D2',91,3)['fastq']
         filename = self.d.fetch_symlink(fastq, to='/scratch/frt/daily/fross')

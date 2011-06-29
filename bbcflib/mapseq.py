@@ -3,12 +3,12 @@
 Module: bbcflib.mapseq
 ======================
 
-This module provides functions useful to map raw reads using bowtie. 
+This module provides functions useful to map raw reads using bowtie.
 The most common workflow will first use ``map_reads`` which takes the following arguments:
 
   * ``'ex'``: an execution environment to run jobs in,
 
-  * ``'fastq_file'``: the raw reads as a fastq file, 
+  * ``'fastq_file'``: the raw reads as a fastq file,
 
   * ``'chromosomes'``: a dictionary with keys 'chromosome_id' as used in the bowtie indexes and values a dictionary with usual chromosome names and their lengths,
 
@@ -33,9 +33,11 @@ Below is the script used by the frontend::
     from bbcflib import daflims, genrep, frontend, gdv, common
     from bbcflib.mapseq import *
     M = MiniLIMS( limspath )
-    gl = { 'hts_url': 'http://htsstation.vital-it.ch/mapseq/',
+    working_dir = '/path/to/scratch/on/cluster'
+    hts_key = 'test_key'
+    gl = { 'hts_mapseq': {'url': 'http://htsstation.vital-it.ch/mapseq/'},
            'genrep_url': 'http://bbcftools.vital-it.ch/genrep/',
-           'bwt_root': '/scratch/frt/yearly/genrep/nr_assemblies/bowtie',
+           'bwt_root': '/db/genrep/nr_assemblies',
            'script_path': '/srv/chipseq/lib',
            'lims': {'user': 'alice',
                      'passwd': {'lgtf': 'bob123',
@@ -44,11 +46,11 @@ Below is the script used by the frontend::
                     'email': 'alice.ecila@somewhere.edu',
                     'key': 'xxxxxxxxxxxxxxxxxxxxxxxx'} }
     assembly_id = 'mm9'
-    htss = frontend.Frontend( url=gl['hts_url'] )
+    htss = frontend.Frontend( url=gl['hts_mapseq']['url'] )
     job = htss.job( hts_key )
     g_rep = genrep.GenRep( gl['genrep_url'], gl['bwt_root'] )
     assembly = g_rep.assembly( assembly_id )
-    daflims1 = dict((loc,daflims.DAFLIMS( username=gl['lims']['user'], 
+    daflims1 = dict((loc,daflims.DAFLIMS( username=gl['lims']['user'],
                                           password=gl['lims']['passwd'][loc] ))
                     for loc in gl['lims']['passwd'].keys())
     job.options['ucsc_bigwig'] = True
@@ -60,9 +62,9 @@ Below is the script used by the frontend::
                              gl['script_path'] )
         density_files = densities_groups( ex, job, mapped_files, assembly.chromosomes )
         gdv_project = gdv.create_gdv_project( gl['gdv']['key'], gl['gdv']['email'],
-                                              job.description, hts_key, 
+                                              job.description, hts_key,
                                               assembly.nr_assembly_id,
-                                              gdv_url=gl['gdv']['url'], 
+                                              gdv_url=gl['gdv']['url'],
                                               public=True )
         add_pickle( ex, gdv_project, description='py:gdv_json' )
     print ex.id
@@ -80,7 +82,7 @@ import shutil
 import gzip
 import tarfile
 import pickle
-import urllib, urllib2
+import urllib
 from bbcflib import frontend, genrep, daflims, common
 from numpy import *
 from scipy.misc import factorial
@@ -92,7 +94,7 @@ from bein.util import *
 def bamstats(bamfile):
     """Wrapper to the ``bamstat`` program.
 
-    This program computes read mapping statistics on a bam file. The output will 
+    This program computes read mapping statistics on a bam file. The output will
     be parsed and converted to a dictionary.
     """
     def extract_pairs(s,head,foot):
@@ -103,7 +105,7 @@ def bamstats(bamfile):
             return (int(a),int(b))
         return dict([f(x) for x in m])
     def coverage_stats(p):
-        results = {}        
+        results = {}
         s=''.join(p.stdout)
         results["read_length"]=int(re.search(r'Read length (\d+)',s).groups()[0])
         results["genome_size"]=int(re.search(r'Genome size (\d+)',s).groups()[0])
@@ -126,11 +128,11 @@ def bamstats(bamfile):
 
 @program
 def plot_stats(sample_stats,script_path="./"):
-    """Wrapper to the ``pdfstats.R`` script which generates 
+    """Wrapper to the ``pdfstats.R`` script which generates
     a pdf report of the mapping statistics.
 
-    The input is the dictionary return by the ``bamstats`` call. 
-    This is passed as a json file to the R script. 
+    The input is the dictionary return by the ``bamstats`` call.
+    This is passed as a json file to the R script.
     Returns the pdf file created by the script.
     """
     stats_file = unique_filename_in()
@@ -156,14 +158,14 @@ def poisson_threshold(mu, cutoff=0.95, max_terms=100):
         raise ValueError("In poisson_threshold, reached max_terms. Try raising max_terms.")
     else:
         return n
-    
+
 def remove_duplicate_reads( bamfile, chromosomes,
                             maxhits=None, pilesize=1, convert=False ):
     """Filters a bam file for multi-hits above 'maxhits' and for duplicate reads beyond 'pilesize'.
 
-    Reads with NH tag > maxhits are discarded, each genomic position 
-    will have at most 'pilesize' reads per library and per strand. 
-    If the 'convert' flag is True, the reference sequence ids are replaced by 
+    Reads with NH tag > maxhits are discarded, each genomic position
+    will have at most 'pilesize' reads per library and per strand.
+    If the 'convert' flag is True, the reference sequence ids are replaced by
     their names as provided in 'chromosomes'.
     """
     infile = pysam.Samfile( bamfile, "rb" )
@@ -196,23 +198,23 @@ def remove_duplicate_reads( bamfile, chromosomes,
     infile.close()
     return outname
 ############################################################
- 
+
 def map_reads( ex, fastq_file, chromosomes, bowtie_index,
                maxhits=5, antibody_enrichment=50, name='',
                remove_pcr_duplicates=True, bwt_args=[], via='lsf' ):
-    """Runs ``bowtie`` in parallel over lsf for the `fastq_file` input. 
-    Returns the full bamfile, its filtered version (see 'remove_duplicate_reads') 
+    """Runs ``bowtie`` in parallel over lsf for the `fastq_file` input.
+    Returns the full bamfile, its filtered version (see 'remove_duplicate_reads')
     and the mapping statistics dictionary (see 'bamstats').
 
     The input file will be split into subfiles if it contains more than 10M lines.
-    The 'add_nh_flag' function will be called to add the number of hits per read 
+    The 'add_nh_flag' function will be called to add the number of hits per read
     in the bowtie output.
     If 'remove_pcr_duplicates' is *True*, the 'chromosomes' and 'maxhits' arguments
-    are passed to the 'remove_duplicate_reads' 
-    function and the 'antibody_enrichment' will be used as input to 
-    the 'poisson_threshold' function to compute its 'pilesize' argument. 
+    are passed to the 'remove_duplicate_reads'
+    function and the 'antibody_enrichment' will be used as input to
+    the 'poisson_threshold' function to compute its 'pilesize' argument.
 
-    The mapping statistics dictionary is pickled and added to the execution's 
+    The mapping statistics dictionary is pickled and added to the execution's
     repository, as well as both the full and filtered bam files.
     """
     bwtarg = ["-Sam",str(max(20,maxhits)),"--best","--strata"]+bwt_args
@@ -222,7 +224,7 @@ def map_reads( ex, fastq_file, chromosomes, bowtie_index,
                                bowtie_args=bwtarg,
                                add_nh_flags=True, via=via )
     else:
-        future = bowtie.nonblocking( ex, bowtie_index, fastq_file, 
+        future = bowtie.nonblocking( ex, bowtie_index, fastq_file,
                                      bwtarg, via=via )
         samfile = future.wait()
         bam = add_nh_flag( samfile )
@@ -238,7 +240,7 @@ def map_reads( ex, fastq_file, chromosomes, bowtie_index,
         reduced_bam = add_and_index_bam( ex, bam2, "bam:"+name+"filtered.bam" )
         filtered_stats = bamstats( ex, reduced_bam )
         add_pickle( ex, filtered_stats, "py:"+name+"filter_bamstat" )
-        return_dict['bam'] = reduced_bam 
+        return_dict['bam'] = reduced_bam
         return_dict['fullstats'] = full_stats
         return_dict['stats'] = filtered_stats
     else:
@@ -260,19 +262,19 @@ def map_reads( ex, fastq_file, chromosomes, bowtie_index,
         outfile.close()
         infile.close()
         reduced_bam = add_and_index_bam( ex, bam2, "bam:"+name+"filtered.bam" )
-        return_dict['bam'] = reduced_bam 
+        return_dict['bam'] = reduced_bam
         return_dict['stats'] = full_stats
     return return_dict
 
-############################################################ 
+############################################################
 
 def get_fastq_files( job, fastq_root, dafl=None, set_seed_length=True ):
     """
     Will replace file references by actual file paths in the 'job' object.
     These references are either 'dafl' run descriptions or urls.
     Argument 'dafl' is a dictionary of 'Daflims' objects (keys are the facility names).
-    If 'set_seed_length' is true, a dictionary job.groups[gid]['seed_lengths'] 
-    of seed lengths is constructed with values corresponding to 70% of the 
+    If 'set_seed_length' is true, a dictionary job.groups[gid]['seed_lengths']
+    of seed lengths is constructed with values corresponding to 70% of the
     read length.
     """
     if  not(dafl == None or isinstance(dafl.values()[0],daflims.DAFLIMS)):
@@ -334,19 +336,19 @@ def get_fastq_files( job, fastq_root, dafl=None, set_seed_length=True ):
                 job.groups[gid]['runs'][rid] = fq_file
                 job.groups[gid]['run_names'][rid] = run.split("/")[-1]
     return job
-    
-############################################################ 
+
+############################################################
 
 def map_groups( ex, job_or_dict, fastq_root, assembly_or_dict, map_args={} ):
-    """Fetches fastq files and bowtie indexes, and runs the 'map_reads' function for 
+    """Fetches fastq files and bowtie indexes, and runs the 'map_reads' function for
     a collection of samples described in a 'Frontend' 'job'.
 
     Arguments are:
 
     * ``'ex'``: a 'bein' execution environment to run jobs in,
-    
+
     * ``'job_or_dict'``: a 'Frontend' 'job' object, or a dictionary with keys 'groups',
-    
+
     * ``'fastq_root'``: path to raw fastq files,
 
     * ``'assembly_or_dict'``: an 'Assembly' object, or a dictionary of 'chromosomes' and 'index_path'.
@@ -371,7 +373,7 @@ def map_groups( ex, job_or_dict, fastq_root, assembly_or_dict, map_args={} ):
     if 'discard_pcr_duplicates' in options:
         pcr_dupl = options['discard_pcr_duplicates']
     if isinstance(assembly_or_dict,genrep.Assembly):
-        chromosomes = dict([(str(k[0])+"_"+k[1]+"."+str(k[2]),v) 
+        chromosomes = dict([(str(k[0])+"_"+k[1]+"."+str(k[2]),v)
                             for k,v in assembly_or_dict.chromosomes.iteritems()])
         index_path = assembly_or_dict.index_path
     elif isinstance(assembly_or_dict,dict) and 'chromosomes' in assembly_or_dict:
@@ -396,9 +398,9 @@ def map_groups( ex, job_or_dict, fastq_root, assembly_or_dict, map_args={} ):
                     if "-l" in map_args['bwt_args']:
                         map_args['bwt_args'][map_args['bwt_args'].index("-l")+1] = seed_len
                     else:
-                        map_args['bwt_args'] += ["-l",seed_len] 
+                        map_args['bwt_args'] += ["-l",seed_len]
                 else:
-                    map_args['bwt_args'] = ["-l",seed_len] 
+                    map_args['bwt_args'] = ["-l",seed_len]
             name = group_name
             if len(group['runs'])>1:
                 name += "_"
@@ -414,10 +416,10 @@ def map_groups( ex, job_or_dict, fastq_root, assembly_or_dict, map_args={} ):
 def add_pdf_stats( ex, processed, group_names, script_path,
                    description = "pdf:mapping_report.pdf" ):
     """Runs the 'plot_stats' function and adds its pdf output to the execution's repository.
-    
+
     Arguments are the output of 'map_groups' ('processed'),
-    a dictionary of group_id to names used in the display, 
-    the path to the script used by 'plot_stats', 
+    a dictionary of group_id to names used in the display,
+    the path to the script used by 'plot_stats',
     and the 'description' to use in the repository.
 
     Returns the name of the pdf file.
@@ -439,7 +441,7 @@ def add_pdf_stats( ex, processed, group_names, script_path,
     ex.add(pdf,description)
     return pdf
 
-############################################################ 
+############################################################
 @program
 def wigToBigWig( sql ):
     """Binds ``wigToBigWig`` from the UCSC tools.
@@ -465,16 +467,16 @@ def wigToBigWig( sql ):
                 f.write("\t".join([c]+[str(x) for x in sql_row])+"\n")
             cur.close()
     bigwig = unique_filename_in()
-    return {"arguments": ['wigToBigWig',bedgraph,chrsizes,bigwig], 
+    return {"arguments": ['wigToBigWig',bedgraph,chrsizes,bigwig],
             "return_value": bigwig}
 
 @program
-def bam_to_density( bamfile, output, chromosome_accession=None, chromosome_name=None, 
+def bam_to_density( bamfile, output, chromosome_accession=None, chromosome_name=None,
                     nreads=1, merge=-1, read_extension=-1, convert=True, sql=False,
                     args=[] ):
-    """Runs the ``bam2wig`` program on a bam file and 
+    """Runs the ``bam2wig`` program on a bam file and
     normalizes for the total number of reads
-    provided as argument 'nreads'. 
+    provided as argument 'nreads'.
 
     Returns the name of the output wig or sql file(s) (if 'sql' is True).
 
@@ -511,22 +513,22 @@ def compact_chromosome_name(key):
     else:
         raise ValueError("Can't handle this chromosomes key ",key)
 
-def parallel_density_wig( ex, bamfile, chromosomes, 
-                          nreads=1, merge=-1, read_extension=-1, convert=True, 
-                          description="", alias=None, 
+def parallel_density_wig( ex, bamfile, chromosomes,
+                          nreads=1, merge=-1, read_extension=-1, convert=True,
+                          description="", alias=None,
                           b2w_args=[], via='lsf' ):
-    """Runs 'bam_to_density' in parallel 
+    """Runs 'bam_to_density' in parallel
     for every chromosome in the 'chromosomes' list with 'sql' set to False.
     Returns a single text wig file.
     """
-    futures = [bam_to_density.nonblocking( ex, bamfile, unique_filename_in(), 
-                                           compact_chromosome_name(k), v['name'], 
-                                           nreads, merge, read_extension, convert, 
+    futures = [bam_to_density.nonblocking( ex, bamfile, unique_filename_in(),
+                                           compact_chromosome_name(k), v['name'],
+                                           nreads, merge, read_extension, convert,
                                            False, args=b2w_args, via=via )
                for k,v in chromosomes.iteritems()]
     results = []
     for f in futures:
-        try: 
+        try:
             results.append(f.wait())
         except ProgramFailed:
             pass
@@ -534,38 +536,38 @@ def parallel_density_wig( ex, bamfile, chromosomes,
     ex.add( output, description=description, alias=alias )
     return output
 
-def parallel_density_sql( ex, bamfile, output, chromosomes, 
-                          nreads=1, merge=-1, read_extension=-1, convert=True, 
+def parallel_density_sql( ex, bamfile, output, chromosomes,
+                          nreads=1, merge=-1, read_extension=-1, convert=True,
                           b2w_args=[], via='lsf' ):
     """Runs 'bam_to_density' for every chromosome in the 'chromosomes' list.
-    
-    Returns a dictionary with one or two sqlite files depending 
-    if 'merge'>=0 (shift and merge strands into one tracks) 
+
+    Returns a dictionary with one or two sqlite files depending
+    if 'merge'>=0 (shift and merge strands into one tracks)
     or 'merge'<0 (keep seperate tracks for each strand).
     """
     if chromosomes == None:
         chromosomes = {None: {'name': None}}
     for k,v in chromosomes.iteritems():
-        future = bam_to_density.nonblocking( ex, bamfile, output, 
-                                             compact_chromosome_name(k), v['name'], 
+        future = bam_to_density.nonblocking( ex, bamfile, output,
+                                             compact_chromosome_name(k), v['name'],
                                              nreads, merge, read_extension, convert,
                                              True, args=b2w_args, via=via )
-        try: 
+        try:
             _ = future.wait()
         except ProgramFailed:
             pass
     return output
 
-############################################################ 
+############################################################
 
 def densities_groups( ex, job_or_dict, file_dict, chromosomes, via='lsf' ):
     """
     Arguments are:
 
     * ``'ex'``: a 'bein' execution environment to run jobs in,
-    
+
     * ``'job_or_dict'``: a 'Frontend' 'job' object, or a dictionary with keys 'groups',
-    
+
     * ``'file_dict'``: a dictionary of files,
 
     * ``'chromosomes'``: a dictionary with keys 'chromosome_id' as used in the bowtie indexes and values a dictionary with usual chromosome names and their lengths,
@@ -622,19 +624,19 @@ def densities_groups( ex, job_or_dict, file_dict, chromosomes, via='lsf' ):
             touch(ex,output)
             [common.create_sql_track( output+s+'.sql', chromosomes ) for s in suffixes]
             wig.append(parallel_density_sql( ex, m["bam"], output, chromosomes,
-                                             nreads=m["stats"]["total"], 
-                                             merge=merge_strands, 
+                                             nreads=m["stats"]["total"],
+                                             merge=merge_strands,
                                              convert=False,
                                              b2w_args=b2w_args, via=via ))
             ex.add( output, description='none:'+m['libname']+'.sql' )
             [ex.add( output+s+'.sql', description='sql:'+m['libname']+'_'+s+'.sql',
-                     associate_to_filename=output, template='%s_'+s+'.sql' ) 
+                     associate_to_filename=output, template='%s_'+s+'.sql' )
              for s in suffixes]
         if len(mapped)>1:
             merged_bam = merge_bam(ex, [m['bam'] for m in mapped.values()])
             ids = [m['libname'] for m in mapped.values()]
             merged_wig = dict((s, common.merge_sql(ex, [x+s+".sql" for x in wig], ids,
-                                                   description="sql:"+group_name+"_"+s+".sql")) 
+                                                   description="sql:"+group_name+"_"+s+".sql"))
                               for s in suffixes)
         else:
             merged_bam = mapped.values()[0]['bam']
@@ -642,7 +644,7 @@ def densities_groups( ex, job_or_dict, file_dict, chromosomes, via='lsf' ):
         processed[gid] = {'bam': merged_bam, 'wig': merged_wig,
                           'read_length': mapped.values()[0]['stats']['read_length']}
         if ucsc_bigwig:
-            bw_futures = [wigToBigWig.nonblocking( ex, merged_wig[s], via=via ) 
+            bw_futures = [wigToBigWig.nonblocking( ex, merged_wig[s], via=via )
                           for s in suffixes]
             [ex.add(bw_futures[i].wait(),description='bigwig:'+group_name+'_'+s+'.bw')
              for i,s in enumerate(suffixes)]
@@ -650,7 +652,7 @@ def densities_groups( ex, job_or_dict, file_dict, chromosomes, via='lsf' ):
                       'genome_size': mapped.values()[0]['stats']['genome_size']})
     return processed
 
-############################################################ 
+############################################################
 def import_mapseq_results( key_or_id, minilims, ex_root, url_or_dict ):
     """Imports all files created by a previous 'mapseq' workflow into the current execution environement.
 
@@ -682,7 +684,7 @@ def import_mapseq_results( key_or_id, minilims, ex_root, url_or_dict ):
     else:
         suffix = ['merged']
     if isinstance(key_or_id, str):
-        try: 
+        try:
             exid = max(minilims.search_executions(with_text=key_or_id))
         except ValueError, v:
             raise ValueError("No execution with key "+key_or_id)
@@ -705,7 +707,7 @@ def import_mapseq_results( key_or_id, minilims, ex_root, url_or_dict ):
         processed[gid] = {}
         for rid,run in group['runs'].iteritems():
             bamfile = os.path.join(ex_root, unique_filename_in(ex_root))
-            name = file_names[gid][rid] 
+            name = file_names[gid][rid]
             bam_id = allfiles['bam:'+name+'_filtered.bam']
             bam_bai_id = allfiles['bam:'+name+'_filtered.bam (BAM index)']
             minilims.export_file(bam_id,bamfile)
@@ -720,11 +722,11 @@ def import_mapseq_results( key_or_id, minilims, ex_root, url_or_dict ):
             wig_ids = dict(((allfiles['sql:'+name+'_'+s+'.sql'],s),
                             wigfile+'_'+s+'.sql') for s in suffix)
             [minilims.export_file(x[0],s) for x,s in wig_ids.iteritems()]
-            processed[gid][rid] = {'bam': bamfile, 
-                                   'stats': stats, 
+            processed[gid][rid] = {'bam': bamfile,
+                                   'stats': stats,
                                    'poisson_threshold': p_thresh,
                                    'libname': name,
-                                   'wig': dict((x[1],s) 
+                                   'wig': dict((x[1],s)
                                                for x,s in wig_ids.iteritems())}
     return (processed,job)
 

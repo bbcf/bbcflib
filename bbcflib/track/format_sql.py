@@ -11,9 +11,10 @@ import sqlite3
 
 # Internal modules #
 from ..track import *
+from .format_sql_extras import SQLExtras
 
 ###########################################################################
-class GenomicFormat(Track):
+class GenomicFormat(Track, SQLExtras):
     special_tables = ['attributes', 'chrNames', 'types']
 
     def load(self):
@@ -43,18 +44,6 @@ class GenomicFormat(Track):
     def commit(self):
         self.connection.commit()
 
-    def get_scores_frequencies(self):
-        self.cursor.execute(u"SELECT name FROM chrNames;")
-        chromosomes_names   = [ chromosome[0] for chromosome in self.cursor ]
-        scores              = {}
-        for chromosome_name in chromosomes_names:
-            self.cursor.execute(u"SELECT count (*), score FROM '"+chromosome_name+u"' GROUP BY score;")
-            for result in self.cursor:
-                if result[1] not in scores:
-                    scores[ result[1] ] = result[0]
-                else:
-                    scores[ result[1] ] += result[0]
-        return scores
 
     #-----------------------------------------------------------------------------#
     @property
@@ -107,15 +96,15 @@ class GenomicFormat(Track):
         if not selection:
             selection = self.chrs_from_tables
         # Case multi-chromosome #
-        if type(selection) == list:
+        if isinstance(selection, list) or isinstance(selection, tuple):
             return join_read_queries(self, selection, fields)
         # Case chromsome name #
-        if type(selection) == str:
+        if isinstance(selection, basestring):
             if selection not in self.chrs_from_tables: return ()
             if not fields: fields = self.get_fields(selection)
             sql_request = "select " + ','.join(fields) + " from '" + selection + "'"
         # Case span dictionary #
-        if type(selection) == dict:
+        if isinstance(selection, dict):
             chrom = selection['chr']
             if chrom not in self.chrs_from_tables: return ()
             if not fields: fields = self.get_fields(chrom)
@@ -148,7 +137,7 @@ class GenomicFormat(Track):
         if self.readonly: return
         if not chrom:
             chrom = self.chrs_from_tables
-        if type(chrom) == list:
+        if isinstance(chrom, list):
             for ch in chrom:
                 self.remove(ch)
         else:
@@ -159,14 +148,14 @@ class GenomicFormat(Track):
         if not selection:
             selection = self.chrs_from_tables
         # Case multi-chromosome #
-        if type(selection) == list:
+        if isinstance(selection, list) or isinstance(selection, tuple):
             return sum([self.count(s) for s in selection])
         # Case chromsome name #
-        if type(selection) == str:
+        if isinstance(selection, basestring):
             if selection not in self.chrs_from_tables: return 0
             sql_request = "select COUNT(*) from '" + selection + "'"
         # Case span dictionary #
-        if type(selection) == dict:
+        if isinstance(selection, dict):
             chrom = selection['chr']
             if chrom not in self.chrs_from_tables: return 0
             sql_request = "select COUNT(*) from '" + chrom + "' where " + make_cond_from_sel(selection)

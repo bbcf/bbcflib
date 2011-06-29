@@ -17,7 +17,7 @@ from ..common import sentinelize
 ###########################################################################
 class GenomicFormat(TextTrack, ProxyTrack):
     type_identifier = 'wiggle_0'
-    
+
     def _all_features(self):
         self._file.seek(0)
         params = {}
@@ -66,7 +66,7 @@ class GenomicFormat(TextTrack, ProxyTrack):
                     line = float(line)
                 except ValueError:
                     raise Exception("The file '" + self._path + "' has non floats as score values and is hence not valid.")
-                base = params['start'] + params['count'] * params['step'] 
+                base = params['start'] + params['count'] * params['step']
                 yield [params['chrom'], base, base + params['span'], line]
                 params['count'] += 1
             if params['mode'] == 'variableStep':
@@ -87,7 +87,7 @@ class GenomicFormat(TextTrack, ProxyTrack):
         x = X.next()
         if x == sentinel:
             yield x
-            return 
+            return
         while True:
             x_next = X.next()
             if x_next == sentinel:
@@ -95,7 +95,7 @@ class GenomicFormat(TextTrack, ProxyTrack):
                 break
             if x[0] == x_next[0]:
                 if x[2] > x_next[1]:
-                    raise Exception("The file '" + self._path + "' has a start larger than its end or a span larger than its step.") 
+                    raise Exception("The file '" + self._path + "' has a start larger than its end or a span larger than its step.")
                 if x[2] == x_next[1] and x[3] == x_next[3]:
                     x[2] = x_next[2]
                     continue
@@ -108,7 +108,7 @@ class GenomicFormat(TextTrack, ProxyTrack):
 
     #-----------------------------------------------------------------------------#
     @property
-    def _datatype(self): 
+    def _datatype(self):
         return self._datatype_
 
     @_datatype.setter
@@ -129,15 +129,15 @@ def random_track(kind='fixed', chrs=16, number_of_regions=32, orig_start=0, leng
                 end  = orig_start
             start = end   + (random.randint(0,jump))
             end   = start + (random.randint(1,length))
-            multiplier = random.randint(1,score) 
+            multiplier = random.randint(1,score)
             yield 'fixedStep chrom=chr' + str(chr) + ' start=' + str(start) + ' step=1' + '\n'
             for x in xrange((end - start)):
                 yield str(multiplier + multiplier * random.random()) + '\n'
             for x in xrange((end - start)/2):
                 yield '0\n'
             end   = start + (random.randint(1,length))
-            multiplier = random.randint(1,score) 
-            constant = str(multiplier + multiplier * random.random()) 
+            multiplier = random.randint(1,score)
+            constant = str(multiplier + multiplier * random.random())
             for x in xrange((end - start)):
                 yield constant + '\n'
     if kind == 'variable':
@@ -149,7 +149,7 @@ def random_track(kind='fixed', chrs=16, number_of_regions=32, orig_start=0, leng
                 yield 'variableStep chrom=chr' + str(chr) + '\n'
             start = end   + (random.randint(0,jump))
             end   = start + (random.randint(1,int(length/2)))
-            multiplier = random.randint(1,score) 
+            multiplier = random.randint(1,score)
             for x in xrange(start,end):
                 yield str(x) + ' ' + str(multiplier + multiplier * random.random()) + '\n'
 
