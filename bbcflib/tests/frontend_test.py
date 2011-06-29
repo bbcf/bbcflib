@@ -13,7 +13,7 @@ import datetime
 ###################################################################################
 class TestFrontend(unittest.TestCase):
     def setUp(self):
-        self.skipTest("The frontend is currently under heavy changes")
+        self.skipTest("The frontend tests haven't been run in a while and aren't being fixed.")
         self.f = Frontend(url='http://htsstation.vital-it.ch/rnaseq/')
         self.key = '9pv1x7PamOj80eXnZa14'
         self.frontend_job = Job(id = 2,

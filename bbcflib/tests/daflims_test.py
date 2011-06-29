@@ -29,7 +29,7 @@ class TestDAFLIMS(unittest.TestCase):
         try:
             print self.d.symlinkname
         except AttributeError:
-            self.skipTest("You don't have access to the DAFLIMBS, skipping appropriate tests")
+            self.skipTest("You don't have access to the DAFLIMBS, skipping all tests.")
 
     def test_symlinkname(self):
         self.assertEqual(self.d.symlinkname('lgtf', 'R2D2', 91, 3),
