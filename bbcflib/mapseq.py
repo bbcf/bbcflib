@@ -226,8 +226,6 @@ def map_reads( ex, fastq_file, chromosomes, bowtie_index,
     else:
         future = bowtie.nonblocking( ex, bowtie_index, fastq_file, bwtarg, via=via )
         samfile = future.wait()
-        with open(samfile) as f:
-            print f.readline(), f.readline(), f.readline()
         bam = add_nh_flag( samfile )
     sorted_bam = add_and_index_bam( ex, bam, "bam:"+name+"complete.bam" )
     full_stats = bamstats( ex, sorted_bam )

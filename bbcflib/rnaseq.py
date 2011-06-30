@@ -68,9 +68,9 @@ def map_runs(fun, runs):
     return results
 
 def exons_labels(bamfile):
-    """List of the exons labels in *bamfile*."""
+    """List of the exons labels (SN: 'reference sequence name'; LN: 'sequence length') in *bamfile*."""
     sam = pysam.Samfile(bamfile, 'rb')
-    labels = [(t['SN'],t['LN']) for t in sam.header['SQ']] #SN: "reference sequence name"; LN: "sequence length"
+    labels = [(t['SN'],t['LN']) for t in sam.header['SQ']]
     sam.close()
     return labels
 
@@ -178,6 +178,12 @@ def inference(cond1_label, cond1, cond2_label, cond2, transcript_names, method="
     ## Replace (unique) gene IDs by (not unique) gene names
 
     if assembly_id:
+        if isinstance(assembly_id,str):
+            nr_assemblies = urllib.urlopen("http://bbcftools.vital-it.ch/genrep/nr_assemblies.json").read()
+            nr_assemblies = json.loads(nr_assemblies)
+            for a in nr_assemblies:
+                if a['nr_assembly']['name'] == assembly_id:
+                    assembly_id = a['nr_assembly']['id']; break
         print "Translate gene IDs to gene names..."
         res_ids = list(res[0])
         idtoname = {}; res_names = []; gid = None; l = None
@@ -251,7 +257,7 @@ def rnaseq_workflow(ex, job, assembly, via="lsf", output=None, maplot=None, with
     assembly_id = job.assembly_id
     for i,group in groups.iteritems():
         names[i] = str(group['name'])
-        runs[i] = group['runs'].values()[0]
+        runs[i] = group['runs'].values()
         controls[i] = group['control']
 
     """ gene_labels is a list whose ith entry is a string giving
@@ -268,15 +274,15 @@ def rnaseq_workflow(ex, job, assembly, via="lsf", output=None, maplot=None, with
     # All the bam_files were created against the same index, so
     # they all have the same header in the same order.  I can take
     # the list of exons from just the first one and use it for all
-    # of them.
-    exons = exons_labels(bam_files[bam_files.keys()[0]][0])
+    # of them
+    exons = exons_labels(bam_files.values()[0][1]['bam'])
 
     exon_pileups = {}; gene_pileups = {}
     for condition,files in bam_files.iteritems():
         gene_pileups[condition] = []
         exon_pileups[condition] = []
-        for f in files:
-            exon_pileup = pileup_file(f, exons)
+        for f in files.values():
+            exon_pileup = pileup_file(f['bam'], exons)
             exon_pileups[condition].append(exon_pileup)
             gene_pileup = numpy.zeros(len(gene_labels))
             for i,c in enumerate(exon_pileup):
@@ -314,7 +320,7 @@ def rnaseq_workflow(ex, job, assembly, via="lsf", output=None, maplot=None, with
                                     names[c2], gene_pileups[c2],
                                     gene_labels,
                                     method, assembly_id, output, maplot, via=via)
-            print "Wait for results..."
+            print "    Wait for results..."
             ex.add(csvfile.wait(),
                    description="Comparison of exons in conditions '%s' and '%s' (CSV)" % (names[c1], names[c2]))
         print "Done."
