@@ -5,7 +5,7 @@ Here is a typical workflow that uses both ``mapseq`` and ``chipseq``. First prep
 
     [Global variables]
     genrep_url='http://bbcftools.vital-it.ch/genrep/'
-    bwt_root='/db/genrep/nr_assemblies'
+    bwt_root='/db/genrep'
     fastq_root='/scratch/cluster/daily/htsstation/mapseq/'
     script_path='/archive/epfl/bbcf/share'
     [[hts_chipseq]]
