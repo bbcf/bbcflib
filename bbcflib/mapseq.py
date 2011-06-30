@@ -224,9 +224,10 @@ def map_reads( ex, fastq_file, chromosomes, bowtie_index,
                                bowtie_args=bwtarg,
                                add_nh_flags=True, via=via )
     else:
-        future = bowtie.nonblocking( ex, bowtie_index, fastq_file,
-                                     bwtarg, via=via )
+        future = bowtie.nonblocking( ex, bowtie_index, fastq_file, bwtarg, via=via )
         samfile = future.wait()
+        with open(samfile) as f:
+            print f.readline(), f.readline(), f.readline()
         bam = add_nh_flag( samfile )
     sorted_bam = add_and_index_bam( ex, bam, "bam:"+name+"complete.bam" )
     full_stats = bamstats( ex, sorted_bam )
@@ -355,7 +356,8 @@ def map_groups( ex, job_or_dict, fastq_root, assembly_or_dict, map_args={} ):
 
     * ``'map_args'``: a dictionary of arguments passed to map_reads.
 
-    Returns a dictionary with keys *group_id* from the job object and values dictionaries mapping *run_id* to the corresponding return value of the 'map_reads' function.
+    Returns a dictionary with keys *group_id* from the job object and values dictionaries
+    mapping *run_id* to the corresponding return value of the 'map_reads' function.
     """
     processed = {}
     file_names = {}
@@ -380,7 +382,8 @@ def map_groups( ex, job_or_dict, fastq_root, assembly_or_dict, map_args={} ):
         chromosomes = assembly_or_dict['chromosomes']
         index_path = assembly_or_dict['index_path ']
     else:
-        raise TypeError("assembly_or_dict must be a genrep.Assembly object or a dictionary with keys 'chromosomes' and 'index_path'.")
+        raise TypeError("assembly_or_dict must be a genrep.Assembly object or a dictionary \
+                         with keys 'chromosomes' and 'index_path'.")
     for gid,group in groups.iteritems():
         processed[gid] = {}
         file_names[gid] = {}

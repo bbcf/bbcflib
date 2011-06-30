@@ -175,6 +175,7 @@ class GenRep(object):
         string giving the assembly name.
         """
         if isinstance(assembly, basestring):
+            #print "assem_info",json.load(urllib2.urlopen(self.query_url('assemblies', assembly)))
             assembly_info = json.load(urllib2.urlopen(self.query_url('assemblies', assembly)))[0]
         elif isinstance(assembly, int):
             assembly_info = json.load(urllib2.urlopen("""%s/assemblies/%d.json""" % (self.url, assembly)))
