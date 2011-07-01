@@ -1,12 +1,10 @@
 """
-===============
-bbcflib.common
-===============
-
+======================
+Module: bbcflib.common
+======================
 """
 
 import pickle
-from bein import *
 
 ###############################################################################
 def normalize_url(url):
@@ -29,14 +27,14 @@ def normalize_url(url):
     return url
 
 def natural_sort(item):
-    '''
+    """
     Will sort strings that contain numbers correctly
 
     >>> l = ['v1.3.12', 'v1.3.3', 'v1.2.5', 'v1.2.15', 'v1.2.3', 'v1.2.1']
     >>> l.sort(key=natural_sort)
     >>> l.__repr__()
     "['v1.2.1', 'v1.2.3', 'v1.2.5', 'v1.2.15', 'v1.3.3', 'v1.3.12']"
-    '''
+    """
     import re
     def try_int(s):
         try: return int(s)
@@ -57,7 +55,8 @@ def named_temporary_path(suffix=''):
 
 ###############################################################################
 class memoized_method(object):
-    '''Decorator that caches a function's return value the first time
+    """
+    Decorator that caches a function's return value the first time
     it is called. If called later, the cached value is returned, and
     not re-evaluated
 
@@ -67,14 +66,16 @@ class memoized_method(object):
     be hashable.
 
     If a memoized method is invoked directly on its class the result will not
-    be cached. Instead the method will be invoked like a static method:
-    class Obj(object):
-        @memoized_method
-        def add_to(self, arg):
-            return self + arg
-    Obj.add_to(1)    # not enough arguments
-    Obj.add_to(1, 2) # returns 3, result is not cached
-    '''
+    be cached. Instead the method will be invoked like a static method::
+
+        class Obj(object):
+            @memoized_method
+            def add_to(self, arg):
+                return self + arg
+        Obj.add_to(1)    # not enough arguments
+        Obj.add_to(1, 2) # returns 3, result is not cached
+
+    """
     def __init__(self, func):
         self.func = func
     def __get__(self, obj, objtype=None):
@@ -152,94 +153,6 @@ terminal_colors = {
 }
 
 ###############################################################################
-def get_files( id_or_key, minilims ):
-    """Retrieves a dictionary of files created by htsstation job identified by its key or bein id in a MiniLIMS.
-
-    The dictionarie's keys are the file types (e.g. 'pdf', 'bam', 'py' for python objects), the values are dictionaries with keys repository file names and values actual file descriptions (names to provide in the user interface).
-    """
-    if isinstance(id_or_key, str):
-        try:
-            exid = max(minilims.search_executions(with_text=id_or_key))
-        except ValueError, v:
-            raise ValueError("No execution with key "+id_or_key)
-    else:
-        exid = id_or_key
-    file_dict = {}
-    all = dict((y['repository_name'],y['description']) for y in
-               [minilims.fetch_file(x) for x in minilims.search_files(source=('execution',exid))])
-    for f,d in all.iteritems():
-        cat,name = re.search(r'([^:]+):(.*)$',d).groups()
-        name = re.sub(r'\s+\(BAM INDEX\)','.bai',name)
-        if cat in file_dict:
-            file_dict[cat].update({f: name})
-        else:
-            file_dict[cat] = {f: name}
-    return file_dict
-
-############ gMiner operations ############
-@program
-def run_gMiner( job ):
-    job_file = unique_filename_in()
-    with open(job_file,'w') as f:
-        pickle.dump(job,f)
-    def get_output_files(p):
-        with open(job_file,'r') as f:
-            job = pickle.load(f)
-        return job['job_output']
-    return {"arguments": ["run_gminer.py",job_file],
-            "return_value": get_output_files}
-
-def merge_sql( ex, sqls, names, description="merged.sql", outdir=None, via='lsf' ):
-    """Run ``gMiner``'s 'merge_score' function on a set of sql files
-    """
-    if outdir == None:
-        outdir = unique_filename_in()
-    if not(os.path.exists(outdir)):
-        os.mkdir(outdir)
-    if not(isinstance(names,list)):
-        names = []
-    if len(names) < len(sqls):
-        n = sqls
-        n[:len(names)] = names
-        names = n
-    gMiner_job = dict([('track'+str(i+1),f) for i,f in enumerate(sqls)]
-                      +[('track'+str(i+1)+'_name',str(ni))
-                        for i,ni in enumerate(names)])
-    gMiner_job['operation_type'] = 'genomic_manip'
-    gMiner_job['manipulation'] = 'merge_scores'
-    gMiner_job['output_location'] = outdir
-    files = run_gMiner.nonblocking(ex,gMiner_job,via=via).wait()
-    ex.add( files[0], description=description )
-    return files[0]
-
-############################################################
-
-@program
-def merge_two_bed(file1,file2):
-    """Binds ``intersectBed`` from the 'BedTools' suite.
-    """
-    return {"arguments": ['intersectBed','-a',file1,'-b',file2], "return_value": None}
-
-def merge_many_bed(ex,files,via='lsf'):
-    """Runs ``intersectBed`` iteratively over a list of bed files.
-    """
-    out = files[0]
-    for f in files[1:]:
-        next = unique_filename_in()
-        _ = merge_two_bed.nonblocking( ex, out, f, via=via, stdout=next ).wait()
-        out = next
-    return out
-
-@program
-def join_pdf(files):
-    """Uses 'ghostscript' to join several pdf files into one.
-    """
-    out = unique_filename_in()
-    gs_args = ['gs','-dBATCH','-dNOPAUSE','-q','-sDEVICE=pdfwrite',
-               '-sOutputFile=%s'%out]
-    gs_args += files
-    return {"arguments": gs_args, "return_value": out}
-
 def cat(files):
     """Concatenates files.
     """
@@ -256,7 +169,6 @@ def cat(files):
     else:
         out = None
     return out
-
 
 def create_sql_track( sql_name, chromosomes, datatype="quantitative" ):
     conn = sqlite3.connect( sql_name )
@@ -281,63 +193,137 @@ def create_sql_track( sql_name, chromosomes, datatype="quantitative" ):
     conn.close()
     return sql_name
 
-@program
-def _mymetype(file_path):
-    """
-    return myme type from a file eg:
-    """
-    output = unique_filename_in()
-    call = ["file", file_path]
-    return {"arguments": call, "return_value": output}
+try:
+    from bein import *
 
-def mymetype(ex, file_path):
-    output  = _mymetype(file_path)
-    myme    = ""
-    with open(output, "r") as f:
-        line = f.readline()
-        myme = line.split(":")[1][1:]
-    return myme
+###############################################################################
+    def get_files( id_or_key, minilims ):
+        """Retrieves a dictionary of files created by htsstation job identified by its key or bein id in a MiniLIMS.
+        
+        The dictionarie's keys are the file types (e.g. 'pdf', 'bam', 'py' for python objects), the values are dictionaries with keys repository file names and values actual file descriptions (names to provide in the user interface).
+        """
+        if isinstance(id_or_key, str):
+            try:
+                exid = max(minilims.search_executions(with_text=id_or_key))
+            except ValueError, v:
+                raise ValueError("No execution with key "+id_or_key)
+        else:
+            exid = id_or_key
+        file_dict = {}
+        all = dict((y['repository_name'],y['description']) for y in
+                   [minilims.fetch_file(x) for x in minilims.search_files(source=('execution',exid))])
+        for f,d in all.iteritems():
+            cat,name = re.search(r'([^:]+):(.*)$',d).groups()
+            name = re.sub(r'\s+\(BAM INDEX\)','.bai',name)
+            if cat in file_dict:
+                file_dict[cat].update({f: name})
+            else:
+                file_dict[cat] = {f: name}
+        return file_dict
 
-@program
-def compress(path, compression_type="lxzma"):
-    """
-    compression type allowed:
-    - gunzip, gz
-    - bzip2, bz
-    - lxzma, xz
-    """
-    archive = unique_filename_in()
-    call    = None
-    if compression_type == "lxzma" or compression_type == "xz":
-        call = ["tar", "cJvf", archive, path]
-    elif compression_type == "bzip2" or compression_type == "bz2":
-        call = ["tar", "cjvf", archive, path]
-    elif compression_type == "gunzip" or compression_type == "gz":
-        call = ["tar", "czvf", archive, path]
-    else:
-        raise ValueError("Compression type: %s not yet supported!" %(compression_type))
-    return {"arguments": call, "return_value": archive}
+############ gMiner operations ############
+    @program
+    def run_gMiner( job ):
+        job_file = unique_filename_in()
+        with open(job_file,'w') as f:
+            pickle.dump(job,f)
+        def get_output_files(p):
+            with open(job_file,'r') as f:
+                job = pickle.load(f)
+            return job['job_output']
+        return {"arguments": ["run_gminer.py",job_file],
+                "return_value": get_output_files}
 
-@program
-def uncompress(path):
-    """
-    uncompress tar archive
-    """
-    output = unique_filename_in()
-    call = ["tar", "xvf", path]
-    return {"arguments": call, "return_value": output}
+    def merge_sql( ex, sqls, names, description="merged.sql", outdir=None, via='lsf' ):
+        """Run ``gMiner``'s 'merge_score' function on a set of sql files
+        """
+        if outdir == None:
+            outdir = unique_filename_in()
+        if not(os.path.exists(outdir)):
+            os.mkdir(outdir)
+        if not(isinstance(names,list)):
+            names = []
+        if len(names) < len(sqls):
+            n = sqls
+            n[:len(names)] = names
+            names = n
+        gMiner_job = dict([('track'+str(i+1),f) for i,f in enumerate(sqls)]
+                          +[('track'+str(i+1)+'_name',str(ni))
+                            for i,ni in enumerate(names)])
+        gMiner_job['operation_type'] = 'genomic_manip'
+        gMiner_job['manipulation'] = 'merge_scores'
+        gMiner_job['output_location'] = outdir
+        files = run_gMiner.nonblocking(ex,gMiner_job,via=via).wait()
+        ex.add( files[0], description=description )
+        return files[0]
 
-@program
-def ssh_add(keyfile):
-    output = unique_filename_in()
-    call = ["ssh-add", keyfile]
-    return {"arguments": call, "return_value": output}
+############################################################
 
-@program
-def scp(source, destination, user, host):
-    output = unique_filename_in()
-    call = ["scp", source, "%s@%s:%s"%(user, host, destination)]
-    return {"arguments": call, "return_value": output}
+    @program
+    def merge_two_bed(file1,file2):
+        """Binds ``intersectBed`` from the 'BedTools' suite.
+        """
+        return {"arguments": ['intersectBed','-a',file1,'-b',file2], "return_value": None}
+
+    def merge_many_bed(ex,files,via='lsf'):
+        """Runs ``intersectBed`` iteratively over a list of bed files.
+        """
+        out = files[0]
+        for f in files[1:]:
+            next = unique_filename_in()
+            _ = merge_two_bed.nonblocking( ex, out, f, via=via, stdout=next ).wait()
+            out = next
+        return out
+
+    @program
+    def join_pdf(files):
+        """Uses 'ghostscript' to join several pdf files into one.
+        """
+        out = unique_filename_in()
+        gs_args = ['gs','-dBATCH','-dNOPAUSE','-q','-sDEVICE=pdfwrite',
+                   '-sOutputFile=%s'%out]
+        gs_args += files
+        return {"arguments": gs_args, "return_value": out}
+
+    @program
+    def compress(path, compression_type="lxzma"):
+        """
+        compression type allowed:
+        - gunzip, gz
+        - bzip2, bz
+        - lxzma, xz
+        """
+        archive = unique_filename_in()
+        call    = None
+        if compression_type == "lxzma" or compression_type == "xz":
+            call = ["tar", "cJvf", archive, path]
+        elif compression_type == "bzip2" or compression_type == "bz2":
+            call = ["tar", "cjvf", archive, path]
+        elif compression_type == "gunzip" or compression_type == "gz":
+            call = ["tar", "czvf", archive, path]
+        else:
+            raise ValueError("Compression type: %s not yet supported!" %(compression_type))
+        return {"arguments": call, "return_value": archive}
+
+    @program
+    def uncompress(path):
+        """
+        uncompress tar archive
+        """
+        output = unique_filename_in()
+        call = ["tar", "xvf", path]
+        return {"arguments": call, "return_value": output}
+
+    @program
+    def scp(source, destination, user, host):
+        output = unique_filename_in()
+        call = ["scp", source, user+"@"+host, destination]
+        return {"arguments": call, "return_value": output}
+
+except:
+    print >>sys.stderr, "Bein not found.  Skipping some common functions."
+
+
 #-----------------------------------#
 # This code was written by the BBCF #
 # http://bbcf.epfl.ch/              #
