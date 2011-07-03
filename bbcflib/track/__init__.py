@@ -79,6 +79,7 @@ import os, sys
 
 # Specific Modules #
 from .. import common as com
+from random import randint
 
 #-----------------------------------------------------------------------------#
 def _determine_format(path):
@@ -452,6 +453,25 @@ def new(path, format=None, datatype='qualitative', name='Unnamed', chrmeta=None)
     implementation = _import_implementation(format)
     implementation.GenomicFormat.create(path, datatype, name)
     return Track(path, format=format, name=name, chrmeta=chrmeta)
+
+def random_track(track_path, random_track_path, repeat_number=1):
+    with new(random_track_path, "sql", name="random_track") as random_track:
+        with Track(track_path, format="sql") as track:
+            random_track.meta_chr   = track.meta_chr
+            random_track.meta_track = track.meta_track
+            number                  = 0
+            for i in range(repeat_number):
+                features_list = []
+                for chromosome in track.meta_chr:
+                    data            = track.read(chromosome["name"])
+                    for information in data:
+                        distance        = information[0] - information[1]
+                        random_start    = randint(0, chromosome["length"] - distance)
+                        random_end      = random_start + distance
+                        feature_name    = "random%d" %(number)
+                        features_list.append((random_start, random_end, feature_name, "+", None))
+                        number          += 1
+                    random_track.write(chromosome["name"], features_list)
 
 #-----------------------------------#
 # This code was written by the BBCF #

@@ -6,7 +6,7 @@ bbcflib.motif
 import re, os
 from operator                           import add
 from BeautifulSoup                      import BeautifulSoup
-from bein                               import *
+from bein                               import MiniLIMS, unique_filename_in, ProgramOutput, program, execution
 from bein.util                          import *
 from bbcflib                            import common
 from bbcflib.track.format_sql           import Track, new

@@ -194,12 +194,12 @@ def create_sql_track( sql_name, chromosomes, datatype="quantitative" ):
     return sql_name
 
 try:
-    from bein import *
+    from bein import MiniLIMS, unique_filename_in, ProgramOutput, program, execution
 
 ###############################################################################
     def get_files( id_or_key, minilims ):
         """Retrieves a dictionary of files created by htsstation job identified by its key or bein id in a MiniLIMS.
-        
+
         The dictionarie's keys are the file types (e.g. 'pdf', 'bam', 'py' for python objects), the values are dictionaries with keys repository file names and values actual file descriptions (names to provide in the user interface).
         """
         if isinstance(id_or_key, str):
