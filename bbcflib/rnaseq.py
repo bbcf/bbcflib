@@ -204,8 +204,7 @@ def inference(cond1_label, cond1, cond2_label, cond2, transcript_names, method="
     ## MA-plot
     if maplot:
         print "MAplot"
-        MAplot(res, mode=maplot)
-        ex.add("MAplot.png")
+        MAplot(res, mode=maplot, bins=200)
 
     if output:
         result_filename = output
@@ -215,7 +214,7 @@ def inference(cond1_label, cond1, cond2_label, cond2, transcript_names, method="
     res.to_csvfile(result_filename)
     return result_filename
 
-def rnaseq_workflow(ex, job, assembly, via="lsf", output=None, maplot=None, with_exons=None):
+def rnaseq_workflow(ex, job, assembly, via="lsf", output=None, maplot="normal", with_exons=None):
     """Run RNASeq inference according to *job_info*.
 
     output: alternative name for output file. Otherwise it is random.
@@ -325,7 +324,7 @@ def rnaseq_workflow(ex, job, assembly, via="lsf", output=None, maplot=None, with
                    description="Comparison of exons in conditions '%s' and '%s' (CSV)" % (names[c1], names[c2]))
         print "Done."
 
-        if maplot: ex.add("MAplot.png")
+        if maplot: ex.add("MAplot.png", description="MA-plot of data")
 
 
 def MAplot(data, mode="normal", deg=3, bins=20):
@@ -343,7 +342,6 @@ def MAplot(data, mode="normal", deg=3, bins=20):
     #####
     # TO IMPLEMENT:
     # - Groups of genes
-    # - automatically determine number of bins
     #####
 
     import matplotlib.pyplot as plt
@@ -354,7 +352,7 @@ def MAplot(data, mode="normal", deg=3, bins=20):
         names = list(b[a-1])
         d1 = array(data[1])+0.5
         d2 = array(data[2])+0.5
-    if isinstance(data[0],rpy2.robjects.vectors.StrVector):
+    elif isinstance(data[0],rpy2.robjects.vectors.StrVector):
         names = list(data[0])
         d1 = array(data[1])+0.5
         d2 = array(data[2])+0.5
@@ -367,7 +365,12 @@ def MAplot(data, mode="normal", deg=3, bins=20):
     means = sqrt(d1*d2)
     points = zip(names,ratios,means)
     xmin = min(means); xmax = max(means); ymin = min(ratios); ymax = max(ratios)
-    intervals = linspace(xmin,xmax,bins)
+    N = len(points); dN = N/bins #points per bin
+    rmeans = sort(means)
+    intervals = []
+    for i in range(bins):
+        intervals.append(rmeans[i*dN])
+    intervals.append(xmax)
     annotes = []; spline_annotes = []; spline_coords = {}
 
     fig = plt.figure(figsize=[14,10])
@@ -379,15 +382,15 @@ def MAplot(data, mode="normal", deg=3, bins=20):
 
     ### Lines (best fit of percentiles)
     for k in [1,5,25,50,75,95,99]:
-        h = ones(bins)
-        for b in range(bins-1):
+        h = ones(bins+1)
+        for b in range(bins):
             points_in_b = [p for p in points if p[2]>=intervals[b] and p[2]<intervals[b+1]]
             perc = [p[1] for p in points_in_b]
             if points_in_b != []:
                 h[b] = stats.scoreatpercentile(perc, k)
             else:
                 h[b] = h[b-1]
-                #if b<=20: print "no points in bin", b
+            print len(points_in_b)
             if k==1:
                 for p in points_in_b:
                     if p[1]<h[b]: annotes.append(p)
@@ -395,12 +398,11 @@ def MAplot(data, mode="normal", deg=3, bins=20):
                 for p in points_in_b:
                     if p[1]>h[b]: annotes.append(p)
 
-        #ax.plot(intervals, h, linestyle="--", alpha=0.3)
         spline = UnivariateSpline(intervals, h, k=deg)
         xs = linspace(xmin, xmax, 10*bins) #to increase spline smoothness
         ys = spline(xs)
-        ax.plot(intervals, h, "o", color="blue")
         ax.plot(xs, ys, "-", color="blue")
+        ax.plot(intervals, h, "o", color="blue")
         spline_annotes.append((k,xs[0],ys[0]))
         spline_coords[k] = zip(xs,ys)
 
