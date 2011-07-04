@@ -1,5 +1,5 @@
 # General Modules #
-import os
+import os, shutil
 
 # Specific Modules #
 from ..track import Track, new
@@ -61,6 +61,17 @@ class Test_Format(unittest.TestCase):
         with Track(t['path'], chrmeta=t['chrmeta']) as t:
             self.assertEqual(t.format, 'sql')
             self.assertEqual(t._format, 'bed')
+
+#-----------------------------------------------------------------------------#
+class Test_NoExtension(unittest.TestCase):
+    def runTest(self):
+        path = named_temporary_path('')
+        orig = track_collections['Validation'][1]
+        shutil.copyfile(orig['path'], path)
+        with Track(path, 'bed', chrmeta=orig['chrmeta']) as t:
+            self.assertEqual(t.format, 'sql')
+            self.assertEqual(t._format, 'bed')
+        os.remove(path)
 
 #-----------------------------------------------------------------------------#
 class Test_Genrep(unittest.TestCase):
