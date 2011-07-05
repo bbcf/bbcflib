@@ -1,11 +1,17 @@
-# General Modules #
+"""
+=========================================
+Submodule: bbcflib.track.track_collection
+=========================================
+
+Methods common to the text formats.
+"""
+
+# Built-in modules #
 import os, re
 
-# Specific Modules #
+# Internal modules #
 from . import Track
-
-# Specific Variables #
-from .test_variables import parser_tests, yeast_chr_file
+from .track_collection import parser_tests, yeast_chr_file
 
 ###################################################################################
 def run(create_sql_files=False):

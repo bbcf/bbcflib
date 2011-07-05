@@ -1,9 +1,18 @@
-# General Modules #
+"""
+=========================================
+Submodule: bbcflib.track.track_collection
+=========================================
+
+Methods common to the text formats.
+"""
+
+# Built-in modules #
 import os
 
-# Specific module #
-from ..track import Track
+# Internal modules #
+from . import Track
 
+###########################################################################
 # Tracks path #
 if os.environ.has_key('TRACKSPATH'):
     tracks_path = os.environ['TRACKSPATH']

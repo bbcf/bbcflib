@@ -6,13 +6,13 @@ Submodule: bbcflib.track.track_proxy
 Methods that create an SQL file upon opening in the temporary directory and reconverts everything to a text file file upon closing, all transparently.
 """
 
-# General modules #
+# Built-in modules #
 import os, shutil
 
 # Internal modules #
-from ..common import named_temporary_path
-from ..track import Track, new
-from .format_sql import GenomicFormat as SQLTrack
+from . import Track, new
+from .common import named_temporary_path
+from .formats.sql import GenomicFormat as SQLTrack
 
 ###########################################################################
 class ProxyTrack(SQLTrack):
