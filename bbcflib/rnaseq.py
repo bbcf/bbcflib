@@ -203,8 +203,7 @@ def inference(cond1_label, cond1, cond2_label, cond2, transcript_names, method="
 
     ## MA-plot
     if maplot:
-        print "MAplot"
-        MAplot(res, mode=maplot, bins=200)
+        MAplot(res, mode=maplot)
 
     if output:
         result_filename = output
@@ -220,7 +219,8 @@ def rnaseq_workflow(ex, job, assembly, via="lsf", output=None, maplot="normal", 
     output: alternative name for output file. Otherwise it is random.
     maplot: MA-plot of data.
             If "interactive", one can click on a point (gene or exon) to display its name;
-            if "normal", name of genes over 99%/under 1% quantile are displayed.
+            if "normal", name of genes over 99.9%/under 0.1% quantiles are displayed;
+            if None, no figure is produced.
     with_exons: run inference (DESeq) on exon mapping in addition to gene mapping.
 
     Whatever script calls this function should have looked up the job
@@ -248,9 +248,7 @@ def rnaseq_workflow(ex, job, assembly, via="lsf", output=None, maplot="normal", 
     it returns in some sensible way.  For the usual HTSStation
     frontend, this just means printing it to stdout.
     """
-
-    """ Groups as given by the frontend is not that useful. Pull it apart
-    into more useful pieces. """
+            
     names = {}; runs = {}; controls = {}; paths = {}; gids = {}
     groups = job.groups
     assembly_id = job.assembly_id
@@ -259,17 +257,16 @@ def rnaseq_workflow(ex, job, assembly, via="lsf", output=None, maplot="normal", 
         runs[i] = group['runs'].values()
         controls[i] = group['control']
 
-    """ gene_labels is a list whose ith entry is a string giving
-    the name of the gene assigned id i. The ids are arbitrary.
-    exon_mapping is a list whose ith entry is the integer id in
-    gene_labels exon i maps to."""
-    (gene_labels,exon_mapping) = fetch_transcript_mapping(ex, assembly_id)
-    exon_mapping = numpy.array(exon_mapping)
-
     fastq_root = os.path.abspath(ex.working_directory)
     bam_files = map_groups(ex, job, fastq_root, assembly_or_dict = assembly)
     print "Reads aligned."
 
+    # gene_labels is a list whose i-th entry is a string giving
+    # the name of the gene assigned id i. The ids are arbitrary.
+    # exon_mapping is a list whose i-th entry is the integer id in
+    # gene_labels exon i maps to.
+    (gene_labels,exon_mapping) = fetch_transcript_mapping(ex, assembly_id)
+    exon_mapping = numpy.array(exon_mapping)
     # All the bam_files were created against the same index, so
     # they all have the same header in the same order.  I can take
     # the list of exons from just the first one and use it for all
@@ -327,7 +324,7 @@ def rnaseq_workflow(ex, job, assembly, via="lsf", output=None, maplot="normal", 
         if maplot: ex.add("MAplot.png", description="MA-plot of data")
 
 
-def MAplot(data, mode="interactive", deg=2, bins=30):
+def MAplot(data, mode="normal", deg=2, bins=30):
     """
     Creates an "MA-plot" to compare transcription levels of a set of genes
     in two different conditions. It returns a list of triplets (name, x, y) for each point,
@@ -361,7 +358,7 @@ def MAplot(data, mode="interactive", deg=2, bins=30):
         d1 = array(data[0])
         d2 = array(data[1])
     d1 = d1.view("float64"); d2 = d2.view("float64")
-    z = where(logical_and(d1!=0,d2!=0))[0] #exclude values if it is zero in either d1 or d2
+    z = where(logical_and(d1!=0,d2!=0))[0] #exclude i-th value if either d1[i] or d2[i] is zero
     d1 = d1[z]; d2 = d2[z]
     ratios = log2(d1/d2)
     means = log10(sqrt(d1*d2))
@@ -432,12 +429,12 @@ def MAplot(data, mode="interactive", deg=2, bins=30):
 
 class AnnoteFinder:
   """
-  callback for matplotlib to display an annotation when points are clicked on.  The
+  Callback for matplotlib to display an annotation when points are clicked on.  The
   point which is closest to the click and within xtol and ytol is identified.
 
   Register this function like this:
 
-  scatter(xdata, ydata)
+  plot(xdata, ydata)
   af = AnnoteFinder(xdata, ydata, annotes)
   connect('button_press_event', af)
   """
