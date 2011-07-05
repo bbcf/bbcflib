@@ -133,3 +133,9 @@ class TestFrontend(unittest.TestCase):
                 self.assertEqual(j.groups[g]['runs'][r], self.frontend_job.groups[g]['runs'][r])
         [self.assertEqual(j.groups[g], self.frontend_job.groups[g])
          for g in j.groups.keys()]
+
+#-----------------------------------#
+# This code was written by the BBCF #
+# http://bbcf.epfl.ch/              #
+# webmaster.bbcf@epfl.ch            #
+#-----------------------------------#

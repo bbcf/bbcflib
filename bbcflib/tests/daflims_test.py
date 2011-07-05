@@ -69,3 +69,9 @@ class TestDAFLIMS(unittest.TestCase):
         self.assertTrue(os.path.exists(s['path']))
         self.assertEqual(os.stat(s['path']).st_size, 27223154)
         os.unlink(s['path'])
+
+#-----------------------------------#
+# This code was written by the BBCF #
+# http://bbcf.epfl.ch/              #
+# webmaster.bbcf@epfl.ch            #
+#-----------------------------------#
