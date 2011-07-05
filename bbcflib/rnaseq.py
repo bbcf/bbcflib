@@ -327,7 +327,7 @@ def rnaseq_workflow(ex, job, assembly, via="lsf", output=None, maplot="normal", 
         if maplot: ex.add("MAplot.png", description="MA-plot of data")
 
 
-def MAplot(data, mode="normal", deg=3, bins=20):
+def MAplot(data, mode="interactive", deg=2, bins=30):
     """
     Creates an "MA-plot" to compare transcription levels of a set of genes
     in two different conditions. It returns a list of triplets (name, x, y) for each point,
@@ -350,19 +350,21 @@ def MAplot(data, mode="normal", deg=3, bins=20):
         a = array(data[0])
         b = array(data[0].levels)
         names = list(b[a-1])
-        d1 = array(data[1])+0.5
-        d2 = array(data[2])+0.5
+        d1 = array(data[1])
+        d2 = array(data[2])
     elif isinstance(data[0],rpy2.robjects.vectors.StrVector):
         names = list(data[0])
-        d1 = array(data[1])+0.5
-        d2 = array(data[2])+0.5
-    else:
+        d1 = array(data[1])
+        d2 = array(data[2])
+    elif isinstance(data[0],rpy2.robjects.vectors.FloatVector):
         names = list(data.rownames)
-        d1 = array(data[0])+0.5
-        d2 = array(data[1])+0.5
+        d1 = array(data[0])
+        d2 = array(data[1])
     d1 = d1.view("float64"); d2 = d2.view("float64")
-    ratios = d1/d2
-    means = sqrt(d1*d2)
+    z = where(logical_and(d1!=0,d2!=0))[0] #exclude values if it is zero in either d1 or d2
+    d1 = d1[z]; d2 = d2[z]
+    ratios = log2(d1/d2)
+    means = log10(sqrt(d1*d2))
     points = zip(names,ratios,means)
     xmin = min(means); xmax = max(means); ymin = min(ratios); ymax = max(ratios)
     N = len(points); dN = N/bins #points per bin
@@ -371,47 +373,49 @@ def MAplot(data, mode="normal", deg=3, bins=20):
     for i in range(bins):
         intervals.append(rmeans[i*dN])
     intervals.append(xmax)
+    intervals = array(intervals)
     annotes = []; spline_annotes = []; spline_coords = {}
 
-    fig = plt.figure(figsize=[14,10])
+    points_in = {}; perc = {}
+    for b in range(bins):
+        points_in[b] = [p for p in points if p[2]>=intervals[b] and p[2]<intervals[b+1]]
+        perc[b] = [p[1] for p in points_in[b]]
+
+    fig = plt.figure(figsize=[14,9])
     ax = fig.add_subplot(111)
     fig.subplots_adjust(left=0.08, right=0.98, bottom=0.08, top=0.98)
 
     ### Points
     ax.plot(means, ratios, ".", color="black")
-
+    
     ### Lines (best fit of percentiles)
-    for k in [1,5,25,50,75,95,99]:
-        h = ones(bins+1)
+    for k in [0.1,1,5,25,50,75,95,99,99.9]:
+        h = ones(bins)
         for b in range(bins):
-            points_in_b = [p for p in points if p[2]>=intervals[b] and p[2]<intervals[b+1]]
-            perc = [p[1] for p in points_in_b]
-            if points_in_b != []:
-                h[b] = stats.scoreatpercentile(perc, k)
-            else:
-                h[b] = h[b-1]
-            print len(points_in_b)
-            if k==1:
-                for p in points_in_b:
+            if points_in[b] != []:
+                h[b] = stats.scoreatpercentile(perc[b], k)
+            else: h[b] = h[b-1]
+            if k==0.1:
+                for p in points_in[b]:
                     if p[1]<h[b]: annotes.append(p)
-            if k==99:
-                for p in points_in_b:
+            if k==99.9:
+                for p in points_in[b]:
                     if p[1]>h[b]: annotes.append(p)
-
-        spline = UnivariateSpline(intervals, h, k=deg)
-        xs = linspace(xmin, xmax, 10*bins) #to increase spline smoothness
-        ys = spline(xs)
-        ax.plot(xs, ys, "-", color="blue")
-        ax.plot(intervals, h, "o", color="blue")
-        spline_annotes.append((k,xs[0],ys[0]))
-        spline_coords[k] = zip(xs,ys)
+        if k!=0.1 and k!=99.9:
+            x = intervals[:-1]+(intervals[1:]-intervals[:-1])/2.
+            spline = UnivariateSpline(x, h, k=deg)
+            xs = linspace(xmin, xmax, 10*bins) #to increase spline smoothness
+            ys = spline(xs)
+            #ax.plot(x, h, "o", color="blue")
+            ax.plot(xs, ys, "-", color="blue")
+            spline_annotes.append((k,xs[0],ys[0])) #quantile percentages
+            spline_coords[k] = zip(xs,ys)
 
     ### Decoration
     ax.set_xlabel("Log10 of sqrt(x1*x2)")
     ax.set_ylabel("Log2 of x1/x2")
-    ax.set_xlim(xmin-0.1*xmin,xmax+0.1*xmax)
-    ax.set_xscale('log', basey=10)
-    ax.set_yscale('log', basey=2)
+    #ax.set_xlim(xmin-0.2*xmin,xmax+0.2*xmax)
+    #ax.set_ylim(ymin-0.2*ymin,ymax+0.2*ymax)
     for l in spline_annotes:
         ax.annotate(str(l[0])+"%", xy=(l[1],l[2]), xytext=(-27,-5), textcoords='offset points')
     if mode == "interactive":
@@ -494,3 +498,4 @@ class AnnoteFinder:
     annotesToDraw = [(x,y,a) for x,y,a in self.data if a==annote]
     for x,y,a in annotesToDraw:
       self.drawAnnote(self.axis, x, y, a)
+
