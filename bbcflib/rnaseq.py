@@ -56,7 +56,7 @@ def fetch_transcript_mapping(ex, assembly_id):
             mapping = pickle.load(pickle_file)
             return mapping
         print "Exon to ORF mapping found on GenRep"
-        
+
 def map_runs(fun, runs):
     """Parallelization of fun(run) executions"""
     futures = {}
@@ -218,9 +218,14 @@ def rnaseq_workflow(ex, job, assembly, via="lsf", output=None, maplot="normal", 
 
     output: alternative name for output file. Otherwise it is random.
     maplot: MA-plot of data.
+<<<<<<< HEAD
             If "interactive", one can click on a point (gene or exon) to display its name;
             if "normal", name of genes over 99.9%/under 0.1% quantiles are displayed;
             if None, no figure is produced.
+=======
+    If "interactive", one can click on a point (gene or exon) to display its name;
+    if "normal", name of genes over 99%/under 1% quantile are displayed.
+>>>>>>> 7c834e311ace52c486b06853e6543962c4a2097a
     with_exons: run inference (DESeq) on exon mapping in addition to gene mapping.
 
     Whatever script calls this function should have looked up the job
@@ -333,7 +338,7 @@ def MAplot(data, mode="normal", deg=2, bins=30):
 
     data: rpy DataFrame object; two columns, each for a different condition.
     mode: if "interactive", click on a point to display its name
-          if "normal", name of genes over 99%/under 1% quantile are displayed
+    if "normal", name of genes over 99%/under 1% quantile are displayed
     """
 
     #####

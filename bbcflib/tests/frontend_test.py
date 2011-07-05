@@ -13,7 +13,7 @@ import datetime
 ###################################################################################
 class TestFrontend(unittest.TestCase):
     def setUp(self):
-        self.skipTest("The frontend tests haven't been run in a while and aren't being fixed.")
+        self.skipTest("These tests don't pass anymore. Delete this line once they are fixed.")
         self.f = Frontend(url='http://htsstation.vital-it.ch/rnaseq/')
         self.key = '9pv1x7PamOj80eXnZa14'
         self.frontend_job = Job(id = 2,
@@ -133,3 +133,9 @@ class TestFrontend(unittest.TestCase):
                 self.assertEqual(j.groups[g]['runs'][r], self.frontend_job.groups[g]['runs'][r])
         [self.assertEqual(j.groups[g], self.frontend_job.groups[g])
          for g in j.groups.keys()]
+
+#-----------------------------------#
+# This code was written by the BBCF #
+# http://bbcf.epfl.ch/              #
+# webmaster.bbcf@epfl.ch            #
+#-----------------------------------#
