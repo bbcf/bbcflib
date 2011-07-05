@@ -12,10 +12,10 @@ import os, shutil
 # Internal modules #
 from . import Track, new
 from .common import named_temporary_path
-from .formats.sql import GenomicFormat as SQLTrack
+from .formats.sql import TrackFormat as SQLTrack
 
 ###########################################################################
-class ProxyTrack(SQLTrack):
+class TrackProxy(SQLTrack):
     def __init__(self, path, format=None, name=None, chrmeta=None, datatype=None, readonly=False):
         # Parameters with underscore refer to the underlying track #
         self._path     = path
@@ -43,16 +43,16 @@ class ProxyTrack(SQLTrack):
                 # Copy meta chr #
                 t.meta_chr   = [chr for chr in self._meta_chr if chr['name'] in self._seen_chr]
         # Load the new SQL track as self #
-        super(ProxyTrack, self).__init__(tmp_path, 'sql', name, chrmeta=None, datatype=None, readonly=readonly)
+        super(TrackProxy, self).__init__(tmp_path, 'sql', name, chrmeta=None, datatype=None, readonly=readonly)
 
     #-----------------------------------------------------------------------------#
     def unload(self, datatype=None, value=None, trackback=None):
         if self.modified and not self.readonly: self.dump()
-        super(ProxyTrack, self).unload(datatype, value, trackback)
+        super(TrackProxy, self).unload(datatype, value, trackback)
         if os.path.exists(self.path): os.remove(self.path)
 
     def commit(self):
-        super(ProxyTrack, self).commit()
+        super(TrackProxy, self).commit()
         self.dump()
 
     def dump(self, path=None):
@@ -66,7 +66,7 @@ class ProxyTrack(SQLTrack):
         if format == 'sql':
             shutil.move(self.path, path)
         else:
-            super(ProxyTrack, self).convert(path, format)
+            super(TrackProxy, self).convert(path, format)
 
     #-----------------------------------------------------------------------------#
     def _read(self):
@@ -90,29 +90,29 @@ class ProxyTrack(SQLTrack):
     #-----------------------------------------------------------------------------#
     @property
     def meta_chr(self):
-        return super(ProxyTrack, self).meta_chr
+        return super(TrackProxy, self).meta_chr
 
     @meta_chr.setter
     def meta_chr(self, data):
         self.modified = True
-        super(ProxyTrack, self).set_meta_chr(data)
+        super(TrackProxy, self).set_meta_chr(data)
 
     @property
     def meta_track(self):
-        return super(ProxyTrack, self).meta_track
+        return super(TrackProxy, self).meta_track
 
     @meta_track.setter
     def meta_track(self, data):
         self.modified = True
-        super(ProxyTrack, self).set_meta_track(data)
+        super(TrackProxy, self).set_meta_track(data)
 
     def write(self, chrom, data, fields=None):
         self.modified = True
-        super(ProxyTrack, self).write(chrom, data, fields)
+        super(TrackProxy, self).write(chrom, data, fields)
 
     def remove(self, chrom=None):
         self.modified = True
-        super(ProxyTrack, self).remove(chrom)
+        super(TrackProxy, self).remove(chrom)
 
     #-----------------------------------------------------------------------------#
     @property

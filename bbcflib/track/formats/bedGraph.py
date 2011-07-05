@@ -7,8 +7,8 @@ Implementation of the bedGraph format.
 """
 
 # Specific module #
-from .track_proxy import ProxyTrack
-from .track_text import TextTrack
+from .track_proxy import TrackProxy
+from .track_text import TrackText
 
 
 
@@ -16,7 +16,7 @@ from .track_text import TextTrack
 
 
 ###########################################################################
-class GenomicFormat(TextTrack, ProxyTrack):
+class TrackFormat(TrackText, TrackProxy):
     type_identifier = 'bedGraph'
 
     def _all_entries(self):

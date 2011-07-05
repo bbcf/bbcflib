@@ -25,7 +25,7 @@ def int_to_strand(num):
     return '.'
 
 ###########################################################################
-class TextTrack(object):
+class TrackText(object):
     def _read(self):
         global chrom, entry, generator
         chrom           = ''

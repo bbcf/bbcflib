@@ -7,8 +7,8 @@ Implementation of the BED format.
 """
 
 # Specific Modules #
-from .track_proxy import ProxyTrack
-from .track_text import TextTrack, strand_to_int, int_to_strand
+from .track_proxy import TrackProxy
+from .track_text import TrackText, strand_to_int, int_to_strand
 from ..common import memoized_method
 
 # Global variables #
@@ -16,7 +16,7 @@ all_fields_possible = ['start', 'end', 'name', 'score', 'strand', 'thick_start',
                        'item_rgb', 'block_count', 'block_sizes', 'block_starts']
 
 ###########################################################################
-class GenomicFormat(TextTrack, ProxyTrack):
+class TrackFormat(TrackText, TrackProxy):
     type_identifier = 'bed'
 
     def _all_entries(self):

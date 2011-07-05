@@ -10,12 +10,12 @@ Implementation of the WIG format.
 import sys, shlex
 
 # Specific module #
-from .track_proxy import ProxyTrack
-from .track_text import TextTrack
+from .track_proxy import TrackProxy
+from .track_text import TrackText
 from ..common import sentinelize
 
 ###########################################################################
-class GenomicFormat(TextTrack, ProxyTrack):
+class TrackFormat(TrackText, TrackProxy):
     type_identifier = 'wiggle_0'
 
     def _all_features(self):

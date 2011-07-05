@@ -14,7 +14,7 @@ from ..track import *
 from .format_sql_extras import SQLExtras
 
 ###########################################################################
-class GenomicFormat(Track, SQLExtras):
+class TrackFormat(Track, SQLExtras):
     special_tables = ['attributes', 'chrNames', 'types']
 
     def load(self):

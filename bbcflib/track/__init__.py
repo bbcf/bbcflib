@@ -140,9 +140,9 @@ class Track(object):
            This function determines the format of the file that is provided and returns an
            instance of the appropriate child class.'''
         if cls is Track:
-            if not format: format = _determine_format(path)
-            implementation = _import_implementation(format)
-            instance       = super(Track, cls).__new__(implementation.GenomicFormat)
+            if not format: format = determine_format(path)
+            implementation = import_implementation(format)
+            instance       = super(Track, cls).__new__(implementation.TrackFormat)
         else:
             instance       = super(Track, cls).__new__(cls)
         return instance
@@ -152,7 +152,7 @@ class Track(object):
         if datatype:
             raise Exception("You cannot specify the datatype: " + datatype + " for the track '" + path + "'.")
         # Default format #
-        if not format: format = _determine_format(path)
+        if not format: format = determine_format(path)
         # Set attributes #
         self.path     = path
         self.format   = format
@@ -368,9 +368,9 @@ def new(path, format=None, datatype='qualitative', name='Unnamed', chrmeta=None)
     '''
     if os.path.exists(path):
         raise Exception("The location '" + path + "' is already taken")
-    if not format: format = _determine_format(path)
-    implementation = _import_implementation(format)
-    implementation.GenomicFormat.create(path, datatype, name)
+    if not format: format = determine_format(path)
+    implementation = import_implementation(format)
+    implementation.TrackFormat.create(path, datatype, name)
     return Track(path, format=format, name=name, chrmeta=chrmeta)
 
 #-----------------------------------#

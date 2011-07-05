@@ -13,7 +13,7 @@ import sys, random
 from . import Track, new
 
 ###########################################################################
-def _determine_format(path):
+def determine_format(path):
     '''Try to guess the format of a track given its path. Returns a three letter extension'''
     # List of names to three letter extension #
     known_format_extensions = {
@@ -49,7 +49,7 @@ def _determine_format(path):
     # Return the format #
     return extension
 
-def _import_implementation(format):
+def import_implementation(format):
     '''Try to import the implementation of a given format'''
     try:
         if not hasattr(sys.modules[__package__], format):

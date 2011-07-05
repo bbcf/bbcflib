@@ -16,7 +16,7 @@ from ..track import Track
 chrsuffix = 'Awfully super extra long chromosome denomination string '
 
 ###########################################################################
-class GenomicFormat(Track):
+class TrackFormat(Track):
 
     def load(self):
         # Essential parameters #
