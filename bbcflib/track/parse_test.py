@@ -2,10 +2,10 @@
 import os, re
 
 # Specific Modules #
-from ..track import Track
+from . import Track
 
 # Specific Variables #
-from ..track.test_variables import parser_tests, yeast_chr_file
+from .test_variables import parser_tests, yeast_chr_file
 
 ###################################################################################
 def run(create_sql_files=False):
