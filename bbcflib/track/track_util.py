@@ -11,6 +11,7 @@ import os, sys, random
 
 # Internal modules #
 from . import Track, new
+from . import formats
 
 ###########################################################################
 def determine_format(path):
@@ -49,12 +50,13 @@ def determine_format(path):
     # Return the format #
     return extension
 
+#-----------------------------------------------------------------------------#
 def import_implementation(format):
     '''Try to import the implementation of a given format'''
     try:
-        if not hasattr(sys.modules[__package__], format):
-            __import__(__package__ + '.' + format)
-        return sys.modules[__package__ + '.' + format]
+        if not hasattr(sys.modules[__package__].formats, format):
+            __import__(__package__ + '.formats.' + format)
+        return sys.modules[__package__ + '.formats.' + format]
     except (ImportError, AttributeError):
         raise Exception("The format '" + format + "' is not supported at the moment")
 
