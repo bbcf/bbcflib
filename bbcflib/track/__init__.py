@@ -80,6 +80,7 @@ import os, sys
 # Specific Modules #
 from .. import common as com
 from random import randint
+from magic  import Magic
 
 #-----------------------------------------------------------------------------#
 def _determine_format(path):
@@ -92,20 +93,18 @@ def _determine_format(path):
     }
     # Get extension #
     extension = os.path.splitext(path)[1][1:]
+    # magic object
+    mime = magic.Magic(magic.NONE)
     # If no extension found then try magic #
     if not extension:
-        try:
-            import magic
-        except ImportError:
-            raise Exception("The format of the track '" + path + "' cannot be determined")
         # Let the user customize magic #
         if os.path.exists('magic'):
-            m = magic.Magic('magic')
+            mime.load(file='magic')
         else:
-            m = magic.Magic()
+            mime.load()
         # Does the file even exist ? #
         try:
-            filetype = m.from_file(path)
+            filetype = mime.file(path)
         except IOError:
             raise Exception("The format of the path '" + path + "' cannot be determined. Please specify a format or add an extension.")
         # Check the result of magic #
@@ -454,7 +453,7 @@ def new(path, format=None, datatype='qualitative', name='Unnamed', chrmeta=None)
     implementation.GenomicFormat.create(path, datatype, name)
     return Track(path, format=format, name=name, chrmeta=chrmeta)
 
-def random_track(track_path, random_track_path, repeat_number=1):
+def shuffle_track(track_path, random_track_path, repeat_number=1):
     with new(random_track_path, "sql", name="random_track") as random_track:
         with Track(track_path, format="sql") as track:
             random_track.meta_chr   = track.meta_chr

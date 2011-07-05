@@ -7,7 +7,7 @@ import re, os
 from operator                           import add
 from BeautifulSoup                      import BeautifulSoup
 from bein                               import MiniLIMS, unique_filename_in, ProgramOutput, program, execution
-from bein.util                          import *
+#from bein.util                          import *
 from bbcflib                            import common
 from bbcflib.track.format_sql           import Track, new
 from bbcflib.track.format_sql_extras    import SQLExtras
@@ -115,7 +115,7 @@ def add_meme_files( ex, genrep, chromosomes, description='',
         sql = os.path.expanduser(sql)
         if not os.path.isabs(sql):
             sql = os.path.normcase(sql)
-    fasta,size = genrep.fasta_from_bed( chromosomes, out=unique_filename_in(),
+    fasta,size = genrep.fasta_from_data( chromosomes, out=unique_filename_in(),
                                         bed=bed, sql=sql )
     meme_out    = meme.nonblocking( ex, fasta, maxsize=size*1.5, args=meme_args, via=via ).wait()
     html        = os.path.join(meme_out,"meme.html")
@@ -143,7 +143,7 @@ def save_motif_profile( ex, motifs, background, genrep, chromosomes, data_path,
             motifs[name] = os.path.normcase(os.path.expanduser(motifs[name]))
     if background is not None:
         background = os.path.normcase(os.path.expanduser(background))
-    fasta,size      = genrep.fasta_from_bed( chromosomes, data_path, out=unique_filename_in() )
+    fasta,size      = genrep.fasta_from_data( chromosomes, data_path, out=unique_filename_in() )
     sqlout          = unique_filename_in()
     futures         = {}
     regions         = {}

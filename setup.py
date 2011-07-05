@@ -1,18 +1,20 @@
 from distutils.core import setup
+import subprocess
 
 setup(
-      name             = 'bbcflib',
-      version          = '1.3.0',
-      description      = 'Utility modules for deploying workflows in the BBCF',
-      long_description = open('README.md').read(),
-      license          = 'GNU General Public License 3.0',
-      url              = 'http://bbcf.epfl.ch/bbcflib',
-      author           = 'EPFL BBCF, Fred Ross, Jacques Rougemont, Lucas Sinclair, Jonathan Mercier.',
-      author_email     = 'webmaster.bbcf@epfl.ch',
-      install_requires = ['mailer', 'bein', 'rpy2', 'pysam', 'scipy', 'BeautifulSoup'],
-      classifiers      = ['Topic :: Scientific/Engineering :: Bio-Informatics'],
-      packages         = ['bbcflib',
-                          'bbcflib.tests',
-                          'bbcflib.track',
-                         ],
-)
+    name             =  'bbcflib',
+    version          =  '1.3.0',
+    description      =  'Utility modules for deploying workflows in the BBCF',
+    long_description =  open('README.md').read(),
+    license          =  'GNU General Public License 3.0',
+    url              =  'http://bbcf.epfl.ch/bbcflib',
+    author           =  'EPFL BBCF, Fred Ross, Jacques Rougemont, Lucas Sinclair, Jonathan Mercier.',
+    author_email     =  'webmaster.bbcf@epfl.ch',
+    install_requires =  ['mailer', 'bein', 'rpy2', 'pysam', 'scipy','python-magic', 'BeautifulSoup'],
+    classifiers      =  ['Topic :: Scientific/Engineering :: Bio-Informatics'],
+    packages         =  [   'bbcflib',
+                            'bbcflib.tests',
+                            'bbcflib.track',
+                        ],
+    data_files       =  [ ( 'share/mime/packages/', ["share/mime/packages/biological_format.xml"] ) ]
+    )
