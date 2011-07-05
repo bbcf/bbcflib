@@ -1,20 +1,20 @@
 """
-===================================
-Submodule: bbcflib.track.format_sql
-===================================
+====================================
+Submodule: bbcflib.track.formats.sql
+====================================
 
 Implementation of the SQL format.
 """
 
-# General modules #
+# Built-in modules #
 import sqlite3
 
 # Internal modules #
-from ..track import *
-from .format_sql_extras import SQLExtras
+from . import *
+from .extras.sql import TrackExtras
 
 ###########################################################################
-class TrackFormat(Track, SQLExtras):
+class TrackFormat(Track, TrackExtras):
     special_tables = ['attributes', 'chrNames', 'types']
 
     def load(self):

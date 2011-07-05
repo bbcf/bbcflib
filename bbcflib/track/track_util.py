@@ -7,7 +7,7 @@ Usefull stuff.
 """
 
 # Built-in modules #
-import sys, random
+import os, sys, random
 
 # Internal modules #
 from . import Track, new

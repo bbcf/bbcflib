@@ -1,6 +1,6 @@
 """
 ===================================
-Submodule: bbcflib.track.format_sql
+Submodule: bbcflib.track.extras.sql
 ===================================
 
 Implementation of special methods of the Track object specific
@@ -8,7 +8,8 @@ to the SQL format and not part of the standard functionality
 that all formats should have.
 """
 
-class SQLExtras(object):
+###################################################################################
+class TrackExtras(object):
     def get_scores_frequencies(self):
         scores = {}
         for chrom in self:

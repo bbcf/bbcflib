@@ -1,12 +1,12 @@
 """
-========================================
-Submodule: bbcflib.track.format_bedgraph
-========================================
+=========================================
+Submodule: bbcflib.track.formats.bedgraph
+=========================================
 
 Implementation of the bedGraph format.
 """
 
-# Specific module #
+# Internal modules #
 from .track_proxy import TrackProxy
 from .track_text import TrackText
 

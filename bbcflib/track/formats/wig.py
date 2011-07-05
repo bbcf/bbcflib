@@ -1,15 +1,15 @@
 """
-===================================
-Submodule: bbcflib.track.format_wig
-===================================
+====================================
+Submodule: bbcflib.track.formats.wig
+====================================
 
 Implementation of the WIG format.
 """
 
-# General modules #
+# Built-in modules #
 import sys, shlex
 
-# Specific module #
+# Internal modules #
 from .track_proxy import TrackProxy
 from .track_text import TrackText
 from ..common import sentinelize

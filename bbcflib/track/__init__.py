@@ -79,6 +79,7 @@ import os
 
 # Internal modules #
 from .common import natural_sort
+from .track_util import determine_format, import_implementation
 
 ###########################################################################
 class Track(object):

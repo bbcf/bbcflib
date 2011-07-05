@@ -1,15 +1,15 @@
 """
-===================================
-Submodule: bbcflib.track.format_bed
-===================================
+====================================
+Submodule: bbcflib.track.formats.bed
+====================================
 
 Implementation of the BED format.
 """
 
-# Specific Modules #
+# Internal modules #
 from .track_proxy import TrackProxy
 from .track_text import TrackText, strand_to_int, int_to_strand
-from ..common import memoized_method
+from .common import memoized_method
 
 # Global variables #
 all_fields_possible = ['start', 'end', 'name', 'score', 'strand', 'thick_start', 'thick_end',

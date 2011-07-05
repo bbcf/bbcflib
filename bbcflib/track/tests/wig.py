@@ -1,11 +1,9 @@
-# General Modules #
+# Built-in modules #
 import os
 
-# Internal Modules #
+# Internal modules #
 from ..track import Track, new
 from ..common import named_temporary_path
-
-# Specific Variables #
 from .test_variables import track_collections, yeast_chr_file
 
 # Unittesting module #
