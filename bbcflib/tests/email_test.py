@@ -75,3 +75,9 @@ class TestEmailReport(unittest.TestCase):
         except:
             self.skipTest("Email send tests skipped because you can't send messages.")
         self.report_from_config.send()
+
+#-----------------------------------#
+# This code was written by the BBCF #
+# http://bbcf.epfl.ch/              #
+# webmaster.bbcf@epfl.ch            #
+#-----------------------------------#

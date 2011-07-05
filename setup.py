@@ -3,7 +3,7 @@ import subprocess
 
 setup(
     name             =  'bbcflib',
-    version          =  '1.3.0',
+    version          =  '1.3.1',
     description      =  'Utility modules for deploying workflows in the BBCF',
     long_description =  open('README.md').read(),
     license          =  'GNU General Public License 3.0',

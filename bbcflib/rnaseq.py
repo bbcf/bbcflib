@@ -203,9 +203,7 @@ def inference(cond1_label, cond1, cond2_label, cond2, transcript_names, method="
 
     ## MA-plot
     if maplot:
-        print "MAplot"
         MAplot(res, mode=maplot)
-        ex.add("MAplot.png")
 
     if output:
         result_filename = output
@@ -215,13 +213,14 @@ def inference(cond1_label, cond1, cond2_label, cond2, transcript_names, method="
     res.to_csvfile(result_filename)
     return result_filename
 
-def rnaseq_workflow(ex, job, assembly, via="lsf", output=None, maplot=None, with_exons=None):
+def rnaseq_workflow(ex, job, assembly, via="lsf", output=None, maplot="normal", with_exons=None):
     """Run RNASeq inference according to *job_info*.
 
     output: alternative name for output file. Otherwise it is random.
     maplot: MA-plot of data.
             If "interactive", one can click on a point (gene or exon) to display its name;
-            if "normal", name of genes over 99%/under 1% quantile are displayed.
+            if "normal", name of genes over 99.9%/under 0.1% quantiles are displayed;
+            if None, no figure is produced.
     with_exons: run inference (DESeq) on exon mapping in addition to gene mapping.
 
     Whatever script calls this function should have looked up the job
@@ -249,9 +248,7 @@ def rnaseq_workflow(ex, job, assembly, via="lsf", output=None, maplot=None, with
     it returns in some sensible way.  For the usual HTSStation
     frontend, this just means printing it to stdout.
     """
-
-    """ Groups as given by the frontend is not that useful. Pull it apart
-    into more useful pieces. """
+            
     names = {}; runs = {}; controls = {}; paths = {}; gids = {}
     groups = job.groups
     assembly_id = job.assembly_id
@@ -260,17 +257,16 @@ def rnaseq_workflow(ex, job, assembly, via="lsf", output=None, maplot=None, with
         runs[i] = group['runs'].values()
         controls[i] = group['control']
 
-    """ gene_labels is a list whose ith entry is a string giving
-    the name of the gene assigned id i. The ids are arbitrary.
-    exon_mapping is a list whose ith entry is the integer id in
-    gene_labels exon i maps to."""
-    (gene_labels,exon_mapping) = fetch_transcript_mapping(ex, assembly_id)
-    exon_mapping = numpy.array(exon_mapping)
-
     fastq_root = os.path.abspath(ex.working_directory)
     bam_files = map_groups(ex, job, fastq_root, assembly_or_dict = assembly)
     print "Reads aligned."
 
+    # gene_labels is a list whose i-th entry is a string giving
+    # the name of the gene assigned id i. The ids are arbitrary.
+    # exon_mapping is a list whose i-th entry is the integer id in
+    # gene_labels exon i maps to.
+    (gene_labels,exon_mapping) = fetch_transcript_mapping(ex, assembly_id)
+    exon_mapping = numpy.array(exon_mapping)
     # All the bam_files were created against the same index, so
     # they all have the same header in the same order.  I can take
     # the list of exons from just the first one and use it for all
@@ -325,10 +321,10 @@ def rnaseq_workflow(ex, job, assembly, via="lsf", output=None, maplot=None, with
                    description="Comparison of exons in conditions '%s' and '%s' (CSV)" % (names[c1], names[c2]))
         print "Done."
 
-        if maplot: ex.add("MAplot.png")
+        if maplot: ex.add("MAplot.png", description="MA-plot of data")
 
 
-def MAplot(data, mode="normal", deg=3, bins=20):
+def MAplot(data, mode="normal", deg=2, bins=30):
     """
     Creates an "MA-plot" to compare transcription levels of a set of genes
     in two different conditions. It returns a list of triplets (name, x, y) for each point,
@@ -336,14 +332,13 @@ def MAplot(data, mode="normal", deg=3, bins=20):
     being a point the corresponding spline passes through. Input:
 
     data: rpy DataFrame object; two columns, each for a different condition.
-    mode: if "interactive", click on a point to display its name
-          if "normal", name of genes over 99%/under 1% quantile are displayed
+    mode: if "interactive", click on a point to display its name;
+          if "normal", name of genes over 99%/under 1% quantile are displayed.
     """
 
     #####
     # TO IMPLEMENT:
     # - Groups of genes
-    # - automatically determine number of bins
     #####
 
     import matplotlib.pyplot as plt
@@ -352,64 +347,72 @@ def MAplot(data, mode="normal", deg=3, bins=20):
         a = array(data[0])
         b = array(data[0].levels)
         names = list(b[a-1])
-        d1 = array(data[1])+0.5
-        d2 = array(data[2])+0.5
-    if isinstance(data[0],rpy2.robjects.vectors.StrVector):
+        d1 = array(data[1])
+        d2 = array(data[2])
+    elif isinstance(data[0],rpy2.robjects.vectors.StrVector):
         names = list(data[0])
-        d1 = array(data[1])+0.5
-        d2 = array(data[2])+0.5
-    else:
+        d1 = array(data[1])
+        d2 = array(data[2])
+    elif isinstance(data[0],rpy2.robjects.vectors.FloatVector):
         names = list(data.rownames)
-        d1 = array(data[0])+0.5
-        d2 = array(data[1])+0.5
+        d1 = array(data[0])
+        d2 = array(data[1])
     d1 = d1.view("float64"); d2 = d2.view("float64")
-    ratios = d1/d2
-    means = sqrt(d1*d2)
+    z = where(logical_and(d1!=0,d2!=0))[0] #exclude i-th value if either d1[i] or d2[i] is zero
+    d1 = d1[z]; d2 = d2[z]
+    ratios = log2(d1/d2)
+    means = log10(sqrt(d1*d2))
     points = zip(names,ratios,means)
     xmin = min(means); xmax = max(means); ymin = min(ratios); ymax = max(ratios)
-    intervals = linspace(xmin,xmax,bins)
+    N = len(points); dN = N/bins #points per bin
+    rmeans = sort(means)
+    intervals = []
+    for i in range(bins):
+        intervals.append(rmeans[i*dN])
+    intervals.append(xmax)
+    intervals = array(intervals)
     annotes = []; spline_annotes = []; spline_coords = {}
 
-    fig = plt.figure(figsize=[14,10])
+    points_in = {}; perc = {}
+    for b in range(bins):
+        points_in[b] = [p for p in points if p[2]>=intervals[b] and p[2]<intervals[b+1]]
+        perc[b] = [p[1] for p in points_in[b]]
+
+    fig = plt.figure(figsize=[14,9])
     ax = fig.add_subplot(111)
     fig.subplots_adjust(left=0.08, right=0.98, bottom=0.08, top=0.98)
 
     ### Points
     ax.plot(means, ratios, ".", color="black")
-
+    
     ### Lines (best fit of percentiles)
-    for k in [1,5,25,50,75,95,99]:
+    for k in [0.1,1,5,25,50,75,95,99,99.9]:
         h = ones(bins)
-        for b in range(bins-1):
-            points_in_b = [p for p in points if p[2]>=intervals[b] and p[2]<intervals[b+1]]
-            perc = [p[1] for p in points_in_b]
-            if points_in_b != []:
-                h[b] = stats.scoreatpercentile(perc, k)
-            else:
-                h[b] = h[b-1]
-                #if b<=20: print "no points in bin", b
-            if k==1:
-                for p in points_in_b:
+        for b in range(bins):
+            if points_in[b] != []:
+                h[b] = stats.scoreatpercentile(perc[b], k)
+            else: h[b] = h[b-1]
+            if k==0.1:
+                for p in points_in[b]:
                     if p[1]<h[b]: annotes.append(p)
-            if k==99:
-                for p in points_in_b:
+            if k==99.9:
+                for p in points_in[b]:
                     if p[1]>h[b]: annotes.append(p)
-
-        #ax.plot(intervals, h, linestyle="--", alpha=0.3)
-        spline = UnivariateSpline(intervals, h, k=deg)
-        xs = linspace(xmin, xmax, 10*bins) #to increase spline smoothness
-        ys = spline(xs)
-        ax.plot(intervals, h, "o", color="blue")
-        ax.plot(xs, ys, "-", color="blue")
-        spline_annotes.append((k,xs[0],ys[0]))
-        spline_coords[k] = zip(xs,ys)
+        if k!=0.1 and k!=99.9:
+            x = intervals[:-1]+(intervals[1:]-intervals[:-1])/2.
+            spline = UnivariateSpline(x, h, k=deg)
+            xs = linspace(xmin, xmax, 10*bins) #to increase spline smoothness
+            ys = spline(xs)
+            #ax.plot(x, h, "o", color="blue")
+            ax.plot(xs, ys, "-", color="blue")
+            spline_annotes.append((k,xs[0],ys[0])) #quantile percentages
+            spline_coords[k] = zip(xs,ys)
 
     ### Decoration
     ax.set_xlabel("Log10 of sqrt(x1*x2)")
     ax.set_ylabel("Log2 of x1/x2")
-    ax.set_xlim(xmin-0.1*xmin,xmax+0.1*xmax)
-    ax.set_xscale('log', basey=10)
-    ax.set_yscale('log', basey=2)
+    #ax.set_xlim(xmin-0.2*xmin,xmax+0.2*xmax)
+    #ax.set_ylim(ymin-0.2*ymin,ymax+0.2*ymax)
     for l in spline_annotes:
         ax.annotate(str(l[0])+"%", xy=(l[1],l[2]), xytext=(-27,-5), textcoords='offset points')
     if mode == "interactive":
@@ -426,12 +429,12 @@ def MAplot(data, mode="normal", deg=3, bins=20):
 
 class AnnoteFinder:
   """
-  callback for matplotlib to display an annotation when points are clicked on.  The
+  Callback for matplotlib to display an annotation when points are clicked on.  The
   point which is closest to the click and within xtol and ytol is identified.
 
   Register this function like this:
 
-  scatter(xdata, ydata)
+  plot(xdata, ydata)
   af = AnnoteFinder(xdata, ydata, annotes)
   connect('button_press_event', af)
   """
@@ -492,3 +495,4 @@ class AnnoteFinder:
     annotesToDraw = [(x,y,a) for x,y,a in self.data if a==annote]
     for x,y,a in annotesToDraw:
       self.drawAnnote(self.axis, x, y, a)
+

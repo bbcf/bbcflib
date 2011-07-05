@@ -9,7 +9,7 @@ configuration file.  The standard usage is to create an
 ``EmailReport`` object::
 
     r = EmailReport(sender='nobody@localhost',
-                    to='ross@localhost',
+                    to='boris@localhost',
                     subject='Default Subject',
                     smtp_server='localhost')
 
@@ -26,7 +26,7 @@ The ``EmailReport`` object can also be created referring to a
 a ``ConfigParser`` object ``cp``, we would create an ``EmailReport``
 with::
 
-    r = EmailReport(config=cp, to='ross@localhost')
+    r = EmailReport(config=cp, to='boris@localhost')
 
 .. autoclass:: EmailReport
 """

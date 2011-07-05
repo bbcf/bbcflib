@@ -37,7 +37,8 @@ def run(create_sql_files=False):
             continue
         message(path, name, True, expected)
 
-#-----------------------------------------#
-# This code was written by Lucas Sinclair #
-# lucas.sinclair@epfl.ch                  #
-#-----------------------------------------#
+#-----------------------------------#
+# This code was written by the BBCF #
+# http://bbcf.epfl.ch/              #
+# webmaster.bbcf@epfl.ch            #
+#-----------------------------------#

@@ -102,4 +102,8 @@ class TestGenRep(unittest.TestCase):
         a = self.genrep_from_config.assembly(14)
         self.assertAssembliesEqual(a, ce6)
 
-
+#-----------------------------------#
+# This code was written by the BBCF #
+# http://bbcf.epfl.ch/              #
+# webmaster.bbcf@epfl.ch            #
+#-----------------------------------#
