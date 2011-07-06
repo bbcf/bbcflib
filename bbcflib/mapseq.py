@@ -78,7 +78,7 @@ import os, re, json, shutil, gzip, tarfile, pickle
 # Internal modules #
 from . import frontend, genrep, daflims, common
 
-# Other modules #
+# Other modules #
 import pysam
 from numpy import *
 from scipy.misc import factorial

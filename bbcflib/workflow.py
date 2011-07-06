@@ -6,7 +6,7 @@ Module: bbcflib.workflow
 A wrapper for functions to extend them to full workflows for HTSStation.
 """
 
-# Other modules #
+# Other modules #
 from bein import *
 from bein.util import background
 

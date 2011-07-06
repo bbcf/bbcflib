@@ -14,7 +14,7 @@ from itertools import combinations
 from .mapseq import map_groups
 from .genrep import GenRep
 
-# Other modules #
+# Other modules #
 from bein.util import *
 from numpy import *
 from scipy import stats
