@@ -219,10 +219,10 @@ def rnaseq_workflow(ex, job, assembly, via="lsf", output=None, maplot="normal", 
 
     output: alternative name for output file. Otherwise it is random.
     maplot: MA-plot of data.
-    If "interactive", one can click on a point (gene or exon) to display its name;
-    if "normal", name of genes over 99.9%/under 0.1% quantiles are displayed;
-    if None, no figure is produced.
-    with_exons: run inference (DESeq) on exon mapping in addition to gene mapping.
+    - If "interactive", one can click on a point (gene or exon) to display its name;
+    - if "normal", name of genes over 99.9%/under 0.1% quantiles are displayed;
+    - if None, no figure is produced.
+    with_exons: run inference (DESeq) on exon mapping in addition to gene mapping..
 
     Whatever script calls this function should have looked up the job
     description from HTSStation.  The job description from HTSStation
@@ -333,8 +333,10 @@ def MAplot(data, mode="normal", deg=2, bins=30):
     being a point the corresponding spline passes through. Input:
 
     data: rpy DataFrame object; two columns, each for a different condition.
-    mode: if "interactive", click on a point to display its name
-    if "normal", name of genes over 99%/under 1% quantile are displayed
+    mode:
+    - if "interactive", click on a point to display its name
+    - if "normal", name of genes over 99%/under 1% quantile are displayed
+    alpha: a threshold for p-values: points beyond it are emphasized.
     """
 
     #####
