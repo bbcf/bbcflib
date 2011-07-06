@@ -1,11 +1,10 @@
 """
-=========================================
-Submodule: bbcflib.track.track_collection
-=========================================
+=========================
+Submodule: bbcflib.common
+=========================
 
 Common usefull in many places.
 """
-
 
 # Built-in modules #
 import sys
@@ -16,12 +15,12 @@ def normalize_url(url):
 
     Make sure the URL begins with http:// and does *not* end with a /.
 
-    >>> normalize_url('http://www.google.com')
-    'http://www.google.com'
-    >>> normalize_url('http://www.google.com/')
-    'http://www.google.com'
-    >>> normalize_url('www.google.com/')
-    'http://www.google.com'
+    >>> normalize_url('http://bbcf.epfl.ch')
+    'http://bbcf.epfl.ch'
+    >>> normalize_url('http://bbcf.epfl.ch/')
+    'http://bbcf.epfl.ch'
+    >>> normalize_url('bbcf.epfl.ch/')
+    'http://bbcf.epfl.ch'
     """
     url = url.lower()
     if not(url.startswith("http://")):
@@ -49,29 +48,12 @@ def cat(files):
     return out
 
 ###############################################################################
-def create_sql_track( sql_name, chromosomes, datatype="quantitative" ):
-    conn = sqlite3.connect( sql_name )
-    conn.execute('CREATE TABLE chrNames (name text, length integer)')
-    conn.execute('CREATE TABLE attributes (key text, value text)')
-    conn.execute('INSERT INTO attributes (key,value) VALUES ("datatype","%s")' %datatype)
-    vals = [(v['name'],str(v['length'])) for v in chromosomes.values()]
-    conn.executemany('INSERT INTO chrNames (name,length) VALUES (?,?)',vals)
-    if datatype=="quantitative":
-        [conn.execute('CREATE TABLE "'+v['name']+'" (start integer, end integer, score real)')
-         for v in chromosomes.values()]
-        [conn.execute('CREATE INDEX "range_idx_'+v['name']+'" ON "'+v['name']+'"(start, end)')
-         for v in chromosomes.values()]
-    elif datatype=="qualitative":
-        [conn.execute('CREATE TABLE "'+v['name']+'" (start integer,end integer,score real,name text,strand integer,attributes text)')
-         for v in chromosomes.values()]
-        [conn.execute('CREATE INDEX "name_idx_'+ v['name'] +'" ON "'+ v['name'] +'"(name)')
-         for v in chromosomes.values()]
-    else:
-        raise ValueError("Supported datatypes are 'quantitative' and 'qualitative', not "+datatype)
-    conn.commit()
-    conn.close()
-    return sql_name
-
+def create_sql_track(path, meta_chr, datatype="quantitative", format='sql', name="Unamed"):
+    ''' This function shouldn't really be used'''
+    from bbcflib import track
+    with track.new(path, format, datatype, name) as t:
+        t.meta_chr = meta_chr
+        for chrom in meta_chr: t.write(chrom['name'], (), getattr(track.Track, datatype + '_fields'))
 
 ###############################################################################
 ###############################################################################
