@@ -325,24 +325,19 @@ def rnaseq_workflow(ex, job, assembly, via="lsf", output=None, maplot="normal", 
         if maplot: ex.add("MAplot.png", description="MA-plot of data")
 
 
-def MAplot(data, mode="normal", deg=2, bins=30):
+def MAplot(data, mode="interactive", deg=4, bins=30, alpha=0.005):
     """
     Creates an "MA-plot" to compare transcription levels of a set of genes
     in two different conditions. It returns a list of triplets (name, x, y) for each point,
     and a dictionary containing a list of couples for each quantile spline, each couple (xs,ys)
     being a point the corresponding spline passes through. Input:
 
-    data: rpy DataFrame object; two columns, each for a different condition.
+    data:  rpy DataFrame object; two columns, each for a different condition.
     mode:
     - if "interactive", click on a point to display its name
     - if "normal", name of genes over 99%/under 1% quantile are displayed
     alpha: a threshold for p-values: points beyond it are emphasized.
     """
-
-    #####
-    # TO IMPLEMENT:
-    # - Groups of genes
-    #####
 
     import matplotlib.pyplot as plt
 
@@ -355,11 +350,16 @@ def MAplot(data, mode="normal", deg=2, bins=30):
     b = asarray(names.levels)
     names = list(b[a-1])
 
-    points = []
+    points = []; blackpoints = []; redpoints = []; annotes = [];
     for i in range(len(ratios)):
         if not math.isnan(ratios[i]) and not math.isinf(ratios[i]):
-            points.append( (names[i],ratios[i],log10(means[i])) )
-    names,ratios,means = zip(*points)
+            p = (names[i],ratios[i],log10(means[i]),pvals[i])
+            if pvals[i] < alpha:
+                redpoints.append(p)
+                annotes.append(p)
+            else: blackpoints.append(p)
+            points.append(p)
+    names,ratios,means,pvals = zip(*points)
     xmin = min(means); xmax = max(means); ymin = min(ratios); ymax = max(ratios)
 
     ## Create bins
@@ -382,40 +382,34 @@ def MAplot(data, mode="normal", deg=2, bins=30):
     fig.subplots_adjust(left=0.08, right=0.98, bottom=0.08, top=0.98)
 
     ### Points
-    ax.plot(means, ratios, ".", color="black")
+    blackpoints = array(zip(*blackpoints))[1:3]
+    redpoints = array(zip(*redpoints))[1:3]
+    ax.plot(blackpoints[1], blackpoints[0], ".", color="black")
+    ax.plot(redpoints[1], redpoints[0], ".", color="red")
 
     ### Lines (best fit of percentiles)
-    annotes = []; spline_annotes = []; spline_coords = {}
+    spline_annotes = []; spline_coords = {}
     for k in [1,5,25,50,75,95,99]:
         h = ones(bins)
         for b in range(bins):
             if points_in[b] != []:
                 h[b] = stats.scoreatpercentile(perc[b], k)
             else: h[b] = h[b-1]
-            if k==1:
-                for p in points_in[b]:
-                    if p[1]<h[b]: annotes.append(p)
-            if k==99:
-                for p in points_in[b]:
-                    if p[1]>h[b]: annotes.append(p)
         x = intervals[:-1]+(intervals[1:]-intervals[:-1])/2.
         spline = UnivariateSpline(x, h, k=deg)
         xs = array(linspace(xmin, xmax, 10*bins)) #to increase spline smoothness
         ys = array(spline(xs))
         l = len(xs)
-        xi = arange(l)[ceil(l/6):floor(5*l/6)]
+        xi = arange(l)[ceil(l/6):floor(8*l/9)]
         x = xs[xi]
         y = ys[xi]
-        #ax.plot(x, h, "o", color="blue")
-        ax.plot(x, y, "-", color="blue")
+        ax.plot(x, y, "-", color="blue"); #ax.plot(x, h, "o", color="blue")
         spline_annotes.append((k,x[0],y[0])) #quantile percentages
         spline_coords[k] = zip(x,y)
 
     ### Decoration
     ax.set_xlabel("Log10 of sqrt(x1*x2)")
     ax.set_ylabel("Log2 of x1/x2")
-    #ax.set_xlim(xmin-0*abs(xmin),xmax+0*abs(xmax))
-    #ax.set_ylim(ymin-0*abs(ymin),ymax+0*abs(ymax))
     for l in spline_annotes:
         ax.annotate(str(l[0])+"%", xy=(l[1],l[2]), xytext=(-33,-5), textcoords='offset points',
                     bbox=dict(facecolor="white",edgecolor=None,boxstyle="square,pad=.4"))
@@ -429,7 +423,7 @@ def MAplot(data, mode="normal", deg=2, bins=30):
             ax.annotate(p[0], xy=(p[2],p[1]) )
         fig.savefig("MAplot.png")
 
-    #return points, spline_coords
+    return points, spline_coords
 
 class AnnoteFinder:
   """
