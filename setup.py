@@ -1,5 +1,4 @@
 from distutils.core import setup
-import subprocess
 
 setup(
     name             =  'bbcflib',
