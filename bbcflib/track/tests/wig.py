@@ -12,6 +12,9 @@ try:
 except ImportError:
     import unittest
 
+# Nosetest flag #
+__test__ = True
+
 ###################################################################################
 class Test_Read(unittest.TestCase):
     def runTest(self):
