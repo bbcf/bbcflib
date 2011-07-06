@@ -78,10 +78,10 @@ To set the chromosome metadata or the track metadata you simply asign to that at
 import os, sys
 
 # Specific Modules #
-from .. import common as com
-from random import randint
-from magic  import Magic
-
+from ..             import common as com
+from random         import randint
+from magic          import Magic
+from pkg_resources  import resource_string
 #-----------------------------------------------------------------------------#
 def _determine_format(path):
     '''Try to guess the format of a track given its path. Returns a three letter extension'''
@@ -98,10 +98,8 @@ def _determine_format(path):
     # If no extension found then try magic #
     if not extension:
         # Let the user customize magic #
-        if os.path.exists('magic'):
-            mime.load(file='magic')
-        else:
-            mime.load()
+        magic_file = resource_string(__name__, 'magic')
+        mime.load(file=magic_file)
         # Does the file even exist ? #
         try:
             filetype = mime.file(path)
