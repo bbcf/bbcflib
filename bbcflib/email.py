@@ -30,8 +30,11 @@ with::
 
 .. autoclass:: EmailReport
 """
+
+# Other modules #
 from mailer import Mailer, Message
 
+################################################################################
 class EmailReport(object):
     """Create an email, possibly reading a configuration file.
 

@@ -1,18 +1,17 @@
 """
-================
-bbcflib.workflow
-================
+========================
+Module: bbcflib.workflow
+========================
 
 A wrapper for functions to extend them to full workflows for HTSStation.
-
 """
 
+# Other modules #
 from bein import *
 from bein.util import background
 
-
-
-class workflow(object):
+################################################################################
+class Workflow(object):
     def __init__(self, f):
         self.f = f
         self.__name__ = f.__name__
@@ -43,7 +42,6 @@ class workflow(object):
         execution_ids = dict([f.wait() for f in futures])
 
         # Send email report of run
-
         return execution_ids
 
 #-----------------------------------#

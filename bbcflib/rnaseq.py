@@ -3,11 +3,20 @@
 Module: bbcflib.rnaseq
 ======================
 
+No documentation
 """
 
-# General modules #
+# Built-in modules #
 import pickle, json, pysam, numpy, urllib, math
 from itertools import combinations
+
+# Internal modules #
+from .mapseq import map_groups
+from .genrep import GenRep
+
+# Other modules #
+from bein.util import *
+from numpy import *
 from scipy import stats
 from scipy.interpolate import UnivariateSpline
 from rpy2 import robjects
@@ -15,15 +24,7 @@ import rpy2.robjects.packages as rpackages
 import rpy2.robjects.numpy2ri
 import rpy2.rlike.container as rlc
 
-# Internal modules #
-from bbcflib.mapseq import plot_stats, bamstats, map_groups, get_fastq_files
-from bbcflib.daflims import DAFLIMS
-from bbcflib.genrep import GenRep
-
-# Don't do this #
-from numpy import *
-from bein.util import *
-
+################################################################################
 def fetch_transcript_mapping(ex, assembly_id):
     """Given an assembly ID, return a dictionary giving an exon to orf mapping.
 
@@ -56,7 +57,7 @@ def fetch_transcript_mapping(ex, assembly_id):
             mapping = pickle.load(pickle_file)
             return mapping
         print "Exon to ORF mapping found on GenRep"
-        
+
 def map_runs(fun, runs):
     """Parallelization of fun(run) executions"""
     futures = {}
@@ -248,7 +249,7 @@ def rnaseq_workflow(ex, job, assembly, via="lsf", output=None, maplot="normal", 
     it returns in some sensible way.  For the usual HTSStation
     frontend, this just means printing it to stdout.
     """
-            
+
     names = {}; runs = {}; controls = {}; paths = {}; gids = {}
     groups = job.groups
     assembly_id = job.assembly_id
@@ -384,7 +385,7 @@ def MAplot(data, mode="normal", deg=2, bins=30):
 
     ### Points
     ax.plot(means, ratios, ".", color="black")
-    
+
     ### Lines (best fit of percentiles)
     for k in [0.1,1,5,25,50,75,95,99,99.9]:
         h = ones(bins)

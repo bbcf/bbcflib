@@ -5,10 +5,15 @@ Module: bbcflib.gdv
 
 Python API for the GDV genome viewer.
 """
-import urllib, urllib2
-import json
-from bbcflib.common import normalize_url
-############ GDV requests ############
+
+# Built-in modules #
+import json, urllib, urllib2
+
+# Internal modules #
+from .common import normalize_url
+
+################################################################################
+# GDV requests #
 
 def create_gdv_project( gdv_key, gdv_email,
                         name, run_key, nr_assembly_id,
@@ -34,6 +39,7 @@ def create_gdv_project( gdv_key, gdv_email,
     return json.load(urllib2.urlopen( gdv_url, urllib.urlencode(request)))
 
 def get_project_id(json):
+
     return json['project_id']
 def get_public_url(json):
     return json['public_url']
@@ -115,8 +121,6 @@ def get_assemblies(gdv_key,gdv_email):
         }
     gdv_url = normalize_url(gdv_url)+"/post"
     return urllib2.urlopen( gdv_url, urllib.urlencode(request) ).read()
-
-
 
 #-----------------------------------#
 # This code was written by the BBCF #
