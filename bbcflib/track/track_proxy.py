@@ -12,10 +12,13 @@ import os, shutil
 # Internal modules #
 from . import Track, new
 from .common import named_temporary_path
-from .formats.sql import TrackFormat as SQLTrack
+from .formats.sql import TrackFormat as TrackBackend
+
+# Globals #
+backend_format = 'sql'
 
 ###########################################################################
-class TrackProxy(SQLTrack):
+class TrackProxy(TrackBackend):
     def __init__(self, path, format=None, name=None, chrmeta=None, datatype=None, readonly=False):
         # Parameters with underscore refer to the underlying track #
         self._path     = path
@@ -27,7 +30,7 @@ class TrackProxy(SQLTrack):
         # Create the SQL track #
         tmp_path = named_temporary_path()
         with open(self._path, 'r') as self._file:
-            with new(tmp_path, 'sql', self._datatype, name) as t:
+            with new(tmp_path, backend_format, self._datatype, name) as t:
                 # Prepare meta data #
                 self._meta_chr
                 self._meta_track
@@ -43,7 +46,7 @@ class TrackProxy(SQLTrack):
                 # Copy meta chr #
                 t.meta_chr   = [chr for chr in self._meta_chr if chr['name'] in self._seen_chr]
         # Load the new SQL track as self #
-        super(TrackProxy, self).__init__(tmp_path, 'sql', name, chrmeta=None, datatype=None, readonly=readonly)
+        super(TrackProxy, self).__init__(tmp_path, backend_format, name, chrmeta=None, datatype=None, readonly=readonly)
 
     #-----------------------------------------------------------------------------#
     def unload(self, datatype=None, value=None, trackback=None):
@@ -60,10 +63,10 @@ class TrackProxy(SQLTrack):
         elif os.path.exists(path): raise Exception("The location '" + path + "' is already taken")
         with open(path, 'w') as file: file.writelines(self._write())
 
-    def convert(self, path, format='sql'):
+    def convert(self, path, format=backend_format):
         if os.path.exists(path):
             raise Exception("The location '" + path + "' is already taken")
-        if format == 'sql':
+        if format == backend_format:
             shutil.move(self.path, path)
         else:
             super(TrackProxy, self).convert(path, format)

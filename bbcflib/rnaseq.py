@@ -219,9 +219,9 @@ def rnaseq_workflow(ex, job, assembly, via="lsf", output=None, maplot="normal", 
 
     output: alternative name for output file. Otherwise it is random.
     maplot: MA-plot of data.
-            If "interactive", one can click on a point (gene or exon) to display its name;
-            if "normal", name of genes over 99.9%/under 0.1% quantiles are displayed;
-            if None, no figure is produced.
+    If "interactive", one can click on a point (gene or exon) to display its name;
+    if "normal", name of genes over 99.9%/under 0.1% quantiles are displayed;
+    if None, no figure is produced.
     with_exons: run inference (DESeq) on exon mapping in addition to gene mapping.
 
     Whatever script calls this function should have looked up the job
@@ -334,7 +334,7 @@ def MAplot(data, mode="normal", deg=2, bins=30):
 
     data: rpy DataFrame object; two columns, each for a different condition.
     mode: if "interactive", click on a point to display its name
-          if "normal", name of genes over 99%/under 1% quantile are displayed
+    if "normal", name of genes over 99%/under 1% quantile are displayed
     """
 
     #####
@@ -368,7 +368,7 @@ def MAplot(data, mode="normal", deg=2, bins=30):
         intervals.append(rmeans[i*dN])
     intervals.append(xmax)
     intervals = array(intervals)
-    
+
     points_in = {}; perc = {}
     for b in range(bins):
         points_in[b] = [p for p in points if p[2]>=intervals[b] and p[2]<intervals[b+1]]
@@ -381,7 +381,7 @@ def MAplot(data, mode="normal", deg=2, bins=30):
 
     ### Points
     ax.plot(means, ratios, ".", color="black")
-    
+
     ### Lines (best fit of percentiles)
     annotes = []; spline_annotes = []; spline_coords = {}
     for k in [1,5,25,50,75,95,99]:
@@ -497,5 +497,3 @@ class AnnoteFinder:
     annotesToDraw = [(x,y,a) for x,y,a in self.data if a==annote]
     for x,y,a in annotesToDraw:
       self.drawAnnote(self.axis, x, y, a)
-
-
