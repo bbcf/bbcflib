@@ -40,10 +40,12 @@ use
 Then the modules will go in /prefix/path/lib/pythonX.Y/site-packages,
 where X.Y is the version of Python you run it with.
 
-After installation process you need update your mime database by following command:
+After the installation process, if you wish to use the mime type recognition functionality, you must update your mime database with following command:
+
     $ sudo update-mime-database /usr/share/mime
-if during installation you use --datadir options you need give to update-mime-database command the same path:
-    $ python setup.py build
+
+If you had specified a ``--datadir`` option when running ``setup.py`` you will specify that same path again, for instance:
+
     $ sudo python setup.py install --datadir=/usr/local/share
     $ sudo update-mime-database /usr/local/share/mime
 
