@@ -1,17 +1,20 @@
+# Built-in modules #
+import datetime
+
+# Internal modules #
+from ..frontend import Frontend
+
 # Unitesting module #
 try:
     import unittest2 as unittest
 except ImportError:
     import unittest
 
-# Tested module #
-from ..frontend import Frontend
-
-# Other modules #
-import datetime
+# Nosetest flag #
+__test__ = True
 
 ###################################################################################
-class TestFrontend(unittest.TestCase):
+class Test_Frontend(unittest.TestCase):
     def setUp(self):
         self.skipTest("These tests don't pass anymore. Delete this line once they are fixed.")
         self.f = Frontend(url='http://htsstation.vital-it.ch/rnaseq/')
