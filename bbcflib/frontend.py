@@ -22,13 +22,15 @@ method with a job key.::
 
 .. autoclass:: Job
 """
-import urllib2
-import json
+
+# Built-in modules #
+import json, urllib2
 from datetime import datetime
 
-from common import normalize_url
+# Internal modules #
+from .common import normalize_url
 
-
+################################################################################
 class Frontend(object):
     """Connection to Fabrice David's web frontends for workflows.
 
@@ -123,8 +125,7 @@ class Frontend(object):
          for r in self._fetch_runs(key)]
         return j
 
-
-
+################################################################################
 class Job(object):
     """An object specifying a workflow job.
 

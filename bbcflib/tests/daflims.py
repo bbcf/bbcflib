@@ -1,14 +1,17 @@
+# Built-in modules #
+import os, ConfigParser, cStringIO
+
+# Internal modules #
+from ..daflims import DAFLIMS
+
 # Unitesting module #
 try:
     import unittest2 as unittest
 except ImportError:
     import unittest
 
-# Tested module #
-from ..daflims import DAFLIMS
-
-# Other modules #
-import ConfigParser, cStringIO, os
+# Nosetest flag #
+__test__ = True
 
 #--------------------------------------------------------------------------------#
 test_config_file = '''[daflims]
@@ -23,7 +26,7 @@ def get_config_file_parser():
     return config
 
 ###################################################################################
-class TestDAFLIMS(unittest.TestCase):
+class Test_DAFLIMS(unittest.TestCase):
     def setUp(self):
         self.skipTest("These tests don't pass anymore. Delete this line once they are fixed.")
         self.d = DAFLIMS(config=get_config_file_parser())

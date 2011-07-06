@@ -1,17 +1,20 @@
+# Built-in modules #
+import datetime
+
+# Internal modules #
+from ..frontend import Frontend
+
 # Unitesting module #
 try:
     import unittest2 as unittest
 except ImportError:
     import unittest
 
-# Tested module #
-from ..frontend import Frontend
-
-# Other modules #
-import datetime
+# Nosetest flag #
+__test__ = True
 
 ###################################################################################
-class TestFrontend(unittest.TestCase):
+class Test_Frontend(unittest.TestCase):
     def setUp(self):
         self.skipTest("These tests don't pass anymore. Delete this line once they are fixed.")
         self.f = Frontend(url='http://htsstation.vital-it.ch/rnaseq/')
@@ -21,7 +24,7 @@ class TestFrontend(unittest.TestCase):
                                 key = "9pv1x7PamOj80eXnZa14",
                                 assembly_id = 14,
                                 description = "Job for testing Frontend module",
-                                email = "madhadron@gmail.com",
+                                email = "webmaster.bbcf@epfl.ch",
                                 options={u'domain': None,
                                          u'protocol': None,
                                          u'accept': None,
@@ -108,7 +111,7 @@ class TestFrontend(unittest.TestCase):
                           'created_at': datetime.datetime(2010, 12, 30, 13, 29, 54),
                           'id': 2,
                           'key': u'9pv1x7PamOj80eXnZa14',
-                          'email': u'madhadron@gmail.com',
+                          'email': u'webmaster.bbcf@epfl.ch',
                           'options': {u'domain': None, u'protocol': None, u'accept': None,
                                       u'run_nber': None, u'input_file': None,
                                       u'from_controller': None, u'lane_nber': None,

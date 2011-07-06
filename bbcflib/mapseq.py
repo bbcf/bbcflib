@@ -70,26 +70,23 @@ Below is the script used by the frontend::
     print ex.id
     allfiles = common.get_files( ex.id, M )
     print allfiles
-
-
 """
 
+# Built-in modules #
+import os, re, json, shutil, gzip, tarfile, pickle
+
+# Internal modules #
+from . import frontend, genrep, daflims, common
+
+# Other modules #
 import pysam
-import re
-import json
-import os
-import shutil
-import gzip
-import tarfile
-import pickle
-import urllib
-from bbcflib import frontend, genrep, daflims, common
 from numpy import *
 from scipy.misc import factorial
 from bein import *
 from bein.util import *
 
-############ Preprocessing ############
+################################################################################
+# Preprocessing #
 @program
 def bamstats(bamfile):
     """Wrapper to the ``bamstat`` program.

@@ -15,32 +15,28 @@ More formats can be added easily.
 
 To get access to the information contained inside already existing tracks, you would do the following whatever the format of the track is::
 
-    from bbcflib.track import Track
-    with Track('tracks/rp_genes.sql') as rpgenes:
+    from bbcflib import track
+    with track.load('tracks/rp_genes.sql') as rpgenes:
         data = rpgenes.read('chr3')
 
 Optionally you can supply a name for every track you load, to help you keep track of your tracks::
 
-    from bbcflib.track import Track
-    with Track('tracks/ribi_genes.sql', name='Ribosome genesis from SGD') as ribigenes:
+    from bbcflib import track
+    with track.load('tracks/ribi_genes.sql', name='Ribosome genesis from SGD') as ribigenes:
         data = ribigenes.read('chr7')
 
-If your track is in a format that is missing chromosome information, you will need to supply an extra chromosome file::
+If your track is in a format that is missing chromosome information (such as the length of every chromosome), you can supply an assembly name or a chromosome file::
 
-    from bbcflib.track import Track
-    with Track('tracks/yeast_genes.bed', chrmeta='tracks/chrs/yeast.chr') as saccer:
+    from bbcflib import track
+    with track.load('tracks/yeast_genes.bed', chrmeta='sacCer2') as saccer:
         data = saccer.read('chr4')
-
-Alternatively, you can use the GenRep service by simply specifying an existing assembly name as string::
-
-    from bbcflib.track import Track
-    with Track('tracks/yeast_genes.bed', chrmeta='sacCer2') as saccer:
+    with track.load('tracks/yeast_genes.bed', chrmeta='tracks/chrs/yeast.chr') as saccer:
         data = saccer.read('chr4')
 
 For instance, the cumulative base coverage of features on chromosome two can be calculated like this::
 
-    from bbcflib.track import Track
-    with Track('tracks/yeast_genes.sql') as saccer:
+    from bbcflib import track
+    with track.load('tracks/yeast_genes.sql') as saccer:
         base_coverage = sum([f[1] - f[0] for f in saccer.read('chr2')])
 
 To create a new track and then write to it, you would do the following::
@@ -51,141 +47,96 @@ To create a new track and then write to it, you would do the following::
 
 For instance, to make a new track from an old one, and invert the strand of every feature::
 
-    from bbcflib.track import Track, new
+    from bbcflib import track, new
     def invert_strands(data):
         for feature in data:
             yield (feature[0], feature[1], feature[2], feature[3], feature[4] == 1 and -1 or 1)
-    with Track('tracks/orig.sql', name='Normal strands') as a:
+    with track.load('tracks/orig.sql', name='Normal strands') as a:
         with new('tracks/inverted.sql', name='Inverted strands') as b:
             for chrom in a:
                 b.write(chrom, invert_strands(a.read(chrom)))
 
 To convert a track from a format (e.g. BED) to an other format (e.g. SQL) you first create a track object and call the convert method on it::
 
-    from bbcflib.track import Track
-    with Track('tracks/rp_genes.bed') as rpgenes:
+    from bbcflib import track
+    with track.load('tracks/rp_genes.bed') as rpgenes:
         rpgenes.convert('tracks/rp_genes.sql', 'sql')
 
 To set the chromosome metadata or the track metadata you simply asign to that attribute::
 
-    from bbcflib.track import Track
-    with Track('tracks/scores.sql') as t:
+    from bbcflib import track
+    with track.load('tracks/scores.sql') as t:
         t.meta_chr   = [{'name': 'chr1', 'length': 1500}, {'name': 'chr2', 'length': 2000}]
         t.meta_track = {'datatype': 'quantitative', 'source': 'SGD'}
 """
 
-# General Modules #
-import os, sys
-
-# Specific Modules #
-from .. import common as com
-from random import randint
-
-#-----------------------------------------------------------------------------#
-def _determine_format(path):
-    '''Try to guess the format of a track given its path. Returns a three letter extension'''
-    # List of names to three letter extension #
-    known_format_extensions = {
-        'SQLite 3.x database':                       'sql',
-        'SQLite database (Version 3)':               'sql',
-        'Hierarchical Data Format (version 5) data': 'hdf5',
-    }
-    # Get extension #
-    extension = os.path.splitext(path)[1][1:]
-    # If no extension found then try magic #
-    if not extension:
-        try:
-            import magic
-        except ImportError:
-            raise Exception("The format of the track '" + path + "' cannot be determined")
-        # Let the user customize magic #
-        if os.path.exists('magic'):
-            m = magic.Magic('magic')
-        else:
-            m = magic.Magic()
-        # Does the file even exist ? #
-        try:
-            filetype = m.from_file(path)
-        except IOError:
-            raise Exception("The format of the path '" + path + "' cannot be determined. Please specify a format or add an extension.")
-        # Check the result of magic #
-        try:
-            extension = known_format_extensions[filetype]
-        except KeyError:
-            raise Exception("The format of the track '" + path + "' resolves to " + filetype + " which is not supported at the moment.")
-    # Synonyms #
-    if extension == 'db': extension = 'sql'
-    # Return the format #
-    return extension
-
-def _import_implementation(format):
-    '''Try to import the implementation of a given format'''
-    format = 'format_' + format
-    try:
-        if not hasattr(sys.modules[__package__], format):
-            __import__(__package__ + '.' + format)
-        return sys.modules[__package__ + '.' + format]
-    except (ImportError, AttributeError):
-        raise Exception("The format '" + format + "' is not supported at the moment")
-
-#-----------------------------------------------------------------------------#
-def join_read_queries(track, selections, fields):
-    '''Join read results when selection is a list'''
-    def _add_chromsome(sel, data):
-        if type(sel) == str: chrom = (sel,)
-        else:                chrom = (sel['chr'],)
-        for f in data: yield chrom + f
-    for sel in selections:
-        for f in _add_chromsome(sel, track.read(sel, fields)): yield f
-
-def make_cond_from_sel(selection):
-    '''Make an SQL condition string from a selection dictionary'''
-    query = ""
-    if "end" in selection and "start" in selection:
-        if selection.get('inclusion') == 'strict':
-            query = "start < " + str(selection['end'])   + " and " + "start >= " + str(selection['start']) + \
-              " and " + "end   > " + str(selection['start']) + " and " + "end <= "   + str(selection['end'])
-        else:
-            query = "start < " + str(selection['end']) + " and " + "end > " + str(selection['start'])
-    if "score" in selection:
-        statements  = [i for i in selection["score"].split(" ") if i != ""]
-        symbol      = None
-        number      = None
-        for i in statements:
-            try:
-                number = float(i)
-            except ValueError:
-                symbol = i
-        if symbol is None: symbol = "="
-        if query != "": query += " and "
-        query += "score "+symbol+" "+str(number)
-    return query
+# Built-in modules #
+import os
 
 ###########################################################################
-class Track(object):
-    '''The class used to access genomic data. It can load a track from disk, whatever the format is.
+def load(path, format=None, name=None, chrmeta=None, datatype=None, readonly=False):
+    '''The function used to access genomic data. It can load a track from disk, whatever the format is.
 
             * *path* is the path to track file.
             * *format* is an optional string specifying the format of the track to load when it cannot be guessed from the file extension.
-            * *name* is an optional string specifying the name of the track to load.
+            * *name* is an optional string specifying the name of the track to load. This can help with keep track of multiple different tracks.
             * *chrmeta* is the path to chromosome file or the name of an assembly. This is specified only when the underlying format is missing chromosome length information. The chromosome file is structured as tab-separated text file containing two columns: the first specifies a chromosomes name and the second its length as an integer.
             * *datatype* is an optional variable that can take the value of either ``qualitative`` or ``quantitative``. It is only usefull when loading a track that is ambiguous towards its datatype, as can be certain text files. For instance, In the case of WIG track becoming qualitative, all features will be missing names, but overlapping features will suddenly be authorized.
             * *readonly* is an optional boolean variable that defaults to ``False``. When set to ``True``, any operation attempting to write to the track will silently be ignored.
 
         Examples::
 
-            with Track('tracks/rp_genes.sql') as rpgenes:
+            from bbcflib import track
+            with track.load('tracks/rp_genes.sql') as rpgenes:
                 pass
-            with Track('tracks/yeast', 'sql', 'S. cer. genes') as yeast:
+            with track.load('tracks/yeast', 'sql', 'S. cer. genes') as yeast:
                 pass
-            with Track('tracks/peaks.bed', 'bed', chrmeta='hg19') as peaks:
+            with track.load('tracks/peaks.bed', 'bed', chrmeta='hg19') as peaks:
                 pass
-            with Track('tracks/scores.wig', 'wig', chrmeta='tracks/cser.chr', datatype='qualitative') as scores:
+            with track.load('tracks/scores.wig', 'wig', chrmeta='tracks/cser.chr', datatype='qualitative') as scores:
                 pass
-            with Track('tracks/repeats.sql', readonly=True) as rpgenes:
+            with track.load('tracks/repeats.sql', readonly=True) as rpgenes:
                 pass
 
-        Once a track is loaded you have access to the following attributes:
+        ``load`` returns a Track instance.
+    '''
+    return Track(path, format, name, chrmeta, datatype, readonly)
+
+def new(path, format=None, datatype='qualitative', name='Unnamed', chrmeta=None):
+    '''Create a new empty track in preparation for writing to it.
+
+        * *path* is the file path where the new track will be created
+
+        * *format* is the format in which the new track will be created if it is not included in the extension of the path.
+
+        * *datatype*  is either ``qualitative`` or ``quantitative``.
+
+        * *name* is an optional name for the track.
+
+        *chrmeta* is the path to a chromosome file or the name of an assembly if one is needed.
+
+        Examples::
+
+            from bbcflib import track
+            with track.new('tmp/track.sql') as t:
+                t.write('chr1', [(10, 20, 'A', 0.0, 1)])
+            with track.new('tracks/peaks.sql', 'sql', name='High affinity peaks') as t:
+                t.write('chr5', [(500, 1200, 'Peak1', 11.3, 0)])
+            with track.new('tracks/scores.sql', 'sql', datatype='quantitative', name='Signal along the genome') as t:
+                t.write('chr1', [(10, 20, 500.0)])
+
+        ``new`` returns a Track instance.
+    '''
+    if os.path.exists(path):
+        raise Exception("The location '" + path + "' is already taken")
+    if not format: format = determine_format(path)
+    implementation = import_implementation(format)
+    implementation.TrackFormat.create(path, datatype, name)
+    return Track(path, format=format, name=name, chrmeta=chrmeta)
+
+###########################################################################
+class Track(object):
+    '''Once a track is loaded you have access to the following attributes:
 
            * *path* is the file system path to the underlying file.
            * *datatype* is either ``qualitative`` or ``quantitative``.
@@ -216,56 +167,6 @@ class Track(object):
     }
 
     #-----------------------------------------------------------------------------#
-    def __new__(cls, path, format=None, name=None, chrmeta=None, datatype=None, readonly=False):
-        '''Internal factory-like method that is called before creating a new instance of Track.
-           This function determines the format of the file that is provided and returns an
-           instance of the appropriate child class.'''
-        if cls is Track:
-            if not format: format = _determine_format(path)
-            implementation = _import_implementation(format)
-            instance       = super(Track, cls).__new__(implementation.GenomicFormat)
-        else:
-            instance       = super(Track, cls).__new__(cls)
-        return instance
-
-    def __init__(self, path, format=None, name=None, chrmeta=None, datatype=None, readonly=False):
-        # Type can only mean something with text files #
-        if datatype:
-            raise Exception("You cannot specify the datatype: " + datatype + " for the track '" + path + "'.")
-        # Default format #
-        if not format: format = _determine_format(path)
-        # Set attributes #
-        self.path     = path
-        self.format   = format
-        self._name    = name
-        self.chrmeta  = chrmeta
-        self.readonly = readonly
-        # Check existance #
-        if not os.path.exists(path):
-            raise Exception("The file '" + path + "' cannot be found")
-        elif os.path.isdir(path):
-            raise Exception("The location '" + path + "' is a directory")
-        # Call child function #
-        self.load()
-        # Sort chromosomes #
-        self.all_chrs.sort(key=com.natural_sort)
-        # Test variables #
-        if self.datatype not in ['quantitative', 'qualitative']:
-            raise Exception("The datatype of the track is invalid: " + self.datatype + ".")
-
-    def __iter__(self):
-        ''' Called when trying to iterate the class'''
-        return iter(self.all_chrs)
-
-    def __enter__(self):
-        ''' Called when entering a <with> statement'''
-        return self
-
-    def __exit__(self, errtype, value, traceback):
-        '''Called when exiting a <with> statement'''
-        self.unload(errtype, value, traceback)
-
-    #-----------------------------------------------------------------------------#
     def read(self, selection=None, fields=None, order='start,end', cursor=False):
         '''Read data from the genomic file.
 
@@ -281,7 +182,8 @@ class Track(object):
 
         Examples::
 
-            with Track('tracks/example.sql') as t:
+            from bbcflib import track
+            with track.load('tracks/example.sql') as t:
                 data = t.read()
                 data = t.read('chr2')
                 data = t.read(['chr1','chr2','chr3'])
@@ -289,7 +191,7 @@ class Track(object):
                 data = t.read({'chr':'chr1', 'start':10000, 'end':15000, 'inclusion':'strict'})
                 data = t.read('chr3', ['name', 'strand'])
                 data = t.read({'chr':'chr5', 'start':0, 'end':200}, ['strand', 'start', 'score'])
-            with Track('tracks/copychrs.sql') as t:
+            with track.load('tracks/copychrs.sql') as t:
                 t.write('chrY', t.read('chrX', cursor=True))
 
         ``read`` returns a generator object yielding tuples.
@@ -307,7 +209,8 @@ class Track(object):
 
         Examples::
 
-            with Track('tracks/example.sql') as t:
+            from bbcflib import track
+            with track.load('tracks/example.sql') as t:
                 t.write('chr1', [(10, 20, 'A', 0.0, 1), (40, 50, 'B', 0.0, -1)])
                 def example_generator():
                     for i in xrange(5):
@@ -327,11 +230,12 @@ class Track(object):
 
         Examples::
 
-            with Track('tracks/example.sql') as t:
+            from bbcflib import track
+            with track.load('tracks/example.sql') as t:
                 t.remove('chr1')
-            with Track('tracks/example.sql') as t:
+            with track.load('tracks/example.sql') as t:
                 t.remove(['chr1', 'chr2', 'chr3'])
-            with Track('tracks/example.sql') as t:
+            with track.load('tracks/example.sql') as t:
                 t.remove()
 
         ``remove`` returns nothing.
@@ -347,11 +251,12 @@ class Track(object):
 
         Examples::
 
-            with Track('tracks/example.sql') as t:
+            from bbcflib import track
+            with track.load('tracks/example.sql') as t:
                 num = t.count('chr1')
-            with Track('tracks/example.sql') as t:
+            with track.load('tracks/example.sql') as t:
                 num = t.count(['chr1','chr2','chr3'])
-            with Track('tracks/example.sql') as t:
+            with track.load('tracks/example.sql') as t:
                 num = t.count({'chr':'chr1', 'start':10000, 'end':15000})
 
         ``count`` returns an integer.
@@ -369,9 +274,10 @@ class Track(object):
 
            Examples::
 
-               with Track('tracks/rp_genes.bed') as t:
+               from bbcflib import track
+               with track.load('tracks/rp_genes.bed') as t:
                    t.convert('tracks/rp_genes.sql', 'sql')
-               with Track('tracks/ribi_genes.sql') as t:
+               with track.load('tracks/ribi_genes.sql') as t:
                    t.convert('tracks/rp_genes.bed', 'bed')
 
            ``convert`` returns nothing.
@@ -418,60 +324,59 @@ class Track(object):
         pass
 
     #-----------------------------------------------------------------------------#
+    def __new__(cls, path, format=None, name=None, chrmeta=None, datatype=None, readonly=False):
+        '''Internal factory-like method that is called before creating a new instance of Track.
+           This function determines the format of the file that is provided and returns an
+           instance of the appropriate child class.'''
+        if cls is Track:
+            if not format: format = determine_format(path)
+            implementation = import_implementation(format)
+            instance       = super(Track, cls).__new__(implementation.TrackFormat)
+        else:
+            instance       = super(Track, cls).__new__(cls)
+        return instance
+
+    def __init__(self, path, format=None, name=None, chrmeta=None, datatype=None, readonly=False):
+        # Check existance #
+        if not os.path.exists(path):
+            raise Exception("The file '" + path + "' cannot be found")
+        elif os.path.isdir(path):
+            raise Exception("The location '" + path + "' is a directory")
+        # Type can only mean something with text files #
+        if datatype:
+            raise Exception("You cannot specify the datatype: " + datatype + " for the track '" + path + "'.")
+        # Default format #
+        if not format: format = determine_format(path)
+        # Set attributes #
+        self.path     = path
+        self.format   = format
+        self._name    = name
+        self.chrmeta  = chrmeta
+        self.readonly = readonly
+        # Call child function #
+        self.load()
+        # Sort chromosomes #
+        self.all_chrs.sort(key=natural_sort)
+        # Test variables #
+        if self.datatype not in ['quantitative', 'qualitative']:
+            raise Exception("The datatype of the track is invalid: " + self.datatype + ".")
+
+    def __iter__(self):
+        return iter(self.all_chrs)
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, errtype, value, traceback):
+        self.unload(errtype, value, traceback)
+
     @property
     def default_fields(self):
         return getattr(Track, self.datatype + '_fields')
 
-###########################################################################
-def new(path, format=None, datatype='qualitative', name='Unnamed', chrmeta=None):
-    '''Create a new empty track in preparation for writing to it.
-
-        * *path* is the file path where the new track will be created
-
-        * *format* is the format in which the new track will be created.
-
-        * *datatype*  is either ``qualitative`` or ``quantitative``.
-
-        * *name* is an optional name for the track.
-
-        *chrmeta* is the path to a chromosome file or the name of an assembly if one is needed.
-
-        Examples::
-
-            with new('tmp/track.sql') as t:
-                t.write('chr1', [(10, 20, 'A', 0.0, 1)])
-            with new('tracks/peaks.sql', 'sql', name='High affinity peaks') as t:
-                t.write('chr5', [(500, 1200, 'Peak1', 11.3, 0)])
-            with new('tracks/scores.sql', 'sql', datatype='quantitative', name='Signal along the genome') as t:
-                t.write('chr1', [(10, 20, 500.0)])
-
-        ``new`` returns a Track instance.
-    '''
-    if os.path.exists(path):
-        raise Exception("The location '" + path + "' is already taken")
-    if not format: format = _determine_format(path)
-    implementation = _import_implementation(format)
-    implementation.GenomicFormat.create(path, datatype, name)
-    return Track(path, format=format, name=name, chrmeta=chrmeta)
-
-def random_track(track_path, random_track_path, repeat_number=1):
-    with new(random_track_path, "sql", name="random_track") as random_track:
-        with Track(track_path, format="sql") as track:
-            random_track.meta_chr   = track.meta_chr
-            random_track.meta_track = track.meta_track
-            number                  = 0
-            for i in range(repeat_number):
-                features_list = []
-                for chromosome in track.meta_chr:
-                    data            = track.read(chromosome["name"])
-                    for information in data:
-                        distance        = information[0] - information[1]
-                        random_start    = randint(0, chromosome["length"] - distance)
-                        random_end      = random_start + distance
-                        feature_name    = "random%d" %(number)
-                        features_list.append((random_start, random_end, feature_name, "+", None))
-                        number          += 1
-                    random_track.write(chromosome["name"], features_list)
+# Internal modules #
+from .common import natural_sort
+from .track_util import determine_format, import_implementation
 
 #-----------------------------------#
 # This code was written by the BBCF #

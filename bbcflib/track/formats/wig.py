@@ -1,21 +1,21 @@
 """
-===================================
-Submodule: bbcflib.track.format_wig
-===================================
+====================================
+Submodule: bbcflib.track.formats.wig
+====================================
 
 Implementation of the WIG format.
 """
 
-# General modules #
+# Built-in modules #
 import sys, shlex
 
-# Specific module #
-from .track_proxy import ProxyTrack
-from .track_text import TextTrack
+# Internal modules #
+from ..track_proxy import TrackProxy
+from ..track_text import TrackText
 from ..common import sentinelize
 
 ###########################################################################
-class GenomicFormat(TextTrack, ProxyTrack):
+class TrackFormat(TrackText, TrackProxy):
     type_identifier = 'wiggle_0'
 
     def _all_features(self):

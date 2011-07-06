@@ -1,14 +1,17 @@
+# Built-in modules #
+import datetime, ConfigParser, cStringIO
+
+# Internal modules #
+from ..genrep import Assembly, GenRep
+
 # Unitesting module #
 try:
     import unittest2 as unittest
 except ImportError:
     import unittest
 
-# Tested module #
-from ..genrep import Assembly, GenRep
-
-# Other modules #
-import ConfigParser, cStringIO, datetime
+# Nosetest flag #
+__test__ = True
 
 #--------------------------------------------------------------------------------#
 ce6 = Assembly(assembly_id = 14,
@@ -44,7 +47,7 @@ def get_config_file_parser():
     return config
 
 ###################################################################################
-class TestGenRep(unittest.TestCase):
+class Test_GenRep(unittest.TestCase):
     def setUp(self):
         self.skipTest("These tests don't pass anymore. Delete this line once they are fixed.")
         self.genrep = GenRep('http://bbcftools.vital-it.ch/genrep/',

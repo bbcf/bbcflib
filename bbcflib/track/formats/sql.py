@@ -1,20 +1,21 @@
 """
-===================================
-Submodule: bbcflib.track.format_sql
-===================================
+====================================
+Submodule: bbcflib.track.formats.sql
+====================================
 
 Implementation of the SQL format.
 """
 
-# General modules #
+# Built-in modules #
 import sqlite3
 
 # Internal modules #
-from ..track import *
-from .format_sql_extras import SQLExtras
+from .. import Track
+from ..track_util import join_read_queries, make_cond_from_sel
+from ..extras.sql import TrackExtras
 
 ###########################################################################
-class GenomicFormat(Track, SQLExtras):
+class TrackFormat(Track, TrackExtras):
     special_tables = ['attributes', 'chrNames', 'types']
 
     def load(self):

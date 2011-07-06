@@ -1,12 +1,10 @@
-# General Modules #
+# Built-in modules #
 import os
 
-# Specific Modules #
-from ..track import Track, new
+# Internal modules #
+from ... import track
 from ..common import named_temporary_path
-
-# Specific Variables #
-from .test_variables import track_collections
+from ..track_collection import track_collections
 
 # Unittesting module #
 try:
@@ -14,11 +12,14 @@ try:
 except ImportError:
     import unittest
 
+# Nosetest flag #
+__test__ = True
+
 ###################################################################################
 class Test_Read(unittest.TestCase):
     def runTest(self):
         t = track_collections['Validation'][1]
-        with Track(t['path_sql']) as t['track']:
+        with track.load(t['path_sql']) as t['track']:
             # Just the first feature #
             data = t['track'].read()
             self.assertEqual(data.next(), ('chr1', 0, 10, 'Validation feature 1', 10.0))
@@ -49,15 +50,15 @@ class Test_Creation(unittest.TestCase):
         format = 'sql'
         path = named_temporary_path('.' + format)
         # With format #
-        with new(path=path, format=format) as t:
+        with track.new(path=path, format=format) as t:
             self.assertEqual(t.meta_track, {'datatype':'qualitative'})
         os.remove(path)
         # Without format #
-        with new(path=path) as t:
+        with track.new(path=path) as t:
             self.assertEqual(t.format, format)
         os.remove(path)
         # Different datatype #
-        with new(path=path, format=format, datatype='quantitative') as t:
+        with track.new(path=path, format=format, datatype='quantitative') as t:
             self.assertEqual(t.meta_track, {'datatype':'quantitative'})
         os.remove(path)
 
@@ -66,7 +67,7 @@ class Test_Write(unittest.TestCase):
     def runTest(self):
         format = 'sql'
         path = named_temporary_path('.' + format)
-        with new(path) as t:
+        with track.new(path) as t:
             # Single feature #
             chrom = '9toto'
             features = [(10, 20, 'A', 0.0, 1)]
@@ -90,7 +91,7 @@ class Test_Write(unittest.TestCase):
             # More fields #
             chrom = 'chr3'
             features = [(10, 20, 'A', 0.0, 1, 8, 22)]
-            t.write(chrom, features, fields=Track.qualitative_fields + ['thick_start', 'thick_end'])
+            t.write(chrom, features, fields=track.Track.qualitative_fields + ['thick_start', 'thick_end'])
             self.assertEqual(list(t.read(chrom)), features)
         os.remove(path)
 
@@ -98,7 +99,7 @@ class Test_Write(unittest.TestCase):
 class Test_Count(unittest.TestCase):
     def runTest(self):
         t = track_collections['Yeast']['All genes']
-        with Track(t['path_sql']) as t['track']:
+        with track.load(t['path_sql']) as t['track']:
             num = t['track'].count()
             self.assertEqual(num, 6717)
 
@@ -106,7 +107,7 @@ class Test_Count(unittest.TestCase):
 class Test_Meta(unittest.TestCase):
     def runTest(self):
         path = named_temporary_path('.sql')
-        with new(path) as t:
+        with track.new(path) as t:
             # Chromosome #
             info = [{'name': 'chr1', 'length': 1500}, {'name': 'chr2', 'length': 2000}]
             t.meta_chr = info
@@ -123,7 +124,7 @@ class Test_Meta(unittest.TestCase):
 class Test_Remove(unittest.TestCase):
     def runTest(self):
         path = named_temporary_path('.sql')
-        with new(path) as t:
+        with track.new(path) as t:
             chrom = 'chr1'
             features = [(i*10, i*10+5, 'X', 0.0, 0) for i in xrange(5)]
             t.write(chrom, features)

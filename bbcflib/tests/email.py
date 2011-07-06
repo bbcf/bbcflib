@@ -1,14 +1,17 @@
+# Built-in modules #
+import socket, re, ConfigParser, cStringIO
+
+# Internal modules #
+from ..email import EmailReport
+
 # Unitesting module #
 try:
     import unittest2 as unittest
 except ImportError:
     import unittest
 
-# Tested module #
-from ..email import EmailReport
-
-# Other modules #
-import ConfigParser, cStringIO, socket, re, socket
+# Nosetest flag #
+__test__ = True
 
 #--------------------------------------------------------------------------------#
 def hostname_contains(pattern):
@@ -32,7 +35,7 @@ def get_config_file_parser():
     return config
 
 ###################################################################################
-class TestEmailReport(unittest.TestCase):
+class Test_EmailReport(unittest.TestCase):
     def setUp(self):
         self.report = EmailReport(sender='nobody@localhost', to='boris@localhost', subject='Default Subject', smtp_server='localhost')
         self.report_from_config = EmailReport(config=get_config_file_parser(), to='boris@localhost')

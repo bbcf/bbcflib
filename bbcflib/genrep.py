@@ -45,11 +45,16 @@ With a ``ConfigParser``, the previous code would look like::
 
 .. autoclass:: Assembly
 """
-import urllib2, json, os
-from datetime                   import datetime
-from bbcflib.track.format_sql   import Track
-from bbcflib.common             import normalize_url
 
+# Built-in modules #
+import urllib2, json, os
+from datetime import datetime
+
+# Internal modules #
+from . import track
+from .common import normalize_url
+
+################################################################################
 class GenRep(object):
     def __init__(self, url='http://bbcftools.vital-it.ch/genrep/', root='/db/genrep', intype=0, config=None, section='genrep'):
         """Create an object to query a GenRep repository.
@@ -114,7 +119,7 @@ class GenRep(object):
         request = urllib2.Request(url)
         return urllib2.urlopen(request).read().split(',')
 
-    def fasta_from_bed(self, chromosomes, data_path, out=None, chunk=50000):
+    def fasta_from_data(self, chromosomes, data_path, out=None, chunk=50000):
         """Get a fasta file with sequences corresponding to the features in the
         bed or sqlite file.
 
@@ -151,11 +156,11 @@ class GenRep(object):
         chr_names   = dict((c[0],cn['name']) for c,cn in chromosomes.iteritems())
         chr_len     = dict((c[0],cn['length']) for c,cn in chromosomes.iteritems())
         size        = 0
-        with Track(data_path, chrmeta=chromosomes, format="bed") as track:
+        with track.load(data_path, chrmeta=chromosomes, format="bed") as t:
             cur_chunk       = 0
             features_names  = set()
             for k in chromosomes.keys():
-                for row in track.read(selection=chr_names[k[0]],fields=["start","end","name"]):
+                for row in t.read(selection=chr_names[k[0]],fields=["start","end","name"]):
                     s               = max(row[0],0)
                     e               = min(row[1],chr_len[k[0]])
                     features_names, name            = set_feature_name(features_names, row[2])
@@ -285,6 +290,7 @@ class GenRep(object):
             path = os.path.join(root,assembly.md5+".fa.gz")
         return path
 
+################################################################################
 class Assembly(object):
     def __init__(self, assembly_id, assembly_name, index_path,
                  bbcf_valid, updated_at, nr_assembly_id, genome_id,

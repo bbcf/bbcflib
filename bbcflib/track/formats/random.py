@@ -1,22 +1,22 @@
 """
-======================================
-Submodule: bbcflib.track.format_random
-======================================
+=======================================
+Submodule: bbcflib.track.formats.random
+=======================================
 
 Implementation of a random track generator.
 """
 
-# General Modules #
+# Built-in modules #
 import sys, random, tempfile
 
-# Specific Modules #
-from ..track import Track
+# Internal modules #
+from .. import Track
 
 # Variables #
 chrsuffix = 'Awfully super extra long chromosome denomination string '
 
 ###########################################################################
-class GenomicFormat(Track):
+class TrackFormat(Track):
 
     def load(self):
         # Essential parameters #

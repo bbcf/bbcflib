@@ -46,13 +46,15 @@ random name in the current working irectory.
 
   .. autoclass:: DAFLIMS
 """
-import urllib2
-import tarfile
-import re
-import os
+
+# Built-in modules #
+import os, re, tarfile, urllib2
 from urlparse import urlparse
+
+# Other modules #
 from bein import unique_filename_in
 
+################################################################################
 class DAFLIMS(object):
     """Connect to the DNA Array Facility's LIMS.
 

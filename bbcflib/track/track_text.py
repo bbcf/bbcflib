@@ -6,25 +6,26 @@ Submodule: bbcflib.track.track_text
 Methods common to the text formats.
 """
 
-# General Modules #
+# Built-in modules #
 import os, shlex
 
-# Internal Modules #
-from ..common import memoized_method
+# Internal modules #
+from .common import memoized_method
 from ..genrep import GenRep
 
-# Functions #
+#-----------------------------------------------------------------------------#
 def strand_to_int(strand):
     if strand == '+': return 1
     if strand == '-': return -1
     return 0
+
 def int_to_strand(num):
     if num == 1: return  '+'
     if num == -1: return '-'
     return '.'
 
 ###########################################################################
-class TextTrack(object):
+class TrackText(object):
     def _read(self):
         global chrom, entry, generator
         chrom           = ''

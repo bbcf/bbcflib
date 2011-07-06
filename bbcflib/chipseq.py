@@ -37,15 +37,20 @@ Below is the script used by the frontend::
     print allfiles
 """
 
-import shutil
-import pickle
-import urllib
+# Built-in modules #
+import shutil, pickle, urllib
+
+# Internal modules #
+from . import frontend, mapseq
+from .common import *
+
+# Other modules #
 from bein import *
 from bein.util import *
-from bbcflib import frontend, mapseq
-from bbcflib.common import *
 
-############ Peaks and annotation ############
+################################################################################
+# Peaks and annotation #
+
 @program
 def macs( read_length, genome_size, bamfile, ctrlbam=None, args=[] ):
     """Binding for the ``macs`` peak caller.
@@ -190,7 +195,8 @@ def run_deconv(ex,sql,peaks,chromosomes,read_extension,script_path, via='lsf'):
         outfiles['pdf'] = rdeconv_out.values()[0]['pdf']
     return outfiles
 
-###################### Workflow ####################
+################################################################################
+# Workflow #
 
 def get_bam_wig_files( ex, job, minilims=None, hts_url=None,
                        script_path = './', via='lsf' ):
