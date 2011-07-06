@@ -10,9 +10,9 @@ Implementation of the SQL format.
 import sqlite3
 
 # Internal modules #
-from . import Track
-from .track_util import join_read_queries, make_cond_from_sel
-from .extras.sql import TrackExtras
+from .. import Track
+from ..track_util import join_read_queries, make_cond_from_sel
+from ..extras.sql import TrackExtras
 
 ###########################################################################
 class TrackFormat(Track, TrackExtras):

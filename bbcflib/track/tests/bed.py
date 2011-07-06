@@ -2,9 +2,9 @@
 import os, shutil
 
 # Internal modules #
-from ..track import Track, new
+from .. import Track, new
 from ..common import named_temporary_path
-from .test_variables import track_collections, yeast_chr_file
+from ..track_collection import track_collections, yeast_chr_file
 
 # Unittesting module #
 try:

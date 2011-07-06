@@ -47,7 +47,7 @@ With a ``ConfigParser``, the previous code would look like::
 """
 import urllib2, json, os
 from datetime                   import datetime
-from bbcflib.track.format_sql   import Track
+from bbcflib import track
 from bbcflib.common             import normalize_url
 
 class GenRep(object):
@@ -151,11 +151,11 @@ class GenRep(object):
         chr_names   = dict((c[0],cn['name']) for c,cn in chromosomes.iteritems())
         chr_len     = dict((c[0],cn['length']) for c,cn in chromosomes.iteritems())
         size        = 0
-        with Track(data_path, chrmeta=chromosomes, format="bed") as track:
+        with track.load(data_path, chrmeta=chromosomes, format="bed") as t:
             cur_chunk       = 0
             features_names  = set()
             for k in chromosomes.keys():
-                for row in track.read(selection=chr_names[k[0]],fields=["start","end","name"]):
+                for row in t.read(selection=chr_names[k[0]],fields=["start","end","name"]):
                     s               = max(row[0],0)
                     e               = min(row[1],chr_len[k[0]])
                     features_names, name            = set_feature_name(features_names, row[2])

@@ -2,9 +2,9 @@
 import os
 
 # Internal modules #
-from ..track import Track, new
+from .. import Track, new
 from ..common import named_temporary_path
-from .test_variables import track_collections
+from ..track_collection import track_collections
 
 # Unittesting module #
 try:

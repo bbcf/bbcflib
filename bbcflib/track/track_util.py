@@ -53,12 +53,9 @@ def determine_format(path):
 #-----------------------------------------------------------------------------#
 def import_implementation(format):
     '''Try to import the implementation of a given format'''
-    try:
-        if not hasattr(sys.modules[__package__].formats, format):
-            __import__(__package__ + '.formats.' + format)
-        return sys.modules[__package__ + '.formats.' + format]
-    except (ImportError, AttributeError):
-        raise Exception("The format '" + format + "' is not supported at the moment")
+    if not hasattr(sys.modules[__package__].formats, format):
+        __import__(    __package__ + '.formats.' + format)
+    return sys.modules[__package__ + '.formats.' + format]
 
 #-----------------------------------------------------------------------------#
 def join_read_queries(track, selections, fields):
