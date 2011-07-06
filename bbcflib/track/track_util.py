@@ -8,6 +8,7 @@ Usefull stuff.
 
 # Built-in modules #
 import os, sys, random
+from pkg_resources  import resource_filename
 
 # Internal modules #
 from . import Track, new
@@ -36,18 +37,14 @@ def magic_format(path):
         'Hierarchical Data Format (version 5) data': 'hdf5',
     }
     # Try import #
-    try:
-        import magic
-    except ImportError:
-        return ''
+    try: import magic
+    except ImportError: return ''
     # Try usage #
-    try:
-        mime = magic.Magic(magic.NONE)
-    except AttributeError:
-        return ''
-    # Let the user customize magic #
-    if os.path.exists('magic'): mime.load(file='magic')
-    else: mime.load()
+    try: mime = magic.Magic(magic.NONE)
+    except AttributeError: return ''
+    # Customize magic #
+    magic_file = resource_filename(__name__, 'magic')
+    mime.load(file=magic_file)
     # Does the file even exist ? #
     try: filetype = mime.file(path)
     except IOError: return ''
