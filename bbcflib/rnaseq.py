@@ -198,13 +198,13 @@ def inference(cond1_label, cond1, cond2_label, cond2, transcript_names, method="
         for i in res_ids:
             res_names.append(idtoname.get(i, i))
         data_frame = robjects.DataFrame({"GeneName":robjects.StrVector(res_names)})
-        for i in range(2,len(res)+1):
+        for i in range(2,len(res)+1): 
             data_frame = data_frame.cbind(res.rx(i))
         res = data_frame
 
     ## MA-plot
     if maplot:
-        MAplot(res, mode=maplot, deg=5, bins=30)
+        MAplot(res, mode=maplot, deg=4, bins=100, alpha=0.005)
 
     if output:
         result_filename = output
@@ -222,7 +222,7 @@ def rnaseq_workflow(ex, job, assembly, via="lsf", output=None, maplot="normal", 
     - If "interactive", one can click on a point (gene or exon) to display its name;
     - if "normal", name of genes over 99.9%/under 0.1% quantiles are displayed;
     - if None, no figure is produced.
-    with_exons: run inference (DESeq) on exon mapping in addition to gene mapping..
+    with_exons: run inference (DESeq) on exon mapping in addition to gene mapping.
 
     Whatever script calls this function should have looked up the job
     description from HTSStation.  The job description from HTSStation
@@ -493,3 +493,4 @@ class AnnoteFinder:
     annotesToDraw = [(x,y,a) for x,y,a in self.data if a==annote]
     for x,y,a in annotesToDraw:
       self.drawAnnote(self.axis, x, y, a)
+
