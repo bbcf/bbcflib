@@ -1,0 +1,25 @@
+#------------------------------------------------------------------------------
+# $File: bed,v 1.0 2011/07/05 15:00:00 $
+# Type: UCSC Document, Genomic format
+# http://genome.ucsc.edu/FAQ/FAQformat.html
+# From: Jonathan MERCIER<bioinfornatics@fedoraproject.org>
+0	search/1/w	track	track line definition
+>0	regex	track[\ \t]+.+	with type
+>>0	regex	.+type=bed	BED document
+!:mime	text/bed
+>>0	regex	.+type=psl	PSL document
+!:mime	text/psl
+>>0	regex	.+type=gff	GFF document
+!:mime	text/gff
+>>0	regex	.+type=gtf	GTF document
+!:mime	text/gtf
+>>0	regex	.+type=wiggle_0	WIG document
+!:mime	text/wig
+#------------------------------------------------------------------------------
+# $File: maf,v 1.0 2011/07/05 15:00:00 $
+# Type: MAF Document, Genomic format
+# http://genome.ucsc.edu/FAQ/FAQformat.html#format5
+# From: Jonathan MERCIER<bioinfornatics@fedoraproject.org>
+0	string	##maf	MAF document
+!:mime	text/maf
+
