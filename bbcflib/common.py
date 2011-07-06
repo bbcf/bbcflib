@@ -188,9 +188,9 @@ try:
 
     #-------------------------------------------------------------------------#
     @program
-    def scp(source, destination, user, host):
+    def scp(source, destination, args=[]):
         output = unique_filename_in()
-        call = ["scp", source, user+"@"+host, destination]
+        call = ["scp"] + args + [ source, destination ]
         return {"arguments": call, "return_value": output}
 
 except:

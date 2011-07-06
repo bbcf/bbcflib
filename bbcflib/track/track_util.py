@@ -26,7 +26,10 @@ def determine_format(path):
     if not filetype:
         raise Exception("The format of the path '" + path + "' cannot be determined. Please specify a format or add an extension.")
     # Synonyms #
-    if filetype == 'db' or filetype == 'sqlite': implementation = 'sql'
+    if filetype == 'db' or filetype == 'sqlite':
+        implementation = 'sql'
+    else:
+        implementation = filetype
     # Return the format #
     return implementation
 
