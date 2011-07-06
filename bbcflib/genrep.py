@@ -47,7 +47,7 @@ With a ``ConfigParser``, the previous code would look like::
 """
 import urllib2, json, os
 from datetime                   import datetime
-from bbcflib import track
+from bbcflib                    import track
 from bbcflib.common             import normalize_url
 
 class GenRep(object):
@@ -114,7 +114,7 @@ class GenRep(object):
         request = urllib2.Request(url)
         return urllib2.urlopen(request).read().split(',')
 
-    def fasta_from_bed(self, chromosomes, data_path, out=None, chunk=50000):
+    def fasta_from_data(self, chromosomes, data_path, out=None, chunk=50000):
         """Get a fasta file with sequences corresponding to the features in the
         bed or sqlite file.
 

@@ -7,7 +7,6 @@ import re, os
 from operator                           import add
 from BeautifulSoup                      import BeautifulSoup
 from bein                               import unique_filename_in, program
-from bein.util                          import *
 from bbcflib                            import track, common
 
 @program
@@ -78,11 +77,11 @@ def parse_meme_html_output(ex, meme, fasta, chromosomes):
                 dict_chromosomes[chromosome_name]=  [
                                                         (int(start), int(end), strand_name, float(strand_pvalue), strand_side)
                                                     ]
-        with track.new(sqlout,  format="sql", datatype="qualitative") as track:
+        with track.new(sqlout,  format="sql", datatype="qualitative") as t:
             keys            = chromosomes.keys()
             chomosomes_used = []
-            track.meta_track= {'datatype': 'qualitative', 'source': 'meme'}
-            track.meta_track.update({'k':'v'})
+            t.meta_track= {'datatype': 'qualitative', 'source': 'meme'}
+            t.meta_track.update({'k':'v'})
             for chromosome in dict_chromosomes:
                 isSearchingChromosome   = True
                 index                   = 0
@@ -94,8 +93,8 @@ def parse_meme_html_output(ex, meme, fasta, chromosomes):
                         chomosomes_used.append( chromosomes[keys[index]] )
                     else:
                         index +=1
-                track.write(chromosome, dict_chromosomes[chromosome], fields=track.Track.qualitative_fields)
-            track.meta_chr = chomosomes_used
+                t.write(chromosome, dict_chromosomes[chromosome], fields=track.Track.qualitative_fields)
+            t.meta_chr = chomosomes_used
         #files.append((matrix_file, sqlout))
         ex.add( matrix_file, description="matrix:"+item["name"] )
         ex.add( sqlout,  description="sql:"+sqlout)
@@ -114,7 +113,7 @@ def add_meme_files( ex, genrep, chromosomes, description='',
         sql = os.path.expanduser(sql)
         if not os.path.isabs(sql):
             sql = os.path.normcase(sql)
-    fasta,size = genrep.fasta_from_bed( chromosomes, out=unique_filename_in(),
+    fasta,size = genrep.fasta_from_data( chromosomes, out=unique_filename_in(),
                                         bed=bed, sql=sql )
     meme_out    = meme.nonblocking( ex, fasta, maxsize=size*1.5, args=meme_args, via=via ).wait()
     html        = os.path.join(meme_out,"meme.html")
@@ -142,7 +141,7 @@ def save_motif_profile( ex, motifs, background, genrep, chromosomes, data_path,
             motifs[name] = os.path.normcase(os.path.expanduser(motifs[name]))
     if background is not None:
         background = os.path.normcase(os.path.expanduser(background))
-    fasta,size      = genrep.fasta_from_bed( chromosomes, data_path, out=unique_filename_in() )
+    fasta,size      = genrep.fasta_from_data( chromosomes, data_path, out=unique_filename_in() )
     sqlout          = unique_filename_in()
     futures         = {}
     regions         = {}
@@ -158,15 +157,15 @@ def save_motif_profile( ex, motifs, background, genrep, chromosomes, data_path,
                          motif_scan.nonblocking( ex, fasta, pwm, background, threshold,
                                                  via=via, stdout=output ))
 
-    with track.load(data_path, chrmeta=chromosomes) as track:
+    with track.load(data_path, chrmeta=chromosomes) as t:
         for v in chromosomes.values():
-                for row in track.read(selection=v['name'], fields=["start","name"]):
+                for row in t.read(selection=v['name'], fields=["start","name"]):
                     name = re.search(r'(\S+)\s*',row[1]).groups()[0]
                     regions[name] = (v['name'],int(row[0]))
 
-    with track.new(sqlout,  format="sql", datatype="qualitative",) as track:
-        track.meta_track= {'source': 'S1K'}
-        track.meta_track.update({'k':'v'})
+    with track.new(sqlout,  format="sql", datatype="qualitative",) as t:
+        t.meta_track= {'source': 'S1K'}
+        t.meta_track.update({'k':'v'})
 
     for name,f in futures.iteritems():
         vals            = []
@@ -181,8 +180,8 @@ def save_motif_profile( ex, motifs, background, genrep, chromosomes, data_path,
                 start   = reg[1]+int(s[3])
                 if cur_chr != '' and reg[0] != cur_chr:
                     chromosomes_set.add(cur_chr)
-                    with track.load(sqlout,  format="sql") as track:
-                        track.write(cur_chr, vals)
+                    with track.load(sqlout,  format="sql") as t:
+                        t.write(cur_chr, vals)
                     index           = 0
                     vals            = [(start-1,start+len(s[1]),name+":"+s[1],float(s[2]),s[4])]
                     previous_feature= s[0]
@@ -200,8 +199,8 @@ def save_motif_profile( ex, motifs, background, genrep, chromosomes, data_path,
                         index           += 1
                         vals.append((start-1,start+len(s[1]),name+":"+s[1],float(s[2]),s[4]))
         if len(vals)>0:
-            with track.load(sqlout,  format="sql") as track:
-                track.write(cur_chr, vals, fields=track.Track.qualitative_fields)
+            with track.load(sqlout,  format="sql") as t:
+                t.write(cur_chr, vals, fields=track.Track.qualitative_fields)
 
     for chromosome in chromosomes_set:
         isSearchingChromosome   = True
@@ -215,8 +214,8 @@ def save_motif_profile( ex, motifs, background, genrep, chromosomes, data_path,
             else:
                 i +=1
 
-    with track.load(sqlout,  format="sql") as track:
-        track.meta_chr = chomosomes_used
+    with track.load(sqlout,  format="sql") as t:
+        t.meta_chr = chomosomes_used
 
     ex.add( sqlout, description="sql:"+description+"motif_scan.sql" )
     return sqlout
@@ -307,10 +306,10 @@ def sqlite_to_false_discovery_rate  (
 
     fp_scores = None
     tp_scores = None
-    with track.load(false_positive_result,  format="sql") as track:
-        fp_scores = track.get_scores_frequencies()
-    with track.load(true_positive_result,  format="sql") as track:
-        tp_scores = track.get_scores_frequencies()
+    with track.load(false_positive_result,  format="sql") as t:
+        fp_scores = t.get_scores_frequencies()
+    with track.load(true_positive_result,  format="sql") as t:
+        tp_scores = t.get_scores_frequencies()
     fdr = false_discovery_rate  (
                                     fp_scores, tp_scores,
                                     alpha=alpha, nb_false_positive_hypotesis=nb_false_positive_hypotesis

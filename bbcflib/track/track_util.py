@@ -16,39 +16,39 @@ from . import formats
 ###########################################################################
 def determine_format(path):
     '''Try to guess the format of a track given its path. Returns a three letter extension'''
+    # Try magic first #
+    filetype = magic_format(path)
+    # Then try the extension #
+    if not filetype: filetype = os.path.splitext(path)[1][1:]
+    # If still nothing, raise exception #
+    if not filetype:
+        raise Exception("The format of the path '" + path + "' cannot be determined. Please specify a format or add an extension.")
+    # Synonyms #
+    if filetype == 'db': filetype = 'sql'
+    # Return the format #
+    return filetype
+
+def magic_format(path):
     # List of names to three letter extension #
     known_format_extensions = {
         'SQLite 3.x database':                       'sql',
         'SQLite database (Version 3)':               'sql',
         'Hierarchical Data Format (version 5) data': 'hdf5',
     }
-    # Get extension #
-    extension = os.path.splitext(path)[1][1:]
-    # If no extension found then try magic #
-    if not extension:
-        try:
-            import magic
-        except ImportError:
-            raise Exception("The format of the track '" + path + "' cannot be determined")
-        # Let the user customize magic #
-        if os.path.exists('magic'):
-            m = magic.Magic('magic')
-        else:
-            m = magic.Magic()
-        # Does the file even exist ? #
-        try:
-            filetype = m.from_file(path)
-        except IOError:
-            raise Exception("The format of the path '" + path + "' cannot be determined. Please specify a format or add an extension.")
-        # Check the result of magic #
-        try:
-            extension = known_format_extensions[filetype]
-        except KeyError:
-            raise Exception("The format of the track '" + path + "' resolves to " + filetype + " which is not supported at the moment.")
-    # Synonyms #
-    if extension == 'db': extension = 'sql'
-    # Return the format #
-    return extension
+    # Try import #
+    try:
+        import magic
+    except ImportError:
+        return ''
+    mime = magic.Magic(magic.NONE)
+    # Let the user customize magic #
+    if os.path.exists('magic'): mime.load(file='magic')
+    else: mime.load()
+    # Does the file even exist ? #
+    try: filetype = mime.file(path)
+    except IOError: return ''
+    # Try the conversion dict #
+    return known_format_extensions.get(filetype, filetype)
 
 #-----------------------------------------------------------------------------#
 def import_implementation(format):
@@ -87,7 +87,7 @@ def make_cond_from_sel(selection):
     return query
 
 ###########################################################################
-def random_track(track_path, random_track_path, repeat_number=1):
+def shuffle_track(track_path, random_track_path, repeat_number=1):
     with new(random_track_path, "sql", name="random_track") as random_track:
         with Track(track_path, format="sql") as track:
             random_track.meta_chr   = track.meta_chr
