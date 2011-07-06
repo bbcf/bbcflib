@@ -17,6 +17,7 @@ from . import formats
 ###########################################################################
 def determine_format(path):
     '''Try to guess the format of a track given its path. Returns a three letter extension'''
+    implementation  = ''
     # Try magic first #
     filetype = magic_format(path)
     # Then try the extension #
@@ -25,15 +26,15 @@ def determine_format(path):
     if not filetype:
         raise Exception("The format of the path '" + path + "' cannot be determined. Please specify a format or add an extension.")
     # Synonyms #
-    if filetype == 'db': filetype = 'sql'
+    if filetype == 'db' or filetype == 'sqlite': implementation = 'sql'
     # Return the format #
-    return filetype
+    return implementation
 
 def magic_format(path):
     # List of names to three letter extension #
     known_format_extensions = {
-        'SQLite 3.x database':                          'sql',
-        'SQLite database (Version 3)':                  'sql',
+        'SQLite 3.x database':                          'sqlite',
+        'SQLite database (Version 3)':                  'sqlite',
         'Hierarchical Data Format (version 5) data':    'hdf5',
         'track line definition with type BED document': 'bed',
         'track line definition with type PSL document': 'psl',
@@ -46,14 +47,17 @@ def magic_format(path):
     try: import magic
     except ImportError: return ''
     # Try usage #
-    try: mime = magic.open(magic.MIME_TYPE)
+    try: mime = magic.open(magic.NONE)
     except AttributeError: return ''
     # Customize magic #
-    magic_file = resource_filename(__name__, 'magic')
-    mime.load(file=magic_file)
-    # Does the file even exist ? #
-    try: filetype = mime.file(path)
-    except IOError: return ''
+    mime.load( file=resource_filename(__name__, 'magic') )
+    filetype = mime.file(path)
+    if not filetype in known_format_extensions:
+        # Try usage #
+        try: mime = magic.open(magic.NONE)
+        except AttributeError: return ''
+        mime.load()
+        filetype = mime.file(path)
     # Try the conversion dict #
     return known_format_extensions.get(filetype, '')
 
