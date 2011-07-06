@@ -32,25 +32,30 @@ def determine_format(path):
 def magic_format(path):
     # List of names to three letter extension #
     known_format_extensions = {
-        'SQLite 3.x database':                       'sql',
-        'SQLite database (Version 3)':               'sql',
-        'Hierarchical Data Format (version 5) data': 'hdf5',
+        'SQLite 3.x database':                          'sql',
+        'SQLite database (Version 3)':                  'sql',
+        'Hierarchical Data Format (version 5) data':    'hdf5',
+        'track line definition with type BED document': 'bed',
+        'track line definition with type PSL document': 'psl',
+        'track line definition with type GFF document': 'gff',
+        'track line definition with type GTF document': 'gtf',
+        'track line definition with type WIG document': 'wig',
+        'MAF document':                                 'maf',
     }
     # Try import #
     try: import magic
     except ImportError: return ''
     # Try usage #
-    try: mime = magic.Magic(magic.MIME_TYPE)
+    try: mime = magic.open(magic.MIME_TYPE)
     except AttributeError: return ''
     # Customize magic #
     magic_file = resource_filename(__name__, 'magic')
-    mime.load()
     mime.load(file=magic_file)
     # Does the file even exist ? #
     try: filetype = mime.file(path)
     except IOError: return ''
     # Try the conversion dict #
-    return known_format_extensions.get(filetype, filetype)
+    return known_format_extensions.get(filetype, '')
 
 #-----------------------------------------------------------------------------#
 def import_implementation(format):
