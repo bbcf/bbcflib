@@ -3,11 +3,20 @@
 Module: bbcflib.rnaseq
 ======================
 
+No documentation
 """
 
-# General modules #
+# Built-in modules #
 import pickle, json, pysam, numpy, urllib, math
 from itertools import combinations
+
+# Internal modules #
+from .mapseq import map_groups
+from .genrep import GenRep
+
+# Other modules #
+from bein.util import *
+from numpy import *
 from scipy import stats
 from scipy.interpolate import UnivariateSpline
 from rpy2 import robjects
@@ -15,15 +24,7 @@ import rpy2.robjects.packages as rpackages
 import rpy2.robjects.numpy2ri
 import rpy2.rlike.container as rlc
 
-# Internal modules #
-from bbcflib.mapseq import plot_stats, bamstats, map_groups, get_fastq_files
-from bbcflib.daflims import DAFLIMS
-from bbcflib.genrep import GenRep
-
-# Don't do this #
-from numpy import *
-from bein.util import *
-
+################################################################################
 def fetch_transcript_mapping(ex, assembly_id):
     """Given an assembly ID, return a dictionary giving an exon to orf mapping.
 
@@ -56,7 +57,7 @@ def fetch_transcript_mapping(ex, assembly_id):
             mapping = pickle.load(pickle_file)
             return mapping
         print "Exon to ORF mapping found on GenRep"
-        
+
 def map_runs(fun, runs):
     """Parallelization of fun(run) executions"""
     futures = {}
@@ -203,7 +204,7 @@ def inference(cond1_label, cond1, cond2_label, cond2, transcript_names, method="
 
     ## MA-plot
     if maplot:
-        MAplot(res, mode=maplot)
+        MAplot(res, mode=maplot, deg=5, bins=30)
 
     if output:
         result_filename = output
@@ -248,7 +249,7 @@ def rnaseq_workflow(ex, job, assembly, via="lsf", output=None, maplot="normal", 
     it returns in some sensible way.  For the usual HTSStation
     frontend, this just means printing it to stdout.
     """
-            
+
     names = {}; runs = {}; controls = {}; paths = {}; gids = {}
     groups = job.groups
     assembly_id = job.assembly_id
@@ -332,8 +333,8 @@ def MAplot(data, mode="normal", deg=2, bins=30):
     being a point the corresponding spline passes through. Input:
 
     data: rpy DataFrame object; two columns, each for a different condition.
-    mode: if "interactive", click on a point to display its name;
-          if "normal", name of genes over 99%/under 1% quantile are displayed.
+    mode: if "interactive", click on a point to display its name
+          if "normal", name of genes over 99%/under 1% quantile are displayed
     """
 
     #####
@@ -343,27 +344,23 @@ def MAplot(data, mode="normal", deg=2, bins=30):
 
     import matplotlib.pyplot as plt
 
-    if isinstance(data[0],rpy2.robjects.vectors.FactorVector):
-        a = array(data[0])
-        b = array(data[0].levels)
-        names = list(b[a-1])
-        d1 = array(data[1])
-        d2 = array(data[2])
-    elif isinstance(data[0],rpy2.robjects.vectors.StrVector):
-        names = list(data[0])
-        d1 = array(data[1])
-        d2 = array(data[2])
-    elif isinstance(data[0],rpy2.robjects.vectors.FloatVector):
-        names = list(data.rownames)
-        d1 = array(data[0])
-        d2 = array(data[1])
-    d1 = d1.view("float64"); d2 = d2.view("float64")
-    z = where(logical_and(d1!=0,d2!=0))[0] #exclude i-th value if either d1[i] or d2[i] is zero
-    d1 = d1[z]; d2 = d2[z]
-    ratios = log2(d1/d2)
-    means = log10(sqrt(d1*d2))
-    points = zip(names,ratios,means)
+    ## Extract data from DataFrame
+    pvals = asarray(data.rx("pval")[0])
+    means = asarray(data.rx("baseMean")[0])
+    ratios = asarray(data.rx("log2FoldChange")[0])
+    names = data.rx("GeneName")[0]
+    a = asarray(names)
+    b = asarray(names.levels)
+    names = list(b[a-1])
+
+    points = []
+    for i in range(len(ratios)):
+        if not math.isnan(ratios[i]) and not math.isinf(ratios[i]):
+            points.append( (names[i],ratios[i],log10(means[i])) )
+    names,ratios,means = zip(*points)
     xmin = min(means); xmax = max(means); ymin = min(ratios); ymax = max(ratios)
+
+    ## Create bins
     N = len(points); dN = N/bins #points per bin
     rmeans = sort(means)
     intervals = []
@@ -371,13 +368,13 @@ def MAplot(data, mode="normal", deg=2, bins=30):
         intervals.append(rmeans[i*dN])
     intervals.append(xmax)
     intervals = array(intervals)
-    annotes = []; spline_annotes = []; spline_coords = {}
-
+    
     points_in = {}; perc = {}
     for b in range(bins):
         points_in[b] = [p for p in points if p[2]>=intervals[b] and p[2]<intervals[b+1]]
         perc[b] = [p[1] for p in points_in[b]]
 
+    ## Figure
     fig = plt.figure(figsize=[14,9])
     ax = fig.add_subplot(111)
     fig.subplots_adjust(left=0.08, right=0.98, bottom=0.08, top=0.98)
@@ -386,35 +383,40 @@ def MAplot(data, mode="normal", deg=2, bins=30):
     ax.plot(means, ratios, ".", color="black")
     
     ### Lines (best fit of percentiles)
-    for k in [0.1,1,5,25,50,75,95,99,99.9]:
+    annotes = []; spline_annotes = []; spline_coords = {}
+    for k in [1,5,25,50,75,95,99]:
         h = ones(bins)
         for b in range(bins):
             if points_in[b] != []:
                 h[b] = stats.scoreatpercentile(perc[b], k)
             else: h[b] = h[b-1]
-            if k==0.1:
+            if k==1:
                 for p in points_in[b]:
                     if p[1]<h[b]: annotes.append(p)
-            if k==99.9:
+            if k==99:
                 for p in points_in[b]:
                     if p[1]>h[b]: annotes.append(p)
-        if k!=0.1 and k!=99.9:
-            x = intervals[:-1]+(intervals[1:]-intervals[:-1])/2.
-            spline = UnivariateSpline(x, h, k=deg)
-            xs = linspace(xmin, xmax, 10*bins) #to increase spline smoothness
-            ys = spline(xs)
-            #ax.plot(x, h, "o", color="blue")
-            ax.plot(xs, ys, "-", color="blue")
-            spline_annotes.append((k,xs[0],ys[0])) #quantile percentages
-            spline_coords[k] = zip(xs,ys)
+        x = intervals[:-1]+(intervals[1:]-intervals[:-1])/2.
+        spline = UnivariateSpline(x, h, k=deg)
+        xs = array(linspace(xmin, xmax, 10*bins)) #to increase spline smoothness
+        ys = array(spline(xs))
+        l = len(xs)
+        xi = arange(l)[ceil(l/6):floor(5*l/6)]
+        x = xs[xi]
+        y = ys[xi]
+        #ax.plot(x, h, "o", color="blue")
+        ax.plot(x, y, "-", color="blue")
+        spline_annotes.append((k,x[0],y[0])) #quantile percentages
+        spline_coords[k] = zip(x,y)
 
     ### Decoration
     ax.set_xlabel("Log10 of sqrt(x1*x2)")
     ax.set_ylabel("Log2 of x1/x2")
-    #ax.set_xlim(xmin-0.2*xmin,xmax+0.2*xmax)
-    #ax.set_ylim(ymin-0.2*ymin,ymax+0.2*ymax)
+    #ax.set_xlim(xmin-0*abs(xmin),xmax+0*abs(xmax))
+    #ax.set_ylim(ymin-0*abs(ymin),ymax+0*abs(ymax))
     for l in spline_annotes:
-        ax.annotate(str(l[0])+"%", xy=(l[1],l[2]), xytext=(-27,-5), textcoords='offset points')
+        ax.annotate(str(l[0])+"%", xy=(l[1],l[2]), xytext=(-33,-5), textcoords='offset points',
+                    bbox=dict(facecolor="white",edgecolor=None,boxstyle="square,pad=.4"))
     if mode == "interactive":
         af = AnnoteFinder( means, ratios, names )
         plt.connect('button_press_event', af)
@@ -423,18 +425,18 @@ def MAplot(data, mode="normal", deg=2, bins=30):
     if mode == "normal":
         for p in annotes:
             ax.annotate(p[0], xy=(p[2],p[1]) )
-        f = fig.savefig("MAplot.png")
+        fig.savefig("MAplot.png")
 
-    return f, points, spline_coords
+    #return points, spline_coords
 
 class AnnoteFinder:
   """
-  Callback for matplotlib to display an annotation when points are clicked on.  The
+  callback for matplotlib to display an annotation when points are clicked on.  The
   point which is closest to the click and within xtol and ytol is identified.
 
   Register this function like this:
 
-  plot(xdata, ydata)
+  scatter(xdata, ydata)
   af = AnnoteFinder(xdata, ydata, annotes)
   connect('button_press_event', af)
   """
@@ -495,4 +497,5 @@ class AnnoteFinder:
     annotesToDraw = [(x,y,a) for x,y,a in self.data if a==annote]
     for x,y,a in annotesToDraw:
       self.drawAnnote(self.axis, x, y, a)
+
 

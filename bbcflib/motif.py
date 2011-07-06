@@ -1,14 +1,23 @@
 """
-===============
-bbcflib.motif
-===============
-"""
-import re, os
-from operator                           import add
-from BeautifulSoup                      import BeautifulSoup
-from bein                               import unique_filename_in, program
-from bbcflib                            import track, common
+=====================
+Module: bbcflib.motif
+=====================
 
+No documentation
+"""
+
+# Built-in modules #
+import re, os
+from operator import add
+
+# Internal modules #
+from . import track, common
+
+# Other modules #
+from bein import unique_filename_in, program
+from BeautifulSoup import BeautifulSoup
+
+################################################################################
 @program
 def meme( fasta, maxsize=10000000, args=[] ):
     """Binding for the ``meme`` motif finder.

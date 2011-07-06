@@ -13,7 +13,7 @@ import os, re
 from . import Track
 from .track_collection import parser_tests, yeast_chr_file
 
-###################################################################################
+################################################################################
 def run(create_sql_files=False):
     # Nice color output #
     def message(path, name, status, expected, extra=None):

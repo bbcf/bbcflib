@@ -45,11 +45,16 @@ With a ``ConfigParser``, the previous code would look like::
 
 .. autoclass:: Assembly
 """
-import urllib2, json, os
-from datetime                   import datetime
-from bbcflib                    import track
-from bbcflib.common             import normalize_url
 
+# Built-in modules #
+import urllib2, json, os
+from datetime import datetime
+
+# Internal modules #
+from . import track
+from .common import normalize_url
+
+################################################################################
 class GenRep(object):
     def __init__(self, url='http://bbcftools.vital-it.ch/genrep/', root='/db/genrep', intype=0, config=None, section='genrep'):
         """Create an object to query a GenRep repository.
@@ -285,6 +290,7 @@ class GenRep(object):
             path = os.path.join(root,assembly.md5+".fa.gz")
         return path
 
+################################################################################
 class Assembly(object):
     def __init__(self, assembly_id, assembly_name, index_path,
                  bbcf_valid, updated_at, nr_assembly_id, genome_id,

@@ -1,7 +1,7 @@
 """
-=========================
-Submodule: bbcflib.common
-=========================
+======================
+Module: bbcflib.common
+======================
 
 Common usefull in many places.
 """
