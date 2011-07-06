@@ -25,16 +25,12 @@ Optionally you can supply a name for every track you load, to help you keep trac
     with track.load('tracks/ribi_genes.sql', name='Ribosome genesis from SGD') as ribigenes:
         data = ribigenes.read('chr7')
 
-If your track is in a format that is missing chromosome information, you will need to supply an extra chromosome file::
-
-    from bbcflib import track
-    with track.load('tracks/yeast_genes.bed', chrmeta='tracks/chrs/yeast.chr') as saccer:
-        data = saccer.read('chr4')
-
-Alternatively, you can use the GenRep service by simply specifying an existing assembly name as string::
+If your track is in a format that is missing chromosome information (such as the length of every chromosome), you can supply an assembly name or a chromosome file::
 
     from bbcflib import track
     with track.load('tracks/yeast_genes.bed', chrmeta='sacCer2') as saccer:
+        data = saccer.read('chr4')
+    with track.load('tracks/yeast_genes.bed', chrmeta='tracks/chrs/yeast.chr') as saccer:
         data = saccer.read('chr4')
 
 For instance, the cumulative base coverage of features on chromosome two can be calculated like this::
@@ -104,7 +100,7 @@ def load(path, format=None, name=None, chrmeta=None, datatype=None, readonly=Fal
 
         ``load`` returns a Track instance.
     '''
-    return Track(path, format, datatype, name, chrmeta)
+    return Track(path, format, name, chrmeta, datatype, readonly)
 
 def new(path, format=None, datatype='qualitative', name='Unnamed', chrmeta=None):
     '''Create a new empty track in preparation for writing to it.
