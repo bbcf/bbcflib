@@ -40,7 +40,11 @@ def magic_format(path):
         import magic
     except ImportError:
         return ''
-    mime = magic.Magic(magic.NONE)
+    # Try usage #
+    try:
+        mime = magic.Magic(magic.NONE)
+    except AttributeError:
+        return ''
     # Let the user customize magic #
     if os.path.exists('magic'): mime.load(file='magic')
     else: mime.load()
