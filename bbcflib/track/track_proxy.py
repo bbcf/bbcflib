@@ -32,9 +32,9 @@ class TrackProxy(TrackBackend):
         with open(self._path, 'r') as self._file:
             with new(tmp_path, backend_format, self._datatype, name) as t:
                 # Prepare meta data #
+                self._fields
                 self._meta_chr
                 self._meta_track
-                self._fields
                 # Copy data #
                 for chrom, data in self._read():
                     t.write(chrom, data, self._fields)
@@ -80,7 +80,7 @@ class TrackProxy(TrackBackend):
 
     @property
     def _fields(self):
-        return self.default_fields
+        return getattr(Track, self._datatype + '_fields')
 
     @property
     def _datatype(self):
@@ -116,11 +116,6 @@ class TrackProxy(TrackBackend):
     def remove(self, chrom=None):
         self.modified = True
         super(TrackProxy, self).remove(chrom)
-
-    #-----------------------------------------------------------------------------#
-    @property
-    def default_fields(self):
-        return getattr(Track, self._datatype + '_fields')
 
 #-----------------------------------#
 # This code was written by the BBCF #

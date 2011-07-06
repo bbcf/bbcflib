@@ -150,21 +150,7 @@ class Track(object):
                  ``{'datatype': 'quantitative', 'source': 'SGD'}``
     '''
 
-    qualitative_fields  = ['start', 'end', 'name', 'score', 'strand']
-    quantitative_fields = ['start', 'end', 'score']
-    field_types = {
-        'start':        'integer',
-        'end':          'integer',
-        'score':        'real',
-        'strand':       'integer',
-        'name':         'text',
-        'thick_start':  'integer',
-        'thick_end':    'integer',
-        'item_rgb':     'text',
-        'block_count':  'integer',
-        'block_sizes':  'text',
-        'block_starts': 'text',
-    }
+#TODO ``{'chr1': {'length': 197195432}, 'chr2': {'length': 129993255}}``
 
     #-----------------------------------------------------------------------------#
     def read(self, selection=None, fields=None, order='start,end', cursor=False):
@@ -290,6 +276,23 @@ class Track(object):
             for chrom in self.all_chrs: t.write(chrom, self.read(chrom), self.fields)
 
     #-----------------------------------------------------------------------------#
+    qualitative_fields  = ['start', 'end', 'name', 'score', 'strand']
+    quantitative_fields = ['start', 'end', 'score']
+    field_types = {
+        'start':        'integer',
+        'end':          'integer',
+        'score':        'real',
+        'strand':       'integer',
+        'name':         'text',
+        'thick_start':  'integer',
+        'thick_end':    'integer',
+        'item_rgb':     'text',
+        'block_count':  'integer',
+        'block_sizes':  'text',
+        'block_starts': 'text',
+    }
+
+    #-----------------------------------------------------------------------------#
     @property
     def datatype(self):
         raise NotImplementedError
@@ -369,10 +372,6 @@ class Track(object):
 
     def __exit__(self, errtype, value, traceback):
         self.unload(errtype, value, traceback)
-
-    @property
-    def default_fields(self):
-        return getattr(Track, self.datatype + '_fields')
 
 # Internal modules #
 from .common import natural_sort

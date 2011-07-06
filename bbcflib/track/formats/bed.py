@@ -44,24 +44,28 @@ class TrackFormat(TrackText, TrackProxy):
                 raise Exception("The file '" + self._path + "' has non integers as interval bounds and is hence not valid.")
             if line[2] <= line[1]:
                 raise Exception("The file '" + self._path + "' has negative or null intervals and is hence not valid.")
-            if len(line) > 4:
-                if line[4] == '.': line[4] = 0.0
-                try:
-                    line[4] = float(line[4])
-                except ValueError:
-                    raise Exception("The file '" + self._path + "' has non floats as score values and is hence not valid.")
-            if len(line) > 5:
+            try:
+                if line[4] == '.' or line[4] == '': line[4] = 0.0
+            except IndexError:
+                line.append(0.0)
+            try:
+                line[4] = float(line[4])
+            except ValueError:
+                raise Exception("The file '" + self._path + "' has non floats as score values and is hence not valid.")
+            try:
                 line[5] = strand_to_int(line[5])
+            except IndexError:
+                line.append(0)
             if len(line) > 6:
                 try:
                     line[6] = float(line[6])
                 except ValueError:
                     raise Exception("The file '" + self._path + "' has non integers as thick starts and is hence not valid.")
-            if len(line) > 7:
-                try:
-                    line[7] = float(line[7])
-                except ValueError:
-                    raise Exception("The file '" + self._path + "' has non integers as thick ends and is hence not valid.")
+                if len(line) > 7:
+                    try:
+                        line[7] = float(line[7])
+                    except ValueError:
+                        raise Exception("The file '" + self._path + "' has non integers as thick ends and is hence not valid.")
             yield line
 
     def _write(self):
@@ -102,7 +106,7 @@ class TrackFormat(TrackText, TrackProxy):
                 raise Exception("The file '" + self._path + "' has less than three columns and is hence not a valid BED file.")
             if self.num_fields > len(all_fields_possible):
                 raise Exception("The file '" + self._path + "' has too many columns and is hence not a valid BED file.")
-            return all_fields_possible[0:self.num_fields]
+            return all_fields_possible[0:max(5,self.num_fields)]
 
 
 

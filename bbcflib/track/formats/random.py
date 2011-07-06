@@ -43,7 +43,7 @@ class TrackFormat(Track):
 
     @property
     def fields(self):
-        return self.default_fields
+        return Track.qualitative_fields
 
     @property
     def meta_chr(self):
