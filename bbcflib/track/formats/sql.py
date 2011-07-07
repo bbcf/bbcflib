@@ -45,7 +45,6 @@ class TrackFormat(Track, TrackExtras):
     def commit(self):
         self.connection.commit()
 
-
     #-----------------------------------------------------------------------------#
     @property
     def datatype(self):

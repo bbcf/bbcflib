@@ -1,9 +1,9 @@
 """
-=========================================
-Submodule: bbcflib.track.track_collection
-=========================================
+======================================
+Submodule: bbcflib.track.track_parsing
+======================================
 
-Methods common to the text formats.
+An optional test intended that is not run with the usual test suite. It evalutes the robustness of the text track parsers.
 """
 
 # Built-in modules #

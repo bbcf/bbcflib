@@ -7,62 +7,48 @@ Usefull stuff.
 """
 
 # Built-in modules #
-import os, sys, random
-from pkg_resources  import resource_filename
+import os, sys, random, shlex
 
 # Internal modules #
 from . import Track, new
 from . import formats
+from . import magic
 
-###########################################################################
+###############################################################################
 def determine_format(path):
     '''Try to guess the format of a track given its path. Returns a three letter extension'''
-    implementation  = ''
     # Try magic first #
-    filetype = magic_format(path)
+    file_format = magic.guess_file_format(path)
     # Then try the extension #
-    if not filetype: filetype = os.path.splitext(path)[1][1:]
+    if not file_format: file_format = os.path.splitext(path)[1][1:]
+    # Then try our own sniffing #
+    if not file_format: file_format = guess_file_format(path)
     # If still nothing, raise exception #
-    if not filetype:
+    if not file_format:
         raise Exception("The format of the path '" + path + "' cannot be determined. Please specify a format or add an extension.")
     # Synonyms #
-    if filetype == 'db' or filetype == 'sqlite':
-        implementation = 'sql'
-    else:
-        implementation = filetype
+    if file_format == 'db': file_format = 'sql'
     # Return the format #
-    return implementation
+    return file_format
 
-def magic_format(path):
-    # List of names to three letter extension #
-    known_format_extensions = {
-        'SQLite 3.x database':                          'sqlite',
-        'SQLite database (Version 3)':                  'sqlite',
-        'Hierarchical Data Format (version 5) data':    'hdf5',
-        'track line definition with type BED document': 'bed',
-        'track line definition with type PSL document': 'psl',
-        'track line definition with type GFF document': 'gff',
-        'track line definition with type GTF document': 'gtf',
-        'track line definition with type WIG document': 'wig',
-        'MAF document':                                 'maf',
+def guess_file_format(path):
+    # Link between types and file extension #
+    known_identifiers = {
+        'wiggle_0': 'wig',
     }
-    # Try import #
-    try: import magic
-    except ImportError: return ''
-    # Try usage #
-    try: mime = magic.open(magic.NONE)
-    except AttributeError: return ''
-    # Customize magic #
-    mime.load( file=resource_filename(__name__, 'magic') )
-    filetype = mime.file(path)
-    if not filetype in known_format_extensions:
-        # Try usage #
-        try: mime = magic.open(magic.NONE)
-        except AttributeError: return ''
-        mime.load()
-        filetype = mime.file(path)
-    # Try the conversion dict #
-    return known_format_extensions.get(filetype, '')
+    # Try to read the track line #
+    with open(path, 'r') as track_file:
+        for line in track_file:
+            line = line.strip("\n").lstrip()
+            if len(line) == 0:              continue
+            if line.startswith("#"):        continue
+            if line.startswith("browser "): continue
+            if line.startswith("track "):
+                try:
+                    id = dict([p.split('=',1) for p in shlex.split(line[6:])])['type']
+                except ValueError:
+                    return ''
+                return known_identifiers.get(id, id)
 
 #-----------------------------------------------------------------------------#
 def import_implementation(format):
