@@ -110,7 +110,7 @@ def pairs_to_test(controls):
 
 @program
 def external_deseq(cond1_label, cond1, cond2_label, cond2, transcript_names, method="normal",
-                   assembly_id=None, output=None, maplot=None):
+                   assembly_id=None, output=None):
     if output:
         result_filename = output
     else:
@@ -124,7 +124,7 @@ def external_deseq(cond1_label, cond1, cond2_label, cond2, transcript_names, met
     tn = unique_filename_in()
     with open(tn,'wb') as f:
         pickle.dump(transcript_names,f,pickle.HIGHEST_PROTOCOL)
-    call = ["run_deseq.py", c1, c2, tn, cond1_label, cond2_label, method, str(assembly_id), result_filename, str(maplot)]
+    call = ["run_deseq.py", c1, c2, tn, cond1_label, cond2_label, method, str(assembly_id), result_filename]
     return {"arguments": call, "return_value": result_filename}
 
 def results_to_json(lims, exid):
@@ -140,7 +140,7 @@ def results_to_json(lims, exid):
     return j
 
 def inference(cond1_label, cond1, cond2_label, cond2, transcript_names, method="normal",
-              assembly_id=None, output=None, maplot=None):
+              assembly_id=None, output=None):
     """Runs DESeq comparing the counts in *cond1* and *cond2*.
 
     Arguments *cond1* and *cond2* are lists of numpy arrays. Each
@@ -158,7 +158,6 @@ def inference(cond1_label, cond1, cond2_label, cond2, transcript_names, method="
     Then it calls DESeq in R, writes out the results in a new,
     randomly named file, and returns that filename.
     """
-    ### FAILS IF TOO FEW READS
 
     # Pass the data into R as a data frame
     data_frame_contents = rlc.OrdDict([(cond1_label+'-'+str(i), robjects.IntVector(c))
@@ -173,11 +172,11 @@ def inference(cond1_label, cond1, cond2_label, cond2, transcript_names, method="
     deseq = rpackages.importr('DESeq')
     cds = deseq.newCountDataSet(data_frame, conds)
     cds = deseq.estimateSizeFactors(cds)
-    cds = deseq.estimateVarianceFunctions(cds,method=method)
+    try: cds = deseq.estimateVarianceFunctions(cds,method=method)
+    except : raise rpy2.rinterface.RRuntimeError("Too few reads to estimate variances with DESeq")
     res = deseq.nbinomTest(cds, cond1_label, cond2_label)
 
     ## Replace (unique) gene IDs by (not unique) gene names
-
     if assembly_id:
         if isinstance(assembly_id,str):
             nr_assemblies = urllib.urlopen("http://bbcftools.vital-it.ch/genrep/nr_assemblies.json").read()
@@ -195,16 +194,16 @@ def inference(cond1_label, cond1, cond2_label, cond2, transcript_names, method="
                 gname = l.split("gene_name")[1].split(";")[0].strip(" \"")
                 idtoname[gid] = gname
         urllib.urlcleanup()
-        for i in res_ids:
-            res_names.append(idtoname.get(i, i))
-        data_frame = robjects.DataFrame({"GeneName":robjects.StrVector(res_names)})
+        if res_ids[27].find("|") == -1: #genes
+            for i in res_ids:
+                res_names.append(idtoname.get(i, i))
+        else: #exons
+            for i in res_ids:
+                res_names.append(idtoname.get(i.split("|")[1], i.split("|")[1]))
+        data_frame = robjects.DataFrame({"Name":robjects.StrVector(res_names)})
         for i in range(2,len(res)+1): 
             data_frame = data_frame.cbind(res.rx(i))
         res = data_frame
-
-    ## MA-plot
-    if maplot:
-        MAplot(res, mode=maplot, deg=4, bins=100, alpha=0.005)
 
     if output:
         result_filename = output
@@ -219,10 +218,11 @@ def rnaseq_workflow(ex, job, assembly, via="lsf", output=None, maplot="normal", 
 
     output: alternative name for output file. Otherwise it is random.
     maplot: MA-plot of data.
-    - If "interactive", one can click on a point (gene or exon) to display its name;
-    - if "normal", name of genes over 99.9%/under 0.1% quantiles are displayed;
+    - If 'interactive', one can click on a point (gene or exon) to display its name;
+    - if 'normal', name of genes over 99.9%/under 0.1% quantiles are displayed;
     - if None, no figure is produced.
     with_exons: run inference (DESeq) on exon mapping in addition to gene mapping.
+    (This part of the workflow may fail if there are too few reads for DESeq to estimate variances.)
 
     Whatever script calls this function should have looked up the job
     description from HTSStation.  The job description from HTSStation
@@ -259,6 +259,7 @@ def rnaseq_workflow(ex, job, assembly, via="lsf", output=None, maplot="normal", 
         controls[i] = group['control']
 
     fastq_root = os.path.abspath(ex.working_directory)
+    print "Alignment..."
     bam_files = map_groups(ex, job, fastq_root, assembly_or_dict = assembly)
     print "Reads aligned."
 
@@ -295,34 +296,44 @@ def rnaseq_workflow(ex, job, assembly, via="lsf", output=None, maplot="normal", 
         if with_exons:
             print "Inference (genes+exons)..."
             futures[(c1,c2)] = [external_deseq.nonblocking(ex,
-                                      names[c1], exon_pileups[c1],
-                                      names[c2], exon_pileups[c2],
-                                      [x[0].split("|")[0]+"|"+x[0].split("|")[1] for x in exons],
-                                      method, assembly_id, output, maplot, via=via),
-                                external_deseq.nonblocking(ex,
                                       names[c1], gene_pileups[c1],
                                       names[c2], gene_pileups[c2],
                                       gene_labels,
-                                      method, assembly_id, output, maplot,via=via)]
-            print "Wait for results....."
+                                      method, assembly_id, output, via=via),
+                                external_deseq.nonblocking(ex,
+                                      names[c1], exon_pileups[c1],
+                                      names[c2], exon_pileups[c2],
+                                      [x[0].split("|")[0]+"|"+x[0].split("|")[1] for x in exons],
+                                      method, assembly_id, output, via=via)]
+            print "....Wait for results....."
             for c,f in futures.iteritems():
                 ex.add(f[0].wait(),
-                       description="Comparison of exons in conditions '%s' and '%s' (CSV)" % (names[c[0]], names[c[1]]))
-                ex.add(f[1].wait(),
                        description="Comparison of genes in conditions '%s' and '%s' (CSV)" % (names[c[0]], names[c[1]]))
+                ex.add(f[1].wait(),
+                       description="Comparison of exons in conditions '%s' and '%s' (CSV)" % (names[c[0]], names[c[1]]))
+                if maplot:
+                    res0 = robjects.DataFrame.from_csvfile(f[0].wait())
+                    res1 = robjects.DataFrame.from_csvfile(f[1].wait())
+                    figname,points,splines = MAplot(res0, mode=maplot, deg=4, bins=100, alpha=0.005)
+                    ex.add(figname+'.png', description="MA-plot (genes)")
+                    figname,points,splines = MAplot(res1, mode=maplot, deg=4, bins=100, alpha=0.005)
+                    ex.add(figname+'.png', description="MA-plot (exons)")
         else:
             print "Inference (genes only)..."
-            csvfile = external_deseq.nonblocking(ex,
+            futures[(c1,c2)] = external_deseq.nonblocking(ex,
                                     names[c1], gene_pileups[c1],
                                     names[c2], gene_pileups[c2],
                                     gene_labels,
-                                    method, assembly_id, output, maplot, via=via)
-            print "    Wait for results..."
-            ex.add(csvfile.wait(),
-                   description="Comparison of exons in conditions '%s' and '%s' (CSV)" % (names[c1], names[c2]))
+                                    method, assembly_id, output, via=via)
+            print "....Wait for results..."
+            for c,f in futures.iteritems():
+                ex.add(f.wait(),
+                       description="Comparison of genes in conditions '%s' and '%s' (CSV)" % (names[c1], names[c2]))
+                if maplot:
+                    res = robjects.DataFrame.from_csvfile(f.wait())
+                    figname,points,splines = MAplot(res, mode=maplot, deg=4, bins=100, alpha=0.005)
+                    ex.add(figname+'.png', description="MA-plot of data")
         print "Done."
-
-        if maplot: ex.add("MAplot.png", description="MA-plot of data")
 
 
 def MAplot(data, mode="interactive", deg=4, bins=30, alpha=0.005):
@@ -333,7 +344,7 @@ def MAplot(data, mode="interactive", deg=4, bins=30, alpha=0.005):
     being a point the corresponding spline passes through. Input:
 
     data:  rpy DataFrame object; two columns, each for a different condition.
-    mode:
+    mode:  display mode;
     - if "interactive", click on a point to display its name
     - if "normal", name of genes over 99%/under 1% quantile are displayed
     alpha: a threshold for p-values: points beyond it are emphasized.
@@ -345,7 +356,7 @@ def MAplot(data, mode="interactive", deg=4, bins=30, alpha=0.005):
     pvals = asarray(data.rx("pval")[0])
     means = asarray(data.rx("baseMean")[0])
     ratios = asarray(data.rx("log2FoldChange")[0])
-    names = data.rx("GeneName")[0]
+    names = data.rx("Name")[0]
     a = asarray(names)
     b = asarray(names.levels)
     names = list(b[a-1])
@@ -385,7 +396,8 @@ def MAplot(data, mode="interactive", deg=4, bins=30, alpha=0.005):
     blackpoints = array(zip(*blackpoints))[1:3]
     redpoints = array(zip(*redpoints))[1:3]
     ax.plot(blackpoints[1], blackpoints[0], ".", color="black")
-    ax.plot(redpoints[1], redpoints[0], ".", color="red")
+    if len(redpoints) != 0:
+        ax.plot(redpoints[1], redpoints[0], ".", color="red")
 
     ### Lines (best fit of percentiles)
     spline_annotes = []; spline_coords = {}
@@ -418,12 +430,13 @@ def MAplot(data, mode="interactive", deg=4, bins=30, alpha=0.005):
         plt.connect('button_press_event', af)
         plt.draw()
         plt.show()
-    if mode == "normal":
+    else:
         for p in annotes:
             ax.annotate(p[0], xy=(p[2],p[1]) )
-        fig.savefig("MAplot.png")
+        figname = unique_filename_in()
+        fig.savefig(figname)
 
-    return points, spline_coords
+    return figname, points, spline_coords
 
 class AnnoteFinder:
   """
@@ -493,4 +506,3 @@ class AnnoteFinder:
     annotesToDraw = [(x,y,a) for x,y,a in self.data if a==annote]
     for x,y,a in annotesToDraw:
       self.drawAnnote(self.axis, x, y, a)
-
