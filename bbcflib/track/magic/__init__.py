@@ -17,12 +17,12 @@ def guess_file_format(path):
         'SQLite 3.x database':                          'sql',
         'SQLite database (Version 3)':                  'sql',
         'Hierarchical Data Format (version 5) data':    'hdf5',
-        'track line definition with type BED document': 'bed',
-        'track line definition with type PSL document': 'psl',
-        'track line definition with type GFF document': 'gff',
-        'track line definition with type GTF document': 'gtf',
-        'track line definition with type WIG document': 'wig',
-        'MAF document':                                 'maf',
+        'BED Document, ':                               'bed',
+        'PSL Document, ':                               'psl',
+        'GFF Document, ':                               'gff',
+        'GTF Document, ':                               'gtf',
+        'WIG Document, ':                               'wig',
+        'MAF Document, ':                               'maf',
     }
     # Try import #
     try: import magic
