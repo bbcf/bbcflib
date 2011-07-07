@@ -38,7 +38,7 @@ class TrackExtras(object):
                     distance     = feature[0] - feature[1]
                     random_start = random.randint(0, chrom["length"] - distance)
                     random_end   = random_start + distance
-                    t.write(chrom, (random_start, random_end, "Random feature", 0.0, 0))
+                    yield (random_start, random_end, "Random feature", 0.0, 0)
             # Iterate #
             for chrom in self:
                 for i in range(repeat_number):

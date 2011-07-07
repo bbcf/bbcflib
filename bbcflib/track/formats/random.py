@@ -17,7 +17,6 @@ chrsuffix = 'Awfully super extra long chromosome denomination string '
 
 ###########################################################################
 class TrackFormat(Track):
-
     def load(self):
         # Essential parameters #
         self.all_chrs = [chrsuffix + str(x) for x in range(10)]

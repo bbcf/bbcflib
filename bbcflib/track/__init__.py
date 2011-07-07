@@ -129,7 +129,7 @@ def new(path, format=None, datatype='qualitative', name='Unnamed', chrmeta=None)
     '''
     if os.path.exists(path):
         raise Exception("The location '" + path + "' is already taken")
-    if not format: format = determine_format(path)
+    if not format: format = os.path.splitext(path)[1][1:]
     implementation = import_implementation(format)
     implementation.TrackFormat.create(path, datatype, name)
     return Track(path, format=format, name=name, chrmeta=chrmeta)
