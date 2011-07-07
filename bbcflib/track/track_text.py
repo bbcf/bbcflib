@@ -130,6 +130,10 @@ class TrackText(object):
         self.meta_track_dict['converted_from'] = self.path
         return "track " + ' '.join([key + '="' + value + '"' for key, value in self.meta_track_dict.items()]) + '\n'
 
+    @property
+    def chromosome_file(self):
+       for x in self.meta_chr: yield x['name'] + '\t' + x['length']
+
     #-----------------------------------------------------------------------------#
     @staticmethod
     def create(path, datatype, name):

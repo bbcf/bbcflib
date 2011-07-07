@@ -49,9 +49,8 @@ class TrackProxy(TrackBackend):
         super(TrackProxy, self).__init__(tmp_path, backend_format, name, chrmeta=None, datatype=None, readonly=readonly)
 
     #-----------------------------------------------------------------------------#
-    def unload(self, datatype=None, value=None, trackback=None):
+    def unload(self, datatype=None, value=None, traceback=None):
         if self.modified and not self.readonly: self.dump()
-        super(TrackProxy, self).unload(datatype, value, trackback)
         if os.path.exists(self.path): os.remove(self.path)
 
     def commit(self):

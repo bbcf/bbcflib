@@ -36,7 +36,7 @@ class TrackFormat(Track, TrackExtras):
         # Set attributes #
         self.all_chrs = self.chrs_from_tables
 
-    def unload(self, datatype=None, value=None, trackback=None):
+    def unload(self, datatype=None, value=None, traceback=None):
         self.make_missing_indexes()
         self.connection.commit()
         self.cursor.close()
