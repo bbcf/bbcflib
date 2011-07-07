@@ -75,6 +75,17 @@ class Test_NoExtension(unittest.TestCase):
         os.remove(path)
 
 #-----------------------------------------------------------------------------#
+class Test_NoFormat(unittest.TestCase):
+    def runTest(self):
+        path = named_temporary_path('')
+        orig = track_collections['Yeast']['RP genes']
+        shutil.copyfile(orig['path'], path)
+        with track.load(path, chrmeta=orig['chrmeta']) as t:
+            self.assertEqual(t.format, 'sql')
+            self.assertEqual(t._format, 'bed')
+        os.remove(path)
+
+#-----------------------------------------------------------------------------#
 class Test_Genrep(unittest.TestCase):
     def runTest(self):
         t = track_collections['Validation'][1]
