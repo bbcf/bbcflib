@@ -10,8 +10,8 @@ Methods common to the text formats.
 import os, shlex
 
 # Internal modules #
-from .common import memoized_method
-from ..genrep import GenRep
+from bbcflib.track.common   import memoized_method
+from bbcflib.genrep         import GenRep
 
 #-----------------------------------------------------------------------------#
 def strand_to_int(strand):

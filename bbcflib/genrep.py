@@ -51,8 +51,8 @@ import urllib2, json, os
 from datetime import datetime
 
 # Internal modules #
-from . import track
-from .common import normalize_url
+from bbcflib        import track
+from bbcflib.common import normalize_url
 
 ################################################################################
 class GenRep(object):

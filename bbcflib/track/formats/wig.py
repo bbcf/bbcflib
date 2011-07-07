@@ -10,9 +10,9 @@ Implementation of the WIG format.
 import sys, shlex
 
 # Internal modules #
-from ..track_proxy import TrackProxy
-from ..track_text import TrackText
-from ..common import sentinelize
+from bbcflib.track.track_proxy  import TrackProxy
+from bbcflib.track.track_text   import TrackText
+from bbcflib.track.common       import sentinelize
 
 ###########################################################################
 class TrackFormat(TrackText, TrackProxy):

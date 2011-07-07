@@ -10,7 +10,7 @@ Python API for the GDV genome viewer.
 import json, urllib, urllib2
 
 # Internal modules #
-from .common import normalize_url
+from bbcflib.common import normalize_url
 
 ################################################################################
 # GDV requests #

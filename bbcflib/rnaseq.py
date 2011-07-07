@@ -11,8 +11,8 @@ import pickle, json, pysam, numpy, urllib, math
 from itertools import combinations
 
 # Internal modules #
-from .mapseq import map_groups
-from .genrep import GenRep
+from bbcflib.mapseq import map_groups
+from bbcflib.genrep import GenRep
 
 # Other modules #
 from bein.util import *
@@ -201,7 +201,7 @@ def inference(cond1_label, cond1, cond2_label, cond2, transcript_names, method="
             for i in res_ids:
                 res_names.append(i.split("|")[0] + idtoname.get(i.split("|")[1]), i)
         data_frame = robjects.DataFrame({"Name":robjects.StrVector(res_names)})
-        for i in range(2,len(res)+1): 
+        for i in range(2,len(res)+1):
             data_frame = data_frame.cbind(res.rx(i))
         res = data_frame
 

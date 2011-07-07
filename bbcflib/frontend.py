@@ -28,7 +28,7 @@ import json, urllib2
 from datetime import datetime
 
 # Internal modules #
-from .common import normalize_url
+from bbcflib.common import normalize_url
 
 ################################################################################
 class Frontend(object):
