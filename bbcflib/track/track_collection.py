@@ -3,7 +3,7 @@
 Submodule: bbcflib.track.track_collection
 =========================================
 
-Methods common to the text formats.
+Creates a large ditionary of different tracks found in the "extras" directory (mainly small validation tracks). This is then used by the unittests.
 """
 
 # Built-in modules #

@@ -9,18 +9,16 @@ setup(
         url             =   'http://bbcf.epfl.ch/bbcflib',
         author          =   'EPFL BBCF, Fred Ross, Jacques Rougemont, Lucas Sinclair, Jonathan Mercier.',
         author_email    =   'webmaster.bbcf@epfl.ch',
-        install_requires=   ['mailer', 'bein', 'rpy2', 'pysam', 'scipy','python-magic', 'BeautifulSoup'],
+        install_requires=   ['mailer', 'bein', 'rpy2', 'pysam', 'scipy', 'BeautifulSoup'],
         classifiers     =   ['Topic :: Scientific/Engineering :: Bio-Informatics'],
-        packages        =   [   'bbcflib',
-                                'bbcflib.tests',
-                                'bbcflib.track',
-                                'bbcflib.track.extras',
-                                'bbcflib.track.formats',
-                                'bbcflib.track.tests',
+        packages        =   ['bbcflib',
+                             'bbcflib.tests',
+                             'bbcflib.track',
+                             'bbcflib.track.extras',
+                             'bbcflib.track.formats',
+                             'bbcflib.track.tests',
+                             'bbcflib.track.magic'
                             ],
-        package_dir     =   {   'bbcflib' :  'bbcflib',
-                                'bbcflib.tests': 'bbcflib/tests',
-                                'bbcflib.track' :'bbcflib/track'
-                            },
-        package_data    =   {'bbcflib.track':['magic']}
+        package_dir     =   {'bbcflib.track.magic':'bbcflib/track/magic'},
+        package_data    =   {'bbcflib.track.magic':['magic_data']}
     )

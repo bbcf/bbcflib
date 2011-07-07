@@ -66,24 +66,22 @@ class Test_Format(unittest.TestCase):
 #-----------------------------------------------------------------------------#
 class Test_NoExtension(unittest.TestCase):
     def runTest(self):
-        path = named_temporary_path('')
-        orig = track_collections['Validation'][1]
-        shutil.copyfile(orig['path'], path)
-        with track.load(path, 'bed', chrmeta=orig['chrmeta']) as t:
-            self.assertEqual(t.format, 'sql')
+        old = track_collections['Validation'][1]['path']
+        new = named_temporary_path()
+        shutil.copyfile(old, new)
+        with track.load(new, 'bed', chrmeta=yeast_chr_file) as t:
             self.assertEqual(t._format, 'bed')
-        os.remove(path)
+        os.remove(new)
 
 #-----------------------------------------------------------------------------#
 class Test_NoFormat(unittest.TestCase):
     def runTest(self):
-        path = named_temporary_path('')
-        orig = track_collections['Yeast']['RP genes']
-        shutil.copyfile(orig['path'], path)
-        with track.load(path, chrmeta=orig['chrmeta']) as t:
-            self.assertEqual(t.format, 'sql')
+        old = track_collections['Yeast']['RP genes']['path']
+        new = named_temporary_path()
+        shutil.copyfile(old, new)
+        with track.load(new, chrmeta=yeast_chr_file) as t:
             self.assertEqual(t._format, 'bed')
-        os.remove(path)
+        os.remove(new)
 
 #-----------------------------------------------------------------------------#
 class Test_Genrep(unittest.TestCase):
