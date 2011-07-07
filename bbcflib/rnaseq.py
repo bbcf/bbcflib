@@ -199,9 +199,9 @@ def inference(cond1_label, cond1, cond2_label, cond2, transcript_names, method="
                 res_names.append(idtoname.get(i, i))
         else: #exons
             for i in res_ids:
-                res_names.append(i.split("|")[0] + idtoname.get(i.split("|")[1]), i))
+                res_names.append(i.split("|")[0] + idtoname.get(i.split("|")[1]), i)
         data_frame = robjects.DataFrame({"Name":robjects.StrVector(res_names)})
-        for i in range(2,len(res)+1): 
+        for i in range(2,len(res)+1):
             data_frame = data_frame.cbind(res.rx(i))
         res = data_frame
 
