@@ -1,5 +1,5 @@
 # Built-in modules #
-import os
+import os, shutil
 
 # Internal modules #
 from ... import track
@@ -131,6 +131,16 @@ class Test_Remove(unittest.TestCase):
             t.remove()
             self.assertEqual(list(t.read()), [])
         os.remove(path)
+
+#-----------------------------------------------------------------------------#
+class Test_NoFormat(unittest.TestCase):
+    def runTest(self):
+        old = track_collections['Validation'][2]['path_sql']
+        new = named_temporary_path()
+        shutil.copyfile(old, new)
+        with track.load(new) as t:
+            self.assertEqual(t.format, 'sql')
+        os.remove(new)
 
 #-----------------------------------------#
 # This code was written by Lucas Sinclair #

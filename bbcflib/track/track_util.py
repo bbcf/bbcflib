@@ -33,11 +33,13 @@ def determine_format(path):
 
 #-----------------------------------------------------------------------------#
 def guess_file_format(path):
-    # Link between types and file extension #
+    # Check SQLite #
+    with open(path, 'r') as track_file:
+        if track_file.read(15) == "SQLite format 3": return 'sql'
+    # Try to read the track line #
     known_identifiers = {
         'wiggle_0': 'wig',
     }
-    # Try to read the track line #
     with open(path, 'r') as track_file:
         for line in track_file:
             line = line.strip("\n").lstrip()
