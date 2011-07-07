@@ -22,7 +22,7 @@ class Test_Read(unittest.TestCase):
         with track.load(t['path'], chrmeta=t['chrmeta']) as t['track']:
             # Just the first feature #
             data = t['track'].read()
-            self.assertEqual(data.next(), ('chr1', 0, 10, 'Validation feature 1', 10.0))
+            self.assertEqual(data.next(), ('chr1', 0, 10, 'Validation feature 1', 10.0, 0))
             # Number of features #
             data = t['track'].read()
             self.assertEqual(len(list(data)), 12)
@@ -47,9 +47,9 @@ class Test_Write(unittest.TestCase):
 class Test_Roundtrips(unittest.TestCase):
     def runTest(self):
         path = named_temporary_path('.bed')
-        for track_num, track_dict in sorted(track_collections['Validation'].items()):
-            with track.load(track_dict['path'], chrmeta=track_dict['chrmeta']) as t:
-                t.dump(path)
+        for i in (2,3,4):
+            track_dict = track_collections['Validation'][i]
+            with track.load(track_dict['path'], chrmeta=track_dict['chrmeta']) as t: t.dump(path)
             with open(path,              'r') as f: A = f.read().split('\n')
             with open(track_dict['path'],'r') as f: B = f.read().split('\n')
             self.assertEqual(A[1:], B)
