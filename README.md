@@ -42,7 +42,7 @@ where X.Y is the version of Python you run it with.
 
 To run the test suite, in the distribution directory, run
 
-    $ nosetests --with-doctest
+    $ python setup.py test
 
 Full documentation
 ==================
