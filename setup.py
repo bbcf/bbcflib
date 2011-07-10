@@ -2,7 +2,7 @@ from distutils.core import setup, Command
 from unittest       import TextTestRunner, TestLoader
 from glob           import glob
 from os.path        import splitext, basename, join as pjoin, walk
-import os
+import os, pdb
 
 class TestCommand(Command):
     user_options = [ ]
@@ -23,6 +23,7 @@ class TestCommand(Command):
                 testfiles.append('.'.join(
                     ['tests', splitext(basename(t))[0]])
                 )
+        pdb.set_trace()
         tests = TestLoader().loadTestsFromNames(testfiles)
         t = TextTestRunner(verbosity = 1)
         t.run(tests)
