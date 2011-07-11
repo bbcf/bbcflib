@@ -339,9 +339,8 @@ def rnaseq_workflow(ex, job, assembly, via="lsf", output=None, maplot="normal", 
 def MAplot(data, mode="interactive", deg=4, bins=30, alpha=0.005):
     """
     Creates an "MA-plot" to compare transcription levels of a set of genes
-    in two different conditions. It returns a list of triplets (name, x, y) for each point,
-    and a dictionary containing a list of couples for each quantile spline, each couple (xs,ys)
-    being a point the corresponding spline passes through. Input:
+    in two different conditions. It returns the name of the .png file produced,
+    and the name of a json containing enough information to reconstruct the plot using Javascript.
 
     data:  rpy DataFrame object; two columns, each for a different condition.
     mode:  display mode;
@@ -356,21 +355,23 @@ def MAplot(data, mode="interactive", deg=4, bins=30, alpha=0.005):
     pvals = asarray(data.rx("pval")[0])
     means = asarray(data.rx("baseMean")[0])
     ratios = asarray(data.rx("log2FoldChange")[0])
-    names = data.rx("Name")[0]
+    names = data.rx("GeneName")[0]
     a = asarray(names)
     b = asarray(names.levels)
     names = list(b[a-1])
 
-    points = []; blackpoints = []; redpoints = []; annotes = [];
+    points=[]; blackpoints=[]; redpoints=[]; annotes_red=[]; annotes_black=[]
     for i in range(len(ratios)):
         if not math.isnan(ratios[i]) and not math.isinf(ratios[i]):
-            p = (names[i],ratios[i],log10(means[i]),pvals[i])
+            p = (names[i],ratios[i],log10(means[i]))
             if pvals[i] < alpha:
-                redpoints.append(p)
-                annotes.append(p)
-            else: blackpoints.append(p)
+                redpoints.append((p[1],p[2]))
+                annotes_red.append(p[0])
+            else:
+                blackpoints.append((p[1],p[2]))
+                annotes_black.append(p[0])
             points.append(p)
-    names,ratios,means,pvals = zip(*points)
+    names,ratios,means = zip(*points)
     xmin = min(means); xmax = max(means); ymin = min(ratios); ymax = max(ratios)
 
     ## Create bins
@@ -391,16 +392,17 @@ def MAplot(data, mode="interactive", deg=4, bins=30, alpha=0.005):
     fig = plt.figure(figsize=[14,9])
     ax = fig.add_subplot(111)
     fig.subplots_adjust(left=0.08, right=0.98, bottom=0.08, top=0.98)
+    figname = None
 
     ### Points
-    blackpoints = array(zip(*blackpoints))[1:3]
-    redpoints = array(zip(*redpoints))[1:3]
-    ax.plot(blackpoints[1], blackpoints[0], ".", color="black")
-    if len(redpoints) != 0:
-        ax.plot(redpoints[1], redpoints[0], ".", color="red")
+    blackpts = array(zip(*blackpoints))
+    redpts = array(zip(*redpoints))
+    ax.plot(blackpts[1], blackpts[0], ".", color="black")
+    if len(redpts) != 0:
+        ax.plot(redpts[1], redpts[0], ".", color="red")
 
     ### Lines (best fit of percentiles)
-    spline_annotes = []; spline_coords = {}
+    spline_annotes=[]; spline_coords={}
     for k in [1,5,25,50,75,95,99]:
         h = ones(bins)
         for b in range(bins):
@@ -413,17 +415,17 @@ def MAplot(data, mode="interactive", deg=4, bins=30, alpha=0.005):
         ys = array(spline(xs))
         l = len(xs)
         xi = arange(l)[ceil(l/6):floor(8*l/9)]
-        x = xs[xi]
-        y = ys[xi]
-        ax.plot(x, y, "-", color="blue"); #ax.plot(x, h, "o", color="blue")
-        spline_annotes.append((k,x[0],y[0])) #quantile percentages
-        spline_coords[k] = zip(x,y)
+        x_spline = xs[xi]
+        y_spline = ys[xi]
+        ax.plot(x_spline, y_spline, "-", color="blue"); #ax.plot(x, h, "o", color="blue")
+        spline_annotes.append((k,x_spline[0],y_spline[0])) #quantile percentages
+        spline_coords[k] = zip(x_spline,y_spline)
 
     ### Decoration
     ax.set_xlabel("Log10 of sqrt(x1*x2)")
     ax.set_ylabel("Log2 of x1/x2")
-    for l in spline_annotes:
-        ax.annotate(str(l[0])+"%", xy=(l[1],l[2]), xytext=(-33,-5), textcoords='offset points',
+    for sa in spline_annotes:
+        ax.annotate(str(sa[0])+"%", xy=(sa[1],sa[2]), xytext=(-33,-5), textcoords='offset points',
                     bbox=dict(facecolor="white",edgecolor=None,boxstyle="square,pad=.4"))
     if mode == "interactive":
         af = AnnoteFinder( means, ratios, names )
@@ -431,12 +433,34 @@ def MAplot(data, mode="interactive", deg=4, bins=30, alpha=0.005):
         plt.draw()
         plt.show()
     else:
-        for p in annotes:
+        for p in redpoints:
             ax.annotate(p[0], xy=(p[2],p[1]) )
-        figname = unique_filename_in()
-        fig.savefig(figname)
+    figname = unique_filename_in()
+    fig.savefig(figname)
 
-    return figname, points, spline_coords
+    ## Output for Javascript
+    jsdata = [{"name": "Genes with p-value < " + str(alpha),
+               "data": redpoints,
+               "labels": annotes_red,
+               "points": {"symbol":"circle"},
+               "color": "red"},
+              {"name": "Other genes",
+               "data": blackpoints,
+               "labels": annotes_black,
+               "points": {"symbol":"circle"},
+               "color": "black"},
+              {"name": "Splines",
+               "data": [(x,y) for (x,y) in spline_coords[k] for k in [1,5,25,50,75,95,99]],
+               "color": "blue"},
+              {"name": "Spline labels",
+               "data": [s[0] for s in spline_coords[k] for k in [1,5,25,50,75,95,99]],
+               "labels": ["1%","5%","25%","50%","75%","95%","99%"]}
+              ]
+    jsname = unique_filename_in()
+    with open(jsname+".js","w") as js:
+        json.dump(jsdata,js)
+
+    return figname, jsname
 
 class AnnoteFinder:
   """
