@@ -53,7 +53,8 @@ def create_sql_track(path, meta_chr, datatype="quantitative", format='sql', name
     from bbcflib import track
     with track.new(path, format, datatype, name) as t:
         t.meta_chr = meta_chr
-        for chrom in meta_chr: t.write(chrom['name'], (), getattr(track.Track, datatype + '_fields'))
+        for chrom in meta_chr:
+            t.write(chrom['name'], (), getattr(track.Track, datatype + '_fields'))
 
 ###############################################################################
 ###############################################################################
@@ -65,10 +66,11 @@ try:
 
     #-------------------------------------------------------------------------#
     def get_files( id_or_key, minilims ):
-        """Retrieves a dictionary of files created by htsstation job identified by its key or bein id in a MiniLIMS.
+        """Retrieves a dictionary of files created by an htsstation job identified by its key or bein id in a MiniLIMS.
 
-        The dictionarie's keys are the file types (e.g. 'pdf', 'bam', 'py' for python objects), the values are dictionaries with keys repository file names and values actual file descriptions (names to provide in the user interface).
+        The dictionary keys are the file types (e.g. 'pdf', 'bam', 'py' for python objects), the values are dictionaries with keys repository file names and values actual file descriptions (names to provide in the user interface).
         """
+        import re
         if isinstance(id_or_key, str):
             try:
                 exid = max(minilims.search_executions(with_text=id_or_key))
@@ -106,6 +108,7 @@ try:
     def merge_sql( ex, sqls, names, description="merged.sql", outdir=None, via='lsf' ):
         """Run ``gMiner``'s 'merge_score' function on a set of sql files
         """
+        import os
         if outdir == None:
             outdir = unique_filename_in()
         if not(os.path.exists(outdir)):
