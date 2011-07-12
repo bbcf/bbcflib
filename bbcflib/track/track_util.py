@@ -10,9 +10,9 @@ Usefull stuff.
 import os, sys, random, shlex
 
 # Internal modules #
-from bbcflib.track import Track, new
-from bbcflib.track import formats
-from bbcflib.track import magic
+from . import Track, new
+from . import formats
+from . import magic
 
 ###############################################################################
 def determine_format(path):

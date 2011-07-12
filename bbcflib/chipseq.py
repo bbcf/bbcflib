@@ -41,11 +41,11 @@ Below is the script used by the frontend::
 import shutil, pickle, urllib
 
 # Internal modules #
-from bbcflib import frontend, mapseq
-from bbcflib.common import *
+from . import frontend, mapseq
+from .common import *
 
 # Other modules #
-from bein import MiniLIMS, program, unique_filename_in
+from bein import *
 from bein.util import *
 
 ################################################################################

@@ -1,6 +1,6 @@
 # Internal modules #
-from bbcflib.track.track_collection import track_collections
-from bbcflib.track import magic
+from ..track_collection import track_collections
+from .. import magic
 
 # Unittesting module #
 try:

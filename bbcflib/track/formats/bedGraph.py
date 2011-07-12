@@ -7,8 +7,8 @@ Implementation of the bedGraph format.
 """
 
 # Internal modules #
-from bbcflib.track.track_proxy  import TrackProxy
-from bbcflib.track.track_text   import TrackText
+from ..track_proxy import TrackProxy
+from ..track_text import TrackText
 
 
 

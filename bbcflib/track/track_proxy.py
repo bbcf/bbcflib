@@ -10,9 +10,9 @@ Methods that create an SQL file upon opening in the temporary directory and reco
 import os, shutil
 
 # Internal modules #
-from bbcflib.track              import Track, new
-from bbcflib.track.common       import named_temporary_path
-from bbcflib.track.formats.sql  import TrackFormat as TrackBackend
+from . import Track, new
+from .common import named_temporary_path
+from .formats.sql import TrackFormat as TrackBackend
 
 # Globals #
 backend_format = 'sql'

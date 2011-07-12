@@ -2,7 +2,7 @@
 import socket, re, ConfigParser, cStringIO
 
 # Internal modules #
-from bbcflib.email import EmailReport
+from ..email import EmailReport
 
 # Unitesting module #
 try:

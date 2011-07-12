@@ -10,7 +10,7 @@ Methods that create a text file upon opening a binary file in the temporary dire
 import os, subprocess
 
 # Internal modules #
-from bbcflib.track.common import named_temporary_path
+from .common import named_temporary_path
 
 ###########################################################################
 class TrackBinary(object):

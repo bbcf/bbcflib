@@ -7,8 +7,8 @@ Implementation of the bigWig format.
 """
 
 # Internal modules #
-from bbcflib.track.track_binary import TrackBinary
-from bbcflib.track.formats.wig  import TrackFormat as TrackWIG
+from ..track_binary import TrackBinary
+from .wig import TrackFormat as TrackWIG
 
 ###########################################################################
 class TrackFormat(TrackBinary, TrackWIG):

@@ -76,7 +76,7 @@ Below is the script used by the frontend::
 import os, re, json, shutil, gzip, tarfile, pickle
 
 # Internal modules #
-from bbcflib import frontend, genrep, daflims, common
+from . import frontend, genrep, daflims, common
 
 # Other modules #
 import pysam

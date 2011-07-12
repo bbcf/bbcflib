@@ -2,7 +2,7 @@
 import datetime, ConfigParser, cStringIO
 
 # Internal modules #
-from bbcflib.genrep import Assembly, GenRep
+from ..genrep import Assembly, GenRep
 
 # Unitesting module #
 try:

@@ -2,7 +2,7 @@
 import os, ConfigParser, cStringIO
 
 # Internal modules #
-from bbcflib.daflims import DAFLIMS
+from ..daflims import DAFLIMS
 
 # Unitesting module #
 try:
