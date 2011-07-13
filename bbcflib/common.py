@@ -3,7 +3,7 @@
 Module: bbcflib.common
 ======================
 
-Common usefull in many places.
+Utility functions common to several pipelines.
 """
 
 # Built-in modules #
@@ -62,7 +62,7 @@ def create_sql_track(path, meta_chr, datatype="quantitative", format='sql', name
 ###############################################################################
 ###############################################################################
 try:
-    from bein import unique_filename_in, program
+    from bein import *
 
     #-------------------------------------------------------------------------#
     def get_files( id_or_key, minilims ):

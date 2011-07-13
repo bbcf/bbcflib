@@ -246,9 +246,14 @@ def get_bam_wig_files( ex, job, minilims=None, hts_url=None,
                 stats_id = allfiles.get("py:"+name+"_filter_bamstat") or allfiles.get("py:"+name+"_full_bamstat")
                 with open(MMS.path_to_file(stats_id)) as q:
                     s = pickle.load(q)
-                pickle_thresh = allfiles["py:"+name+"_Poisson_threshold"]
-                with open(MMS.path_to_file(pickle_thresh)) as q:
-                    p_thresh = pickle.load(q)
+                p_thresh = -1
+                if "py:"+name+"_Poisson_threshold" in allfiles:
+                    pickle_thresh = allfiles["py:"+name+"_Poisson_threshold"]
+                    with open(MMS.path_to_file(pickle_thresh)) as q:
+                        p_thresh = pickle.load(q)
+                if 'py:gdv_json' in allfiles:
+                    with open(MMS.path_to_file(allfiles['py:gdv_json'])) as q:
+                        job.options['gdv_project'] = pickle.load(q)
                 htss = frontend.Frontend( url=hts_url )
                 ms_job = htss.job( run['key'] )
                 if ms_job.options.get('read_extension')>0 and ms_job.options.get('read_extension')<80:
