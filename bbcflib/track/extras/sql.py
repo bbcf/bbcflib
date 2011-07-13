@@ -33,13 +33,13 @@ class TrackExtras(object):
             t.meta_chr   = self.meta_chr
             t.meta_track = self.meta_track
             # Define generator #
-            def shuffle_features(data, distance):
+            def shuffle_features(length, data):
                 for feature in data:
                     distance     = feature[0] - feature[1]
-                    random_start = random.randint(0, chrom["length"] - distance)
+                    random_start = random.randint(0, length - distance)
                     random_end   = random_start + distance
                     yield (random_start, random_end, "Random feature", 0.0, 0)
             # Iterate #
             for chrom in self:
                 for i in range(repeat_number):
-                    t.write(chrom, shuffle_features(self.read(chrom), self.chr_length(chrom)))
+                    t.write(chrom, shuffle_features(self.chr_length(chrom), self.read(chrom)))

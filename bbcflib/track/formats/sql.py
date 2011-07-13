@@ -177,9 +177,8 @@ class TrackFormat(Track, TrackExtras):
     def chrs_from_tables(self):
         return [x for x in self.all_tables if x not in self.special_tables and not x.endswith('_idx')]
 
-    @property
     def chr_length(self, name):
-        for chrom in self.chrmeta:
+        for chrom in self.meta_chr:
             if chrom['name'] == name: return chrom['length']
 
     #-----------------------------------------------------------------------------#
