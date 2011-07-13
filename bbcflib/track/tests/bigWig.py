@@ -18,7 +18,14 @@ __test__ = True
 ###################################################################################
 class Test_Read(unittest.TestCase):
     def runTest(self):
-        pass
+        t = track_collections['Binary'][1]
+        with track.load(t['path'], chrmeta=t['chrmeta']) as t:
+            # Just the first feature #
+            data = t.read()
+            self.assertEqual(data.next(), ('chr1', 0, 10, 8.0))
+            # Number of features #
+            data = t.read()
+            self.assertEqual(len(list(data)), 4)
 
 #-----------------------------------#
 # This code was written by the BBCF #

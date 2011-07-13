@@ -28,6 +28,7 @@ def determine_format(path):
         raise Exception("The format of the path '" + path + "' cannot be determined. Please specify a format or add an extension.")
     # Synonyms #
     if file_format == 'db': file_format = 'sql'
+    if file_format == 'bw': file_format = 'bigWig'
     # Return the format #
     return file_format
 
