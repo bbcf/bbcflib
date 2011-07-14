@@ -6,5 +6,4 @@
     .. autofunction:: join_pdf
     .. autofunction:: compress
     .. autofunction:: uncompress
-    .. autofunction:: ssh_add
     .. autofunction:: scp

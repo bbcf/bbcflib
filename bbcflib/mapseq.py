@@ -330,7 +330,7 @@ def get_fastq_files( job, fastq_root, dafl=None, set_seed_length=True ):
                             output_file.write(input_file.read())
                     fq_file = fq_file2
                 job.groups[gid]['runs'][rid] = fq_file
-                job.groups[gid]['run_names'][rid] = run.split("/")[-1]
+                job.groups[gid]['run_names'][rid] = os.path.basename(run.split("/")[-1])
     return job
 
 ############################################################
@@ -369,6 +369,8 @@ def map_groups( ex, job_or_dict, fastq_root, assembly_or_dict, map_args={} ):
     pcr_dupl = True
     if 'discard_pcr_duplicates' in options:
         pcr_dupl = options['discard_pcr_duplicates']
+        if isinstance(pcr_dupl,str):
+            pcr_dupl = pcr_dupl.lower() in ['1','true','t']
     if isinstance(assembly_or_dict,genrep.Assembly):
         chromosomes = dict([(str(k[0])+"_"+k[1]+"."+str(k[2]),v)
                             for k,v in assembly_or_dict.chromosomes.iteritems()])
@@ -611,7 +613,7 @@ def densities_groups( ex, job_or_dict, file_dict, chromosomes, via='lsf' ):
             if not 'libname' in mapped[k]:
                 mapped[k]['libname'] = group_name+"_"+str(k)
             if not 'stats' in mapped[k]:
-                mapped[k]['stats'] = mapseq.bamstats( ex, mapped[k]["bam"] )
+                mapped[k]['stats'] = bamstats( ex, mapped[k]["bam"] )
             if not(options.get('read_extension')>0):
                 options['read_extension'] = mapped[k]['stats']['read_length']
                 if not('-q' in b2w_args):
@@ -620,7 +622,9 @@ def densities_groups( ex, job_or_dict, file_dict, chromosomes, via='lsf' ):
         for m in mapped.values():
             output = unique_filename_in()
             touch(ex,output)
-            [common.create_sql_track( output+s+'.sql', chromosomes ) for s in suffixes]
+            [common.create_sql_track( output+s+'.sql', chromosomes.values(), 
+                                      name=m['libname'] ) 
+             for s in suffixes]
             wig.append(parallel_density_sql( ex, m["bam"], output, chromosomes,
                                              nreads=m["stats"]["total"],
                                              merge=merge_strands,
