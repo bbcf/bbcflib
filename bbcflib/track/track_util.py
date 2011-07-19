@@ -3,14 +3,13 @@
 Submodule: bbcflib.track.track_util
 ===================================
 
-Usefull stuff.
+Usefull stuff for the track package.
 """
 
 # Built-in modules #
-import os, sys, random, shlex
+import os, sys, shlex
 
 # Internal modules #
-from . import Track, new
 from . import formats
 from . import magic
 
@@ -27,10 +26,12 @@ def determine_format(path):
     if not file_format:
         raise Exception("The format of the path '" + path + "' cannot be determined. Please specify a format or add an extension.")
     # Synonyms #
-    if file_format == 'db': file_format = 'sql'
-    if file_format == 'bw': file_format = 'bigWig'
+    known_synonyms = {
+        'db': 'sql',
+        'bw': 'bigWig',
+    }
     # Return the format #
-    return file_format
+    return known_synonyms.get(file_format, file_format)
 
 #-----------------------------------------------------------------------------#
 def guess_file_format(path):

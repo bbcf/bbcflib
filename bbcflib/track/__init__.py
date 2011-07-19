@@ -10,6 +10,7 @@ Currently the following formats are implemented as read/write:
 * BED        (http://genome.ucsc.edu/FAQ/FAQformat.html#format1)
 * WIG        (http://genome.ucsc.edu/goldenPath/help/wiggle.html)
 * bedGraph   (http://genome.ucsc.edu/goldenPath/help/bedgraph.html)
+* bigWig     (http://genome.ucsc.edu/goldenPath/help/bigWig.html)
 
 More formats can be added easily.
 
@@ -56,7 +57,7 @@ For instance, to make a new track from an old one, and invert the strand of ever
             for chrom in a:
                 b.write(chrom, invert_strands(a.read(chrom)))
 
-To convert a track from a format (e.g. BED) to an other format (e.g. SQL) you first create a track object and call the convert method on it::
+To convert a track from a format (e.g. BED) to an other format (e.g. SQL) you first load the track and call the convert method on it::
 
     from bbcflib import track
     with track.load('tracks/rp_genes.bed') as rpgenes:
@@ -66,73 +67,69 @@ To set the chromosome metadata or the track metadata you simply asign to that at
 
     from bbcflib import track
     with track.load('tracks/scores.sql') as t:
-        t.meta_chr   = [{'name': 'chr1', 'length': 1500}, {'name': 'chr2', 'length': 2000}]
-        t.meta_track = {'datatype': 'quantitative', 'source': 'SGD'}
+        t.chrmeta    = ``{'chr1': {'length': 197195432}, 'chr2': {'length': 129993255}}``
+        t.attributes = {'datatype': 'quantitative', 'source': 'UCSC'}
 """
+
+__all__ = ['load', 'new']
 
 # Built-in modules #
 import os
 
 ###########################################################################
 def load(path, format=None, name=None, chrmeta=None, datatype=None, readonly=False):
-    '''The function used to access genomic data. It can load a track from disk, whatever the format is.
+    '''Loads a track from disk, whatever the format is.
 
-            * *path* is the path to track file.
+            * *path* is the path to track file to load.
             * *format* is an optional string specifying the format of the track to load when it cannot be guessed from the file extension.
             * *name* is an optional string specifying the name of the track to load. This can help with keep track of multiple different tracks.
-            * *chrmeta* is the path to chromosome file or the name of an assembly. This is specified only when the underlying format is missing chromosome length information. The chromosome file is structured as tab-separated text file containing two columns: the first specifies a chromosomes name and the second its length as an integer.
-            * *datatype* is an optional variable that can take the value of either ``qualitative`` or ``quantitative``. It is only usefull when loading a track that is ambiguous towards its datatype, as can be certain text files. For instance, In the case of WIG track becoming qualitative, all features will be missing names, but overlapping features will suddenly be authorized.
+            * *chrmeta* is an optional parameter useful in cases where the track to be loaded is missing extra meta data such chromosome length information. One can include this at the load phase by specifying one of three things: *chrmeta* can be the name of an assembly such as ``sacCer2``. *chrmeta* can be a dictionary where each key is chromosome names that specifies the ``length`` as integers. *chrmeta* can be the path to chromosome file. The chromosome file is structured as tab-separated text file containing two columns: the first specifies a chromosomes name and the second its length as an integer.
+            * *datatype* is an optional variable that can take the value of either ``qualitative`` or ``quantitative``. It is only useful when loading a track that is ambiguous towards its datatype, as can be certain text files. For instance, In the case of WIG track becoming qualitative, all features will be missing names, but overlapping features will suddenly be authorized.
             * *readonly* is an optional boolean variable that defaults to ``False``. When set to ``True``, any operation attempting to write to the track will silently be ignored.
 
         Examples::
 
             from bbcflib import track
             with track.load('tracks/rp_genes.sql') as rpgenes:
-                pass
+                data = rpgenes.read()
             with track.load('tracks/yeast', 'sql', 'S. cer. genes') as yeast:
-                pass
+                data = yeast.read()
             with track.load('tracks/peaks.bed', 'bed', chrmeta='hg19') as peaks:
-                pass
+                data = peaks.read()
             with track.load('tracks/scores.wig', 'wig', chrmeta='tracks/cser.chr', datatype='qualitative') as scores:
-                pass
+                data = scores.read()
             with track.load('tracks/repeats.sql', readonly=True) as rpgenes:
-                pass
+                data = rpgenes.read()
 
         ``load`` returns a Track instance.
     '''
     return Track(path, format, name, chrmeta, datatype, readonly)
 
-def new(path, format=None, datatype='qualitative', name='Unnamed', chrmeta=None):
-    '''Create a new empty track in preparation for writing to it.
+def new(path, format=None, name=None, chrmeta=None, datatype=None):
+    '''Creates a new empty track in preparation for writing to it.
 
-        * *path* is the file path where the new track will be created
-
-        * *format* is the format in which the new track will be created if it is not included in the extension of the path.
-
-        * *datatype*  is either ``qualitative`` or ``quantitative``.
-
-        * *name* is an optional name for the track.
-
-        *chrmeta* is the path to a chromosome file or the name of an assembly if one is needed.
+            * *path* is the path to track file to create.
+            * *format* is an optional string specifying the format of the track to load when it cannot be guessed from the file extension.
+            * *name* is an optional string specifying the name of the track to load. This can help with keep track of multiple different tracks.
+            * *chrmeta* is an optional parameter useful in cases where the track to be loaded is missing extra meta data such chromosome length information. One can include this at the creation phase by specifying one of three things: *chrmeta* can be the name of an assembly such as ``sacCer2``. *chrmeta* can be a dictionary where each key is chromosome names that specifies the ``length`` as integers. *chrmeta* can be the path to chromosome file. The chromosome file is structured as tab-separated text file containing two columns: the first specifies a chromosomes name and the second its length as an integer.
+            * *datatype* is an optional variable that can take the value of either ``qualitative`` or ``quantitative``. It is only useful when creating a track can can support both types, such as the BioSQLite format.
 
         Examples::
 
             from bbcflib import track
             with track.new('tmp/track.sql') as t:
-                t.write('chr1', [(10, 20, 'A', 0.0, 1)])
+                t.write('chr1', [(10, 20, 'Gene A', 0.0, 1)])
             with track.new('tracks/peaks.sql', 'sql', name='High affinity peaks') as t:
                 t.write('chr5', [(500, 1200, 'Peak1', 11.3, 0)])
-            with track.new('tracks/scores.sql', 'sql', datatype='quantitative', name='Signal along the genome') as t:
+            with track.new('tracks/scores.sql', 'sql', chrmeta='sacCer2' datatype='quantitative',) as t:
                 t.write('chr1', [(10, 20, 500.0)])
 
         ``new`` returns a Track instance.
     '''
-    if os.path.exists(path):
-        raise Exception("The location '" + path + "' is already taken")
+    if os.path.exists(path): raise Exception("The location '" + path + "' is already taken")
     if not format: format = os.path.splitext(path)[1][1:]
-    implementation = import_implementation(format)
-    implementation.TrackFormat.create(path, datatype, name)
-    return Track(path, format=format, name=name, chrmeta=chrmeta)
+    cls = import_implementation(format).TrackFormat
+    return cls.create(path, format, name, chrmeta, datatype)
 
 ###########################################################################
 class Track(object):
@@ -144,17 +141,25 @@ class Track(object):
            * *format* is always ``sql`` as, when loading a ``bed`` track for instance, a transparent underlying Bio SQLite track is sliently created.
            * *all_chrs* is a list of all available chromosome. For instance:
                 ``['chr1, 'chr2', 'chr3']``
-           * *meta_chr* is a list of dictionaries of chromosome meta data (information like length, etc). For instance:
-                ``[{'name': 'chr1', 'length': 197195432}, {'name': 'chr2', 'length': 129993255}]``
-           * *meta_track* is a dictionary of meta data associated to the track (information like the source, etc). For instance:
+           * *chrmeta* is a  dictionary of meta data associated to each chromosome (information like length, etc). For instance:
+                ``{'chr1': {'length': 197195432}, 'chr2': {'length': 129993255}}``
+           * *attributes* is a dictionary of meta data associated to the track (information like the source, etc). For instance:
                  ``{'datatype': 'quantitative', 'source': 'SGD'}``
-    '''
 
-#TODO ``{'chr1': {'length': 197195432}, 'chr2': {'length': 129993255}}``
+        The track object itself is iterable and will yield the name of all chromosomes.
+
+        Examples::
+
+            from bbcflib import track
+            with track.load('tracks/rp_genes.sql') as rpgenes:
+                for chrom in rpgenes: print chrom
+                if 'chrY' in rpgenes: print 'Male'
+                if len(rpgenes) != 23: print 'Aneuploidy'
+    '''
 
     #-----------------------------------------------------------------------------#
     def read(self, selection=None, fields=None, order='start,end', cursor=False):
-        '''Read data from the genomic file.
+        '''Reads data from the genomic file.
 
         * *selection* can be the name of a chromosome, in which case all the data on that chromosome will be returned. It can also be a dictionary specifying a region in which case only features contained in that region will be returned. To combine multiple selections you can specify a list including chromosome names and region dictionaries. As expected, if such is the case, the joined data from those selections will be returned with an added 'chr' field in front since the results may span several chromosomes. When *selection* is left empty, the data from all chromosome is returned.
 
@@ -177,6 +182,7 @@ class Track(object):
                 data = t.read({'chr':'chr1', 'start':10000, 'end':15000, 'inclusion':'strict'})
                 data = t.read('chr3', ['name', 'strand'])
                 data = t.read({'chr':'chr5', 'start':0, 'end':200}, ['strand', 'start', 'score'])
+            # Duplicate a chromosome
             with track.load('tracks/copychrs.sql') as t:
                 t.write('chrY', t.read('chrX', cursor=True))
 
@@ -208,7 +214,7 @@ class Track(object):
         raise NotImplementedError
 
     def remove(self, chrom=None):
-        '''Remove data from a given chromosome.
+        '''Removes data from a given chromosome.
 
         * *chrom* is the name of the chromosome that one wishes to delete or a list of chromosomes to delete.
 
@@ -250,7 +256,7 @@ class Track(object):
         raise NotImplementedError
 
     def convert(self, path, format='sql', chrmeta=None):
-        '''Convert a track to a given format.
+        '''Converts a track to a given format.
 
            * *path* is the file path where the new track will be created
 
@@ -271,8 +277,8 @@ class Track(object):
         if format == self.format:
             raise Exception("The track '" + path + "' cannot be converted to the " + format + " format because it is already in that format.")
         with new(path, format, self.datatype, self.name, chrmeta) as t:
-            t.meta_track = self.meta_track
-            t.meta_chr   = self.meta_chr
+            t.attributes = self.attributes
+            t.chrmeta    = self.chrmeta
             for chrom in self.all_chrs: t.write(chrom, self.read(chrom), self.fields)
 
     #-----------------------------------------------------------------------------#
@@ -293,79 +299,30 @@ class Track(object):
     }
 
     #-----------------------------------------------------------------------------#
-    @property
-    def datatype(self):
-        raise NotImplementedError
-
-    @property
-    def fields(self):
-        raise NotImplementedError
-
-    @property
-    def meta_chr(self):
-        raise NotImplementedError
-
-    @meta_chr.setter
-    def meta_chr(self, value):
-        raise NotImplementedError
-
-    @property
-    def meta_track(self):
-        raise NotImplementedError
-
-    @meta_track.setter
-    def meta_track(self, value):
-        raise NotImplementedError
-
-    def load(self):
-        pass
-
-    def unload(self, errtype, value, traceback):
-        pass
-
-    def commit(self):
-        pass
-
-    #-----------------------------------------------------------------------------#
-    def __new__(cls, path, format=None, name=None, chrmeta=None, datatype=None, readonly=False):
+    def __new__(cls, path, format=None, name=None, chrmeta=None, datatype=None, readonly=False, empty=False):
         '''Internal factory-like method that is called before creating a new instance of Track.
            This function determines the format of the file that is provided and returns an
            instance of the appropriate child class.'''
         if cls is Track:
+            # Check existence #
+            if not os.path.exists(path): raise Exception("The file '" + path + "' cannot be found")
+            elif os.path.isdir(path): raise Exception("The location '" + path + "' is a directory")
+            # Get child class #
             if not format: format = determine_format(path)
             implementation = import_implementation(format)
             instance       = super(Track, cls).__new__(implementation.TrackFormat)
+            # Set attributes #
+            instance.format   = format
+            instance.modified = False
+            instance.readonly = readonly
+            instance._chrmeta    = ChromMetaData()
+            instance._attributes = TrackMetaData()
         else:
-            instance       = super(Track, cls).__new__(cls)
+            instance = super(Track, cls).__new__(cls)
         return instance
 
     def __init__(self, path, format=None, name=None, chrmeta=None, datatype=None, readonly=False):
-        # Check existance #
-        if not os.path.exists(path):
-            raise Exception("The file '" + path + "' cannot be found")
-        elif os.path.isdir(path):
-            raise Exception("The location '" + path + "' is a directory")
-        # Type can only mean something with text files #
-        if datatype:
-            raise Exception("You cannot specify the datatype: " + datatype + " for the track '" + path + "'.")
-        # Default format #
-        if not format: format = determine_format(path)
-        # Set attributes #
-        self.path     = path
-        self.format   = format
-        self._name    = name
-        self.chrmeta  = chrmeta
-        self.readonly = readonly
-        # Call child function #
-        self.load()
-        # Sort chromosomes #
-        self.all_chrs.sort(key=natural_sort)
-        # Test variables #
-        if self.datatype not in ['quantitative', 'qualitative']:
-            raise Exception("The datatype of the track is invalid: " + self.datatype + ".")
-
-    def __iter__(self):
-        return iter(self.all_chrs)
+        raise NotImplementedError
 
     def __enter__(self):
         return self
@@ -373,9 +330,18 @@ class Track(object):
     def __exit__(self, errtype, value, traceback):
         self.unload(errtype, value, traceback)
 
+    def __iter__(self):
+        return iter(self.all_chrs)
+
+    def __len__(self):
+        return len(self.all_chrs)
+
+    def __contains__(self, key):
+        return key in self.all_chrs
+
 # Internal modules #
-from .common import natural_sort
 from .track_util import determine_format, import_implementation
+from .track_meta import ChromMetaData, TrackMetaData
 
 #-----------------------------------#
 # This code was written by the BBCF #

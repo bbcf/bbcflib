@@ -45,11 +45,11 @@ class TrackFormat(Track):
         return Track.qualitative_fields
 
     @property
-    def meta_chr(self):
-        return [dict([['name',chr],['length',sys.maxint]]) for chr in self.all_chrs]
+    def chrmeta(self):
+        return dict([(chr, dict([('length', sys.maxint)])) for chr in self.all_chrs])
 
     @property
-    def meta_track(self):
+    def attributes(self):
         return {'type':'random'}
 
 #-----------------------------------#

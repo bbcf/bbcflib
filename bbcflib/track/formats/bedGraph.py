@@ -17,9 +17,9 @@ from ..track_text import TrackText
 
 ###########################################################################
 class TrackFormat(TrackText, TrackProxy):
-    type_identifier = 'bedGraph'
+    type_identifier   = 'bedGraph'
 
-    def _all_entries(self):
+    def _read_entries(self):
         self._file.seek(0)
         seen_track = False
         for line in self._file:
@@ -50,61 +50,8 @@ class TrackFormat(TrackText, TrackProxy):
                 raise Exception("The file '" + self._path + "' has non floats as score values and is hence not valid.")
             yield line
 
-    def _write(self):
-        yield self._header_line
+    def _write_entries(self):
         for f in self.read(): yield ' '.join([str(x) for x in f]) + '\n'
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
     #-----------------------------------------------------------------------------#
     @property
@@ -113,8 +60,7 @@ class TrackFormat(TrackText, TrackProxy):
 
     @_datatype.setter
     def _datatype(self, datatype):
-        if not datatype: datatype = 'quantitative'
-        if datatype != 'quantitative':
+        if datatype and datatype != 'quantitative':
             raise Exception("The track '" + self._path + "' cannot be loaded as a '" + datatype + "' datatype.")
 
 #-----------------------------------#

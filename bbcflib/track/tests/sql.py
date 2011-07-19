@@ -4,7 +4,7 @@ import os, shutil
 # Internal modules #
 from ... import track
 from ..common import named_temporary_path
-from ..track_collection import track_collections
+from ..track_collection import track_collections, yeast_chr_file
 
 # Unittesting module #
 try:
@@ -51,15 +51,17 @@ class Test_Creation(unittest.TestCase):
         path = named_temporary_path('.' + format)
         # With format #
         with track.new(path=path, format=format) as t:
-            self.assertEqual(t.meta_track, {'datatype':'qualitative'})
+            self.assertEqual(t.path, path)
         os.remove(path)
         # Without format #
         with track.new(path=path) as t:
             self.assertEqual(t.format, format)
         os.remove(path)
-        # Different datatype #
+        # With datatype #
+        datatype = 'quantitative'
         with track.new(path=path, format=format, datatype='quantitative') as t:
-            self.assertEqual(t.meta_track, {'datatype':'quantitative'})
+            self.assertEqual(t.datatype, 'quantitative')
+            self.assertEqual(t.attributes, {'datatype':'quantitative'})
         os.remove(path)
 
 #-----------------------------------------------------------------------------#
@@ -69,16 +71,12 @@ class Test_Write(unittest.TestCase):
         path = named_temporary_path('.' + format)
         with track.new(path) as t:
             # Single feature #
-            chrom = '9toto'
+            chrom = 'lorem'
             features = [(10, 20, 'A', 0.0, 1)]
             t.write(chrom, features)
             self.assertEqual(list(t.read(chrom)), features)
-            # Addition #
-            features.append((10, 20, 'B', 0.0, 1))
-            t.write(chrom, [features[1]])
-            self.assertEqual(list(t.read(chrom)), features)
             # Multi feature #
-            chrom = 'chr2'
+            chrom = '9toto'
             features = [(i*10, i*10+5, 'X', 0.0, 0) for i in xrange(5)]
             t.write(chrom, features)
             self.assertEqual(list(t.read(chrom)), features)
@@ -104,23 +102,6 @@ class Test_Count(unittest.TestCase):
             self.assertEqual(num, 6717)
 
 #-----------------------------------------------------------------------------#
-class Test_Meta(unittest.TestCase):
-    def runTest(self):
-        path = named_temporary_path('.sql')
-        with track.new(path) as t:
-            # Chromosome #
-            info = [{'name': 'chr1', 'length': 1500}, {'name': 'chr2', 'length': 2000}]
-            t.meta_chr = info
-            self.assertEqual(t.meta_chr, info)
-            # Track attributes #
-            info = {'datatype': 'quantitative', 'source': 'SGD'}
-            t.meta_track = info
-            self.assertEqual(t.meta_track, info)
-            t.meta_track.update({'k':'v'})
-            self.assertEqual(t.meta_track, info)
-        os.remove(path)
-
-#-----------------------------------------------------------------------------#
 class Test_Remove(unittest.TestCase):
     def runTest(self):
         path = named_temporary_path('.sql')
@@ -133,8 +114,62 @@ class Test_Remove(unittest.TestCase):
         os.remove(path)
 
 #-----------------------------------------------------------------------------#
-class Test_NoFormat(unittest.TestCase):
+class Test_Chrmeta(unittest.TestCase):
     def runTest(self):
+        path = named_temporary_path('.sql')
+        info = {'chr1': {'length': 197195432}, 'chr2': {'length': 129993255}}
+        # Setting #
+        with track.new(path) as t:
+            t.chrmeta = info
+            self.assertEqual(t.chrmeta, info)
+        os.remove(path)
+        # Dictionary #
+        d = track_collections['Validation'][1]
+        with track.load(d['path_sql'], chrmeta=info, readonly=True) as t:
+            self.assertEqual(t.chrmeta['chr1']['length'], 197195432)
+        # Genrep #
+        with track.load(d['path_sql'], chrmeta='hg19', readonly=True) as t:
+            self.assertEqual(t.chrmeta['chr1']['length'], 249250621)
+        # File #
+        with track.load(d['path_sql'], chrmeta=yeast_chr_file, readonly=True) as t:
+            self.assertEqual(t.chrmeta['chr1']['length'], 230208)
+
+#-----------------------------------------------------------------------------#
+class Test_Attributes(unittest.TestCase):
+    def runTest(self):
+        path = named_temporary_path('.sql')
+        with track.new(path) as t:
+            # Overwritting #
+            info = {'datatype': 'quantitative', 'source': 'SGD'}
+            t.attributes = info
+            self.assertEqual(t.attributes, info)
+            # Add #
+            name = 'Peaks'
+            t.attributes['name'] = name
+            info['name'] = name
+            self.assertEqual(t.attributes, info)
+            # Update #
+            d = {'k':'v'}
+            t.attributes.update({'k':'v'})
+            info.update({'k':'v'})
+            self.assertEqual(t.attributes, info)
+        os.remove(path)
+
+#------------------------------------------------------------------------------#
+class Test_Format(unittest.TestCase):
+    def runTest(self):
+        # Not specified #
+        t = track_collections['Validation'][1]
+        with track.load(t['path_sql']) as t:
+            self.assertEqual(t.format, 'sql')
+        # No extension #
+        old = track_collections['Validation'][1]['path_sql']
+        new = named_temporary_path()
+        shutil.copyfile(old, new)
+        with track.load(new, 'sql') as t:
+            self.assertEqual(t.format, 'sql')
+        os.remove(new)
+        # Only binary header #
         old = track_collections['Validation'][2]['path_sql']
         new = named_temporary_path()
         shutil.copyfile(old, new)
@@ -142,7 +177,8 @@ class Test_NoFormat(unittest.TestCase):
             self.assertEqual(t.format, 'sql')
         os.remove(new)
 
-#-----------------------------------------#
-# This code was written by Lucas Sinclair #
-# lucas.sinclair@epfl.ch                  #
-#-----------------------------------------#
+#-----------------------------------#
+# This code was written by the BBCF #
+# http://bbcf.epfl.ch/              #
+# webmaster.bbcf@epfl.ch            #
+#-----------------------------------#

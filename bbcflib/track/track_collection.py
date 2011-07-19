@@ -28,37 +28,34 @@ else:
 yeast_chr_file = tracks_path + 'chr/yeast.chr'
 track_collections = {
 'Validation': {
-  1: {'path':tracks_path+'qual/bed/validation1.bed', 'type':'qualitative', ' fields':Track.qualitative_fields[:4], 'chrmeta':yeast_chr_file},
-  2: {'path':tracks_path+'qual/bed/validation2.bed', 'type':'qualitative',  'fields':Track.qualitative_fields,     'chrmeta':yeast_chr_file},
-  3: {'path':tracks_path+'qual/bed/validation3.bed', 'type':'qualitative',  'fields':Track.qualitative_fields,     'chrmeta':yeast_chr_file},
-  4: {'path':tracks_path+'qual/bed/validation4.bed', 'type':'qualitative',  'fields':Track.qualitative_fields,     'chrmeta':yeast_chr_file},
+  1: {'path': tracks_path+'qual/bed/validation1.bed',     'type':'qualitative', ' fields':Track.qualitative_fields[:4]},
+  2: {'path': tracks_path+'qual/bed/validation2.bed',     'type':'qualitative',  'fields':Track.qualitative_fields    },
+  3: {'path': tracks_path+'qual/bed/validation3.bed',     'type':'qualitative',  'fields':Track.qualitative_fields    },
+  4: {'path': tracks_path+'qual/bed/validation4.bed',     'type':'qualitative',  'fields':Track.qualitative_fields    },
   },
 'Scores': {
-  1: {'path':tracks_path+'quan/wig/scores1.wig',     'type':'quantitative', 'fields':Track.quantitative_fields,    'chrmeta':yeast_chr_file},
-  2: {'path':tracks_path+'quan/wig/scores2.wig',     'type':'quantitative', 'fields':Track.quantitative_fields,    'chrmeta':yeast_chr_file},
-  3: {'path':tracks_path+'quan/wig/scores3.wig',     'type':'quantitative', 'fields':Track.quantitative_fields,    'chrmeta':yeast_chr_file},
-  4: {'path':tracks_path+'quan/wig/scores4.wig',     'type':'quantitative', 'fields':Track.quantitative_fields,    'chrmeta':yeast_chr_file},
+  1: {'path': tracks_path+'quan/wig/scores1.wig',         'type':'quantitative', 'fields':Track.quantitative_fields   },
+  2: {'path': tracks_path+'quan/wig/scores2.wig',         'type':'quantitative', 'fields':Track.quantitative_fields   },
+  3: {'path': tracks_path+'quan/wig/scores3.wig',         'type':'quantitative', 'fields':Track.quantitative_fields   },
+  4: {'path': tracks_path+'quan/wig/scores4.wig',         'type':'quantitative', 'fields':Track.quantitative_fields   },
     },
 'Random': {
-  1: {'path':tracks_path+'qual/bed/random1.bed',     'type':'qualitative',  'fields':Track.qualitative_fields},
-  2: {'path':tracks_path+'qual/bed/random2.bed',     'type':'qualitative',  'fields':Track.qualitative_fields},
-  3: {'path':tracks_path+'qual/bed/random3.bed',     'type':'qualitative',  'fields':Track.qualitative_fields},
-  4: {'path':tracks_path+'qual/bed/random4.bed',     'type':'qualitative',  'fields':Track.qualitative_fields},
+  1: {'path': tracks_path+'qual/bed/random1.bed',         'type':'qualitative',  'fields':Track.qualitative_fields    },
+  2: {'path': tracks_path+'qual/bed/random2.bed',         'type':'qualitative',  'fields':Track.qualitative_fields    },
+  3: {'path': tracks_path+'qual/bed/random3.bed',         'type':'qualitative',  'fields':Track.qualitative_fields    },
+  4: {'path': tracks_path+'qual/bed/random4.bed',         'type':'qualitative',  'fields':Track.qualitative_fields    },
     },
 'Signals': {
-  1: {'path':tracks_path+'quan/bedgraph/test1.bedGraph', 'type':'quantitative', 'fields':Track.quantitative_fields, 'chrmeta':yeast_chr_file},
-  2: {'path':tracks_path+'quan/bedgraph/test2.bedGraph', 'type':'quantitative', 'fields':Track.quantitative_fields, 'chrmeta':yeast_chr_file},
+  1: {'path': tracks_path+'quan/bedgraph/test1.bedGraph', 'type':'quantitative', 'fields':Track.quantitative_fields   },
+  2: {'path': tracks_path+'quan/bedgraph/test2.bedGraph', 'type':'quantitative', 'fields':Track.quantitative_fields   },
     },
 'Binary': {
-  1: {'path':tracks_path+'quan/bigWig/test1.bigWig',     'type':'quantitative', 'fields':Track.quantitative_fields, 'chrmeta':yeast_chr_file},
+  1: {'path':tracks_path+'quan/bigWig/test1.bigWig',      'type':'quantitative', 'fields':Track.quantitative_fields,  },
     },
 'Yeast': {
-  'All genes':  {'path':tracks_path+'qual/bed/all_yeast_genes.bed',   'type':'quantitative',
-                 'fields':Track.qualitative_fields, 'chrmeta':yeast_chr_file},
-  'Ribi genes': {'path':tracks_path+'qual/bed/ribosome_genesis.bed',  'type':'quantitative',
-                 'fields':Track.qualitative_fields, 'chrmeta':yeast_chr_file},
-  'RP genes':   {'path':tracks_path+'qual/bed/ribosome_proteins.bed', 'type':'quantitative',
-                 'fields':Track.qualitative_fields, 'chrmeta':yeast_chr_file},
+  'All genes':  {'path':tracks_path+'qual/bed/all_yeast_genes.bed',   'type':'quantitative', 'fields':Track.qualitative_fields},
+  'Ribi genes': {'path':tracks_path+'qual/bed/ribosome_genesis.bed',  'type':'quantitative', 'fields':Track.qualitative_fields},
+  'RP genes':   {'path':tracks_path+'qual/bed/ribosome_proteins.bed', 'type':'quantitative', 'fields':Track.qualitative_fields},
     },
 }
 
