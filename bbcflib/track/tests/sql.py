@@ -114,6 +114,19 @@ class Test_Remove(unittest.TestCase):
         os.remove(path)
 
 #-----------------------------------------------------------------------------#
+class Test_Readonly(unittest.TestCase):
+    def runTest(self):
+        path = track_collections['Yeast']['RP genes']['path_sql']
+        with track.load(path, readonly=True) as t:
+            t.remove()
+            t.attributes = {}
+            t.chrmeta = {}
+        with track.load(path, readonly=True) as t:
+            self.assertEqual(True, bool(t.all_chrs))
+            self.assertEqual(True, bool(t.attributes))
+            self.assertEqual(True, bool(t.chrmeta))
+
+#-----------------------------------------------------------------------------#
 class Test_Chrmeta(unittest.TestCase):
     def runTest(self):
         path = named_temporary_path('.sql')
