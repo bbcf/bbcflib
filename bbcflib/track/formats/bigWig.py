@@ -6,6 +6,9 @@ Submodule: bbcflib.track.formats.bigWig
 Implementation of the bigWig format. Requires the command line utilities "bigWigToBedGraph" and "bedGraphToBigWig" to be installed and present in the $PATH environment variable.
 """
 
+# Built-in modules #
+import os
+
 # Internal modules #
 from ..track_binary import TrackBinary
 from .bedGraph import TrackFormat as TrackBedgraph
@@ -18,7 +21,9 @@ class TrackFormat(TrackBinary, TrackBedgraph):
         self.run_tool('bigWigToBedGraph', [source, dest])
 
     def text_to_binary(self, source, dest):
-        self.run_tool('bedGraphToBigWig', [source, self.chrmeta.write_file(), dest])
+        chrfile = self.chrmeta.write_file()
+        self.run_tool('bedGraphToBigWig', [source, chrfile, dest])
+        os.remove(chrfile)
 
     #-----------------------------------------------------------------------------#
     @property

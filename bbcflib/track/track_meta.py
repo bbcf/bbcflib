@@ -75,7 +75,7 @@ class ChromMetaData(ModifiedDict):
         if not path: path = named_temporary_path()
         if os.path.exists(path): raise Exception("The location '" + path + "' is already taken")
         def lines():
-            for k,v in self.items(): yield k + '\t' + v['length']
+            for k,v in self.items(): yield k + '\t' + str(v['length']) + '\n'
         with open(path, 'w') as f: f.writelines(lines())
         return path
 

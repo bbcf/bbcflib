@@ -50,7 +50,10 @@ track_collections = {
   2: {'path': tracks_path+'quan/bedgraph/test2.bedGraph', 'type':'quantitative', 'fields':Track.quantitative_fields   },
     },
 'Binary': {
-  1: {'path':tracks_path+'quan/bigWig/test1.bigWig',      'type':'quantitative', 'fields':Track.quantitative_fields,  },
+  1: {'path':tracks_path+'quan/bigWig/test1.bigWig',      'type':'quantitative', 'fields':Track.quantitative_fields,
+      'from':tracks_path+'quan/bedgraph/test1.bedGraph'  },
+  2: {'path':tracks_path+'quan/bigWig/test2.bigWig',      'type':'quantitative', 'fields':Track.quantitative_fields,
+      'from':tracks_path+'quan/bedgraph/test2.bedGraph'  },
     },
 'Yeast': {
   'All genes':  {'path':tracks_path+'qual/bed/all_yeast_genes.bed',   'type':'quantitative', 'fields':Track.qualitative_fields},

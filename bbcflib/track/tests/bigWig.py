@@ -39,10 +39,8 @@ class Test_Write(unittest.TestCase):
                                 (40, 50, -2.5)]
             for chrom, data in sorted(features.items()): t.write(chrom, data)
         import filecmp
-        print path
-        print  track_collections['Binary'][1]['path']
         self.assertTrue(filecmp.cmp(path, track_collections['Binary'][1]['path']))
-        #os.remove(path)
+        os.remove(path)
 
 #-----------------------------------------------------------------------------#
 class Test_Overwrite(unittest.TestCase):
