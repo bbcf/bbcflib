@@ -65,30 +65,35 @@ def import_implementation(format):
 #------------------------------------------------------------------------------#
 def join_read_queries(track, selections, fields):
     '''Join read results when selection is a list'''
-    def _add_chromsome(sel, data):
+    def _add_chromsome_prefix(sel, data):
         if type(sel) == str: chrom = (sel,)
         else:                chrom = (sel['chr'],)
         for f in data: yield chrom + f
     for sel in selections:
-        for f in _add_chromsome(sel, track.read(sel, fields)): yield f
+        for f in _add_chromsome_prefix(sel, track.read(sel, fields)): yield f
 
 #------------------------------------------------------------------------------#
 def make_cond_from_sel(selection):
     '''Make an SQL condition string from a selection dictionary'''
     query = ""
-    if "start" in selection and "end" in selection:
-        if selection.get('inclusion') == 'strict':
-            query = "start < " + str(selection['end'])   + " and " + "start >= " + str(selection['start']) + \
-               " and end   > " + str(selection['start']) + " and " + "end <= "   + str(selection['end'])
-        else:
-            query = "start < " + str(selection['end'])   + " and " + "end > " + str(selection['start'])
-    if "score" in selection:
+    # Case start #
+    if "start" in selection:
+        query += "end > " + str(selection['start'])
+        if selection.get('inclusion') == 'strict': query += " and start >= " + str(selection['start'])
+    # Case end #
+    if "end" in selection:
         if query: query += " and "
-        statements  = [i for i in selection["score"].split(" ") if i != ""]
-        for i in statements:
-            try: number = float(i)
-            except ValueError: symbol = i
-        query += "score " + locals().get("symbol", "=") + " " + str(number)
+        query += "start < " + str(selection['end'])
+        if selection.get('inclusion') == 'strict': query += " and end <= " + str(selection['end'])
+    # Case strand #
+    if "strand" in selection:
+        if query: query += " and "
+        query += 'strand == ' + str(selection['strand'])
+    # Case score #
+    if "score" in selection:
+        if not isinstance(selection['score'], tuple): raise Exception("Score intervals must be tuples of size 2")
+        if query: query += " and "
+        query += 'score >= ' + str(selection['score'][0]) + ' and score <= ' + str(selection['score'][1])
     return query
 
 #-----------------------------------#

@@ -153,7 +153,7 @@ class TrackFormat(Track, TrackExtras):
         # Default selection #
         if not selection:
             selection = self.chrs_from_tables
-        # Case multi-chromosome #
+        # Case list of things #
         if isinstance(selection, list) or isinstance(selection, tuple):
             return join_read_queries(self, selection, fields)
         # Case chromsome name #
@@ -161,7 +161,7 @@ class TrackFormat(Track, TrackExtras):
             if selection not in self.chrs_from_tables: return ()
             if not fields: fields = self.get_fields_of_table(selection)
             sql_request = "select " + ','.join(fields) + " from '" + selection + "'"
-        # Case span dictionary #
+        # Case selection dictionary #
         if isinstance(selection, dict):
             chrom = selection['chr']
             if chrom not in self.chrs_from_tables: return ()

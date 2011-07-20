@@ -161,9 +161,17 @@ class Track(object):
     def read(self, selection=None, fields=None, order='start,end', cursor=False):
         '''Reads data from the genomic file.
 
-        * *selection* can be the name of a chromosome, in which case all the data on that chromosome will be returned. It can also be a dictionary specifying a region in which case only features contained in that region will be returned. To combine multiple selections you can specify a list including chromosome names and region dictionaries. As expected, if such is the case, the joined data from those selections will be returned with an added 'chr' field in front since the results may span several chromosomes. When *selection* is left empty, the data from all chromosome is returned.
+        * *selection* can be several things.
+
+        *selection* can be the name of a chromosome, in which case all the data on that chromosome will be returned.
+
+        *selection* can also be a dictionary specifying: regions, score intervals or strands. Indeed, you can specify either region in which case only features contained in that region will be returned or a dictionary specifying a score interval in which case only features contained in that score boundaries will be returned. You can also specify a strand. The dictionary can specify one or several of these arguemts. See examples for more details
 
         Adding the parameter ``'inclusion':'strict'`` to a region dictionary will return only features exactly contained inside the interval instead of features simply included in the interval.
+
+       To combine multiple selections you can specify a list including chromosome names and region dictionaries. As expected, if such is the case, the joined data from those selections will be returned with an added 'chr' field in front since the results may span several chromosomes.
+
+        When *selection* is left empty, the data from all chromosome is returned.
 
         * *fields* is a list of fields which will influence the length of the tuples returned and the way in which the information is returned. The default for quantitative tracks is ``['start', 'end', 'name', 'score', 'strand']`` and ``['start', 'end', 'score']`` for quantitative tracks.
 
@@ -177,10 +185,14 @@ class Track(object):
             with track.load('tracks/example.sql') as t:
                 data = t.read()
                 data = t.read('chr2')
+                data = t.read('chr3', ['name', 'strand'])
                 data = t.read(['chr1','chr2','chr3'])
+                data = t.read({'chr':'chr1', 'start':100})
                 data = t.read({'chr':'chr1', 'start':10000, 'end':15000})
                 data = t.read({'chr':'chr1', 'start':10000, 'end':15000, 'inclusion':'strict'})
-                data = t.read('chr3', ['name', 'strand'])
+                data = t.read({'chr':'chr1', 'strand':1})
+                data = t.read({'chr':'chr1', 'score':(10,100)})
+                data = t.read({'chr':'chr1', 'start':10000, 'end':15000 'strand':-1 'score':(10,100)})
                 data = t.read({'chr':'chr5', 'start':0, 'end':200}, ['strand', 'start', 'score'])
             # Duplicate a chromosome
             with track.load('tracks/copychrs.sql') as t:

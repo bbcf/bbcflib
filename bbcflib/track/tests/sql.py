@@ -18,33 +18,51 @@ __test__ = True
 ###################################################################################
 class Test_Read(unittest.TestCase):
     def runTest(self):
-        t = track_collections['Validation'][1]
-        with track.load(t['path_sql']) as t['track']:
+        d = track_collections['Validation'][1]
+        with track.load(d['path_sql']) as t:
             # Just the first feature #
-            data = t['track'].read()
+            data = t.read()
             self.assertEqual(data.next(), ('chr1', 0, 10, 'Validation feature 1', 10.0))
             # Number of features #
-            data = t['track'].read()
+            data = t.read()
             self.assertEqual(len(list(data)), 12)
             # Different fields #
-            data = t['track'].read('chr1', fields=['score'])
+            data = t.read('chr1', fields=['score'])
             expected = [(10.0,), (0.0,), (10.0,), (0.0,), (0.0,), (10.0,), (10.0,), (10.0,), (10.0,), (10.0,), (10.0,), (5.0,)]
             self.assertEqual(list(data), expected)
-            # Region #
-            expected =[(20, 30, u'Validation feature 3', 10.0),
-                       (25, 30, u'Validation feature 4',  0.0),
-                       (40, 45, u'Validation feature 5',  0.0),
-                       (40, 50, u'Validation feature 6', 10.0)]
-            data = t['track'].read({'chr':'chr1','start':22,'end':46})
-            self.assertEqual(list(data), expected)
-            # Strict region #
-            data = t['track'].read({'chr':'chr1','start':22,'end':46,'inclusion':'strict'})
-            self.assertEqual(list(data), expected[1:3])
             # Empty result #
-            data = t['track'].read({'chr':'chr2','start':0,'end':10})
+            data = t.read({'chr':'chr2','start':0,'end':10})
             self.assertEqual(list(data), [])
 
-#-----------------------------------------------------------------------------#
+#------------------------------------------------------------------------------#
+class Test_Selection(unittest.TestCase):
+    def runTest(self):
+        d = track_collections['Validation'][1]
+        with track.load(d['path_sql']) as t:
+            features = list(t.read('chr1'))
+            # Start #
+            data = t.read({'chr':'chr1', 'start':22})
+            self.assertEqual(list(data), features[2:])
+            # Region #
+            data = t.read({'chr':'chr1', 'start':22, 'end':46})
+            self.assertEqual(list(data), features[2:6])
+            # Strict region #
+            data = t.read({'chr':'chr1', 'start':22, 'end':46, 'inclusion':'strict'})
+            self.assertEqual(list(data), features[3:5])
+        d = track_collections['Validation'][2]
+        with track.load(d['path_sql']) as t:
+            features = list(t.read('chr1'))
+            # Strand #
+            data = t.read({'chr':'chr1', 'strand':1})
+            self.assertEqual(list(data), features[1:6] + features[7:-1])
+            # Score #
+            data = t.read({'chr':'chr1', 'score':(0.3,0.5)})
+            self.assertEqual(list(data), features[5:7])
+            # All #
+            data = t.read({'chr':'chr1', 'start':85, 'end':200, 'strand':-1, 'score':(0.3,0.5)})
+            self.assertEqual(list(data), features[6:7])
+
+#------------------------------------------------------------------------------#
 class Test_Write(unittest.TestCase):
     def runTest(self):
         format = 'sql'
@@ -73,7 +91,7 @@ class Test_Write(unittest.TestCase):
             self.assertEqual(list(t.read(chrom)), features)
         os.remove(path)
 
-#-----------------------------------------------------------------------------#
+#------------------------------------------------------------------------------#
 class Test_Creation(unittest.TestCase):
     def runTest(self):
         format = 'sql'
@@ -93,7 +111,7 @@ class Test_Creation(unittest.TestCase):
             self.assertEqual(t.attributes, {'datatype':'quantitative'})
         os.remove(path)
 
-#-----------------------------------------------------------------------------#
+#------------------------------------------------------------------------------#
 class Test_Count(unittest.TestCase):
     def runTest(self):
         t = track_collections['Yeast']['All genes']
@@ -101,7 +119,7 @@ class Test_Count(unittest.TestCase):
             num = t['track'].count()
             self.assertEqual(num, 6717)
 
-#-----------------------------------------------------------------------------#
+#------------------------------------------------------------------------------#
 class Test_Remove(unittest.TestCase):
     def runTest(self):
         path = named_temporary_path('.sql')
@@ -113,7 +131,7 @@ class Test_Remove(unittest.TestCase):
             self.assertEqual(list(t.read()), [])
         os.remove(path)
 
-#-----------------------------------------------------------------------------#
+#------------------------------------------------------------------------------#
 class Test_Readonly(unittest.TestCase):
     def runTest(self):
         path = track_collections['Yeast']['RP genes']['path_sql']
@@ -126,7 +144,7 @@ class Test_Readonly(unittest.TestCase):
             self.assertEqual(True, bool(t.attributes))
             self.assertEqual(True, bool(t.chrmeta))
 
-#-----------------------------------------------------------------------------#
+#------------------------------------------------------------------------------#
 class Test_Modified(unittest.TestCase):
     def runTest(self):
         d = track_collections['Yeast']['All genes']
@@ -141,7 +159,7 @@ class Test_Modified(unittest.TestCase):
             t.name = 'Test'
             self.assertTrue(t.attributes.modified)
 
-#-----------------------------------------------------------------------------#
+#------------------------------------------------------------------------------#
 class Test_Chrmeta(unittest.TestCase):
     def runTest(self):
         path = named_temporary_path('.sql')
@@ -162,7 +180,7 @@ class Test_Chrmeta(unittest.TestCase):
         with track.load(d['path_sql'], chrmeta=yeast_chr_file, readonly=True) as t:
             self.assertEqual(t.chrmeta['chr1']['length'], 230208)
 
-#-----------------------------------------------------------------------------#
+#------------------------------------------------------------------------------#
 class Test_Attributes(unittest.TestCase):
     def runTest(self):
         path = named_temporary_path('.sql')
@@ -183,7 +201,7 @@ class Test_Attributes(unittest.TestCase):
             self.assertEqual(t.attributes, info)
         os.remove(path)
 
-#------------------------------------------------------------------------------#
+#-------------------------------------------------------------------------------#
 class Test_Format(unittest.TestCase):
     def runTest(self):
         # Not specified #
@@ -205,7 +223,7 @@ class Test_Format(unittest.TestCase):
             self.assertEqual(t.format, 'sql')
         os.remove(new)
 
-#------------------------------------------------------------------------------#
+#-------------------------------------------------------------------------------#
 class Test_Corrupted(unittest.TestCase):
     def runTest(self):
         t = track_collections['Special']['Corrupted']
