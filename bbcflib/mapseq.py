@@ -194,6 +194,24 @@ def remove_duplicate_reads( bamfile, chromosomes,
     outfile.close()
     infile.close()
     return outname
+
+def pprint_bamstats(sample_stats) :
+    """Pretty stdout-print for sample_stats.
+    
+    The input is the dictionary return by the ``bamstats`` call.
+    """
+    span = 5
+    width_left = max([len(x) for x in sample_stats.keys()]) + span
+    width_right = max([len(str(x)) for x in sample_stats.values()]) + span
+    width_table = width_left + width_right +7
+    print "{0:->{twh}}".format("", twh=width_table)
+    for k, v in sample_stats.iteritems() :
+        print "* {0:{lwh}} | {1:>{rwh}} *".format(k,v, lwh=width_left,rwh=width_right)
+    print "{0:->{twh}}".format("", twh=width_table)
+    return(0)
+
+
+
 ############################################################
 
 def map_reads( ex, fastq_file, chromosomes, bowtie_index,
