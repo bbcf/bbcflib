@@ -51,7 +51,6 @@ import urllib2, json, os
 from datetime import datetime
 
 # Internal modules #
-from . import track
 from .common import normalize_url
 
 ################################################################################
@@ -125,6 +124,7 @@ class GenRep(object):
 
         Returns the name of the file and the total sequence size.
         """
+        from track import load
         def push_slices(slices,start,end,name,cur_chunk):
             if end>start:
                 slices['coord'].append([start,end])
@@ -156,7 +156,7 @@ class GenRep(object):
         chr_names   = dict((c[0],cn['name']) for c,cn in chromosomes.iteritems())
         chr_len     = dict((c[0],cn['length']) for c,cn in chromosomes.iteritems())
         size        = 0
-        with track.load(data_path, chrmeta=chromosomes) as t:
+        with load(data_path, chrmeta=chromosomes) as t:
             cur_chunk       = 0
             features_names  = set()
             for k in chromosomes.keys():
@@ -360,6 +360,10 @@ class Assembly(object):
     def add_chromosome(self, chromosome_id, refseq_locus, refseq_version, name, length):
         self.chromosomes[(chromosome_id, refseq_locus, refseq_version)] = \
             {'name': name, 'length': length}
+
+    @property
+    def chrmeta(self):
+        return dict([(v['name'],dict([('length',v['length'])])) for v in self.chromosomes.values()])
 
 #-----------------------------------#
 # This code was written by the BBCF #

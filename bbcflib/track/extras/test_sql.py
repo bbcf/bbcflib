@@ -18,19 +18,19 @@ __test__ = True
 ###################################################################################
 class Test_Shuffle(unittest.TestCase):
     def runTest(self):
-        path = named_temporary_path('.sql')
-        d = track_collections['Validation'][1]
-        with track.load(d['path'], chrmeta=d['chrmeta']) as t:
-            t.shuffle_track(path, 3)
-        with track.load(path, chrmeta=d['chrmeta']) as t:
+        new = named_temporary_path('.sql')
+        old = track_collections['Validation'][1]['path_sql']
+        with track.load(old) as t:
+            t.shuffle_track(new, 3)
+        with track.load(new) as t:
             self.assertEqual(t.count(), 36)
-        os.remove(path)
+        os.remove(new)
 
 #-----------------------------------------------------------------------------#
 class Test_ScoreFrequencies(unittest.TestCase):
     def runTest(self):
-        t = track_collections['Scores'][4]
-        with track.load(t['path'], chrmeta=t['chrmeta']) as t:
+        path = track_collections['Scores'][4]['path_sql']
+        with track.load(path) as t:
             freq = t.get_scores_frequencies()
         expected = {100.0: 1, 8.0: 1, 10.0: 3, 9000.0: 1, 40.0: 2, 50.0: 1, 20.0: 3}
         self.assertEqual(freq, expected)
