@@ -88,6 +88,13 @@ class ChromMetaData(ModifiedDict):
     def rows(self):
         return [dict(['name', chrom] + [(k,v) for k,v in self['chrom']]) for chrom in self]
 
+    #--------------------------------------------------------------------------#
+    def choose_max(self, chrmeta):
+        for chrom in self.data:
+            if chrom in chrmeta:
+                if chrmeta[chrom] > self.data[chrom]:
+                    self.data[chrom] = chrmeta[chrom]
+
 ###########################################################################
 class TrackMetaData(ModifiedDict):
     def __call__(self, x):

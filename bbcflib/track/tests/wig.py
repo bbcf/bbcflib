@@ -1,5 +1,5 @@
 # Built-in modules #
-import os
+import os, shutil
 
 # Internal modules #
 from ... import track
@@ -63,6 +63,29 @@ class Test_Format(unittest.TestCase):
         with track.load(t['path']) as t:
             self.assertEqual(t.format, 'wig')
             self.assertEqual(t.type_identifier, 'wiggle_0')
+
+#------------------------------------------------------------------------------#
+class Test_Format(unittest.TestCase):
+    def runTest(self):
+        # Not specified #
+        t = track_collections['Scores'][1]
+        with track.load(t['path']) as t:
+            self.assertEqual(t.format, 'wig')
+            self.assertEqual(t.type_identifier, 'wiggle_0')
+        # No extension #
+        old = track_collections['Scores'][1]['path']
+        new = named_temporary_path()
+        shutil.copyfile(old, new)
+        with track.load(new, 'wig') as t:
+            self.assertEqual(t.format, 'wig')
+        os.remove(new)
+        # Only track line #
+        old = track_collections['Peaks']['Rap1']['path']
+        new = named_temporary_path()
+        shutil.copyfile(old, new)
+        with track.load(new) as t:
+            self.assertEqual(t.format, 'wig')
+        os.remove(new)
 
 #-----------------------------------#
 # This code was written by the BBCF #

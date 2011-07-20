@@ -45,26 +45,6 @@ class Test_Read(unittest.TestCase):
             self.assertEqual(list(data), [])
 
 #-----------------------------------------------------------------------------#
-class Test_Creation(unittest.TestCase):
-    def runTest(self):
-        format = 'sql'
-        path = named_temporary_path('.' + format)
-        # With format #
-        with track.new(path=path, format=format) as t:
-            self.assertEqual(t.path, path)
-        os.remove(path)
-        # Without format #
-        with track.new(path=path) as t:
-            self.assertEqual(t.format, format)
-        os.remove(path)
-        # With datatype #
-        datatype = 'quantitative'
-        with track.new(path=path, format=format, datatype='quantitative') as t:
-            self.assertEqual(t.datatype, 'quantitative')
-            self.assertEqual(t.attributes, {'datatype':'quantitative'})
-        os.remove(path)
-
-#-----------------------------------------------------------------------------#
 class Test_Write(unittest.TestCase):
     def runTest(self):
         format = 'sql'
@@ -91,6 +71,26 @@ class Test_Write(unittest.TestCase):
             features = [(10, 20, 'A', 0.0, 1, 8, 22)]
             t.write(chrom, features, fields=track.Track.qualitative_fields + ['thick_start', 'thick_end'])
             self.assertEqual(list(t.read(chrom)), features)
+        os.remove(path)
+
+#-----------------------------------------------------------------------------#
+class Test_Creation(unittest.TestCase):
+    def runTest(self):
+        format = 'sql'
+        path = named_temporary_path('.' + format)
+        # With format #
+        with track.new(path=path, format=format) as t:
+            self.assertEqual(t.path, path)
+        os.remove(path)
+        # Without format #
+        with track.new(path=path) as t:
+            self.assertEqual(t.format, format)
+        os.remove(path)
+        # With datatype #
+        datatype = 'quantitative'
+        with track.new(path=path, format=format, datatype='quantitative') as t:
+            self.assertEqual(t.datatype, 'quantitative')
+            self.assertEqual(t.attributes, {'datatype':'quantitative'})
         os.remove(path)
 
 #-----------------------------------------------------------------------------#

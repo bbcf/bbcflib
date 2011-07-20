@@ -1,5 +1,5 @@
 # Built-in modules #
-import os
+import os, shutil
 
 # Internal modules #
 from ... import track
@@ -59,9 +59,17 @@ class Test_Roundtrips(unittest.TestCase):
 #-----------------------------------------------------------------------------#
 class Test_Format(unittest.TestCase):
     def runTest(self):
+        # Not specified #
         t = track_collections['Signals'][1]
         with track.load(t['path']) as t:
             self.assertEqual(t.format, 'bedGraph')
+        # No extension #
+        old = track_collections['Signals'][1]['path']
+        new = named_temporary_path()
+        shutil.copyfile(old, new)
+        with track.load(new, 'bedGraph') as t:
+            self.assertEqual(t.format, 'bedGraph')
+        os.remove(new)
 
 #-----------------------------------#
 # This code was written by the BBCF #

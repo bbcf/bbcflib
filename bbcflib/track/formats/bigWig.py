@@ -10,7 +10,6 @@ Implementation of the bigWig format. Requires the command line utilities "bigWig
 import os
 
 # Internal modules #
-from ...track import Track
 from ..track_binary import TrackBinary
 from .bedGraph import TrackFormat as TrackBedgraph
 
@@ -35,11 +34,6 @@ class TrackFormat(TrackBinary, TrackBedgraph):
     def _datatype(self, datatype):
         if datatype and datatype != 'quantitative':
             raise Exception("The track '" + self._path + "' cannot be loaded as a '" + datatype + "' datatype.")
-
-    @classmethod
-    def create(cls, path, format, name, chrmeta, datatype):
-        open(path, 'w').close()
-        return Track(path, format, name, chrmeta, datatype, empty=True)
 
 #-----------------------------------#
 # This code was written by the BBCF #

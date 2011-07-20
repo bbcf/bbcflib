@@ -3,7 +3,7 @@
 Submodule: bbcflib.track.track_util
 ===================================
 
-Usefull stuff for the track package.
+Useful stuff for the track package.
 """
 
 # Built-in modules #
@@ -33,7 +33,7 @@ def determine_format(path):
     # Return the format #
     return known_synonyms.get(file_format, file_format)
 
-#-----------------------------------------------------------------------------#
+#------------------------------------------------------------------------------#
 def guess_file_format(path):
     # Check SQLite #
     with open(path, 'r') as track_file:
@@ -55,14 +55,14 @@ def guess_file_format(path):
                     return ''
                 return known_identifiers.get(id, id)
 
-#-----------------------------------------------------------------------------#
+#------------------------------------------------------------------------------#
 def import_implementation(format):
     '''Try to import the implementation of a given format'''
     if not hasattr(sys.modules[__package__].formats, format):
         __import__(    __package__ + '.formats.' + format)
     return sys.modules[__package__ + '.formats.' + format]
 
-#-----------------------------------------------------------------------------#
+#------------------------------------------------------------------------------#
 def join_read_queries(track, selections, fields):
     '''Join read results when selection is a list'''
     def _add_chromsome(sel, data):
@@ -72,7 +72,7 @@ def join_read_queries(track, selections, fields):
     for sel in selections:
         for f in _add_chromsome(sel, track.read(sel, fields)): yield f
 
-#-----------------------------------------------------------------------------#
+#------------------------------------------------------------------------------#
 def make_cond_from_sel(selection):
     '''Make an SQL condition string from a selection dictionary'''
     query = ""

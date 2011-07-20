@@ -3,7 +3,7 @@
 Submodule: bbcflib.track.track_collection
 =========================================
 
-Creates a large ditionary of different tracks found in the "extras" directory (mainly small validation tracks). This is then used by the unittests.
+Creates a large dictionary of different tracks found in the "extras" directory (mainly small validation tracks). This is then used by the unittests.
 """
 
 # Built-in modules #
@@ -56,9 +56,13 @@ track_collections = {
       'from':tracks_path+'quan/bedgraph/test2.bedGraph'  },
     },
 'Yeast': {
-  'All genes':  {'path':tracks_path+'qual/bed/all_yeast_genes.bed',   'type':'quantitative', 'fields':Track.qualitative_fields},
-  'Ribi genes': {'path':tracks_path+'qual/bed/ribosome_genesis.bed',  'type':'quantitative', 'fields':Track.qualitative_fields},
-  'RP genes':   {'path':tracks_path+'qual/bed/ribosome_proteins.bed', 'type':'quantitative', 'fields':Track.qualitative_fields},
+  'All genes':  {'path':tracks_path+'qual/bed/all_yeast_genes.bed',   'type':'qualitative', 'fields':Track.qualitative_fields},
+  'Ribi genes': {'path':tracks_path+'qual/bed/ribosome_genesis.bed',  'type':'qualitative', 'fields':Track.qualitative_fields},
+  'RP genes':   {'path':tracks_path+'qual/bed/ribosome_proteins.bed', 'type':'qualitative', 'fields':Track.qualitative_fields},
+    },
+'Peaks': {
+  'Rap1': {'path':tracks_path+'quan/wig/rap1.wig', 'type':'quantitative', 'fields':Track.quantitative_fields},
+  'Pol2': {'path':tracks_path+'quan/wig/pol2.wig', 'type':'quantitative', 'fields':Track.quantitative_fields},
     },
 }
 

@@ -1,5 +1,5 @@
 # Built-in modules #
-import os, shutil
+import os, filecmp, shutil
 
 # Internal modules #
 from ... import track
@@ -38,24 +38,47 @@ class Test_Write(unittest.TestCase):
                                 (20, 30, -1.75),
                                 (40, 50, -2.5)]
             for chrom, data in sorted(features.items()): t.write(chrom, data)
-        import filecmp
         self.assertTrue(filecmp.cmp(path, track_collections['Binary'][1]['path']))
         os.remove(path)
 
 #-----------------------------------------------------------------------------#
 class Test_Overwrite(unittest.TestCase):
     def runTest(self):
-        pass
+        old_path = track_collections['Binary'][2]['path']
+        new_path = named_temporary_path('.bigWig')
+        shutil.copyfile(old_path, new_path)
+        feature = (10, 20, 9999.0)
+        chrom = 'chr2'
+        with track.load(new_path, chrmeta=yeast_chr_file) as t:
+            t.write(chrom, (feature,))
+        with track.load(new_path, chrmeta=yeast_chr_file) as t:
+            self.assertEqual(feature, t.read(chrom).next())
+        os.remove(new_path)
 
 #-----------------------------------------------------------------------------#
 class Test_Roundtrips(unittest.TestCase):
     def runTest(self):
-        pass
+        path = named_temporary_path('.bigWig')
+        for i in (1,2):
+            d = track_collections['Binary'][i]
+            with track.load(d['path'], chrmeta=yeast_chr_file) as t: t.dump(path)
+            self.assertTrue(filecmp.cmp(d['path'], path))
+            os.remove(path)
 
 #-----------------------------------------------------------------------------#
 class Test_Format(unittest.TestCase):
     def runTest(self):
-        pass
+        # Not specified #
+        t = track_collections['Binary'][1]
+        with track.load(t['path']) as t:
+            self.assertEqual(t.format, 'bigWig')
+        # No extension #
+        old = track_collections['Binary'][2]['path']
+        new = named_temporary_path()
+        shutil.copyfile(old, new)
+        with track.load(new, 'bigWig') as t:
+            self.assertEqual(t.format, 'bigWig')
+        os.remove(new)
 
 #-----------------------------------#
 # This code was written by the BBCF #
