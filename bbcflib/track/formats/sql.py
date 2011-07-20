@@ -175,8 +175,8 @@ class TrackFormat(Track, TrackExtras):
         return cur.execute(sql_request + ' ' + order_by)
 
     def write(self, chrom, data, fields=None):
-        if self.readonly: return
         self.modified = True
+        if self.readonly: return
         # Default fields #
         if self.datatype == 'quantitative': fields = Track.quantitative_fields
         if fields        == None:           fields = Track.qualitative_fields
@@ -192,8 +192,8 @@ class TrackFormat(Track, TrackExtras):
             raise Exception("The command '" + sql_command + "' on the database '" + self.path + "' failed with error: " + str(err))
 
     def remove(self, chrom=None):
-        if self.readonly: return
         self.modified = True
+        if self.readonly: return
         if not chrom:
             chrom = self.chrs_from_tables
         if isinstance(chrom, list):

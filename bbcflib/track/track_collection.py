@@ -64,6 +64,9 @@ track_collections = {
   'Rap1': {'path':tracks_path+'quan/wig/rap1.wig', 'type':'quantitative', 'fields':Track.quantitative_fields},
   'Pol2': {'path':tracks_path+'quan/wig/pol2.wig', 'type':'quantitative', 'fields':Track.quantitative_fields},
     },
+'Special': {
+  'Corrupted': {'path':tracks_path+'quan/sql/corrupted.sql', 'type':'quantitative', 'fields':Track.quantitative_fields},
+    },
 }
 
 # Modify tracks collection #

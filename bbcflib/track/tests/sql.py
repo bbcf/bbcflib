@@ -127,6 +127,21 @@ class Test_Readonly(unittest.TestCase):
             self.assertEqual(True, bool(t.chrmeta))
 
 #-----------------------------------------------------------------------------#
+class Test_Modified(unittest.TestCase):
+    def runTest(self):
+        d = track_collections['Yeast']['All genes']
+        with track.load(d['path_sql'], readonly=True) as t:
+            self.assertFalse(t.modified)
+            t.write('chrM', [(10, 20, 'A', 0.0, 1)])
+            self.assertTrue(t.modified)
+            self.assertFalse(t.chrmeta.modified)
+            t.chrmeta['chrM'] = {'length': -20}
+            self.assertTrue(t.chrmeta.modified)
+            self.assertFalse(t.attributes.modified)
+            t.name = 'Test'
+            self.assertTrue(t.attributes.modified)
+
+#-----------------------------------------------------------------------------#
 class Test_Chrmeta(unittest.TestCase):
     def runTest(self):
         path = named_temporary_path('.sql')
@@ -189,6 +204,15 @@ class Test_Format(unittest.TestCase):
         with track.load(new) as t:
             self.assertEqual(t.format, 'sql')
         os.remove(new)
+
+#------------------------------------------------------------------------------#
+class Test_Corrupted(unittest.TestCase):
+    def runTest(self):
+        t = track_collections['Special']['Corrupted']
+        with track.load(t['path_sql'], readonly=True) as t:
+            self.assertEqual(t.all_chrs, ['chr' + str(i) for i in range(1,17)])
+            self.assertEqual(t.chrmeta, {})
+            self.assertEqual(t.attributes, {})
 
 #-----------------------------------#
 # This code was written by the BBCF #
