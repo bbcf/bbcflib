@@ -15,7 +15,7 @@ Table of Contents:
    bbcflib
    tutorial
    specification
-   
+
    bbcflib_common
    bbcflib_daflims
    bbcflib_email
@@ -23,6 +23,6 @@ Table of Contents:
    bbcflib_genrep
    bbcflib_mapseq
    bbcflib_chipseq
+   bbcflib_rnaseq
    bbcflib_gdv
    bbcflib_track
-

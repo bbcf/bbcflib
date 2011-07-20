@@ -1,8 +1,24 @@
-.. automodule:: bbcflib.track 
+=========================
+Subpackage: bbcflib.track
+=========================
 
+.. automodule:: bbcflib.track
 
-Main class
-''''''''''
+###############
+Loading a track
+###############
+
+.. autofunction:: load
+
+####################
+Creating a new track
+####################
+
+.. autofunction:: new
+
+################
+The Track object
+################
 
 .. autoclass:: Track
 
@@ -15,8 +31,3 @@ Main class
     .. automethod:: Track.count
 
     .. automethod:: Track.convert
- 
-Other functions
-'''''''''''''''
-
-.. autofunction:: new
