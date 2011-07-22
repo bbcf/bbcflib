@@ -307,17 +307,25 @@ def rnaseq_workflow(ex, job, assembly, via="lsf", output=None, maplot="normal", 
                                       method, assembly_id, output, via=via)]
             print "....Wait for results....."
             for c,f in futures.iteritems():
-                ex.add(f[0].wait(),
-                       description="Comparison of genes in conditions '%s' and '%s' (CSV)" % (names[c[0]], names[c[1]]))
-                ex.add(f[1].wait(),
-                       description="Comparison of exons in conditions '%s' and '%s' (CSV)" % (names[c[0]], names[c[1]]))
+                gene_file = f[0].wait()
+                exons_file = f[1].wait()
+                if gene_file:
+                    ex.add(gene_file,
+                           description="Comparison of GENES in conditions '%s' and '%s' (CSV)" % (names[c[0]], names[c[1]]))
+                else: print "Failed during inference (genes), probably because of too few reads for DESeq stats."
+                if exons_file:
+                    ex.add(exons_file,
+                           description="Comparison of EXONS in conditions '%s' and '%s' (CSV)" % (names[c[0]], names[c[1]]))
+                else: print "Failed during inference (exons), probably because of too few reads for DESeq stats."
                 if maplot:
-                    res0 = robjects.DataFrame.from_csvfile(f[0].wait())
-                    res1 = robjects.DataFrame.from_csvfile(f[1].wait())
-                    figname,points,splines = MAplot(res0, mode=maplot, deg=4, bins=100, alpha=0.005)
-                    ex.add(figname+'.png', description="MA-plot (genes)")
-                    figname,points,splines = MAplot(res1, mode=maplot, deg=4, bins=100, alpha=0.005)
-                    ex.add(figname+'.png', description="MA-plot (exons)")
+                    if gene_file:
+                        res0 = robjects.DataFrame.from_csvfile(f[0].wait())
+                        figname, jsname = MAplot(res0, mode=maplot, deg=4, bins=100, alpha=0.005)
+                        ex.add(figname+'.png', description="MA-plot (genes)")
+                    if exons_file:
+                        res1 = robjects.DataFrame.from_csvfile(f[1].wait())
+                        figname, jsname = MAplot(res1, mode=maplot, deg=4, bins=100, alpha=0.005)
+                        ex.add(figname+'.png', description="MA-plot (exons)")
         else:
             print "Inference (genes only)..."
             futures[(c1,c2)] = external_deseq.nonblocking(ex,
@@ -327,11 +335,12 @@ def rnaseq_workflow(ex, job, assembly, via="lsf", output=None, maplot="normal", 
                                     method, assembly_id, output, via=via)
             print "....Wait for results..."
             for c,f in futures.iteritems():
-                ex.add(f.wait(),
-                       description="Comparison of genes in conditions '%s' and '%s' (CSV)" % (names[c1], names[c2]))
+                gene_file = f.wait()
+                ex.add(gene_file,
+                       description="Comparison of GENES in conditions '%s' and '%s' (CSV)" % (names[c1], names[c2]))
                 if maplot:
                     res = robjects.DataFrame.from_csvfile(f.wait())
-                    figname,points,splines = MAplot(res, mode=maplot, deg=4, bins=100, alpha=0.005)
+                    figname,jsname = MAplot(res, mode=maplot, deg=4, bins=100, alpha=0.005)
                     ex.add(figname+'.png', description="MA-plot of data")
         print "Done."
 
@@ -355,7 +364,7 @@ def MAplot(data, mode="interactive", deg=4, bins=30, alpha=0.005):
     pvals = asarray(data.rx("pval")[0])
     means = asarray(data.rx("baseMean")[0])
     ratios = asarray(data.rx("log2FoldChange")[0])
-    names = data.rx("GeneName")[0]
+    names = data.rx("Name")[0]
     a = asarray(names)
     b = asarray(names.levels)
     names = list(b[a-1])
