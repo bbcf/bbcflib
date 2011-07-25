@@ -115,14 +115,6 @@ class ModifiedDict(object):
         self.modified = True
         super(ModifiedDict, self)(*args, **kwargs)
 
-    def keys(self): return self.data.keys()
-    def items(self): return self.data.items()
-    def iteritems(self): return self.data.iteritems()
-    def iterkeys(self): return self.data.iterkeys()
-    def itervalues(self): return self.data.itervalues()
-    def values(self): return self.data.values()
-    def has_key(self, key): return key in self.data
-
     def __repr__(self):
         return repr(self.data)
 
@@ -148,6 +140,17 @@ class ModifiedDict(object):
     def __delitem__(self, key):
         self.modified = True
         del self.data[key]
+
+    def __iter__(self):
+        return iter(self.data)
+
+    def keys(self): return self.data.keys()
+    def items(self): return self.data.items()
+    def iteritems(self): return self.data.iteritems()
+    def iterkeys(self): return self.data.iterkeys()
+    def itervalues(self): return self.data.itervalues()
+    def values(self): return self.data.values()
+    def has_key(self, key): return key in self.data
 
     def get(self, key, failobj=None):
         if key not in self: return failobj
@@ -197,9 +200,3 @@ class ModifiedDict(object):
         d = cls()
         for key in iterable: d[key] = value
         return d
-
-#-----------------------------------#
-# This code was written by the BBCF #
-# http://bbcf.epfl.ch/              #
-# webmaster.bbcf@epfl.ch            #
-#-----------------------------------#

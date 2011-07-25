@@ -167,6 +167,7 @@ class Test_Chrmeta(unittest.TestCase):
         # Setting #
         with track.new(path) as t:
             t.chrmeta = info
+        with track.load(path) as t:
             self.assertEqual(t.chrmeta, info)
         os.remove(path)
         # Dictionary #

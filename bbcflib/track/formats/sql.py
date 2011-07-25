@@ -110,7 +110,7 @@ class TrackFormat(Track, TrackExtras):
 
     def chrmeta_write(self):
         if self.readonly: return
-        if not 'chrNames' in self.all_tables: cursor.execute('create table chrNames (name text, length integer)')
+        if not 'chrNames' in self.all_tables: self.cursor.execute('create table chrNames (name text, length integer)')
         if not self.chrmeta: self.cursor.execute('delete from chrNames')
         for r in self.chrmeta.rows: self.cursor.execute('insert into chrNames (' + ','.join(r.keys()) + ') values (' + ','.join(['?' for x in r.keys()])+')', tuple(r.values()))
 

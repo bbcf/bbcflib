@@ -17,6 +17,7 @@ from .common import named_temporary_path, ModifiedDict
 class ChromMetaData(ModifiedDict):
     def __call__(self, x):
         self.token = x
+        self.modified = True
         self.data  = self.read_token(x)
 
     def read_token(self, x):
@@ -86,7 +87,7 @@ class ChromMetaData(ModifiedDict):
 
     @property
     def rows(self):
-        return [dict(['name', chrom] + [(k,v) for k,v in self['chrom']]) for chrom in self]
+        return [dict([['name', chrom]] + [(k,v) for k,v in self[chrom].items()]) for chrom in self]
 
     #--------------------------------------------------------------------------#
     def choose_max(self, chrmeta):
@@ -99,6 +100,7 @@ class ChromMetaData(ModifiedDict):
 class TrackMetaData(ModifiedDict):
     def __call__(self, x):
         self.token = x
+        self.modified = True
         self.data  = self.read_token(x)
 
     def read_token(self, x):
