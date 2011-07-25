@@ -19,7 +19,7 @@ from ..common import natural_sort
 class TrackFormat(Track, TrackExtras):
     special_tables = ['attributes', 'chrNames', 'types']
 
-    def __init__(self, path, format=None, name=None, chrmeta=None, datatype=None, readonly=False):
+    def __init__(self, path, format=None, name=None, chrmeta=None, datatype=None, readonly=False, empty=False):
         # Set the path #
         self.path = path
         # Prepare the connection #

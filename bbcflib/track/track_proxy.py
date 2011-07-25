@@ -70,11 +70,11 @@ class TrackProxy(TrackBackend):
             self.unload()
             tmp_path = named_temporary_path('.' + backend_format)
             shutil.copy(self.path, tmp_path)
-            super(TrackProxy, self).__init__(tmp_path)
+            self.__init__(tmp_path)
             self._path = path
             self.modified = True
             self.__class__ = cls
-        else: super(TrackProxy).mutate(path, format)
+        else: Track.mutate(path, format)
 
     #--------------------------------------------------------------------------#
     @staticmethod

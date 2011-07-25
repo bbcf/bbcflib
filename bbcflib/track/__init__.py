@@ -128,7 +128,7 @@ def new(path, format=None, name=None, chrmeta=None, datatype=None):
     if not format: format = os.path.splitext(path)[1][1:]
     cls = import_implementation(format).TrackFormat
     cls.create(path)
-    return Track(path, format, name, chrmeta, datatype)
+    return Track(path, format, name, chrmeta, datatype, readonly=False, empty=True)
 
 ###########################################################################
 class Track(object):
@@ -294,7 +294,7 @@ class Track(object):
 
     @classmethod
     def mutate(cls, self, path, format):
-        '''Until other formats are added, this is never called.'''
+        print "Until other formats are added, this is never called."
         with new(path, format) as t:
             t.attributes = self.attributes
             t.chrmeta    = self.chrmeta
@@ -340,7 +340,7 @@ class Track(object):
             instance = super(Track, cls).__new__(cls)
         return instance
 
-    def __init__(self, path, format=None, name=None, chrmeta=None, datatype=None, readonly=False):
+    def __init__(self, path, format=None, name=None, chrmeta=None, datatype=None, readonly=False, empty=False):
         raise NotImplementedError
 
     def __enter__(self):
