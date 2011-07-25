@@ -11,7 +11,7 @@ import os, shutil
 
 # Internal modules #
 from . import Track, new
-from .common import named_temporary_path
+from .common import named_temporary_path, check_path
 from .formats.sql import TrackFormat as TrackBackend
 
 # Globals #
@@ -21,10 +21,9 @@ backend_format = 'sql'
 class TrackProxy(TrackBackend):
     def __init__(self, path, format=None, name=None, chrmeta=None, datatype=None, readonly=False, empty=False):
         # Parameters with underscore refer to the overlying track #
+        # Parameters without the underscore refer to the underlying track #
         self._path     = path
         self._datatype = datatype
-        # Parameters without the underscore refer to the underlying track #
-        self.modified = False
         # Create the SQL track #
         tmp_path = named_temporary_path('.' + backend_format)
         with new(tmp_path, backend_format, name) as t:
@@ -46,18 +45,41 @@ class TrackProxy(TrackBackend):
 
     def dump(self, path=None):
         if not path: path = self._path
-        elif os.path.exists(path): raise Exception("The location '" + path + "' is already taken")
+        else: check_path(path)
         with open(path, 'w') as file: file.writelines(self._write())
 
+    #--------------------------------------------------------------------------#
     def convert(self, path, format=backend_format):
-        if os.path.exists(path): raise Exception("The location '" + path + "' is already taken")
-        if format == backend_format: shutil.move(self.path, path)
+        if format == backend_format:
+            check_path(path)
+            super(TrackProxy, self).unload()
+            shutil.move(self.path, path)
+            self.__class__ = TrackBackend
+            self.init(path, format)
         else: super(TrackProxy, self).convert(path, format)
 
     @classmethod
-    def create(cls, path, format, name, chrmeta, datatype):
+    def mutate(cls, self, path, format):
+        # Either use the same temporary SQL
+        # Or create it by copying it
+        if issubclass(self.__class__, TrackProxy):
+            self._path = path
+            self.modified = True
+            self.__class__ = cls
+        elif issubclass(self.__class__, TrackBackend):
+            self.unload()
+            tmp_path = named_temporary_path('.' + backend_format)
+            shutil.copy(self.path, tmp_path)
+            super(TrackProxy, self).__init__(tmp_path)
+            self._path = path
+            self.modified = True
+            self.__class__ = cls
+        else: super(TrackProxy).mutate(path, format)
+
+    #--------------------------------------------------------------------------#
+    @staticmethod
+    def create(path):
         open(path, 'w').close()
-        return Track(path, format, name, chrmeta, datatype, empty=True)
 
 #-----------------------------------#
 # This code was written by the BBCF #

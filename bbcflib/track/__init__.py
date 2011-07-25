@@ -1,8 +1,4 @@
 """
-=========================
-Subpackage: bbcflib.track
-=========================
-
 Provides easy read/write access to genomic tracks in a fashion that is independent from the underlying format.
 Currently the following formats are implemented as read/write:
 
@@ -69,6 +65,8 @@ To set the chromosome metadata or the track metadata you simply asign to that at
     with track.load('tracks/scores.sql') as t:
         t.chrmeta    = ``{'chr1': {'length': 197195432}, 'chr2': {'length': 129993255}}``
         t.attributes = {'datatype': 'quantitative', 'source': 'UCSC'}
+
+It is important to note that the general numbering convention of features on a chromosome varies depending on the source of the data. For instance, UCSC and Ensembl differ in this point such that an interval labeled `(start=4,end=8)` will span four base pairs according to UCSC but will span five base pairs according to Ensembl. The representation that the this packages sticks to is explained `here <http://bbcf.epfl.ch/twiki/bin/view/BBCF/NumberingConvention>`_
 """
 
 __all__ = ['load', 'new']
@@ -129,7 +127,8 @@ def new(path, format=None, name=None, chrmeta=None, datatype=None):
     if os.path.exists(path): raise Exception("The location '" + path + "' is already taken")
     if not format: format = os.path.splitext(path)[1][1:]
     cls = import_implementation(format).TrackFormat
-    return cls.create(path, format, name, chrmeta, datatype)
+    cls.create(path)
+    return Track(path, format, name, chrmeta, datatype)
 
 ###########################################################################
 class Track(object):
@@ -267,14 +266,12 @@ class Track(object):
         '''
         raise NotImplementedError
 
-    def convert(self, path, format='sql', chrmeta=None):
+    def convert(self, path, format=None):
         '''Converts a track to a given format.
 
            * *path* is the file path where the new track will be created
 
            * *format* is the format into which the track will be converted.
-
-           * *chrmeta* is the path to a chromosomes file if one is needed.
 
            Examples::
 
@@ -284,11 +281,21 @@ class Track(object):
                with track.load('tracks/ribi_genes.sql') as t:
                    t.convert('tracks/rp_genes.bed', 'bed')
 
-           ``convert`` returns nothing.
+           ``convert`` returns nothing but the Track object is mutated and changes class.
         '''
+        if os.path.exists(path): raise Exception("The location '" + path + "' is already taken")
+        if not format: format = os.path.splitext(path)[1][1:]
         if format == self.format:
             raise Exception("The track '" + path + "' cannot be converted to the " + format + " format because it is already in that format.")
-        with new(path, format, self.datatype, self.name, chrmeta) as t:
+        self.format = format
+        cls = import_implementation(format).TrackFormat
+        cls.create(path)
+        cls.mutate(self, path, format)
+
+    @classmethod
+    def mutate(cls, self, path, format):
+        '''Until other formats are added, this is never called.'''
+        with new(path, format) as t:
             t.attributes = self.attributes
             t.chrmeta    = self.chrmeta
             for chrom in self.all_chrs: t.write(chrom, self.read(chrom), self.fields)

@@ -7,6 +7,14 @@ Common stuff for the track package.
 """
 
 ###########################################################################
+def check_path(path):
+    """
+    Raises an exception if the path *path* is already taken.
+    """
+    import os
+    if os.path.exists(path): raise Exception("The location '" + path + "' is already taken")
+
+###########################################################################
 def natural_sort(item):
     """
     Will sort strings that contain numbers correctly

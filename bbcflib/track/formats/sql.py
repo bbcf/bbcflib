@@ -15,7 +15,7 @@ from ..track_util import join_read_queries, make_cond_from_sel
 from ..extras.sql import TrackExtras
 from ..common import natural_sort
 
-###########################################################################
+################################################################################
 class TrackFormat(Track, TrackExtras):
     special_tables = ['attributes', 'chrNames', 'types']
 
@@ -66,7 +66,7 @@ class TrackFormat(Track, TrackExtras):
         except sqlite3.OperationalError as err:
             raise Exception("The index creation on the database '" + self.path + "' failed with error: " + str(err))
 
-    #-----------------------------------------------------------------------------#
+    #--------------------------------------------------------------------------#
     @property
     def fields(self):
         if self.chrs_from_tables: return self.get_fields_of_table(self.chrs_from_tables[0])
@@ -89,7 +89,7 @@ class TrackFormat(Track, TrackExtras):
     def get_fields_of_table(self, table):
         return [x[1] for x in self.cursor.execute('pragma table_info("' + table + '")').fetchall()]
 
-    #-----------------------------------------------------------------------------#
+    #--------------------------------------------------------------------------#
     def attributes_read(self):
         if not 'attributes' in self.all_tables: return {}
         self.cursor.execute("select key, value from attributes")
@@ -148,7 +148,7 @@ class TrackFormat(Track, TrackExtras):
     def name(self, value):
         self.attributes['name'] = value
 
-    #-----------------------------------------------------------------------------#
+    #--------------------------------------------------------------------------#
     def read(self, selection=None, fields=None, order='start,end', cursor=False):
         # Default selection #
         if not selection:
@@ -221,16 +221,13 @@ class TrackFormat(Track, TrackExtras):
         # Return the results #
         return self.cursor.execute(sql_request).fetchone()[0]
 
-    @classmethod
-    def create(cls, path, format, name, chrmeta, datatype):
-        # Make the database #
+    @staticmethod
+    def create(path):
         connection = sqlite3.connect(path)
         cursor = connection.cursor()
         connection.commit()
         cursor.close()
         connection.close()
-        # Return the object #
-        return Track(path, format, name, chrmeta, datatype)
 
 #-----------------------------------#
 # This code was written by the BBCF #
