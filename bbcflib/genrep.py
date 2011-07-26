@@ -40,10 +40,6 @@ With a ``ConfigParser``, the previous code would look like::
     ... fill the ConfigParser
     g = GenRep(config=c) # or GenRep(config=c,section='genrep')
     g.assembly('ce6')
-
-.. autoclass:: GenRep
-
-.. autoclass:: Assembly
 """
 
 # Built-in modules #
@@ -363,6 +359,13 @@ class Assembly(object):
 
     @property
     def chrmeta(self):
+        ''' Returns a dicionary of chromosome meta data looking something like:
+
+            {'chr1': {'length': 249250621},
+             'chr2': {'length': 135534747},
+             'chr3': {'length': 135006516},
+
+        '''
         return dict([(v['name'],dict([('length',v['length'])])) for v in self.chromosomes.values()])
 
 #-----------------------------------#
