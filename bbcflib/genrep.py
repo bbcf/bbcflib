@@ -285,6 +285,15 @@ class GenRep(object):
             root = os.path.join(self.root,"nr_assemblies/exons_fasta")
             path = os.path.join(root,assembly.md5+".fa.gz")
         return path
+    
+    def get_nr_assembly(self,nr_assembly):
+        '''
+        Get an NR_Assembly object corresponding to *nr_assembly*.
+
+        *nr_assembly* must be an integer giving the nr_assembly ID
+        '''
+        assembly_info = json.load(urllib2.urlopen("""%s/nr_assemblies/%d.json""" % (self.url, nr_assembly)))
+        return GenrepObject(assembly_info,'nr_assembly')
 
 ################################################################################
 class Assembly(object):
@@ -367,6 +376,23 @@ class Assembly(object):
 
         '''
         return dict([(v['name'],dict([('length',v['length'])])) for v in self.chromosomes.values()])
+
+
+
+
+
+
+
+class GenrepObject(object):
+    '''
+    Class wich will reference all different objects used by GenRep
+    In general, you should never instanciate GenrepObject directly but
+    call a method from the GenRep object.
+    '''
+    def __init__(self,info,key):
+        self.__dict__.update(info[key])
+
+
 
 #-----------------------------------#
 # This code was written by the BBCF #
