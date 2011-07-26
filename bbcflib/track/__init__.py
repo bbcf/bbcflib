@@ -278,8 +278,8 @@ class Track(object):
                from bbcflib import track
                with track.load('tracks/rp_genes.bed') as t:
                    t.export('tracks/rp_genes.sql', 'sql')
-               with track.load('tracks/ribi_genes.sql') as t:
-                   t.export('tracks/rp_genes.bed', 'bed')
+               with track.load('tracks/rp_genes.sql') as t:
+                   t.write('chr1', generate_data())
 
            ``export`` returns nothing but a new file is created at the specified *path* while the current track object is left untouched.
         '''
@@ -291,7 +291,7 @@ class Track(object):
             for chrom in self.all_chrs: t.write(chrom, self.read(chrom), self.fields)
 
     def convert(self, path, format=None):
-        '''Converts a track to a given format.
+        '''Converts a track to a given format dynamically.
 
            * *path* is the file path where the new track will be created
 
@@ -302,8 +302,7 @@ class Track(object):
                from bbcflib import track
                with track.load('tracks/rp_genes.bed') as t:
                    t.convert('tracks/rp_genes.sql', 'sql')
-               with track.load('tracks/ribi_genes.sql') as t:
-                   t.convert('tracks/rp_genes.bed', 'bed')
+                   t.write('chr1', generate_data())
 
            ``convert`` returns nothing but the track object is mutated and changes format dynamically. You can thus continue using your track after the conversion.
         '''

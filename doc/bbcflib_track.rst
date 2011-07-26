@@ -30,4 +30,6 @@ The Track object
 
     .. automethod:: Track.count
 
+    .. automethod:: Track.export
+
     .. automethod:: Track.convert
