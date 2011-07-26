@@ -314,26 +314,26 @@ class Track(object):
         self.mutate_source(path, format)
 
     def ucsc_to_ensembl(self):
-        '''Converts all entries of a track from the UCSC standard to the Ensembl standard.
+        '''Converts all entries of a track from the UCSC standard to the Ensembl standard effectively adding one to every start position.
 
            Examples::
 
                from bbcflib import track
                with track.load('tracks/example.sql') as t:
-                   t.convert('tracks/rp_genes.sql', 'sql')
+                   t.ucsc_to_ensembl()
 
            ``ucsc_to_ensembl`` returns nothing.
         '''
         raise NotImplementedError
 
     def ensembl_to_ucsc(self):
-        '''Converts all entries of a track from the Ensembl standard to the UCSC standard.
+        '''Converts all entries of a track from the Ensembl standard to the UCSC standard effectively subtracting one from every start position.
 
            Examples::
 
                from bbcflib import track
                with track.load('tracks/rp_genes.bed') as t:
-                   t.convert('tracks/rp_genes.sql', 'sql')
+                   t.ensembl_to_ucsc()
 
            ``ensembl_to_ucsc`` returns nothing.
         '''
