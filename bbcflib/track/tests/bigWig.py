@@ -81,7 +81,7 @@ class Test_Format(unittest.TestCase):
         os.remove(new)
 
 #-------------------------------------------------------------------------------#
-class Test_Conversion(unittest.TestCase):
+class Test_Convert(unittest.TestCase):
     def runTest(self):
         # Paths #
         path_ref_bw  = track_collections['Binary'][1]['path']

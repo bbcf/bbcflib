@@ -3,7 +3,7 @@ import os, shutil, filecmp
 
 # Internal modules #
 from ... import track
-from ..common import named_temporary_path
+from ..common import named_temporary_path, sqlcmp
 from ..track_collection import track_collections, yeast_chr_file
 
 # Unittesting module #
@@ -72,7 +72,7 @@ class Test_Format(unittest.TestCase):
         os.remove(new)
 
 #-------------------------------------------------------------------------------#
-class Test_Conversion(unittest.TestCase):
+class Test_Convert(unittest.TestCase):
     def runTest(self):
         # Paths #
         path_ref_bg  = track_collections['Signals'][1]['path']
@@ -91,7 +91,7 @@ class Test_Conversion(unittest.TestCase):
         with track.load(path_ref_bg, chrmeta=yeast_chr_file) as t:
             t.convert(path_new_sql)
             self.assertEqual(t.format, 'sql')
-        self.assertTrue(filecmp.cmp(path_new_sql, path_ref_sql))
+        self.assertTrue(sqlcmp(path_new_sql, path_ref_sql))
         # Case 3: SQL to BEDGRAPH #
         with track.load(path_ref_sql) as t:
             t.convert(path_new_bg)
@@ -104,6 +104,43 @@ class Test_Conversion(unittest.TestCase):
         with track.load(path_ref_wig) as t:
             t.convert(path_new_bg)
             self.assertEqual(t.format, 'bedGraph')
+        with open(path_new_bg, 'r') as f: A = f.read().split('\n')
+        with open(path_ref_bg, 'r') as f: B = f.read().split('\n')
+        self.assertEqual(A[1:], B)
+        # Cleanup #
+        os.remove(path_new_bg)
+        os.remove(path_new_wig)
+        os.remove(path_new_sql)
+
+#-------------------------------------------------------------------------------#
+class Test_Export(unittest.TestCase):
+    def runTest(self):
+        # Paths #
+        path_ref_bg  = track_collections['Signals'][1]['path']
+        path_new_bg  = named_temporary_path('.bedGraph')
+        path_ref_wig = track_collections['Scores'][1]['path']
+        path_new_wig = named_temporary_path('.wig')
+        path_ref_sql = track_collections['Scores'][1]['path_sql']
+        path_new_sql = named_temporary_path('.sql')
+        # Case 1: BEDGRAPH to WIG #
+        with track.load(path_ref_bg) as t:
+            t.export(path_new_wig)
+        with open(path_new_wig, 'r') as f: A = f.read().split('\n')
+        with open(path_ref_wig, 'r') as f: B = f.read().split('\n')
+        # Case 2: BEDGRAPH to SQL #
+        with track.load(path_ref_bg, chrmeta=yeast_chr_file) as t:
+            t.export(path_new_sql)
+        self.assertTrue(sqlcmp(path_new_sql, path_ref_sql))
+        # Case 3: SQL to BEDGRAPH #
+        with track.load(path_ref_sql) as t:
+            t.export(path_new_bg)
+        with open(path_new_bg, 'r') as f: A = f.read().split('\n')
+        with open(path_ref_bg, 'r') as f: B = f.read().split('\n')
+        self.assertEqual(A[1:], B)
+        # Case 4: WIG to BEDGRAPH #
+        os.remove(path_new_bg)
+        with track.load(path_ref_wig) as t:
+            t.export(path_new_bg)
         with open(path_new_bg, 'r') as f: A = f.read().split('\n')
         with open(path_ref_bg, 'r') as f: B = f.read().split('\n')
         self.assertEqual(A[1:], B)

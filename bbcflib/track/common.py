@@ -56,6 +56,18 @@ def sentinelize(iterable, sentinel):
     yield sentinel
 
 ###############################################################################
+def sqlcmp(file_a, file_b):
+    """
+    Compare two two sqlite3 databases via their dumps
+    """
+    import itertools, sqlite3
+    A = sqlite3.connect(file_a)
+    B = sqlite3.connect(file_b)
+    for a,b in itertools.izip_longest(A.iterdump(), B.iterdump()):
+        if a != b: return False
+    return True
+
+###############################################################################
 terminal_colors = {
     'end':    '\033[0m',    # Text Reset
     'blink':  '\033[5m',    # Blink
