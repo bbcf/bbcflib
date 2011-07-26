@@ -26,14 +26,14 @@ class TrackProxy(TrackBackend):
         self._datatype = datatype
         # Create the SQL track #
         tmp_path = named_temporary_path('.' + backend_format)
-        with new(tmp_path, backend_format, name) as t:
+        with new(tmp_path, backend_format, name=name, datatype=self._datatype) as t:
             if not empty:
                 with open(self._path, 'r') as self._file:
                     t.attributes.update(self._read_header())
                     fields = self._fields
                     for chrom, data in self._read(): t.write(chrom, data, fields)
         # Load the new SQL track as self #
-        super(TrackProxy, self).__init__(tmp_path, backend_format, name, chrmeta, self._datatype, readonly)
+        super(TrackProxy, self).__init__(tmp_path, backend_format, name=None, chrmeta=chrmeta, datatype=None, readonly=readonly)
 
     def unload(self, datatype=None, value=None, traceback=None):
         if self.modified and not self.readonly: self.dump()
