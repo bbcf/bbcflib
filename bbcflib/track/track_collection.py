@@ -46,14 +46,14 @@ track_collections = {
   4: {'path': tracks_path+'qual/bed/random4.bed',         'type':'qualitative',  'fields':Track.qualitative_fields    },
     },
 'Signals': {
-  1: {'path': tracks_path+'quan/bedgraph/test1.bedGraph', 'type':'quantitative', 'fields':Track.quantitative_fields   },
-  2: {'path': tracks_path+'quan/bedgraph/test2.bedGraph', 'type':'quantitative', 'fields':Track.quantitative_fields   },
+  'A': {'path': tracks_path+'quan/bedgraph/testA.bedGraph', 'type':'quantitative', 'fields':Track.quantitative_fields   },
+  'B': {'path': tracks_path+'quan/bedgraph/testB.bedGraph', 'type':'quantitative', 'fields':Track.quantitative_fields   },
     },
 'Binary': {
-  1: {'path':tracks_path+'quan/bigWig/test1.bigWig',      'type':'quantitative', 'fields':Track.quantitative_fields,
-      'from':tracks_path+'quan/bedgraph/test1.bedGraph'  },
-  2: {'path':tracks_path+'quan/bigWig/test2.bigWig',      'type':'quantitative', 'fields':Track.quantitative_fields,
-      'from':tracks_path+'quan/bedgraph/test2.bedGraph'  },
+  'A': {'path': tracks_path+'quan/bigWig/testA.bigWig',     'type':'quantitative', 'fields':Track.quantitative_fields,
+      'from': tracks_path+'quan/bedgraph/testA.bedGraph' },
+  'B': {'path': tracks_path+'quan/bigWig/testB.bigWig',     'type':'quantitative', 'fields':Track.quantitative_fields,
+      'from': tracks_path+'quan/bedgraph/testB.bedGraph' },
     },
 'Yeast': {
   'All genes':  {'path':tracks_path+'qual/bed/all_yeast_genes.bed',   'type':'qualitative', 'fields':Track.qualitative_fields},

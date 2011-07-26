@@ -233,31 +233,6 @@ class Test_Corrupted(unittest.TestCase):
             self.assertEqual(t.chrmeta, {})
             self.assertEqual(t.attributes, {})
 
-#-------------------------------------------------------------------------------#
-class Test_Conversion(unittest.TestCase):
-    def runTest(self):
-        # Case 1: BEDGRAPH to WIG #
-        #d = track_collections['Validation'][1]
-        #with track.load(d['path_sql']) as t:
-        #    path = named_temporary_path('.bed')
-        #    t.convert(path)
-        #    self.assertEqual(t.format, 'bed')
-        # Case 2: BEDGRAPH to SQL #
-        #d = track_collections['Validation'][1]
-        #with track.load(d['path_sql']) as t:
-        #    path = named_temporary_path('.bed')
-        #    t.convert(path)
-        #    self.assertEqual(t.format, 'bed')
-        # Case 3: SQL to BED #
-        d = track_collections['Validation'][1]
-        with track.load(d['path_sql']) as t:
-            path = named_temporary_path('.bed')
-            t.convert(path)
-            self.assertEqual(t.format, 'bed')
-        with open(path,     'r') as f: A = f.read().split('\n')
-        with open(d['path'],'r') as f: B = f.read().split('\n')
-        self.assertEqual(A[1:], B)
-
 #-----------------------------------#
 # This code was written by the BBCF #
 # http://bbcf.epfl.ch/              #
