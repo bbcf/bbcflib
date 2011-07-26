@@ -83,6 +83,7 @@ class Test_Format(unittest.TestCase):
 #-------------------------------------------------------------------------------#
 class Test_Conversion(unittest.TestCase):
     def runTest(self):
+        pass
         # Case 1: BIGWIG to WIG #
         #d = track_collections['Binary'][1]
         #with track.load(d['path_sql']) as t:

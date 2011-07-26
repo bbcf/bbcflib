@@ -75,8 +75,8 @@ class Test_Format(unittest.TestCase):
 class Test_Conversion(unittest.TestCase):
     def runTest(self):
         # Case 1: BEDGRAPH to WIG #
-        path_bedg = track_collections['Signals'][1]['path']
-        path_sql = track_collections['Signals'][1]['path_sql']
+        path_bedg = track_collections['Signals']['A']['path']
+        path_sql = track_collections['Signals']['A']['path_sql']
         with track.load(path_bedg) as t:
             path = named_temporary_path('.wig')
             t.convert(path)
@@ -90,7 +90,7 @@ class Test_Conversion(unittest.TestCase):
         #    t.convert(path)
         #    self.assertEqual(t.format, 'bed')
         # Case 3: SQL to BEDGRAPH #
-        d = track_collections['Signals'][1]
+        d = track_collections['Signals']['A']
         with track.load(d['path_sql']) as t:
             path = named_temporary_path('.bedGraph')
             t.convert(path)
