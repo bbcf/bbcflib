@@ -287,18 +287,18 @@ class Track(object):
         if not format: format = os.path.splitext(path)[1][1:]
         if format == self.format:
             raise Exception("The track '" + path + "' cannot be converted to the " + format + " format because it is already in that format.")
+        self.change_format(path, format)
+
+    def change_format(self, path, format):
         self.format = format
         cls = import_implementation(format).TrackFormat
         cls.create(path)
-        cls.mutate(self, path, format)
+        cls.mutate_format(self, path, format)
 
     @classmethod
-    def mutate(cls, self, path, format):
-        print "Until other formats are added, this is never called."
-        with new(path, format) as t:
-            t.attributes = self.attributes
-            t.chrmeta    = self.chrmeta
-            for chrom in self.all_chrs: t.write(chrom, self.read(chrom), self.fields)
+    def mutate_format(cls, self, path, format):
+        '''Until other formats are added, this should be never called.'''
+        raise NotImplementedError
 
     #-----------------------------------------------------------------------------#
     qualitative_fields  = ['start', 'end', 'name', 'score', 'strand']

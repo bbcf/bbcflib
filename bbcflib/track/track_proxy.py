@@ -49,23 +49,26 @@ class TrackProxy(TrackBackend):
         with open(path, 'w') as file: file.writelines(self._write())
 
     #--------------------------------------------------------------------------#
-    def convert(self, path, format=backend_format):
+    def change_format(self, path, format):
+        # Move the SQL temporary file (Case 2)
         if format == backend_format:
+            self.format = format
             check_path(path)
             super(TrackProxy, self).unload()
             shutil.move(self.path, path)
+            self.format = backend_format
             self.__class__ = TrackBackend
-            self.init(path, format)
-        else: super(TrackProxy, self).convert(path, format)
+            self.__init__(path, format)
+        else: super(TrackProxy, self).change_format(path, format)
 
     @classmethod
-    def mutate(cls, self, path, format):
-        # Either use the same temporary SQL
-        # Or create it by copying it
+    def mutate_format(cls, self, path, format):
+        # Maybe use the same temporary SQL (Case 1)
         if issubclass(self.__class__, TrackProxy):
             self._path = path
             self.modified = True
             self.__class__ = cls
+        # Or create a new one by copying it (Case 3)
         elif issubclass(self.__class__, TrackBackend):
             self.unload()
             tmp_path = named_temporary_path('.' + backend_format)
@@ -74,7 +77,7 @@ class TrackProxy(TrackBackend):
             self._path = path
             self.modified = True
             self.__class__ = cls
-        else: Track.mutate(path, format)
+        else: Track.mutate_format(path, format)
 
     #--------------------------------------------------------------------------#
     @staticmethod

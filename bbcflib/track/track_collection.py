@@ -28,44 +28,44 @@ else:
 yeast_chr_file = tracks_path + 'chr/yeast.chr'
 track_collections = {
 'Validation': {
-  1: {'path': tracks_path+'qual/bed/validation1.bed',     'type':'qualitative', ' fields':Track.qualitative_fields[:4]},
-  2: {'path': tracks_path+'qual/bed/validation2.bed',     'type':'qualitative',  'fields':Track.qualitative_fields    },
-  3: {'path': tracks_path+'qual/bed/validation3.bed',     'type':'qualitative',  'fields':Track.qualitative_fields    },
-  4: {'path': tracks_path+'qual/bed/validation4.bed',     'type':'qualitative',  'fields':Track.qualitative_fields    },
+  1:   {'path': tracks_path+'qual/bed/validation1.bed',         'type':'qualitative', ' fields':Track.qualitative_fields[:4]},
+  2:   {'path': tracks_path+'qual/bed/validation2.bed',         'type':'qualitative',  'fields':Track.qualitative_fields    },
+  3:   {'path': tracks_path+'qual/bed/validation3.bed',         'type':'qualitative',  'fields':Track.qualitative_fields    },
+  4:   {'path': tracks_path+'qual/bed/validation4.bed',         'type':'qualitative',  'fields':Track.qualitative_fields    },
   },
 'Scores': {
-  1: {'path': tracks_path+'quan/wig/scores1.wig',         'type':'quantitative', 'fields':Track.quantitative_fields   },
-  2: {'path': tracks_path+'quan/wig/scores2.wig',         'type':'quantitative', 'fields':Track.quantitative_fields   },
-  3: {'path': tracks_path+'quan/wig/scores3.wig',         'type':'quantitative', 'fields':Track.quantitative_fields   },
-  4: {'path': tracks_path+'quan/wig/scores4.wig',         'type':'quantitative', 'fields':Track.quantitative_fields   },
+  1:   {'path': tracks_path+'quan/wig/scores1.wig',             'type':'quantitative', 'fields':Track.quantitative_fields   },
+  2:   {'path': tracks_path+'quan/wig/scores2.wig',             'type':'quantitative', 'fields':Track.quantitative_fields   },
+  3:   {'path': tracks_path+'quan/wig/scores3.wig',             'type':'quantitative', 'fields':Track.quantitative_fields   },
+  4:   {'path': tracks_path+'quan/wig/scores4.wig',             'type':'quantitative', 'fields':Track.quantitative_fields   },
     },
 'Random': {
-  1: {'path': tracks_path+'qual/bed/random1.bed',         'type':'qualitative',  'fields':Track.qualitative_fields    },
-  2: {'path': tracks_path+'qual/bed/random2.bed',         'type':'qualitative',  'fields':Track.qualitative_fields    },
-  3: {'path': tracks_path+'qual/bed/random3.bed',         'type':'qualitative',  'fields':Track.qualitative_fields    },
-  4: {'path': tracks_path+'qual/bed/random4.bed',         'type':'qualitative',  'fields':Track.qualitative_fields    },
+  1:   {'path': tracks_path+'qual/bed/random1.bed',             'type':'qualitative',  'fields':Track.qualitative_fields    },
+  2:   {'path': tracks_path+'qual/bed/random2.bed',             'type':'qualitative',  'fields':Track.qualitative_fields    },
+  3:   {'path': tracks_path+'qual/bed/random3.bed',             'type':'qualitative',  'fields':Track.qualitative_fields    },
+  4:   {'path': tracks_path+'qual/bed/random4.bed',             'type':'qualitative',  'fields':Track.qualitative_fields    },
     },
 'Signals': {
-  'A': {'path': tracks_path+'quan/bedgraph/testA.bedGraph', 'type':'quantitative', 'fields':Track.quantitative_fields   },
-  'B': {'path': tracks_path+'quan/bedgraph/testB.bedGraph', 'type':'quantitative', 'fields':Track.quantitative_fields   },
+  1:   {'path': tracks_path+'quan/bedgraph/scores1.bedGraph',   'type':'quantitative', 'fields':Track.quantitative_fields   },
+  'A': {'path': tracks_path+'quan/bedgraph/testA.bedGraph',     'type':'quantitative', 'fields':Track.quantitative_fields   },
+  'B': {'path': tracks_path+'quan/bedgraph/testB.bedGraph',     'type':'quantitative', 'fields':Track.quantitative_fields   },
     },
 'Binary': {
-  'A': {'path': tracks_path+'quan/bigWig/testA.bigWig',     'type':'quantitative', 'fields':Track.quantitative_fields,
-      'from': tracks_path+'quan/bedgraph/testA.bedGraph' },
-  'B': {'path': tracks_path+'quan/bigWig/testB.bigWig',     'type':'quantitative', 'fields':Track.quantitative_fields,
-      'from': tracks_path+'quan/bedgraph/testB.bedGraph' },
+  1:   {'path': tracks_path+'quan/bedgraph/scores1.bigWig',     'type':'quantitative', 'fields':Track.quantitative_fields   },
+  'A': {'path': tracks_path+'quan/bigWig/testA.bigWig',         'type':'quantitative', 'fields':Track.quantitative_fields   },
+  'B': {'path': tracks_path+'quan/bigWig/testB.bigWig',         'type':'quantitative', 'fields':Track.quantitative_fields   },
+    },
+'Peaks': {
+  'Rap1': {'path':tracks_path+'quan/wig/rap1.wig',              'type':'quantitative', 'fields':Track.quantitative_fields   },
+  'Pol2': {'path':tracks_path+'quan/wig/pol2.wig',              'type':'quantitative', 'fields':Track.quantitative_fields   },
+    },
+'Special': {
+  'Corrupted': {'path':tracks_path+'quan/sql/corrupted.sql',    'type':'quantitative', 'fields':Track.quantitative_fields   },
     },
 'Yeast': {
   'All genes':  {'path':tracks_path+'qual/bed/all_yeast_genes.bed',   'type':'qualitative', 'fields':Track.qualitative_fields},
   'Ribi genes': {'path':tracks_path+'qual/bed/ribosome_genesis.bed',  'type':'qualitative', 'fields':Track.qualitative_fields},
   'RP genes':   {'path':tracks_path+'qual/bed/ribosome_proteins.bed', 'type':'qualitative', 'fields':Track.qualitative_fields},
-    },
-'Peaks': {
-  'Rap1': {'path':tracks_path+'quan/wig/rap1.wig', 'type':'quantitative', 'fields':Track.quantitative_fields},
-  'Pol2': {'path':tracks_path+'quan/wig/pol2.wig', 'type':'quantitative', 'fields':Track.quantitative_fields},
-    },
-'Special': {
-  'Corrupted': {'path':tracks_path+'quan/sql/corrupted.sql', 'type':'quantitative', 'fields':Track.quantitative_fields},
     },
 }
 

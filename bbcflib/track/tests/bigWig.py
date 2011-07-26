@@ -83,28 +83,36 @@ class Test_Format(unittest.TestCase):
 #-------------------------------------------------------------------------------#
 class Test_Conversion(unittest.TestCase):
     def runTest(self):
-        pass
+        # Paths #
+        path_ref_bw  = track_collections['Binary'][1]['path']
+        path_new_bw  = named_temporary_path('.bigWig')
+        path_ref_wig = track_collections['Scores'][1]['path']
+        path_new_wig = named_temporary_path('.wig')
+        path_ref_sql = track_collections['Scores'][1]['path_sql']
+        path_new_sql = named_temporary_path('.sql')
         # Case 1: BIGWIG to WIG #
-        #d = track_collections['Binary'][1]
-        #with track.load(d['path_sql']) as t:
-        #    path = named_temporary_path('.wig')
-        #    t.convert(path)
-        #    self.assertEqual(t.format, 'bed')
-        # Case 2: BEDGRAPH to SQL #
-        #d = track_collections['Validation'][1]
-        #with track.load(d['path_sql']) as t:
-        #    path = named_temporary_path('.bed')
-        #    t.convert(path)
-        #    self.assertEqual(t.format, 'bed')
-        # Case 3: SQL to BEDGRAPH #
-        #d = track_collections['Signals'][1]
-        #with track.load(d['path_sql']) as t:
-        #    path = named_temporary_path('.bedGraph')
-        #    t.convert(path)
-        #    self.assertEqual(t.format, 'bedGraph')
-        #with open(path,     'r') as f: A = f.read().split('\n')
-        #with open(d['path'],'r') as f: B = f.read().split('\n')
-        #self.assertEqual(A[1:], B)
+        with track.load(path_ref_bw) as t:
+            t.convert(path_new_wig)
+            self.assertEqual(t.format, 'wig')
+        with open(path_new_wig, 'r') as f: A = f.read().split('\n')
+        with open(path_ref_wig, 'r') as f: B = f.read().split('\n')
+        # Case 2: BIGWIG to SQL #
+        with track.load(path_ref_bw, chrmeta=yeast_chr_file) as t:
+            t.convert(path_new_sql)
+            self.assertEqual(t.format, 'sql')
+        self.assertTrue(filecmp.cmp(path_new_sql, path_ref_sql))
+        # Case 3: SQL to BIGWIG #
+        with track.load(path_ref_sql) as t:
+            t.convert(path_new_bw)
+            self.assertEqual(t.format, 'bigWig')
+        with open(path_new_bw, 'r') as f: A = f.read().split('\n')
+        with open(path_ref_bw, 'r') as f: B = f.read().split('\n')
+        self.assertEqual(A[1:], B)
+        # Cleanup #
+        os.remove(path_new_bw)
+        os.remove(path_new_wig)
+        os.remove(path_new_sql)
+
 
 #-----------------------------------#
 # This code was written by the BBCF #
