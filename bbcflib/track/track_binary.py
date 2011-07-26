@@ -7,17 +7,19 @@ Methods that create a text file upon opening a binary file in the temporary dire
 """
 
 # Built-in modules #
-import os, subprocess
+import os, shutil, subprocess
 
 # Internal modules #
+from . import Track
 from .common import named_temporary_path
+from .track_proxy import TrackProxy, TrackBackend, backend_format
 
 ###########################################################################
 class TrackBinary(object):
     def __init__(self, path, format=None, name=None, chrmeta=None, datatype=None, readonly=False, empty=False):
         # Parameters with a double underscore refer to the underlying binary track #
-        self.__path    = path
-        self._format   = self.backend_format
+        self.__path  = path
+        self._format = self.backend_format
         # Create the text track #
         tmp_path = named_temporary_path('.' + self.backend_format)
         if empty: open(tmp_path, 'w').close()
@@ -41,6 +43,26 @@ class TrackBinary(object):
         proc = subprocess.Popen([tool_name] + args, stderr=subprocess.PIPE)
         stdout, stderr = proc.communicate()
         if stderr: raise Exception("The tool '" + tool_name + "' exited with message: " + '"' + stderr.strip('\n') + '"')
+
+    #--------------------------------------------------------------------------#
+    @classmethod
+    def mutate_destination(cls, self, path, format):
+        # Maybe use the same temporary SQL (Case 1)
+        if issubclass(self.__class__, TrackProxy):
+            self._path = named_temporary_path('.' + cls.backend_format)
+            self.__path = path
+            self.__class__ = cls
+            self.modified = True
+        # Or create a new one by copying it (Case 3)
+        elif issubclass(self.__class__, TrackBackend):
+            tmp_path = named_temporary_path('.' + backend_format)
+            shutil.copy(self.path, tmp_path)
+            self.__init__(tmp_path)
+            self._path = named_temporary_path('.' + cls.backend_format)
+            self.__path = path
+            self.modified = True
+            self.__class__ = cls
+        else: Track.mutate_destination(path, format)
 
 #-----------------------------------#
 # This code was written by the BBCF #

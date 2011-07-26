@@ -51,7 +51,7 @@ track_collections = {
   'B': {'path': tracks_path+'quan/bedgraph/testB.bedGraph',     'type':'quantitative', 'fields':Track.quantitative_fields   },
     },
 'Binary': {
-  1:   {'path': tracks_path+'quan/bedgraph/scores1.bigWig',     'type':'quantitative', 'fields':Track.quantitative_fields   },
+  1:   {'path': tracks_path+'quan/bigWig/scores1.bigWig',       'type':'quantitative', 'fields':Track.quantitative_fields   },
   'A': {'path': tracks_path+'quan/bigWig/testA.bigWig',         'type':'quantitative', 'fields':Track.quantitative_fields   },
   'B': {'path': tracks_path+'quan/bigWig/testB.bigWig',         'type':'quantitative', 'fields':Track.quantitative_fields   },
     },

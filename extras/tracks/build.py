@@ -39,7 +39,7 @@ def create_random():
 def create_binary():
     for track_num, d in sorted(track_collections['Binary'].items()):
         print terminal_colors['txtylw'] + "Creating track '" + d['name'] + "'" + terminal_colors['end']
-        bedgraph_path = track_collections['Signals'][track_num]
+        bedgraph_path = track_collections['Signals'][track_num]['path']
         proc = subprocess.Popen(['bedGraphToBigWig', bedgraph_path, yeast_chr_file, d['path']], stderr=subprocess.PIPE)
         stdout, stderr = proc.communicate()
         if stderr: raise Exception("The tool bedGraphToBigWig exited with message: " + '"' + stderr.strip('\n') + '"')
@@ -61,4 +61,3 @@ def create_rap1():
     with open(tracks_path + 'quan/wig/rap1.wig', 'w') as file: file.writelines(random_track('variable'))
     if os.path.exists(tracks_path + 'quan/sql/rap1.sql'): os.remove(tracks_path + 'quan/sql/rap1.sql')
     with load(tracks_path + 'quan/wig/rap1.wig', chrmeta=yeast_chr_file) as t: t.convert(tracks_path + 'quan/sql/rap1.sql')
-

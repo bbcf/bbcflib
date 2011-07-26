@@ -38,7 +38,7 @@ class Test_Write(unittest.TestCase):
                                 (20, 30, -1.75),
                                 (40, 50, -2.5)]
             for chrom, data in sorted(features.items()): t.write(chrom, data)
-        self.assertTrue(filecmp.cmp(path, track_collections['Binary'][1]['path']))
+        self.assertTrue(filecmp.cmp(path, track_collections['Binary']['A']['path']))
         os.remove(path)
 
 #-----------------------------------------------------------------------------#
@@ -90,29 +90,32 @@ class Test_Conversion(unittest.TestCase):
         path_new_wig = named_temporary_path('.wig')
         path_ref_sql = track_collections['Scores'][1]['path_sql']
         path_new_sql = named_temporary_path('.sql')
-        # Case 1: BIGWIG to WIG #
+        # Case 1b: BIGWIG to WIG #
         with track.load(path_ref_bw) as t:
             t.convert(path_new_wig)
             self.assertEqual(t.format, 'wig')
         with open(path_new_wig, 'r') as f: A = f.read().split('\n')
         with open(path_ref_wig, 'r') as f: B = f.read().split('\n')
-        # Case 2: BIGWIG to SQL #
+        # Case 2b: BIGWIG to SQL #
         with track.load(path_ref_bw, chrmeta=yeast_chr_file) as t:
             t.convert(path_new_sql)
             self.assertEqual(t.format, 'sql')
         self.assertTrue(filecmp.cmp(path_new_sql, path_ref_sql))
-        # Case 3: SQL to BIGWIG #
+        # Case 3b: SQL to BIGWIG #
         with track.load(path_ref_sql) as t:
             t.convert(path_new_bw)
             self.assertEqual(t.format, 'bigWig')
-        with open(path_new_bw, 'r') as f: A = f.read().split('\n')
-        with open(path_ref_bw, 'r') as f: B = f.read().split('\n')
-        self.assertEqual(A[1:], B)
+        self.assertTrue(filecmp.cmp(path_new_bw, path_ref_bw))
+        # Case 4b: WIG to BIGWIG #
+        os.remove(path_new_bw)
+        with track.load(path_ref_wig, chrmeta=yeast_chr_file) as t:
+            t.convert(path_new_bw)
+            self.assertEqual(t.format, 'bigWig')
+        self.assertTrue(filecmp.cmp(path_new_bw, path_ref_bw))
         # Cleanup #
         os.remove(path_new_bw)
         os.remove(path_new_wig)
         os.remove(path_new_sql)
-
 
 #-----------------------------------#
 # This code was written by the BBCF #

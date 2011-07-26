@@ -281,22 +281,23 @@ class Track(object):
                with track.load('tracks/ribi_genes.sql') as t:
                    t.convert('tracks/rp_genes.bed', 'bed')
 
-           ``convert`` returns nothing but the Track object is mutated and changes class.
+           ``convert`` returns nothing but the track object is mutated and changes format dynamically. You can thus continue using your track after the conversion.
         '''
         if os.path.exists(path): raise Exception("The location '" + path + "' is already taken")
         if not format: format = os.path.splitext(path)[1][1:]
         if format == self.format:
             raise Exception("The track '" + path + "' cannot be converted to the " + format + " format because it is already in that format.")
-        self.change_format(path, format)
+        self.mutate_source(path, format)
 
-    def change_format(self, path, format):
+    def mutate_source(self, path, format):
+        '''Change a <Track> instance to a given format dynamically'''
         self.format = format
         cls = import_implementation(format).TrackFormat
         cls.create(path)
-        cls.mutate_format(self, path, format)
+        cls.mutate_destination(self, path, format)
 
     @classmethod
-    def mutate_format(cls, self, path, format):
+    def mutate_destination(cls, self, path, format):
         '''Until other formats are added, this should be never called.'''
         raise NotImplementedError
 

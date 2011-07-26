@@ -22,7 +22,7 @@ class Test_Read(unittest.TestCase):
         with track.load(d['path_sql']) as t:
             # Just the first feature #
             data = t.read()
-            self.assertEqual(data.next(), ('chr1', 0, 10, 'Validation feature 1', 10.0))
+            self.assertEqual(data.next(), ('chr1', 0, 10, 'Validation feature 1', 10.0, 0))
             # Number of features #
             data = t.read()
             self.assertEqual(len(list(data)), 12)

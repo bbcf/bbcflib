@@ -99,6 +99,14 @@ class Test_Conversion(unittest.TestCase):
         with open(path_new_bg, 'r') as f: A = f.read().split('\n')
         with open(path_ref_bg, 'r') as f: B = f.read().split('\n')
         self.assertEqual(A[1:], B)
+        # Case 4: WIG to BEDGRAPH #
+        os.remove(path_new_bg)
+        with track.load(path_ref_wig) as t:
+            t.convert(path_new_bg)
+            self.assertEqual(t.format, 'bedGraph')
+        with open(path_new_bg, 'r') as f: A = f.read().split('\n')
+        with open(path_ref_bg, 'r') as f: B = f.read().split('\n')
+        self.assertEqual(A[1:], B)
         # Cleanup #
         os.remove(path_new_bg)
         os.remove(path_new_wig)
