@@ -266,6 +266,30 @@ class Track(object):
         '''
         raise NotImplementedError
 
+    def export(self, path, format=None):
+        '''Exports a track to a given location and format.
+
+           * *path* is the file path where the new track will be created
+
+           * *format* is the format into which the track will be converted.
+
+           Examples::
+
+               from bbcflib import track
+               with track.load('tracks/rp_genes.bed') as t:
+                   t.export('tracks/rp_genes.sql', 'sql')
+               with track.load('tracks/ribi_genes.sql') as t:
+                   t.export('tracks/rp_genes.bed', 'bed')
+
+           ``export`` returns nothing but a new file is created at the specified *path* while the current track object is left untouched.
+        '''
+        if os.path.exists(path): raise Exception("The location '" + path + "' is already taken")
+        if not format: format = os.path.splitext(path)[1][1:]
+        with new(path, format) as t:
+            t.attributes = self.attributes
+            t.chrmeta    = self.chrmeta
+            for chrom in self.all_chrs: t.write(chrom, self.read(chrom), self.fields)
+
     def convert(self, path, format=None):
         '''Converts a track to a given format.
 
@@ -342,7 +366,7 @@ class Track(object):
         return instance
 
     def __init__(self, path, format=None, name=None, chrmeta=None, datatype=None, readonly=False, empty=False):
-        raise NotImplementedError
+       pass
 
     def __enter__(self):
         return self

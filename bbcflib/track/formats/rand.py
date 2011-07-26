@@ -1,7 +1,8 @@
 """
-=======================================
-Submodule: bbcflib.track.formats.random
-=======================================
+=====================================
+Submodule: bbcflib.track.formats.rand
+=====================================
+
 
 Implementation of a random track generator.
 """
@@ -17,7 +18,7 @@ chrsuffix = 'Awfully super extra long chromosome denomination string '
 
 ###########################################################################
 class TrackFormat(Track):
-    def load(self):
+    def __init__(self, *args):
         # Essential parameters #
         self.all_chrs = [chrsuffix + str(x) for x in range(10)]
         # Other parameters #
@@ -51,6 +52,9 @@ class TrackFormat(Track):
     @property
     def attributes(self):
         return {'type':'random'}
+
+    def unload(self, *args):
+        pass
 
 #-----------------------------------#
 # This code was written by the BBCF #

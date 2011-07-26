@@ -31,9 +31,9 @@ def create_random():
     for track_num, d in sorted(track_collections['Random'].items()):
         print terminal_colors['txtylw'] + "Creating track '" + d['name'] + "'" + terminal_colors['end']
         if os.path.exists(d['path_sql']): os.remove(d['path_sql'])
-        with load('/dev/null', 'random', 'Test random track ' + str(track_num)) as t:
+        with load('/dev/null', 'rand', 'Test random track ' + str(track_num)) as t:
             t.size = 1000.0*(float(track_num)/2.0)
-            t.convert(d['path_sql'])
+            t.export(d['path_sql'])
 
 # Special bigWig tracks #
 def create_binary():
@@ -46,7 +46,7 @@ def create_binary():
 
 # Special wig tracks #
 def create_rap1():
-    from bbcflib.track.format_wig import random_track
+    from bbcflib.track.formats.wig import random_track
     # Pol2
     print terminal_colors['txtylw'] + "Creating track 'Pol2'" + terminal_colors['end']
     random.seed(0)
