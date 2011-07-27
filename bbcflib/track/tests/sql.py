@@ -247,6 +247,18 @@ class Test_Conventions(unittest.TestCase):
         self.assertTrue(sqlcmp(new, old))
         os.remove(new)
 
+#-------------------------------------------------------------------------------#
+class Test_Load(unittest.TestCase):
+    def runTest(self):
+        old = track_collections['Special']['Corrupted']['path_sql']
+        new = named_temporary_path('.sql')
+        shutil.copyfile(old, new)
+        chromosomes  = [{'length': 576869, 'name': u'chrV'}, {'length': 813178, 'name': u'chrII'}, {'length': 270148, 'name': u'chrVI'}]
+        with track.load(new,  format="sql") as t:
+            t.chrmeta = chromosomes
+        os.remove(new)
+
+
 #-----------------------------------#
 # This code was written by the BBCF #
 # http://bbcf.epfl.ch/              #
