@@ -1,21 +1,27 @@
-'''
-execfile('extras/tracks/build.py')
-create_tracks()
-create_wigs()
-'''
+"""
+==============================
+Script: extras/tracks/build.py
+==============================
 
+A script that can regenerate the SQL tracks from their text version as well as the binary tracks.
+"""
 # Genreral Modules #
 import os, subprocess
 
 # Specific module #
-from bbcflib.track.common import terminal_colors
 from bbcflib.track import load
+from bbcflib.track.track_random import TrackRandom
+from bbcflib.track.common import terminal_colors
 from bbcflib.track.track_collection import track_collections, tracks_path, yeast_chr_file
+
+# Variables #
+chrsuffix = 'Awfully super extra long chromosome denomination string '
 
 # Same randomness #
 import random
 random.seed(0)
 
+###########################################################################
 # Create tracks #
 def create_tracks():
     for col_name, col in sorted(track_collections.items()):
@@ -31,7 +37,7 @@ def create_random():
     for track_num, d in sorted(track_collections['Random'].items()):
         print terminal_colors['txtylw'] + "Creating track '" + d['name'] + "'" + terminal_colors['end']
         if os.path.exists(d['path_sql']): os.remove(d['path_sql'])
-        with load('/dev/null', 'rand', 'Test random track ' + str(track_num)) as t:
+        with TrackRandom('/dev/null', 'rand', 'Test random track ' + str(track_num)) as t:
             t.size = 1000.0*(float(track_num)/2.0)
             t.export(d['path_sql'])
 
@@ -45,7 +51,7 @@ def create_binary():
         if stderr: raise Exception("The tool bedGraphToBigWig exited with message: " + '"' + stderr.strip('\n') + '"')
 
 # Special wig tracks #
-def create_rap1():
+def create_signals():
     from bbcflib.track.formats.wig import random_track
     # Pol2
     print terminal_colors['txtylw'] + "Creating track 'Pol2'" + terminal_colors['end']
