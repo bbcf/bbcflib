@@ -1,4 +1,4 @@
-bbcflib 1.3.1
+bbcflib 1.4.1
 
 Copyright 2011 EPFL BBCF <webmaster dot bbcf at epfl dot ch>
 
@@ -42,7 +42,7 @@ where X.Y is the version of Python you run it with.
 
 To run the test suite, in the distribution directory, run
 
-    $ python setup.py test
+    $ nosetests
 
 Full documentation
 ==================

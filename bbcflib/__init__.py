@@ -67,7 +67,7 @@ where X.Y is the version of Python you run it with.
 
 To run the test suite, in the distribution directory, run::
 
-    $ nosetests --with-doctest
+    $ nosetests
 
 =======
 License
@@ -79,4 +79,4 @@ of this license is in the LICENSE.txt file.
 
 b'This module needs Python 2.6 or later.'
 
-__version__ = '1.3.1'
+__version__ = '1.4.1'

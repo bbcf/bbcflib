@@ -10,13 +10,13 @@ Python API for the GDV genome viewer.
 import json, urllib, urllib2
 
 # Internal modules #
-from bbcflib.common import normalize_url
+from .common import normalize_url
 
 ################################################################################
 # GDV requests #
 
 def create_gdv_project( gdv_key, gdv_email,
-                        name, run_key, nr_assembly_id,
+                        name, nr_assembly_id,
                         gdv_url="http://svitsrv25.epfl.ch/gdv", public=False ):
     '''
     Create a new project on GDV interface
@@ -39,8 +39,8 @@ def create_gdv_project( gdv_key, gdv_email,
     return json.load(urllib2.urlopen( gdv_url, urllib.urlencode(request)))
 
 def get_project_id(json):
-
     return json['project_id']
+
 def get_public_url(json):
     return json['public_url']
 
@@ -63,7 +63,7 @@ def add_gdv_track( gdv_key, gdv_email,
                 "key": gdv_key,
                 "command": "new_track",
                 "project_id": str(project_id),
-                "url": normalize_url(str(url)) }
+                "url": str(url) }
     if name != None:
         request['name']=name
     gdv_url = normalize_url(gdv_url)+"/post"
@@ -117,8 +117,7 @@ def get_assemblies(gdv_key,gdv_email):
     request = { "id": "gdv_post",
                 "mail": gdv_email,
                 "key": gdv_key,
-                "command":"assemblies"
-        }
+                "command":"assemblies" }
     gdv_url = normalize_url(gdv_url)+"/post"
     return urllib2.urlopen( gdv_url, urllib.urlencode(request) ).read()
 

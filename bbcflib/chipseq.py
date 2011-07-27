@@ -41,11 +41,11 @@ Below is the script used by the frontend::
 import shutil, pickle, urllib
 
 # Internal modules #
-from bbcflib import frontend, mapseq
-from bbcflib.common import *
+from . import frontend, mapseq
+from .common import *
 
 # Other modules #
-from bein import MiniLIMS, program, unique_filename_in
+from bein import *
 from bein.util import *
 
 ################################################################################
@@ -182,7 +182,7 @@ def run_deconv(ex,sql,peaks,chromosomes,read_extension,script_path, via='lsf'):
                                            [x['pdf'] for x in rdeconv_out.values()
                                             if x != None],
                                            via=via )
-    sqlout = create_sql_track( unique_filename_in(), chromosomes )
+    sqlout = create_sql_track( unique_filename_in(), chromosomes.values() )
     for fout in rdeconv_out.values():
         if fout != None:
             f = sql_finish_deconv.nonblocking( ex, sqlout, fout['rdata'], via=via ).wait()
@@ -246,9 +246,14 @@ def get_bam_wig_files( ex, job, minilims=None, hts_url=None,
                 stats_id = allfiles.get("py:"+name+"_filter_bamstat") or allfiles.get("py:"+name+"_full_bamstat")
                 with open(MMS.path_to_file(stats_id)) as q:
                     s = pickle.load(q)
-                pickle_thresh = allfiles["py:"+name+"_Poisson_threshold"]
-                with open(MMS.path_to_file(pickle_thresh)) as q:
-                    p_thresh = pickle.load(q)
+                p_thresh = -1
+                if "py:"+name+"_Poisson_threshold" in allfiles:
+                    pickle_thresh = allfiles["py:"+name+"_Poisson_threshold"]
+                    with open(MMS.path_to_file(pickle_thresh)) as q:
+                        p_thresh = pickle.load(q)
+                if 'py:gdv_json' in allfiles:
+                    with open(MMS.path_to_file(allfiles['py:gdv_json'])) as q:
+                        job.options['gdv_project'] = pickle.load(q)
                 htss = frontend.Frontend( url=hts_url )
                 ms_job = htss.job( run['key'] )
                 if ms_job.options.get('read_extension')>0 and ms_job.options.get('read_extension')<80:
@@ -264,11 +269,11 @@ def get_bam_wig_files( ex, job, minilims=None, hts_url=None,
             else:
                 raise ValueError("Couldn't find this bam file anywhere: %s." %file_loc)
             mapped_files[gid][rid] = {'bam': bamfile,
-                                      'stats': s or bamstats.nonblocking( ex, bamfile, via=via ),
+                                      'stats': s or mapseq.bamstats.nonblocking( ex, bamfile, via=via ),
                                       'poisson_threshold': p_thresh,
                                       'libname': name,
                                       'wig': wig}
-    if not('read_extension' in job.options):
+    if len(read_exts)>0 and not('read_extension' in job.options):
         c = dict((x,0) for x in read_exts.values())
         for x in read_exts.values():
             c[x]+=1
@@ -280,10 +285,10 @@ def get_bam_wig_files( ex, job, minilims=None, hts_url=None,
             if not(isinstance(mapped_files[gid][rid]['stats'],dict)):
                 stats = mapped_files[gid][rid]['stats'].wait()
                 mapped_files[gid][rid]['stats'] = stats
-                pdf = add_pdf_stats( ex, {gid:{rid:{'stats':stats}}},
-                                     {gid: mapped_files[gid][rid]['libname']},
-                                     script_path )
-                mapped_files[gid][rid]['p_thresh'] = poisson_threshold( 50*stats["actual_coverage"] )
+                pdf = maspeq.add_pdf_stats( ex, {gid:{rid:{'stats':stats}}},
+                                            {gid: mapped_files[gid][rid]['libname']},
+                                            script_path )
+                mapped_files[gid][rid]['p_thresh'] = mapseq.poisson_threshold( 50*stats["actual_coverage"] )
     return (mapped_files,job)
 
 
@@ -394,7 +399,8 @@ def workflow_groups( ex, job_or_dict, mapseq_files, chromosomes, script_path='',
                 if merge_strands >= 0 or not('wig' in m) or len(m['wig'])<2:
                     output = unique_filename_in()
                     touch(ex,output)
-                    [create_sql_track( output+s+'.sql', chromosomes )
+                    [create_sql_track( output+s+'.sql', chromosomes.values(),
+                                       name=m['libname'] ) 
                      for s in suffixes]
                     mapseq.parallel_density_sql( ex, m["bam"],
                                                  output, chromosomes,

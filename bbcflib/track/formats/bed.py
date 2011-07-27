@@ -7,9 +7,8 @@ Implementation of the BED format.
 """
 
 # Internal modules #
-from bbcflib.track.track_proxy  import TrackProxy
-from bbcflib.track.track_text   import TrackText, strand_to_int, int_to_strand
-from bbcflib.track.common       import memoized_method
+from ..track_proxy import TrackProxy
+from ..track_text import TrackText, strand_to_int, int_to_strand
 
 # Global variables #
 all_fields_possible = ['start', 'end', 'name', 'score', 'strand', 'thick_start', 'thick_end',
@@ -17,9 +16,9 @@ all_fields_possible = ['start', 'end', 'name', 'score', 'strand', 'thick_start',
 
 ###########################################################################
 class TrackFormat(TrackText, TrackProxy):
-    type_identifier = 'bed'
+    type_identifier   = 'bed'
 
-    def _all_entries(self):
+    def _read_entries(self):
         self._file.seek(0)
         seen_track = False
         for line in self._file:
@@ -68,14 +67,13 @@ class TrackFormat(TrackText, TrackProxy):
                         raise Exception("The file '" + self._path + "' has non integers as thick ends and is hence not valid.")
             yield line
 
-    def _write(self):
+    def _write_entries(self):
         # Get fields #
         fields = ['start', 'end']
         for f in all_fields_possible[2:]:
             if f in self.fields: fields.append(f)
             else: break
         # Write everything #
-        yield self._header_line
         for feature in self.read(fields=fields):
             f = list(feature)
             try:
@@ -86,7 +84,6 @@ class TrackFormat(TrackText, TrackProxy):
 
     #-----------------------------------------------------------------------------#
     @property
-    @memoized_method
     def _fields(self):
         self._file.seek(0)
         for line in self._file:
@@ -108,8 +105,6 @@ class TrackFormat(TrackText, TrackProxy):
                 raise Exception("The file '" + self._path + "' has too many columns and is hence not a valid BED file.")
             return all_fields_possible[0:max(5,self.num_fields)]
 
-
-
     #-----------------------------------------------------------------------------#
     @property
     def _datatype(self):
@@ -117,8 +112,7 @@ class TrackFormat(TrackText, TrackProxy):
 
     @_datatype.setter
     def _datatype(self, datatype):
-        if not datatype: datatype = 'qualitative'
-        if datatype != 'qualitative':
+        if datatype and datatype != 'qualitative':
             raise Exception("The file '" + self._path + "' cannot be loaded as a '" + datatype + "' datatype.")
 
 ###########################################################################

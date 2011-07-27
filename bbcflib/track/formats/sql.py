@@ -10,33 +10,42 @@ Implementation of the SQL format.
 import sqlite3
 
 # Internal modules #
-from bbcflib.track              import Track
-from bbcflib.track.track_util   import join_read_queries, make_cond_from_sel
-from bbcflib.track.extras.sql   import TrackExtras
+from .. import Track
+from ..track_util import join_read_queries, make_cond_from_sel
+from ..extras.sql import TrackExtras
+from ..common import natural_sort
 
-###########################################################################
+################################################################################
 class TrackFormat(Track, TrackExtras):
     special_tables = ['attributes', 'chrNames', 'types']
 
-    def load(self):
+    def __init__(self, path, format=None, name=None, chrmeta=None, datatype=None, readonly=False, empty=False):
+        # Set the path #
+        self.path = path
         # Prepare the connection #
         self.connection = sqlite3.connect(self.path)
         self.cursor = self.connection.cursor()
-        # Test the file #
-        try:
-            self.datatype
-            self.fields
-            self.meta_chr
-            self.meta_track
-            self.all_tables
-            self.chrs_from_names
-            self.chrs_from_tables
-        except sqlite3.OperationalError:
-            raise Exception("The track '" + self.path + "' doesn't seem to have the correct format")
-        # Set attributes #
+        self.modified = False
+        # Get the track meta data #
+        self.attributes = self.attributes_read()
+        self.attributes.modified = False
+        # Get the chrom meta data #
+        if chrmeta: self.chrmeta = chrmeta
+        else:
+            self.chrmeta = self.chrmeta_read()
+            self.chrmeta.modified = False
+        # Check for missing attributes #
+        if name: self.name = name
+        if datatype:
+            if not self.datatype: self.datatype = datatype
+            if self.datatype != datatype: raise Exception("You cannot change the datatype of the track '" + self.path + "'")
+        # Set chromosome list #
         self.all_chrs = self.chrs_from_tables
+        self.all_chrs.sort(key=natural_sort)
 
     def unload(self, datatype=None, value=None, traceback=None):
+        if self.attributes.modified: self.attributes_write()
+        if self.chrmeta.modified: self.chrmeta_write()
         self.make_missing_indexes()
         self.connection.commit()
         self.cursor.close()
@@ -45,69 +54,118 @@ class TrackFormat(Track, TrackExtras):
     def commit(self):
         self.connection.commit()
 
-    #-----------------------------------------------------------------------------#
-    @property
-    def datatype(self):
-        self.cursor.execute("select value from attributes where key='datatype'")
-        return self.cursor.fetchall()[0][0].encode('ascii')
+    def make_missing_indexes(self):
+        if self.readonly: return
+        try:
+            for chrom in self.chrs_from_tables:
+                self.cursor.execute(    "create index IF NOT EXISTS '" + chrom + "_range_idx' on '" + chrom + "' (start,end)")
+                if 'score' in self.get_fields_of_table(chrom):
+                    self.cursor.execute("create index IF NOT EXISTS '" + chrom + "_score_idx' on '" + chrom + "' (score)")
+                if 'name' in self.get_fields_of_table(chrom):
+                    self.cursor.execute("create index IF NOT EXISTS '" + chrom + "_name_idx' on '" +  chrom + "' (name)")
+        except sqlite3.OperationalError as err:
+            raise Exception("The index creation on the database '" + self.path + "' failed with error: " + str(err))
 
+    #--------------------------------------------------------------------------#
     @property
     def fields(self):
-        if self.chrs_from_tables: return self.get_fields(self.chrs_from_tables[0])
+        if self.chrs_from_tables: return self.get_fields_of_table(self.chrs_from_tables[0])
         else:                     return []
 
     @property
-    def meta_chr(self):
-        self.cursor.execute("pragma table_info(chrNames)")
-        chrkeys = [x[1] for x in self.cursor.fetchall()]
-        self.cursor.execute("select * from chrNames")
-        return [dict([(k, e[i]) for i, k in enumerate(chrkeys)]) for e in self.cursor.fetchall()]
-
-    @meta_chr.setter
-    def meta_chr(self, data):
-        if self.readonly: return
-        if data == []: self.cursor.execute('delete from chrNames')
-        for x in data: self.cursor.execute('insert into chrNames (' + ','.join(x.keys()) + ') values (' + ','.join(['?' for y in range(len(x.keys()))])+')', tuple([x[k] for k in x.keys()]))
+    def all_tables(self):
+        self.cursor.execute("select name from sqlite_master where type='table'")
+        return [x[0].encode('ascii') for x in self.cursor.fetchall()]
 
     @property
-    def meta_track(self):
+    def chrs_from_names(self):
+        self.cursor.execute("select name from chrNames")
+        return [x[0].encode('ascii') for x in self.cursor.fetchall()]
+
+    @property
+    def chrs_from_tables(self):
+        return [x for x in self.all_tables if x not in self.special_tables and not x.endswith('_idx')]
+
+    def get_fields_of_table(self, table):
+        return [x[1] for x in self.cursor.execute('pragma table_info("' + table + '")').fetchall()]
+
+    #--------------------------------------------------------------------------#
+    def attributes_read(self):
+        if not 'attributes' in self.all_tables: return {}
         self.cursor.execute("select key, value from attributes")
         return dict(self.cursor.fetchall())
 
-    @meta_track.setter
-    def meta_track(self, data):
+    def attributes_write(self):
         if self.readonly: return
-        if data == {}: self.cursor.execute('delete from attributes')
-        for k in data.keys(): self.cursor.execute('insert into attributes (key,value) values (?,?)',(k,data[k]))
+        if not 'attributes' in self.all_tables: self.cursor.execute('create table attributes (key text, value text)')
+        if not self.attributes: self.cursor.execute('delete from attributes')
+        for k in self.attributes.keys(): self.cursor.execute('insert into attributes (key,value) values (?,?)', (k, self.attributes[k]))
+
+    def chrmeta_read(self):
+        if not 'chrNames' in self.all_tables: return {}
+        self.cursor.execute("pragma table_info(chrNames)")
+        column_names = [x[1] for x in self.cursor.fetchall()]
+        all_rows = self.cursor.execute("select * from chrNames").fetchall()
+        return (column_names, all_rows)
+
+    def chrmeta_write(self):
+        if self.readonly: return
+        if not 'chrNames' in self.all_tables: self.cursor.execute('create table chrNames (name text, length integer)')
+        if not self.chrmeta: self.cursor.execute('delete from chrNames')
+        for r in self.chrmeta.rows: self.cursor.execute('insert into chrNames (' + ','.join(r.keys()) + ') values (' + ','.join(['?' for x in r.keys()])+')', tuple(r.values()))
+
+    @property
+    def chrmeta(self):
+        return self._chrmeta
+
+    @chrmeta.setter
+    def chrmeta(self, value):
+        self._chrmeta(value)
+
+    @property
+    def attributes(self):
+        return self._attributes
+
+    @attributes.setter
+    def attributes(self, value):
+        self._attributes(value)
+
+    @property
+    def datatype(self):
+        return self.attributes.get('datatype')
+
+    @datatype.setter
+    def datatype(self, value):
+        if value not in ['quantitative', 'qualitative']:
+            raise Exception("The datatype you are trying to use is invalid: '" + str(value) + "'.")
+        self.attributes['datatype'] = value
 
     @property
     def name(self):
-        if self._name: return self._name
-        if 'name' in self.meta_track: return self.meta_track['name']
-        return 'Unamed'
+        return self.attributes.get('name', 'Unamed')
 
     @name.setter
     def name(self, value):
-        self._name = value
+        self.attributes['name'] = value
 
-    #-----------------------------------------------------------------------------#
+    #--------------------------------------------------------------------------#
     def read(self, selection=None, fields=None, order='start,end', cursor=False):
         # Default selection #
         if not selection:
             selection = self.chrs_from_tables
-        # Case multi-chromosome #
+        # Case list of things #
         if isinstance(selection, list) or isinstance(selection, tuple):
             return join_read_queries(self, selection, fields)
         # Case chromsome name #
         if isinstance(selection, basestring):
             if selection not in self.chrs_from_tables: return ()
-            if not fields: fields = self.get_fields(selection)
+            if not fields: fields = self.get_fields_of_table(selection)
             sql_request = "select " + ','.join(fields) + " from '" + selection + "'"
-        # Case span dictionary #
+        # Case selection dictionary #
         if isinstance(selection, dict):
             chrom = selection['chr']
             if chrom not in self.chrs_from_tables: return ()
-            if not fields: fields = self.get_fields(chrom)
+            if not fields: fields = self.get_fields_of_table(chrom)
             sql_request = "select " + ','.join(fields) + " from '" + chrom + "' where " + make_cond_from_sel(selection)
         # Ordering #
         order_by = 'order by ' + order
@@ -117,23 +175,24 @@ class TrackFormat(Track, TrackExtras):
         return cur.execute(sql_request + ' ' + order_by)
 
     def write(self, chrom, data, fields=None):
+        self.modified = True
         if self.readonly: return
         # Default fields #
         if self.datatype == 'quantitative': fields = Track.quantitative_fields
         if fields        == None:           fields = Track.qualitative_fields
-        # Get types #
-        columns = ','.join([field + ' ' + Track.field_types.get(field, 'text') for field in fields])
         # Maybe create the table #
         if chrom not in self.chrs_from_tables:
+            columns = ','.join([field + ' ' + Track.field_types.get(field, 'text') for field in fields])
             self.cursor.execute('create table "' + chrom + '" (' + columns + ')')
         # Execute the insertion
-        sql_command = 'insert into "' + chrom + '" values (' + ','.join(['?' for x in range(len(fields))])+')'
+        sql_command = 'insert into "' + chrom + '" (' + ','.join(fields) + ') values (' + ','.join(['?' for x in range(len(fields))])+')'
         try:
             self.cursor.executemany(sql_command, data)
         except sqlite3.OperationalError as err:
             raise Exception("The command '" + sql_command + "' on the database '" + self.path + "' failed with error: " + str(err))
 
     def remove(self, chrom=None):
+        self.modified = True
         if self.readonly: return
         if not chrom:
             chrom = self.chrs_from_tables
@@ -162,53 +221,25 @@ class TrackFormat(Track, TrackExtras):
         # Return the results #
         return self.cursor.execute(sql_request).fetchone()[0]
 
-    #-----------------------------------------------------------------------------#
-    @property
-    def all_tables(self):
-        self.cursor.execute("select name from sqlite_master where type='table'")
-        return [x[0].encode('ascii') for x in self.cursor.fetchall()]
+    def ucsc_to_ensembl(self):
+        '''Converts all entries of a track from the UCSC standard to the Ensembl standard.
 
-    @property
-    def chrs_from_names(self):
-        self.cursor.execute("select name from chrNames")
-        return [x[0].encode('ascii') for x in self.cursor.fetchall()]
+           ``ucsc_to_ensembl`` returns nothing.
+        '''
+        for chrom in self.chrs_from_tables: self.cursor.execute("update '" + chrom + "' set start=start+1")
 
-    @property
-    def chrs_from_tables(self):
-        return [x for x in self.all_tables if x not in self.special_tables and not x.endswith('_idx')]
+    def ensembl_to_ucsc(self):
+        '''Converts all entries of a track from the Ensembl standard to the UCSC standard.
 
-    @property
-    def chr_length(self, name):
-        for chrom in self.chrmeta:
-            if chrom['name'] == name: return chrom['length']
+           ``ensembl_to_ucsc`` returns nothing.
+        '''
+        for chrom in self.chrs_from_tables: self.cursor.execute("update '" + chrom + "' set start=start-1")
 
-    #-----------------------------------------------------------------------------#
-    def get_fields(self, chrom):
-        return [x[1] for x in self.cursor.execute('pragma table_info("' + chrom + '")').fetchall()]
-
-    def make_missing_indexes(self):
-        if self.readonly: return
-        try:
-            for chrom in self.chrs_from_tables:
-                self.cursor.execute(    "create index IF NOT EXISTS '" + chrom + "_range_idx' on '" + chrom + "' (start,end)")
-                if 'score' in self.get_fields(chrom):
-                    self.cursor.execute("create index IF NOT EXISTS '" + chrom + "_score_idx' on '" + chrom + "' (score)")
-                if 'name' in self.get_fields(chrom):
-                    self.cursor.execute("create index IF NOT EXISTS '" + chrom + "_name_idx' on '" +  chrom + "' (name)")
-        except sqlite3.OperationalError as err:
-            raise Exception("The index creation on the database '" + self.path + "' failed with error: " + str(err))
-
-    #-----------------------------------------------------------------------------#
+    #--------------------------------------------------------------------------#
     @staticmethod
-    def create(path, datatype, name):
+    def create(path):
         connection = sqlite3.connect(path)
         cursor = connection.cursor()
-        cursor.execute('create table chrNames (name text, length integer)')
-        cursor.execute('create table attributes (key text, value text)')
-        if datatype == 'quantitative':
-            cursor.execute('insert into attributes (key,value) values ("datatype","quantitative")')
-        if datatype == 'qualitative':
-            cursor.execute('insert into attributes (key,value) values ("datatype","qualitative")')
         connection.commit()
         cursor.close()
         connection.close()

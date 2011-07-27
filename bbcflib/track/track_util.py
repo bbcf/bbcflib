@@ -3,16 +3,15 @@
 Submodule: bbcflib.track.track_util
 ===================================
 
-Usefull stuff.
+Useful stuff for the track package.
 """
 
 # Built-in modules #
-import os, sys, random, shlex
+import os, sys, shlex
 
 # Internal modules #
-from bbcflib.track import Track, new
-from bbcflib.track import formats
-from bbcflib.track import magic
+from . import formats
+from . import magic
 
 ###############################################################################
 def determine_format(path):
@@ -27,11 +26,14 @@ def determine_format(path):
     if not file_format:
         raise Exception("The format of the path '" + path + "' cannot be determined. Please specify a format or add an extension.")
     # Synonyms #
-    if file_format == 'db': file_format = 'sql'
+    known_synonyms = {
+        'db': 'sql',
+        'bw': 'bigWig',
+    }
     # Return the format #
-    return file_format
+    return known_synonyms.get(file_format, file_format)
 
-#-----------------------------------------------------------------------------#
+#------------------------------------------------------------------------------#
 def guess_file_format(path):
     # Check SQLite #
     with open(path, 'r') as track_file:
@@ -53,40 +55,45 @@ def guess_file_format(path):
                     return ''
                 return known_identifiers.get(id, id)
 
-#-----------------------------------------------------------------------------#
+#------------------------------------------------------------------------------#
 def import_implementation(format):
     '''Try to import the implementation of a given format'''
     if not hasattr(sys.modules[__package__].formats, format):
         __import__(    __package__ + '.formats.' + format)
     return sys.modules[__package__ + '.formats.' + format]
 
-#-----------------------------------------------------------------------------#
+#------------------------------------------------------------------------------#
 def join_read_queries(track, selections, fields):
     '''Join read results when selection is a list'''
-    def _add_chromsome(sel, data):
+    def _add_chromsome_prefix(sel, data):
         if type(sel) == str: chrom = (sel,)
         else:                chrom = (sel['chr'],)
         for f in data: yield chrom + f
     for sel in selections:
-        for f in _add_chromsome(sel, track.read(sel, fields)): yield f
+        for f in _add_chromsome_prefix(sel, track.read(sel, fields)): yield f
 
-#-----------------------------------------------------------------------------#
+#------------------------------------------------------------------------------#
 def make_cond_from_sel(selection):
     '''Make an SQL condition string from a selection dictionary'''
     query = ""
-    if "start" in selection and "end" in selection:
-        if selection.get('inclusion') == 'strict':
-            query = "start < " + str(selection['end'])   + " and " + "start >= " + str(selection['start']) + \
-               " and end   > " + str(selection['start']) + " and " + "end <= "   + str(selection['end'])
-        else:
-            query = "start < " + str(selection['end'])   + " and " + "end > " + str(selection['start'])
-    if "score" in selection:
+    # Case start #
+    if "start" in selection:
+        query += "end > " + str(selection['start'])
+        if selection.get('inclusion') == 'strict': query += " and start >= " + str(selection['start'])
+    # Case end #
+    if "end" in selection:
         if query: query += " and "
-        statements  = [i for i in selection["score"].split(" ") if i != ""]
-        for i in statements:
-            try: number = float(i)
-            except ValueError: symbol = i
-        query += "score " + locals().get("symbol", "=") + " " + str(number)
+        query += "start < " + str(selection['end'])
+        if selection.get('inclusion') == 'strict': query += " and end <= " + str(selection['end'])
+    # Case strand #
+    if "strand" in selection:
+        if query: query += " and "
+        query += 'strand == ' + str(selection['strand'])
+    # Case score #
+    if "score" in selection:
+        if not isinstance(selection['score'], tuple): raise Exception("Score intervals must be tuples of size 2")
+        if query: query += " and "
+        query += 'score >= ' + str(selection['score'][0]) + ' and score <= ' + str(selection['score'][1])
     return query
 
 #-----------------------------------#

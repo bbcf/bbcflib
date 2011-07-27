@@ -3,15 +3,15 @@
 Submodule: bbcflib.track.track_parsing
 ======================================
 
-An optional test intended that is not run with the usual test suite. It evalutes the robustness of the text track parsers.
+An optional test that is not run with the usual test suite. It evaluates the robustness of the text track parsers.
 """
 
 # Built-in modules #
 import os, re
 
 # Internal modules #
-from bbcflib.track                  import Track
-from bbcflib.track.track_collection import parser_tests, yeast_chr_file
+from . import Track
+from .track_collection import parser_tests, yeast_chr_file
 
 ################################################################################
 def run(create_sql_files=False):

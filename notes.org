@@ -1,6 +1,6 @@
 * Run unittests:
     To run all the unittests included in bbcflib, from the root directory type:
-        $ nosetests --with-doctest
+        $ nosetests
 
 * Building and posting the doc:
     To build the doc automatically from the source code and post it to bbcf.epfl.ch, you typically will do the following:

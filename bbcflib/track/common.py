@@ -3,8 +3,16 @@
 Submodule: bbcflib.track.common
 ===============================
 
-Common stuff.
+Common stuff for the track package.
 """
+
+###########################################################################
+def check_path(path):
+    """
+    Raises an exception if the path *path* is already taken.
+    """
+    import os
+    if os.path.exists(path): raise Exception("The location '" + path + "' is already taken")
 
 ###########################################################################
 def natural_sort(item):
@@ -46,6 +54,18 @@ def sentinelize(iterable, sentinel):
     """
     for item in iterable: yield item
     yield sentinel
+
+###############################################################################
+def sqlcmp(file_a, file_b):
+    """
+    Compare two two sqlite3 databases via their dumps
+    """
+    import itertools, sqlite3
+    A = sqlite3.connect(file_a)
+    B = sqlite3.connect(file_b)
+    for a,b in itertools.izip_longest(A.iterdump(), B.iterdump()):
+        if a != b: return False
+    return True
 
 ###############################################################################
 terminal_colors = {
@@ -94,42 +114,101 @@ terminal_colors = {
 }
 
 ###############################################################################
-class memoized_method(object):
-    """
-    Decorator that caches a function's return value the first time
-    it is called. If called later, the cached value is returned, and
-    not re-evaluated.
+class ModifiedDict(object):
+    ''' A dictionary like object that tracks modification
+        and has a special boolean self.modified value'''
 
-    This class is meant to be used as a decorator of methods. The return value
-    from a given method invocation will be cached on the instance whose method
-    was invoked. All arguments passed to a method decorated with memoize must
-    be hashable.
+    def __init__(self, d=None):
+        self.data = {}
+        if d is not None: self.update(d)
+        self.modified = False
 
-    If a memoized method is invoked directly on its class the result will not
-    be cached. Instead the method will be invoked like a static method.
-    """
-    def __init__(self, func):
-        self.func = func
-    def __get__(self, obj, objtype=None):
-        from functools import partial
-        if obj is None:
-            return self.func
-        return partial(self, obj)
-    def __call__(self, *args, **kw):
-        obj = args[0]
+    def __call__(self, *args, **kwargs):
+        self.modified = True
+        super(ModifiedDict, self)(*args, **kwargs)
+
+    def __repr__(self):
+        return repr(self.data)
+
+    def __cmp__(self, d):
+        if isinstance(d, ModifiedDict): return cmp(self.data, d.data)
+        else: return cmp(self.data, d)
+
+    def __len__(self):
+        return len(self.data)
+
+    def __getitem__(self, key):
+        if key in self.data: return self.data[key]
+        if hasattr(self.__class__, "__missing__"): return self.__class__.__missing__(self, key)
+        raise KeyError(key)
+
+    def __contains__(self, key):
+        return key in self.data
+
+    def __setitem__(self, key, item):
+        self.modified = True
+        self.data[key] = item
+
+    def __delitem__(self, key):
+        self.modified = True
+        del self.data[key]
+
+    def __iter__(self):
+        return iter(self.data)
+
+    def keys(self): return self.data.keys()
+    def items(self): return self.data.items()
+    def iteritems(self): return self.data.iteritems()
+    def iterkeys(self): return self.data.iterkeys()
+    def itervalues(self): return self.data.itervalues()
+    def values(self): return self.data.values()
+    def has_key(self, key): return key in self.data
+
+    def get(self, key, failobj=None):
+        if key not in self: return failobj
+        return self[key]
+
+    def clear(self):
+        self.modified = True
+        self.data.clear()
+
+    def setdefault(self, key, failobj=None):
+        if key not in self:
+            self.modified = True
+            self[key] = failobj
+        return self[key]
+
+    def pop(self, key, *args):
+        self.modified = True
+        return self.data.pop(key, *args)
+
+    def popitem(self):
+        self.modified = True
+        return self.data.popitem()
+
+    def copy(self):
+        if self.__class__ is ModifiedDict: return ModifiedDict(self.data.copy())
+        import copy
+        data = self.data
         try:
-            cache = obj.__cache
-        except AttributeError:
-            cache = obj.__cache = {}
-        key = (self.func, args[1:], frozenset(kw.items()))
-        try:
-            res = cache[key]
-        except KeyError:
-            res = cache[key] = self.func(*args, **kw)
-        return res
+            self.data = {}
+            c = copy.copy(self)
+        finally:
+            self.data = data
+        c.update(self)
+        return c
 
-#-----------------------------------#
-# This code was written by the BBCF #
-# http://bbcf.epfl.ch/              #
-# webmaster.bbcf@epfl.ch            #
-#-----------------------------------#
+    def update(self, d=None, **kwargs):
+        if d is None: return
+        self.modified = True
+        if isinstance(d, ModifiedDict): self.data.update(d.data)
+        elif isinstance(d, type({})) or not hasattr(d, 'items'): self.data.update(d)
+        else:
+            for k, v in d.items(): self[k] = v
+        if len(kwargs): self.data.update(kwargs)
+
+    @classmethod
+    def fromkeys(cls, iterable, value=None):
+        d = cls()
+        for key in iterable: d[key] = value
+        return d

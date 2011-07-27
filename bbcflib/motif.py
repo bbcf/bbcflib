@@ -8,14 +8,14 @@ No documentation
 
 # Built-in modules #
 import re, os
-from operator       import add
+from operator import add
 
 # Internal modules #
-from bbcflib        import track, common
+from . import track, common
 
 # Other modules #
-from bein           import unique_filename_in, program
-from BeautifulSoup  import BeautifulSoup
+from bein import unique_filename_in, program
+from BeautifulSoup import BeautifulSoup
 
 ################################################################################
 @program
@@ -89,8 +89,7 @@ def parse_meme_html_output(ex, meme, fasta, chromosomes):
         with track.new(sqlout,  format="sql", datatype="qualitative") as t:
             keys            = chromosomes.keys()
             chomosomes_used = []
-            t.meta_track= {'datatype': 'qualitative', 'source': 'meme'}
-            t.meta_track.update({'k':'v'})
+            t.attributes = {'datatype': 'qualitative', 'source': 'meme'}
             for chromosome in dict_chromosomes:
                 isSearchingChromosome   = True
                 index                   = 0
@@ -103,7 +102,7 @@ def parse_meme_html_output(ex, meme, fasta, chromosomes):
                     else:
                         index +=1
                 t.write(chromosome, dict_chromosomes[chromosome], fields=track.Track.qualitative_fields)
-            t.meta_chr = chomosomes_used
+            t.chrmeta = chomosomes_used
         #files.append((matrix_file, sqlout))
         ex.add( matrix_file, description="matrix:"+item["name"] )
         ex.add( sqlout,  description="sql:"+sqlout)
@@ -173,8 +172,7 @@ def save_motif_profile( ex, motifs, background, genrep, chromosomes, data_path,
                     regions[name] = (v['name'],int(row[0]))
 
     with track.new(sqlout,  format="sql", datatype="qualitative",) as t:
-        t.meta_track= {'source': 'S1K'}
-        t.meta_track.update({'k':'v'})
+        t.attributes= {'source': 'S1K'}
 
     for name,f in futures.iteritems():
         vals            = []
@@ -224,7 +222,7 @@ def save_motif_profile( ex, motifs, background, genrep, chromosomes, data_path,
                 i +=1
 
     with track.load(sqlout,  format="sql") as t:
-        t.meta_chr = chomosomes_used
+        t.chrmeta = chomosomes_used
 
     ex.add( sqlout, description="sql:"+description+"motif_scan.sql" )
     return sqlout

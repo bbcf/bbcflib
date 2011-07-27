@@ -10,15 +10,15 @@ Implementation of the WIG format.
 import sys, shlex
 
 # Internal modules #
-from bbcflib.track.track_proxy  import TrackProxy
-from bbcflib.track.track_text   import TrackText
-from bbcflib.track.common       import sentinelize
+from ..track_proxy import TrackProxy
+from ..track_text import TrackText
+from ..common import sentinelize
 
 ###########################################################################
 class TrackFormat(TrackText, TrackProxy):
-    type_identifier = 'wiggle_0'
+    type_identifier   = 'wiggle_0'
 
-    def _all_features(self):
+    def _read_features(self):
         self._file.seek(0)
         params = {}
         seen_track = False
@@ -80,10 +80,10 @@ class TrackFormat(TrackText, TrackProxy):
                     raise Exception("The file '" + self._path + "' has missing values.")
                 yield [params['chrom'], line[0], line[0] + params['span'], line[1]]
 
-    def _all_entries(self):
+    def _read_entries(self):
         # TODO: What if datatype is 'qualitative' and the wig has overlaps ?
         sentinel = ('', sys.maxint, sys.maxint, 0.0)
-        X = sentinelize(self._all_features(), sentinel)
+        X = sentinelize(self._read_features(), sentinel)
         x = X.next()
         if x == sentinel:
             yield x
@@ -102,8 +102,7 @@ class TrackFormat(TrackText, TrackProxy):
             if x[3] != 0.0: yield tuple(x)
             x = x_next
 
-    def _write(self):
-        yield self._header_line
+    def _write_entries(self):
         for f in self.read(): yield "fixedStep chrom=%s start=%s span=%s\n%s\n" % (f[0],f[1],f[2]-f[1],f[3])
 
     #-----------------------------------------------------------------------------#
@@ -115,7 +114,6 @@ class TrackFormat(TrackText, TrackProxy):
     def _datatype(self, datatype):
         if not datatype: datatype = 'quantitative'
         self._datatype_ = datatype
-
 
 ###########################################################################
 def random_track(kind='fixed', chrs=16, number_of_regions=32, orig_start=0, length=100, score=1000, jump=50000):

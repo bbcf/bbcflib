@@ -2,7 +2,7 @@
 import datetime
 
 # Internal modules #
-from bbcflib.frontend import Frontend
+from ..frontend import Frontend
 
 # Unitesting module #
 try:
