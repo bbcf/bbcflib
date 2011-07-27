@@ -10,12 +10,18 @@ Implementation of the bigWig format. Requires the command line utilities "bigWig
 import os
 
 # Internal modules #
+from ..common import check_executable
 from ..track_binary import TrackBinary
 from .bedGraph import TrackFormat as TrackBedgraph
 
 ###########################################################################
 class TrackFormat(TrackBinary, TrackBedgraph):
-    backend_format   = 'bedGraph'
+    backend_format = 'bedGraph'
+
+    def __init__(self, *args, **kwargs):
+        check_executable('bigWigToBedGraph')
+        check_executable('bedGraphToBigWig')
+        super(TrackFormat, self).__init__(*args, **kwargs)
 
     def binary_to_text(self, source, dest):
         self.run_tool('bigWigToBedGraph', [source, dest])

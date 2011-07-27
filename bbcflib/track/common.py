@@ -15,6 +15,17 @@ def check_path(path):
     if os.path.exists(path): raise Exception("The location '" + path + "' is already taken")
 
 ###########################################################################
+def check_executable(tool_name):
+    """
+    Raises an exception if the executable *tool_name* is not found.
+    """
+    import subprocess
+    try:
+        proc = subprocess.Popen([tool_name], stderr=subprocess.PIPE)
+    except OSError:
+         raise Exception("The executable '" + tool_name + "' cannot be found")
+
+###########################################################################
 def natural_sort(item):
     """
     Will sort strings that contain numbers correctly
