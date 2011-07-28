@@ -41,6 +41,29 @@ bbcflib requires:
 * mailer >=0.6 (http://pypi.python.org/pypi/mailer)
 * bein (http://bbcf.epfl.ch/bein/)
 * numpy (http://numpy.scipy.org/)
+* libmagic (http://sourceforge.net/projects/libmagic/)
+
+    Mac OS and Windows
+    ------------------
+
+    On these system by default libmagic is not present.
+
+    Generic procedure installation
+        * download latest version from ftp://ftp.astron.com/pub/file/
+        * extract directory from archive
+        * inside directory run
+          * ./configure
+          * make
+          * make install
+    Mac OS with homebrew
+        run command below:
+            * brew install libmagic
+            * chmod +x [Path to Cellar]/libmagic/[version]/bin/file
+            Path to Cellar by default = /usr/local/Cellar
+            At this time version = 5/04
+            * brew link libmagic
+        Warning: 5.04 number is libmagic version this number could change!
+
 
 bbcflib doesn't have regular releases, since it is an internally used
 library. You should download the latest source code from GitHub,
