@@ -45,7 +45,8 @@ With a ``ConfigParser``, the previous code would look like::
 # Built-in modules #
 import urllib2, json, os
 from datetime import datetime
-
+from urllib2 import HTTPError 
+from bbcflib.exception import NRAssemblyNotFound
 # Internal modules #
 from .common import normalize_url
 
@@ -294,7 +295,40 @@ class GenRep(object):
             root = os.path.join(self.root,"nr_assemblies/exons_fasta")
             path = os.path.join(root,assembly.md5+".fa.gz")
         return path
-
+    
+    
+    def get_genrep_objects(self,url_tag,info_tag,filters={}):
+        '''
+        Get a list of GenRep objets
+        ... attribute url_tag : the GenrepObject type (plural)
+        ... attribute info_tag : the GenrepObject type (singular)
+        Optionals attributes :
+        ... attribute filters : a dict that is used to filter the response
+        from GenRep.
+        Example : 
+        To get the genomes related to 'Mycobacterium leprae' species.
+        First get the species with the right name :
+        species = get_genrep_objects('organisms','organism',{'species':'Mycobacterium leprae'})[0]
+        genomes = get_genrep_objects('genomes','genome',{'organism_id':species.id})
+        '''
+        url = """%s/%s.json""" % (self.url,url_tag)
+        infos = json.load(urllib2.urlopen(url))
+        result = []
+        # get objects
+        for info in infos:
+            obj = GenrepObject(info,info_tag)
+            if not filters :
+                result.append(obj)
+            else : # filter
+                for k,v in filters.items():
+                    if hasattr(obj,k):
+                        if getattr(obj,k)==v:
+                            result.append(obj)
+        return result
+    
+        
+    
+    
 ################################################################################
 class Assembly(object):
     def __init__(self, assembly_id, assembly_name, index_path,
@@ -376,6 +410,23 @@ class Assembly(object):
 
         '''
         return dict([(v['name'],dict([('length',v['length'])])) for v in self.chromosomes.values()])
+
+
+
+
+
+
+
+class GenrepObject(object):
+    '''
+    Class wich will reference all different objects used by GenRep
+    In general, you should never instanciate GenrepObject directly but
+    call a method from the GenRep object.
+    '''
+    def __init__(self,info,key):
+        self.__dict__.update(info[key])
+
+
 
 #-----------------------------------#
 # This code was written by the BBCF #
