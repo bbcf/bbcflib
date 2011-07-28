@@ -164,13 +164,11 @@ class Track(object):
 
         *selection* can be the name of a chromosome, in which case all the data on that chromosome will be returned.
 
-        *selection* can also be a dictionary specifying: regions, score intervals or strands. Indeed, you can specify either region in which case only features contained in that region will be returned or a dictionary specifying a score interval in which case only features contained in that score boundaries will be returned. You can also specify a strand. The dictionary can specify one or several of these arguemts. See examples for more details
+        *selection* can also be a dictionary specifying: regions, score intervals or strands. Indeed, you can specify a region in which case only features contained in that region will be returned. You can also input a tuple specifying a score interval in which case only features contained in those score boundaries will be returned. You can even specify a strand. The dictionary can contain one or several of these arguemts. See examples for more details.
 
         Adding the parameter ``'inclusion':'strict'`` to a region dictionary will return only features exactly contained inside the interval instead of features simply included in the interval.
 
-       To combine multiple selections you can specify a list including chromosome names and region dictionaries. As expected, if such is the case, the joined data from those selections will be returned with an added 'chr' field in front since the results may span several chromosomes.
-
-        When *selection* is left empty, the data from all chromosome is returned.
+        To combine multiple selections you can specify a list including chromosome names and region dictionaries. As expected, if such is the case, the joined data from those selections will be returned with an added 'chr' field in front since the results may span several chromosomes. When *selection* is left empty, the data from all chromosome is returned.
 
         * *fields* is a list of fields which will influence the length of the tuples returned and the way in which the information is returned. The default for quantitative tracks is ``['start', 'end', 'name', 'score', 'strand']`` and ``['start', 'end', 'score']`` for quantitative tracks.
 

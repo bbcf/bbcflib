@@ -180,6 +180,10 @@ class Test_Chrmeta(unittest.TestCase):
         # File #
         with track.load(d['path_sql'], chrmeta=yeast_chr_file, readonly=True) as t:
             self.assertEqual(t.chrmeta['chr1']['length'], 230208)
+        # Bad #
+        chromosomes  = [{'length': 576869, 'name': 'chr1'}, {'length': 813178, 'name': 'chr2'}]
+        with track.load(d['path_sql'], readonly=True) as t:
+            self.assertRaises(TypeError, t.chrmeta, chromosomes)
 
 #------------------------------------------------------------------------------#
 class Test_Attributes(unittest.TestCase):
@@ -246,18 +250,6 @@ class Test_Conventions(unittest.TestCase):
             t.ensembl_to_ucsc()
         self.assertTrue(sqlcmp(new, old))
         os.remove(new)
-
-#-------------------------------------------------------------------------------#
-class Test_Load(unittest.TestCase):
-    def runTest(self):
-        old = track_collections['Special']['Corrupted']['path_sql']
-        new = named_temporary_path('.sql')
-        shutil.copyfile(old, new)
-        chromosomes  = [{'length': 576869, 'name': u'chrV'}, {'length': 813178, 'name': u'chrII'}, {'length': 270148, 'name': u'chrVI'}]
-        with track.load(new,  format="sql") as t:
-            t.chrmeta = chromosomes
-        os.remove(new)
-
 
 #-----------------------------------#
 # This code was written by the BBCF #
