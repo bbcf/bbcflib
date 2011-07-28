@@ -161,9 +161,10 @@ def save_motif_profile( ex, motifs, background, genrep, chromosomes, data_path,
 
     for name,pwm in motifs.iteritems():
         output = unique_filename_in()
-        futures[name] = (output,
-                         motif_scan.nonblocking( ex, fasta, pwm, background, threshold,
-                                                 via=via, stdout=output ))
+        futures[name] = (
+                            output,
+                            motif_scan.nonblocking( ex, fasta, pwm, background, threshold, via=via, stdout=output )
+                        )
 
     with track.load(data_path, chrmeta=chromosomes) as t:
         for v in chromosomes.values():

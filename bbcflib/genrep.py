@@ -225,7 +225,7 @@ class GenRep(object):
         """
         return assembly in self.assemblies_available()
 
-    def statistics(self, assembly, output=None, frequency=False):
+    def statistics(self, assembly, output=None, frequency=False, matrix_format=False):
         """
         Return (di-)nucleotide counts or frequencies for an assembly, writes in file ``output`` if provided.
         Example of result:
@@ -253,6 +253,10 @@ class GenRep(object):
             "T": 32371931
         }
         Total = A + T + G + C
+
+        if matrix_format is True output is by example:
+         >Assembly: sacCer2
+        1   0.309798640038793   0.308714120881750   0.190593944221299   0.190893294858157
         """
         request = urllib2.Request("%s/nr_assemblies/%d.json?data_type=counts" % (self.url, assembly.nr_assembly_id))
         stat    = json.load(urllib2.urlopen(request))
@@ -265,10 +269,15 @@ class GenRep(object):
             return stat
         else:
             with open(output, "w") as f:
-                f.write("#Assembly: %s\n" % assembly.name)
-                [f.write("%s\t%s\n" % (x,stat[x])) for x in ["A","C","G","T"]]
-                f.write("#\n")
-                [[f.write("%s\t%s\n" % (x+y,stat[x+y])) for y in ["A","C","G","T"]] for x in ["A","C","G","T"]]
+                if matrix_format:
+                    f.write(">Assembly: %s\n" % assembly.name)
+                    f.write(stat["A"],stat["C"],stat["G"],stat["T"])
+                    f.write("\n")
+                else:
+                    f.write("#Assembly: %s\n" % assembly.name)
+                    [f.write("%s\t%s\n" % (x,stat[x])) for x in ["A","C","G","T"]]
+                    f.write("#\n")
+                    [[f.write("%s\t%s\n" % (x+y,stat[x+y])) for y in ["A","C","G","T"]] for x in ["A","C","G","T"]]
             return output
 
     def fasta_path(self, assembly, chromosome=None):
