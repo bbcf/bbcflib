@@ -3,7 +3,7 @@ import os, shutil
 
 # Internal modules #
 from ... import track
-from ..common import named_temporary_path
+from ..common import named_temporary_path, sqlcmp
 from ..track_collection import track_collections, yeast_chr_file
 
 # Unittesting module #
@@ -180,6 +180,10 @@ class Test_Chrmeta(unittest.TestCase):
         # File #
         with track.load(d['path_sql'], chrmeta=yeast_chr_file, readonly=True) as t:
             self.assertEqual(t.chrmeta['chr1']['length'], 230208)
+        # Bad #
+        chromosomes  = [{'length': 576869, 'name': 'chr1'}, {'length': 813178, 'name': 'chr2'}]
+        with track.load(d['path_sql'], readonly=True) as t:
+            self.assertRaises(TypeError, t.chrmeta, chromosomes)
 
 #------------------------------------------------------------------------------#
 class Test_Attributes(unittest.TestCase):
@@ -232,6 +236,20 @@ class Test_Corrupted(unittest.TestCase):
             self.assertEqual(t.all_chrs, ['chr' + str(i) for i in range(1,17)])
             self.assertEqual(t.chrmeta, {})
             self.assertEqual(t.attributes, {})
+
+#-------------------------------------------------------------------------------#
+class Test_Conventions(unittest.TestCase):
+    def runTest(self):
+        old = track_collections['Scores'][3]['path_sql']
+        new = named_temporary_path('.sql')
+        shutil.copyfile(old, new)
+        with track.load(new) as t:
+            t.ucsc_to_ensembl()
+            expected = [(21, 50, 20.0), (51, 80, 300)]
+            self.assertEqual(list(t.read('chr1')), expected)
+            t.ensembl_to_ucsc()
+        self.assertTrue(sqlcmp(new, old))
+        os.remove(new)
 
 #-----------------------------------#
 # This code was written by the BBCF #

@@ -33,3 +33,7 @@ The Track object
     .. automethod:: Track.export
 
     .. automethod:: Track.convert
+
+    .. automethod:: Track.ucsc_to_ensembl
+
+    .. automethod:: Track.ensembl_to_ucsc

@@ -11,13 +11,13 @@ Implementation of a random track generator.
 import sys, random, tempfile
 
 # Internal modules #
-from .. import Track
+from . import Track
 
 # Variables #
 chrsuffix = 'Awfully super extra long chromosome denomination string '
 
 ###########################################################################
-class TrackFormat(Track):
+class TrackRandom(Track):
     def __init__(self, *args):
         # Essential parameters #
         self.all_chrs = [chrsuffix + str(x) for x in range(10)]

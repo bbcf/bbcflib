@@ -35,6 +35,8 @@ class ChromMetaData(ModifiedDict):
             if os.path.exists(x) and not os.path.isdir(x): return self.read_file(x)
         # GenRep case #
             else: return self.read_genrep(x)
+        # Other case #
+        raise TypeError("The parameter passed to the 'chrmeta' attribute could not be parsed.")
 
     #--------------------------------------------------------------------------#
     def read_tuple(self, t):

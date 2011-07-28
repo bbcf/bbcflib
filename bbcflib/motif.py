@@ -88,7 +88,7 @@ def parse_meme_html_output(ex, meme, fasta, chromosomes):
                                                     ]
         with track.new(sqlout,  format="sql", datatype="qualitative") as t:
             keys            = chromosomes.keys()
-            chomosomes_used = []
+            chomosomes_used = {}
             t.attributes = {'datatype': 'qualitative', 'source': 'meme'}
             for chromosome in dict_chromosomes:
                 isSearchingChromosome   = True
@@ -98,7 +98,7 @@ def parse_meme_html_output(ex, meme, fasta, chromosomes):
                         raise ValueError("Chromosomes named: %s not found in select assembly!"%(chromosome))
                     elif chromosomes[keys[index]]["name"] == chromosome:
                         isSearchingChromosome   = False
-                        chomosomes_used.append( chromosomes[keys[index]] )
+                        chomosomes_used[ chromosomes[keys[index]]["name"] ] = {"length" : chromosomes[keys[index]]["length"] }
                     else:
                         index +=1
                 t.write(chromosome, dict_chromosomes[chromosome], fields=track.Track.qualitative_fields)
@@ -154,7 +154,7 @@ def save_motif_profile( ex, motifs, background, genrep, chromosomes, data_path,
     futures         = {}
     regions         = {}
     chromosomes_set = set()
-    chomosomes_used = []
+    chomosomes_used = {}
     keys            = chromosomes.keys()
     if not(isinstance(motifs,dict)):
         raise ValueError("'Motifs' must be a dictionary with keys 'motif_names' and values the PWMs.")
@@ -216,8 +216,8 @@ def save_motif_profile( ex, motifs, background, genrep, chromosomes, data_path,
             if i >= len(keys):
                 raise ValueError("Chromosomes named: %s not found in selected assembly!"%(chromosome))
             elif chromosomes[keys[i]]["name"] == chromosome:
-                isSearchingChromosome   = False
-                chomosomes_used.append( chromosomes[keys[i]] )
+                isSearchingChromosome                           = False
+                chomosomes_used[ chromosomes[keys[i]]["name"] ] = {"length" : chromosomes[keys[i]]["length"] }
             else:
                 i +=1
 

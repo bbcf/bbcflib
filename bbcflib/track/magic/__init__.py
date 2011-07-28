@@ -3,7 +3,8 @@
 Subpackage: bbcflib.track.magic
 ===============================
 
-This function uses the py-magic project at github.com/ahupp/python-magic to guess formats, but since it needs a special version and that isn't in PyPI we can't really rely on it.
+This function uses the python-magic project at ftp://ftp.astron.com/pub/file/ to guess formats.
+The python-magic is part of file project (file unix command)
 
 """
 

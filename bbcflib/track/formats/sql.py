@@ -44,8 +44,8 @@ class TrackFormat(Track, TrackExtras):
         self.all_chrs.sort(key=natural_sort)
 
     def unload(self, datatype=None, value=None, traceback=None):
-        if self.chrmeta.modified: self.chrmeta_write()
         if self.attributes.modified: self.attributes_write()
+        if self.chrmeta.modified: self.chrmeta_write()
         self.make_missing_indexes()
         self.connection.commit()
         self.cursor.close()
@@ -221,6 +221,21 @@ class TrackFormat(Track, TrackExtras):
         # Return the results #
         return self.cursor.execute(sql_request).fetchone()[0]
 
+    def ucsc_to_ensembl(self):
+        '''Converts all entries of a track from the UCSC standard to the Ensembl standard.
+
+           ``ucsc_to_ensembl`` returns nothing.
+        '''
+        for chrom in self.chrs_from_tables: self.cursor.execute("update '" + chrom + "' set start=start+1")
+
+    def ensembl_to_ucsc(self):
+        '''Converts all entries of a track from the Ensembl standard to the UCSC standard.
+
+           ``ensembl_to_ucsc`` returns nothing.
+        '''
+        for chrom in self.chrs_from_tables: self.cursor.execute("update '" + chrom + "' set start=start-1")
+
+    #--------------------------------------------------------------------------#
     @staticmethod
     def create(path):
         connection = sqlite3.connect(path)

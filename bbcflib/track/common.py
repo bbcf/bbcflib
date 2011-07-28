@@ -15,6 +15,17 @@ def check_path(path):
     if os.path.exists(path): raise Exception("The location '" + path + "' is already taken")
 
 ###########################################################################
+def check_executable(tool_name):
+    """
+    Raises an exception if the executable *tool_name* is not found.
+    """
+    import subprocess
+    try:
+        proc = subprocess.Popen([tool_name], stderr=subprocess.PIPE)
+    except OSError:
+         raise Exception("The executable '" + tool_name + "' cannot be found")
+
+###########################################################################
 def natural_sort(item):
     """
     Will sort strings that contain numbers correctly
@@ -54,6 +65,18 @@ def sentinelize(iterable, sentinel):
     """
     for item in iterable: yield item
     yield sentinel
+
+###############################################################################
+def sqlcmp(file_a, file_b):
+    """
+    Compare two two sqlite3 databases via their dumps
+    """
+    import itertools, sqlite3
+    A = sqlite3.connect(file_a)
+    B = sqlite3.connect(file_b)
+    for a,b in itertools.izip_longest(A.iterdump(), B.iterdump()):
+        if a != b: return False
+    return True
 
 ###############################################################################
 terminal_colors = {

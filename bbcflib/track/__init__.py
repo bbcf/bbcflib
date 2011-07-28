@@ -53,11 +53,11 @@ For instance, to make a new track from an old one, and invert the strand of ever
             for chrom in a:
                 b.write(chrom, invert_strands(a.read(chrom)))
 
-To convert a track from a format (e.g. BED) to an other format (e.g. SQL) you first load the track and call the convert method on it::
+To convert a track from a format (e.g. BED) to an other format (e.g. SQL) you first load the track and call the export method on it::
 
     from bbcflib import track
     with track.load('tracks/rp_genes.bed') as rpgenes:
-        rpgenes.convert('tracks/rp_genes.sql', 'sql')
+        rpgenes.export('tracks/rp_genes.sql', 'sql')
 
 To set the chromosome metadata or the track metadata you simply asign to that attribute::
 
@@ -66,7 +66,7 @@ To set the chromosome metadata or the track metadata you simply asign to that at
         t.chrmeta    = ``{'chr1': {'length': 197195432}, 'chr2': {'length': 129993255}}``
         t.attributes = {'datatype': 'quantitative', 'source': 'UCSC'}
 
-It is important to note that the general numbering convention of features on a chromosome varies depending on the source of the data. For instance, UCSC and Ensembl differ in this point such that an interval labeled `(start=4,end=8)` will span four base pairs according to UCSC but will span five base pairs according to Ensembl. The representation that the this packages sticks to is explained `here <http://bbcf.epfl.ch/twiki/bin/view/BBCF/NumberingConvention>`_
+It is important to note that the general numbering convention of features on a chromosome varies depending on the source of the data. For instance, UCSC and Ensembl differ in this point such that an interval labeled `(start=4,end=8)` will span four base pairs according to UCSC but will span five base pairs according to Ensembl. The representation that the this packages sticks to is explained `here <http://bbcf.epfl.ch/twiki/bin/view/BBCF/NumberingConvention>`_.
 """
 
 __all__ = ['load', 'new']
@@ -164,13 +164,11 @@ class Track(object):
 
         *selection* can be the name of a chromosome, in which case all the data on that chromosome will be returned.
 
-        *selection* can also be a dictionary specifying: regions, score intervals or strands. Indeed, you can specify either region in which case only features contained in that region will be returned or a dictionary specifying a score interval in which case only features contained in that score boundaries will be returned. You can also specify a strand. The dictionary can specify one or several of these arguemts. See examples for more details
+        *selection* can also be a dictionary specifying: regions, score intervals or strands. Indeed, you can specify a region in which case only features contained in that region will be returned. You can also input a tuple specifying a score interval in which case only features contained in those score boundaries will be returned. You can even specify a strand. The dictionary can contain one or several of these arguemts. See examples for more details.
 
         Adding the parameter ``'inclusion':'strict'`` to a region dictionary will return only features exactly contained inside the interval instead of features simply included in the interval.
 
-       To combine multiple selections you can specify a list including chromosome names and region dictionaries. As expected, if such is the case, the joined data from those selections will be returned with an added 'chr' field in front since the results may span several chromosomes.
-
-        When *selection* is left empty, the data from all chromosome is returned.
+        To combine multiple selections you can specify a list including chromosome names and region dictionaries. As expected, if such is the case, the joined data from those selections will be returned with an added 'chr' field in front since the results may span several chromosomes. When *selection* is left empty, the data from all chromosome is returned.
 
         * *fields* is a list of fields which will influence the length of the tuples returned and the way in which the information is returned. The default for quantitative tracks is ``['start', 'end', 'name', 'score', 'strand']`` and ``['start', 'end', 'score']`` for quantitative tracks.
 
@@ -276,9 +274,9 @@ class Track(object):
            Examples::
 
                from bbcflib import track
-               with track.load('tracks/rp_genes.bed') as t:
-                   t.export('tracks/rp_genes.sql', 'sql')
                with track.load('tracks/rp_genes.sql') as t:
+                   t.export('tracks/rp_genes.bed')
+               with track.load('tracks/rp_genes.bed') as t:
                    t.write('chr1', generate_data())
 
            ``export`` returns nothing but a new file is created at the specified *path* while the current track object is left untouched.
@@ -286,9 +284,10 @@ class Track(object):
         if os.path.exists(path): raise Exception("The location '" + path + "' is already taken")
         if not format: format = os.path.splitext(path)[1][1:]
         with new(path, format) as t:
-            t.attributes = self.attributes
             t.chrmeta    = self.chrmeta
-            for chrom in self.all_chrs: t.write(chrom, self.read(chrom), self.fields)
+            t.attributes = self.attributes
+            fields = self.fields
+            for chrom in self.all_chrs: t.write(chrom, self.read(chrom), fields)
 
     def convert(self, path, format=None):
         '''Converts a track to a given format dynamically.
@@ -312,6 +311,33 @@ class Track(object):
             raise Exception("The track '" + path + "' cannot be converted to the " + format + " format because it is already in that format.")
         self.mutate_source(path, format)
 
+    def ucsc_to_ensembl(self):
+        '''Converts all entries of a track from the UCSC standard to the Ensembl standard effectively adding one to every start position.
+
+           Examples::
+
+               from bbcflib import track
+               with track.load('tracks/example.sql') as t:
+                   t.ucsc_to_ensembl()
+
+           ``ucsc_to_ensembl`` returns nothing.
+        '''
+        raise NotImplementedError
+
+    def ensembl_to_ucsc(self):
+        '''Converts all entries of a track from the Ensembl standard to the UCSC standard effectively subtracting one from every start position.
+
+           Examples::
+
+               from bbcflib import track
+               with track.load('tracks/rp_genes.bed') as t:
+                   t.ensembl_to_ucsc()
+
+           ``ensembl_to_ucsc`` returns nothing.
+        '''
+        raise NotImplementedError
+
+    #-----------------------------------------------------------------------------#
     def mutate_source(self, path, format):
         '''Change a <Track> instance to a given format dynamically'''
         self.format = format
