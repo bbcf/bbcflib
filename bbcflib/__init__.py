@@ -44,18 +44,21 @@ bbcflib requires:
 * libmagic (http://sourceforge.net/projects/libmagic/)
 
     Mac OS and Windows
-    ------------------
+    ==================
 
     On these system by default libmagic is not present.
 
     Generic procedure installation
+    ------------------
         * download latest version from ftp://ftp.astron.com/pub/file/
         * extract directory from archive
         * inside directory run
           * ./configure
           * make
           * make install
+
     Mac OS with homebrew
+    ------------------
         run command below:
             * brew install libmagic
             * chmod +x [Path to Cellar]/libmagic/[version]/bin/file
