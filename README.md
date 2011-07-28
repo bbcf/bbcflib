@@ -33,9 +33,11 @@ bbcflib requires:
     Mac OS with homebrew
         run command below:
             * brew install libmagic
-            * chmod +x ~/brew/Cellar/libmagic/5.07/bin/file
+            * chmod +x [Path to Cellar]/libmagic/[version]/bin/file
+            Path to Cellar by default = /usr/local/Cellar
+            At this time version = 5/04
             * brew link libmagic
-        Warning: 5.07 number is libmagic version this number could change!
+        Warning: 5.04 number is libmagic version this number could change!
 
 bbcflib doesn't have regular releases, since it is an internally used
 library. You should download the latest source code from GitHub,
