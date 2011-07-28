@@ -45,7 +45,8 @@ With a ``ConfigParser``, the previous code would look like::
 # Built-in modules #
 import urllib2, json, os
 from datetime import datetime
-
+from urllib2 import HTTPError 
+from bbcflib.exception import NRAssemblyNotFound
 # Internal modules #
 from .common import normalize_url
 
@@ -286,15 +287,39 @@ class GenRep(object):
             path = os.path.join(root,assembly.md5+".fa.gz")
         return path
     
-    def get_nr_assembly(self,nr_assembly):
+    
+    def get_genrep_objects(self,url_tag,info_tag,filters={}):
         '''
-        Get an NR_Assembly object corresponding to *nr_assembly*.
-
-        *nr_assembly* must be an integer giving the nr_assembly ID
+        Get a list of GenRep objets
+        ... attribute url_tag : the GenrepObject type (plural)
+        ... attribute info_tag : the GenrepObject type (singular)
+        Optionals attributes :
+        ... attribute filters : a dict that is used to filter the response
+        from GenRep.
+        Example : 
+        To get the genomes related to 'Mycobacterium leprae' species.
+        First get the species with the right name :
+        species = get_genrep_objects('organisms','organism',{'species':'Mycobacterium leprae'})[0]
+        genomes = get_genrep_objects('genomes','genome',{'organism_id':species.id})
         '''
-        assembly_info = json.load(urllib2.urlopen("""%s/nr_assemblies/%d.json""" % (self.url, nr_assembly)))
-        return GenrepObject(assembly_info,'nr_assembly')
-
+        url = """%s/%s.json""" % (self.url,url_tag)
+        infos = json.load(urllib2.urlopen(url))
+        result = []
+        # get objects
+        for info in infos:
+            obj = GenrepObject(info,info_tag)
+            if not filters :
+                result.append(obj)
+            else : # filter
+                for k,v in filters.items():
+                    if hasattr(obj,k):
+                        if getattr(obj,k)==v:
+                            result.append(obj)
+        return result
+    
+        
+    
+    
 ################################################################################
 class Assembly(object):
     def __init__(self, assembly_id, assembly_name, index_path,
