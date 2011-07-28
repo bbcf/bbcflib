@@ -49,7 +49,7 @@ bbcflib requires:
     On these system by default libmagic is not present.
 
     Generic procedure installation
-    ------------------
+    ------------------------------
         * download latest version from ftp://ftp.astron.com/pub/file/
         * extract directory from archive
         * inside directory run
@@ -57,8 +57,8 @@ bbcflib requires:
           * make
           * make install
 
-    Mac OS with homebrew
-    ------------------
+    Mac OS installation with homebrew
+    ---------------------------------
         run command below:
             * brew install libmagic
             * chmod +x [Path to Cellar]/libmagic/[version]/bin/file
