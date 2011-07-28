@@ -46,7 +46,6 @@ With a ``ConfigParser``, the previous code would look like::
 import urllib2, json, os
 from datetime import datetime
 from urllib2 import HTTPError 
-from bbcflib.exception import NRAssemblyNotFound
 # Internal modules #
 from .common import normalize_url
 
