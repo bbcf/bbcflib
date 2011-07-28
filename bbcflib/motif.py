@@ -98,7 +98,7 @@ def parse_meme_html_output(ex, meme, fasta, chromosomes):
                         raise ValueError("Chromosomes named: %s not found in select assembly!"%(chromosome))
                     elif chromosomes[keys[index]]["name"] == chromosome:
                         isSearchingChromosome   = False
-                        chomosomes_used[ chromosomes[keys[index]]["name"] ] = {"length" : chromosomes[keys[index]] }
+                        chomosomes_used[ chromosomes[keys[index]]["name"] ] = {"length" : chromosomes[keys[index]]["length"] }
                     else:
                         index +=1
                 t.write(chromosome, dict_chromosomes[chromosome], fields=track.Track.qualitative_fields)
@@ -217,7 +217,7 @@ def save_motif_profile( ex, motifs, background, genrep, chromosomes, data_path,
                 raise ValueError("Chromosomes named: %s not found in selected assembly!"%(chromosome))
             elif chromosomes[keys[i]]["name"] == chromosome:
                 isSearchingChromosome                           = False
-                chomosomes_used[ chromosomes[keys[i]]["name"] ] = {"length" : chromosomes[keys[i]] }
+                chomosomes_used[ chromosomes[keys[i]]["name"] ] = {"length" : chromosomes[keys[i]]["length"] }
             else:
                 i +=1
 
