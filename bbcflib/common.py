@@ -22,7 +22,7 @@ def normalize_url(url):
     >>> normalize_url('bbcf.epfl.ch/')
     'http://bbcf.epfl.ch'
     """
-    url = url.lower()
+    # url = url.lower()
     if not(url.startswith("http://")):
         url = "http://" + url
     if url.endswith("/"):

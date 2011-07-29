@@ -45,7 +45,7 @@ With a ``ConfigParser``, the previous code would look like::
 # Built-in modules #
 import urllib2, json, os
 from datetime import datetime
-from urllib2 import HTTPError 
+from urllib2 import HTTPError
 # Internal modules #
 from .common import normalize_url
 
@@ -271,7 +271,7 @@ class GenRep(object):
             with open(output, "w") as f:
                 if matrix_format:
                     f.write(">Assembly: %s\n" % assembly.name)
-                    f.write(stat["A"],stat["C"],stat["G"],stat["T"])
+                    f.write("%s\t%s\t%s\t%s" %(stat["A"],stat["C"],stat["G"],stat["T"]))
                     f.write("\n")
                 else:
                     f.write("#Assembly: %s\n" % assembly.name)
@@ -294,8 +294,8 @@ class GenRep(object):
             root = os.path.join(self.root,"nr_assemblies/exons_fasta")
             path = os.path.join(root,assembly.md5+".fa.gz")
         return path
-    
-    
+
+
     def get_genrep_objects(self,url_tag,info_tag,filters={}):
         '''
         Get a list of GenRep objets
@@ -304,7 +304,7 @@ class GenRep(object):
         Optionals attributes :
         ... attribute filters : a dict that is used to filter the response
         from GenRep.
-        Example : 
+        Example :
         To get the genomes related to 'Mycobacterium leprae' species.
         First get the species with the right name :
         species = get_genrep_objects('organisms','organism',{'species':'Mycobacterium leprae'})[0]
@@ -324,10 +324,10 @@ class GenRep(object):
                         if getattr(obj,k)==v:
                             result.append(obj)
         return result
-    
-        
-    
-    
+
+
+
+
 ################################################################################
 class Assembly(object):
     def __init__(self, assembly_id, assembly_name, index_path,
