@@ -191,21 +191,21 @@ def save_motif_profile( ex, motifs, background, genrep, chromosomes, data_path,
                     with track.load(sqlout,  format="sql") as t:
                         t.write(cur_chr, vals)
                     index           = 0
-                    vals            = [(start-1,start+len(s[1]),name+":"+s[1],float(s[2]),s[4])]
+                    vals            = [(start-1, start+len(s[1]), float(s[2]), name, s[4], "sequence="+s[1])]
                     previous_feature= s[0]
                 cur_chr = reg[0]
                 if not keep_max_only:
-                    vals.append((start-1,start+len(s[1]),name+":"+s[1],float(s[2]),s[4]))
+                    vals.append((start-1, start+len(s[1]),float(s[2]), name, s[4], "sequence="+s[1]))
                 else:
                     if previous_feature == "":
                         previous_feature= s[0]
-                        vals.append((start-1,start+len(s[1]),float(s[2]),s[4],name+":"+s[1]))
+                        vals.append((start-1, start+len(s[1]), float(s[2]), name, s[4], "sequence="+s[1]))
                     elif previous_feature == s[0] and vals[index][2] < float(s[2]):
-                            vals[index] = (start-1,start+len(s[1]),name+":"+s[1],float(s[2]),s[4])
+                            vals[index] = (start-1, start+len(s[1]), float(s[2]), name, s[4], "sequence="+s[1])
                     elif previous_feature != s[0]:
                         previous_feature= s[0]
                         index           += 1
-                        vals.append((start-1,start+len(s[1]),name+":"+s[1],float(s[2]),s[4]))
+                        vals.append((start-1, start+len(s[1]), float(s[2]), name, s[4], "sequence="+s[1]))
         if len(vals)>0:
             with track.load(sqlout,  format="sql") as t:
                 t.write(cur_chr, vals, fields=track.Track.qualitative_fields)

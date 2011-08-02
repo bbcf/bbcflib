@@ -154,7 +154,7 @@ class TrackFormat(Track, TrackExtras):
         if not selection:
             selection = self.chrs_from_tables
         # Case list of things #
-        if isinstance(selection, list) or isinstance(selection, tuple):
+        if isinstance(selection, (list, tuple)):
             return join_read_queries(self, selection, fields)
         # Case chromsome name #
         if isinstance(selection, basestring):
