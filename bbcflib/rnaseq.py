@@ -17,21 +17,23 @@ from .genrep import GenRep
 # Other modules #
 from bein.util import *
 from numpy import *
+from numpy.linalg import pinv #started to take a census of used numpy libs...
 from scipy import stats
 from scipy.interpolate import UnivariateSpline
 from rpy2 import robjects
 import rpy2.robjects.packages as rpackages
 import rpy2.robjects.numpy2ri
 import rpy2.rlike.container as rlc
+import cogent.db.ensembl as ensembl
 
 ################################################################################
-def fetch_transcript_mapping(ex, assembly_id):
-    """Given an assembly ID, return a dictionary giving an exon to orf mapping.
 
-    The *assembly_id* can be a string or integer.  If it is an
-    integer, the mapping is looked up from GenRep.  Otherwise it is
-    assumed to be a file containing a JSON object which is read to get
-    the mapping.
+def fetch_orf_mapping(ex, assembly_id):
+    """Given an assembly ID, return a dictionary giving an exon to gene/ORF mapping.
+
+    The *assembly_id* can be a numeric or nominal ID for GenRep
+    (e.g. 76 or 'hg19' for H.Sapiens), or a path to a file containing a
+    JSON object which is read to get the mapping.
     """
     nr_assemblies = urllib.urlopen("http://bbcftools.vital-it.ch/genrep/nr_assemblies.json").read()
     nr_assemblies = json.loads(nr_assemblies)
@@ -39,24 +41,33 @@ def fetch_transcript_mapping(ex, assembly_id):
         if a['nr_assembly']['id'] == assembly_id or a['nr_assembly']['name'] == assembly_id:
             mdfive = a['nr_assembly']['md5']; break
 
-    if os.path.exists(str(mdfive) + '.pickle'):
-        with open(str(mdfive) + '.pickle', 'rb') as pickle_file:
+    if os.path.exists(str(assembly_id)):
+        with open(str(assembly_id), 'rb') as pickle_file:
             mapping = pickle.load(pickle_file)
-            return mapping
-        print "Exon to ORF mapping found in", os.path.dirname(pickle_path)
+        return mapping
+        print "Exon to gene/ORF mapping found in", os.path.dirname(mapping)
     elif os.path.exists("/db/genrep/nr_assemblies/exons_pickle/"+str(mdfive)+".pickle"):
         with open("/db/genrep/nr_assemblies/exons_pickle/"+mdfive+".pickle") as pickle_file:
             mapping = pickle.load(pickle_file)
         return mapping
-        print "Exon to ORF mapping found in /db/"
+        print "Exon to gene/ORF mapping found in /db/"
     else:
-        genrep = GenRep('http://bbcftools.vital-it.ch/genrep/',
-                        '/db/genrep/nr_assemblies/exons_pickle')
+        genrep = GenRep('http://bbcftools.vital-it.ch/genrep/','/db/genrep/nr_assemblies/exons_pickle')
         assembly = genrep.assembly(mdfive)
         with open(assembly.index_path + '.pickle', 'rb') as pickle_file:
             mapping = pickle.load(pickle_file)
             return mapping
-        print "Exon to ORF mapping found on GenRep"
+        print "Exon to gene/ORF mapping found on GenRep"
+
+def fetch_transcript_mapping(ex, assembly_id):
+    """Given an assembly ID, return a dictionary giving an exon to orf mapping.
+
+    The *assembly_id* can be a string or integer.  If it is an
+    integer, the mapping is looked up from Biomart.  Otherwise it is
+    assumed to be a file containing a JSON object which is read to get
+    the mapping.
+    """
+    pass
 
 def map_runs(fun, runs):
     """Parallelization of fun(run) executions"""
@@ -89,6 +100,8 @@ def pileup_file(bamfile, exons):
     c = Counter()
     for i,exon in enumerate(exons):
         sam.fetch(exon[0], 0, exon[1], callback=c)
+        #fetch(exon_name,0,exon_length,Counter())
+        #The callback (+1) will be executed for each alignment in a region
         counts[i] = c.n
         c.n = 0
     sam.close()
@@ -263,29 +276,36 @@ def rnaseq_workflow(ex, job, assembly, via="lsf", output=None, maplot="normal", 
     bam_files = map_groups(ex, job, fastq_root, assembly_or_dict = assembly)
     print "Reads aligned."
 
-    # gene_labels is a list whose i-th entry is a string giving
-    # the name of the gene assigned id i. The ids are arbitrary.
-    # exon_mapping is a list whose i-th entry is the integer id in
-    # gene_labels exon i maps to.
-    (gene_labels,exon_mapping) = fetch_transcript_mapping(ex, assembly_id)
-    exon_mapping = numpy.array(exon_mapping)
     # All the bam_files were created against the same index, so
     # they all have the same header in the same order.  I can take
     # the list of exons from just the first one and use it for all
     # of them
     exons = exons_labels(bam_files.values()[0][1]['bam'])
 
-    exon_pileups = {}; gene_pileups = {}
+    # gene_labels is a list whose i-th entry is a string giving
+    # the name of the gene assigned id i. The ids are arbitrary.
+    # exon_to_orf_mapping is a list whose i-th entry is the integer id in
+    # gene_labels exon i maps to. Same for transcript labels and mapping.
+    (gene_labels,exon_to_orf_mapping) = fetch_orf_mapping(ex, assembly_id)
+    exon_to_orf_mapping = numpy.array(exon_to_orf_mapping)
+    ### (tran_labels,exon_to_tran_mapping) = fetch_transcript_mapping(ex,assembly_id)
+    ### exon_to_tran_mapping = numpy.array(exon_to_tran_mapping)
+
+    exon_pileups = {}; gene_pileups = {}; tran_pileups = {}
     for condition,files in bam_files.iteritems():
         gene_pileups[condition] = []
         exon_pileups[condition] = []
+        tran_pileups[condition] = []
         for f in files.values():
-            exon_pileup = pileup_file(f['bam'], exons)
-            exon_pileups[condition].append(exon_pileup)
+            exon_pileup = pileup_file(f['bam'], exons) #array of ints (counts)
+            exon_pileups[condition].append(exon_pileup) #{cond1: [[counts bam1],[counts bam2],...], cond2:...}
             gene_pileup = numpy.zeros(len(gene_labels))
+            ### tran_pileup = numpy.zeros(len(tran_labels))
             for i,c in enumerate(exon_pileup):
-                gene_pileup[exon_mapping[i]] += c
+                gene_pileup[exon_to_orf_mapping[i]] += c
+                ### tran_pileup[exon_to_tran_mapping[i]] += c
             gene_pileups[condition].append(gene_pileup)
+            ### tran_pileups[condition].append(tran_pileup)
 
     futures = {}
     for (c1,c2) in pairs_to_test(controls):
@@ -300,6 +320,11 @@ def rnaseq_workflow(ex, job, assembly, via="lsf", output=None, maplot="normal", 
                                       names[c2], gene_pileups[c2],
                                       gene_labels,
                                       method, assembly_id, output, via=via),
+                                ## external_deseq.nonblocking(ex,
+                                ##       names[c1], tran_pileups[c1],
+                                ##       names[c2], tran_pileups[c2],
+                                ##       tran_labels,
+                                ##       method, assembly_id, output, via=via),
                                 external_deseq.nonblocking(ex,
                                       names[c1], exon_pileups[c1],
                                       names[c2], exon_pileups[c2],
@@ -312,20 +337,21 @@ def rnaseq_workflow(ex, job, assembly, via="lsf", output=None, maplot="normal", 
                 if gene_file:
                     ex.add(gene_file,
                            description="Comparison of GENES in conditions '%s' and '%s' (CSV)" % (names[c[0]], names[c[1]]))
+                    if maplot:
+                        res0 = robjects.DataFrame.from_csvfile(f[0].wait())
+                        figname, jsname = MAplot(res0, mode=maplot, deg=4, bins=100, alpha=0.005)
+                        ex.add(figname, description="MA-plot (genes)")
+                        ex.add(jsname, description="Data for javascript (genes)")
                 else: print "Failed during inference (genes), probably because of too few reads for DESeq stats."
                 if exons_file:
                     ex.add(exons_file,
                            description="Comparison of EXONS in conditions '%s' and '%s' (CSV)" % (names[c[0]], names[c[1]]))
-                else: print "Failed during inference (exons), probably because of too few reads for DESeq stats."
-                if maplot:
-                    if gene_file:
-                        res0 = robjects.DataFrame.from_csvfile(f[0].wait())
-                        figname, jsname = MAplot(res0, mode=maplot, deg=4, bins=100, alpha=0.005)
-                        ex.add(figname+'.png', description="MA-plot (genes)")
-                    if exons_file:
+                    if maplot:
                         res1 = robjects.DataFrame.from_csvfile(f[1].wait())
                         figname, jsname = MAplot(res1, mode=maplot, deg=4, bins=100, alpha=0.005)
-                        ex.add(figname+'.png', description="MA-plot (exons)")
+                        ex.add(figname, description="MA-plot (exons)")
+                        ex.add(jsname, description="Data for javascript (exons)")
+                else: print "Failed during inference (exons), probably because of too few reads for DESeq stats."
         else:
             print "Inference (genes only)..."
             futures[(c1,c2)] = external_deseq.nonblocking(ex,
@@ -341,11 +367,12 @@ def rnaseq_workflow(ex, job, assembly, via="lsf", output=None, maplot="normal", 
                 if maplot:
                     res = robjects.DataFrame.from_csvfile(f.wait())
                     figname,jsname = MAplot(res, mode=maplot, deg=4, bins=100, alpha=0.005)
-                    ex.add(figname+'.png', description="MA-plot of data")
+                    ex.add(figname, description="MA-plot (genes)")
+                    ex.add(jsname, description="Data for javascript (genes)")
         print "Done."
 
 
-def MAplot(data, mode="interactive", deg=4, bins=30, alpha=0.005):
+def MAplot(data, mode="interactive", deg=4, bins=30, alpha=0.005, assembly_id=None):
     """
     Creates an "MA-plot" to compare transcription levels of a set of genes
     in two different conditions. It returns the name of the .png file produced,
@@ -356,6 +383,7 @@ def MAplot(data, mode="interactive", deg=4, bins=30, alpha=0.005):
     - if "interactive", click on a point to display its name
     - if "normal", name of genes over 99%/under 1% quantile are displayed
     alpha: a threshold for p-values: points beyond it are emphasized.
+    assembly_id  : if an assembly ID is given, the json output will provide links to information on genes.
     """
 
     import matplotlib.pyplot as plt
@@ -372,7 +400,7 @@ def MAplot(data, mode="interactive", deg=4, bins=30, alpha=0.005):
     points=[]; blackpoints=[]; redpoints=[]; annotes_red=[]; annotes_black=[]
     for i in range(len(ratios)):
         if not math.isnan(ratios[i]) and not math.isinf(ratios[i]):
-            p = (names[i],ratios[i],log10(means[i]))
+            p = (names[i],log10(means[i]),ratios[i])
             if pvals[i] < alpha:
                 redpoints.append((p[1],p[2]))
                 annotes_red.append(p[0])
@@ -380,7 +408,7 @@ def MAplot(data, mode="interactive", deg=4, bins=30, alpha=0.005):
                 blackpoints.append((p[1],p[2]))
                 annotes_black.append(p[0])
             points.append(p)
-    names,ratios,means = zip(*points)
+    names,means,ratios = zip(*points)
     xmin = min(means); xmax = max(means); ymin = min(ratios); ymax = max(ratios)
 
     ## Create bins
@@ -394,8 +422,8 @@ def MAplot(data, mode="interactive", deg=4, bins=30, alpha=0.005):
 
     points_in = {}; perc = {}
     for b in range(bins):
-        points_in[b] = [p for p in points if p[2]>=intervals[b] and p[2]<intervals[b+1]]
-        perc[b] = [p[1] for p in points_in[b]]
+        points_in[b] = [p for p in points if p[1]>=intervals[b] and p[1]<intervals[b+1]]
+        perc[b] = [p[2] for p in points_in[b]]
 
     ## Figure
     fig = plt.figure(figsize=[14,9])
@@ -406,13 +434,14 @@ def MAplot(data, mode="interactive", deg=4, bins=30, alpha=0.005):
     ### Points
     blackpts = array(zip(*blackpoints))
     redpts = array(zip(*redpoints))
-    ax.plot(blackpts[1], blackpts[0], ".", color="black")
+    ax.plot(blackpts[0], blackpts[1], ".", color="black")
     if len(redpts) != 0:
-        ax.plot(redpts[1], redpts[0], ".", color="red")
+        ax.plot(redpts[0], redpts[1], ".", color="red")
 
     ### Lines (best fit of percentiles)
     spline_annotes=[]; spline_coords={}
-    for k in [1,5,25,50,75,95,99]:
+    percentiles = [1,5,25,50,75,95,99]
+    for k in percentiles:
         h = ones(bins)
         for b in range(bins):
             if points_in[b] != []:
@@ -443,31 +472,54 @@ def MAplot(data, mode="interactive", deg=4, bins=30, alpha=0.005):
         plt.show()
     else:
         for p in redpoints:
-            ax.annotate(p[0], xy=(p[2],p[1]) )
-    figname = unique_filename_in()
+            ax.annotate(p[0], xy=(p[1],p[2]) )
+    figname = unique_filename_in()+".png"
     fig.savefig(figname)
 
     ## Output for Javascript
-    jsdata = [{"name": "Genes with p-value < " + str(alpha),
+    def rgb_to_hex(rgb):
+        return '#%02x%02x%02x' % rgb
+    jsdata = [{"label": "Genes with p-value < " + str(alpha),
                "data": redpoints,
                "labels": annotes_red,
-               "points": {"symbol":"circle"},
+               "points": {"symbol":"circle", "show":True},
                "color": "red"},
-              {"name": "Other genes",
+              {"label": "Other genes",
                "data": blackpoints,
                "labels": annotes_black,
-               "points": {"symbol":"circle"},
+               "points": {"symbol":"circle", "show":True},
                "color": "black"},
-              {"name": "Splines",
-               "data": [(x,y) for (x,y) in spline_coords[k] for k in [1,5,25,50,75,95,99]],
-               "color": "blue"},
-              {"name": "Spline labels",
-               "data": [s[0] for s in spline_coords[k] for k in [1,5,25,50,75,95,99]],
-               "labels": ["1%","5%","25%","50%","75%","95%","99%"]}
-              ]
-    jsname = unique_filename_in()
-    with open(jsname+".js","w") as js:
-        json.dump(jsdata,js)
+              ## {"label": "Spline labels",
+              ##  "data": [s[0] for s in spline_coords[k] for k in percentiles],
+              ##  "labels": ["1%","5%","25%","50%","75%","95%","99%"]},
+              {"label": "Mean", "data": spline_coords[50],
+               "lines": {"show":True}, "color": rgb_to_hex((255,0,255)) },
+              {"label": "1% Quantile", "data": spline_coords[1], "lines": {"show":True, "lineWidth":0, "fill": 0.1},
+               "color": rgb_to_hex((255,0,255)), "fillBetween": "Spline 1%"},
+              {"label": "5% Quantile", "data": spline_coords[5], "lines": {"show":True, "lineWidth":0, "fill": 0.18},
+               "color": rgb_to_hex((255,0,255)), "fillBetween": "Spline 5%"},
+              {"label": "25% Quantile", "data": spline_coords[25], "lines": {"show":True, "lineWidth":0, "fill": 0.3},
+               "color": rgb_to_hex((255,0,255)), "fillBetween": "Spline 25%"},
+              {"label": "75% Quantile", "data": spline_coords[75], "lines": {"show":True, "lineWidth":0, "fill": 0.3},
+               "color": rgb_to_hex((255,0,255)), "fillBetween": "Spline 75%"},
+              {"label": "95% Quantile", "data": spline_coords[95], "lines": {"show":True, "lineWidth":0, "fill": 0.18},
+               "color": rgb_to_hex((255,0,255)), "fillBetween": "Spline 95%"},
+              {"label": "99% Quantile", "data": spline_coords[99], "lines": {"show":True, "lineWidth":0, "fill": 0.1},
+               "color": rgb_to_hex((255,0,255)), "fillBetween": "Spline 99%"}
+             ]
+    jsdata = "var data = " + json.dumps(jsdata) + ";"
+    if assembly_id:
+        nr_assemblies = urllib.urlopen("http://bbcftools.vital-it.ch/genrep/nr_assemblies.json").read()
+        nr_assemblies = json.loads(nr_assemblies)
+        if isinstance(assembly_id,str):
+            for a in nr_assemblies:
+                if a['nr_assembly']['name'] == assembly_id:
+                    assembly_id = a['nr_assembly']['id']; break
+        jsdata = jsdata + "\n var url_template = 'http://bbcftools.vital-it.ch/genrep/nr_assemblies/" \
+                        +  str(assembly_id) + "/get_links.json?gene_name=%3CName%3E';"
+    jsname = unique_filename_in()+".js"
+    with open(jsname,"w") as js:
+        js.write(jsdata)
 
     return figname, jsname
 
@@ -476,9 +528,9 @@ class AnnoteFinder:
   callback for matplotlib to display an annotation when points are clicked on.  The
   point which is closest to the click and within xtol and ytol is identified.
 
-  Register this function like this:
+  Use this function like this:
 
-  scatter(xdata, ydata)
+  plot(xdata, ydata)
   af = AnnoteFinder(xdata, ydata, annotes)
   connect('button_press_event', af)
   """
