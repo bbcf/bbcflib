@@ -21,7 +21,7 @@ class TrackFormat(TrackText, TrackProxy):
     def _read_entries(self):
         self._file.seek(0)
         seen_track = False
-        for line in self._file:
+        for number, line in enumerate(self._file):
             line = line.strip("\n").lstrip()
             if len(line) == 0:              continue
             if line.startswith("#"):        continue
@@ -43,6 +43,10 @@ class TrackFormat(TrackText, TrackProxy):
                 raise Exception("The file '" + self._path + "' has non integers as interval bounds and is hence not valid.")
             if line[2] <= line[1]:
                 raise Exception("The file '" + self._path + "' has negative or null intervals and is hence not valid.")
+            try:
+                if  line[3] == '.' or line[3] == '': line[3] = "feature_"+str(number)
+            except IndexError:
+                line.append("feature_"+str(number))
             try:
                 if line[4] == '.' or line[4] == '': line[4] = 0.0
             except IndexError:

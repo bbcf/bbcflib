@@ -60,7 +60,7 @@ def create_sql_track(path, chrmeta, datatype="quantitative", format='sql', name=
 ###############################################################################
 ###############################################################################
 try:
-    from bein import *
+    from bein import unique_filename_in, program
 
     #-------------------------------------------------------------------------#
     def get_files( id_or_key, minilims ):
