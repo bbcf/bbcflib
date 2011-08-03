@@ -344,8 +344,9 @@ def get_fastq_files( job, fastq_root, dafl=None, set_seed_length=True ):
                     fq_file2 = unique_filename_in(fastq_root)
                     target2 = os.path.join(fastq_root,fq_file2)
                     with open(target2,'w') as output_file:
-                        with gzip.open(target, 'rb') as input_file:
-                            output_file.write(input_file.read())
+                        input_file = gzip.open(target, 'rb')
+                        output_file.write(input_file.read())
+                        input_file.close()
                     fq_file = fq_file2
                 job.groups[gid]['runs'][rid] = fq_file
                 job.groups[gid]['run_names'][rid] = os.path.basename(run.split("/")[-1])
