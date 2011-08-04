@@ -202,7 +202,7 @@ def inference(cond1_label, cond1, cond2_label, cond2, transcript_names, method =
         idtoname = {}; res_names = []; gid = None; l = None
         (assem, headers) = urllib.urlretrieve("http://bbcftools.vital-it.ch/genrep/nr_assemblies/" + str(assembly_id) + ".gtf")
         with open(assem) as assembly:
-            for l in [line for line in assembly.readlines() if line.find("gene_name")! = -1]:
+            for l in [line for line in assembly.readlines() if line.find("gene_name") != -1]:
                 gid = l.split("gene_id")[1].split(";")[0].strip(" \"")
                 gname = l.split("gene_name")[1].split(";")[0].strip(" \"")
                 idtoname[gid] = gname
@@ -214,7 +214,7 @@ def inference(cond1_label, cond1, cond2_label, cond2, transcript_names, method =
             for i in res_ids:
                 res_names.append(i.split("|")[0] + idtoname.get(i.split("|")[1]), i)
         data_frame = robjects.DataFrame({"Name":robjects.StrVector(res_names)})
-        for i in range(2, len(res)+1): 
+        for i in range(2, len(res)+1):
             data_frame = data_frame.cbind(res.rx(i))
         res = data_frame
 
