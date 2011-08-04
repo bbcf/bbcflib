@@ -38,15 +38,14 @@ Below is the script used by the frontend::
 """
 
 # Built-in modules #
-import shutil, pickle, urllib
-
+import shutil, pickle, urllib, frontend, mapseq
 # Internal modules #
 import bbcflib.mapseq, bbcflib.frontend
 from .common import create_sql_track, merge_sql, merge_many_bed, join_pdf
 
 # Other modules #
 from bein import program, unique_filename_in, MiniLIMS
-from bein.util import os, re
+from bein.util import os, re, touch, merge_bam
 
 ################################################################################
 # Peaks and annotation #
@@ -410,7 +409,7 @@ def workflow_groups( ex, job_or_dict, mapseq_files, chromosomes, script_path = '
                                                           merge    = -1,
                                                           convert  = False,
                                                           b2w_args = b2w_args, via = via )
-                    wig.append(dict((s,output+s+'.sql') for s in suffixes))
+                    wig.append(dict((s, output+s+'.sql') for s in suffixes))
                 else:
                     wig.append(m['wig'])
             if len(wig) > 1:
