@@ -218,7 +218,7 @@ def pprint_bamstats(sample_stats) :
 
 def map_reads( ex, fastq_file, chromosomes, bowtie_index,
                maxhits = 5, antibody_enrichment = 50, name = '',
-               remove_pcr_duplicates = True, bwt_args = [], via = 'lsf' ):
+               remove_pcr_duplicates = True, bwt_args = None, via = 'lsf' ):
     """Runs ``bowtie`` in parallel over lsf for the `fastq_file` input.
     Returns the full bamfile, its filtered version (see 'remove_duplicate_reads')
     and the mapping statistics dictionary (see 'bamstats').
@@ -234,6 +234,8 @@ def map_reads( ex, fastq_file, chromosomes, bowtie_index,
     The mapping statistics dictionary is pickled and added to the execution's
     repository, as well as both the full and filtered bam files.
     """
+    if bwt_args is None:
+        bwt_args = []
     bwtarg = ["-Sam", str(max(20, maxhits)), "--best", "--strata"]+bwt_args
     if count_lines( ex, fastq_file )>10000000:
         bam = parallel_bowtie( ex, bowtie_index, fastq_file,
