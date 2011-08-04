@@ -31,10 +31,10 @@ class TrackRandom(Track):
         if fields: raise Exception(0, "You can't specify fields on a random track")
         start = 0
         for feat in range(int(self.size + 4*self.size*random.random())):
-            start = start + (random.randint(0, 00))
-            end = start + (random.randint(1, 00) )
+            start = start + (random.randint(0,100))
+            end = start + (random.randint(1,100) )
             score = random.gammavariate(1, 0.1) * 1000
-            strand = map(lambda x: x==1 and 1 or -1, [random.randint(0, )])[0]
+            strand = map(lambda x: x==1 and 1 or -1, [random.randint(0,1)])[0]
             yield [start, end, self.name_gen.next(), score, strand]
 
     @property

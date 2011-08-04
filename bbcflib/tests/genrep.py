@@ -73,7 +73,7 @@ class Test_GenRep(unittest.TestCase):
                                      'bbcftools.vital-it.ch/genrep']]
         g = GenRep('http://bbcftools.vital-it.ch/genrep', '')
         self.assertRaises(ValueError,
-                          lambda : g.query_url('boris', 1, , ]))
+                          lambda : g.query_url('boris',[1,2,3]))
 
     def assertAssembliesEqual(self, a, b):
         self.assertEqual(a.id, b.id)

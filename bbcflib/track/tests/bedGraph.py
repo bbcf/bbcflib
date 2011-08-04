@@ -40,7 +40,7 @@ class Test_Write(unittest.TestCase):
             for chrom, data in sorted(features.items()):
                 t.write(chrom, data)
         with open(path,                                     'r') as f: A = f.read().split('\n')
-        with open(track_collections['Signals']['A']['path'], r') as f: B = f.read().split('\n')
+        with open(track_collections['Signals']['A']['path'],'r') as f: B = f.read().split('\n')
         self.assertEqual(A[1:], B)
         os.remove(path)
 

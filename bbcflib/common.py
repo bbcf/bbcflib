@@ -35,9 +35,9 @@ def cat(files):
     """
     if len(files) > 1:
         out = unique_filename_in()
-        with open(out, w") as f1:
+        with open(out,"w") as f1:
             for inf in files:
-                with open(inf, r") as f2:
+                with open(inf,"r") as f2:
                     [f1.write(l) for l in f2]
                     f2.close()
             f1.close()
@@ -77,11 +77,11 @@ try:
         else:
             exid = id_or_key
         file_dict = {}
-        all = dict((y['repository_name'], ['description']) for y in
-                   [minilims.fetch_file(x) for x in minilims.search_files(source=('execution', xid))])
-        for f,  in all.iteritems():
-            cat, ame = re.search(r'([^:]+):(.*)$', ).groups()
-            name = re.sub(r'\s+\(BAM INDEX\)', .bai', ame)
+        all = dict((y['repository_name'],y['description']) for y in
+                   [minilims.fetch_file(x) for x in minilims.search_files(source=('execution',exid))])
+        for f,d in all.iteritems():
+            cat,name = re.search(r'([^:]+):(.*)$',d).groups()
+            name = re.sub(r'\s+\(BAM INDEX\)','.bai',name)
             if cat in file_dict:
                 file_dict[cat].update({f: name})
             else:
@@ -93,13 +93,13 @@ try:
     def run_gMiner( job ):
         import pickle
         job_file = unique_filename_in()
-        with open(job_file, w') as f:
-            pickle.dump(job, )
+        with open(job_file,'w') as f:
+            pickle.dump(job,f)
         def get_output_files(p):
-            with open(job_file, r') as f:
+            with open(job_file,'r') as f:
                 job = pickle.load(f)
             return job['job_output']
-        return {"arguments": ["run_gminer.py", ob_file],
+        return {"arguments": ["run_gminer.py",job_file],
                 "return_value": get_output_files}
 
     #-------------------------------------------------------------------------#
@@ -111,31 +111,31 @@ try:
             outdir = unique_filename_in()
         if not(os.path.exists(outdir)):
             os.mkdir(outdir)
-        if not(isinstance(names, ist)):
+        if not(isinstance(names,list)):
             names = []
         if len(names) < len(sqls):
             n = sqls
             n[:len(names)] = names
             names = n
-        gMiner_job = dict([('track'+str(i+1), ) for i,  in enumerate(sqls)]
-                          +[('track'+str(i+1)+'_name', tr(ni))
-                            for i, i in enumerate(names)])
+        gMiner_job = dict([('track'+str(i+1),f) for i,f in enumerate(sqls)]
+                          +[('track'+str(i+1)+'_name',str(ni))
+                            for i,ni in enumerate(names)])
         gMiner_job['operation_type'] = 'genomic_manip'
         gMiner_job['manipulation'] = 'merge_scores'
         gMiner_job['output_location'] = outdir
-        files = run_gMiner.nonblocking(ex, Miner_job, ia=via).wait()
+        files = run_gMiner.nonblocking(ex,gMiner_job,via=via).wait()
         ex.add( files[0], description=description )
         return files[0]
 
     #-------------------------------------------------------------------------#
     @program
-    def merge_two_bed(file1, ile2):
+    def merge_two_bed(file1,file2):
         """Binds ``intersectBed`` from the 'BedTools' suite.
         """
-        return {"arguments": ['intersectBed', -a', ile1, -b', ile2], "return_value": None}
+        return {"arguments": ['intersectBed','-a',file1,'-b',file2], "return_value": None}
 
     #-------------------------------------------------------------------------#
-    def merge_many_bed(ex, iles, ia='lsf'):
+    def merge_many_bed(ex,files,via='lsf'):
         """Runs ``intersectBed`` iteratively over a list of bed files.
         """
         out = files[0]
@@ -151,7 +151,7 @@ try:
         """Uses 'ghostscript' to join several pdf files into one.
         """
         out = unique_filename_in()
-        gs_args = ['gs', -dBATCH', -dNOPAUSE', -q', -sDEVICE=pdfwrite',
+        gs_args = ['gs','-dBATCH','-dNOPAUSE','-q','-sDEVICE=pdfwrite',
                    '-sOutputFile=%s'%out]
         gs_args += files
         return {"arguments": gs_args, "return_value": out}

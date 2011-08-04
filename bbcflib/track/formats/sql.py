@@ -58,7 +58,7 @@ class TrackFormat(Track, TrackExtras):
         if self.readonly: return
         try:
             for chrom in self.chrs_from_tables:
-                self.cursor.execute(    "create index IF NOT EXISTS '" + chrom + "_range_idx' on '" + chrom + "' (start, nd)")
+                self.cursor.execute(    "create index IF NOT EXISTS '" + chrom + "_range_idx' on '" + chrom + "' (start,end)")
                 if 'score' in self.get_fields_of_table(chrom):
                     self.cursor.execute("create index IF NOT EXISTS '" + chrom + "_score_idx' on '" + chrom + "' (score)")
                 if 'name' in self.get_fields_of_table(chrom):
@@ -99,7 +99,7 @@ class TrackFormat(Track, TrackExtras):
         if self.readonly: return
         if not 'attributes' in self.all_tables: self.cursor.execute('create table attributes (key text, value text)')
         if not self.attributes: self.cursor.execute('delete from attributes')
-        for k in self.attributes.keys(): self.cursor.execute('insert into attributes (key, alue) values (?, )', (k, self.attributes[k]))
+        for k in self.attributes.keys(): self.cursor.execute('insert into attributes (key,value) values (?,?)', (k, self.attributes[k]))
 
     def chrmeta_read(self):
         if not 'chrNames' in self.all_tables: return {}
@@ -112,7 +112,7 @@ class TrackFormat(Track, TrackExtras):
         if self.readonly: return
         if not 'chrNames' in self.all_tables: self.cursor.execute('create table chrNames (name text, length integer)')
         if not self.chrmeta: self.cursor.execute('delete from chrNames')
-        for r in self.chrmeta.rows: self.cursor.execute('insert into chrNames (' + ', .join(r.keys()) + ') values (' + ', .join(['?' for x in r.keys()])+')', tuple(r.values()))
+        for r in self.chrmeta.rows: self.cursor.execute('insert into chrNames (' + ','.join(r.keys()) + ') values (' + ','.join(['?' for x in r.keys()])+')', tuple(r.values()))
 
     @property
     def chrmeta(self):
@@ -149,7 +149,7 @@ class TrackFormat(Track, TrackExtras):
         self.attributes['name'] = value
 
     #--------------------------------------------------------------------------#
-    def read(self, selection=None, fields=None, order='start, nd', cursor=False):
+    def read(self, selection=None, fields=None, order='start,end', cursor=False):
         # Default selection #
         if not selection:
             selection = self.chrs_from_tables
@@ -160,13 +160,13 @@ class TrackFormat(Track, TrackExtras):
         if isinstance(selection, basestring):
             if selection not in self.chrs_from_tables: return ()
             if not fields: fields = self.get_fields_of_table(selection)
-            sql_request = "select " + ', .join(fields) + " from '" + selection + "'"
+            sql_request = "select " + ','.join(fields) + " from '" + selection + "'"
         # Case selection dictionary #
         if isinstance(selection, dict):
             chrom = selection['chr']
             if chrom not in self.chrs_from_tables: return ()
             if not fields: fields = self.get_fields_of_table(chrom)
-            sql_request = "select " + ', .join(fields) + " from '" + chrom + "' where " + make_cond_from_sel(selection)
+            sql_request = "select " + ','.join(fields) + " from '" + chrom + "' where " + make_cond_from_sel(selection)
         # Ordering #
         order_by = 'order by ' + order
         # Return the results #
@@ -182,10 +182,10 @@ class TrackFormat(Track, TrackExtras):
         if fields        == None:           fields = Track.qualitative_fields
         # Maybe create the table #
         if chrom not in self.chrs_from_tables:
-            columns = ', .join([field + ' ' + Track.field_types.get(field, 'text') for field in fields])
+            columns = ','.join([field + ' ' + Track.field_types.get(field, 'text') for field in fields])
             self.cursor.execute('create table "' + chrom + '" (' + columns + ')')
         # Execute the insertion
-        sql_command = 'insert into "' + chrom + '" (' + ', .join(fields) + ') values (' + ', .join(['?' for x in range(len(fields))])+')'
+        sql_command = 'insert into "' + chrom + '" (' + ','.join(fields) + ') values (' + ','.join(['?' for x in range(len(fields))])+')'
         try:
             self.cursor.executemany(sql_command, data)
         except sqlite3.OperationalError as err:

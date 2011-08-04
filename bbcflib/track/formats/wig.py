@@ -35,11 +35,11 @@ class TrackFormat(TrackText, TrackProxy):
                 raise Exception("The file '" + self._path + "' contains a second 'track' directive. This is not supported.")
             if line.startswith("browser "): continue
             if line.startswith("variableStep") or line.startswith("fixedStep"):
-                params = dict([p.split('=', ) for p in shlex.split('mode=' + line)])
-                if not params.get('chrom', alse):
+                params = dict([p.split('=',1) for p in shlex.split('mode=' + line)])
+                if not params.get('chrom',False):
                     raise Exception("The file '" + self._path + "' does not specify a chromosome and is hence not valid.")
                 try:
-                    params['span'] = int(params.get('span', ))
+                    params['span'] = int(params.get('span',1))
                 except ValueError:
                     raise Exception("The file '" + self._path + "' has a non integer as span value.")
                 if params['span'] < 1:
@@ -52,7 +52,7 @@ class TrackFormat(TrackText, TrackProxy):
                     except ValueError:
                         raise Exception("The file '" + self._path + "' has a non integer as start value.")
                     try:
-                        params['step'] = int(params.get('step', ))
+                        params['step'] = int(params.get('step',1))
                     except ValueError:
                         raise Exception("The file '" + self._path + "' has a non integer as step value.")
                     if params['step'] < 1:
@@ -103,7 +103,7 @@ class TrackFormat(TrackText, TrackProxy):
             x = x_next
 
     def _write_entries(self):
-        for f in self.read(): yield "fixedStep chrom=%s start=%s span=%s\n%s\n" % (f[0], [1], [2]-f[1], [3])
+        for f in self.read(): yield "fixedStep chrom=%s start=%s span=%s\n%s\n" % (f[0],f[1],f[2]-f[1],f[3])
 
     #-----------------------------------------------------------------------------#
     @property
@@ -125,16 +125,16 @@ def random_track(kind='fixed', chrs=16, number_of_regions=32, orig_start=0, leng
             if i % (number_of_regions / chrs) == 0:
                 chr += 1
                 end  = orig_start
-            start = end   + (random.randint(0, ump))
-            end   = start + (random.randint(1, ength))
-            multiplier = random.randint(1, core)
+            start = end   + (random.randint(0,jump))
+            end   = start + (random.randint(1,length))
+            multiplier = random.randint(1,score)
             yield 'fixedStep chrom=chr' + str(chr) + ' start=' + str(start) + ' step=1' + '\n'
             for x in xrange((end - start)):
                 yield str(multiplier + multiplier * random.random()) + '\n'
             for x in xrange((end - start)/2):
                 yield '0\n'
-            end   = start + (random.randint(1, ength))
-            multiplier = random.randint(1, core)
+            end   = start + (random.randint(1,length))
+            multiplier = random.randint(1,score)
             constant = str(multiplier + multiplier * random.random())
             for x in xrange((end - start)):
                 yield constant + '\n'
@@ -145,10 +145,10 @@ def random_track(kind='fixed', chrs=16, number_of_regions=32, orig_start=0, leng
                 chr += 1
                 end  = orig_start
                 yield 'variableStep chrom=chr' + str(chr) + '\n'
-            start = end   + (random.randint(0, ump))
-            end   = start + (random.randint(1, nt(length/2)))
-            multiplier = random.randint(1, core)
-            for x in xrange(start, nd):
+            start = end   + (random.randint(0,jump))
+            end   = start + (random.randint(1,int(length/2)))
+            multiplier = random.randint(1,score)
+            for x in xrange(start,end):
                 yield str(x) + ' ' + str(multiplier + multiplier * random.random()) + '\n'
 
 #-----------------------------------#
