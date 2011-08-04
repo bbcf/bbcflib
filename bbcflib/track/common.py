@@ -74,7 +74,7 @@ def sqlcmp(file_a, file_b):
     import itertools, sqlite3
     A = sqlite3.connect(file_a)
     B = sqlite3.connect(file_b)
-    for a,b in itertools.izip_longest(A.iterdump(), B.iterdump()):
+    for a,  in itertools.izip_longest(A.iterdump(), B.iterdump()):
         if a != b: return False
     return True
 

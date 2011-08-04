@@ -41,7 +41,7 @@ class TrackExtras(object):
                     distance     = feature[0] - feature[1]
                     random_start = random.randint(0, length - distance)
                     random_end   = random_start + distance
-                    yield (random_start, random_end, 0.0, "random_feature_"+str(i), 0,"Random feature" ) # start, end, score, name, strand, sttributes, ...
+                    yield (random_start, random_end, 0.0, "random_feature_"+str(i), 0, Random feature" ) # start, end, score, name, strand, sttributes, ...
             # Iterate #
             for chrom in self:
                 for i in range(repeat_number):

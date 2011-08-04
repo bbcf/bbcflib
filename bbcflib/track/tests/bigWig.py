@@ -50,7 +50,7 @@ class Test_Overwrite(unittest.TestCase):
         feature = (10, 20, 9999.0)
         chrom = 'chr2'
         with track.load(new_path, chrmeta=yeast_chr_file) as t:
-            t.write(chrom, (feature,))
+            t.write(chrom, (feature, )
         with track.load(new_path, chrmeta=yeast_chr_file) as t:
             self.assertEqual(feature, t.read(chrom).next())
         os.remove(new_path)
@@ -59,7 +59,7 @@ class Test_Overwrite(unittest.TestCase):
 class Test_Roundtrips(unittest.TestCase):
     def runTest(self):
         path = named_temporary_path('.bigWig')
-        for i in ('A','B'):
+        for i in ('A', B'):
             d = track_collections['Binary'][i]
             with track.load(d['path'], chrmeta=yeast_chr_file) as t: t.dump(path)
             self.assertTrue(filecmp.cmp(d['path'], path))

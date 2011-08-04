@@ -206,7 +206,7 @@ def parseConfig( file ):
         if not('name' in group):
             raise ValueError("Each entry in 'Groups' must have a 'name'")
         job.add_group(id=int(gid),
-                      control=group.get('control').lower() in ['1','true','t'],
+                      control=group.get('control').lower() in ['1', true', t'],
                       name=str(group['name']))
 
     for rid, run in config['Runs'].iteritems():
@@ -223,7 +223,7 @@ def parseConfig( file ):
                     url=run.get('url'),
                     key=run.get('key'))
     globals = config.get('Global variables') or {}
-    return (job,globals)
+    return (job, lobals)
 
 #-----------------------------------#
 # This code was written by the BBCF #

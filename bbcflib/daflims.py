@@ -114,7 +114,7 @@ class DAFLIMS(object):
         components of the URL.
         """
         base_url="http://uhts-%s.vital-it.ch" % facility
-        url = "/".join([base_url,"ws",method] + [str(x) for x in args])
+        url = "/".join([base_url, ws", ethod] + [str(x) for x in args])
         return self._open_url(url).read()
 
     def _check_description(self, facility, machine, run, lane):

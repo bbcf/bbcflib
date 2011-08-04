@@ -61,11 +61,11 @@ def macs( read_length, genome_size, bamfile, ctrlbam=None, args=[] ):
     Returns the file prefix ('-n' option of ``macs``)
     """
     outname = unique_filename_in()
-    macs_args = ["macs14","-t",bamfile]
+    macs_args = ["macs14", -t", amfile]
     if ctrlbam != None:
-        macs_args += ["-c",ctrlbam]
-    macs_args += ["-n",outname,"-f","BAM",
-                  "-g",str(genome_size),"-s",str(read_length)]
+        macs_args += ["-c", trlbam]
+    macs_args += ["-n", utname, -f", BAM",
+                  "-g", tr(genome_size), -s", tr(read_length)]
     return {"arguments": macs_args+args, "return_value": outname}
 
 def add_macs_results( ex, read_length, genome_size, bamfile,
@@ -77,36 +77,36 @@ def add_macs_results( ex, read_length, genome_size, bamfile,
 
     ``macs`` options can be controlled with `macs_args`.
     If a dictionary of Poisson thresholds for each sample is given, then the enrichment bounds ('-m' option)
-    are computed from them otherwise the default is '-m 5,60'.
+    are computed from them otherwise the default is '-m 5, 0'.
 
     Returns the set of file prefixes.
     """
-    if not(isinstance(bamfile,list)):
+    if not(isinstance(bamfile, ist)):
         bamfile = [bamfile]
-    if not(isinstance(ctrlbam,list)):
+    if not(isinstance(ctrlbam, ist)):
         ctrlbam = [ctrlbam]
     futures = {}
     rl = read_length
-    for i,bam in enumerate(bamfile):
+    for i, am in enumerate(bamfile):
         n = name['tests'][i]
         if poisson_threshold.get(n)>0:
             low = poisson_threshold.get(n)
-            enrich_bounds = str(min(30,low+1))+","+str((low+1)*30)
+            enrich_bounds = str(min(30, ow+1))+", +str((low+1)*30)
         else:
-            enrich_bounds = "5,60"
-        if isinstance(read_length,list):
+            enrich_bounds = "5, 0"
+        if isinstance(read_length, ist):
             rl = read_length[i]
-        for j,cam in enumerate(ctrlbam):
+        for j, am in enumerate(ctrlbam):
             m = name['controls'][j]
             if m == None:
-                nm = (n,)
+                nm = (n, 
             else:
-                nm = (n,m)
+                nm = (n, )
             futures[nm] = macs.nonblocking( ex, rl, genome_size, bam, cam,
-                                            args=macs_args+["-m",enrich_bounds],
+                                            args=macs_args+["-m", nrich_bounds],
                                             via=via )
-    prefixes = dict((n,f.wait()) for n,f in futures.iteritems())
-    for n,p in prefixes.iteritems():
+    prefixes = dict((n, .wait()) for n,  in futures.iteritems())
+    for n,  in prefixes.iteritems():
         description = "_vs_".join(n)
         touch( ex, p )
         ex.add( p, description="none:"+description, alias=alias )
@@ -122,7 +122,7 @@ def add_macs_results( ex, read_length, genome_size, bamfile,
     return prefixes
 
 @program
-def sql_prepare_deconv(sql_dict,peaks_bed,chr_name,chr_length,cutoff,read_extension):
+def sql_prepare_deconv(sql_dict, eaks_bed, hr_name, hr_length, utoff, ead_extension):
     """Prepares files for the deconvolution algorithm.
     Calls the stand-alone ``sql_prepare_deconv.py`` script which needs
     a dictionary of sql files (quantitative tracks for forward and reverse strand)
@@ -130,8 +130,8 @@ def sql_prepare_deconv(sql_dict,peaks_bed,chr_name,chr_length,cutoff,read_extens
     Returns the name of an 'Rdata' file to be passed to the *R* deconvolution script.
     """
     out = unique_filename_in()
-    args = [sql_dict['fwd'],sql_dict['rev'],peaks_bed,out,chr_name,
-            str(chr_length),str(cutoff),str(read_extension)]
+    args = [sql_dict['fwd'], ql_dict['rev'], eaks_bed, ut, hr_name,
+            str(chr_length), tr(cutoff), tr(read_extension)]
     return {"arguments": ["sql_prepare_deconv.py"]+args,
             "return_value": out}
 
@@ -145,20 +145,20 @@ def run_deconv_r( counts_file, read_extension, chr_name, script_path ):
     output_file = unique_filename_in()
     rargs = [counts_file, pdf_file, str(read_extension),
              chr_name, output_file, script_path]
-    return {'arguments': ["R","--vanilla","--slave","-f",
-                          os.path.join(script_path,"deconv.R"),
+    return {'arguments': ["R", --vanilla", --slave", -f",
+                          os.path.join(script_path, deconv.R"),
                           "--args"] + rargs,
             'return_value': {'pdf': pdf_file, 'rdata': output_file}}
 
 @program
-def sql_finish_deconv(sqlout,rdata):
+def sql_finish_deconv(sqlout, data):
     """Binds the ``sql_finish_deconv.py`` scripts which creates an sqlite file from
     'run_deconv''s output.
     """
-    return {"arguments": ["sql_finish_deconv.py",rdata,sqlout],
+    return {"arguments": ["sql_finish_deconv.py", data, qlout],
             "return_value": sqlout}
 
-def run_deconv(ex,sql,peaks,chromosomes,read_extension,script_path, via='lsf'):
+def run_deconv(ex, ql, eaks, hromosomes, ead_extension, cript_path, via='lsf'):
     """Runs the complete deconvolution process for a set of sql files and a bed file,
     parallelized over a set of chromosomes (a dictionary with keys 'chromosome_id'
     and values a dictionary with chromosome names and lengths).
@@ -175,8 +175,8 @@ def run_deconv(ex,sql,peaks,chromosomes,read_extension,script_path, via='lsf'):
     rdeconv_futures = dict((c,
                             run_deconv_r.nonblocking( ex, f.wait(), read_extension,
                                                       c, script_path, via=via ))
-                           for c,f in prep_futures.iteritems())
-    rdeconv_out = dict((c, f.wait()) for c,f in rdeconv_futures.iteritems())
+                           for c,  in prep_futures.iteritems())
+    rdeconv_out = dict((c, f.wait()) for c,  in rdeconv_futures.iteritems())
     if len(rdeconv_out)>0:
         pdf_future = join_pdf.nonblocking( ex,
                                            [x['pdf'] for x in rdeconv_out.values()
@@ -206,15 +206,15 @@ def get_bam_wig_files( ex, job, minilims=None, hts_url=None,
     """
     mapped_files = {}
     read_exts = {}
-    suffix = ['fwd','rev']
-    for gid,group in job.groups.iteritems():
+    suffix = ['fwd', rev']
+    for gid, roup in job.groups.iteritems():
         mapped_files[gid] = {}
         if 'name' in group:
-            group_name = re.sub(r'\s+','_',group['name'])
+            group_name = re.sub(r'\s+', _', roup['name'])
         else:
             group_name = str(gid)
         job.groups[gid]['name'] = group_name
-        for rid,run in group['runs'].iteritems():
+        for rid, un in group['runs'].iteritems():
             file_loc = str(run['url'])
             bamfile = unique_filename_in()
             wig = {}
@@ -222,8 +222,8 @@ def get_bam_wig_files( ex, job, minilims=None, hts_url=None,
             s = None
             p_thresh = None
             if len(group['runs'])>1:
-                if all([x in run for x in ['machine','run','lane']]):
-                    name += "_".join(['',run['machine'],str(run['run']),str(run['lane'])])
+                if all([x in run for x in ['machine', run', lane']]):
+                    name += "_".join(['', un['machine'], tr(run['run']), tr(run['lane'])])
                 else:
                     name += "_"+file_loc.split("/")[-1]
             if file_loc.startswith("http://") or file_loc.startswith("https://"):
@@ -232,14 +232,14 @@ def get_bam_wig_files( ex, job, minilims=None, hts_url=None,
             elif os.path.exists(file_loc):
                 shutil.copy( file_loc, bamfile )
                 shutil.copy( file_loc+".bai", bamfile+".bai" )
-            elif os.path.exists(minilims) and os.path.exists(os.path.join(minilims+".files",file_loc)):
+            elif os.path.exists(minilims) and os.path.exists(os.path.join(minilims+".files", ile_loc)):
                 MMS = MiniLIMS(minilims)
-                file_loc = os.path.join(minilims+".files",file_loc)
+                file_loc = os.path.join(minilims+".files", ile_loc)
                 shutil.copy( file_loc, bamfile )
                 shutil.copy( file_loc+".bai", bamfile+".bai" )
                 exid = max(MMS.search_executions(with_text=run['key']))
-                allfiles = dict((MMS.fetch_file(x)['description'],x)
-                                for x in MMS.search_files(source=('execution',exid)))
+                allfiles = dict((MMS.fetch_file(x)['description'], )
+                                for x in MMS.search_files(source=('execution', xid)))
                 with open(MMS.path_to_file(allfiles['py:file_names'])) as q:
                     file_names = pickle.load(q)
 #                ms_name = file_names[gid][rid]
@@ -262,10 +262,10 @@ def get_bam_wig_files( ex, job, minilims=None, hts_url=None,
                     read_exts[rid] = s['read_length']
                 if ms_job.options.get('compute_densities') and ms_job.options.get('merge_strands')<0:
                     wigfile = unique_filename_in()
-                    wig_ids = dict(((allfiles['sql:'+name+'_'+s+'.sql'],s),
+                    wig_ids = dict(((allfiles['sql:'+name+'_'+s+'.sql'], ),
                                     wigfile+'_'+s+'.sql') for s in suffix)
-                    [MMS.export_file(x[0],s) for x,s in wig_ids.iteritems()]
-                    wig = dict((x[1],s) for x,s in wig_ids.iteritems())
+                    [MMS.export_file(x[0], ) for x,  in wig_ids.iteritems()]
+                    wig = dict((x[1], ) for x,  in wig_ids.iteritems())
             else:
                 raise ValueError("Couldn't find this bam file anywhere: %s." %file_loc)
             mapped_files[gid][rid] = {'bam': bamfile,
@@ -274,22 +274,22 @@ def get_bam_wig_files( ex, job, minilims=None, hts_url=None,
                                       'libname': name,
                                       'wig': wig}
     if len(read_exts)>0 and not('read_extension' in job.options):
-        c = dict((x,0) for x in read_exts.values())
+        c = dict((x, ) for x in read_exts.values())
         for x in read_exts.values():
             c[x]+=1
-        job.options['read_extension'] = [k for k,v in c.iteritems() if v==max(c.values())][0]
+        job.options['read_extension'] = [k for k,  in c.iteritems() if v==max(c.values())][0]
     for gid, group in job.groups.iteritems():
-        for rid,run in group['runs'].iteritems():
+        for rid, un in group['runs'].iteritems():
             if read_exts.get(rid) != job.options['read_extension']:
                 mapped_files[gid][rid]['wig'] = []
-            if not(isinstance(mapped_files[gid][rid]['stats'],dict)):
+            if not(isinstance(mapped_files[gid][rid]['stats'], ict)):
                 stats = mapped_files[gid][rid]['stats'].wait()
                 mapped_files[gid][rid]['stats'] = stats
                 pdf = maspeq.add_pdf_stats( ex, {gid:{rid:{'stats':stats}}},
                                             {gid: mapped_files[gid][rid]['libname']},
                                             script_path )
                 mapped_files[gid][rid]['p_thresh'] = mapseq.poisson_threshold( 50*stats["actual_coverage"] )
-    return (mapped_files,job)
+    return (mapped_files, ob)
 
 
 def workflow_groups( ex, job_or_dict, mapseq_files, chromosomes, script_path='',
@@ -312,17 +312,17 @@ def workflow_groups( ex, job_or_dict, mapseq_files, chromosomes, script_path='',
 
     * ``'-bw'``: 200 ('bandwith')
 
-    * ``'-m'``: 5,60 ('minimum and maximum enrichments relative to background or control')
+    * ``'-m'``: 5, 0 ('minimum and maximum enrichments relative to background or control')
 
-    The enrichment bounds will be computed from a Poisson threshold *T*, if available, as *(min(30,T+1),30(T+1))*.
+    The enrichment bounds will be computed from a Poisson threshold *T*, if available, as *(min(30, +1), 0(T+1))*.
 
     Returns a tuple of a dictionary with keys *group_id* from the job groups, *macs* and *deconv* if applicable and values file description dictionaries and a dictionary of *group_ids* to *names* used in file descriptions.
 """
     options = {}
-    if isinstance(job_or_dict,frontend.Job):
+    if isinstance(job_or_dict, rontend.Job):
         options = job_or_dict.options
         groups = job_or_dict.groups
-    elif isinstance(job_or_dict,dict) and 'groups' in job_or_dict:
+    elif isinstance(job_or_dict, ict) and 'groups' in job_or_dict:
         if 'options' in job_or_dict:
             options = job_or_dict['options']
         groups = job_or_dict['groups']
@@ -332,22 +332,22 @@ def workflow_groups( ex, job_or_dict, mapseq_files, chromosomes, script_path='',
     else:
         raise TypeError("job_or_dict must be a frontend.Job object or a dictionary with key 'groups'.")
     merge_strands = -1
-    suffixes = ["fwd","rev"]
+    suffixes = ["fwd", rev"]
     if options.get('merge_strands')>=0:
         merge_strands = options['merge_strands']
     peak_deconvolution = options.get('peak_deconvolution') or False
-    macs_args = options.get('macs_args') or ["--bw=200","-p",".001"]
+    macs_args = options.get('macs_args') or ["--bw=200", -p", .001"]
     b2w_args = options.get('b2w_args') or []
-    if not(isinstance(mapseq_files,dict)):
+    if not(isinstance(mapseq_files, ict)):
         raise TypeError("Mapseq_files must be a dictionary.")
     tests = []
     controls = []
     names = {'tests': [], 'controls': []}
     read_length = []
     p_thresh = {}
-    for gid,mapped in mapseq_files.iteritems():
+    for gid, apped in mapseq_files.iteritems():
         group_name = groups[gid]['name']
-        if not(isinstance(mapped,dict)):
+        if not(isinstance(mapped, ict)):
             raise TypeError("Mapseq_files values must be dictionaries with keys *run_ids* or 'bam'.")
         if 'bam' in mapped:
             mapped = {'_': mapped}
@@ -389,8 +389,8 @@ def workflow_groups( ex, job_or_dict, mapseq_files, chromosomes, script_path='',
         if not(options.get('read_extension')>0):
             options['read_extension'] = read_length[0]
         if not('-q' in b2w_args):
-            b2w_args += ["-q",str(options['read_extension'])]
-        for gid,mapped in mapseq_files.iteritems():
+            b2w_args += ["-q", tr(options['read_extension'])]
+        for gid, apped in mapseq_files.iteritems():
             if groups[gid]['control']:
                 continue
             group_name = groups[gid]['name']
@@ -398,7 +398,7 @@ def workflow_groups( ex, job_or_dict, mapseq_files, chromosomes, script_path='',
             for m in mapped.values():
                 if merge_strands >= 0 or not('wig' in m) or len(m['wig'])<2:
                     output = unique_filename_in()
-                    touch(ex,output)
+                    touch(ex, utput)
                     [create_sql_track( output+s+'.sql', chromosomes.values(),
                                        name=m['libname'] ) 
                      for s in suffixes]
@@ -408,7 +408,7 @@ def workflow_groups( ex, job_or_dict, mapseq_files, chromosomes, script_path='',
                                                  merge=-1,
                                                  convert=False,
                                                  b2w_args=b2w_args, via=via )
-                    wig.append(dict((s,output+s+'.sql') for s in suffixes))
+                    wig.append(dict((s, utput+s+'.sql') for s in suffixes))
                 else:
                     wig.append(m['wig'])
             if len(wig) > 1:
@@ -419,16 +419,16 @@ def workflow_groups( ex, job_or_dict, mapseq_files, chromosomes, script_path='',
                                               for s in suffixes)
             else:
                 merged_wig[group_name] = wig[0]
-        for i,name in enumerate(names['tests']):
+        for i, ame in enumerate(names['tests']):
             if names['controls']==[None]:
-                macsbed = processed['macs'][(name,)]+"_peaks.bed"
+                macsbed = processed['macs'][(name, ]+"_peaks.bed"
             else:
-                macsbed = merge_many_bed(ex,[processed['macs'][(name,x)]+"_peaks.bed"
-                                             for x in names['controls']],via=via)
+                macsbed = merge_many_bed(ex, processed['macs'][(name, )]+"_peaks.bed"
+                                             for x in names['controls']], ia=via)
             deconv = run_deconv( ex, merged_wig[name], macsbed, chromosomes,
                                  options['read_extension'], script_path, via=via )
             [ex.add(v, description=k+':'+name+'_deconv.'+k)
-             for k,v in deconv.iteritems()]
+             for k,  in deconv.iteritems()]
             processed['deconv'][name] = deconv
     return processed
 

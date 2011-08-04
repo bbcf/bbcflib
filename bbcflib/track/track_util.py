@@ -51,7 +51,7 @@ def guess_file_format(path):
             if line.startswith("browser "): continue
             if line.startswith("track "):
                 try:
-                    id = dict([p.split('=',1) for p in shlex.split(line[6:])])['type']
+                    id = dict([p.split('=', ) for p in shlex.split(line[6:])])['type']
                 except ValueError:
                     return ''
                 return known_identifiers.get(id, id)
@@ -67,8 +67,8 @@ def import_implementation(format):
 def join_read_queries(track, selections, fields):
     '''Join read results when selection is a list'''
     def _add_chromsome_prefix(sel, data):
-        if type(sel) == str: chrom = (sel,)
-        else:                chrom = (sel['chr'],)
+        if type(sel) == str: chrom = (sel, 
+        else:                chrom = (sel['chr'], 
         for f in data: yield chrom + f
     for sel in selections:
         for f in _add_chromsome_prefix(sel, track.read(sel, fields)): yield f

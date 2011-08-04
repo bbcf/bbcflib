@@ -107,7 +107,7 @@ class TrackFormat(TrackText, TrackProxy):
                 raise Exception("The file '" + self._path + "' has less than three columns and is hence not a valid BED file.")
             if self.num_fields > len(all_fields_possible):
                 raise Exception("The file '" + self._path + "' has too many columns and is hence not a valid BED file.")
-            return all_fields_possible[0:max(5,self.num_fields)]
+            return all_fields_possible[0:max(5, elf.num_fields)]
 
     #-----------------------------------------------------------------------------#
     @property
@@ -129,10 +129,10 @@ def random_track(number_of_features=15000000, size=1000, jump=1000, orig_start=0
         if i % (number_of_features / chrs) == 0:
             chr += 1
             start = orig_start
-        start       =   start + (random.randint(0,jump))
-        end         =   start + (random.randint(1,size))
-        thick_start =   start + (random.randint(-size*0.25,size*0.25))
-        thick_end   =   end   + (random.randint(-size*0.25,size*0.25))
+        start       =   start + (random.randint(0, ump))
+        end         =   start + (random.randint(1, ize))
+        thick_start =   start + (random.randint(-size*0.25, ize*0.25))
+        thick_end   =   end   + (random.randint(-size*0.25, ize*0.25))
         name        = name_gen.next() + name_gen.next()
         strand      = random.random() < 0.5 and '+' or '-'
         score       = random.random()

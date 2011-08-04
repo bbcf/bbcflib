@@ -25,7 +25,7 @@ def create_gdv_project( gdv_key, gdv_email,
     :param nr_assembly_id: the nrAssembly identifier of the species in Genrep
     :param name: name of the project
     :param public: 'true' to make the project public -optionnal-
-    :rtype: a json : {'project_id':<the id>,'public_url':<the public url>} or {'project_id':<the id>} if you didn't make the
+    :rtype: a json : {'project_id':<the id>, public_url':<the public url>} or {'project_id':<the id>} if you didn't make the
     project public
     '''
     request = { "id": "gdv_post",
@@ -77,7 +77,7 @@ def add_gdv_sqlite( gdv_key, gdv_email,
     '''
     Deprecated :  use add_gdv_track instead
     '''
-    return add_gdv_track(gdv_key,gdv_email,project_id,url,name,gdv_url)
+    return add_gdv_track(gdv_key, dv_email, roject_id, rl, ame, dv_url)
 
 
 def add_sql_files( gdv_key, gdv_email,
@@ -92,12 +92,12 @@ def add_sql_files( gdv_key, gdv_email,
     return [add_gdv_track( gdv_key, gdv_email, project_id,
                            serv_url+"/"+f, names[i],
                            gdv_url)
-            for i,f in enumerate(files)]
+            for i,  in enumerate(files)]
 
-def get_job_status(gdv_key,gdv_email,job_id):
+def get_job_status(gdv_key, dv_email, ob_id):
     '''
     Get the status of a job in GDV
-    :rtype: a json {job_id:<the job id>, status:<running,error or success>}
+    :rtype: a json {job_id:<the job id>, status:<running, rror or success>}
     '''
     request = { "id": "gdv_post",
                 "mail": gdv_email,
@@ -109,10 +109,10 @@ def get_job_status(gdv_key,gdv_email,job_id):
     return urllib2.urlopen( gdv_url, urllib.urlencode(request) ).read()
 
 
-def get_assemblies(gdv_key,gdv_email):
+def get_assemblies(gdv_key, dv_email):
     '''
     Get all assemblies that are used in GDV
-    :rtype: a JSON list [{id:<assembly id>,name:<assembly name>}
+    :rtype: a JSON list [{id:<assembly id>, ame:<assembly name>}
     '''
     request = { "id": "gdv_post",
                 "mail": gdv_email,

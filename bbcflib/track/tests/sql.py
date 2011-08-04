@@ -28,10 +28,10 @@ class Test_Read(unittest.TestCase):
             self.assertEqual(len(list(data)), 12)
             # Different fields #
             data = t.read('chr1', fields=['score'])
-            expected = [(10.0,), (0.0,), (10.0,), (0.0,), (0.0,), (10.0,), (10.0,), (10.0,), (10.0,), (10.0,), (10.0,), (5.0,)]
+            expected = [(10.0, , (0.0, , (10.0, , (0.0, , (0.0, , (10.0, , (10.0, , (10.0, , (10.0, , (10.0, , (10.0, , (5.0, ]
             self.assertEqual(list(data), expected)
             # Empty result #
-            data = t.read({'chr':'chr2','start':0,'end':10})
+            data = t.read({'chr':'chr2', start':0, end':10})
             self.assertEqual(list(data), [])
 
 #------------------------------------------------------------------------------#
@@ -56,10 +56,10 @@ class Test_Selection(unittest.TestCase):
             data = t.read({'chr':'chr1', 'strand':1})
             self.assertEqual(list(data), features[1:6] + features[7:-1])
             # Score #
-            data = t.read({'chr':'chr1', 'score':(0.3,0.5)})
+            data = t.read({'chr':'chr1', 'score':(0.3, .5)})
             self.assertEqual(list(data), features[5:7])
             # All #
-            data = t.read({'chr':'chr1', 'start':85, 'end':200, 'strand':-1, 'score':(0.3,0.5)})
+            data = t.read({'chr':'chr1', 'start':85, 'end':200, 'strand':-1, 'score':(0.3, .5)})
             self.assertEqual(list(data), features[6:7])
 
 #------------------------------------------------------------------------------#
@@ -233,7 +233,7 @@ class Test_Corrupted(unittest.TestCase):
     def runTest(self):
         t = track_collections['Special']['Corrupted']
         with track.load(t['path_sql'], readonly=True) as t:
-            self.assertEqual(t.all_chrs, ['chr' + str(i) for i in range(1,17)])
+            self.assertEqual(t.all_chrs, ['chr' + str(i) for i in range(1, 7)])
             self.assertEqual(t.chrmeta, {})
             self.assertEqual(t.attributes, {})
 

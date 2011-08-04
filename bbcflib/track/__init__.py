@@ -66,7 +66,7 @@ To set the chromosome metadata or the track metadata you simply asign to that at
         t.chrmeta    = ``{'chr1': {'length': 197195432}, 'chr2': {'length': 129993255}}``
         t.attributes = {'datatype': 'quantitative', 'source': 'UCSC'}
 
-It is important to note that the general numbering convention of features on a chromosome varies depending on the source of the data. For instance, UCSC and Ensembl differ in this point such that an interval labeled `(start=4,end=8)` will span four base pairs according to UCSC but will span five base pairs according to Ensembl. The representation that the this packages sticks to is explained `here <http://bbcf.epfl.ch/twiki/bin/view/BBCF/NumberingConvention>`_.
+It is important to note that the general numbering convention of features on a chromosome varies depending on the source of the data. For instance, UCSC and Ensembl differ in this point such that an interval labeled `(start=4, nd=8)` will span four base pairs according to UCSC but will span five base pairs according to Ensembl. The representation that the this packages sticks to is explained `here <http://bbcf.epfl.ch/twiki/bin/view/BBCF/NumberingConvention>`_.
 """
 
 __all__ = ['load', 'new']
@@ -119,7 +119,7 @@ def new(path, format=None, name=None, chrmeta=None, datatype=None):
                 t.write('chr1', [(10, 20, 'Gene A', 0.0, 1)])
             with track.new('tracks/peaks.sql', 'sql', name='High affinity peaks') as t:
                 t.write('chr5', [(500, 1200, 'Peak1', 11.3, 0)])
-            with track.new('tracks/scores.sql', 'sql', chrmeta='sacCer2' datatype='quantitative',) as t:
+            with track.new('tracks/scores.sql', 'sql', chrmeta='sacCer2' datatype='quantitative',  as t:
                 t.write('chr1', [(10, 20, 500.0)])
 
         ``new`` returns a Track instance.
@@ -157,7 +157,7 @@ class Track(object):
     '''
 
     #-----------------------------------------------------------------------------#
-    def read(self, selection=None, fields=None, order='start,end', cursor=False):
+    def read(self, selection=None, fields=None, order='start, nd', cursor=False):
         '''Reads data from the genomic file.
 
         * *selection* can be several things.
@@ -183,13 +183,13 @@ class Track(object):
                 data = t.read()
                 data = t.read('chr2')
                 data = t.read('chr3', ['name', 'strand'])
-                data = t.read(['chr1','chr2','chr3'])
+                data = t.read(['chr1', chr2', chr3'])
                 data = t.read({'chr':'chr1', 'start':100})
                 data = t.read({'chr':'chr1', 'start':10000, 'end':15000})
                 data = t.read({'chr':'chr1', 'start':10000, 'end':15000, 'inclusion':'strict'})
                 data = t.read({'chr':'chr1', 'strand':1})
-                data = t.read({'chr':'chr1', 'score':(10,100)})
-                data = t.read({'chr':'chr1', 'start':10000, 'end':15000 'strand':-1 'score':(10,100)})
+                data = t.read({'chr':'chr1', 'score':(10, 00)})
+                data = t.read({'chr':'chr1', 'start':10000, 'end':15000 'strand':-1 'score':(10, 00)})
                 data = t.read({'chr':'chr5', 'start':0, 'end':200}, ['strand', 'start', 'score'])
             # Duplicate a chromosome
             with track.load('tracks/copychrs.sql') as t:
@@ -256,7 +256,7 @@ class Track(object):
             with track.load('tracks/example.sql') as t:
                 num = t.count('chr1')
             with track.load('tracks/example.sql') as t:
-                num = t.count(['chr1','chr2','chr3'])
+                num = t.count(['chr1', chr2', chr3'])
             with track.load('tracks/example.sql') as t:
                 num = t.count({'chr':'chr1', 'start':10000, 'end':15000})
 
