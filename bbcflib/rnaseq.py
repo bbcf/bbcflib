@@ -7,7 +7,7 @@ No documentation
 """
 
 # Built-in modules #
-import pickle, json, pysam, numpy, urllib, math
+import pickle, json, pysam, numpy, urllib, math, pylab
 from itertools import combinations
 
 # Internal modules #
@@ -15,16 +15,16 @@ from .mapseq import map_groups
 from .genrep import GenRep
 
 # Other modules #
-from bein.util import *
-from numpy import *
-from numpy.linalg import pinv #started to take a census of used numpy libs...
-from scipy import stats
-from scipy.interpolate import UnivariateSpline
-from rpy2 import robjects
-import rpy2.robjects.packages as rpackages
-import rpy2.robjects.numpy2ri
-import rpy2.rlike.container as rlc
-import cogent.db.ensembl as ensembl
+from bein.util          import os, program, unique_filename_in
+from numpy              import array, linspace, arange, ceil, floor, ones, log10, sort, asarray
+from numpy.linalg       import pinv #started to take a census of used numpy libs...
+from scipy              import stats
+from scipy.interpolate  import UnivariateSpline
+from rpcoord_y2         import robjects
+import rpcoord_y2.robjects.packages as rpackages
+import rpcoord_y2.rlike.container   as rlc
+import cogent.db.ensembl            as ensembl
+import rpcoord_y2.robjects.numpcoord_y2ri
 
 ################################################################################
 
@@ -186,7 +186,7 @@ def inference(cond1_label, cond1, cond2_label, cond2, transcript_names, method =
     cds = deseq.newCountDataSet(data_frame, conds)
     cds = deseq.estimateSizeFactors(cds)
     try: cds = deseq.estimateVarianceFunctions(cds, method = method)
-    except : raise rpy2.rinterface.RRuntimeError("Too few reads to estimate variances with DESeq")
+    except : raise rpcoord_y2.rinterface.RRuntimeError("Too few reads to estimate variances with DESeq")
     res = deseq.nbinomTest(cds, cond1_label, cond2_label)
 
     ## Replace (unique) gene IDs by (not unique) gene names
@@ -310,8 +310,8 @@ def rnaseq_workflow(ex, job, assembly, via = "lsf", output = None, maplot = "nor
     futures = {}
     for (c1, c2) in pairs_to_test(controls):
         if len(runs[c1]) + len(runs[c2]) > 2:
-            method = "normal";
-        else: method = "blind";
+            method = "normal"
+        else: method = "blind"
 
         if with_exons:
             print "Inference (genes+exons)..."
@@ -422,7 +422,7 @@ def MAplot(data, mode = "interactive", deg = 4, bins = 30, alpha = 0.005, assemb
 
     points_in = {}; perc = {}
     for b in range(bins):
-        points_in[b] = [p for p in points if p[1]>= intervals[b] and p[1]<intervals[b+1]]
+        points_in[b] = [p for p in points if p[1] >= intervals[b] and p[1] < intervals[b+1]]
         perc[b] = [p[2] for p in points_in[b]]
 
     ## Figure
@@ -455,13 +455,13 @@ def MAplot(data, mode = "interactive", deg = 4, bins = 30, alpha = 0.005, assemb
         xi = arange(l)[ceil(l/6):floor(8*l/9)]
         x_spline = xs[xi]
         y_spline = ys[xi]
-        ax.plot(x_spline, y_spline, "-", color = "blue"); #ax.plot(x, h, "o", color = "blue")
+        ax.plot(x_spline, y_spline, "-", color = "blue") #ax.plot(x, h, "o", color = "blue")
         spline_annotes.append((k, x_spline[0], y_spline[0])) #quantile percentages
         spline_coords[k] = zip(x_spline, y_spline)
 
     ### Decoration
-    ax.set_xlabel("Log10 of sqrt(x1*x2)")
-    ax.set_ylabel("Log2 of x1/x2")
+    ax.set_xlabel("Log10 of sqrt(coord_x1*coord_x2)")
+    ax.set_ylabel("Log2 of coord_x1/coord_x2")
     for sa in spline_annotes:
         ax.annotate(str(sa[0])+"%", xy = (sa[1], sa[2]), xytext = (-33, -5), textcoords = 'offset points',
                     bbox = dict(facecolor = "white", edgecolor = None, boxstyle = "square, pad = .4"))
@@ -524,70 +524,70 @@ def MAplot(data, mode = "interactive", deg = 4, bins = 30, alpha = 0.005, assemb
     return figname, jsname
 
 class AnnoteFinder:
-  """
-  callback for matplotlib to display an annotation when points are clicked on.  The
-  point which is closest to the click and within xtol and ytol is identified.
-
-  Use this function like this:
-
-  plot(xdata, ydata)
-  af = AnnoteFinder(xdata, ydata, annotes)
-  connect('button_press_event', af)
-  """
-
-  def __init__(self, xdata, ydata, annotes, axis = None, xtol = None, ytol = None):
-    self.data = zip(xdata, ydata, annotes)
-    self.xrange = max(xdata) - min(xdata)
-    self.yrange = max(ydata) - min(ydata)
-    if xtol is None:
-      xtol = len(xdata)*(self.xrange/float(len(xdata)))/10
-    if ytol is None:
-      ytol = len(ydata)*(self.yrange/float(len(ydata)))/10
-    self.xtol = xtol
-    self.ytol = ytol
-    if axis is None:
-      self.axis = pylab.gca()
-    else:
-      self.axis= axis
-    self.drawnAnnotations = {}
-    self.links = []
-
-  def distance(self, x1, x2, y1, y2):
-    """distance between two points"""
-    return math.sqrt((x1 - x2)**2 + (y1 - y2)**2)
-
-  def __call__(self, event):
-    if event.inaxes:
-      clickX = event.xdata
-      clickY = event.ydata
-      if self.axis is None or self.axis ==event.inaxes:
-        annotes = []
-        for x, y, a in self.data:
-          if  clickX-self.xtol < x < clickX+self.xtol and  clickY-self.ytol < y < clickY+self.ytol :
-            annotes.append((self.distance(x/self.xrange, clickX/self.xrange, y/self.yrange, clickY/self.yrange), x, y, a) )
-        if annotes:
-          annotes.sort()
-          distance, x, y, annote = annotes[0]
-          self.drawAnnote(event.inaxes, x, y, annote)
-          for l in self.links:
-            l.drawSpecificAnnote(annote)
-
-  def drawAnnote(self, axis, x, y, annote):
     """
-    Draw the annotation on the plot
-    """
-    if (x, y) in self.drawnAnnotations:
-      markers = self.drawnAnnotations[(x, y)]
-      for m in markers:
-        m.set_visible(not m.get_visible())
-      self.axis.figure.canvas.draw()
-    else:
-      t = axis.text(x, y, annote)
-      m = axis.scatter([x], [y], marker = 'd', c = 'r', zorder = 100)
-      self.drawnAnnotations[(x, y)] =(t, m)
-      self.axis.figure.canvas.draw()
+    callback for matplotlib to display an annotation when points are clicked on.  The
+    point which is closest to the click and within xtol and ytol is identified.
 
-  def drawSpecificAnnote(self, annote):
-    annotesToDraw = [(x, y, a) for x, y, a in self.data if a ==annote]
-    for x, y, a in annotesToDraw:
-      self.drawAnnote(self.axis, x, y, a)
+    Use this function like this:
+
+    plot(xdata, ydata)
+    af = AnnoteFinder(xdata, ydata, annotes)
+    connect('button_press_event', af)
+    """
+
+    def __init__(self, xdata, ydata, annotes, axis = None, xtol = None, ytol = None):
+        self.data = zip(xdata, ydata, annotes)
+        self.xrange = max(xdata) - min(xdata)
+        self.yrange = max(ydata) - min(ydata)
+        if xtol is None:
+            xtol = len(xdata)*(self.xrange/float(len(xdata)))/10
+        if ytol is None:
+            ytol = len(ydata)*(self.yrange/float(len(ydata)))/10
+        self.xtol = xtol
+        self.ytol = ytol
+        if axis is None:
+            self.axis = pylab.gca()
+        else:
+            self.axis = axis
+        self.drawn_annotations = {}
+        self.links = []
+
+    def distance(self, coord_x1, coord_x2, coord_y1, coord_y2):
+        """distance between two points"""
+        return math.sqrt((coord_x1 - coord_x2)**2 + (coord_y1 - coord_y2)**2)
+
+    def __call__(self, event):
+        if event.inaxes:
+            click_x = event.xdata
+            click_y = event.ydata
+            if self.axis is None or self.axis == event.inaxes:
+                annotes = []
+                for x, y, a in self.data:
+                    if  click_x-self.xtol < x < click_x+self.xtol and  click_y-self.ytol < y < click_y+self.ytol :
+                        annotes.append((self.distance(x/self.xrange, click_x/self.xrange, y/self.yrange, click_y/self.yrange), x, y, a) )
+                if annotes:
+                    annotes.sort()
+                    distance, x, y, annote = annotes[0]
+                    self.draw_annote(event.inaxes, x, y, annote)
+                    for l in self.links:
+                        l.draw_specific_annote(annote)
+
+    def draw_annote(self, axis, x, y, annote):
+        """
+        Draw the annotation on the plot
+        """
+        if (x, y) in self.drawn_annotations:
+            markers = self.drawn_annotations[(x, y)]
+            for m in markers:
+                m.set_visible(not m.get_visible())
+            self.axis.figure.canvas.draw()
+        else:
+            t = axis.text(x, y, annote)
+            m = axis.scatter([x], [y], marker = 'd', c = 'r', zorder = 100)
+            self.drawn_annotations[(x, y)] =(t, m)
+            self.axis.figure.canvas.draw()
+
+    def draw_specific_annote(self, annote):
+        annotes_to_draw = [(x, y, a) for x, y, a in self.data if a ==annote]
+        for x, y, a in annotes_to_draw:
+            self.draw_annote(self.axis, x, y, a)
