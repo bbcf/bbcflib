@@ -45,13 +45,22 @@ With a ``ConfigParser``, the previous code would look like::
 # Built-in modules #
 import urllib2, json, os
 from datetime import datetime
-from urllib2 import HTTPError
 # Internal modules #
 from .common import normalize_url
 
 ################################################################################
 class GenRep(object):
-    def __init__(self, url = 'http://bbcftools.vital-it.ch/genrep/', root = '/db/genrep', intype = 0, config = None, section = 'genrep'):
+    """
+    This class is used as an interface to genrep webservice
+    """
+    def __init__(
+                    self,
+                    url     = 'http://bbcftools.vital-it.ch/genrep/',
+                    root    = '/db/genrep',
+                    intype  = 0,
+                    config  = None,
+                    section = 'genrep'
+                ):
         """Create an object to query a GenRep repository.
 
         GenRep is the in-house repository for sequence assemblies for the
@@ -86,6 +95,7 @@ class GenRep(object):
         self.intype = intype
 
     def is_up(self):
+        """ Check if genrep webservice is available """
         try:
             urllib2.urlopen(self.url + "/nr_assemblies.json", timeout = 2)
         except urllib2.URLError:
@@ -93,6 +103,7 @@ class GenRep(object):
         return True
 
     def is_down(self):
+        """ Check if genrep webservice is not available """
         return not self.is_up()
 
     def query_url(self, method, assembly):
@@ -120,31 +131,36 @@ class GenRep(object):
 
         Returns the name of the file and the total sequence size.
         """
-        from track import load
+        from bbcflib.track import load
         def push_slices(slices, start, end, name, cur_chunk):
-            if end>start:
+            """Add a feature"""
+            if end > start:
                 slices['coord'].append([start, end])
                 slices['names'].append(name)
                 cur_chunk += end-start
             return slices, cur_chunk
         def flush_slices(slices, cid, out):
+            """Store features in fasta file"""
             names = slices['names']
             coord = slices['coord']
-            chr = chr_names[cid]
-            with open(out, "a") as f:
-                for i, s in enumerate(self.get_sequence(cid, coord)):
-                    f.write(">"+names[i]+" "+chr+":"+str(coord[i][0])+"-"+str(coord[i][1])+"\n"+s+"\n")
+            current_chr = chr_names[cid]
+            with open(out, "a") as file_out:
+                for seq_num, current_seq in enumerate(self.get_sequence(cid, coord)):
+                    start   = str(coord[seq_num][0])
+                    end     = str(coord[seq_num][1])
+                    file_out.write(">"+names[seq_num]+" "+current_chr+":"+start+"-"+end+"\n"+current_seq+"\n")
             return {'coord':[], 'names':[]}
         def set_feature_name(features_names, feature_name):
+            """ Set feature name """
             num             = 0
-            isSearchingName = True
+            is_searching_name = True
             if feature_name in features_names:
-                while isSearchingName:
+                while is_searching_name:
                     num += 1
                     tmp_name = feature_name+"_"+str(num)
                     if tmp_name not in features_names:
-                        isSearchingName = False
-                        feature_name    = tmp_name
+                        is_searching_name   = False
+                        feature_name        = tmp_name
             features_names.add(feature_name)
             return features_names, feature_name
         out         = os.path.splitext(data_path)[0]+".fa"
@@ -152,21 +168,21 @@ class GenRep(object):
         chr_names   = dict((c[0], cn['name']) for c, cn in chromosomes.iteritems())
         chr_len     = dict((c[0], cn['length']) for c, cn in chromosomes.iteritems())
         size        = 0
-        with load(data_path, chrmeta = chromosomes) as t:
+        with load(data_path, chrmeta = chromosomes) as track:
             cur_chunk       = 0
             features_names  = set()
-            for k in chromosomes.keys():
-                for row in t.read(selection = chr_names[k[0]], fields = ["start", "end", "name"]):
-                    s               = max(row[0], 0)
-                    e               = min(row[1], chr_len[k[0]])
-                    features_names, name            = set_feature_name(features_names, row[2])
-                    slices, cur_chunk= push_slices(slices, s, e, name, cur_chunk)
+            for key in chromosomes.keys():
+                for row in track.read(selection = chr_names[key[0]], fields = ["start", "end", "name"]):
+                    start                   = max(row[0], 0)
+                    end                     = min(row[1], chr_len[key[0]])
+                    features_names, name    = set_feature_name(features_names, row[2])
+                    slices, cur_chunk = push_slices(slices, start, end, name, cur_chunk)
                     if cur_chunk > chunk:
                         size        += cur_chunk
-                        slices      = flush_slices(slices, k[0], out)
+                        slices      = flush_slices(slices, key[0], out)
                         cur_chunk   = 0
                 size += cur_chunk
-                slices = flush_slices(slices, k[0], out)
+                slices = flush_slices(slices, key[0], out)
         return (out, size)
 
     def assembly(self, assembly):
@@ -185,7 +201,7 @@ class GenRep(object):
         root = os.path.join(self.root, "nr_assemblies/bowtie")
         if self.intype == 1:
             root = os.path.join(self.root, "nr_assemblies/exons_bowtie")
-        a = Assembly(assembly_id = int(assembly_info['assembly']['id']),
+        assembly = Assembly(assembly_id = int(assembly_info['assembly']['id']),
                      assembly_name = assembly_info['assembly']['name'],
                      index_path = os.path.join(root, str(assembly_info['assembly']['md5'])),
                      bbcf_valid = assembly_info['assembly']['bbcf_valid'],
@@ -199,16 +215,16 @@ class GenRep(object):
                      created_at = datetime.strptime(assembly_info['assembly']['created_at'],
                                                     '%Y-%m-%dT%H:%M:%SZ'))
         chromosomes = json.load(urllib2.urlopen(self.query_url('chromosomes', assembly)))
-        for c in chromosomes:
+        for current_chr in chromosomes:
             name_dictionary = dict([ (x['chr_name']['assembly_id'],
                                       x['chr_name']['value'])
-                                     for x in c['chromosome']['chr_names']])
-            a.add_chromosome(c['chromosome']['id'],
-                             c['chromosome']['refseq_locus'],
-                             c['chromosome']['refseq_version'],
-                             name_dictionary[a.id],
-                             c['chromosome']['length'])
-        return a
+                                     for x in current_chr['chromosome']['chr_names']])
+            assembly.add_chromosome(current_chr['chromosome']['id'],
+                             current_chr['chromosome']['refseq_locus'],
+                             current_chr['chromosome']['refseq_version'],
+                             name_dictionary[assembly.id],
+                             current_chr['chromosome']['length'])
+        return assembly
 
     def assemblies_available(self):
         """
@@ -268,16 +284,18 @@ class GenRep(object):
         if output == None:
             return stat
         else:
-            with open(output, "w") as f:
+            with open(output, "w") as file_out:
                 if matrix_format:
-                    f.write(">Assembly: %s\n" % assembly.name)
-                    f.write("%s\t%s\t%s\t%s" %(stat["A"], stat["C"], stat["G"], stat["T"]))
-                    f.write("\n")
+                    file_out.write(">Assembly: %s\n" % assembly.name)
+                    file_out.write("%s\t%s\t%s\t%s" %(stat["A"], stat["C"], stat["G"], stat["T"]))
+                    file_out.write("\n")
                 else:
-                    f.write("#Assembly: %s\n" % assembly.name)
-                    [f.write("%s\t%s\n" % (x, stat[x])) for x in ["A", "C", "G", "T"]]
-                    f.write("#\n")
-                    [[f.write("%s\t%s\n" % (x+y, stat[x+y])) for y in ["A", "C", "G", "T"]] for x in ["A", "C", "G", "T"]]
+                    file_out.write("#Assembly: %s\n" % assembly.name)
+                    [file_out.write("%s\t%s\n" % (x, stat[x])) for x in ["A", "C", "G", "T"]]
+                    file_out.write("#\n")
+                    for nucleic1 in ["A", "C", "G", "T"]:
+                        for nucleic2 in ["A", "C", "G", "T"]:
+                            file_out.write("%s\t%s\n" % (nucleic1+nucleic2, stat[nucleic1+nucleic2]))
             return output
 
     def fasta_path(self, assembly, chromosome = None):
@@ -295,9 +313,8 @@ class GenRep(object):
             path = os.path.join(root, assembly.md5+".fa.gz")
         return path
 
-
-    def get_genrep_objects(self, url_tag, info_tag, filters = {}):
-        '''
+    def get_genrep_objects(self, url_tag, info_tag, filters = None):
+        """
         Get a list of GenRep objets
         ... attribute url_tag : the GenrepObject type (plural)
         ... attribute info_tag : the GenrepObject type (singular)
@@ -309,7 +326,9 @@ class GenRep(object):
         First get the species with the right name :
         species = get_genrep_objects('organisms', 'organism', {'species':'Mycobacterium leprae'})[0]
         genomes = get_genrep_objects('genomes', 'genome', {'organism_id':species.id})
-        '''
+        """
+        if filters is None:
+            filters = {}
         url = """%s/%s.json""" % (self.url, url_tag)
         infos = json.load(urllib2.urlopen(url))
         result = []
@@ -319,17 +338,17 @@ class GenRep(object):
             if not filters :
                 result.append(obj)
             else : # filter
-                for k, v in filters.items():
-                    if hasattr(obj, k):
-                        if getattr(obj, k) ==v:
+                for key, value in filters.items():
+                    if hasattr(obj, key):
+                        if getattr(obj, key) ==value:
                             result.append(obj)
         return result
 
-
-
-
 ################################################################################
 class Assembly(object):
+    """
+    Contain information about one assembly
+    """
     def __init__(self, assembly_id, assembly_name, index_path,
                  bbcf_valid, updated_at, nr_assembly_id, genome_id,
                  source_name, md5, source_id, created_at):
@@ -396,32 +415,28 @@ class Assembly(object):
         self.created_at = created_at
 
     def add_chromosome(self, chromosome_id, refseq_locus, refseq_version, name, length):
+        """Add a chromosome in this assembly"""
         self.chromosomes[(chromosome_id, refseq_locus, refseq_version)] = \
             {'name': name, 'length': length}
 
     @property
     def chrmeta(self):
-        ''' Returns a dicionary of chromosome meta data looking something like:
+        """ Returns a dicionary of chromosome meta data looking something like:
 
             {'chr1': {'length': 249250621},
              'chr2': {'length': 135534747},
              'chr3': {'length': 135006516},
 
-        '''
+        """
         return dict([(v['name'], dict([('length', v['length'])])) for v in self.chromosomes.values()])
 
 
-
-
-
-
-
 class GenrepObject(object):
-    '''
+    """
     Class wich will reference all different objects used by GenRep
     In general, you should never instanciate GenrepObject directly but
     call a method from the GenRep object.
-    '''
+    """
     def __init__(self, info, key):
         self.__dict__.update(info[key])
 
