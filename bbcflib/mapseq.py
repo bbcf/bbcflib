@@ -555,7 +555,7 @@ def parallel_density_wig( ex, bamfile, chromosomes,
     ex.add( output, description=description, alias=alias )
     return output
 
-def parallel_density_sql( ex, bamfile, output, chromosomes,
+def parallel_density_sql( ex, bamfile, chromosomes,
                           nreads=1, merge=-1, read_extension=-1, convert=True,
                           b2w_args=[], via='lsf' ):
     """Runs 'bam_to_density' for every chromosome in the 'chromosomes' list.
@@ -564,17 +564,47 @@ def parallel_density_sql( ex, bamfile, output, chromosomes,
     if 'merge'>=0 (shift and merge strands into one tracks)
     or 'merge'<0 (keep seperate tracks for each strand).
     """
-    if chromosomes == None:
-        chromosomes = {None: {'name': None}}
+    from bbcflib.track import new
+    output = unique_filename_in()
+    touch(ex,output)
+    futures = {}
     for k,v in chromosomes.iteritems():
-        future = bam_to_density.nonblocking( ex, bamfile, output,
-                                             compact_chromosome_name(k), v['name'],
-                                             nreads, merge, read_extension, convert,
-                                             True, args=b2w_args, via=via )
-        try:
-            _ = future.wait()
-        except ProgramFailed:
-            pass
+        futures[k] = bam_to_density.nonblocking( ex, bamfile, output,
+                                                 compact_chromosome_name(k), v['name'],
+                                                 nreads, merge, read_extension, convert,
+                                                 False, args=b2w_args, via=via )
+    if merge < 0:
+        def _wig(infile,strnd="+"):
+            for row in infile:
+                r = row.split("\t")
+                if r[5][0] == strnd:
+                    yield((r[1],r[2],r[4]))
+        with new(output+"rev.sql",datatype="quantitative",chrmeta=chromosomes) as trev:
+            with new(output+"fwd.sql",datatype="quantitative",chrmeta=chromosomes) as tfwd:
+                for k,v in chromosomes.iteritems():
+                    try:
+                        wig = futures[k].wait()
+                        with open(wig,"r") as f:
+                            tfwd.write(v['name'],_wig(f,"+"))
+                        with open(wig,"r") as f:
+                            trev.write(v['name'],_wig(f,"-"))
+                    except ProgramFailed:
+                        tfwd.write(v['name'],[])
+                        trev.write(v['name'],[])
+    else:
+        def _bedgr(infile):
+            for row in infile:
+                r = row.split("\t")
+                yield((r[1],r[2],r[3]))
+        with new(output+"merged.sql",datatype="quantitative",chrmeta=chromosomes) as tboth:
+            for k,v in chromosomes.iteritems():
+                try:
+                    bedgr = futures[k].wait()
+                    with open(bedgr,"r") as f:
+                        tboth.write(v['name'],_bedgr(f))
+                except ProgramFailed:
+                    tboth.write(v['name'],[])
+
     return output
 
 ############################################################
@@ -639,16 +669,12 @@ def densities_groups( ex, job_or_dict, file_dict, chromosomes, via='lsf' ):
                     b2w_args += ["-q",str(options['read_extension'])]
         wig = []
         for m in mapped.values():
-            output = unique_filename_in()
-            touch(ex,output)
-            [common.create_sql_track( output+s+'.sql', chromosomes.values(), 
-                                      name=m['libname'] ) 
-             for s in suffixes]
-            wig.append(parallel_density_sql( ex, m["bam"], output, chromosomes,
-                                             nreads=m["stats"]["total"],
-                                             merge=merge_strands,
-                                             convert=False,
-                                             b2w_args=b2w_args, via=via ))
+            output = parallel_density_sql( ex, m["bam"], chromosomes,
+                                           nreads=m["stats"]["total"],
+                                           merge=merge_strands,
+                                           convert=False,
+                                           b2w_args=b2w_args, via=via )
+            wig.append(output)
             ex.add( output, description='none:'+m['libname']+'.sql' )
             [ex.add( output+s+'.sql', description='sql:'+m['libname']+'_'+s+'.sql',
                      associate_to_filename=output, template='%s_'+s+'.sql' )

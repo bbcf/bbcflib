@@ -397,17 +397,11 @@ def workflow_groups( ex, job_or_dict, mapseq_files, chromosomes, script_path='',
             wig = []
             for m in mapped.values():
                 if merge_strands >= 0 or not('wig' in m) or len(m['wig'])<2:
-                    output = unique_filename_in()
-                    touch(ex,output)
-                    [create_sql_track( output+s+'.sql', chromosomes.values(),
-                                       name=m['libname'] ) 
-                     for s in suffixes]
-                    mapseq.parallel_density_sql( ex, m["bam"],
-                                                 output, chromosomes,
-                                                 nreads=m["stats"]["total"],
-                                                 merge=-1,
-                                                 convert=False,
-                                                 b2w_args=b2w_args, via=via )
+                    output = mapseq.parallel_density_sql( ex, m["bam"], chromosomes,
+                                                          nreads=m["stats"]["total"],
+                                                          merge=-1,
+                                                          convert=False,
+                                                          b2w_args=b2w_args, via=via )
                     wig.append(dict((s,output+s+'.sql') for s in suffixes))
                 else:
                     wig.append(m['wig'])
