@@ -78,7 +78,7 @@ class TrackFormat(TrackText, TrackProxy):
             if f in self.fields: fields.append(f)
             else: break
         # Write everything #
-        for feature in self.read(fields=fields):
+        for feature in self.read(fields = fields):
             f = list(feature)
             try:
                 f[5] = int_to_strand(feature[5])
@@ -107,7 +107,7 @@ class TrackFormat(TrackText, TrackProxy):
                 raise Exception("The file '" + self._path + "' has less than three columns and is hence not a valid BED file.")
             if self.num_fields > len(all_fields_possible):
                 raise Exception("The file '" + self._path + "' has too many columns and is hence not a valid BED file.")
-            return all_fields_possible[0:max(5,self.num_fields)]
+            return all_fields_possible[0:max(5, self.num_fields)]
 
     #-----------------------------------------------------------------------------#
     @property
@@ -120,19 +120,19 @@ class TrackFormat(TrackText, TrackProxy):
             raise Exception("The file '" + self._path + "' cannot be loaded as a '" + datatype + "' datatype.")
 
 ###########################################################################
-def random_track(number_of_features=15000000, size=1000, jump=1000, orig_start=0, chrs=20):
+def random_track(number_of_features = 15000000, size = 1000, jump = 1000, orig_start = 0, chrs = 20):
     import random, tempfile
-    yield 'track type=bed name="Features" description="Intervals" source="Random generator"\n'
+    yield 'track type = bed name = "Features" description = "Intervals" source = "Random generator"\n'
     name_gen = tempfile._RandomNameSequence()
     chr = 0
     for i in range(number_of_features):
         if i % (number_of_features / chrs) == 0:
             chr += 1
             start = orig_start
-        start       =   start + (random.randint(0,jump))
-        end         =   start + (random.randint(1,size))
-        thick_start =   start + (random.randint(-size*0.25,size*0.25))
-        thick_end   =   end   + (random.randint(-size*0.25,size*0.25))
+        start       =   start + (random.randint(0, jump))
+        end         =   start + (random.randint(1, size))
+        thick_start =   start + (random.randint(-size*0.25, size*0.25))
+        thick_end   =   end   + (random.randint(-size*0.25, size*0.25))
         name        = name_gen.next() + name_gen.next()
         strand      = random.random() < 0.5 and '+' or '-'
         score       = random.random()

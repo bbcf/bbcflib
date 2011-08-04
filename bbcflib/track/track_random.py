@@ -26,15 +26,15 @@ class TrackRandom(Track):
         self.name_gen.rng.seed(0)
         self.size = 500
 
-    def read(self, selection=None, fields=None):
+    def read(self, selection = None, fields = None):
         if type(selection) != str: raise Exception(0, "You can't specify a region on a random track")
         if fields: raise Exception(0, "You can't specify fields on a random track")
         start = 0
         for feat in range(int(self.size + 4*self.size*random.random())):
-            start = start + (random.randint(0,100))
-            end = start + (random.randint(1,100) )
+            start = start + (random.randint(0, 100))
+            end = start + (random.randint(1, 100) )
             score = random.gammavariate(1, 0.1) * 1000
-            strand = map(lambda x: x==1 and 1 or -1, [random.randint(0,1)])[0]
+            strand = map(lambda x: x ==1 and 1 or -1, [random.randint(0, 1)])[0]
             yield [start, end, self.name_gen.next(), score, strand]
 
     @property

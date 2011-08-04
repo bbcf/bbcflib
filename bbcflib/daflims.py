@@ -35,7 +35,7 @@ the three kinds of files stored in the LIMS:
 For example, to fetch the FASTQ file of run 91, lane 3 sequenced on
 R2D2 in Lausanne, write::
 
-    d = DAFLIMS(username=..., password=...)
+    d = DAFLIMS(username = ..., password = ...)
     d.fetch_fastq('lgtf', 'R2D2', 91, 3, '/path/to/save/to.fastq')
 
 The last argument works much like a target given to the Unix command
@@ -66,14 +66,14 @@ class DAFLIMS(object):
     *config* argument, and one or both of *username* and *password*,
     the latter override the ConfigParser.
 
-      .. py:method:: fetch_fastq(facility, machine, run, lane, to=None)
+      .. py:method:: fetch_fastq(facility, machine, run, lane, to = None)
 
-      .. py:method:: fetch_eland(facility, machine, run, lane, to=None)
+      .. py:method:: fetch_eland(facility, machine, run, lane, to = None)
 
       .. automethod:: fetch_qseq
     """
-    def __init__(self, username=None, password=None, config=None, section="daflims"):
-        if (username==None or password==None) and config==None:
+    def __init__(self, username = None, password = None, config = None, section = "daflims"):
+        if (username ==None or password ==None) and config ==None:
             raise TypeError("Must provide a username and password, or a ConfigParser.")
         elif config != None:
             if username == None: self.username = config.get(section, 'daflims_username')
@@ -96,10 +96,10 @@ class DAFLIMS(object):
         auth_handler = urllib2.HTTPDigestAuthHandler()
         parse_url = urlparse(url)
         base_url = parse_url.scheme + '://' + parse_url.netloc
-        auth_handler.add_password(realm="UHTS-LIMS-ws",
-                                  uri=base_url,
-                                  user=self.username,
-                                  passwd=self.password)
+        auth_handler.add_password(realm = "UHTS-LIMS-ws",
+                                  uri = base_url,
+                                  user = self.username,
+                                  passwd = self.password)
         opener = urllib2.build_opener(auth_handler)
         urllib2.install_opener(opener)
         return urllib2.urlopen(url)
@@ -113,8 +113,8 @@ class DAFLIMS(object):
         any further arguments to the function are appended as path
         components of the URL.
         """
-        base_url="http://uhts-%s.vital-it.ch" % facility
-        url = "/".join([base_url,"ws",method] + [str(x) for x in args])
+        base_url = "http://uhts-%s.vital-it.ch" % facility
+        url = "/".join([base_url, "ws", method] + [str(x) for x in args])
         return self._open_url(url).read()
 
     def _check_description(self, facility, machine, run, lane):
@@ -142,9 +142,9 @@ class DAFLIMS(object):
         """
         self._check_description(facility, machine, run, lane)
         response = self._run_method("symlinkname", facility, machine, run, lane).splitlines()
-        if re.search('==DATA', response[0]) == None or len(response)<2:
-            raise ValueError(("symlinkname method failed on DAFLIMS (facility='%s', " + \
-                              "machine='%s', run=%d, lane=%d): %s") % (facility, machine, run, lane,
+        if re.search(' ==DATA', response[0]) == None or len(response)<2:
+            raise ValueError(("symlinkname method failed on DAFLIMS (facility = '%s', " + \
+                              "machine = '%s', run = %d, lane = %d): %s") % (facility, machine, run, lane,
                                                                      '\n'.join(response[1:])))
         else:
             q = response[1].split('\t')
@@ -174,11 +174,11 @@ class DAFLIMS(object):
         self._check_description(facility, machine, run, lane)
         response = self._run_method("lanedesc", facility, machine, run, lane).splitlines()
 
-        # '==DATA' on the first line means success.  It should be
+        # ' ==DATA' on the first line means success.  It should be
         # followed by one line of data.  Anything else is an error.
-        if re.search('==DATA', response[0]) == None:
-            raise ValueError(("lanedesc method failed on DAFLIMS (facility='%s', " + \
-                              "machine='%s', run=%d, lane=%d): %s") % (facility, machine, run, lane,
+        if re.search(' ==DATA', response[0]) == None:
+            raise ValueError(("lanedesc method failed on DAFLIMS (facility = '%s', " + \
+                              "machine = '%s', run = %d, lane = %d): %s") % (facility, machine, run, lane,
                                                                      '\n'.join(response[1:])))
         if len(response) > 2:
             raise ValueError("lanedesc method returned multiple records: %s" % ('\n'.join(response[1:])))
@@ -202,7 +202,7 @@ class DAFLIMS(object):
                 'NCBI ID': q[14]}
 
 
-    def _fetch_symlink(self, link_name, to=None):
+    def _fetch_symlink(self, link_name, to = None):
         """Fetch the data from a file in the LIMS into *to*.
 
         *link_name* is a URL to a .tar.gz file in the LIMS.  These
@@ -227,7 +227,7 @@ class DAFLIMS(object):
         # containing exactly one file.  We stream from the HTTP
         # connection to a local file in 4kb chunks.
         url = self._open_url(link_name)
-        tar = tarfile.open(fileobj=url, mode='r|gz')
+        tar = tarfile.open(fileobj = url, mode = 'r|gz')
 
         # Since the tar file contains exactly one file, calling
         # ``next()`` on the tar gives us the file we want.  We cannot
@@ -250,7 +250,7 @@ class DAFLIMS(object):
         tar.close()
         return target
 
-    def _fetch_structured(self, type, facility, machine, run, lane, to=None):
+    def _fetch_structured(self, type, facility, machine, run, lane, to = None):
         """Fetch a file from its description.
 
         The return value is a dictionary containing the following keys
@@ -283,7 +283,7 @@ class DAFLIMS(object):
         info['path'] = filename
         return info
 
-    def fetch_fastq(self, facility, machine, run, lane, to=None):
+    def fetch_fastq(self, facility, machine, run, lane, to = None):
         """Fetch a file from the LIMS to *to*.
 
         If *to* is omitted, then the data is written to a
@@ -314,7 +314,7 @@ class DAFLIMS(object):
         """
         return self._fetch_structured('fastq', facility, machine, run, lane, to)
 
-    def fetch_eland(self, facility, machine, run, lane, to=None):
+    def fetch_eland(self, facility, machine, run, lane, to = None):
         """Fetch a file from the LIMS to *to*.
 
         If *to* is omitted, then the data is written to a
@@ -345,7 +345,7 @@ class DAFLIMS(object):
         """
         return self._fetch_structured('eland', facility, machine, run, lane, to)
 
-    def fetch_qseq(self, facility, machine, run, lane, to=None):
+    def fetch_qseq(self, facility, machine, run, lane, to = None):
         """Fetch a file from the LIMS to *to*.
 
         If *to* is omitted, then the data is written to a

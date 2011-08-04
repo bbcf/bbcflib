@@ -27,11 +27,11 @@ class Test_Read(unittest.TestCase):
             data = t.read()
             self.assertEqual(len(list(data)), 12)
             # Different fields #
-            data = t.read('chr1', fields=['score'])
-            expected = [(10.0,), (0.0,), (10.0,), (0.0,), (0.0,), (10.0,), (10.0,), (10.0,), (10.0,), (10.0,), (10.0,), (5.0,)]
+            data = t.read('chr1', fields = ['score'])
+            expected = [(10.0, ), (0.0, ), (10.0, ), (0.0, ), (0.0, ), (10.0, ), (10.0, ), (10.0, ), (10.0, ), (10.0, ), (10.0, ), (5.0, )]
             self.assertEqual(list(data), expected)
             # Empty result #
-            data = t.read({'chr':'chr2','start':0,'end':10})
+            data = t.read({'chr':'chr2', 'start':0, 'end':10})
             self.assertEqual(list(data), [])
 
 #------------------------------------------------------------------------------#
@@ -56,10 +56,10 @@ class Test_Selection(unittest.TestCase):
             data = t.read({'chr':'chr1', 'strand':1})
             self.assertEqual(list(data), features[1:6] + features[7:-1])
             # Score #
-            data = t.read({'chr':'chr1', 'score':(0.3,0.5)})
+            data = t.read({'chr':'chr1', 'score':(0.3, 0.5)})
             self.assertEqual(list(data), features[5:7])
             # All #
-            data = t.read({'chr':'chr1', 'start':85, 'end':200, 'strand':-1, 'score':(0.3,0.5)})
+            data = t.read({'chr':'chr1', 'start':85, 'end':200, 'strand':-1, 'score':(0.3, 0.5)})
             self.assertEqual(list(data), features[6:7])
 
 #------------------------------------------------------------------------------#
@@ -82,12 +82,12 @@ class Test_Write(unittest.TestCase):
             t.write('chrX', list(t.read(chrom)))
             self.assertEqual(list(t.read('chrX')), list(t.read(chrom)))
             # Live copy #
-            t.write('chrY', t.read(chrom, cursor=True))
+            t.write('chrY', t.read(chrom, cursor = True))
             self.assertEqual(list(t.read('chrY')), list(t.read(chrom)))
             # More fields #
             chrom = 'chr3'
             features = [(10, 20, 'A', 0.0, 1, 8, 22)]
-            t.write(chrom, features, fields=track.Track.qualitative_fields + ['thick_start', 'thick_end'])
+            t.write(chrom, features, fields = track.Track.qualitative_fields + ['thick_start', 'thick_end'])
             self.assertEqual(list(t.read(chrom)), features)
         os.remove(path)
 
@@ -97,16 +97,16 @@ class Test_Creation(unittest.TestCase):
         format = 'sql'
         path = named_temporary_path('.' + format)
         # With format #
-        with track.new(path=path, format=format) as t:
+        with track.new(path = path, format = format) as t:
             self.assertEqual(t.path, path)
         os.remove(path)
         # Without format #
-        with track.new(path=path) as t:
+        with track.new(path = path) as t:
             self.assertEqual(t.format, format)
         os.remove(path)
         # With datatype #
         datatype = 'quantitative'
-        with track.new(path=path, format=format, datatype='quantitative') as t:
+        with track.new(path = path, format = format, datatype = 'quantitative') as t:
             self.assertEqual(t.datatype, 'quantitative')
             self.assertEqual(t.attributes, {'datatype':'quantitative'})
         os.remove(path)
@@ -135,11 +135,11 @@ class Test_Remove(unittest.TestCase):
 class Test_Readonly(unittest.TestCase):
     def runTest(self):
         path = track_collections['Yeast']['RP genes']['path_sql']
-        with track.load(path, readonly=True) as t:
+        with track.load(path, readonly = True) as t:
             t.remove()
             t.attributes = {}
             t.chrmeta = {}
-        with track.load(path, readonly=True) as t:
+        with track.load(path, readonly = True) as t:
             self.assertEqual(True, bool(t.all_chrs))
             self.assertEqual(True, bool(t.attributes))
             self.assertEqual(True, bool(t.chrmeta))
@@ -148,7 +148,7 @@ class Test_Readonly(unittest.TestCase):
 class Test_Modified(unittest.TestCase):
     def runTest(self):
         d = track_collections['Yeast']['All genes']
-        with track.load(d['path_sql'], readonly=True) as t:
+        with track.load(d['path_sql'], readonly = True) as t:
             self.assertFalse(t.modified)
             t.write('chrM', [(10, 20, 'A', 0.0, 1)])
             self.assertTrue(t.modified)
@@ -172,17 +172,17 @@ class Test_Chrmeta(unittest.TestCase):
         os.remove(path)
         # Dictionary #
         d = track_collections['Validation'][1]
-        with track.load(d['path_sql'], chrmeta=info, readonly=True) as t:
+        with track.load(d['path_sql'], chrmeta = info, readonly = True) as t:
             self.assertEqual(t.chrmeta['chr1']['length'], 197195432)
         # Genrep #
-        with track.load(d['path_sql'], chrmeta='hg19', readonly=True) as t:
+        with track.load(d['path_sql'], chrmeta = 'hg19', readonly = True) as t:
             self.assertEqual(t.chrmeta['chr1']['length'], 249250621)
         # File #
-        with track.load(d['path_sql'], chrmeta=yeast_chr_file, readonly=True) as t:
+        with track.load(d['path_sql'], chrmeta = yeast_chr_file, readonly = True) as t:
             self.assertEqual(t.chrmeta['chr1']['length'], 230208)
         # Bad #
         chromosomes  = [{'length': 576869, 'name': 'chr1'}, {'length': 813178, 'name': 'chr2'}]
-        with track.load(d['path_sql'], readonly=True) as t:
+        with track.load(d['path_sql'], readonly = True) as t:
             self.assertRaises(TypeError, t.chrmeta, chromosomes)
 
 #------------------------------------------------------------------------------#
@@ -232,8 +232,8 @@ class Test_Format(unittest.TestCase):
 class Test_Corrupted(unittest.TestCase):
     def runTest(self):
         t = track_collections['Special']['Corrupted']
-        with track.load(t['path_sql'], readonly=True) as t:
-            self.assertEqual(t.all_chrs, ['chr' + str(i) for i in range(1,17)])
+        with track.load(t['path_sql'], readonly = True) as t:
+            self.assertEqual(t.all_chrs, ['chr' + str(i) for i in range(1, 17)])
             self.assertEqual(t.chrmeta, {})
             self.assertEqual(t.attributes, {})
 

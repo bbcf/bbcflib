@@ -36,8 +36,8 @@ ce6.chromosomes = {(3067, u'NC_003280', 7): {'length': 15279323, 'name': u'chrII
 
 #--------------------------------------------------------------------------------#
 test_config_file = '''[genrep]
-genrep_url=http://bbcftools.vital-it.ch/genrep/
-genrep_root=/db/genrep'''
+genrep_url = http://bbcftools.vital-it.ch/genrep/
+genrep_root = /db/genrep'''
 def get_config_file_parser():
     file = cStringIO.StringIO()
     file.write(test_config_file)
@@ -54,7 +54,7 @@ class Test_GenRep(unittest.TestCase):
                              '/db/genrep/nr_assemblies')
         if self.genrep.is_down():
             self.skipTest("The Genrep server is down")
-        self.genrep_from_config = GenRep(config=get_config_file_parser())
+        self.genrep_from_config = GenRep(config = get_config_file_parser())
 
     def test_config_correctly_loaded(self):
         self.assertEqual(self.genrep.url, 'http://bbcftools.vital-it.ch/genrep')
@@ -64,16 +64,16 @@ class Test_GenRep(unittest.TestCase):
         def check_with_url(url):
             g = GenRep(url, '')
             self.assertEqual(g.query_url('boris', 'hilda'),
-                             'http://bbcftools.vital-it.ch/genrep/boris.json?assembly_name=hilda')
+                             'http://bbcftools.vital-it.ch/genrep/boris.json?assembly_name = hilda')
             self.assertEqual(g.query_url('boris', 36),
-                             'http://bbcftools.vital-it.ch/genrep/boris.json?assembly_id=36')
+                             'http://bbcftools.vital-it.ch/genrep/boris.json?assembly_id = 36')
         [check_with_url(u) for u in ['http://bbcftools.vital-it.ch/genrep/',
                                      'http://bbcftools.vital-it.ch/genrep',
                                      'bbcftools.vital-it.ch/genrep/',
                                      'bbcftools.vital-it.ch/genrep']]
         g = GenRep('http://bbcftools.vital-it.ch/genrep', '')
         self.assertRaises(ValueError,
-                          lambda : g.query_url('boris',[1,2,3]))
+                          lambda : g.query_url('boris', [1, 2, 3]))
 
     def assertAssembliesEqual(self, a, b):
         self.assertEqual(a.id, b.id)

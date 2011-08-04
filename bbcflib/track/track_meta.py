@@ -41,7 +41,7 @@ class ChromMetaData(ModifiedDict):
     #--------------------------------------------------------------------------#
     def read_tuple(self, t):
         column_names, rows = t
-        rows = [dict([(k,r[i]) for i, k in enumerate(column_names)]) for r in rows]
+        rows = [dict([(k, r[i]) for i, k in enumerate(column_names)]) for r in rows]
         return dict([(r['name'], dict([(k, r[k]) for k in column_names if k != 'name'])) for r in rows])
 
     def read_genrep(self, name):
@@ -74,11 +74,11 @@ class ChromMetaData(ModifiedDict):
             raise Exception("The file '" + path + "' does not seam to contain any information.")
         return result
 
-    def write_file(self, path=None):
+    def write_file(self, path = None):
         if not path: path = named_temporary_path()
         if os.path.exists(path): raise Exception("The location '" + path + "' is already taken")
         def lines():
-            for k,v in self.items(): yield k + '\t' + str(v['length']) + '\n'
+            for k, v in self.items(): yield k + '\t' + str(v['length']) + '\n'
         with open(path, 'w') as f: f.writelines(lines())
         return path
 
@@ -89,7 +89,7 @@ class ChromMetaData(ModifiedDict):
 
     @property
     def rows(self):
-        return [dict([['name', chrom]] + [(k,v) for k,v in self[chrom].items()]) for chrom in self]
+        return [dict([['name', chrom]] + [(k, v) for k, v in self[chrom].items()]) for chrom in self]
 
     #--------------------------------------------------------------------------#
     def choose_max(self, chrmeta):

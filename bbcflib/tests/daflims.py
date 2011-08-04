@@ -15,8 +15,8 @@ __test__ = True
 
 #--------------------------------------------------------------------------------#
 test_config_file = '''[daflims]
-daflims_username=boris
-daflims_password='''
+daflims_username = boris
+daflims_password = '''
 def get_config_file_parser():
     file = cStringIO.StringIO()
     file.write(test_config_file)
@@ -29,7 +29,7 @@ def get_config_file_parser():
 class Test_DAFLIMS(unittest.TestCase):
     def setUp(self):
         self.skipTest("These tests don't pass anymore. Delete this line once they are fixed.")
-        self.d = DAFLIMS(config=get_config_file_parser())
+        self.d = DAFLIMS(config = get_config_file_parser())
 
     def test_symlinkname(self):
         self.assertEqual(self.d.symlinkname('lgtf', 'R2D2', 91, 3),
@@ -49,26 +49,26 @@ class Test_DAFLIMS(unittest.TestCase):
         self.assertRaises(ValueError, self.d.lanedesc, 'lgtf', 'boris', 91, 3)
 
     def test_fetch_symlink(self):
-        fastq = self.d.symlinkname('lgtf','R2D2',91,3)['fastq']
-        filename = self.d.fetch_symlink(fastq, to='/scratch/frt/daily/bbcf')
+        fastq = self.d.symlinkname('lgtf', 'R2D2', 91, 3)['fastq']
+        filename = self.d.fetch_symlink(fastq, to = '/scratch/frt/daily/bbcf')
         self.assertTrue(os.path.exists(filename))
         self.assertEqual(os.stat(filename).st_size, 2927141632)
         os.unlink(filename)
 
     def test_fetch_fastq(self):
-        s = self.d.fetch_fastq('lgtf','R2D2',91,3, to='/scratch/frt/daily/bbcf')
+        s = self.d.fetch_fastq('lgtf', 'R2D2', 91, 3, to = '/scratch/frt/daily/bbcf')
         self.assertTrue(os.path.exists(s['path']))
         self.assertEqual(os.stat(s['path']).st_size, 2927141632)
         os.unlink(s['path'])
 
     def test_fetch_eland(self):
-        s = self.d.fetch_eland('lgtf','R2D2',91,3, to='/scratch/frt/daily/bbcf')
+        s = self.d.fetch_eland('lgtf', 'R2D2', 91, 3, to = '/scratch/frt/daily/bbcf')
         self.assertTrue(os.path.exists(s['path']))
         self.assertEqual(os.stat(s['path']).st_size, 3011727531)
         os.unlink(s['path'])
 
     def test_fetch_qseq(self):
-        s = self.d.fetch_qseq('lgtf','R2D2',91,3, to='/scratch/frt/daily/bbcf')
+        s = self.d.fetch_qseq('lgtf', 'R2D2', 91, 3, to = '/scratch/frt/daily/bbcf')
         self.assertTrue(os.path.exists(s['path']))
         self.assertEqual(os.stat(s['path']).st_size, 27223154)
         os.unlink(s['path'])

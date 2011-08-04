@@ -16,7 +16,7 @@ from .track_proxy import TrackProxy, TrackBackend, backend_format
 
 ###########################################################################
 class TrackBinary(object):
-    def __init__(self, path, format=None, name=None, chrmeta=None, datatype=None, readonly=False, empty=False):
+    def __init__(self, path, format = None, name = None, chrmeta = None, datatype = None, readonly = False, empty = False):
         # Parameters with a double underscore refer to the underlying binary track #
         self.__path  = path
         self._format = self.backend_format
@@ -27,20 +27,20 @@ class TrackBinary(object):
         # Load the new text track as self #
         super(TrackBinary, self).__init__(tmp_path, format, name, chrmeta, datatype, readonly, empty)
 
-    def dump(self, path=None):
+    def dump(self, path = None):
         super(TrackBinary, self).dump()
         if not path: path = self.__path
         elif os.path.exists(path): raise Exception("The location '" + path + "' is already taken.")
         self.text_to_binary(self._path, path)
 
-    def unload(self, datatype=None, value=None, traceback=None):
+    def unload(self, datatype = None, value = None, traceback = None):
         if self.modified and not self.readonly: self.dump()
         if os.path.exists(self.path): os.remove(self.path)
         if os.path.exists(self._path): os.remove(self._path)
 
     #-----------------------------------------------------------------------------#
     def run_tool(self, tool_name, args):
-        proc = subprocess.Popen([tool_name] + args, stderr=subprocess.PIPE)
+        proc = subprocess.Popen([tool_name] + args, stderr = subprocess.PIPE)
         stdout, stderr = proc.communicate()
         if stderr: raise Exception("The tool '" + tool_name + "' exited with message: " + '"' + stderr.strip('\n') + '"')
 

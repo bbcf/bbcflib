@@ -29,7 +29,7 @@ def create_tracks():
         for track_num, d in sorted(col.items()):
             print terminal_colors['txtylw'] + "Creating track '" + d['name'] + "'" + terminal_colors['end']
             if os.path.exists(d['path_sql']): os.remove(d['path_sql'])
-            with load(d['path'], chrmeta=yeast_chr_file) as t:
+            with load(d['path'], chrmeta = yeast_chr_file) as t:
                 t.convert(d['path_sql'])
 
 # Random tracks #
@@ -46,7 +46,7 @@ def create_binary():
     for track_num, d in sorted(track_collections['Binary'].items()):
         print terminal_colors['txtylw'] + "Creating track '" + d['name'] + "'" + terminal_colors['end']
         bedgraph_path = track_collections['Signals'][track_num]['path']
-        proc = subprocess.Popen(['bedGraphToBigWig', bedgraph_path, yeast_chr_file, d['path']], stderr=subprocess.PIPE)
+        proc = subprocess.Popen(['bedGraphToBigWig', bedgraph_path, yeast_chr_file, d['path']], stderr = subprocess.PIPE)
         stdout, stderr = proc.communicate()
         if stderr: raise Exception("The tool bedGraphToBigWig exited with message: " + '"' + stderr.strip('\n') + '"')
 
@@ -59,11 +59,11 @@ def create_signals():
     if os.path.exists(tracks_path + 'quan/wig/pol2.wig'): os.remove(tracks_path + 'quan/wig/pol2.wig')
     with open(tracks_path + 'quan/wig/pol2.wig', 'w') as file: file.writelines(random_track('fixed'))
     if os.path.exists(tracks_path + 'quan/sql/pol2.sql'): os.remove(tracks_path + 'quan/sql/pol2.sql')
-    with load(tracks_path + 'quan/wig/pol2.wig', chrmeta=yeast_chr_file) as t: t.convert(tracks_path + 'quan/sql/pol2.sql')
+    with load(tracks_path + 'quan/wig/pol2.wig', chrmeta = yeast_chr_file) as t: t.convert(tracks_path + 'quan/sql/pol2.sql')
     # Rap1
     print terminal_colors['txtylw'] + "Creating track 'Rap1'" + terminal_colors['end']
     random.seed(0)
     if os.path.exists(tracks_path + 'quan/wig/rap1.wig'): os.remove(tracks_path + 'quan/wig/rap1.wig')
     with open(tracks_path + 'quan/wig/rap1.wig', 'w') as file: file.writelines(random_track('variable'))
     if os.path.exists(tracks_path + 'quan/sql/rap1.sql'): os.remove(tracks_path + 'quan/sql/rap1.sql')
-    with load(tracks_path + 'quan/wig/rap1.wig', chrmeta=yeast_chr_file) as t: t.convert(tracks_path + 'quan/sql/rap1.sql')
+    with load(tracks_path + 'quan/wig/rap1.wig', chrmeta = yeast_chr_file) as t: t.convert(tracks_path + 'quan/sql/rap1.sql')

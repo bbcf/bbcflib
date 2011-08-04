@@ -31,7 +31,7 @@ class Test_Read(unittest.TestCase):
 class Test_Write(unittest.TestCase):
     def runTest(self):
         path = named_temporary_path('.bigWig')
-        with track.new(path, chrmeta=yeast_chr_file) as t:
+        with track.new(path, chrmeta = yeast_chr_file) as t:
             self.assertEqual(t.datatype, 'quantitative')
             features = {}
             features['chr1'] = [(0,  10, -1.0),
@@ -49,9 +49,9 @@ class Test_Overwrite(unittest.TestCase):
         shutil.copyfile(old_path, new_path)
         feature = (10, 20, 9999.0)
         chrom = 'chr2'
-        with track.load(new_path, chrmeta=yeast_chr_file) as t:
-            t.write(chrom, (feature,))
-        with track.load(new_path, chrmeta=yeast_chr_file) as t:
+        with track.load(new_path, chrmeta = yeast_chr_file) as t:
+            t.write(chrom, (feature, ))
+        with track.load(new_path, chrmeta = yeast_chr_file) as t:
             self.assertEqual(feature, t.read(chrom).next())
         os.remove(new_path)
 
@@ -59,9 +59,9 @@ class Test_Overwrite(unittest.TestCase):
 class Test_Roundtrips(unittest.TestCase):
     def runTest(self):
         path = named_temporary_path('.bigWig')
-        for i in ('A','B'):
+        for i in ('A', 'B'):
             d = track_collections['Binary'][i]
-            with track.load(d['path'], chrmeta=yeast_chr_file) as t: t.dump(path)
+            with track.load(d['path'], chrmeta = yeast_chr_file) as t: t.dump(path)
             self.assertTrue(filecmp.cmp(d['path'], path))
             os.remove(path)
 
@@ -97,7 +97,7 @@ class Test_Convert(unittest.TestCase):
         with open(path_new_wig, 'r') as f: A = f.read().split('\n')
         with open(path_ref_wig, 'r') as f: B = f.read().split('\n')
         # Case 2b: BIGWIG to SQL #
-        with track.load(path_ref_bw, chrmeta=yeast_chr_file) as t:
+        with track.load(path_ref_bw, chrmeta = yeast_chr_file) as t:
             t.convert(path_new_sql)
             self.assertEqual(t.format, 'sql')
         self.assertTrue(filecmp.cmp(path_new_sql, path_ref_sql))
@@ -108,7 +108,7 @@ class Test_Convert(unittest.TestCase):
         self.assertTrue(filecmp.cmp(path_new_bw, path_ref_bw))
         # Case 4b: WIG to BIGWIG #
         os.remove(path_new_bw)
-        with track.load(path_ref_wig, chrmeta=yeast_chr_file) as t:
+        with track.load(path_ref_wig, chrmeta = yeast_chr_file) as t:
             t.convert(path_new_bw)
             self.assertEqual(t.format, 'bigWig')
         self.assertTrue(filecmp.cmp(path_new_bw, path_ref_bw))

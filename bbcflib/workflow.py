@@ -7,7 +7,7 @@ A wrapper for functions to extend them to full workflows for HTSStation.
 """
 
 # Other modules #
-from bein import *
+from bein import execution
 from bein.util import background
 
 ################################################################################
@@ -32,13 +32,13 @@ class Workflow(object):
         # Calculate all appropriate group pairings
         group_pairs = []
 
-        def _ex(i,j):
+        def _ex(i, j):
             description = 'job%d-%d-%d' % (frontend_id, i, j)
-            with execution(lims, description=description) as ex:
+            with execution(lims, description = description) as ex:
                 self.f(ex, job.groups[i], job.groups[j], options)
-            return ((i,j), ex.id)
+            return ((i, j), ex.id)
 
-        futures = [background(_ex, i, j) for i,j in group_pairs]
+        futures = [background(_ex, i, j) for i, j in group_pairs]
         execution_ids = dict([f.wait() for f in futures])
 
         # Send email report of run

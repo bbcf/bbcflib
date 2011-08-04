@@ -19,15 +19,15 @@ To get access to the information contained inside already existing tracks, you w
 Optionally you can supply a name for every track you load, to help you keep track of your tracks::
 
     from bbcflib import track
-    with track.load('tracks/ribi_genes.sql', name='Ribosome genesis from SGD') as ribigenes:
+    with track.load('tracks/ribi_genes.sql', name = 'Ribosome genesis from SGD') as ribigenes:
         data = ribigenes.read('chr7')
 
 If your track is in a format that is missing chromosome information (such as the length of every chromosome), you can supply an assembly name or a chromosome file::
 
     from bbcflib import track
-    with track.load('tracks/yeast_genes.bed', chrmeta='sacCer2') as saccer:
+    with track.load('tracks/yeast_genes.bed', chrmeta = 'sacCer2') as saccer:
         data = saccer.read('chr4')
-    with track.load('tracks/yeast_genes.bed', chrmeta='tracks/chrs/yeast.chr') as saccer:
+    with track.load('tracks/yeast_genes.bed', chrmeta = 'tracks/chrs/yeast.chr') as saccer:
         data = saccer.read('chr4')
 
 For instance, the cumulative base coverage of features on chromosome two can be calculated like this::
@@ -39,7 +39,7 @@ For instance, the cumulative base coverage of features on chromosome two can be 
 To create a new track and then write to it, you would do the following::
 
     from bbcflib.track import new
-    with new('tracks/rap1_peaks.sql', 'sql', name='Rap1 Peaks') as mypeaks:
+    with new('tracks/rap1_peaks.sql', 'sql', name = 'Rap1 Peaks') as mypeaks:
         mypeaks.write('chr1', [(10, 20, 'A', 0.0, 1)])
 
 For instance, to make a new track from an old one, and invert the strand of every feature::
@@ -48,8 +48,8 @@ For instance, to make a new track from an old one, and invert the strand of ever
     def invert_strands(data):
         for feature in data:
             yield (feature[0], feature[1], feature[2], feature[3], feature[4] == 1 and -1 or 1)
-    with track.load('tracks/orig.sql', name='Normal strands') as a:
-        with new('tracks/inverted.sql', name='Inverted strands') as b:
+    with track.load('tracks/orig.sql', name = 'Normal strands') as a:
+        with new('tracks/inverted.sql', name = 'Inverted strands') as b:
             for chrom in a:
                 b.write(chrom, invert_strands(a.read(chrom)))
 
@@ -66,7 +66,7 @@ To set the chromosome metadata or the track metadata you simply asign to that at
         t.chrmeta    = ``{'chr1': {'length': 197195432}, 'chr2': {'length': 129993255}}``
         t.attributes = {'datatype': 'quantitative', 'source': 'UCSC'}
 
-It is important to note that the general numbering convention of features on a chromosome varies depending on the source of the data. For instance, UCSC and Ensembl differ in this point such that an interval labeled `(start=4,end=8)` will span four base pairs according to UCSC but will span five base pairs according to Ensembl. The representation that the this packages sticks to is explained `here <http://bbcf.epfl.ch/twiki/bin/view/BBCF/NumberingConvention>`_.
+It is important to note that the general numbering convention of features on a chromosome varies depending on the source of the data. For instance, UCSC and Ensembl differ in this point such that an interval labeled `(start = 4, end = 8)` will span four base pairs according to UCSC but will span five base pairs according to Ensembl. The representation that the this packages sticks to is explained `here <http://bbcf.epfl.ch/twiki/bin/view/BBCF/NumberingConvention>`_.
 """
 
 __all__ = ['load', 'new']
@@ -75,7 +75,7 @@ __all__ = ['load', 'new']
 import os
 
 ###########################################################################
-def load(path, format=None, name=None, chrmeta=None, datatype=None, readonly=False):
+def load(path, format = None, name = None, chrmeta = None, datatype = None, readonly = False):
     '''Loads a track from disk, whatever the format is.
 
             * *path* is the path to track file to load.
@@ -92,18 +92,18 @@ def load(path, format=None, name=None, chrmeta=None, datatype=None, readonly=Fal
                 data = rpgenes.read()
             with track.load('tracks/yeast', 'sql', 'S. cer. genes') as yeast:
                 data = yeast.read()
-            with track.load('tracks/peaks.bed', 'bed', chrmeta='hg19') as peaks:
+            with track.load('tracks/peaks.bed', 'bed', chrmeta = 'hg19') as peaks:
                 data = peaks.read()
-            with track.load('tracks/scores.wig', 'wig', chrmeta='tracks/cser.chr', datatype='qualitative') as scores:
+            with track.load('tracks/scores.wig', 'wig', chrmeta = 'tracks/cser.chr', datatype = 'qualitative') as scores:
                 data = scores.read()
-            with track.load('tracks/repeats.sql', readonly=True) as rpgenes:
+            with track.load('tracks/repeats.sql', readonly = True) as rpgenes:
                 data = rpgenes.read()
 
         ``load`` returns a Track instance.
     '''
     return Track(path, format, name, chrmeta, datatype, readonly)
 
-def new(path, format=None, name=None, chrmeta=None, datatype=None):
+def new(path, format = None, name = None, chrmeta = None, datatype = None):
     '''Creates a new empty track in preparation for writing to it.
 
             * *path* is the path to track file to create.
@@ -117,9 +117,9 @@ def new(path, format=None, name=None, chrmeta=None, datatype=None):
             from bbcflib import track
             with track.new('tmp/track.sql') as t:
                 t.write('chr1', [(10, 20, 'Gene A', 0.0, 1)])
-            with track.new('tracks/peaks.sql', 'sql', name='High affinity peaks') as t:
+            with track.new('tracks/peaks.sql', 'sql', name = 'High affinity peaks') as t:
                 t.write('chr5', [(500, 1200, 'Peak1', 11.3, 0)])
-            with track.new('tracks/scores.sql', 'sql', chrmeta='sacCer2' datatype='quantitative',) as t:
+            with track.new('tracks/scores.sql', 'sql', chrmeta = 'sacCer2' datatype = 'quantitative', ) as t:
                 t.write('chr1', [(10, 20, 500.0)])
 
         ``new`` returns a Track instance.
@@ -128,7 +128,7 @@ def new(path, format=None, name=None, chrmeta=None, datatype=None):
     if not format: format = os.path.splitext(path)[1][1:]
     cls = import_implementation(format).TrackFormat
     cls.create(path)
-    return Track(path, format, name, chrmeta, datatype, readonly=False, empty=True)
+    return Track(path, format, name, chrmeta, datatype, readonly = False, empty = True)
 
 ###########################################################################
 class Track(object):
@@ -157,7 +157,7 @@ class Track(object):
     '''
 
     #-----------------------------------------------------------------------------#
-    def read(self, selection=None, fields=None, order='start,end', cursor=False):
+    def read(self, selection = None, fields = None, order = 'start, end', cursor = False):
         '''Reads data from the genomic file.
 
         * *selection* can be several things.
@@ -183,23 +183,23 @@ class Track(object):
                 data = t.read()
                 data = t.read('chr2')
                 data = t.read('chr3', ['name', 'strand'])
-                data = t.read(['chr1','chr2','chr3'])
+                data = t.read(['chr1', 'chr2', 'chr3'])
                 data = t.read({'chr':'chr1', 'start':100})
                 data = t.read({'chr':'chr1', 'start':10000, 'end':15000})
                 data = t.read({'chr':'chr1', 'start':10000, 'end':15000, 'inclusion':'strict'})
                 data = t.read({'chr':'chr1', 'strand':1})
-                data = t.read({'chr':'chr1', 'score':(10,100)})
-                data = t.read({'chr':'chr1', 'start':10000, 'end':15000 'strand':-1 'score':(10,100)})
+                data = t.read({'chr':'chr1', 'score':(10, 100)})
+                data = t.read({'chr':'chr1', 'start':10000, 'end':15000 'strand':-1 'score':(10, 100)})
                 data = t.read({'chr':'chr5', 'start':0, 'end':200}, ['strand', 'start', 'score'])
             # Duplicate a chromosome
             with track.load('tracks/copychrs.sql') as t:
-                t.write('chrY', t.read('chrX', cursor=True))
+                t.write('chrY', t.read('chrX', cursor = True))
 
         ``read`` returns a generator object yielding tuples.
         '''
         raise NotImplementedError
 
-    def write(self, chrom, data, fields=None):
+    def write(self, chrom, data, fields = None):
         '''Writes data to a genomic file.
 
         * *chrom* is the name of the chromosome on which one wants to write. For instance, if one is using the BED format this will become the first column, while if one is using the SQL format this will become the name of the table to be created.
@@ -222,7 +222,7 @@ class Track(object):
         '''
         raise NotImplementedError
 
-    def remove(self, chrom=None):
+    def remove(self, chrom = None):
         '''Removes data from a given chromosome.
 
         * *chrom* is the name of the chromosome that one wishes to delete or a list of chromosomes to delete.
@@ -243,7 +243,7 @@ class Track(object):
         '''
         raise NotImplementedError
 
-    def count(self, selection=None):
+    def count(self, selection = None):
         '''Counts the number of features or entries in a given selection.
 
         * *selection* is the name of a chromosome, a list of chromosomes, a particular span or a list of spans. In other words, a value similar to the *selection* parameter of the *read* method.
@@ -256,7 +256,7 @@ class Track(object):
             with track.load('tracks/example.sql') as t:
                 num = t.count('chr1')
             with track.load('tracks/example.sql') as t:
-                num = t.count(['chr1','chr2','chr3'])
+                num = t.count(['chr1', 'chr2', 'chr3'])
             with track.load('tracks/example.sql') as t:
                 num = t.count({'chr':'chr1', 'start':10000, 'end':15000})
 
@@ -264,7 +264,7 @@ class Track(object):
         '''
         raise NotImplementedError
 
-    def export(self, path, format=None):
+    def export(self, path, format = None):
         '''Exports a track to a given location and format.
 
            * *path* is the file path where the new track will be created
@@ -289,7 +289,7 @@ class Track(object):
             fields = self.fields
             for chrom in self.all_chrs: t.write(chrom, self.read(chrom), fields)
 
-    def convert(self, path, format=None):
+    def convert(self, path, format = None):
         '''Converts a track to a given format dynamically.
 
            * *path* is the file path where the new track will be created
@@ -369,7 +369,7 @@ class Track(object):
     }
 
     #-----------------------------------------------------------------------------#
-    def __new__(cls, path, format=None, name=None, chrmeta=None, datatype=None, readonly=False, empty=False):
+    def __new__(cls, path, format = None, name = None, chrmeta = None, datatype = None, readonly = False, empty = False):
         '''Internal factory-like method that is called before creating a new instance of Track.
            This function determines the format of the file that is provided and returns an
            instance of the appropriate child class.'''
@@ -391,7 +391,7 @@ class Track(object):
             instance = super(Track, cls).__new__(cls)
         return instance
 
-    def __init__(self, path, format=None, name=None, chrmeta=None, datatype=None, readonly=False, empty=False):
+    def __init__(self, path, format = None, name = None, chrmeta = None, datatype = None, readonly = False, empty = False):
        pass
 
     def __enter__(self):
