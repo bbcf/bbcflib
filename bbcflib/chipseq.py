@@ -41,7 +41,7 @@ Below is the script used by the frontend::
 import shutil, pickle, urllib
 
 # Internal modules #
-from . import frontend, mapseq
+import bbcflib.mapseq, bbcflib.frontend
 from .common import create_sql_track, merge_sql, merge_many_bed, join_pdf
 
 # Other modules #
