@@ -524,8 +524,13 @@ def bam_to_density( bamfile, output, chromosome_accession = None, chromosome_nam
     b2w_args += args
     return {"arguments": ["bam2wig"]+b2w_args, "return_value": files}
 
+<<<<<<< HEAD
 def compact_chromosome_name(key):
     if key == None or isinstance(key, str):
+=======
+def _compact_chromosome_name(key):
+    if key == None or isinstance(key,str):
+>>>>>>> 13e23d7cbf0b4697ec311b94b704626284d65e12
         return key
     elif isinstance(key, tuple) and len(key)>2:
         return str(key[0])+"_"+str(key[1])+"."+str(key[2])
@@ -541,7 +546,7 @@ def parallel_density_wig( ex, bamfile, chromosomes,
     Returns a single text wig file.
     """
     futures = [bam_to_density.nonblocking( ex, bamfile, unique_filename_in(),
-                                           compact_chromosome_name(k), v['name'],
+                                           _compact_chromosome_name(k), v['name'],
                                            nreads, merge, read_extension, convert,
                                            False, args = b2w_args, via = via )
                for k, v in chromosomes.iteritems()]
@@ -555,6 +560,7 @@ def parallel_density_wig( ex, bamfile, chromosomes,
     ex.add( output, description = description, alias = alias )
     return output
 
+<<<<<<< HEAD
 def parallel_density_sql( ex, bamfile, output, chromosomes,
                           nreads = 1, merge = -1, read_extension = -1, convert = True,
                           b2w_args = [], via = 'lsf' ):
@@ -575,6 +581,59 @@ def parallel_density_sql( ex, bamfile, output, chromosomes,
             _ = future.wait()
         except ProgramFailed:
             pass
+=======
+def parallel_density_sql( ex, bamfile, chromosomes,
+                          nreads=1, merge=-1, read_extension=-1, convert=True,
+                          b2w_args=[], via='lsf' ):
+    """Runs 'bam_to_density' for every chromosome in the 'chromosomes' list.
+
+    Generates 1 or 2 files depending
+    if 'merge'>=0 (shift and merge strands into one track)
+    or 'merge'<0 (keep seperate tracks for each strand) and returns their basename.
+    """
+    from bbcflib.track import new
+    output = unique_filename_in()
+    touch(ex,output)
+    futures = {}
+    for k,v in chromosomes.iteritems():
+        futures[k] = bam_to_density.nonblocking( ex, bamfile, output,
+                                                 _compact_chromosome_name(k), v['name'],
+                                                 nreads, merge, read_extension, convert,
+                                                 False, args=b2w_args, via=via )
+    chrlist = dict((v['name'], {'length': v['length']}) for v in chromosomes.values())
+    if merge < 0:
+        def _wig(infile,strnd="+"):
+            for row in infile:
+                r = row.split("\t")
+                if r[5][0] == strnd:
+                    yield((r[1],r[2],r[4]))
+        with new(output+"rev.sql",datatype="quantitative",chrmeta=chrlist) as trev:
+            with new(output+"fwd.sql",datatype="quantitative",chrmeta=chrlist) as tfwd:
+                for k,v in chromosomes.iteritems():
+                    try:
+                        wig = futures[k].wait()
+                        with open(wig,"r") as f:
+                            tfwd.write(v['name'],_wig(f,"+"))
+                        with open(wig,"r") as f:
+                            trev.write(v['name'],_wig(f,"-"))
+                    except ProgramFailed:
+                        tfwd.write(v['name'],[])
+                        trev.write(v['name'],[])
+    else:
+        def _bedgr(infile):
+            for row in infile:
+                r = row.split("\t")
+                yield((r[1],r[2],r[3]))
+        with new(output+"merged.sql",datatype="quantitative",chrmeta=chrlist) as tboth:
+            for k,v in chromosomes.iteritems():
+                try:
+                    bedgr = futures[k].wait()
+                    with open(bedgr,"r") as f:
+                        tboth.write(v['name'],_bedgr(f))
+                except ProgramFailed:
+                    tboth.write(v['name'],[])
+
+>>>>>>> 13e23d7cbf0b4697ec311b94b704626284d65e12
     return output
 
 ############################################################
@@ -639,6 +698,7 @@ def densities_groups( ex, job_or_dict, file_dict, chromosomes, via = 'lsf' ):
                     b2w_args += ["-q", str(options['read_extension'])]
         wig = []
         for m in mapped.values():
+<<<<<<< HEAD
             output = unique_filename_in()
             touch(ex, output)
             [common.create_sql_track( output+s+'.sql', chromosomes.values(),
@@ -652,6 +712,17 @@ def densities_groups( ex, job_or_dict, file_dict, chromosomes, via = 'lsf' ):
             ex.add( output, description = 'none:'+m['libname']+'.sql' )
             [ex.add( output+s+'.sql', description = 'sql:'+m['libname']+'_'+s+'.sql',
                      associate_to_filename = output, template = '%s_'+s+'.sql' )
+=======
+            output = parallel_density_sql( ex, m["bam"], chromosomes,
+                                           nreads=m["stats"]["total"],
+                                           merge=merge_strands,
+                                           convert=False,
+                                           b2w_args=b2w_args, via=via )
+            wig.append(output)
+            ex.add( output, description='none:'+m['libname']+'.sql' )
+            [ex.add( output+s+'.sql', description='sql:'+m['libname']+'_'+s+'.sql',
+                     associate_to_filename=output, template='%s_'+s+'.sql' )
+>>>>>>> 13e23d7cbf0b4697ec311b94b704626284d65e12
              for s in suffixes]
         if len(mapped)>1:
             merged_bam = merge_bam(ex, [m['bam'] for m in mapped.values()])
