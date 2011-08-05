@@ -79,7 +79,7 @@ import os, re, json, shutil, gzip, tarfile, pickle, urllib
 from . import frontend, genrep, daflims, common
 
 # Other modules #
-import pysam, sqlite3
+import pysam
 from numpy      import  cumsum, exp, array
 from scipy.misc import  factorial
 from bein       import  program, unique_filename_in
@@ -450,8 +450,8 @@ def add_pdf_stats( ex, processed, group_names, script_path,
     Returns the name of the pdf file.
     """
     all_stats = {}
-    for gid, processus in processed.iteritems():
-        for i, mapped in enumerate(processus.values()):
+    for gid, file in processed.iteritems():
+        for i, mapped in enumerate(file.values()):
             name = group_names.get(gid)
             if 'libname' in mapped:
                 name = mapped['libname']
@@ -468,9 +468,10 @@ def add_pdf_stats( ex, processed, group_names, script_path,
 
 ############################################################
 @program
-def wig_to_big_wig( sql ):
-    """Binds ``wig_to_big_wig`` from the UCSC tools.
+def wigToBigWig( sql ):
+    """Binds ``wigToBigWig`` from the UCSC tools.
     """
+    import sqlite3
     chrsizes = unique_filename_in()
     chromosomes = []
     connection = sqlite3.connect( sql )
@@ -492,7 +493,7 @@ def wig_to_big_wig( sql ):
                 file_in.write("\t".join([current_chrom]+[str(sql_result) for sql_result in sql_row])+"\n")
             cur.close()
     bigwig = unique_filename_in()
-    return {"arguments": ['wig_to_big_wig', bedgraph, chrsizes, bigwig],
+    return {"arguments": ['wigToBigWig',bedgraph,chrsizes,bigwig],
             "return_value": bigwig}
 
 @program
@@ -571,7 +572,7 @@ def parallel_density_sql( ex, bamfile, chromosomes,
     """Runs 'bam_to_density' for every chromosome in the 'chromosomes' list.
 
     Generates 1 or 2 files depending
-    if 'merge'> = 0 (shift and merge strands into one track)
+    if 'merge'>=0 (shift and merge strands into one track)
     or 'merge'<0 (keep seperate tracks for each strand) and returns their basename.
     """
     from bbcflib.track import new
@@ -704,7 +705,7 @@ def densities_groups( ex, job_or_dict, file_dict, chromosomes, via = 'lsf' ):
         processed[gid] = {'bam': merged_bam, 'wig': merged_wig,
                           'read_length': mapped.values()[0]['stats']['read_length']}
         if ucsc_bigwig:
-            bw_futures = [wig_to_big_wig.nonblocking( ex, merged_wig[s], via = via )
+            bw_futures = [wigToBigWig.nonblocking( ex, merged_wig[s], via=via )
                           for s in suffixes]
             [ex.add(bw_futures[i].wait(), description = 'bigwig:'+group_name+'_'+s+'.bw')
              for i, s in enumerate(suffixes)]

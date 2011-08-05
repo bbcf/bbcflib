@@ -159,12 +159,13 @@ class Job(object):
         self.groups = {}
         self.options = options
 
-    def add_group(self, id, name, group = {}):
+    def add_group(self, id, name, group = None):
         if self.groups.has_key(id):
             raise ValueError("A group with ID %d was already added." % id)
         else:
             self.groups[id] = {'name': name,
                                'runs': {}}
+        if group != None:
             self.groups[id].update(group)
 
     def add_run(self, id, group, facility, facility_location, machine, machine_id, run, lane, url, key):
@@ -206,8 +207,8 @@ def parseConfig( file ):
         if not('name' in group):
             raise ValueError("Each entry in 'Groups' must have a 'name'")
         job.add_group(id = int(gid),
-                      control = group.get('control').lower() in ['1', 'true', 't'],
-                      name = str(group['name']))
+                      name = str(group['name']),
+                      group = {'control': (group.get('control').lower() in ['1','true','t']}))
 
     for rid, run in config['Runs'].iteritems():
         if not('group_id' in run):

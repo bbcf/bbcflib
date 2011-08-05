@@ -38,10 +38,10 @@ Below is the script used by the frontend::
 """
 
 # Built-in modules #
-import shutil, pickle, urllib, frontend, mapseq
+import shutil, pickle, urllib
 # Internal modules #
-import bbcflib.mapseq, bbcflib.frontend
-from .common import create_sql_track, merge_sql, merge_many_bed, join_pdf
+from . import frontend, mapseq
+from .common import merge_sql, merge_many_bed, join_pdf
 
 # Other modules #
 from bein import program, unique_filename_in, MiniLIMS
@@ -158,11 +158,11 @@ def run_deconv_r( counts_file, read_extension, chr_name, script_path ):
             'return_value': {'pdf': pdf_file, 'rdata': output_file}}
 
 @program
-def sql_finish_deconv(sqlout, rdata):
+def sql_finish_deconv(sqlout,rdata,chrom):
     """Binds the ``sql_finish_deconv.py`` scripts which creates an sqlite file from
     'run_deconv''s output.
     """
-    return {"arguments": ["sql_finish_deconv.py", rdata, sqlout],
+    return {"arguments": ["sql_finish_deconv.py",rdata,sqlout,chrom],
             "return_value": sqlout}
 
 def run_deconv(ex, sql, peaks, chromosomes, read_extension, script_path, via = 'lsf'):
@@ -173,6 +173,7 @@ def run_deconv(ex, sql, peaks, chromosomes, read_extension, script_path, via = '
     Returns a dictionary of file outputs with keys file types
     ('pdf', 'sql' and 'bed') and values the file names.
     """
+    from bbcflib.track import new
     prep_futures = dict((c['name'],
                          sql_prepare_deconv.nonblocking( ex, sql, peaks,
                                                          c['name'], c['length'],
@@ -188,11 +189,14 @@ def run_deconv(ex, sql, peaks, chromosomes, read_extension, script_path, via = '
         pdf_future = join_pdf.nonblocking( ex,
                                            [x['pdf'] for x in rdeconv_out.values()
                                             if x != None],
-                                           via = via )
-    sqlout = create_sql_track( unique_filename_in(), chromosomes.values() )
-    for fout in rdeconv_out.values():
+                                           via=via )
+    chrlist = dict((v['name'], {'length': v['length']}) for v in chromosomes.values())
+    output = unique_filename_in()
+    with new(output,'sql',datatype="quantitative",chrmeta=chrlist) as track:
+        pass
+    for c,fout in rdeconv_out.iteritems():
         if fout != None:
-            f = sql_finish_deconv.nonblocking( ex, sqlout, fout['rdata'], via = via ).wait()
+            f = sql_finish_deconv.nonblocking( ex, sqlout, fout['rdata'], c, via=via ).wait()
     outfiles = {}
     outfiles['sql'] = sqlout
     outfiles['bed'] = sqlout+'_deconv.bed'
@@ -239,29 +243,29 @@ def get_bam_wig_files( ex, job, minilims = None, hts_url = None,
             elif os.path.exists(file_loc):
                 shutil.copy( file_loc, bamfile )
                 shutil.copy( file_loc+".bai", bamfile+".bai" )
-            elif os.path.exists(minilims) and os.path.exists(os.path.join(minilims+".files", file_loc)):
-                minilims = MiniLIMS(minilims)
-                file_loc = os.path.join(minilims+".files", file_loc)
+            elif os.path.exists(minilims) and os.path.exists(os.path.join(minilims+".files",file_loc)):
+                MMS = MiniLIMS(minilims)
+                file_loc = os.path.join(minilims+".files",file_loc)
                 shutil.copy( file_loc, bamfile )
                 shutil.copy( file_loc+".bai", bamfile+".bai" )
-                exid = max(minilims.search_executions(with_text = run['key']))
-                allfiles = dict((minilims.fetch_file(x)['description'], x)
-                                for x in minilims.search_files(source = ('execution', exid)))
-                with open(minilims.path_to_file(allfiles['py:file_names'])) as opening_file:
-                    file_names = pickle.load(opening_file)
+                exid = max(MMS.search_executions(with_text=run['key']))
+                allfiles = dict((MMS.fetch_file(x)['description'],x)
+                                for x in MMS.search_files(source=('execution',exid)))
+                with open(MMS.path_to_file(allfiles['py:file_names'])) as q:
+                    file_names = pickle.load(q)
 #                ms_name = file_names[gid][rid]
                 stats_id = allfiles.get("py:"+name+"_filter_bamstat") or allfiles.get("py:"+name+"_full_bamstat")
-                with open(minilims.path_to_file(stats_id)) as opening_file:
-                    s = pickle.load(opening_file)
+                with open(MMS.path_to_file(stats_id)) as q:
+                    s = pickle.load(q)
                 p_thresh = -1
                 if "py:"+name+"_Poisson_threshold" in allfiles:
                     pickle_thresh = allfiles["py:"+name+"_Poisson_threshold"]
-                    with open(minilims.path_to_file(pickle_thresh)) as opening_file:
-                        p_thresh = pickle.load(opening_file)
+                    with open(MMS.path_to_file(pickle_thresh)) as q:
+                        p_thresh = pickle.load(q)
                 if 'py:gdv_json' in allfiles:
-                    with open(minilims.path_to_file(allfiles['py:gdv_json'])) as opening_file:
-                        job.options['gdv_project'] = pickle.load(opening_file)
-                htss = frontend.Frontend( url = hts_url )
+                    with open(MMS.path_to_file(allfiles['py:gdv_json'])) as q:
+                        job.options['gdv_project'] = pickle.load(q)
+                htss = frontend.Frontend( url=hts_url )
                 ms_job = htss.job( run['key'] )
                 if ms_job.options.get('read_extension')>0 and ms_job.options.get('read_extension')<80:
                     read_exts[rid] = ms_job.options['read_extension']
@@ -271,8 +275,8 @@ def get_bam_wig_files( ex, job, minilims = None, hts_url = None,
                     wigfile = unique_filename_in()
                     wig_ids = dict(((allfiles['sql:'+name+'_'+s+'.sql'], s),
                                     wigfile+'_'+s+'.sql') for s in suffix)
-                    [minilims.export_file(x[0], s) for x, s in wig_ids.iteritems()]
-                    wig = dict((x[1], s) for x, s in wig_ids.iteritems())
+                    [MMS.export_file(x[0],s) for x,s in wig_ids.iteritems()]
+                    wig = dict((x[1],s) for x,s in wig_ids.iteritems())
             else:
                 raise ValueError("Couldn't find this bam file anywhere: %s." %file_loc)
             mapped_files[gid][rid] = {'bam': bamfile,
