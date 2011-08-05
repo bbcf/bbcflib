@@ -40,7 +40,7 @@ class Test_Write(unittest.TestCase):
             for chrom, data in sorted(features.items()):
                 t.write(chrom, data)
         with open(path,                                     'r') as f: A = f.read().split('\n')
-        with open(track_collections['Signals']['A']['path'], 'r') as f: B = f.read().split('\n')
+        with open(track_collections['Signals']['A']['path'],'r') as f: B = f.read().split('\n')
         self.assertEqual(A[1:], B)
         os.remove(path)
 
@@ -88,7 +88,7 @@ class Test_Convert(unittest.TestCase):
         with open(path_new_wig, 'r') as f: A = f.read().split('\n')
         with open(path_ref_wig, 'r') as f: B = f.read().split('\n')
         # Case 2: BEDGRAPH to SQL #
-        with track.load(path_ref_bg, chrmeta = yeast_chr_file) as t:
+        with track.load(path_ref_bg, chrmeta=yeast_chr_file) as t:
             t.convert(path_new_sql)
             self.assertEqual(t.format, 'sql')
         self.assertTrue(sqlcmp(path_new_sql, path_ref_sql))
@@ -128,7 +128,7 @@ class Test_Export(unittest.TestCase):
         with open(path_new_wig, 'r') as f: A = f.read().split('\n')
         with open(path_ref_wig, 'r') as f: B = f.read().split('\n')
         # Case 2: BEDGRAPH to SQL #
-        with track.load(path_ref_bg, chrmeta = yeast_chr_file) as t:
+        with track.load(path_ref_bg, chrmeta=yeast_chr_file) as t:
             t.export(path_new_sql)
         self.assertTrue(sqlcmp(path_new_sql, path_ref_sql))
         # Case 3: SQL to BEDGRAPH #

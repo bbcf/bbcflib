@@ -15,7 +15,7 @@ object defining the field ``frontend_url`` in the appropriate section.
 Basic usage is to create a ``Frontend`` object, then call its ``job``
 method with a job key.::
 
-    f = Frontend(url = 'http://htsstation.vital-it.ch/rnaseq/')
+    f = Frontend(url='http://htsstation.vital-it.ch/rnaseq/')
     j = f.job(14)
 
 .. autoclass:: Frontend
@@ -43,7 +43,7 @@ class Frontend(object):
     ``frontend_url`` from the configuration.  If both the *url* and
     *config* arguments are given, *url* overrides config.
     """
-    def __init__(self, url = None, config = None, section = 'frontend'):
+    def __init__(self, url=None, config=None, section='frontend'):
         if url == None and config == None:
             raise TypeError("Must specify a URL or a configuration.")
         elif url != None:
@@ -52,7 +52,7 @@ class Frontend(object):
             self.url = normalize_url(config.get(section, 'frontend_url'))
 
     def query_url(self, method, key):
-        return """%s/%s.json?key = %s""" % (self.url, method, key)
+        return """%s/%s.json?key=%s""" % (self.url, method, key)
 
     def _fetch_groups(self, key):
         def _f(g):
@@ -118,16 +118,16 @@ class Frontend(object):
                 description = str(x['description']),
                 email = str(x['email']),
                 options = x['options'])
-        [j.add_group(id = g.pop('id'), name = g.pop('name'), group = g)
+        [j.add_group(id=g.pop('id'), name=g.pop('name'), group=g)
          for g in self._fetch_groups(key)]
-        [j.add_run(id = r['id'], group = r['group_id'],
-                   facility = r['facility_name'],
-                   facility_location = r['facility_location'],
-                   machine = r['machine_name'],
-                   machine_id = r['machine_id'],
-                   run = r['run'], lane = r['lane'],
-                   url = r['url'],
-                   key = r['key'])
+        [j.add_run(id=r['id'], group=r['group_id'],
+                   facility=r['facility_name'],
+                   facility_location=r['facility_location'],
+                   machine=r['machine_name'],
+                   machine_id=r['machine_id'],
+                   run=r['run'], lane=r['lane'],
+                   url=r['url'],
+                   key=r['key'])
          for r in self._fetch_runs(key)]
         return j
 
@@ -206,25 +206,25 @@ def parseConfig( file ):
     for gid, group in config['Groups'].iteritems():
         if not('name' in group):
             raise ValueError("Each entry in 'Groups' must have a 'name'")
-        job.add_group(id = int(gid),
-                      name = str(group['name']),
-                      group = {'control': (group.get('control').lower() in ['1','true','t']}))
+        job.add_group(id=int(gid),
+                      name=str(group['name']),
+                      group={'control': (group.get('control').lower() in ['1','true','t']}))
 
     for rid, run in config['Runs'].iteritems():
         if not('group_id' in run):
             raise ValueError("Each entry in 'Runs' must have a 'group_id'")
-        job.add_run(id = int(rid),
-                    group = int(run['group_id']),
-                    facility = str(run.get('facility_name')),
-                    facility_location = str(run.get('facility_location')),
-                    machine = str(run.get('machine_name')),
-                    machine_id = int((run.get('machine_id') is None) and "0" or run.get('machine_id')),
+        job.add_run(id=int(rid),
+                    group=int(run['group_id']),
+                    facility=str(run.get('facility_name')),
+                    facility_location=str(run.get('facility_location')),
+                    machine=str(run.get('machine_name')),
+                    machine_id=int((run.get('machine_id') is None) and "0" or run.get('machine_id')),
                     run =int((run.get('run') is None) and "0" or run.get('run')),
-                    lane = int((run.get('lane') is None) and "0" or run.get('lane')),
-                    url = run.get('url'),
-                    key = run.get('key'))
+                    lane=int((run.get('lane') is None) and "0" or run.get('lane')),
+                    url=run.get('url'),
+                    key=run.get('key'))
     globals = config.get('Global variables') or {}
-    return (job, globals)
+    return (job,globals)
 
 #-----------------------------------#
 # This code was written by the BBCF #

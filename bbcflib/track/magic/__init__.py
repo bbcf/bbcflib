@@ -32,7 +32,7 @@ def guess_file_format(path):
     if not hasattr(magic, 'open'): return ''
     # Add our definitions #
     mime = magic.open(magic.NONE)
-    mime.load(file = resource_filename(__name__, 'magic_data'))
+    mime.load(file=resource_filename(__name__, 'magic_data'))
     filetype = mime.file(path)
     # Otherwise try standard definitions #
     if not filetype in known_formats:

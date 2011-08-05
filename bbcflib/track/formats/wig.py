@@ -35,11 +35,11 @@ class TrackFormat(TrackText, TrackProxy):
                 raise Exception("The file '" + self._path + "' contains a second 'track' directive. This is not supported.")
             if line.startswith("browser "): continue
             if line.startswith("variableStep") or line.startswith("fixedStep"):
-                params = dict([p.split(' = ', 1) for p in shlex.split('mode = ' + line)])
-                if not params.get('chrom', False):
+                params = dict([p.split('=',1) for p in shlex.split('mode=' + line)])
+                if not params.get('chrom',False):
                     raise Exception("The file '" + self._path + "' does not specify a chromosome and is hence not valid.")
                 try:
-                    params['span'] = int(params.get('span', 1))
+                    params['span'] = int(params.get('span',1))
                 except ValueError:
                     raise Exception("The file '" + self._path + "' has a non integer as span value.")
                 if params['span'] < 1:
@@ -52,7 +52,7 @@ class TrackFormat(TrackText, TrackProxy):
                     except ValueError:
                         raise Exception("The file '" + self._path + "' has a non integer as start value.")
                     try:
-                        params['step'] = int(params.get('step', 1))
+                        params['step'] = int(params.get('step',1))
                     except ValueError:
                         raise Exception("The file '" + self._path + "' has a non integer as step value.")
                     if params['step'] < 1:
@@ -103,7 +103,7 @@ class TrackFormat(TrackText, TrackProxy):
             x = x_next
 
     def _write_entries(self):
-        for f in self.read(): yield "fixedStep chrom = %s start = %s span = %s\n%s\n" % (f[0], f[1], f[2]-f[1], f[3])
+        for f in self.read(): yield "fixedStep chrom=%s start=%s span=%s\n%s\n" % (f[0],f[1],f[2]-f[1],f[3])
 
     #-----------------------------------------------------------------------------#
     @property
@@ -116,39 +116,39 @@ class TrackFormat(TrackText, TrackProxy):
         self._datatype_ = datatype
 
 ###########################################################################
-def random_track(kind = 'fixed', chrs = 16, number_of_regions = 32, orig_start = 0, length = 100, score = 1000, jump = 50000):
+def random_track(kind='fixed', chrs=16, number_of_regions=32, orig_start=0, length=100, score=1000, jump=50000):
     import random
     chr = 0
     if kind == 'fixed':
-        yield 'track type = wiggle_0 name = "Pol2 Signal" description = "Chip-Seq" source = "Random generator"\n'
+        yield 'track type=wiggle_0 name="Pol2 Signal" description="Chip-Seq" source="Random generator"\n'
         for i in xrange(number_of_regions):
             if i % (number_of_regions / chrs) == 0:
                 chr += 1
                 end  = orig_start
-            start = end   + (random.randint(0, jump))
-            end   = start + (random.randint(1, length))
-            multiplier = random.randint(1, score)
-            yield 'fixedStep chrom = chr' + str(chr) + ' start = ' + str(start) + ' step = 1' + '\n'
+            start = end   + (random.randint(0,jump))
+            end   = start + (random.randint(1,length))
+            multiplier = random.randint(1,score)
+            yield 'fixedStep chrom=chr' + str(chr) + ' start=' + str(start) + ' step=1' + '\n'
             for x in xrange((end - start)):
                 yield str(multiplier + multiplier * random.random()) + '\n'
             for x in xrange((end - start)/2):
                 yield '0\n'
-            end   = start + (random.randint(1, length))
-            multiplier = random.randint(1, score)
+            end   = start + (random.randint(1,length))
+            multiplier = random.randint(1,score)
             constant = str(multiplier + multiplier * random.random())
             for x in xrange((end - start)):
                 yield constant + '\n'
     if kind == 'variable':
-        yield 'track type = wiggle_0 name = "Rap1 Peaks" description = "Chip-Seq" source = "Random generator"\n'
+        yield 'track type=wiggle_0 name="Rap1 Peaks" description="Chip-Seq" source="Random generator"\n'
         for i in xrange(number_of_regions*2):
             if i % ((number_of_regions*2) / chrs) == 0:
                 chr += 1
                 end  = orig_start
-                yield 'variableStep chrom = chr' + str(chr) + '\n'
-            start = end   + (random.randint(0, jump))
-            end   = start + (random.randint(1, int(length/2)))
-            multiplier = random.randint(1, score)
-            for x in xrange(start, end):
+                yield 'variableStep chrom=chr' + str(chr) + '\n'
+            start = end   + (random.randint(0,jump))
+            end   = start + (random.randint(1,int(length/2)))
+            multiplier = random.randint(1,score)
+            for x in xrange(start,end):
                 yield str(x) + ' ' + str(multiplier + multiplier * random.random()) + '\n'
 
 #-----------------------------------#

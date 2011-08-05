@@ -40,7 +40,7 @@ class Test_Write(unittest.TestCase):
             for chrom, data in sorted(features.items()):
                 t.write(chrom, data)
         with open(path,                                      'r') as f: A = f.read().split('\n')
-        with open(track_collections['Validation'][4]['path'], 'r') as f: B = f.read().split('\n')
+        with open(track_collections['Validation'][4]['path'],'r') as f: B = f.read().split('\n')
         self.assertEqual(A[1:], B)
         os.remove(path)
 
@@ -53,7 +53,7 @@ class Test_Overwrite(unittest.TestCase):
         feature = (10, 20, 'Dolor', 3.0, 1)
         chrom = 'chr2'
         with track.load(new_path) as t:
-            t.write(chrom, (feature, ))
+            t.write(chrom, (feature,))
         with track.load(new_path) as t:
             self.assertEqual(feature, t.read(chrom).next())
         os.remove(new_path)
@@ -62,11 +62,11 @@ class Test_Overwrite(unittest.TestCase):
 class Test_Roundtrips(unittest.TestCase):
     def runTest(self):
         path = named_temporary_path('.bed')
-        for i in (2, 3, 4):
+        for i in (2,3,4):
             track_dict = track_collections['Validation'][i]
             with track.load(track_dict['path']) as t: t.dump(path)
             with open(path,              'r') as f: A = f.read().split('\n')
-            with open(track_dict['path'], 'r') as f: B = f.read().split('\n')
+            with open(track_dict['path'],'r') as f: B = f.read().split('\n')
             self.assertEqual(A[1:], B)
             os.remove(path)
 
@@ -82,13 +82,13 @@ class Test_Chrmeta(unittest.TestCase):
         os.remove(path)
         # Dictionary #
         d = track_collections['Validation'][1]
-        with track.load(d['path'], chrmeta = info, readonly = True) as t:
+        with track.load(d['path'], chrmeta=info, readonly=True) as t:
             self.assertEqual(t.chrmeta['chr1']['length'], 197195432)
         # Genrep #
-        with track.load(d['path'], chrmeta = 'hg19', readonly = True) as t:
+        with track.load(d['path'], chrmeta='hg19', readonly=True) as t:
             self.assertEqual(t.chrmeta['chr1']['length'], 249250621)
         # File #
-        with track.load(d['path'], chrmeta = yeast_chr_file, readonly = True) as t:
+        with track.load(d['path'], chrmeta=yeast_chr_file, readonly=True) as t:
             self.assertEqual(t.chrmeta['chr1']['length'], 230208)
 
 #------------------------------------------------------------------------------#

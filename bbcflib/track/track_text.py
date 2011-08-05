@@ -64,16 +64,16 @@ class TrackText(object):
             if line.startswith("browser "): continue
             if line.startswith("track "):
                 try:
-                    result = dict([p.split(' = ', 1) for p in shlex.split(line[6:])])
+                    result = dict([p.split('=',1) for p in shlex.split(line[6:])])
                 except ValueError:
-                    raise Exception("The <track> header line for the file '" + self._path + "' seem to be invalid")
+                    raise Exception("The <track> header line for the file '" + self._path + "' seams to be invalid")
         return result
 
     def _write_header(self):
         d = self.attributes
         d['type'] = self.type_identifier
         d['converted_by'] = __package__
-        return "track " + ' '.join([k + ' = "' + v + '"' for k, v in d.items()]) + '\n'
+        return "track " + ' '.join([k + '="' + v + '"' for k, v in d.items()]) + '\n'
 
     #--------------------------------------------------------------------------#
     @property

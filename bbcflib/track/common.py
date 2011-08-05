@@ -21,7 +21,7 @@ def check_executable(tool_name):
     """
     import subprocess
     try:
-        proc = subprocess.Popen([tool_name], stderr = subprocess.PIPE)
+        proc = subprocess.Popen([tool_name], stderr=subprocess.PIPE)
     except OSError:
          raise Exception("The executable '" + tool_name + "' cannot be found")
 
@@ -31,7 +31,7 @@ def natural_sort(item):
     Will sort strings that contain numbers correctly
 
     >>> l = ['v1.3.12', 'v1.3.3', 'v1.2.5', 'v1.2.15', 'v1.2.3', 'v1.2.1']
-    >>> l.sort(key = natural_sort)
+    >>> l.sort(key=natural_sort)
     >>> l.__repr__()
     "['v1.2.1', 'v1.2.3', 'v1.2.5', 'v1.2.15', 'v1.3.3', 'v1.3.12']"
     """
@@ -42,14 +42,14 @@ def natural_sort(item):
     return map(try_int, re.findall(r'(\d+|\D+)', item))
 
 ###############################################################################
-def named_temporary_path(suffix = ''):
+def named_temporary_path(suffix=''):
     """
     Often, one needs a new random and temporary file path
     instead of the random and temporary file object provided
     by the tempfile module
     """
     import os, tempfile
-    file = tempfile.NamedTemporaryFile(suffix = suffix, delete = False)
+    file = tempfile.NamedTemporaryFile(suffix=suffix, delete=False)
     path = file.name
     file.close()
     os.remove(path)
@@ -74,7 +74,7 @@ def sqlcmp(file_a, file_b):
     import itertools, sqlite3
     A = sqlite3.connect(file_a)
     B = sqlite3.connect(file_b)
-    for a, b in itertools.izip_longest(A.iterdump(), B.iterdump()):
+    for a,b in itertools.izip_longest(A.iterdump(), B.iterdump()):
         if a != b: return False
     return True
 
@@ -129,7 +129,7 @@ class ModifiedDict(object):
     ''' A dictionary like object that tracks modification
         and has a special boolean self.modified value'''
 
-    def __init__(self, d = None):
+    def __init__(self, d=None):
         self.data = {}
         if d is not None: self.update(d)
         self.modified = False
@@ -175,7 +175,7 @@ class ModifiedDict(object):
     def values(self): return self.data.values()
     def has_key(self, key): return key in self.data
 
-    def get(self, key, failobj = None):
+    def get(self, key, failobj=None):
         if key not in self: return failobj
         return self[key]
 
@@ -183,7 +183,7 @@ class ModifiedDict(object):
         self.modified = True
         self.data.clear()
 
-    def setdefault(self, key, failobj = None):
+    def setdefault(self, key, failobj=None):
         if key not in self:
             self.modified = True
             self[key] = failobj
@@ -209,7 +209,7 @@ class ModifiedDict(object):
         c.update(self)
         return c
 
-    def update(self, d = None, **kwargs):
+    def update(self, d=None, **kwargs):
         if d is None: return
         self.modified = True
         if isinstance(d, ModifiedDict): self.data.update(d.data)
@@ -219,7 +219,7 @@ class ModifiedDict(object):
         if len(kwargs): self.data.update(kwargs)
 
     @classmethod
-    def fromkeys(cls, iterable, value = None):
+    def fromkeys(cls, iterable, value=None):
         d = cls()
         for key in iterable: d[key] = value
         return d

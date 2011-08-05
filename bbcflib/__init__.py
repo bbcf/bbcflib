@@ -1,5 +1,4 @@
 """
-This module needs Python 2.6 or later.
 ===========
 Description
 ===========
@@ -38,8 +37,8 @@ Installation
 
 bbcflib requires:
 
-* Python >= 2.6
-* mailer >= 0.6 (http://pypi.python.org/pypi/mailer)
+* Python >=2.6
+* mailer >=0.6 (http://pypi.python.org/pypi/mailer)
 * bein (http://bbcf.epfl.ch/bein/)
 * numpy (http://numpy.scipy.org/)
 * libmagic (http://sourceforge.net/projects/libmagic/)
@@ -87,7 +86,7 @@ Once you have the source code, run::
 to install it. If you need to install it in a particular directory,
 use::
 
-    $ sudo python setup.py install --prefix = /prefix/path
+    $ sudo python setup.py install --prefix=/prefix/path
 
 Then the modules will go in /prefix/path/lib/pythonX.Y/site-packages,
 where X.Y is the version of Python you run it with.
@@ -103,5 +102,7 @@ License
 bbcflib is released under the GNU General Public License 3.0. A copy
 of this license is in the LICENSE.txt file.
 """
+
+b'This module needs Python 2.6 or later.'
 
 __version__ = '1.4.1'

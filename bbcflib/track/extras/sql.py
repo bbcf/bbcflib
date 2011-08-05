@@ -28,10 +28,10 @@ class TrackExtras(object):
                 else:                       scores[result[1]] += result[0]
         return scores
 
-    def shuffle_track(self, new_path, repeat_number = 1):
+    def shuffle_track(self, new_path, repeat_number=1):
         ''' Makes a new track with the same number of features as the
         original track or multiplied with a factor.'''
-        with track.new(new_path, "sql", name = "Random track") as t:
+        with track.new(new_path, "sql", name="Random track") as t:
             # Copy meta data #
             t.chrmeta    = self.chrmeta
             t.attributes = self.attributes
@@ -41,7 +41,7 @@ class TrackExtras(object):
                     distance     = feature[0] - feature[1]
                     random_start = random.randint(0, length - distance)
                     random_end   = random_start + distance
-                    yield (random_start, random_end, 0.0, "random_feature_"+str(i), 0, "Random feature" ) # start, end, score, name, strand, sttributes, ...
+                    yield (random_start, random_end, 0.0, "random_feature_"+str(i), 0,"Random feature" ) # start, end, score, name, strand, sttributes, ...
             # Iterate #
             for chrom in self:
                 for i in range(repeat_number):
