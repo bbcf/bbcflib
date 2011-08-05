@@ -109,9 +109,11 @@ class GenRep(object):
     def query_url(self, method, assembly):
         """Assemble a URL to call *method* for *assembly* on the repository."""
         if isinstance(assembly, basestring):
-            return urllib2.Request("""%s/%s.json?assembly_name = %s""" % (self.url, method, assembly))
+            return urllib2.Request("""%s/%s.json?assembly_name=%s""" % (self.url, method, assembly))
         elif isinstance(assembly, int):
             return urllib2.Request("""%s/%s.json?assembly_id = %d""" % (self.url, method, assembly))
+        elif isinstance(assembly, Assembly):
+            return urllib2.Request("""%s/%s.json?assembly_id = %d""" % (self.url, method, assembly.id))
         else:
             raise ValueError("Argument 'assembly' to must be a " + \
                                  "string or integer, got " + str(assembly))
@@ -401,18 +403,18 @@ class Assembly(object):
         .. attribute:: md5
 
         """
-        self.id = int(assembly_id)
-        self.name = assembly_name
-        self.chromosomes = {}
-        self.index_path = os.path.abspath(index_path)
-        self.bbcf_valid = bbcf_valid
-        self.updated_at = updated_at
+        self.id             = int(assembly_id)
+        self.name           = assembly_name
+        self.chromosomes    = {}
+        self.index_path     = os.path.abspath(index_path)
+        self.bbcf_valid     = bbcf_valid
+        self.updated_at     = updated_at
         self.nr_assembly_id = nr_assembly_id
-        self.genome_id = genome_id
-        self.source_name = source_name
-        self.md5 = md5
-        self.source_id = source_id
-        self.created_at = created_at
+        self.genome_id      = genome_id
+        self.source_name    = source_name
+        self.md5            = md5
+        self.source_id      = source_id
+        self.created_at     = created_at
 
     def add_chromosome(self, chromosome_id, refseq_locus, refseq_version, name, length):
         """Add a chromosome in this assembly"""
