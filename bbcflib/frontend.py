@@ -208,7 +208,7 @@ def parseConfig( file ):
             raise ValueError("Each entry in 'Groups' must have a 'name'")
         job.add_group(id=int(gid),
                       name=str(group['name']),
-                      group={'control': (group.get('control').lower() in ['1','true','t']}))
+                      group={'control': (group.get('control').lower() in ['1','true','t'])})
 
     for rid, run in config['Runs'].iteritems():
         if not('group_id' in run):
