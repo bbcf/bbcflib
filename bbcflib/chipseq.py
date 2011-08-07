@@ -38,15 +38,15 @@ Below is the script used by the frontend::
 """
 
 # Built-in modules #
-import shutil, pickle, urllib
+import shutil, pickle, urllib, re, os
 
 # Internal modules #
 from . import frontend, mapseq
 from .common import merge_sql, merge_many_bed, join_pdf
 
 # Other modules #
-from bein import program, unique_filename_in, MiniLIMS
-from bein.util import os, re, touch, merge_bam
+from bein import *
+from bein.util import *
 
 ################################################################################
 # Peaks and annotation #

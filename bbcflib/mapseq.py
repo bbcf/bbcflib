@@ -82,9 +82,8 @@ from . import frontend, genrep, daflims, common
 import pysam
 from numpy      import  cumsum, exp, array
 from scipy.misc import  factorial
-from bein       import  program, unique_filename_in
-from bein.util  import  count_lines, parallel_bowtie, bowtie, add_nh_flag, merge_bam, \
-                        add_and_index_bam, add_pickle, add_and_index_bam, touch, ProgramFailed
+from bein       import  *
+from bein.util  import  *
 
 ################################################################################
 # Preprocessing #
