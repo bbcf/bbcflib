@@ -576,15 +576,15 @@ def parallel_density_sql( ex, bamfile, chromosomes,
     from bbcflib.track import new
     if b2w_args is None:
         b2w_args = []
-    output = unique_filename_in()
-    touch(ex,output)
     futures = {}
     for k,v in chromosomes.iteritems():
-        futures[k] = bam_to_density.nonblocking( ex, bamfile, output,
+        futures[k] = bam_to_density.nonblocking( ex, bamfile, unique_filename_in(),
                                                  _compact_chromosome_name(k), v['name'],
                                                  nreads, merge, read_extension, convert,
                                                  False, args=b2w_args, via=via )
     chrlist = dict((v['name'], {'length': v['length']}) for v in chromosomes.values())
+    output = unique_filename_in()
+    touch(ex,output)
     if merge < 0:
         def _wig(infile,strnd="+"):
             for row in infile:
