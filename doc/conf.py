@@ -19,7 +19,7 @@ import sys, os
 from inspect import getfile, currentframe
 this_dir = getfile(currentframe())
 current_gm_path = '/'.join(os.path.abspath(this_dir).split('/')[:-2]) + '/'
-sys.path.insert(0,current_gm_path)
+sys.path.insert(0, current_gm_path)
 ################################
 
 # If extensions (or modules to document with autodoc) are in another directory,

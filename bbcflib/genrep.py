@@ -45,7 +45,6 @@ With a ``ConfigParser``, the previous code would look like::
 # Built-in modules #
 import urllib2, json, os
 from datetime import datetime
-from urllib2 import HTTPError
 # Internal modules #
 from .common import normalize_url
 
@@ -61,7 +60,7 @@ class GenRep(object):
         Create a GenRep object with the base URL to the GenRep system, and
         the root path of GenRep's files.  For instance::
 
-            g = GenRep('genrep.epfl.ch','/path/to/genrep/indices')
+            g = GenRep('genrep.epfl.ch', '/path/to/genrep/indices')
 
         To get an assembly from the repository, call the assembly
         method with either the integer assembly ID or the string assembly
@@ -86,14 +85,12 @@ class GenRep(object):
         self.intype = intype
 
     def is_up(self):
+        """ Check if genrep webservice is available """
         try:
             urllib2.urlopen(self.url + "/nr_assemblies.json", timeout=2)
         except urllib2.URLError:
             return False
         return True
-
-    def is_down(self):
-        return not self.is_up()
 
     def query_url(self, method, assembly):
         """Assemble a URL to call *method* for *assembly* on the repository."""
@@ -295,9 +292,8 @@ class GenRep(object):
             path = os.path.join(root,assembly.md5+".fa.gz")
         return path
 
-
-    def get_genrep_objects(self,url_tag,info_tag,filters={}):
-        '''
+    def get_genrep_objects(self, url_tag, info_tag, filters = None):
+        """
         Get a list of GenRep objets
         ... attribute url_tag : the GenrepObject type (plural)
         ... attribute info_tag : the GenrepObject type (singular)
@@ -307,10 +303,12 @@ class GenRep(object):
         Example :
         To get the genomes related to 'Mycobacterium leprae' species.
         First get the species with the right name :
-        species = get_genrep_objects('organisms','organism',{'species':'Mycobacterium leprae'})[0]
-        genomes = get_genrep_objects('genomes','genome',{'organism_id':species.id})
-        '''
-        url = """%s/%s.json""" % (self.url,url_tag)
+        species = get_genrep_objects('organisms', 'organism', {'species':'Mycobacterium leprae'})[0]
+        genomes = get_genrep_objects('genomes', 'genome', {'organism_id':species.id})
+        """
+        if filters is None:
+            filters = {}
+        url = """%s/%s.json""" % (self.url, url_tag)
         infos = json.load(urllib2.urlopen(url))
         result = []
         # get objects
@@ -324,9 +322,6 @@ class GenRep(object):
                         if getattr(obj,k)==v:
                             result.append(obj)
         return result
-
-
-
 
 ################################################################################
 class Assembly(object):
@@ -401,28 +396,23 @@ class Assembly(object):
 
     @property
     def chrmeta(self):
-        ''' Returns a dicionary of chromosome meta data looking something like:
+        """ Returns a dictionary of chromosome meta data looking something like:
 
             {'chr1': {'length': 249250621},
              'chr2': {'length': 135534747},
              'chr3': {'length': 135006516},
 
-        '''
-        return dict([(v['name'],dict([('length',v['length'])])) for v in self.chromosomes.values()])
-
-
-
-
-
+        """
+        return dict([(v['name'], dict([('length', v['length'])])) for v in self.chromosomes.values()])
 
 
 class GenrepObject(object):
-    '''
+    """
     Class wich will reference all different objects used by GenRep
     In general, you should never instanciate GenrepObject directly but
     call a method from the GenRep object.
-    '''
-    def __init__(self,info,key):
+    """
+    def __init__(self, info, key):
         self.__dict__.update(info[key])
 
 

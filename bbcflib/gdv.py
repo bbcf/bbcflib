@@ -94,25 +94,25 @@ def add_sql_files( gdv_key, gdv_email,
                            gdv_url)
             for i,f in enumerate(files)]
 
-def get_job_status(gdv_key,gdv_email,job_id):
+def get_job_status(gdv_key, gdv_email, job_id, gdv_url):
     '''
     Get the status of a job in GDV
     :rtype: a json {job_id:<the job id>, status:<running,error or success>}
     '''
-    request = { "id": "gdv_post",
-                "mail": gdv_email,
-                "key": gdv_key,
-                "command": "status",
-                "job_id": job_id,
-                "gdv_url":"http://svitsrv25.epfl.ch/gdv"}
+    request = { "id":       "gdv_post",
+                "mail":     gdv_email,
+                "key":      gdv_key,
+                "command":  "status",
+                "job_id":   job_id,
+                "gdv_url":  gdv_url}
     gdv_url = normalize_url(gdv_url)+"/post"
     return urllib2.urlopen( gdv_url, urllib.urlencode(request) ).read()
 
 
-def get_assemblies(gdv_key,gdv_email):
+def get_assemblies(gdv_key, gdv_email, gdv_url):
     '''
     Get all assemblies that are used in GDV
-    :rtype: a JSON list [{id:<assembly id>,name:<assembly name>}
+    :rtype: a JSON list [{id:<assembly id>, name:<assembly name>}
     '''
     request = { "id": "gdv_post",
                 "mail": gdv_email,

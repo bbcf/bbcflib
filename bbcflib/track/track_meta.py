@@ -46,7 +46,7 @@ class ChromMetaData(ModifiedDict):
 
     def read_genrep(self, name):
         g = GenRep()
-        if g.is_down(): raise Exception("The assembly '" + name + "' could not be read because the Genrep server is down.")
+        if not g.is_up(): raise Exception("The assembly '" + name + "' could not be read because the Genrep server is down.")
         if not g.is_available(name): raise Exception("The Genrep server does not know about the assembly '" + name + "'.")
         return g.assembly(name).chrmeta
 

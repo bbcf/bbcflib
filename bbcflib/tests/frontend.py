@@ -17,7 +17,7 @@ __test__ = True
 class Test_Frontend(unittest.TestCase):
     def setUp(self):
         self.skipTest("These tests don't pass anymore. Delete this line once they are fixed.")
-        self.f = Frontend(url='http://htsstation.vital-it.ch/rnaseq/')
+        self.f = Frontend(url = 'http://htsstation.vital-it.ch/rnaseq/')
         self.key = '9pv1x7PamOj80eXnZa14'
         self.frontend_job = Job(id = 2,
                                 created_at = datetime.datetime.strptime('2010-12-30T13:29:54Z', '%Y-%m-%dT%H:%M:%SZ'),
@@ -25,7 +25,7 @@ class Test_Frontend(unittest.TestCase):
                                 assembly_id = 14,
                                 description = "Job for testing Frontend module",
                                 email = "webmaster.bbcf@epfl.ch",
-                                options={u'domain': None,
+                                options = {u'domain': None,
                                          u'protocol': None,
                                          u'accept': None,
                                          u'run_nber': None,
@@ -46,22 +46,22 @@ class Test_Frontend(unittest.TestCase):
                                          u'time': None,
                                          u'action': None,
                                          u'machine_id': None})
-        self.frontend_job.add_group(id=3,
-                                    control=False,
-                                    name=u'My first group')
-        self.frontend_job.add_run(id=5, group=3,
-                                  facility=u"lgtf", facility_location=u"Lausanne",
-                                  machine=u"C3PO", machine_id=1,
-                                  run=36, lane=1)
-        self.frontend_job.add_run(id=6, group=3,
-                                  facility=u"lgtf", facility_location=u"Lausanne",
-                                  machine=u"C3PO", machine_id=1,
-                                  run=36, lane=2)
-        self.frontend_job.add_group(id=4, control=True, name=u'Other group')
-        self.frontend_job.add_run(id=7, group=4,
-                                  facility=u"lgtf", facility_location=u"Lausanne",
-                                  machine=u"C3PO", machine_id=1,
-                                  run=37, lane=3)
+        self.frontend_job.add_group(id = 3,
+                                    control = False,
+                                    name = u'My first group')
+        self.frontend_job.add_run(id = 5, group = 3,
+                                  facility = u"lgtf", facility_location = u"Lausanne",
+                                  machine = u"C3PO", machine_id = 1,
+                                  run = 36, lane = 1)
+        self.frontend_job.add_run(id = 6, group = 3,
+                                  facility = u"lgtf", facility_location = u"Lausanne",
+                                  machine = u"C3PO", machine_id = 1,
+                                  run = 36, lane = 2)
+        self.frontend_job.add_group(id = 4, control = True, name = u'Other group')
+        self.frontend_job.add_run(id = 7, group = 4,
+                                  facility = u"lgtf", facility_location = u"Lausanne",
+                                  machine = u"C3PO", machine_id = 1,
+                                  run = 37, lane = 3)
 
     def test_init(self):
         def _f(url):
@@ -74,7 +74,7 @@ class Test_Frontend(unittest.TestCase):
 
     def test_query_url(self):
         self.assertEqual(self.f.query_url('groups', self.key),
-                         'http://htsstation.vital-it.ch/rnaseq/groups.json?key=9pv1x7PamOj80eXnZa14')
+                         'http://htsstation.vital-it.ch/rnaseq/groups.json?key = 9pv1x7PamOj80eXnZa14')
 
     def test_fetch_groups(self):
         self.assertEqual(self.f._fetch_groups(self.key),

@@ -57,12 +57,18 @@ class Frontend(object):
     def _fetch_groups(self, key):
         def _f(g):
             a = g['group']
-            return {'control': a['control'],
-                    'created_at': datetime.strptime(a['created_at'],
-                                                    '%Y-%m-%dT%H:%M:%SZ'),
-                    'id': a['id'],
-                    'name': str(a['name']),
-                    'job_id': a['job_id']}
+            b = {'control': a['control'],
+                 'created_at': datetime.strptime(a['created_at'],
+                                                 '%Y-%m-%dT%H:%M:%SZ'),
+                 'id': a['id'],
+                 'name': str(a['name']),
+                 'job_id': a['job_id']}
+            if "library_file_type_id" in a:
+                b.update({"library_file_type_id": a["library_file_type_id"],
+                          "library_file_url": str(a.get("library_file_url") or ""),
+                          "library_id": a.get("library_id") or 0,
+                          "library_param_file": str(a.get("library_param_file") or "")})
+            return b
         return [_f(g) for g in json.load(urllib2.urlopen(self.query_url('groups', key)))]
 
     def _fetch_runs(self, key):
@@ -112,7 +118,7 @@ class Frontend(object):
                 description = str(x['description']),
                 email = str(x['email']),
                 options = x['options'])
-        [j.add_group(id=g['id'], control=g['control'], name=g['name'])
+        [j.add_group(id=g.pop('id'), name=g.pop('name'), group=g)
          for g in self._fetch_groups(key)]
         [j.add_run(id=r['id'], group=r['group_id'],
                    facility=r['facility_name'],
@@ -153,13 +159,14 @@ class Job(object):
         self.groups = {}
         self.options = options
 
-    def add_group(self, id, control, name):
+    def add_group(self, id, name, group = None):
         if self.groups.has_key(id):
             raise ValueError("A group with ID %d was already added." % id)
         else:
-            self.groups[id] = {'control': control,
-                               'name': name,
+            self.groups[id] = {'name': name,
                                'runs': {}}
+        if group != None:
+            self.groups[id].update(group)
 
     def add_run(self, id, group, facility, facility_location, machine, machine_id, run, lane, url, key):
         try:
@@ -200,8 +207,8 @@ def parseConfig( file ):
         if not('name' in group):
             raise ValueError("Each entry in 'Groups' must have a 'name'")
         job.add_group(id=int(gid),
-                      control=group.get('control').lower() in ['1','true','t'],
-                      name=str(group['name']))
+                      name=str(group['name']),
+                      group={'control': (group.get('control').lower() in ['1','true','t'])})
 
     for rid, run in config['Runs'].iteritems():
         if not('group_id' in run):

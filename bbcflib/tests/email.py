@@ -23,9 +23,9 @@ def hostname_contains(pattern):
 
 #--------------------------------------------------------------------------------#
 test_config_file = '''[emailreport]
-email_sender=nobody@localhost
-email_smtp_server=localhost
-email_default_subject=Default Subject'''
+email_sender = nobody@localhost
+email_smtp_server = localhost
+email_default_subject = Default Subject'''
 def get_config_file_parser():
     file = cStringIO.StringIO()
     file.write(test_config_file)
@@ -38,12 +38,12 @@ def get_config_file_parser():
 class Test_EmailReport(unittest.TestCase):
     def setUp(self):
         self.skipTest("These tests don't pass anymore. Delete this line once they are fixed.")
-        self.report = EmailReport(sender='nobody@localhost', to='boris@localhost', subject='Default Subject', smtp_server='localhost')
-        self.report_from_config = EmailReport(config=get_config_file_parser(), to='boris@localhost')
+        self.report = EmailReport(sender = 'nobody@localhost', to = 'boris@localhost', subject = 'Default Subject', smtp_server = 'localhost')
+        self.report_from_config = EmailReport(config = get_config_file_parser(), to = 'boris@localhost')
 
     def test_config_requires_to(self):
         self.assertRaises(TypeError,
-                          lambda : EmailReport(config=get_config_file_parser()))
+                          lambda : EmailReport(config = get_config_file_parser()))
 
 
     def test_init(self):

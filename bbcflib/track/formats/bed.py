@@ -21,7 +21,7 @@ class TrackFormat(TrackText, TrackProxy):
     def _read_entries(self):
         self._file.seek(0)
         seen_track = False
-        for line in self._file:
+        for number, line in enumerate(self._file):
             line = line.strip("\n").lstrip()
             if len(line) == 0:              continue
             if line.startswith("#"):        continue
@@ -44,6 +44,10 @@ class TrackFormat(TrackText, TrackProxy):
             if line[2] <= line[1]:
                 raise Exception("The file '" + self._path + "' has negative or null intervals and is hence not valid.")
             try:
+                if  line[3] == '.' or line[3] == '': line[3] = "feature_"+str(number)
+            except IndexError:
+                line.append("feature_"+str(number))
+            try:
                 if line[4] == '.' or line[4] == '': line[4] = 0.0
             except IndexError:
                 line.append(0.0)
@@ -65,6 +69,7 @@ class TrackFormat(TrackText, TrackProxy):
                         line[7] = float(line[7])
                     except ValueError:
                         raise Exception("The file '" + self._path + "' has non integers as thick ends and is hence not valid.")
+            line.insert(5, None) # attribute is None maybe we will add a feature around
             yield line
 
     def _write_entries(self):
@@ -103,7 +108,9 @@ class TrackFormat(TrackText, TrackProxy):
                 raise Exception("The file '" + self._path + "' has less than three columns and is hence not a valid BED file.")
             if self.num_fields > len(all_fields_possible):
                 raise Exception("The file '" + self._path + "' has too many columns and is hence not a valid BED file.")
-            return all_fields_possible[0:max(5,self.num_fields)]
+            return_fields =  all_fields_possible[0:max(5,self.num_fields)]
+            return_fields.insert(5, 'attribute')
+            return return_fields
 
     #-----------------------------------------------------------------------------#
     @property

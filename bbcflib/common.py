@@ -48,8 +48,8 @@ def cat(files):
     return out
 
 ###############################################################################
-def create_sql_track(path, chrmeta, datatype="quantitative", format='sql', name="Unamed"):
-    ''' This function shouldn't be used'''
+def create_sql_track(path, chrmeta, datatype = "quantitative", format = 'sql', name = "Unamed"):
+    """ This function shouldn't be used"""
     from bbcflib import track
     with track.new(path, format, name, chrmeta, datatype) as t:
         for chrom in chrmeta: t.write(chrom, (), getattr(track.Track, datatype + '_fields'))
@@ -60,7 +60,7 @@ def create_sql_track(path, chrmeta, datatype="quantitative", format='sql', name=
 ###############################################################################
 ###############################################################################
 try:
-    from bein import *
+    from bein import unique_filename_in, program
 
     #-------------------------------------------------------------------------#
     def get_files( id_or_key, minilims ):
@@ -189,7 +189,9 @@ try:
 
     #-------------------------------------------------------------------------#
     @program
-    def scp(source, destination, args=[]):
+    def scp(source, destination, args = None):
+        if args is None:
+            args = []
         output = unique_filename_in()
         call = ["scp"] + args + [ source, destination ]
         return {"arguments": call, "return_value": output}

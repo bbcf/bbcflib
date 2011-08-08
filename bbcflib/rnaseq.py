@@ -323,8 +323,9 @@ def rnaseq_workflow(ex, job, assembly, via="lsf", output=None, maplot="normal", 
     futures = {}
     for (c1,c2) in pairs_to_test(controls):
         if len(runs[c1]) + len(runs[c2]) > 2:
-            method = "normal";
-        else: method = "blind";
+            method = "normal"
+        else: 
+            method = "blind"
 
         if with_exons:
             print "Inference (genes+exons)..."

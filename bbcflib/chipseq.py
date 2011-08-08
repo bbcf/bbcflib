@@ -38,11 +38,11 @@ Below is the script used by the frontend::
 """
 
 # Built-in modules #
-import shutil, pickle, urllib
+import shutil, pickle, urllib, re, os
 
 # Internal modules #
 from . import frontend, mapseq
-from .common import *
+from .common import merge_sql, merge_many_bed, join_pdf
 
 # Other modules #
 from bein import *
@@ -52,7 +52,7 @@ from bein.util import *
 # Peaks and annotation #
 
 @program
-def macs( read_length, genome_size, bamfile, ctrlbam=None, args=[] ):
+def macs( read_length, genome_size, bamfile, ctrlbam = None, args = None ):
     """Binding for the ``macs`` peak caller.
 
     takes one (optionally two) bam file(s) and
@@ -60,6 +60,8 @@ def macs( read_length, genome_size, bamfile, ctrlbam=None, args=[] ):
 
     Returns the file prefix ('-n' option of ``macs``)
     """
+    if args is None:
+        args = []
     outname = unique_filename_in()
     macs_args = ["macs14","-t",bamfile]
     if ctrlbam != None:
@@ -69,8 +71,8 @@ def macs( read_length, genome_size, bamfile, ctrlbam=None, args=[] ):
     return {"arguments": macs_args+args, "return_value": outname}
 
 def add_macs_results( ex, read_length, genome_size, bamfile,
-                      ctrlbam=[None], name=None, poisson_threshold={},
-                      alias=None, macs_args=[], via='lsf' ):
+                      ctrlbam = None, name = None, poisson_threshold = None,
+                      alias = None, macs_args = None, via = 'lsf' ):
     """Calls the ``macs`` function on each possible pair
     of test and control bam files and adds
     the respective outputs to the execution repository.
@@ -85,6 +87,10 @@ def add_macs_results( ex, read_length, genome_size, bamfile,
         bamfile = [bamfile]
     if not(isinstance(ctrlbam,list)):
         ctrlbam = [ctrlbam]
+    if poisson_threshold is None:
+        poisson_threshold = {}
+    if macs_args is None:
+        macs_args = []
     futures = {}
     rl = read_length
     for i,bam in enumerate(bamfile):
@@ -122,7 +128,7 @@ def add_macs_results( ex, read_length, genome_size, bamfile,
     return prefixes
 
 @program
-def sql_prepare_deconv(sql_dict,peaks_bed,chr_name,chr_length,cutoff,read_extension):
+def sql_prepare_deconv(sql_dict, peaks_bed, chr_name, chr_length, cutoff, read_extension):
     """Prepares files for the deconvolution algorithm.
     Calls the stand-alone ``sql_prepare_deconv.py`` script which needs
     a dictionary of sql files (quantitative tracks for forward and reverse strand)
@@ -151,14 +157,14 @@ def run_deconv_r( counts_file, read_extension, chr_name, script_path ):
             'return_value': {'pdf': pdf_file, 'rdata': output_file}}
 
 @program
-def sql_finish_deconv(sqlout,rdata):
+def sql_finish_deconv(sqlout,rdata,chrom):
     """Binds the ``sql_finish_deconv.py`` scripts which creates an sqlite file from
     'run_deconv''s output.
     """
-    return {"arguments": ["sql_finish_deconv.py",rdata,sqlout],
+    return {"arguments": ["sql_finish_deconv.py",rdata,sqlout,chrom],
             "return_value": sqlout}
 
-def run_deconv(ex,sql,peaks,chromosomes,read_extension,script_path, via='lsf'):
+def run_deconv(ex, sql, peaks, chromosomes, read_extension, script_path, via = 'lsf'):
     """Runs the complete deconvolution process for a set of sql files and a bed file,
     parallelized over a set of chromosomes (a dictionary with keys 'chromosome_id'
     and values a dictionary with chromosome names and lengths).
@@ -166,6 +172,7 @@ def run_deconv(ex,sql,peaks,chromosomes,read_extension,script_path, via='lsf'):
     Returns a dictionary of file outputs with keys file types
     ('pdf', 'sql' and 'bed') and values the file names.
     """
+    from bbcflib.track import new
     prep_futures = dict((c['name'],
                          sql_prepare_deconv.nonblocking( ex, sql, peaks,
                                                          c['name'], c['length'],
@@ -182,10 +189,13 @@ def run_deconv(ex,sql,peaks,chromosomes,read_extension,script_path, via='lsf'):
                                            [x['pdf'] for x in rdeconv_out.values()
                                             if x != None],
                                            via=via )
-    sqlout = create_sql_track( unique_filename_in(), chromosomes.values() )
-    for fout in rdeconv_out.values():
+    chrlist = dict((v['name'], {'length': v['length']}) for v in chromosomes.values())
+    output = unique_filename_in()
+    with new(output,'sql',datatype="quantitative",chrmeta=chrlist) as track:
+        pass
+    for c,fout in rdeconv_out.iteritems():
         if fout != None:
-            f = sql_finish_deconv.nonblocking( ex, sqlout, fout['rdata'], via=via ).wait()
+            f = sql_finish_deconv.nonblocking( ex, sqlout, fout['rdata'], c, via=via ).wait()
     outfiles = {}
     outfiles['sql'] = sqlout
     outfiles['bed'] = sqlout+'_deconv.bed'
@@ -285,7 +295,7 @@ def get_bam_wig_files( ex, job, minilims=None, hts_url=None,
             if not(isinstance(mapped_files[gid][rid]['stats'],dict)):
                 stats = mapped_files[gid][rid]['stats'].wait()
                 mapped_files[gid][rid]['stats'] = stats
-                pdf = maspeq.add_pdf_stats( ex, {gid:{rid:{'stats':stats}}},
+                pdf = mapseq.add_pdf_stats( ex, {gid:{rid:{'stats':stats}}},
                                             {gid: mapped_files[gid][rid]['libname']},
                                             script_path )
                 mapped_files[gid][rid]['p_thresh'] = mapseq.poisson_threshold( 50*stats["actual_coverage"] )
@@ -397,17 +407,11 @@ def workflow_groups( ex, job_or_dict, mapseq_files, chromosomes, script_path='',
             wig = []
             for m in mapped.values():
                 if merge_strands >= 0 or not('wig' in m) or len(m['wig'])<2:
-                    output = unique_filename_in()
-                    touch(ex,output)
-                    [create_sql_track( output+s+'.sql', chromosomes.values(),
-                                       name=m['libname'] ) 
-                     for s in suffixes]
-                    mapseq.parallel_density_sql( ex, m["bam"],
-                                                 output, chromosomes,
-                                                 nreads=m["stats"]["total"],
-                                                 merge=-1,
-                                                 convert=False,
-                                                 b2w_args=b2w_args, via=via )
+                    output = mapseq.parallel_density_sql( ex, m["bam"], chromosomes,
+                                                          nreads=m["stats"]["total"],
+                                                          merge=-1,
+                                                          convert=False,
+                                                          b2w_args=b2w_args, via=via )
                     wig.append(dict((s,output+s+'.sql') for s in suffixes))
                 else:
                     wig.append(m['wig'])
