@@ -648,8 +648,8 @@ def densities_groups( ex, job_or_dict, file_dict, chromosomes, via='lsf' ):
         raise TypeError("job_or_dict must be a frontend.Job object or a dictionary with keys 'groups'.")
     merge_strands = -1
     suffixes = ["fwd","rev"]
-    if options.get('merge_strands')>=0:
-        merge_strands = options['merge_strands']
+    if int(options.get('merge_strands'))>=0:
+        merge_strands = int(options['merge_strands'])
         suffixes = ["merged"]
     ucsc_bigwig = False
     if 'ucsc_bigwig' in options:
@@ -731,13 +731,13 @@ def import_mapseq_results( key_or_id, minilims, ex_root, url_or_dict ):
         htss = frontend.Frontend( url=url_or_dict )
         job = htss.job( key_or_id )
         job_groups = job.groups
-        if 'merge_strands' in job.options and job.options['merge_strands']>=0:
-            merge = job.options['merge_strands']
+        if 'merge_strands' in job.options and int(job.options['merge_strands'])>=0:
+            merge = int(job.options['merge_strands'])
     else:
         job = url_or_dict
         job_groups = job['groups']
-        if 'merge_strands' in job['options'] and job['options']['merge_strands']>=0:
-            merge = job['options']['merge_strands']
+        if 'merge_strands' in job['options'] and int(job['options']['merge_strands'])>=0:
+            merge = int(job['options']['merge_strands'])
     if merge<0:
         suffix = ['fwd','rev']
     else:
