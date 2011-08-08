@@ -600,21 +600,22 @@ def parallel_density_sql( ex, bamfile, chromosomes,
                             tfwd.write(v['name'],_wig(f,"+"))
                         with open(wig,"r") as f:
                             trev.write(v['name'],_wig(f,"-"))
-                    except ProgramFailed:
+                    except (ProgramFailed, IOError):
                         tfwd.write(v['name'],[])
                         trev.write(v['name'],[])
     else:
         def _bedgr(infile):
             for row in infile:
-                r = row.split("\t")
-                yield((r[1],r[2],r[3]))
+                if not row.startswith('track'): 
+                    r = row.split("\t")
+                    yield((r[1],r[2],r[3]))
         with new(output+"merged.sql",datatype="quantitative",chrmeta=chrlist) as tboth:
             for k,v in chromosomes.iteritems():
                 try:
                     bedgr = futures[k].wait()
                     with open(bedgr,"r") as f:
                         tboth.write(v['name'],_bedgr(f))
-                except ProgramFailed:
+                except (ProgramFailed, IOError):
                     tboth.write(v['name'],[])
 
     return output
