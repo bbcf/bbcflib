@@ -130,7 +130,7 @@ class GenRep(object):
         for chr in h_data.keys():
             h_data[chr].sort()
             res_list=get_sequence(chr, h_data[chr])
-            for i in range(0:len(res_list)):
+            for i in range(0,len(res_list)):
                 h_results[chr]=[h_data[chr][i], res_list[i]]
         return h_results
 
