@@ -102,15 +102,38 @@ class GenRep(object):
             raise ValueError("Argument 'assembly' to must be a " + \
                                  "string or integer, got " + str(assembly))
 
-    def get_sequence(self, chr_id, coord_list):
+    def get_sequence(self, chr_id, coord_list, chunksize=400):
         """Parses a slice request to the repository."""
         if len(coord_list) == 0:
             return []
-        slices  = ",".join([",".join([str(y) for y in x]) for x in coord_list])
-        url     = """%s/chromosomes/%i/get_sequence_part?slices=%s""" % (self.url, chr_id, slices)
-        request = urllib2.Request(url)
-        return urllib2.urlopen(request).read().split(',')
+        s = len(coord_list)
+        list = []
+        for k in range(0,int(s / chunksize) + 1): 
+            end = k*chunksize+chunksize
+            if (k*chunksize+chunksize > s-1):  
+                tmp_list = h_ranges[chr][k*chunksize:s]
+                slices  = ",".join([",".join([str(y) for y in x]) for x in tmp_list])
+                url     = """%s/chromosomes/%i/get_sequence_part?slices=%s""" % (self.url, chr_id, slices)
+                request = urllib2.Request(url)
+                list = urllib2.urlopen(request).read().split(',')
+                list.extend(urllib2.urlopen(request).read().split(','))
+        return list
 
+    def get_sequence_straight(self, input_list)
+    """ each element in input_list are lists containing: the chromosome name, the start and the end position."""    
+    h_data = {}
+    h_result = {}
+
+    for e in input_list:
+        h_data.get(e[0],[])
+        h_data(e[0]).append([e[1],e[2]])
+    for chr in h_data.keys()
+       h_data[chr].sort()
+       res_list=get_sequence(chr, h_data[chr])
+       for i in range(0:len(res_list)):
+           h_results[chr]=[h_data[chr][i], res_list[i]]
+    return h_results
+ 
     def fasta_from_data(self, chromosomes, data_path, out=None, chunk=50000):
         """Get a fasta file with sequences corresponding to the features in the
         bed or sqlite file.
