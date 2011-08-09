@@ -117,22 +117,22 @@ class GenRep(object):
                 request = urllib2.Request(url)
                 list = urllib2.urlopen(request).read().split(',')
                 list.extend(urllib2.urlopen(request).read().split(','))
-    return list
+        return list
 
     def get_sequence_straight(self, input_list):
-    """ each element in input_list are lists containing: the chromosome name, the start and the end position."""    
-    h_data = {}
-    h_result = {}
-    
-    for e in input_list:
-        h_data.get(e[0],[])
-        h_data(e[0]).append([e[1],e[2]])
-    for chr in h_data.keys():
-        h_data[chr].sort()
-        res_list=get_sequence(chr, h_data[chr])
-        for i in range(0:len(res_list)):
-            h_results[chr]=[h_data[chr][i], res_list[i]]
-    return h_results
+        """ each element in input_list are lists containing: the chromosome name, the start and the end position."""    
+        h_data = {}
+        h_result = {}
+        
+        for e in input_list:
+            h_data.get(e[0],[])
+            h_data(e[0]).append([e[1],e[2]])
+        for chr in h_data.keys():
+            h_data[chr].sort()
+            res_list=get_sequence(chr, h_data[chr])
+            for i in range(0:len(res_list)):
+                h_results[chr]=[h_data[chr][i], res_list[i]]
+        return h_results
 
     def fasta_from_data(self, chromosomes, data_path, out=None, chunk=50000):
         """Get a fasta file with sequences corresponding to the features in the
