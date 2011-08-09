@@ -3,7 +3,8 @@
 Submodule: bbcflib.track.track_proxy
 ====================================
 
-Methods that create an SQL file upon opening in the temporary directory and reconverts everything to a text file file upon closing, all transparently.
+Methods that create an SQL file upon opening in the temporary directory 
+and reconverts everything to a text file file upon closing, all transparently.
 """
 
 # Built-in modules #
@@ -33,7 +34,9 @@ class TrackProxy(TrackBackend):
                     fields = self._fields
                     for chrom, data in self._read(): t.write(chrom, data, fields)
         # Load the new SQL track as self #
-        super(TrackProxy, self).__init__(tmp_path, backend_format, name=None, chrmeta=chrmeta, datatype=None, readonly=readonly)
+        super(TrackProxy, self).__init__(
+                                         tmp_path, backend_format, name=None,
+                                          chrmeta=chrmeta, datatype=None, readonly=readonly)
 
     def unload(self, datatype=None, value=None, traceback=None):
         if self.modified and not self.readonly: self.dump()

@@ -13,6 +13,14 @@ from pkg_resources import resource_filename
 
 ###############################################################################
 def guess_file_format(path):
+    '''
+    Try to detect the file type.
+    Return one of 'known_formats' value if successfull,
+    otherwise return an empty string
+    TODO : magic doesn't work on each systems.
+    keep it or just rest with the extensions ??
+     
+    '''
     # Link between descriptions and file extension #
     known_formats = {
         'SQLite 3.x database':                          'sql',
@@ -29,15 +37,17 @@ def guess_file_format(path):
     try: import magic
     except ImportError: return ''
     # Try version #
-    if not hasattr(magic, 'open'): return ''
-    # Add our definitions #
-    mime = magic.open(magic.NONE)
-    mime.load(file=resource_filename(__name__, 'magic_data'))
-    filetype = mime.file(path)
-    # Otherwise try standard definitions #
-    if not filetype in known_formats:
-        mime = magic.open(magic.NONE)
-        mime.load()
+    try:
+        if not hasattr(magic, 'open'): return ''
+        # Add our definitions #
+        mime = magic.open(magic.MAGIC_NONE)
+        mime.load(file=resource_filename(__name__, 'magic_data'))
         filetype = mime.file(path)
-    # Try the conversion dict #
-    return known_formats.get(filetype, '')
+        # Otherwise try standard definitions #
+        if not filetype in known_formats:
+            mime = magic.open(magic.MAGIC_NONE)
+            mime.load()
+            filetype = mime.file(path)
+        # Try the conversion dict #
+        return known_formats.get(filetype, '')
+    except Exception: return ''
