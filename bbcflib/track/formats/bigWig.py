@@ -27,7 +27,7 @@ class TrackFormat(TrackBinary, TrackBedgraph):
         self.run_tool('bigWigToBedGraph', [source, dest])
 
     def text_to_binary(self, source, dest):
-        chrfile = self.chrmeta.write_file()
+        chrfile = self.chrmeta.write_file(sep=' ')
         self.run_tool('bedGraphToBigWig', [source, chrfile, dest])
         os.remove(chrfile)
 

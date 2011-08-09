@@ -208,7 +208,7 @@ def run_deconv(ex, sql, peaks, chromosomes, read_extension, script_path, via = '
 ################################################################################
 # Workflow #
 
-def get_bam_wig_files( ex, job, minilims=None, hts_url=None,
+def get_bam_wig_files( ex, job, minilims=None, hts_url=None, suffix=['fwd','rev'],
                        script_path = './', via='lsf' ):
     """
     Will replace file references by actual file paths in the 'job' object.
@@ -216,7 +216,6 @@ def get_bam_wig_files( ex, job, minilims=None, hts_url=None,
     """
     mapped_files = {}
     read_exts = {}
-    suffix = ['fwd','rev']
     for gid,group in job.groups.iteritems():
         mapped_files[gid] = {}
         if 'name' in group:
@@ -229,7 +228,7 @@ def get_bam_wig_files( ex, job, minilims=None, hts_url=None,
             bamfile = unique_filename_in()
             wig = {}
             name = group_name
-            s = None
+            stats = None
             p_thresh = None
             if len(group['runs'])>1:
                 if all([x in run for x in ['machine','run','lane']]):
@@ -255,7 +254,7 @@ def get_bam_wig_files( ex, job, minilims=None, hts_url=None,
 #                ms_name = file_names[gid][rid]
                 stats_id = allfiles.get("py:"+name+"_filter_bamstat") or allfiles.get("py:"+name+"_full_bamstat")
                 with open(MMS.path_to_file(stats_id)) as q:
-                    s = pickle.load(q)
+                    stats = pickle.load(q)
                 p_thresh = -1
                 if "py:"+name+"_Poisson_threshold" in allfiles:
                     pickle_thresh = allfiles["py:"+name+"_Poisson_threshold"]
@@ -269,8 +268,10 @@ def get_bam_wig_files( ex, job, minilims=None, hts_url=None,
                 if ms_job.options.get('read_extension')>0 and ms_job.options.get('read_extension')<80:
                     read_exts[rid] = ms_job.options['read_extension']
                 else:
-                    read_exts[rid] = s['read_length']
-                if ms_job.options.get('compute_densities') and ms_job.options.get('merge_strands')<0:
+                    read_exts[rid] = stats['read_length']
+                if (ms_job.options.get('compute_densities') and 
+                    ((ms_job.options.get('merge_strands')<0 and len(suffix)>1) or 
+                     (ms_job.options.get('merge_strands')>-1 and len(suffix)==1))):
                     wigfile = unique_filename_in()
                     wig_ids = dict(((allfiles['sql:'+name+'_'+s+'.sql'],s),
                                     wigfile+'_'+s+'.sql') for s in suffix)
@@ -279,7 +280,7 @@ def get_bam_wig_files( ex, job, minilims=None, hts_url=None,
             else:
                 raise ValueError("Couldn't find this bam file anywhere: %s." %file_loc)
             mapped_files[gid][rid] = {'bam': bamfile,
-                                      'stats': s or mapseq.bamstats.nonblocking( ex, bamfile, via=via ),
+                                      'stats': stats or mapseq.bamstats.nonblocking( ex, bamfile, via=via ),
                                       'poisson_threshold': p_thresh,
                                       'libname': name,
                                       'wig': wig}

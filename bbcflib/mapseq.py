@@ -77,6 +77,8 @@ import os, re, json, shutil, gzip, tarfile, pickle, urllib
 
 # Internal modules #
 from . import frontend, genrep, daflims, common
+from .track import Track, new
+
 
 # Other modules #
 import pysam
@@ -351,7 +353,7 @@ def get_fastq_files( job, fastq_root, dafl=None, set_seed_length=True ):
                         input_file.close()
                     fq_file = fq_file2
                 job.groups[gid]['runs'][rid] = fq_file
-                job.groups[gid]['run_names'][rid] = os.path.basename(run.split("/")[-1])
+                job.groups[gid]['run_names'][rid] = os.path.splitext(run.split("/")[-1])[0]
     return job
 
 ############################################################
@@ -465,34 +467,34 @@ def add_pdf_stats( ex, processed, group_names, script_path,
     return pdf
 
 ############################################################
-@program
-def wigToBigWig( sql ):
-    """Binds ``wigToBigWig`` from the UCSC tools.
-    """
-    import sqlite3
-    chrsizes = unique_filename_in()
-    chromosomes = []
-    connection = sqlite3.connect( sql )
-    cur = connection.cursor()
-    with open(chrsizes,'w') as f:
-        cur = connection.cursor()
-        cur.execute('select * from chrNames')
-        connection.commit()
-        for sql_row in cur:
-            chromosomes.append(sql_row[0])
-            f.write(' '.join([str(x) for x in sql_row])+"\n")
-        cur.close()
-    bedgraph = unique_filename_in()
-    with open(bedgraph,'w') as f:
-        for c in chromosomes:
-            cur.execute('select * from "'+c+'"')
-            connection.commit()
-            for sql_row in cur:
-                f.write("\t".join([c]+[str(x) for x in sql_row])+"\n")
-            cur.close()
-    bigwig = unique_filename_in()
-    return {"arguments": ['wigToBigWig',bedgraph,chrsizes,bigwig],
-            "return_value": bigwig}
+#@program
+#def wigToBigWig( sql ):
+#    """Binds ``wigToBigWig`` from the UCSC tools.
+#    """
+#    import sqlite3
+#    chrsizes = unique_filename_in()
+#    chromosomes = []
+#    connection = sqlite3.connect( sql )
+#    cur = connection.cursor()
+#    with open(chrsizes,'w') as f:
+#        cur = connection.cursor()
+#        cur.execute('select * from chrNames')
+#        connection.commit()
+#        for sql_row in cur:
+#            chromosomes.append(sql_row[0])
+#            f.write(' '.join([str(x) for x in sql_row])+"\n")
+#        cur.close()
+#    bedgraph = unique_filename_in()
+#    with open(bedgraph,'w') as f:
+#        for c in chromosomes:
+#            cur.execute('select * from "'+c+'"')
+#            connection.commit()
+#            for sql_row in cur:
+#                f.write("\t".join([c]+[str(x) for x in sql_row])+"\n")
+#            cur.close()
+#    bigwig = unique_filename_in()
+#    return {"arguments": ['wigToBigWig',bedgraph,chrsizes,bigwig],
+#            "return_value": bigwig}
 
 @program
 def bam_to_density( bamfile, output, chromosome_accession = None, chromosome_name = None,
@@ -573,7 +575,6 @@ def parallel_density_sql( ex, bamfile, chromosomes,
     if 'merge'>=0 (shift and merge strands into one track)
     or 'merge'<0 (keep seperate tracks for each strand) and returns their basename.
     """
-    from bbcflib.track import new
     if b2w_args is None:
         b2w_args = []
     futures = {}
@@ -600,21 +601,22 @@ def parallel_density_sql( ex, bamfile, chromosomes,
                             tfwd.write(v['name'],_wig(f,"+"))
                         with open(wig,"r") as f:
                             trev.write(v['name'],_wig(f,"-"))
-                    except ProgramFailed:
+                    except (ProgramFailed, IOError):
                         tfwd.write(v['name'],[])
                         trev.write(v['name'],[])
     else:
         def _bedgr(infile):
             for row in infile:
-                r = row.split("\t")
-                yield((r[1],r[2],r[3]))
+                if not row.startswith('track'): 
+                    r = row.split("\t")
+                    yield((r[1],r[2],r[3]))
         with new(output+"merged.sql",datatype="quantitative",chrmeta=chrlist) as tboth:
             for k,v in chromosomes.iteritems():
                 try:
                     bedgr = futures[k].wait()
                     with open(bedgr,"r") as f:
                         tboth.write(v['name'],_bedgr(f))
-                except ProgramFailed:
+                except (ProgramFailed, IOError):
                     tboth.write(v['name'],[])
 
     return output
@@ -695,7 +697,7 @@ def densities_groups( ex, job_or_dict, file_dict, chromosomes, via='lsf' ):
             merged_bam = merge_bam(ex, [m['bam'] for m in mapped.values()])
             ids = [m['libname'] for m in mapped.values()]
             merged_wig = dict((s, common.merge_sql(ex, [x+s+".sql" for x in wig], ids,
-                                                   description="sql:"+group_name+"_"+s+".sql"))
+                                                   description="sql:"+group_name+"_"+s+".sql", via='local'))
                               for s in suffixes)
         else:
             merged_bam = mapped.values()[0]['bam']
@@ -703,10 +705,11 @@ def densities_groups( ex, job_or_dict, file_dict, chromosomes, via='lsf' ):
         processed[gid] = {'bam': merged_bam, 'wig': merged_wig,
                           'read_length': mapped.values()[0]['stats']['read_length']}
         if ucsc_bigwig:
-            bw_futures = [wigToBigWig.nonblocking( ex, merged_wig[s], via=via )
-                          for s in suffixes]
-            [ex.add(bw_futures[i].wait(),description='bigwig:'+group_name+'_'+s+'.bw')
-             for i,s in enumerate(suffixes)]
+            out = unique_filename_in()
+            for s in suffix:
+                with Track(merged_wig[s]) as t:
+                    t.convert(out+s,"bigWig")
+                ex.add(out+s,description='bigwig:'+group_name+'_'+s+'.bw')
     processed.update({'read_extension': options.get('read_extension'),
                       'genome_size': mapped.values()[0]['stats']['genome_size']})
     return processed
