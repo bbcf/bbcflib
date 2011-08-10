@@ -265,8 +265,8 @@ def get_bam_wig_files( ex, job, minilims=None, hts_url=None, suffix=['fwd','rev'
                         job.options['gdv_project'] = pickle.load(q)
                 htss = frontend.Frontend( url=hts_url )
                 ms_job = htss.job( run['key'] )
-                if ms_job.options.get('read_extension')>0 and ms_job.options.get('read_extension')<80:
-                    read_exts[rid] = ms_job.options['read_extension']
+                if int(ms_job.options.get('read_extension'))>0 and int(ms_job.options.get('read_extension'))<80:
+                    read_exts[rid] = int(ms_job.options['read_extension'])
                 else:
                     read_exts[rid] = stats['read_length']
                 if (ms_job.options.get('compute_densities') and 
@@ -344,9 +344,11 @@ def workflow_groups( ex, job_or_dict, mapseq_files, chromosomes, script_path='',
         raise TypeError("job_or_dict must be a frontend.Job object or a dictionary with key 'groups'.")
     merge_strands = -1
     suffixes = ["fwd","rev"]
-    if options.get('merge_strands')>=0:
-        merge_strands = options['merge_strands']
+    if int(options.get('merge_strands'))>=0:
+        merge_strands = int(options['merge_strands'])
     peak_deconvolution = options.get('peak_deconvolution') or False
+    if isinstance(peak_deconvolution,str):
+        peak_deconvolution = peak_deconvolution.lower() in ['1','true','t'] 
     macs_args = options.get('macs_args') or ["--bw=200","-p",".001"]
     b2w_args = options.get('b2w_args') or []
     if not(isinstance(mapseq_files,dict)):
@@ -397,7 +399,7 @@ def workflow_groups( ex, job_or_dict, mapseq_files, chromosomes, script_path='',
     if peak_deconvolution:
         processed['deconv'] = {}
         merged_wig = {}
-        if not(options.get('read_extension')>0):
+        if not(int(options.get('read_extension'))>0):
             options['read_extension'] = read_length[0]
         if not('-q' in b2w_args):
             b2w_args += ["-q",str(options['read_extension'])]
