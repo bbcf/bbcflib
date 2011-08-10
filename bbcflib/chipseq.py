@@ -173,16 +173,12 @@ def run_deconv(ex, sql, peaks, chromosomes, read_extension, script_path, via = '
     ('pdf', 'sql' and 'bed') and values the file names.
     """
     from bbcflib.track import new
-    prep_futures = dict((c['name'],
-                         sql_prepare_deconv.nonblocking( ex, sql, peaks,
-                                                         c['name'], c['length'],
-                                                         1500, read_extension,
-                                                         via=via ))
-                        for c in chromosomes.values())
-    rdeconv_futures = dict((c,
-                            run_deconv_r.nonblocking( ex, f.wait(), read_extension,
-                                                      c, script_path, via=via ))
-                           for c,f in prep_futures.iteritems())
+    rdeconv_futures = {}
+    for c in chromosomes.values():
+        f = sql_prepare_deconv.nonblocking( ex, sql, peaks, c['name'], c['length'],
+                                            1500, read_extension, via='local' ).wait()
+        rdeconv_futures[c['name']] =  run_deconv_r.nonblocking( ex, f, read_extension,
+                                                                c['name'], script_path, via=via )
     rdeconv_out = dict((c, f.wait()) for c,f in rdeconv_futures.iteritems())
     if len(rdeconv_out)>0:
         pdf_future = join_pdf.nonblocking( ex,
@@ -195,7 +191,7 @@ def run_deconv(ex, sql, peaks, chromosomes, read_extension, script_path, via = '
         pass
     for c,fout in rdeconv_out.iteritems():
         if fout != None:
-            f = sql_finish_deconv.nonblocking( ex, sqlout, fout['rdata'], c, via=via ).wait()
+            f = sql_finish_deconv.nonblocking( ex, sqlout, fout['rdata'], c, via='local' ).wait()
     outfiles = {}
     outfiles['sql'] = sqlout
     outfiles['bed'] = sqlout+'_deconv.bed'
@@ -251,7 +247,7 @@ def get_bam_wig_files( ex, job, minilims=None, hts_url=None, suffix=['fwd','rev'
                                 for x in MMS.search_files(source=('execution',exid)))
                 with open(MMS.path_to_file(allfiles['py:file_names'])) as q:
                     file_names = pickle.load(q)
-#                ms_name = file_names[gid][rid]
+                name = file_names[gid][rid]
                 stats_id = allfiles.get("py:"+name+"_filter_bamstat") or allfiles.get("py:"+name+"_full_bamstat")
                 with open(MMS.path_to_file(stats_id)) as q:
                     stats = pickle.load(q)
@@ -263,12 +259,15 @@ def get_bam_wig_files( ex, job, minilims=None, hts_url=None, suffix=['fwd','rev'
                 if 'py:gdv_json' in allfiles:
                     with open(MMS.path_to_file(allfiles['py:gdv_json'])) as q:
                         job.options['gdv_project'] = pickle.load(q)
-                htss = frontend.Frontend( url=hts_url )
-                ms_job = htss.job( run['key'] )
-                if int(ms_job.options.get('read_extension'))>0 and int(ms_job.options.get('read_extension'))<80:
-                    read_exts[rid] = int(ms_job.options['read_extension'])
+                if hts_url != None:
+                    htss = frontend.Frontend( url=hts_url )
+                    ms_job = htss.job( run['key'] )
+                    if int(ms_job.options.get('read_extension'))>0 and int(ms_job.options.get('read_extension'))<80:
+                        read_exts[rid] = int(ms_job.options['read_extension'])
+                    else:
+                        read_exts[rid] = stats['read_length']
                 else:
-                    read_exts[rid] = stats['read_length']
+                    ms_job = job
                 if (ms_job.options.get('compute_densities') and 
                     ((ms_job.options.get('merge_strands')<0 and len(suffix)>1) or 
                      (ms_job.options.get('merge_strands')>-1 and len(suffix)==1))):
@@ -291,7 +290,7 @@ def get_bam_wig_files( ex, job, minilims=None, hts_url=None, suffix=['fwd','rev'
         job.options['read_extension'] = [k for k,v in c.iteritems() if v==max(c.values())][0]
     for gid, group in job.groups.iteritems():
         for rid,run in group['runs'].iteritems():
-            if ('read_extension' in job) and (read_exts.get(rid) != job['read_extension']):
+            if ('read_extension' in job.options) and (read_exts.get(rid) != job.options['read_extension']):
                 mapped_files[gid][rid]['wig'] = []
             if not(isinstance(mapped_files[gid][rid]['stats'],dict)):
                 stats = mapped_files[gid][rid]['stats'].wait()
@@ -344,7 +343,7 @@ def workflow_groups( ex, job_or_dict, mapseq_files, chromosomes, script_path='',
         raise TypeError("job_or_dict must be a frontend.Job object or a dictionary with key 'groups'.")
     merge_strands = -1
     suffixes = ["fwd","rev"]
-    if int(options.get('merge_strands'))>=0:
+    if merge_strands in options and int(options.get('merge_strands'))>=0:
         merge_strands = int(options['merge_strands'])
     peak_deconvolution = options.get('peak_deconvolution') or False
     if isinstance(peak_deconvolution,str):
@@ -422,7 +421,7 @@ def workflow_groups( ex, job_or_dict, mapseq_files, chromosomes, script_path='',
                 merged_wig[group_name] = dict((s,
                                                merge_sql(ex, [x[s] for x in wig],
                                                          [m['libname'] for m in mapped.values()] ,
-                                                         description="sql:"+group_name+"_"+s+".sql"))
+                                                         description="sql:"+group_name+"_"+s+".sql", via='local'))
                                               for s in suffixes)
             else:
                 merged_wig[group_name] = wig[0]
