@@ -48,12 +48,12 @@ def cat(files):
     return out
 
 ###############################################################################
-def create_sql_track(path, chrmeta, datatype = "quantitative", format = 'sql', name = "Unamed"):
-    """ This function shouldn't be used"""
-    from bbcflib import track
-    with track.new(path, format, name, chrmeta, datatype) as t:
-        for chrom in chrmeta: t.write(chrom, (), getattr(track.Track, datatype + '_fields'))
-
+#def create_sql_track(path, chrmeta, datatype = "quantitative", format = 'sql', name #= "Unamed"):
+#    """ This function shouldn't be used"""
+#    from bbcflib import track
+#    with track.new(path, format, name, chrmeta, datatype) as t:
+#        for chrom in chrmeta: t.write(chrom, (), getattr(track.Track, datatype + '_fields'))
+#
 ###############################################################################
 ###############################################################################
 ##################### BIG TRY STATEMENT STARTING... ###########################
