@@ -7,7 +7,7 @@ No documentation
 """
 
 # Built-in modules #
-import pickle, json, pysam, numpy, urllib, math
+import pickle, json, pysam, numpy, urllib, math, time
 from itertools import combinations
 
 # Internal modules #
@@ -28,36 +28,43 @@ import cogent.db.ensembl as ensembl
 
 ################################################################################
 
-def fetch_mappings(ex, assembly_id):
-    """Given an assembly ID, return a dictionary giving an exon to gene/ORF mapping.
+def fetch_mappings(ex, path_or_assembly_id):
+    """Given an assembly ID, return a tuple
+    (gene_ids, gene_names, trans_to_gene_mapping, exons_to_trans_mapping).
+    gene_ids is a list of gene IDs; gene_names is a dictionary {gene ID: gene name};
+    trans_to_gene_mapping is a dictionary {gene ID: [transcripts IDs]};
+    exons_to_trans_mapping is a dictionary {transcript ID: [exons IDs]}.
 
     The *assembly_id* can be a numeric or nominal ID for GenRep
     (e.g. 76 or 'hg19' for H.Sapiens), or a path to a file containing a
     JSON object which is read to get the mapping.
+
+    Takes about 115 seconds to load.
     """
+    assembly_id = path = path_or_assembly_id
     nr_assemblies = urllib.urlopen("http://bbcftools.vital-it.ch/genrep/nr_assemblies.json").read()
     nr_assemblies = json.loads(nr_assemblies)
     for a in nr_assemblies:
         if a['nr_assembly']['id'] == assembly_id or a['nr_assembly']['name'] == assembly_id:
             mdfive = a['nr_assembly']['md5']; break
 
-    if os.path.exists(str(assembly_id)):
-        with open(str(assembly_id), 'rb') as pickle_file:
+    if os.path.exists(str(path)):
+        with open(str(path), 'rb') as pickle_file:
             mapping = pickle.load(pickle_file)
+        print "Mapping found in", os.path.dirname(mapping)
         return mapping
-        print "Exon to gene/ORF mapping found in", os.path.dirname(mapping)
     elif os.path.exists("/db/genrep/nr_assemblies/exons_pickle/"+str(mdfive)+".pickle"):
-        with open("/db/genrep/nr_assemblies/exons_pickle/"+mdfive+".pickle",'rb') as pickle_file:
+        with open("/db/genrep/nr_assemblies/exons_pickle/"+mdfive+".pickle", 'rb') as pickle_file:
             mapping = pickle.load(pickle_file)
+        print "Mapping found in /db/"
         return mapping
-        print "Exon to gene/ORF mapping found in /db/"
     else:
         genrep = GenRep('http://bbcftools.vital-it.ch/genrep/','/db/genrep/nr_assemblies/exons_pickle')
         assembly = genrep.assembly(mdfive)
         with open(assembly.index_path + '.pickle', 'rb') as pickle_file:
             mapping = pickle.load(pickle_file)
+        print "Mapping found on GenRep"
         return mapping
-        print "Exon to gene/ORF mapping found on GenRep"
 
 def map_runs(fun, runs):
     """Parallelization of fun(run) executions"""
@@ -78,7 +85,6 @@ def exons_labels(bamfile):
 
 def pileup_file(bamfile, exons):
     """Return a numpy array of the pileup of *bamfile* in order *exons*."""
-    #counts = numpy.zeros(len(exons))
     counts = {}
     sam = pysam.Samfile(bamfile, 'rb')
 
@@ -90,10 +96,8 @@ def pileup_file(bamfile, exons):
 
     c = Counter()
     for i,exon in enumerate(exons):
-        sam.fetch(exon[0], 0, exon[1], callback=c)
-        #fetch(exon_name,0,exon_length,Counter())
-        #The callback (+1) will be executed for each alignment in a region
-        #counts[i] = c.n
+        sam.fetch(exon[0], 0, exon[1], callback=c) #(exon_name,0,exon_length,Counter())
+        #The callback (c.n += 1) is executed for each alignment in a region
         counts[exon[0]] = c.n
         c.n = 0
     sam.close()
@@ -114,8 +118,7 @@ def pairs_to_test(controls):
                 if controls[x] and not(controls[y])]
 
 @program
-def external_deseq(cond1_label, cond1, cond2_label, cond2, transcript_names, method="normal",
-                   assembly_id=None, output=None):
+def external_deseq(cond1_label, cond1, cond2_label, cond2, method="normal", output=None, gene_names=None):
     if output:
         result_filename = output
     else:
@@ -126,10 +129,10 @@ def external_deseq(cond1_label, cond1, cond2_label, cond2, transcript_names, met
     c2 = unique_filename_in()
     with open(c2,'wb') as f:
         pickle.dump(cond2,f,pickle.HIGHEST_PROTOCOL)
-    tn = unique_filename_in()
-    with open(tn,'wb') as f:
-        pickle.dump(transcript_names,f,pickle.HIGHEST_PROTOCOL)
-    call = ["run_deseq.py", c1, c2, tn, cond1_label, cond2_label, method, str(assembly_id), result_filename]
+    gn = unique_filename_in()
+    with open(gn,'wb') as f:
+        pickle.dump(gene_names,f,pickle.HIGHEST_PROTOCOL)
+    call = ["run_deseq.py", c1, c2, cond1_label, cond2_label, method, result_filename, gn]
     return {"arguments": call, "return_value": result_filename}
 
 def results_to_json(lims, exid):
@@ -144,16 +147,16 @@ def results_to_json(lims, exid):
     j = json.dumps(d)
     return j
 
-def inference(cond1_label, cond1, cond2_label, cond2, transcript_names, method="normal",
-              assembly_id=None, output=None):
+def inference(cond1_label, cond1, cond2_label, cond2, method="normal", output=None, gene_names=None):
     """Runs DESeq comparing the counts in *cond1* and *cond2*.
 
-    Arguments *cond1* and *cond2* are lists of numpy arrays. Each
+    Arguments:
+    *cond1* and *cond2* are lists of numpy arrays. Each
     array lists the number of reads mapping to a particular
-    transcript. *cond1_label* and *cond2_label* are string which will
-    be used to identify the two conditions in R.  *transcript_names*
-    is a list of strings, in the same order as the numpy arrays, used
-    to name the transcripts in R.
+    transcript.
+    *cond1_label* and *cond2_label* are string which will be used
+    to identify the two conditions in R.
+    *gene_names* is a dictionary {gene ID: gene name}.
 
     ``deseq_inference`` writes a tab delimited text file of the
     conditions to R, the first column being the transcript name,
@@ -165,13 +168,14 @@ def inference(cond1_label, cond1, cond2_label, cond2, transcript_names, method="
     """
 
     # Pass the data into R as a data frame
-    data_frame_contents = rlc.OrdDict([(cond1_label+'-'+str(i), robjects.IntVector(c))
+    data_frame_contents = rlc.OrdDict([(cond1_label+'-'+str(i), robjects.IntVector(c.values()))
                                        for i,c in enumerate(cond1)] +
-                                      [(cond2_label+'-'+str(i), robjects.IntVector(c))
+                                      [(cond2_label+'-'+str(i), robjects.IntVector(c.values()))
                                        for i,c in enumerate(cond2)])
     data_frame = robjects.DataFrame(data_frame_contents)
-    data_frame.rownames = transcript_names
+    data_frame.rownames = cond1[0].keys()
     conds = robjects.StrVector([cond1_label for x in cond1] + [cond2_label for x in cond2]).factor()
+    if cond1[0].keys() != cond2[0].keys(): raise
 
     ## DESeq full analysis
     deseq = rpackages.importr('DESeq')
@@ -182,29 +186,15 @@ def inference(cond1_label, cond1, cond2_label, cond2, transcript_names, method="
     res = deseq.nbinomTest(cds, cond1_label, cond2_label)
 
     ## Replace (unique) gene IDs by (not unique) gene names
-    if assembly_id:
-        if isinstance(assembly_id,str):
-            nr_assemblies = urllib.urlopen("http://bbcftools.vital-it.ch/genrep/nr_assemblies.json").read()
-            nr_assemblies = json.loads(nr_assemblies)
-            for a in nr_assemblies:
-                if a['nr_assembly']['name'] == assembly_id:
-                    assembly_id = a['nr_assembly']['id']; break
-        print "Translate gene IDs to gene names..."
+    if gene_names:
+        res_names = []
         res_ids = list(res[0])
-        idtoname = {}; res_names = []; gid = None; l = None
-        (assem,headers) = urllib.urlretrieve("http://bbcftools.vital-it.ch/genrep/nr_assemblies/" + str(assembly_id) + ".gtf")
-        with open(assem) as assembly:
-            for l in [line for line in assembly.readlines() if line.find("gene_name")!=-1]:
-                gid = l.split("gene_id")[1].split(";")[0].strip(" \"")
-                gname = l.split("gene_name")[1].split(";")[0].strip(" \"")
-                idtoname[gid] = gname
-        urllib.urlcleanup()
-        if res_ids[27].find("|") == -1: #genes
+        if res_ids[0].find("|") == -1: #genes
             for i in res_ids:
-                res_names.append(idtoname.get(i, i))
+                res_names.append(gene_names.get(i,i))
         else: #exons
             for i in res_ids:
-                res_names.append(i.split("|")[0] + idtoname.get(i.split("|")[1]), i)
+                res_names.append(i.split("|")[0] + gene_names.get(i.split("|")[1]), i)
         data_frame = robjects.DataFrame({"Name":robjects.StrVector(res_names)})
         for i in range(2,len(res)+1): 
             data_frame = data_frame.cbind(res.rx(i))
@@ -221,36 +211,17 @@ def inference(cond1_label, cond1, cond2_label, cond2, transcript_names, method="
 def rnaseq_workflow(ex, job, assembly, via="lsf", output=None, maplot="normal", with_exons=None):
     """Run RNASeq inference according to *job_info*.
 
-    output: alternative name for output file. Otherwise it is random.
-    maplot: MA-plot of data.
+    *output*: alternative name for output file. Otherwise it is random.
+    *maplot*: MA-plot of data.
     - If 'interactive', one can click on a point (gene or exon) to display its name;
     - if 'normal', name of genes over 99.9%/under 0.1% quantiles are displayed;
     - if None, no figure is produced.
-    with_exons: run inference (DESeq) on exon mapping in addition to gene mapping.
+    *with_exons*: run inference (DESeq) on exon mapping in addition to gene mapping.
     (This part of the workflow may fail if there are too few reads for DESeq to estimate variances.)
+    *job* is as Job object (or a dictionary of the same form) as returned from
+    HTSStation's frontend.
 
-    Whatever script calls this function should have looked up the job
-    description from HTSStation.  The job description from HTSStation
-    is returned as Job object (or a dictionary of the same form),
-    which is what ``workflow`` expects.
-    The object must have the fields:
-
-        * ``assembly_id``, which ``path_to_bowtie_index`` uses to get
-          a path from GenRep.
-
-        * ``groups``, a dictionary of the conditions, and the
-          information to fetch the files corresponding to those
-          conditions from the DAF LIMS.
-
-    If ``assembly_id`` is a string, not an integer, than it is
-    interpreted as a path to the bowtie index, and no lookup to GenRep
-    is necessary.
-
-    Likewise, if the values of ``groups`` are lists of
-    strings, then they are interpreted as a list of filenames and no
-    lookup is done on the DAF LIMS.
-
-    Whatever script calls workflow needs to pass back the JSON string
+    Whatever script calls this workflow needs to pass back the JSON string
     it returns in some sensible way.  For the usual HTSStation
     frontend, this just means printing it to stdout.
     """
@@ -270,55 +241,56 @@ def rnaseq_workflow(ex, job, assembly, via="lsf", output=None, maplot="normal", 
 
     # All the bam_files were created against the same index, so
     # they all have the same header in the same order.  I can take
-    # the list of exons from just the first one and use it for all
-    # of them
-    exons = exons_labels(bam_files.values()[0][1]['bam'])
+    # the list of exons from just the first one and use it for all of them.
+    exons = exons_labels(bam_files.values()[0][1]['bam']) #Exons from bam files
 
-    # Gene_ids is a list of gene ID's; gene_names is a dict {gene ID: gene name};
-    # trans_to_gene_mapping is a dict {transcript ID: ID of the gene it belongs to};
-    # exons_to_trans_mapping is a dict {exon ID: ID of the transcript it belongs to}.
-    (gene_ids, gene_names, trans_to_gene_mapping, exons_to_trans_mapping) = fetch_mappings(ex, assembly_id)
+    # - gene_ids is a list of gene ID's
+    # - gene_names is a dict {gene ID: gene name}
+    # - transcript_mapping is a dictionary {transcript ID: gene ID}
+    # - exon_mapping is a dictionary {exon ID: (transcript ID, gene ID)}
+    # - trans_by_gene is a dict {transcript ID: ID of the gene it belongs to}
+    # - exons_by_trans is a dict {exon ID: ID of the transcript it belongs to}
+    print "Loading mappings..."
+    (gene_ids, gene_names, transcript_mapping, exon_mapping, trans_by_gene, exons_by_trans) = fetch_mappings(ex, assembly_id)
+    print "Loaded."
     
     exon_pileups = {}; gene_pileups = {}; tran_pileups = {}
     for condition,files in bam_files.iteritems():
         gene_pileups[condition] = []
         exon_pileups[condition] = []
         tran_pileups[condition] = []
+        unknown_exons = []
         for f in files.values():
-            exon_pileup = pileup_file(f['bam'], exons) #counts >> changed to dict
+            exon_pileup = pileup_file(f['bam'], exons) #{exon_id: count}
             exon_pileups[condition].append(exon_pileup) #{cond1: [{counts bam1},{counts bam2},...], cond2:...}
-            trans_pileup = {}
-            gene_pileup = {}
+            gene_pileup = dict(zip(gene_ids,zeros(len(gene_ids))))
+            tran_pileup = dict(zip(transcript_mapping.keys(), zeros(len(transcript_mapping.keys()))) )
             for e,c in exon_pileup.iteritems():
-                gene_pileup[trans_to_gene_mapping[exons_to_trans_mapping[e]]] += c
+                e = e.split('|')[0]
+                if exon_mapping.get(e):
+                    gene_pileup[exon_mapping[e][1]] += c
+                    #tran_pileup[exon_mapping[e][0]] += c #for testing difference wrt the pseudo-inverse thing
+                #else: unknown_exons.append((e.split('|')[1], c))
             gene_pileups[condition].append(gene_pileup)
-            ## Get counts for the transcripts using pseudo-inverse
-            for g in genes_ids:
-                transcripts_g = trans_to_gene_mapping[g]
-                exons_g = []
-                for t in transcripts_g:
-                    ebt = exons_to_trans_mapping[t]
-                    exons_g.extend(ebt)
-                M = zeros((len(exons_g),len(transcripts_g)))
-                exons_expression = array(len(exons_g))
-                for i,e in enumerate(exons_g):
-                    for j,t in enumerate(transcripts_g):
-                        ebt = exons_to_trans_mapping[t]
-                        if e in ebt:
-                            M[i,j] = 1
-                    exons_expression[i] = exon_pileup.get(e,None)
-                transcripts_expression_g = dot(pinv(M),exon_expression) #pseudo-inverse
-                for k,t in enumerate(transcripts_g):
-                    trans_pileup[t] = transcripts_expression_g[k]
-                        
-
-    ## Temporary
-    with open("tempfile","w") as f:
-         pickle.dump(genes, f)
-    ex.add("tempfile", description="genes")
-    with open("tempfile","w") as f:
-         pickle.dump(exon_pileups, f)
-    ex.add("tempfile", description="exon_pileups")
+            #tran_pileups[condition].append(tran_pileup)
+            ## # Get counts for the transcripts using pseudo-inverse
+            ## for g in gene_ids:
+            ##     transcripts_g = trans_to_gene_mapping[g]
+            ##     exons_g = []
+            ##     for t in transcripts_g:
+            ##         ebt = exons_to_trans_mapping[t]
+            ##         exons_g.extend(ebt)
+            ##     M = zeros((len(exons_g),len(transcripts_g)))
+            ##     exons_expression = array(len(exons_g))
+            ##     for i,e in enumerate(exons_g):
+            ##         for j,t in enumerate(transcripts_g):
+            ##             ebt = exons_to_trans_mapping[t]
+            ##             if e in ebt:
+            ##                 M[i,j] = 1
+            ##         exons_expression[i] = exon_pileup.get(e,None)
+            ##     transcripts_expression_g = dot(pinv(M),exons_expression) #pseudo-inverse
+            ##     for k,t in enumerate(transcripts_g):
+            ##         trans_pileup[t] = transcripts_expression_g[k]
 
     futures = {}
     for (c1,c2) in pairs_to_test(controls):
@@ -332,18 +304,16 @@ def rnaseq_workflow(ex, job, assembly, via="lsf", output=None, maplot="normal", 
             futures[(c1,c2)] = [external_deseq.nonblocking(ex,
                                       names[c1], gene_pileups[c1],
                                       names[c2], gene_pileups[c2],
-                                      genes,
-                                      method, assembly_id, output, via=via),
+                                      method, output, gene_names=gene_names, via=via),
                                 ## external_deseq.nonblocking(ex,
                                 ##       names[c1], tran_pileups[c1],
                                 ##       names[c2], tran_pileups[c2],
-                                ##       tran_labels,
+                                ##       gene_names,
                                 ##       method, assembly_id, output, via=via),
                                 external_deseq.nonblocking(ex,
                                       names[c1], exon_pileups[c1],
                                       names[c2], exon_pileups[c2],
-                                      [x[0].split("|")[0]+"|"+x[0].split("|")[1] for x in exons],
-                                      method, assembly_id, output, via=via)]
+                                      method, output, gene_names=gene_names, via=via)]
             print "....Wait for results....."
             for c,f in futures.iteritems():
                 gene_file = f[0].wait()
@@ -373,7 +343,7 @@ def rnaseq_workflow(ex, job, assembly, via="lsf", output=None, maplot="normal", 
             futures[(c1,c2)] = external_deseq.nonblocking(ex,
                                     names[c1], gene_pileups[c1],
                                     names[c2], gene_pileups[c2],
-                                    genes,
+                                    gene_ids,
                                     method, assembly_id, output, via=via)
             print "....Wait for results..."
             for c,f in futures.iteritems():
