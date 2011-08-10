@@ -19,6 +19,7 @@ def guess_file_format(path):
         'SQLite database (Version 3)':                  'sql',
         'Hierarchical Data Format (version 5) data':    'hdf5',
         'BED Document':                                 'bed',
+        'BEDGRAPH Document':                            'bedgraph',
         'PSL Document':                                 'psl',
         'GFF Document':                                 'gff',
         'GTF Document':                                 'gtf',
