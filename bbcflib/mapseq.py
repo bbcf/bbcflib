@@ -706,7 +706,7 @@ def densities_groups( ex, job_or_dict, file_dict, chromosomes, via='lsf' ):
                           'read_length': mapped.values()[0]['stats']['read_length']}
         if ucsc_bigwig:
             out = unique_filename_in()
-            for s in suffix:
+            for s in suffixes:
                 with Track(merged_wig[s]) as t:
                     t.convert(out+s,"bigWig")
                 ex.add(out+s,description='bigwig:'+group_name+'_'+s+'.bw')
