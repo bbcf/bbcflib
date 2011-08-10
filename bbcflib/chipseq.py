@@ -291,7 +291,7 @@ def get_bam_wig_files( ex, job, minilims=None, hts_url=None, suffix=['fwd','rev'
         job.options['read_extension'] = [k for k,v in c.iteritems() if v==max(c.values())][0]
     for gid, group in job.groups.iteritems():
         for rid,run in group['runs'].iteritems():
-            if read_exts.get(rid) != job.options['read_extension']:
+            if ('read_extension' in job) and (read_exts.get(rid) != job['read_extension']):
                 mapped_files[gid][rid]['wig'] = []
             if not(isinstance(mapped_files[gid][rid]['stats'],dict)):
                 stats = mapped_files[gid][rid]['stats'].wait()
