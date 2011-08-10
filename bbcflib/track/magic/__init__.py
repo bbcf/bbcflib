@@ -18,12 +18,12 @@ def guess_file_format(path):
         'SQLite 3.x database':                          'sql',
         'SQLite database (Version 3)':                  'sql',
         'Hierarchical Data Format (version 5) data':    'hdf5',
-        'BED Document, ':                               'bed',
-        'PSL Document, ':                               'psl',
-        'GFF Document, ':                               'gff',
-        'GTF Document, ':                               'gtf',
-        'WIG Document, ':                               'wig',
-        'MAF Document, ':                               'maf',
+        'BED Document':                                 'bed',
+        'PSL Document':                                 'psl',
+        'GFF Document':                                 'gff',
+        'GTF Document':                                 'gtf',
+        'WIG Document':                                 'wig',
+        'MAF Document':                                 'maf',
     }
     # Try import #
     try: import magic
@@ -33,7 +33,7 @@ def guess_file_format(path):
     # Add our definitions #
     mime = magic.open(magic.NONE)
     mime.load(file=resource_filename(__name__, 'magic_data'))
-    filetype = mime.file(path)
+    filetype = mime.file(path).rstrip(", ")
     # Otherwise try standard definitions #
     if not filetype in known_formats:
         mime = magic.open(magic.NONE)
