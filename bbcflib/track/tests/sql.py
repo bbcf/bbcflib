@@ -70,12 +70,12 @@ class Test_Write(unittest.TestCase):
         with track.new(path) as t:
             # Single feature #
             chrom = 'lorem'
-            features = [(10, 20, 'A', 0.0, 1)]
+            features = [(10, 20, 'A', 0.0, 1, None)]
             t.write(chrom, features)
             self.assertEqual(list(t.read(chrom)), features)
             # Multi feature #
             chrom = '9toto'
-            features = [(i*10, i*10+5, 'X', 0.0, 0) for i in xrange(5)]
+            features = [(i*10, i*10+5, 'X', 0.0, 0, None) for i in xrange(5)]
             t.write(chrom, features)
             self.assertEqual(list(t.read(chrom)), features)
             # Memory Copy #
@@ -86,7 +86,7 @@ class Test_Write(unittest.TestCase):
             self.assertEqual(list(t.read('chrY')), list(t.read(chrom)))
             # More fields #
             chrom = 'chr3'
-            features = [(10, 20, 'A', 0.0, 1, 8, 22)]
+            features = [(10, 20, 'A', 0.0, 1, None, 8, 22)]
             t.write(chrom, features, fields=track.Track.qualitative_fields + ['thick_start', 'thick_end'])
             self.assertEqual(list(t.read(chrom)), features)
         os.remove(path)
@@ -125,7 +125,7 @@ class Test_Remove(unittest.TestCase):
         path = named_temporary_path('.sql')
         with track.new(path) as t:
             chrom = 'chr1'
-            features = [(i*10, i*10+5, 'X', 0.0, 0) for i in xrange(5)]
+            features = [(i*10, i*10+5, 'X', 0.0, 0, None) for i in xrange(5)]
             t.write(chrom, features)
             t.remove()
             self.assertEqual(list(t.read()), [])
@@ -150,7 +150,7 @@ class Test_Modified(unittest.TestCase):
         d = track_collections['Yeast']['All genes']
         with track.load(d['path_sql'], readonly=True) as t:
             self.assertFalse(t.modified)
-            t.write('chrM', [(10, 20, 'A', 0.0, 1)])
+            t.write('chrM', [(10, 20, 'A', 0.0, 1, None)])
             self.assertTrue(t.modified)
             self.assertFalse(t.chrmeta.modified)
             t.chrmeta['chrM'] = {'length': -20}

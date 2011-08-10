@@ -75,6 +75,8 @@ class TrackFormat(TrackText, TrackProxy):
     def _write_entries(self):
         # Get fields #
         fields = ['start', 'end']
+        sql_field = [item for item in all_fields_possible]
+        sql_field.insert(5, 'attribute')
         for f in all_fields_possible[2:]:
             if f in self.fields: fields.append(f)
             else: break
