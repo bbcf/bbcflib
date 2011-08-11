@@ -1,6 +1,6 @@
 """
 =======================
-Module: bbcflib.4cseq
+Module: bbcflib.c4seq
 =======================
 
 This module provides functions to run a 4c-seq analysis from reads mapped on
@@ -12,7 +12,6 @@ from bein import *
 from bein.util import *
 from bbcflib import daflims, genrep, frontend, email, gdv, common, track
 from bbcflib.mapseq import *
-from bbcflib.chipseq import *
 import sys, getopt, os, json, re
 import gMiner as gm
 import createlib
