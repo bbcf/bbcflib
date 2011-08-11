@@ -7,7 +7,7 @@ No documentation
 """
 
 # Built-in modules #
-import pickle, json, pysam, numpy, urllib, math
+import pickle, json, pysam, numpy, urllib, math, time
 from itertools import combinations
 
 # Internal modules #
@@ -28,46 +28,43 @@ import cogent.db.ensembl as ensembl
 
 ################################################################################
 
-def fetch_orf_mapping(ex, assembly_id):
-    """Given an assembly ID, return a dictionary giving an exon to gene/ORF mapping.
+def fetch_mappings(ex, path_or_assembly_id):
+    """Given an assembly ID, return a tuple
+    (gene_ids, gene_names, trans_to_gene_mapping, exons_to_trans_mapping).
+    gene_ids is a list of gene IDs; gene_names is a dictionary {gene ID: gene name};
+    trans_to_gene_mapping is a dictionary {gene ID: [transcripts IDs]};
+    exons_to_trans_mapping is a dictionary {transcript ID: [exons IDs]}.
 
     The *assembly_id* can be a numeric or nominal ID for GenRep
     (e.g. 76 or 'hg19' for H.Sapiens), or a path to a file containing a
     JSON object which is read to get the mapping.
+
+    Takes about 115 seconds to load.
     """
+    assembly_id = path = path_or_assembly_id
     nr_assemblies = urllib.urlopen("http://bbcftools.vital-it.ch/genrep/nr_assemblies.json").read()
     nr_assemblies = json.loads(nr_assemblies)
     for a in nr_assemblies:
         if a['nr_assembly']['id'] == assembly_id or a['nr_assembly']['name'] == assembly_id:
             mdfive = a['nr_assembly']['md5']; break
 
-    if os.path.exists(str(assembly_id)):
-        with open(str(assembly_id), 'rb') as pickle_file:
+    if os.path.exists(str(path)):
+        with open(str(path), 'rb') as pickle_file:
             mapping = pickle.load(pickle_file)
+        print "Mapping found in", os.path.dirname(mapping)
         return mapping
-        print "Exon to gene/ORF mapping found in", os.path.dirname(mapping)
     elif os.path.exists("/db/genrep/nr_assemblies/exons_pickle/"+str(mdfive)+".pickle"):
-        with open("/db/genrep/nr_assemblies/exons_pickle/"+mdfive+".pickle") as pickle_file:
+        with open("/db/genrep/nr_assemblies/exons_pickle/"+mdfive+".pickle", 'rb') as pickle_file:
             mapping = pickle.load(pickle_file)
+        print "Mapping found in /db/"
         return mapping
-        print "Exon to gene/ORF mapping found in /db/"
     else:
         genrep = GenRep('http://bbcftools.vital-it.ch/genrep/','/db/genrep/nr_assemblies/exons_pickle')
         assembly = genrep.assembly(mdfive)
         with open(assembly.index_path + '.pickle', 'rb') as pickle_file:
             mapping = pickle.load(pickle_file)
-            return mapping
-        print "Exon to gene/ORF mapping found on GenRep"
-
-def fetch_transcript_mapping(ex, assembly_id):
-    """Given an assembly ID, return a dictionary giving an exon to orf mapping.
-
-    The *assembly_id* can be a string or integer.  If it is an
-    integer, the mapping is looked up from Biomart.  Otherwise it is
-    assumed to be a file containing a JSON object which is read to get
-    the mapping.
-    """
-    pass
+        print "Mapping found on GenRep"
+        return mapping
 
 def map_runs(fun, runs):
     """Parallelization of fun(run) executions"""
@@ -88,7 +85,7 @@ def exons_labels(bamfile):
 
 def pileup_file(bamfile, exons):
     """Return a numpy array of the pileup of *bamfile* in order *exons*."""
-    counts = numpy.zeros(len(exons))
+    counts = {}
     sam = pysam.Samfile(bamfile, 'rb')
 
     class Counter(object):
@@ -99,10 +96,9 @@ def pileup_file(bamfile, exons):
 
     c = Counter()
     for i,exon in enumerate(exons):
-        sam.fetch(exon[0], 0, exon[1], callback=c)
-        #fetch(exon_name,0,exon_length,Counter())
-        #The callback (+1) will be executed for each alignment in a region
-        counts[i] = c.n
+        sam.fetch(exon[0], 0, exon[1], callback=c) #(exon_name,0,exon_length,Counter())
+        #The callback (c.n += 1) is executed for each alignment in a region
+        counts[exon[0]] = c.n
         c.n = 0
     sam.close()
     return counts
@@ -122,8 +118,7 @@ def pairs_to_test(controls):
                 if controls[x] and not(controls[y])]
 
 @program
-def external_deseq(cond1_label, cond1, cond2_label, cond2, transcript_names, method="normal",
-                   assembly_id=None, output=None):
+def external_deseq(cond1_label, cond1, cond2_label, cond2, method="normal", output=None, gene_names=None):
     if output:
         result_filename = output
     else:
@@ -134,10 +129,10 @@ def external_deseq(cond1_label, cond1, cond2_label, cond2, transcript_names, met
     c2 = unique_filename_in()
     with open(c2,'wb') as f:
         pickle.dump(cond2,f,pickle.HIGHEST_PROTOCOL)
-    tn = unique_filename_in()
-    with open(tn,'wb') as f:
-        pickle.dump(transcript_names,f,pickle.HIGHEST_PROTOCOL)
-    call = ["run_deseq.py", c1, c2, tn, cond1_label, cond2_label, method, str(assembly_id), result_filename]
+    gn = unique_filename_in()
+    with open(gn,'wb') as f:
+        pickle.dump(gene_names,f,pickle.HIGHEST_PROTOCOL)
+    call = ["run_deseq.py", c1, c2, cond1_label, cond2_label, method, result_filename, gn]
     return {"arguments": call, "return_value": result_filename}
 
 def results_to_json(lims, exid):
@@ -152,16 +147,16 @@ def results_to_json(lims, exid):
     j = json.dumps(d)
     return j
 
-def inference(cond1_label, cond1, cond2_label, cond2, transcript_names, method="normal",
-              assembly_id=None, output=None):
+def inference(cond1_label, cond1, cond2_label, cond2, method="normal", output=None, gene_names=None):
     """Runs DESeq comparing the counts in *cond1* and *cond2*.
 
-    Arguments *cond1* and *cond2* are lists of numpy arrays. Each
+    Arguments:
+    *cond1* and *cond2* are lists of numpy arrays. Each
     array lists the number of reads mapping to a particular
-    transcript. *cond1_label* and *cond2_label* are string which will
-    be used to identify the two conditions in R.  *transcript_names*
-    is a list of strings, in the same order as the numpy arrays, used
-    to name the transcripts in R.
+    transcript.
+    *cond1_label* and *cond2_label* are string which will be used
+    to identify the two conditions in R.
+    *gene_names* is a dictionary {gene ID: gene name}.
 
     ``deseq_inference`` writes a tab delimited text file of the
     conditions to R, the first column being the transcript name,
@@ -173,13 +168,14 @@ def inference(cond1_label, cond1, cond2_label, cond2, transcript_names, method="
     """
 
     # Pass the data into R as a data frame
-    data_frame_contents = rlc.OrdDict([(cond1_label+'-'+str(i), robjects.IntVector(c))
+    data_frame_contents = rlc.OrdDict([(cond1_label+'-'+str(i), robjects.IntVector(c.values()))
                                        for i,c in enumerate(cond1)] +
-                                      [(cond2_label+'-'+str(i), robjects.IntVector(c))
+                                      [(cond2_label+'-'+str(i), robjects.IntVector(c.values()))
                                        for i,c in enumerate(cond2)])
     data_frame = robjects.DataFrame(data_frame_contents)
-    data_frame.rownames = transcript_names
+    data_frame.rownames = cond1[0].keys()
     conds = robjects.StrVector([cond1_label for x in cond1] + [cond2_label for x in cond2]).factor()
+    if cond1[0].keys() != cond2[0].keys(): raise
 
     ## DESeq full analysis
     deseq = rpackages.importr('DESeq')
@@ -190,29 +186,15 @@ def inference(cond1_label, cond1, cond2_label, cond2, transcript_names, method="
     res = deseq.nbinomTest(cds, cond1_label, cond2_label)
 
     ## Replace (unique) gene IDs by (not unique) gene names
-    if assembly_id:
-        if isinstance(assembly_id,str):
-            nr_assemblies = urllib.urlopen("http://bbcftools.vital-it.ch/genrep/nr_assemblies.json").read()
-            nr_assemblies = json.loads(nr_assemblies)
-            for a in nr_assemblies:
-                if a['nr_assembly']['name'] == assembly_id:
-                    assembly_id = a['nr_assembly']['id']; break
-        print "Translate gene IDs to gene names..."
+    if gene_names:
+        res_names = []
         res_ids = list(res[0])
-        idtoname = {}; res_names = []; gid = None; l = None
-        (assem,headers) = urllib.urlretrieve("http://bbcftools.vital-it.ch/genrep/nr_assemblies/" + str(assembly_id) + ".gtf")
-        with open(assem) as assembly:
-            for l in [line for line in assembly.readlines() if line.find("gene_name")!=-1]:
-                gid = l.split("gene_id")[1].split(";")[0].strip(" \"")
-                gname = l.split("gene_name")[1].split(";")[0].strip(" \"")
-                idtoname[gid] = gname
-        urllib.urlcleanup()
-        if res_ids[27].find("|") == -1: #genes
+        if res_ids[0].find("|") == -1: #genes
             for i in res_ids:
-                res_names.append(idtoname.get(i, i))
+                res_names.append(gene_names.get(i,i))
         else: #exons
             for i in res_ids:
-                res_names.append(i.split("|")[0] + idtoname.get(i.split("|")[1]), i)
+                res_names.append(i.split("|")[0] + gene_names.get(i.split("|")[1]), i)
         data_frame = robjects.DataFrame({"Name":robjects.StrVector(res_names)})
         for i in range(2,len(res)+1): 
             data_frame = data_frame.cbind(res.rx(i))
@@ -229,36 +211,17 @@ def inference(cond1_label, cond1, cond2_label, cond2, transcript_names, method="
 def rnaseq_workflow(ex, job, assembly, via="lsf", output=None, maplot="normal", with_exons=None):
     """Run RNASeq inference according to *job_info*.
 
-    output: alternative name for output file. Otherwise it is random.
-    maplot: MA-plot of data.
+    *output*: alternative name for output file. Otherwise it is random.
+    *maplot*: MA-plot of data.
     - If 'interactive', one can click on a point (gene or exon) to display its name;
     - if 'normal', name of genes over 99.9%/under 0.1% quantiles are displayed;
     - if None, no figure is produced.
-    with_exons: run inference (DESeq) on exon mapping in addition to gene mapping.
+    *with_exons*: run inference (DESeq) on exon mapping in addition to gene mapping.
     (This part of the workflow may fail if there are too few reads for DESeq to estimate variances.)
+    *job* is as Job object (or a dictionary of the same form) as returned from
+    HTSStation's frontend.
 
-    Whatever script calls this function should have looked up the job
-    description from HTSStation.  The job description from HTSStation
-    is returned as Job object (or a dictionary of the same form),
-    which is what ``workflow`` expects.
-    The object must have the fields:
-
-        * ``assembly_id``, which ``path_to_bowtie_index`` uses to get
-          a path from GenRep.
-
-        * ``groups``, a dictionary of the conditions, and the
-          information to fetch the files corresponding to those
-          conditions from the DAF LIMS.
-
-    If ``assembly_id`` is a string, not an integer, than it is
-    interpreted as a path to the bowtie index, and no lookup to GenRep
-    is necessary.
-
-    Likewise, if the values of ``groups`` are lists of
-    strings, then they are interpreted as a list of filenames and no
-    lookup is done on the DAF LIMS.
-
-    Whatever script calls workflow needs to pass back the JSON string
+    Whatever script calls this workflow needs to pass back the JSON string
     it returns in some sensible way.  For the usual HTSStation
     frontend, this just means printing it to stdout.
     """
@@ -278,34 +241,56 @@ def rnaseq_workflow(ex, job, assembly, via="lsf", output=None, maplot="normal", 
 
     # All the bam_files were created against the same index, so
     # they all have the same header in the same order.  I can take
-    # the list of exons from just the first one and use it for all
-    # of them
-    exons = exons_labels(bam_files.values()[0][1]['bam'])
+    # the list of exons from just the first one and use it for all of them.
+    exons = exons_labels(bam_files.values()[0][1]['bam']) #Exons from bam files
 
-    # gene_labels is a list whose i-th entry is a string giving
-    # the name of the gene assigned id i. The ids are arbitrary.
-    # exon_to_orf_mapping is a list whose i-th entry is the integer id in
-    # gene_labels exon i maps to. Same for transcript labels and mapping.
-    (gene_labels,exon_to_orf_mapping) = fetch_orf_mapping(ex, assembly_id)
-    exon_to_orf_mapping = numpy.array(exon_to_orf_mapping)
-    ### (tran_labels,exon_to_tran_mapping) = fetch_transcript_mapping(ex,assembly_id)
-    ### exon_to_tran_mapping = numpy.array(exon_to_tran_mapping)
-
+    # - gene_ids is a list of gene ID's
+    # - gene_names is a dict {gene ID: gene name}
+    # - transcript_mapping is a dictionary {transcript ID: gene ID}
+    # - exon_mapping is a dictionary {exon ID: (transcript ID, gene ID)}
+    # - trans_by_gene is a dict {transcript ID: ID of the gene it belongs to}
+    # - exons_by_trans is a dict {exon ID: ID of the transcript it belongs to}
+    print "Loading mappings..."
+    (gene_ids, gene_names, transcript_mapping, exon_mapping, trans_by_gene, exons_by_trans) = fetch_mappings(ex, assembly_id)
+    print "Loaded."
+    
     exon_pileups = {}; gene_pileups = {}; tran_pileups = {}
     for condition,files in bam_files.iteritems():
         gene_pileups[condition] = []
         exon_pileups[condition] = []
         tran_pileups[condition] = []
+        unknown_exons = []
         for f in files.values():
-            exon_pileup = pileup_file(f['bam'], exons) #array of ints (counts)
-            exon_pileups[condition].append(exon_pileup) #{cond1: [[counts bam1],[counts bam2],...], cond2:...}
-            gene_pileup = numpy.zeros(len(gene_labels))
-            ### tran_pileup = numpy.zeros(len(tran_labels))
-            for i,c in enumerate(exon_pileup):
-                gene_pileup[exon_to_orf_mapping[i]] += c
-                ### tran_pileup[exon_to_tran_mapping[i]] += c
+            exon_pileup = pileup_file(f['bam'], exons) #{exon_id: count}
+            exon_pileups[condition].append(exon_pileup) #{cond1: [{counts bam1},{counts bam2},...], cond2:...}
+            gene_pileup = dict(zip(gene_ids,zeros(len(gene_ids))))
+            tran_pileup = dict(zip(transcript_mapping.keys(), zeros(len(transcript_mapping.keys()))) )
+            for e,c in exon_pileup.iteritems():
+                e = e.split('|')[0]
+                if exon_mapping.get(e):
+                    gene_pileup[exon_mapping[e][1]] += c
+                    #tran_pileup[exon_mapping[e][0]] += c #for testing difference wrt the pseudo-inverse thing
+                #else: unknown_exons.append((e.split('|')[1], c))
             gene_pileups[condition].append(gene_pileup)
-            ### tran_pileups[condition].append(tran_pileup)
+            #tran_pileups[condition].append(tran_pileup)
+            ## # Get counts for the transcripts using pseudo-inverse
+            ## for g in gene_ids:
+            ##     transcripts_g = trans_to_gene_mapping[g]
+            ##     exons_g = []
+            ##     for t in transcripts_g:
+            ##         ebt = exons_to_trans_mapping[t]
+            ##         exons_g.extend(ebt)
+            ##     M = zeros((len(exons_g),len(transcripts_g)))
+            ##     exons_expression = array(len(exons_g))
+            ##     for i,e in enumerate(exons_g):
+            ##         for j,t in enumerate(transcripts_g):
+            ##             ebt = exons_to_trans_mapping[t]
+            ##             if e in ebt:
+            ##                 M[i,j] = 1
+            ##         exons_expression[i] = exon_pileup.get(e,None)
+            ##     transcripts_expression_g = dot(pinv(M),exons_expression) #pseudo-inverse
+            ##     for k,t in enumerate(transcripts_g):
+            ##         trans_pileup[t] = transcripts_expression_g[k]
 
     futures = {}
     for (c1,c2) in pairs_to_test(controls):
@@ -319,18 +304,16 @@ def rnaseq_workflow(ex, job, assembly, via="lsf", output=None, maplot="normal", 
             futures[(c1,c2)] = [external_deseq.nonblocking(ex,
                                       names[c1], gene_pileups[c1],
                                       names[c2], gene_pileups[c2],
-                                      gene_labels,
-                                      method, assembly_id, output, via=via),
+                                      method, output, gene_names=gene_names, via=via),
                                 ## external_deseq.nonblocking(ex,
                                 ##       names[c1], tran_pileups[c1],
                                 ##       names[c2], tran_pileups[c2],
-                                ##       tran_labels,
+                                ##       gene_names,
                                 ##       method, assembly_id, output, via=via),
                                 external_deseq.nonblocking(ex,
                                       names[c1], exon_pileups[c1],
                                       names[c2], exon_pileups[c2],
-                                      [x[0].split("|")[0]+"|"+x[0].split("|")[1] for x in exons],
-                                      method, assembly_id, output, via=via)]
+                                      method, output, gene_names=gene_names, via=via)]
             print "....Wait for results....."
             for c,f in futures.iteritems():
                 gene_file = f[0].wait()
@@ -340,25 +323,27 @@ def rnaseq_workflow(ex, job, assembly, via="lsf", output=None, maplot="normal", 
                            description="Comparison of GENES in conditions '%s' and '%s' (CSV)" % (names[c[0]], names[c[1]]))
                     if maplot:
                         res0 = robjects.DataFrame.from_csvfile(f[0].wait())
-                        figname, jsname = MAplot(res0, mode=maplot, deg=4, bins=100, alpha=0.005)
+                        figname, jsname = MAplot(res0, mode=maplot, deg=4, bins=100, alpha=0.005, assembly_id=assembly_id)
                         ex.add(figname, description="MA-plot (genes)")
                         ex.add(jsname, description="Data for javascript (genes)")
-                else: print "Failed during inference (genes), probably because of too few reads for DESeq stats."
+                    print "Genes: Done successfully."
+                else: print "Genes: Failed during inference, probably because of too few reads for DESeq stats."
                 if exons_file:
                     ex.add(exons_file,
                            description="Comparison of EXONS in conditions '%s' and '%s' (CSV)" % (names[c[0]], names[c[1]]))
                     if maplot:
                         res1 = robjects.DataFrame.from_csvfile(f[1].wait())
-                        figname, jsname = MAplot(res1, mode=maplot, deg=4, bins=100, alpha=0.005)
+                        figname, jsname = MAplot(res1, mode=maplot, deg=4, bins=100, alpha=0.005, assembly_id=assembly_id)
                         ex.add(figname, description="MA-plot (exons)")
                         ex.add(jsname, description="Data for javascript (exons)")
-                else: print "Failed during inference (exons), probably because of too few reads for DESeq stats."
+                    print "Exons: Done successfully."
+                else: print "Exons: Failed during inference, probably because of too few reads for DESeq stats."
         else:
             print "Inference (genes only)..."
             futures[(c1,c2)] = external_deseq.nonblocking(ex,
                                     names[c1], gene_pileups[c1],
                                     names[c2], gene_pileups[c2],
-                                    gene_labels,
+                                    gene_ids,
                                     method, assembly_id, output, via=via)
             print "....Wait for results..."
             for c,f in futures.iteritems():
@@ -367,10 +352,10 @@ def rnaseq_workflow(ex, job, assembly, via="lsf", output=None, maplot="normal", 
                        description="Comparison of GENES in conditions '%s' and '%s' (CSV)" % (names[c1], names[c2]))
                 if maplot:
                     res = robjects.DataFrame.from_csvfile(f.wait())
-                    figname,jsname = MAplot(res, mode=maplot, deg=4, bins=100, alpha=0.005)
+                    figname,jsname = MAplot(res, mode=maplot, deg=4, bins=100, alpha=0.005, assembly_id=assembly_id)
                     ex.add(figname, description="MA-plot (genes)")
                     ex.add(jsname, description="Data for javascript (genes)")
-        print "Done."
+            print "Done."
 
 
 def MAplot(data, mode="interactive", deg=4, bins=30, alpha=0.005, assembly_id=None):
@@ -398,18 +383,20 @@ def MAplot(data, mode="interactive", deg=4, bins=30, alpha=0.005, assembly_id=No
     b = asarray(names.levels)
     names = list(b[a-1])
 
-    points=[]; blackpoints=[]; redpoints=[]; annotes_red=[]; annotes_black=[]
+    points=[]; blackpoints=[]; redpoints=[]; annotes_red=[]; annotes_black=[]; pvals_red=[]; pvals_black=[]
     for i in range(len(ratios)):
         if not math.isnan(ratios[i]) and not math.isinf(ratios[i]):
-            p = (names[i],log10(means[i]),ratios[i])
+            p = (names[i],log10(means[i]),ratios[i],pvals[i])
             if pvals[i] < alpha:
                 redpoints.append((p[1],p[2]))
                 annotes_red.append(p[0])
+                pvals_red.append(p[3])
             else:
                 blackpoints.append((p[1],p[2]))
                 annotes_black.append(p[0])
+                pvals_black.append(p[3])
             points.append(p)
-    names,means,ratios = zip(*points)
+    names,means,ratios,pvals = zip(*points)
     xmin = min(means); xmax = max(means); ymin = min(ratios); ymax = max(ratios)
 
     ## Create bins
@@ -483,32 +470,36 @@ def MAplot(data, mode="interactive", deg=4, bins=30, alpha=0.005, assembly_id=No
     jsdata = [{"label": "Genes with p-value < " + str(alpha),
                "data": redpoints,
                "labels": annotes_red,
+               "pvals": pvals_red,
                "points": {"symbol":"circle", "show":True},
                "color": "red"},
-              {"label": "Other genes",
+              {"label": "Genes with p-value > " + str(alpha),
                "data": blackpoints,
                "labels": annotes_black,
+               "pvals": pvals_black,
                "points": {"symbol":"circle", "show":True},
                "color": "black"},
-              ## {"label": "Spline labels",
-              ##  "data": [s[0] for s in spline_coords[k] for k in percentiles],
-              ##  "labels": ["1%","5%","25%","50%","75%","95%","99%"]},
               {"label": "Mean", "data": spline_coords[50],
                "lines": {"show":True}, "color": rgb_to_hex((255,0,255)) },
-              {"label": "1% Quantile", "data": spline_coords[1], "lines": {"show":True, "lineWidth":0, "fill": 0.1},
-               "color": rgb_to_hex((255,0,255)), "fillBetween": "Spline 1%"},
-              {"label": "5% Quantile", "data": spline_coords[5], "lines": {"show":True, "lineWidth":0, "fill": 0.18},
-               "color": rgb_to_hex((255,0,255)), "fillBetween": "Spline 5%"},
-              {"label": "25% Quantile", "data": spline_coords[25], "lines": {"show":True, "lineWidth":0, "fill": 0.3},
-               "color": rgb_to_hex((255,0,255)), "fillBetween": "Spline 25%"},
-              {"label": "75% Quantile", "data": spline_coords[75], "lines": {"show":True, "lineWidth":0, "fill": 0.3},
-               "color": rgb_to_hex((255,0,255)), "fillBetween": "Spline 75%"},
-              {"label": "95% Quantile", "data": spline_coords[95], "lines": {"show":True, "lineWidth":0, "fill": 0.18},
-               "color": rgb_to_hex((255,0,255)), "fillBetween": "Spline 95%"},
-              {"label": "99% Quantile", "data": spline_coords[99], "lines": {"show":True, "lineWidth":0, "fill": 0.1},
-               "color": rgb_to_hex((255,0,255)), "fillBetween": "Spline 99%"}
+              {"id": "1% Quantile", "data": spline_coords[1], "lines": {"show":True, "lineWidth":0, "fill": 0.12},
+               "color": rgb_to_hex((255,0,255))},
+              {"id": "5% Quantile", "data": spline_coords[5], "lines": {"show":True, "lineWidth":0, "fill": 0.18},
+               "color": rgb_to_hex((255,0,255))},
+              {"id": "25% Quantile", "data": spline_coords[25], "lines": {"show":True, "lineWidth":0, "fill": 0.3},
+               "color": rgb_to_hex((255,0,255))},
+              {"id": "75% Quantile", "data": spline_coords[75], "lines": {"show":True, "lineWidth":0, "fill": 0.3},
+               "color": rgb_to_hex((255,0,255))},
+              {"id": "95% Quantile", "data": spline_coords[95], "lines": {"show":True, "lineWidth":0, "fill": 0.18},
+               "color": rgb_to_hex((255,0,255))},
+              {"id": "99% Quantile", "data": spline_coords[99], "lines": {"show":True, "lineWidth":0, "fill": 0.12},
+               "color": rgb_to_hex((255,0,255))}
              ]
-    jsdata = "var data = " + json.dumps(jsdata) + ";"
+    splinelabels = {"id": "Spline labels",
+                    "data": [spline_coords[k][0] for k in percentiles],
+                    "points": {"show":False}, "lines": {"show":False},
+                    "labels": ["1%","5%","25%","50%","75%","95%","99%"]}
+    jsdata = "var data = " + json.dumps(jsdata) + ";\n" \
+             + "var splinelabels = " + json.dumps(splinelabels) + ";\n"
     if assembly_id:
         nr_assemblies = urllib.urlopen("http://bbcftools.vital-it.ch/genrep/nr_assemblies.json").read()
         nr_assemblies = json.loads(nr_assemblies)
@@ -516,9 +507,11 @@ def MAplot(data, mode="interactive", deg=4, bins=30, alpha=0.005, assembly_id=No
             for a in nr_assemblies:
                 if a['nr_assembly']['name'] == assembly_id:
                     assembly_id = a['nr_assembly']['id']; break
-        jsdata = jsdata + "\n var url_template = 'http://bbcftools.vital-it.ch/genrep/nr_assemblies/" \
-                        +  str(assembly_id) + "/get_links.json?gene_name=%3CName%3E';"
+        url_template = urllib.urlopen("http://bbcftools.vital-it.ch/genrep/nr_assemblies/" \
+                                      + str(assembly_id) + "/get_links.json?gene_name=%3CName%3E")
+        jsdata = jsdata + "var url_template = " + url_template.read() + ";"
     jsname = unique_filename_in()+".js"
+    jsname = "data.js"
     with open(jsname,"w") as js:
         js.write(jsdata)
 
