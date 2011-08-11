@@ -191,10 +191,10 @@ def run_deconv(ex, sql, peaks, chromosomes, read_extension, script_path, via = '
         pass
     for c,fout in rdeconv_out.iteritems():
         if fout != None:
-            f = sql_finish_deconv.nonblocking( ex, sqlout, fout['rdata'], c, via='local' ).wait()
+            f = sql_finish_deconv.nonblocking( ex, output, fout['rdata'], c, via='local' ).wait()
     outfiles = {}
-    outfiles['sql'] = sqlout
-    outfiles['bed'] = sqlout+'_deconv.bed'
+    outfiles['sql'] = output
+    outfiles['bed'] = output+'_deconv.bed'
     if len(rdeconv_out)>0:
         outfiles['pdf'] = pdf_future.wait()
     else:
