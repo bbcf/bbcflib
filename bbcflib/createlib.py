@@ -209,7 +209,7 @@ def createLibrary(ex,fasta_allchr,params):
 def get_libForGrp(ex,group,fasta_or_assembly,new_libraries):
 	#wd_archive="/archive/epfl/bbcf/mleleu/pipeline_vMarion/pipeline_3Cseq/vWebServer_Bein/" #temporary: will be /scratch/cluster/monthly/htsstation/4cseq/job.id
 	if group['library_param_file'] != "" :
-		paramslib=load_libraryParamsFile(ex.remote_working_dir+'/'+group['library_param_file']);
+		paramslib=load_libraryParamsFile(ex.remote_working_directory+'/'+group['library_param_file']);
 		lib_id=lib_exists(paramslib)
 		ex_libfile=lib_exists(paramslib,new_libraries,returnType="filename")
 		print("lib_id="+str(lib_id))

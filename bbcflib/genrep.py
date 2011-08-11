@@ -125,8 +125,9 @@ class GenRep(object):
         h_result = {}
         
         for e in input_list:
-            h_data.get(e[0],[])
-            h_data(e[0]).append([e[1],e[2]])
+            if (h_data.get(e[0]) == None):
+                h_data[e[0]]=[] 
+            h_data[e[0]].append([e[1],e[2]])
         for chr in h_data.keys():
             h_data[chr].sort()
             res_list=get_sequence(chr, h_data[chr])

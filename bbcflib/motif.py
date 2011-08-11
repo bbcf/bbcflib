@@ -99,7 +99,7 @@ def parse_meme_html_output(ex, meme_file, fasta, chromosomes):
                 index                   = 0
                 while is_searching_chromosome:
                     if index >= len(keys):
-                        raise ValueError("Chromosomes named: %s not found in select assembly!"%(chromosome))
+                        raise ValueError("Chromosomes named: %s not found in selected assembly!"%(chromosome))
                     elif chromosomes[keys[index]]["name"] == chromosome:
                         is_searching_chromosome   = False
                         chrom_used[chromosomes[keys[index]]["name"]] = {"length" : chromosomes[keys[index]]["length"] }
@@ -131,7 +131,7 @@ def add_meme_files( ex, genrep, chromosomes, description = '',
                                         bed = bed, sql = sql )
     meme_out    = meme.nonblocking( ex, fasta, maxsize = size*1.5, args = meme_args, via = via ).wait()
     html        = os.path.join(meme_out, "meme.html")
-    parse_meme_html_output(ex, meme_out+"/meme.html", fasta, chromosomes)
+    parse_meme_html_output(ex, html, fasta, chromosomes)
     archive     = common.compress(ex, meme_out)
     ex.add( html, description = "html:"+description+"meme.html" )
     ex.add( archive, description = "archive:"+description )
