@@ -306,7 +306,7 @@ def get_fastq_files( job, fastq_root, dafl=None, set_seed_length=True ):
             if isinstance(run,dict) and all([x in run for x in ['facility','machine','run','lane']]):
                 dafl1 = dafl[run['facility']]
                 daf_data = dafl1.fetch_fastq( str(run['facility']), str(run['machine']),
-                                             run['run'], run['lane'], to=fastq_root )
+                                              run['run'], run['lane'], to=fastq_root )
                 job.groups[gid]['runs'][rid] = daf_data['path']
                 if (set_seed_length):
                     job.groups[gid]['seed_lengths'][rid] = max(28,int(0.7*daf_data['cycle']))
@@ -349,7 +349,12 @@ def get_fastq_files( job, fastq_root, dafl=None, set_seed_length=True ):
                     target2 = os.path.join(fastq_root,fq_file2)
                     with open(target2,'w') as output_file:
                         input_file = gzip.open(target, 'rb')
-                        output_file.write(input_file.read())
+                        while True:
+                            chunk = input_file.read(4096)
+                            if chunk == '':
+                                break
+                            else:
+                                output_file.write(chunk)
                         input_file.close()
                     fq_file = fq_file2
                 job.groups[gid]['runs'][rid] = fq_file
@@ -831,8 +836,14 @@ def get_bam_wig_files( ex, job, minilims=None, hts_url=None, suffix=['fwd','rev'
                 shutil.copy( file_loc, bamfile )
                 shutil.copy( file_loc+".bai", bamfile+".bai" )
                 exid = max(MMS.search_executions(with_text=run['key']))
-                allfiles = dict((MMS.fetch_file(x)['description'],x)
-                              for x in MMS.search_files(source=('execution',exid)))
+#                allfiles = dict((MMS.fetch_file(x)['description'],x)
+#                                for x in MMS.search_files(source=('execution',exid)))
+                allfiles = {}
+                for fid in MMS.search_files(source=('execution',exid)):
+                    tf = MMS.fetch_file(fid)
+                    allfiles[tf['description']] = fid
+                    if not(run.get('run')) and str(run['url']) == str(tf['repository_name']):
+                        name = str(re.search(r'bam:(.*)_[^_]*.bam', tf['description']).groups()[0])
                 stats_id = allfiles.get("py:"+name+"_filter_bamstat") or allfiles.get("py:"+name+"_full_bamstat")
                 with open(MMS.path_to_file(stats_id)) as q:
                     stats = pickle.load(q)
