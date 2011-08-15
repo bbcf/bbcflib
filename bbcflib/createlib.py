@@ -39,18 +39,20 @@ def load_libraryParamsFile(paramsfile):
 
  
 @program
-def call_getRestEnzymeOccAndSeq(assembly_or_fasta,prim_site,sec_site,l_seg,l_type='typeI'):
+def call_getRestEnzymeOccAndSeq(assembly_or_fasta,prim_site,sec_site,l_seg,g_rep, remote_working_directory, l_type='typeI'):
+	print(assembly_or_fasta)
+	print(isinstance(assembly_or_fasta,genrep.Assembly))
 	if isinstance(assembly_or_fasta,genrep.Assembly):
 		print(assembly_or_fasta)
 		print(isinstance(assembly_or_fasta,genrep.Assembly))
 		print("Will prepare fasta file")
-		fasta_path=g_rep.fasta_path(assembly)
+		fasta_path=g_rep.fasta_path(assembly_or_fasta)
 		tar = tarfile.open(fasta_path) 
-		tar.extractall(path=working_dir)
+		tar.extractall(path=remote_working_directory)
 		allfiles=[]
 		for finfo in tar.getmembers():
         		if not finfo.isdir():
-                		allfiles.append(working_dir+finfo.name)
+                		allfiles.append(remote_working_directory+finfo.name)
 		fasta_file=common.cat(allfiles) 
 		tar.close()
 	else:
@@ -102,8 +104,8 @@ def parse_fragFile(fragfile):
 def call_coverageBed(file1,file2):
 	"""Binds ```coverageBed`` from the 'BedTools' suite
 	"""
-	print('will call /archive/epfl/bbcf/bin/BEDTools/bin/coverageBed -a '+file1+' -b '+file2)
-	return {"arguments": ['/archive/epfl/bbcf/bin/BEDTools/bin/coverageBed','-a',file1,'-b',file2], "return_value":None}
+	print('will call coverageBed -a '+file1+' -b '+file2)
+	return {"arguments": ['coverageBed','-a',file1,'-b',file2], "return_value":None}
 
 def getCoverageInRepeats(ex,infile,genomeName='mm9',via='lsf'):
 	repeatsPath="/archive/epfl/bbcf/data/genomes/repeats/"
@@ -191,13 +193,14 @@ def call_gunzip(path):
 	return {"arguments": call, "return_value": output}
 
 # *** main call to create the library
-def createLibrary(ex,fasta_allchr,params):	
+def createLibrary(ex,fasta_allchr,params, g_rep):	
 	if len(params['primary'])<2 or len(params['secondary'])<2:
 		print('Some parameters are missing, cannot create the library')
 		print('primary='+params['primary']+" ; "+'secondary='+params['secondary'])
 		return [None,None,None,None]
-	print('Will call call_getRestEnzymeOccAndSeq')	
-	libfiles=call_getRestEnzymeOccAndSeq(ex,fasta_allchr,params['primary'],params['secondary'],params['length'],params['type'])
+	print('Will call call_getRestEnzymeOccAndSeq')
+	print(fasta_allchr)
+	libfiles=call_getRestEnzymeOccAndSeq(ex,fasta_allchr,params['primary'],params['secondary'],params['length'],g_rep, ex.remote_working_directory + "/", params['type'])
 	print('parse fragment file to create segment info bed file and fragment bed file\n')
 	bedfiles=parse_fragFile(libfiles[1])
 	print('calculate coverage in repeats for segments')
@@ -206,18 +209,19 @@ def createLibrary(ex,fasta_allchr,params):
 	return([libfiles,bedfiles,resfile,infos_lib])
 
 
-def get_libForGrp(ex,group,fasta_or_assembly,new_libraries):
+def get_libForGrp(ex,group,fasta_or_assembly,new_libraries, job_id, g_rep):
 	#wd_archive="/archive/epfl/bbcf/mleleu/pipeline_vMarion/pipeline_3Cseq/vWebServer_Bein/" #temporary: will be /scratch/cluster/monthly/htsstation/4cseq/job.id
+	lib_dir = "/scratch/cluster/monthly/htsstation/4cseq/" + str(job_id) + "/"
 	if group['library_param_file'] != "" :
-		paramslib=load_libraryParamsFile(ex.remote_working_directory+'/'+group['library_param_file']);
+		paramslib=load_libraryParamsFile(lib_dir + group['library_param_file']);
 		lib_id=lib_exists(paramslib)
 		ex_libfile=lib_exists(paramslib,new_libraries,returnType="filename")
 		print("lib_id="+str(lib_id))
 		if lib_id == 0 and ex_libfile == None :
-			print("will call createlib.createLibrary with:"+str(fasta_or_assembly)+" and "+wd_archive+group['library_param_file'])
-			libfiles=createLibrary(ex,fasta_or_assembly,paramslib);
+			print("will call createlib.createLibrary with:"+str(fasta_or_assembly)+" and "+ lib_dir + group['library_param_file'])
+			libfiles=createLibrary(ex,fasta_or_assembly,paramslib, g_rep);
 			reffile=libfiles[2]
-			ex.add(reffile,description='new_library_grp')
+			ex.add(reffile,description='bed:new_library_grp')
 			new_libraries.append({'library':libfiles[3]})	
 		elif lib_id > 0 :
 			print("This library already exists (id="+str(lib_id)+")")
@@ -245,19 +249,3 @@ def get_libForGrp(ex,group,fasta_or_assembly,new_libraries):
 	print("reffile="+reffile)				 
 	return reffile
 
-def get_libForAllGrps(ex, job_or_dict, assembly):
-	options = {}
-	if isinstance(job_or_dict, frontend.Job):
-        	options = job_or_dict.options
-        	groups = job_or_dict.groups
-    	elif isinstance(job_or_dict, dict) and 'groups' in job_or_dict:
-        	if 'options' in job_or_dict:
-            		options = job_or_dict['options']
-        	groups = job_or_dict['groups']
-        	for gid in groups.keys():
-            		if not('name' in groups[gid]):
-                		groups[gid]['name'] = gid
-    	else:
-        	raise TypeError("job_or_dict must be a frontend.Job object or a dictionary with key 'groups'.")
-	new_libraries={}
-	
