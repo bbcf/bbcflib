@@ -178,15 +178,16 @@ def inference(cond1_label, cond1, cond2_label, cond2, method="normal", output=No
 
     ## Replace (unique) gene IDs by (not unique) gene names
     if gene_names:
+        names = []
         res_ids = list(res[0])
         if res_ids[0].find("ENSG") != -1:
             for s in res_ids:
                 start = s.find("ENSG")
                 end = s.split("ENSG")[1].find("|")
                 gene_id = "ENSG" + s.split("ENSG")[1].split("|")[0]
-                gene_names.append(s.replace(gene_id,gene_names.get(gene_id,gene_id)))
-        data_frame = robjects.DataFrame({"Name":robjects.StrVector(gene_names)})
-        for i in range(2,len(res)+1): 
+                names.append(s.replace(gene_id,gene_names.get(gene_id,gene_id)))
+        data_frame = robjects.DataFrame({"Name":robjects.StrVector(names)})
+        for i in range(2,len(res)+1):
             data_frame = data_frame.cbind(res.rx(i))
         res = data_frame
 
@@ -385,11 +386,11 @@ def MAplot(data, mode="interactive", deg=4, bins=30, alpha=0.005, assembly_id=No
         if not math.isnan(ratios[i]) and not math.isinf(ratios[i]):
             p = (names[i],numpy.log10(means[i]),ratios[i],pvals[i])
             if pvals[i] < alpha:
-                redpoints.append((p[1],p[2]))
+                redpoints.append(p)
                 annotes_red.append(p[0])
                 pvals_red.append(p[3])
             else:
-                blackpoints.append((p[1],p[2]))
+                blackpoints.append(p)
                 annotes_black.append(p[0])
                 pvals_black.append(p[3])
             points.append(p)
@@ -417,8 +418,8 @@ def MAplot(data, mode="interactive", deg=4, bins=30, alpha=0.005, assembly_id=No
     figname = None
 
     ### Points
-    blackpts = numpy.array(zip(*blackpoints))
-    redpts = numpy.array(zip(*redpoints))
+    blackpts = zip(*blackpoints)[1:3]
+    redpts = zip(*redpoints)[1:3]
     ax.plot(blackpts[0], blackpts[1], ".", color="black")
     if len(redpts) != 0:
         ax.plot(redpts[0], redpts[1], ".", color="red")
@@ -464,6 +465,8 @@ def MAplot(data, mode="interactive", deg=4, bins=30, alpha=0.005, assembly_id=No
     ## Output for Javascript
     def rgb_to_hex(rgb):
         return '#%02x%02x%02x' % rgb
+    redpoints = [(p[1],p[2]) for p in redpoints]
+    blackpoints = [(p[1],p[2]) for p in blackpoints]
     jsdata = [{"label": "Genes with p-value < " + str(alpha),
                "data": redpoints,
                "labels": annotes_red,
