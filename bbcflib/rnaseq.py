@@ -16,8 +16,7 @@ from .genrep import GenRep
 
 #started to take a census of used numpy libs
 import numpy
-from numpy import *
-from numpy import array, asarray
+#from numpy import *
 from numpy.linalg import pinv 
 
 # Other modules #
@@ -191,15 +190,14 @@ def inference(cond1_label, cond1, cond2_label, cond2, method="normal", output=No
 
     ## Replace (unique) gene IDs by (not unique) gene names
     if gene_names:
-        res_names = []
         res_ids = list(res[0])
-        if res_ids[0].find("|") == -1: #genes
-            for i in res_ids:
-                res_names.append(gene_names.get(i,i))
-        else: #exons
-            for i in res_ids:
-                res_names.append(i.split("|")[0] + gene_names.get(i.split("|")[1]), i)
-        data_frame = robjects.DataFrame({"Name":robjects.StrVector(res_names)})
+        if res_ids[0].find("ENSG") != -1:
+            for s in res_ids:
+                start = s.find("ENSG")
+                end = s.split("ENSG")[1].find("|")
+                gene_id = "ENSG" + s.split("ENSG")[1].split("|")[0]
+                gene_names.append(s.replace(gene_id,gene_names.get(gene_id,gene_id)))
+        data_frame = robjects.DataFrame({"Name":robjects.StrVector(res_ids)})
         for i in range(2,len(res)+1): 
             data_frame = data_frame.cbind(res.rx(i))
         res = data_frame
@@ -210,7 +208,7 @@ def inference(cond1_label, cond1, cond2_label, cond2, method="normal", output=No
     res.to_csvfile(result_filename)
     return result_filename
 
-def rnaseq_workflow(ex, job, assembly, via="lsf", output=None, maplot="normal", with_exons=None):
+def rnaseq_workflow(ex, job, assembly, target=["genes"], via="lsf", output=None, maplot="normal"):
     """Run RNASeq inference according to *job_info*.
 
     *output*: alternative name for output file. Otherwise it is random.
@@ -218,7 +216,8 @@ def rnaseq_workflow(ex, job, assembly, via="lsf", output=None, maplot="normal", 
     - If 'interactive', one can click on a point (gene or exon) to display its name;
     - if 'normal', name of genes over 99.9%/under 0.1% quantiles are displayed;
     - if None, no figure is produced.
-    *with_exons*: run inference (DESeq) on exon mapping in addition to gene mapping.
+    *target*: a string or array of strings indicating the targets to run inference (DESeq) on.
+    Targets can be 'genes', 'transcripts', 'exons'. E.g. ['genes','transcripts'], or 'exons'.
     (This part of the workflow may fail if there are too few reads for DESeq to estimate variances.)
     *job* is as Job object (or a dictionary of the same form) as returned from
     HTSStation's frontend.
@@ -235,6 +234,7 @@ def rnaseq_workflow(ex, job, assembly, via="lsf", output=None, maplot="normal", 
         names[i] = str(group['name'])
         runs[i] = group['runs'].values()
         controls[i] = group['control']
+    if isinstance(target,str): target=[target]
 
     fastq_root = os.path.abspath(ex.working_directory)
     print "Alignment..."
@@ -267,8 +267,8 @@ def rnaseq_workflow(ex, job, assembly, via="lsf", output=None, maplot="normal", 
         for f in files.values():
             exon_pileup = pileup_file(f['bam'], exons) #{exon_id: count}
             exon_pileups[condition].append(exon_pileup) #{cond1: [{pileup bam1},{pileup bam2},...], cond2:...}
-            gene_pileup = dict(zip(gene_ids,zeros(len(gene_ids))))
-            tran_pileup = dict(zip(transcript_mapping.keys(), zeros(len(transcript_mapping.keys()))) )
+            gene_pileup = dict(zip(gene_ids,numpy.zeros(len(gene_ids))))
+            tran_pileup = dict(zip(transcript_mapping.keys(),numpy.zeros(len(transcript_mapping.keys()))) )
             for e,c in exon_pileup.iteritems():
                 e = e.split('|')[0]
                 if exon_mapping.get(e):
@@ -288,8 +288,8 @@ def rnaseq_workflow(ex, job, assembly, via="lsf", output=None, maplot="normal", 
                     for t in tg:
                         ebt = exons_in_trans[t]
                         eg.extend(ebt)
-                    M = zeros((len(eg),len(tg)))
-                    exons_expression = zeros(len(eg))
+                    M = numpy.zeros((len(eg),len(tg)))
+                    exons_expression = numpy.zeros(len(eg))
                     for i,e in enumerate(eg):
                         for j,t in enumerate(tg):
                             ebt = exons_in_trans[t]
@@ -297,84 +297,74 @@ def rnaseq_workflow(ex, job, assembly, via="lsf", output=None, maplot="normal", 
                                 M[i,j] = 1
                         if exon_pileup.get(e):
                             exons_expression[i] += exon_pileup[e]
-                    transcripts_expression_g = numpy.ceil(dot(pinv(M),exons_expression)) #pseudo-inverse
-                    #transcripts_expression_g = dot(pinv(M),exons_expression)
+                    transcripts_expression_g = numpy.ceil(numpy.dot(pinv(M),exons_expression)) #pseudo-inverse
+                    # DESeq accepts integers only
+                    #transcripts_expression_g = numpy.dot(pinv(M),exons_expression)
                     for k,t in enumerate(tg):
                         tran_pileup[t] = transcripts_expression_g[k]
             tran_pileups[condition].append(tran_pileup)
 
-    futures = {}
+    futures_genes = {}; futures_trans = {}; futures_exons = {}
     for (c1,c2) in pairs_to_test(controls):
         if len(runs[c1]) + len(runs[c2]) > 2:
             method = "normal"
         else: method = "blind"
 
-        if with_exons:
-            print "Inference (genes+exons)..."
-            futures[(c1,c2)] = [external_deseq.nonblocking(ex,
+        print "Inference..."
+        if "genes" in target:
+            futures_genes[(c1,c2)] = external_deseq.nonblocking(ex,
                                       names[c1], gene_pileups[c1],
                                       names[c2], gene_pileups[c2],
-                                      method, output, gene_names=gene_names, via=via),
-                                external_deseq.nonblocking(ex,
-                                      names[c1], exon_pileups[c1],
-                                      names[c2], exon_pileups[c2],
-                                      method, output, gene_names=gene_names, via=via),
-                                external_deseq.nonblocking(ex,
+                                      method, output, gene_names=gene_names, via=via)
+        if "transcripts" in target:
+            futures_trans[(c1,c2)] = external_deseq.nonblocking(ex,
                                       names[c1], tran_pileups[c1],
                                       names[c2], tran_pileups[c2],
-                                      method, output, gene_names=gene_names, via=via)]
-            print "....Wait for results....."
-            for c,f in futures.iteritems():
-                gene_file = f[0].wait()
-                exons_file = f[1].wait()
-                trans_file = f[2].wait()
-                if gene_file:
-                    ex.add(gene_file,
-                           description="Comparison of GENES in conditions '%s' and '%s' (CSV)" % (names[c[0]], names[c[1]]))
-                    if maplot:
-                        res0 = robjects.DataFrame.from_csvfile(f[0].wait())
-                        figname, jsname = MAplot(res0, mode=maplot, deg=4, bins=100, alpha=0.005, assembly_id=assembly_id)
-                        ex.add(figname, description="MA-plot (genes)")
-                        ex.add(jsname, description="Data for javascript (genes)")
-                    print "Genes: Done successfully."
-                else: print "Genes: Failed during inference, probably because of too few reads for DESeq stats."
-                if exons_file:
-                    ex.add(exons_file,
-                           description="Comparison of EXONS in conditions '%s' and '%s' (CSV)" % (names[c[0]], names[c[1]]))
-                    if maplot:
-                        res1 = robjects.DataFrame.from_csvfile(f[1].wait())
-                        figname, jsname = MAplot(res1, mode=maplot, deg=4, bins=100, alpha=0.005, assembly_id=assembly_id)
-                        ex.add(figname, description="MA-plot (exons)")
-                        ex.add(jsname, description="Data for javascript (exons)")
-                    print "Exons: Done successfully."
-                else: print "Exons: Failed during inference, probably because of too few reads for DESeq stats."
-            ## if trans_file:
-            ##         ex.add(trans_file,
-            ##                description="Comparison of TRANSCRIPTS in conditions '%s' and '%s' (CSV)" % (names[c[0]], names[c[1]]))
-            ##         if maplot:
-            ##             res2 = robjects.DataFrame.from_csvfile(f[2].wait())
-            ##             figname, jsname = MAplot(res2, mode=maplot, deg=4, bins=100, alpha=0.005, assembly_id=assembly_id)
-            ##             ex.add(figname, description="MA-plot (transcripts)")
-            ##             ex.add(jsname, description="Data for javascript (transcripts)")
-            ##         print "Transcripts: Done successfully."
-            ##     else: print "Transcripts: Failed during inference, probably because of too few reads for DESeq stats."
-        else:
-            print "Inference (genes only)..."
-            futures[(c1,c2)] = external_deseq.nonblocking(ex,
-                                    names[c1], gene_pileups[c1],
-                                    names[c2], gene_pileups[c2],
-                                    method, output, gene_names=gene_names, via=via)
-            print "....Wait for results..."
-            for c,f in futures.iteritems():
-                gene_file = f.wait()
+                                      method, output, gene_names=gene_names, via=via)
+        if "exons" in target:
+            futures_exons[(c1,c2)] = external_deseq.nonblocking(ex,
+                                      names[c1], exon_pileups[c1],
+                                      names[c2], exon_pileups[c2],
+                                      method, output, gene_names=gene_names, via=via)
+        print "....Wait for results....."
+        for c,f in futures_genes.iteritems():
+            gene_file = f.wait()
+            if gene_file:
                 ex.add(gene_file,
-                       description="Comparison of GENES in conditions '%s' and '%s' (CSV)" % (names[c1], names[c2]))
+                       description="Comparison of GENES in conditions '%s' and '%s' (CSV)" % (names[c[0]], names[c[1]]))
                 if maplot:
                     res = robjects.DataFrame.from_csvfile(f.wait())
-                    figname,jsname = MAplot(res, mode=maplot, deg=4, bins=100, alpha=0.005, assembly_id=assembly_id)
+                    figname, jsname = MAplot(res, mode=maplot, deg=4, bins=100, alpha=0.005, assembly_id=assembly_id)
                     ex.add(figname, description="MA-plot (genes)")
                     ex.add(jsname, description="Data for javascript (genes)")
-            print "Done."
+                print "Genes: Done successfully."
+            else: print "Genes: Failed during inference, probably because of too few reads for DESeq stats."
+
+        for c,f in futures_trans.iteritems():
+            trans_file = f.wait()
+            if trans_file:
+                ex.add(trans_file,
+                       description="Comparison of TRANSCRIPTS in conditions '%s' and '%s' (CSV)" % (names[c[0]], names[c[1]]))
+                if maplot:
+                    res = robjects.DataFrame.from_csvfile(f.wait())
+                    figname, jsname = MAplot(res, mode=maplot, deg=4, bins=100, alpha=0.005, assembly_id=assembly_id)
+                    ex.add(figname, description="MA-plot (transcripts)")
+                    ex.add(jsname, description="Data for javascript (transcripts)")
+                print "Transcripts: Done successfully."
+            else: print "Transcripts: Failed during inference, probably because of too few reads for DESeq stats."
+
+        for c,f in futures_exons.iteritems():
+            exons_file = f.wait()
+            if exons_file:
+                ex.add(exons_file,
+                       description="Comparison of EXONS in conditions '%s' and '%s' (CSV)" % (names[c[0]], names[c[1]]))
+                if maplot:
+                    res = robjects.DataFrame.from_csvfile(f.wait())
+                    figname, jsname = MAplot(res, mode=maplot, deg=4, bins=100, alpha=0.005, assembly_id=assembly_id)
+                    ex.add(figname, description="MA-plot (exons)")
+                    ex.add(jsname, description="Data for javascript (exons)")
+                print "Exons: Done successfully."
+            else: print "Exons: Failed during inference, probably because of too few reads for DESeq stats."
 
 
 def MAplot(data, mode="interactive", deg=4, bins=30, alpha=0.005, assembly_id=None):
@@ -394,18 +384,18 @@ def MAplot(data, mode="interactive", deg=4, bins=30, alpha=0.005, assembly_id=No
     import matplotlib.pyplot as plt
 
     ## Extract data from DataFrame
-    pvals = asarray(data.rx("pval")[0])
-    means = asarray(data.rx("baseMean")[0])
-    ratios = asarray(data.rx("log2FoldChange")[0])
+    pvals = numpy.asarray(data.rx("pval")[0])
+    means = numpy.asarray(data.rx("baseMean")[0])
+    ratios = numpy.asarray(data.rx("log2FoldChange")[0])
     names = data.rx("Name")[0]
-    a = asarray(names)
-    b = asarray(names.levels)
+    a = numpy.asarray(names)
+    b = numpy.asarray(names.levels)
     names = list(b[a-1])
 
     points=[]; blackpoints=[]; redpoints=[]; annotes_red=[]; annotes_black=[]; pvals_red=[]; pvals_black=[]
     for i in range(len(ratios)):
         if not math.isnan(ratios[i]) and not math.isinf(ratios[i]):
-            p = (names[i],log10(means[i]),ratios[i],pvals[i])
+            p = (names[i],numpy.log10(means[i]),ratios[i],pvals[i])
             if pvals[i] < alpha:
                 redpoints.append((p[1],p[2]))
                 annotes_red.append(p[0])
@@ -420,12 +410,12 @@ def MAplot(data, mode="interactive", deg=4, bins=30, alpha=0.005, assembly_id=No
 
     ## Create bins
     N = len(points); dN = N/bins #points per bin
-    rmeans = sort(means)
+    rmeans = numpy.sort(means)
     intervals = []
     for i in range(bins):
         intervals.append(rmeans[i*dN])
     intervals.append(xmax)
-    intervals = array(intervals)
+    intervals = numpy.array(intervals)
 
     points_in = {}; perc = {}
     for b in range(bins):
@@ -439,8 +429,8 @@ def MAplot(data, mode="interactive", deg=4, bins=30, alpha=0.005, assembly_id=No
     figname = None
 
     ### Points
-    blackpts = array(zip(*blackpoints))
-    redpts = array(zip(*redpoints))
+    blackpts = numpy.array(zip(*blackpoints))
+    redpts = numpy.array(zip(*redpoints))
     ax.plot(blackpts[0], blackpts[1], ".", color="black")
     if len(redpts) != 0:
         ax.plot(redpts[0], redpts[1], ".", color="red")
@@ -449,17 +439,17 @@ def MAplot(data, mode="interactive", deg=4, bins=30, alpha=0.005, assembly_id=No
     spline_annotes=[]; spline_coords={}
     percentiles = [1,5,25,50,75,95,99]
     for k in percentiles:
-        h = ones(bins)
+        h = numpy.ones(bins)
         for b in range(bins):
             if points_in[b] != []:
                 h[b] = stats.scoreatpercentile(perc[b], k)
             else: h[b] = h[b-1]
         x = intervals[:-1]+(intervals[1:]-intervals[:-1])/2.
         spline = UnivariateSpline(x, h, k=deg)
-        xs = array(linspace(xmin, xmax, 10*bins)) #to increase spline smoothness
-        ys = array(spline(xs))
+        xs = numpy.array(numpy.linspace(xmin, xmax, 10*bins)) #to increase spline smoothness
+        ys = numpy.array(spline(xs))
         l = len(xs)
-        xi = arange(l)[ceil(l/6):floor(8*l/9)]
+        xi = numpy.arange(l)[numpy.ceil(l/6):numpy.floor(8*l/9)]
         x_spline = xs[xi]
         y_spline = ys[xi]
         ax.plot(x_spline, y_spline, "-", color="blue") #ax.plot(x, h, "o", color="blue")
