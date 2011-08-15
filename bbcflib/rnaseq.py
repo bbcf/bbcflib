@@ -138,18 +138,6 @@ def external_deseq(cond1_label, cond1, cond2_label, cond2, method="normal", outp
     call = ["run_deseq.py", c1, c2, cond1_label, cond2_label, method, result_filename, gn]
     return {"arguments": call, "return_value": result_filename}
 
-def results_to_json(lims, exid):
-    """Create a JSON string describing the results of execution *exid*.
-
-    The execution is sought in *lims*, and all its output files and
-    their descriptions are written to the string.
-    """
-    produced_file_ids = lims.search_files(source=('execution',exid))
-    d = dict([(lims.fetch_file(i)['description'], lims.path_to_file(i))
-              for i in produced_file_ids])
-    j = json.dumps(d)
-    return j
-
 def inference(cond1_label, cond1, cond2_label, cond2, method="normal", output=None, gene_names=None):
     """Runs DESeq comparing the counts in *cond1* and *cond2*.
 
@@ -197,7 +185,7 @@ def inference(cond1_label, cond1, cond2_label, cond2, method="normal", output=No
                 end = s.split("ENSG")[1].find("|")
                 gene_id = "ENSG" + s.split("ENSG")[1].split("|")[0]
                 gene_names.append(s.replace(gene_id,gene_names.get(gene_id,gene_id)))
-        data_frame = robjects.DataFrame({"Name":robjects.StrVector(res_ids)})
+        data_frame = robjects.DataFrame({"Name":robjects.StrVector(gene_names)})
         for i in range(2,len(res)+1): 
             data_frame = data_frame.cbind(res.rx(i))
         res = data_frame
