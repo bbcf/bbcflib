@@ -6,28 +6,36 @@
 # BED Document
 # Extension: .bed
 0   regex   track.+type=bed BED Document
+0   string  ##bed   BED Document
 !:mime  text/bed
+# BEDGRAPH Document
+# Extension: .bedgraph
+0   regex   track.+type=bedgraph    BEDGRAPH Document
+0   string  ##bedgraph  BEDGRAPH Document
+!:mime  text/bedgraph
 # PSL Document
 # Extension: .psl
-0   regex   track.+type=psl PSL document
+0   regex   track.+type=psl PSL Document
+0   string  ##psl   PSL Document
 !:mime  text/psl
 # GFF Document
 # Extension: .gff
-0   regex   track.+type=gff GFF document
-0   string  ##gff   GFF document
+0   regex   track.+type=gff GFF Document
+0   string  ##gff   GFF Document
 >0  regex   \#\#gff-version[\ \t]+
 >&0 regex   [0-9]+  version %s
 !:mime  text/gff
 # GTF Document
 # Extension: .gtf
-0   regex   track.+type=gtf GTF document
+0   regex   track.+type=gtf GTF Document
 0   string  ##gtf   GTF document
 >0  regex   \#\#gtf-version[\ \t]+
 >&0 regex   [0-9]+  version %s
 !:mime  text/gtf
 # WIG Document
 # Extension: .wig
-0   regex   track.+type=wiggle_0    WIG document
+0   regex   track.+type=wiggle_0    WIG Document
+0   string  ##wig   WIG Document
 !:mime  text/wig
 #------------------------------------------------------------------------------
 # $File: maf,v 1.0 2011/07/05 15:00:00 $

@@ -306,7 +306,7 @@ def get_fastq_files( job, fastq_root, dafl=None, set_seed_length=True ):
             if isinstance(run,dict) and all([x in run for x in ['facility','machine','run','lane']]):
                 dafl1 = dafl[run['facility']]
                 daf_data = dafl1.fetch_fastq( str(run['facility']), str(run['machine']),
-                                             run['run'], run['lane'], to=fastq_root )
+                                              run['run'], run['lane'], to=fastq_root )
                 job.groups[gid]['runs'][rid] = daf_data['path']
                 if (set_seed_length):
                     job.groups[gid]['seed_lengths'][rid] = max(28,int(0.7*daf_data['cycle']))
@@ -349,7 +349,12 @@ def get_fastq_files( job, fastq_root, dafl=None, set_seed_length=True ):
                     target2 = os.path.join(fastq_root,fq_file2)
                     with open(target2,'w') as output_file:
                         input_file = gzip.open(target, 'rb')
-                        output_file.write(input_file.read())
+                        while True:
+                            chunk = input_file.read(4096)
+                            if chunk == '':
+                                break
+                            else:
+                                output_file.write(chunk)
                         input_file.close()
                     fq_file = fq_file2
                 job.groups[gid]['runs'][rid] = fq_file
@@ -706,7 +711,7 @@ def densities_groups( ex, job_or_dict, file_dict, chromosomes, via='lsf' ):
                           'read_length': mapped.values()[0]['stats']['read_length']}
         if ucsc_bigwig:
             out = unique_filename_in()
-            for s in suffix:
+            for s in suffixes:
                 with Track(merged_wig[s]) as t:
                     t.convert(out+s,"bigWig")
                 ex.add(out+s,description='bigwig:'+group_name+'_'+s+'.bw')
@@ -791,6 +796,107 @@ def import_mapseq_results( key_or_id, minilims, ex_root, url_or_dict ):
                                    'wig': dict((x[1],s)
                                                for x,s in wig_ids.iteritems())}
     return (processed,job)
+
+def get_bam_wig_files( ex, job, minilims=None, hts_url=None, suffix=['fwd','rev'],
+                       script_path = './', via='lsf' ):
+    """
+    Will replace file references by actual file paths in the 'job' object.
+    These references are either 'mapseq' keys or urls.
+    """
+    mapped_files = {}
+    read_exts = {}
+    for gid,group in job.groups.iteritems():
+        mapped_files[gid] = {}
+        if 'name' in group:
+            group_name = re.sub(r'\s+','_',group['name'])
+        else:
+            group_name = str(gid)
+        job.groups[gid]['name'] = group_name
+        for rid,run in group['runs'].iteritems():
+            file_loc = str(run['url'])
+            bamfile = unique_filename_in()
+            wig = {}
+            name = group_name
+            stats = None
+            p_thresh = None
+            if len(group['runs'])>1:
+                if all([run.get(x) for x in ['machine','run','lane']]):
+                    name += "_".join(['',run['machine'],str(run['run']),str(run['lane'])])
+                else:
+                    name += "_"+os.path.splitext(file_loc.split("/")[-1])[0]
+            if file_loc.startswith("http://") or file_loc.startswith("https://"):
+                urllib.urlretrieve( file_loc, bamfile )
+                urllib.urlretrieve( file_loc+".bai", bamfile+".bai" )
+            elif os.path.exists(file_loc):
+                shutil.copy( file_loc, bamfile )
+                shutil.copy( file_loc+".bai", bamfile+".bai" )
+            elif os.path.exists(minilims) and os.path.exists(os.path.join(minilims+".files",file_loc)):
+                MMS = MiniLIMS(minilims)
+                file_loc = os.path.join(minilims+".files",file_loc)
+                shutil.copy( file_loc, bamfile )
+                shutil.copy( file_loc+".bai", bamfile+".bai" )
+                exid = max(MMS.search_executions(with_text=run['key']))
+#                allfiles = dict((MMS.fetch_file(x)['description'],x)
+#                                for x in MMS.search_files(source=('execution',exid)))
+                allfiles = {}
+                for fid in MMS.search_files(source=('execution',exid)):
+                    tf = MMS.fetch_file(fid)
+                    allfiles[tf['description']] = fid
+                    if not(run.get('run')) and str(run['url']) == str(tf['repository_name']):
+                        name = str(re.search(r'bam:(.*)_[^_]*.bam', tf['description']).groups()[0])
+                stats_id = allfiles.get("py:"+name+"_filter_bamstat") or allfiles.get("py:"+name+"_full_bamstat")
+                with open(MMS.path_to_file(stats_id)) as q:
+                    stats = pickle.load(q)
+                p_thresh = -1
+                if "py:"+name+"_Poisson_threshold" in allfiles:
+                    pickle_thresh = allfiles["py:"+name+"_Poisson_threshold"]
+                    with open(MMS.path_to_file(pickle_thresh)) as q:
+                        p_thresh = pickle.load(q)
+                if 'py:gdv_json' in allfiles:
+                    with open(MMS.path_to_file(allfiles['py:gdv_json'])) as q:
+                        job.options['gdv_project'] = pickle.load(q)
+                if hts_url != None:
+                    htss = frontend.Frontend( url=hts_url )
+                    ms_job = htss.job( run['key'] )
+                    if int(ms_job.options.get('read_extension'))>0 and int(ms_job.options.get('read_extension'))<80:
+                        read_exts[rid] = int(ms_job.options['read_extension'])
+                    else:
+                        read_exts[rid] = stats['read_length']
+                else:
+                    ms_job = job
+                if (ms_job.options.get('compute_densities') and 
+                    ((ms_job.options.get('merge_strands')<0 and len(suffix)>1) or 
+                     (ms_job.options.get('merge_strands')>-1 and len(suffix)==1))):
+                    wigfile = unique_filename_in()
+                    wig_ids = dict(((allfiles['sql:'+name+'_'+s+'.sql'],s),
+                                    wigfile+'_'+s+'.sql') for s in suffix)
+                    [MMS.export_file(x[0],s) for x,s in wig_ids.iteritems()]
+                    wig = dict((x[1],s) for x,s in wig_ids.iteritems())
+            else:
+                raise ValueError("Couldn't find this bam file anywhere: %s." %file_loc)
+            mapped_files[gid][rid] = {'bam': bamfile,
+                                      'stats': stats or mapseq.bamstats.nonblocking( ex, bamfile, via=via ),
+                                      'poisson_threshold': p_thresh,
+                                      'libname': name,
+                                      'wig': wig}
+    if len(read_exts)>0 and not('read_extension' in job.options):
+        c = dict((x,0) for x in read_exts.values())
+        for x in read_exts.values():
+            c[x]+=1
+        job.options['read_extension'] = [k for k,v in c.iteritems() if v==max(c.values())][0]
+    for gid, group in job.groups.iteritems():
+        for rid,run in group['runs'].iteritems():
+            if ('read_extension' in job.options) and (read_exts.get(rid) != job.options['read_extension']):
+                mapped_files[gid][rid]['wig'] = []
+            if not(isinstance(mapped_files[gid][rid]['stats'],dict)):
+                stats = mapped_files[gid][rid]['stats'].wait()
+                mapped_files[gid][rid]['stats'] = stats
+                pdf = mapseq.add_pdf_stats( ex, {gid:{rid:{'stats':stats}}},
+                                            {gid: mapped_files[gid][rid]['libname']},
+                                            script_path )
+                mapped_files[gid][rid]['p_thresh'] = mapseq.poisson_threshold( 50*stats["actual_coverage"] )
+    return (mapped_files,job)
+
 
 
 #-----------------------------------#

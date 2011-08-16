@@ -173,16 +173,12 @@ def run_deconv(ex, sql, peaks, chromosomes, read_extension, script_path, via = '
     ('pdf', 'sql' and 'bed') and values the file names.
     """
     from bbcflib.track import new
-    prep_futures = dict((c['name'],
-                         sql_prepare_deconv.nonblocking( ex, sql, peaks,
-                                                         c['name'], c['length'],
-                                                         1500, read_extension,
-                                                         via=via ))
-                        for c in chromosomes.values())
-    rdeconv_futures = dict((c,
-                            run_deconv_r.nonblocking( ex, f.wait(), read_extension,
-                                                      c, script_path, via=via ))
-                           for c,f in prep_futures.iteritems())
+    rdeconv_futures = {}
+    for c in chromosomes.values():
+        f = sql_prepare_deconv.nonblocking( ex, sql, peaks, c['name'], c['length'],
+                                            1500, read_extension, via='local' ).wait()
+        rdeconv_futures[c['name']] =  run_deconv_r.nonblocking( ex, f, read_extension,
+                                                                c['name'], script_path, via=via )
     rdeconv_out = dict((c, f.wait()) for c,f in rdeconv_futures.iteritems())
     if len(rdeconv_out)>0:
         pdf_future = join_pdf.nonblocking( ex,
@@ -195,10 +191,10 @@ def run_deconv(ex, sql, peaks, chromosomes, read_extension, script_path, via = '
         pass
     for c,fout in rdeconv_out.iteritems():
         if fout != None:
-            f = sql_finish_deconv.nonblocking( ex, sqlout, fout['rdata'], c, via=via ).wait()
+            f = sql_finish_deconv.nonblocking( ex, output, fout['rdata'], c, via='local' ).wait()
     outfiles = {}
-    outfiles['sql'] = sqlout
-    outfiles['bed'] = sqlout+'_deconv.bed'
+    outfiles['sql'] = output
+    outfiles['bed'] = output+'_deconv.bed'
     if len(rdeconv_out)>0:
         outfiles['pdf'] = pdf_future.wait()
     else:
@@ -207,101 +203,6 @@ def run_deconv(ex, sql, peaks, chromosomes, read_extension, script_path, via = '
 
 ################################################################################
 # Workflow #
-
-def get_bam_wig_files( ex, job, minilims=None, hts_url=None, suffix=['fwd','rev'],
-                       script_path = './', via='lsf' ):
-    """
-    Will replace file references by actual file paths in the 'job' object.
-    These references are either 'mapseq' keys or urls.
-    """
-    mapped_files = {}
-    read_exts = {}
-    for gid,group in job.groups.iteritems():
-        mapped_files[gid] = {}
-        if 'name' in group:
-            group_name = re.sub(r'\s+','_',group['name'])
-        else:
-            group_name = str(gid)
-        job.groups[gid]['name'] = group_name
-        for rid,run in group['runs'].iteritems():
-            file_loc = str(run['url'])
-            bamfile = unique_filename_in()
-            wig = {}
-            name = group_name
-            stats = None
-            p_thresh = None
-            if len(group['runs'])>1:
-                if all([x in run for x in ['machine','run','lane']]):
-                    name += "_".join(['',run['machine'],str(run['run']),str(run['lane'])])
-                else:
-                    name += "_"+file_loc.split("/")[-1]
-            if file_loc.startswith("http://") or file_loc.startswith("https://"):
-                urllib.urlretrieve( file_loc, bamfile )
-                urllib.urlretrieve( file_loc+".bai", bamfile+".bai" )
-            elif os.path.exists(file_loc):
-                shutil.copy( file_loc, bamfile )
-                shutil.copy( file_loc+".bai", bamfile+".bai" )
-            elif os.path.exists(minilims) and os.path.exists(os.path.join(minilims+".files",file_loc)):
-                MMS = MiniLIMS(minilims)
-                file_loc = os.path.join(minilims+".files",file_loc)
-                shutil.copy( file_loc, bamfile )
-                shutil.copy( file_loc+".bai", bamfile+".bai" )
-                exid = max(MMS.search_executions(with_text=run['key']))
-                allfiles = dict((MMS.fetch_file(x)['description'],x)
-                                for x in MMS.search_files(source=('execution',exid)))
-                with open(MMS.path_to_file(allfiles['py:file_names'])) as q:
-                    file_names = pickle.load(q)
-#                ms_name = file_names[gid][rid]
-                stats_id = allfiles.get("py:"+name+"_filter_bamstat") or allfiles.get("py:"+name+"_full_bamstat")
-                with open(MMS.path_to_file(stats_id)) as q:
-                    stats = pickle.load(q)
-                p_thresh = -1
-                if "py:"+name+"_Poisson_threshold" in allfiles:
-                    pickle_thresh = allfiles["py:"+name+"_Poisson_threshold"]
-                    with open(MMS.path_to_file(pickle_thresh)) as q:
-                        p_thresh = pickle.load(q)
-                if 'py:gdv_json' in allfiles:
-                    with open(MMS.path_to_file(allfiles['py:gdv_json'])) as q:
-                        job.options['gdv_project'] = pickle.load(q)
-                htss = frontend.Frontend( url=hts_url )
-                ms_job = htss.job( run['key'] )
-                if ms_job.options.get('read_extension')>0 and ms_job.options.get('read_extension')<80:
-                    read_exts[rid] = ms_job.options['read_extension']
-                else:
-                    read_exts[rid] = stats['read_length']
-                if (ms_job.options.get('compute_densities') and 
-                    ((ms_job.options.get('merge_strands')<0 and len(suffix)>1) or 
-                     (ms_job.options.get('merge_strands')>-1 and len(suffix)==1))):
-                    wigfile = unique_filename_in()
-                    wig_ids = dict(((allfiles['sql:'+name+'_'+s+'.sql'],s),
-                                    wigfile+'_'+s+'.sql') for s in suffix)
-                    [MMS.export_file(x[0],s) for x,s in wig_ids.iteritems()]
-                    wig = dict((x[1],s) for x,s in wig_ids.iteritems())
-            else:
-                raise ValueError("Couldn't find this bam file anywhere: %s." %file_loc)
-            mapped_files[gid][rid] = {'bam': bamfile,
-                                      'stats': stats or mapseq.bamstats.nonblocking( ex, bamfile, via=via ),
-                                      'poisson_threshold': p_thresh,
-                                      'libname': name,
-                                      'wig': wig}
-    if len(read_exts)>0 and not('read_extension' in job.options):
-        c = dict((x,0) for x in read_exts.values())
-        for x in read_exts.values():
-            c[x]+=1
-        job.options['read_extension'] = [k for k,v in c.iteritems() if v==max(c.values())][0]
-    for gid, group in job.groups.iteritems():
-        for rid,run in group['runs'].iteritems():
-            if read_exts.get(rid) != job.options['read_extension']:
-                mapped_files[gid][rid]['wig'] = []
-            if not(isinstance(mapped_files[gid][rid]['stats'],dict)):
-                stats = mapped_files[gid][rid]['stats'].wait()
-                mapped_files[gid][rid]['stats'] = stats
-                pdf = mapseq.add_pdf_stats( ex, {gid:{rid:{'stats':stats}}},
-                                            {gid: mapped_files[gid][rid]['libname']},
-                                            script_path )
-                mapped_files[gid][rid]['p_thresh'] = mapseq.poisson_threshold( 50*stats["actual_coverage"] )
-    return (mapped_files,job)
-
 
 def workflow_groups( ex, job_or_dict, mapseq_files, chromosomes, script_path='',
                      via='lsf' ):
@@ -344,9 +245,11 @@ def workflow_groups( ex, job_or_dict, mapseq_files, chromosomes, script_path='',
         raise TypeError("job_or_dict must be a frontend.Job object or a dictionary with key 'groups'.")
     merge_strands = -1
     suffixes = ["fwd","rev"]
-    if options.get('merge_strands')>=0:
-        merge_strands = options['merge_strands']
+    if merge_strands in options and int(options.get('merge_strands'))>=0:
+        merge_strands = int(options['merge_strands'])
     peak_deconvolution = options.get('peak_deconvolution') or False
+    if isinstance(peak_deconvolution,str):
+        peak_deconvolution = peak_deconvolution.lower() in ['1','true','t'] 
     macs_args = options.get('macs_args') or ["--bw=200","-p",".001"]
     b2w_args = options.get('b2w_args') or []
     if not(isinstance(mapseq_files,dict)):
@@ -397,7 +300,7 @@ def workflow_groups( ex, job_or_dict, mapseq_files, chromosomes, script_path='',
     if peak_deconvolution:
         processed['deconv'] = {}
         merged_wig = {}
-        if not(options.get('read_extension')>0):
+        if not(int(options.get('read_extension'))>0):
             options['read_extension'] = read_length[0]
         if not('-q' in b2w_args):
             b2w_args += ["-q",str(options['read_extension'])]
@@ -420,7 +323,7 @@ def workflow_groups( ex, job_or_dict, mapseq_files, chromosomes, script_path='',
                 merged_wig[group_name] = dict((s,
                                                merge_sql(ex, [x[s] for x in wig],
                                                          [m['libname'] for m in mapped.values()] ,
-                                                         description="sql:"+group_name+"_"+s+".sql"))
+                                                         description="sql:"+group_name+"_"+s+".sql", via='local'))
                                               for s in suffixes)
             else:
                 merged_wig[group_name] = wig[0]
