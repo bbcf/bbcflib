@@ -87,8 +87,8 @@ def exons_labels(bamfile):
     return labels
 
 def pileup_file(bamfile, exons):
-    """Return a numpy array of the pileup of *bamfile* in order *exons*."""
-    counts = {}
+    """Return a numpy array of the pileup of *bamfile* in order *exons*, using pySam"""
+    counts = numpy.zeros(len(exons))
     sam = pysam.Samfile(bamfile, 'rb')
 
     class Counter(object):
@@ -101,82 +101,59 @@ def pileup_file(bamfile, exons):
     for i,exon in enumerate(exons):
         sam.fetch(exon[0], 0, exon[1], callback=c) #(exon_name,0,exon_length,Counter())
         #The callback (c.n += 1) is executed for each alignment in a region
-        counts[exon[0]] = c.n
+        counts[i] = c.n
         c.n = 0
     sam.close()
     return counts
 
-def pairs_to_test(controls):
-    """*controls* is a dictionary of group_ids to True/False.
-
-    If all the values are True or all the values are False, then it
-    returns all unique pairs of group IDs.  Otherwise it returns all
-    combinations of one group ID with value True and one with value
-    False.
-    """
-    if all(controls.values()) or not(any(controls.values())):
-        return list(combinations(controls.keys(), 2))
-    else:
-        return [(x,y) for x in controls.keys() for y in controls.keys()
-                if controls[x] and not(controls[y])]
-
 @program
-def external_deseq(cond1_label, cond1, cond2_label, cond2, method="normal", output=None, gene_names=None):
-    if output:
-        result_filename = output
-    else:
-        result_filename = unique_filename_in()
-    c1 = unique_filename_in()
-    with open(c1,'wb') as f:
-        pickle.dump(cond1,f,pickle.HIGHEST_PROTOCOL)
-    c2 = unique_filename_in()
-    with open(c2,'wb') as f:
-        pickle.dump(cond2,f,pickle.HIGHEST_PROTOCOL)
-    gn = unique_filename_in()
-    with open(gn,'wb') as f:
+def external_DEXSeq(count_data, conditions, genes_list, exons_list,
+                    intervals=None, transcripts=None, output=None, gene_names=None):
+    counts = unique_filename_in()
+    with open(counts,'wb') as f:
+        pickle.dump(count_data,f,pickle.HIGHEST_PROTOCOL)
+    cond = unique_filename_in()
+    with open(cond,'wb') as f:
+        pickle.dump(conditions,f,pickle.HIGHEST_PROTOCOL)
+    genes = unique_filename_in()
+    with open(genes,'wb') as f:
+        pickle.dump(genes_list,f,pickle.HIGHEST_PROTOCOL)
+    exons = unique_filename_in()
+    with open(exons,'wb') as f:
+        pickle.dump(exons_list,f,pickle.HIGHEST_PROTOCOL)
+    ivals = unique_filename_in()
+    with open(ivals,'wb') as f:
+        pickle.dump(intervals,f,pickle.HIGHEST_PROTOCOL)
+    trans = unique_filename_in()
+    with open(trans,'wb') as f:
+        pickle.dump(transcripts,f,pickle.HIGHEST_PROTOCOL)
+    gnames = unique_filename_in()
+    with open(gnames,'wb') as f:
         pickle.dump(gene_names,f,pickle.HIGHEST_PROTOCOL)
-    call = ["run_deseq.py", c1, c2, cond1_label, cond2_label, method, result_filename, gn]
+    call = ["run_dexseq.py", counts, cond, genes, exons, ivals, trans, output, gnames]
     return {"arguments": call, "return_value": result_filename}
 
-def inference(cond1_label, cond1, cond2_label, cond2, method="normal", output=None, gene_names=None):
-    """Runs DESeq comparing the counts in *cond1* and *cond2*.
-
-    Arguments:
-    *cond1* and *cond2* are lists of numpy arrays. Each
-    array lists the number of reads mapping to a particular
-    transcript.
-    *cond1_label* and *cond2_label* are string which will be used
-    to identify the two conditions in R.
-    *gene_names* is a dictionary {gene ID: gene name}.
-
-    ``deseq_inference`` writes a tab delimited text file of the
-    conditions to R, the first column being the transcript name,
-    followed by one column for each numpy array in *cond1*, then one
-    column for each numpy array in *cond2*.
-
-    Then it calls DESeq in R, writes out the results in a new,
-    randomly named file, and returns that filename.
+def inference(count_data, conditions, genes_list, exons_list,
+              intervals=None, transcripts=None, output=None, gene_names=None):
+    """Runs DEXSeq comparing the counts in different conditions.
     """
 
     # Pass the data into R as a data frame
-    data_frame_contents = rlc.OrdDict([(cond1_label+'-'+str(i), robjects.IntVector(c.values()))
-                                       for i,c in enumerate(cond1)] +
-                                      [(cond2_label+'-'+str(i), robjects.IntVector(c.values()))
-                                       for i,c in enumerate(cond2)])
-    data_frame = robjects.DataFrame(data_frame_contents)
-    data_frame.rownames = cond1[0].keys()
-    conds = robjects.StrVector([cond1_label for x in cond1] + [cond2_label for x in cond2]).factor()
-    if cond1[0].keys() != cond2[0].keys(): raise
+    count_data = rlc.OrdDict(count_data)
+    design = robjects.StrVector(conditions).factor()
+    data_frame = robjects.DataFrame(count_data)
+    data_frame.rownames = exons_list
+    if intervals: intervals = rlc.OrdDict(intervals)
 
-    ## DESeq full analysis
-    deseq = rpackages.importr('DESeq')
-    cds = deseq.newCountDataSet(data_frame, conds)
-    cds = deseq.estimateSizeFactors(cds)
-    try: cds = deseq.estimateVarianceFunctions(cds,method=method)
-    except : raise rpy2.rinterface.RRuntimeError("Too few reads to estimate variances with DESeq")
-    res = deseq.nbinomTest(cds, cond1_label, cond2_label)
+    ## DEXSeq full analysis
+    dexseq = rpackages.importr('DEXSeq')
+    cds = dexseq.newExonCountSet(count_data, design, genes_list, exons_list,
+                                 exonIntervals=intervals, transcripts=transcripts)
+    cds = dexseq.estimateSizeFactors(cds)
+    try: cds = dexseq.estimateDispersions(cds)
+    except: raise rpy2.rinterface.RRuntimeError("Too few reads to estimate variances with DEXSeq")
 
-    ## Replace (unique) gene IDs by (not unique) gene names
+    ## Replace (unique) gene IDs by (not unique) gene names in the output
     if gene_names:
         names = []
         res_ids = list(res[0])
@@ -197,7 +174,7 @@ def inference(cond1_label, cond1, cond2_label, cond2, method="normal", output=No
     res.to_csvfile(result_filename)
     return result_filename
 
-def rnaseq_workflow(ex, job, assembly, target=["genes"], via="lsf", output=None, maplot="normal"):
+def rnaseq_workflow(ex, job, assembly, via="lsf", output=None, maplot="normal"):
     """Run RNASeq inference according to *job_info*.
 
     *output*: alternative name for output file. Otherwise it is random.
@@ -223,13 +200,16 @@ def rnaseq_workflow(ex, job, assembly, target=["genes"], via="lsf", output=None,
         names[i] = str(group['name'])
         runs[i] = group['runs'].values()
         controls[i] = group['control']
-    if isinstance(target,str): target=[target]
 
     fastq_root = os.path.abspath(ex.working_directory)
     print "Alignment..."
     bam_files = map_groups(ex, job, fastq_root, assembly_or_dict = assembly)
+    print bam_files
+    with open(unique_filename_in(),"wb") as f:
+        pickle.dump(bam_files,f)
     print "Reads aligned."
 
+    # List of exons which reads did come from.
     # All the bam_files were created against the same index, so
     # they all have the same header in the same order.  I can take
     # the list of exons from just the first one and use it for all of them.
@@ -242,118 +222,53 @@ def rnaseq_workflow(ex, job, assembly, target=["genes"], via="lsf", output=None,
     # - transcript_mapping is a dictionary {transcript ID: gene ID}
     # - exon_mapping is a dictionary {exon ID: (transcript ID, gene ID)}
     # - trans_in_gene is a dict {transcript ID: ID of the gene it belongs to}
-    # - exons_in_trans is a dict {exon ID: ID of the transcript it belongs to}
-    mappings = fetch_mappings(ex, assembly_id)
+    # - exons_in_trans is a dict {exon ID: ID of the transcripts it belongs to}
+    mappings = fetch_mappings(ex,"/scratch/cluster/monthly/jdelafon-el/maptest.pickle")
+    #mappings = fetch_mappings(ex, assembly_id)
     (gene_ids, gene_names, transcript_mapping, exon_mapping, trans_in_gene, exons_in_trans) = mappings
     print "Loaded."
-    
-    exon_pileups = {}; gene_pileups = {}; tran_pileups = {}
+
+    # The exons of the mapping come from a GTF file and thus the list of all
+    # exons doesn't match the one from the BAM file. I particular, only protein
+    # coding regions where taken into account when building the mappings.
+    # Here we extract the elements that belong to the intersection of both sources.
+    exons_list=[]; exons_complete=[]; transcripts_list=[]; genes_list=[]; intervals_list=[]
+    for ex in exons:
+        e = ex[0].split('|')
+        emap = exon_mapping.get(e[0])
+        if emap:
+            exons_complete.append(ex)
+            exons_list.append(e[0])
+            transcripts_list.append(emap[0])
+            genes_list.append(emap[1])
+            intervals_list.append((0, e[1], e[2], e[3])) #chr=0,start,end,strand
+
+    count_data = {}
     for condition,files in bam_files.iteritems():
-        gene_pileups[condition] = []
-        exon_pileups[condition] = []
-        tran_pileups[condition] = []
-        unknown_exons = []
+        count_data[condition] = []
         for f in files.values():
-            exon_pileup = pileup_file(f['bam'], exons) #{exon_id: count}
-            exon_pileups[condition].append(exon_pileup) #{cond1: [{pileup bam1},{pileup bam2},...], cond2:...}
-            gene_pileup = dict(zip(gene_ids,numpy.zeros(len(gene_ids))))
-            tran_pileup = dict(zip(transcript_mapping.keys(),numpy.zeros(len(transcript_mapping.keys()))) )
-            for e,c in exon_pileup.iteritems():
-                e = e.split('|')[0]
-                if exon_mapping.get(e):
-                    gene_pileup[exon_mapping[e][1]] += c
-            gene_pileups[condition].append(gene_pileup)            
-            ### Get counts for the transcripts using pseudo-inverse
-            for g in gene_ids:
-                tg = trans_in_gene[g]
-                if len(tg) == 1:
-                    t = tg[0]
-                    eg = exons_in_trans[t]
-                    for e in eg:
-                        if exon_pileup.get(e):
-                            tran_pileup[t] += exon_pileup[e]
-                else:   
-                    eg = []
-                    for t in tg:
-                        ebt = exons_in_trans[t]
-                        eg.extend(ebt)
-                    M = numpy.zeros((len(eg),len(tg)))
-                    exons_expression = numpy.zeros(len(eg))
-                    for i,e in enumerate(eg):
-                        for j,t in enumerate(tg):
-                            ebt = exons_in_trans[t]
-                            if e in ebt:
-                                M[i,j] = 1
-                        if exon_pileup.get(e):
-                            exons_expression[i] += exon_pileup[e]
-                    transcripts_expression_g = numpy.ceil(numpy.dot(pinv(M),exons_expression)) #pseudo-inverse
-                    # DESeq accepts integers only
-                    #transcripts_expression_g = numpy.dot(pinv(M),exons_expression)
-                    for k,t in enumerate(tg):
-                        tran_pileup[t] = transcripts_expression_g[k]
-            tran_pileups[condition].append(tran_pileup)
+            counts = pileup_file(f['bam'], exons_complete)
+            count_data[condition].append(counts)
 
-    futures_genes = {}; futures_trans = {}; futures_exons = {}
-    for (c1,c2) in pairs_to_test(controls):
-        if len(runs[c1]) + len(runs[c2]) > 2:
-            method = "normal"
-        else: method = "blind"
-
-        print "Inference..."
-        if "genes" in target:
-            futures_genes[(c1,c2)] = external_deseq.nonblocking(ex,
-                                      names[c1], gene_pileups[c1],
-                                      names[c2], gene_pileups[c2],
-                                      method, output, gene_names=gene_names, via=via)
-        if "transcripts" in target:
-            futures_trans[(c1,c2)] = external_deseq.nonblocking(ex,
-                                      names[c1], tran_pileups[c1],
-                                      names[c2], tran_pileups[c2],
-                                      method, output, gene_names=gene_names, via=via)
-        if "exons" in target:
-            futures_exons[(c1,c2)] = external_deseq.nonblocking(ex,
-                                      names[c1], exon_pileups[c1],
-                                      names[c2], exon_pileups[c2],
-                                      method, output, gene_names=gene_names, via=via)
-        print "....Wait for results....."
-        for c,f in futures_genes.iteritems():
-            gene_file = f.wait()
-            if gene_file:
-                ex.add(gene_file,
-                       description="Comparison of GENES in conditions '%s' and '%s' (CSV)" % (names[c[0]], names[c[1]]))
-                if maplot:
-                    res = robjects.DataFrame.from_csvfile(f.wait())
-                    figname, jsname = MAplot(res, mode=maplot, deg=4, bins=100, alpha=0.005, assembly_id=assembly_id)
-                    ex.add(figname, description="MA-plot (genes)")
-                    ex.add(jsname, description="Data for javascript (genes)")
-                print "Genes: Done successfully."
-            else: print "Genes: Failed during inference, probably because of too few reads for DESeq stats."
-
-        for c,f in futures_trans.iteritems():
-            trans_file = f.wait()
-            if trans_file:
-                ex.add(trans_file,
-                       description="Comparison of TRANSCRIPTS in conditions '%s' and '%s' (CSV)" % (names[c[0]], names[c[1]]))
-                if maplot:
-                    res = robjects.DataFrame.from_csvfile(f.wait())
-                    figname, jsname = MAplot(res, mode=maplot, deg=4, bins=100, alpha=0.005, assembly_id=assembly_id)
-                    ex.add(figname, description="MA-plot (transcripts)")
-                    ex.add(jsname, description="Data for javascript (transcripts)")
-                print "Transcripts: Done successfully."
-            else: print "Transcripts: Failed during inference, probably because of too few reads for DESeq stats."
-
-        for c,f in futures_exons.iteritems():
-            exons_file = f.wait()
-            if exons_file:
-                ex.add(exons_file,
-                       description="Comparison of EXONS in conditions '%s' and '%s' (CSV)" % (names[c[0]], names[c[1]]))
-                if maplot:
-                    res = robjects.DataFrame.from_csvfile(f.wait())
-                    figname, jsname = MAplot(res, mode=maplot, deg=4, bins=100, alpha=0.005, assembly_id=assembly_id)
-                    ex.add(figname, description="MA-plot (exons)")
-                    ex.add(jsname, description="Data for javascript (exons)")
-                print "Exons: Done successfully."
-            else: print "Exons: Failed during inference, probably because of too few reads for DESeq stats."
+    conditions = bam_files.keys() #[1,2]
+    count_data = count_data.items() #[(c1, count_data[c1]),...]
+    print count_data[1][1][:10]
+    print count_data[0][1][:10]
+    intervals = zip(*intervals_list)
+    intervals = [ ("chr",intervals[0]),("start",intervals[1]),("end",intervals[2]),("strand",intervals[3]) ]
+    
+    #exon_count_set :: count_data, design, geneIDs, exonIDs, exonIntervals, transcripts
+    print ex
+    future = external_DEXSeq.nonblocking(ex, count_data, conditions, genes_list, exons_list,
+                                         intervals=intervals, gene_names=gene_names, via=via)
+    dexseq_output = future.wait()
+    ex.add(dexseq_output, description="Comparison of conditions '%s' and '%s' (CSV)" % [c for c in conditions])
+    if maplot:
+        res = robjects.DataFrame.from_csvfile(f.wait())
+        figname, jsname = MAplot(res, mode=maplot, deg=4, bins=100, alpha=0.005, assembly_id=assembly_id)
+        ex.add(figname, description="MA-plot")
+        ex.add(jsname, description="Data for javascript")
+    print "Done."
 
 
 def MAplot(data, mode="interactive", deg=4, bins=30, alpha=0.005, assembly_id=None):
