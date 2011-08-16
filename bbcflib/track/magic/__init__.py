@@ -38,21 +38,22 @@ def guess_file_format(path):
     try: import magic
     except ImportError: return ''
     # Try version #
-    if not hasattr(magic, 'open'): return ''
-    # Add our definitions #
-    mime = magic.open(magic.NONE)
-    mime.load(file=resource_filename(__name__, 'magic_data'))
-    filetype = mime.file(path).rstrip(", ")
-    # Otherwise try standard definitions #
-    if not filetype in known_formats:
+    try:
+        if not hasattr(magic, 'open'): return ''
+        # Add our definitions #
         mime = magic.open(magic.NONE)
-        mime.load()
-        filetype = mime.file(path)
+        mime.load(file=resource_filename(__name__, 'magic_data'))
+        filetype = mime.file(path).rstrip(", ")
         # Otherwise try standard definitions #
         if not filetype in known_formats:
-            mime = magic.open(magic.MAGIC_NONE)
+            mime = magic.open(magic.NONE)
             mime.load()
             filetype = mime.file(path)
-        # Try the conversion dict #
-        return known_formats.get(filetype, '')
+            # Otherwise try standard definitions #
+            if not filetype in known_formats:
+                mime = magic.open(magic.MAGIC_NONE)
+                mime.load()
+                filetype = mime.file(path)
+            # Try the conversion dict #
+            return known_formats.get(filetype, '')
     except Exception: return ''
