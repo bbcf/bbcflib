@@ -117,39 +117,42 @@ def save_motif_profile( ex, motifs, background, genrep, chromosomes, data_path,
     sqlout = unique_filename_in()
     if not(isinstance(motifs, dict)):
         raise ValueError("'Motifs' must be a dictionary with keys 'motif_names' and values the PWMs.")
+    futures = {}
     for name, pwm in motifs.iteritems():
         output = unique_filename_in()
         futures[name] = ( output, motif_scan.nonblocking( ex, fasta, pwm, background, threshold, stdout=output, via=via ) )
     chrlist = dict((v['name'], {'length': v['length']}) for v in chromosomes.values())
 ##############
-    def _parse_s1k( file, chr ):
+    def _parse_s1k(_f,_c):
         if keep_max_only:
             maxscore = {}
-        with open(file, 'r') as fin:
+        with open(_f, 'r') as fin:
             for line in fin:
                 row = line.split("\t")
-                name,seq_chr,start,end = re.search(r'(.*)\|(.+):(\d+)-(\d+)',row[0]).groups()
-                if seq_chr != chr: 
+                sname,seq_chr,start,end = re.search(r'(.*)\|(.+):(\d+)-(\d+)',row[0]).groups()
+                if seq_chr != _c: 
                     continue
                 start = int(row[3])+int(start)-1
-                name = row[1]
-                end = start+len(name)
+                tag = row[1]
+                end = start+len(tag)
                 score = float(row[2])
                 strnd = row[4]=='+' and 1 or -1
                 if keep_max_only:
-                    if not(row[0] in maxscore) or score>maxscore[row[0]][3]:
-                        maxscore[row[0]] = (start,end,name,score,strnd)
+                    if not(sname in maxscore) or score>maxscore[sname][3]:
+                        maxscore[sname] = (start,end,name+":"+tag,score,strnd)
                 else:
-                    yield (start,end,name,score,strnd)
+                    yield (start,end,name+":"+tag,score,strnd)
         if keep_max_only:
-            [yield x for x in maxscore.values()]
+            for x in maxscore.values():
+                yield x
 ##############
     with track.new( sqlout, format="sql", datatype="qualitative", chrmeta=chrlist ) as track_result:
 #        track_result.attributes = {'source': 'S1K'}
         for name, future in futures.iteritems():
             _ = future[1].wait()
-            for chr in track_result:
-                track_result.write( chr, _parse_s1k(future[0],chr) )
+            for chrom in chrlist.keys():
+                track_result.write( chrom, _parse_s1k(future[0],chrom),
+                                    fields=['start','end','name','score','strand'] )
     ex.add( sqlout, description = "sql:"+description+"_motif_scan.sql" )
     return sqlout
 
