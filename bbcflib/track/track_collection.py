@@ -3,7 +3,8 @@
 Submodule: bbcflib.track.track_collection
 =========================================
 
-Creates a large dictionary of different tracks found in the "extras" directory (mainly small validation tracks). This is then used by the unittests.
+Creates a large dictionary of different tracks found in the "extras" directory (mainly small validation tracks). 
+This is then used by the unittests.
 """
 
 # Built-in modules #

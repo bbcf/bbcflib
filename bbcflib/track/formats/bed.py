@@ -42,6 +42,8 @@ class TrackFormat(TrackText, TrackProxy):
             except ValueError:
                 raise Exception("The file '" + self._path + "' has non integers as interval bounds and is hence not valid.")
             if line[2] <= line[1]:
+                print line
+                print str(line[2]) +' <= '+str(line[1])
                 raise Exception("The file '" + self._path + "' has negative or null intervals and is hence not valid.")
             try:
                 if  line[3] == '.' or line[3] == '': line[3] = "feature_"+str(number)

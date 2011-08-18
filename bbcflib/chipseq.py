@@ -172,7 +172,7 @@ def run_deconv(ex, sql, peaks, chromosomes, read_extension, script_path, via = '
     Returns a dictionary of file outputs with keys file types
     ('pdf', 'sql' and 'bed') and values the file names.
     """
-    from bbcflib.track import new
+    from .track import new
     rdeconv_futures = {}
     for c in chromosomes.values():
         f = sql_prepare_deconv.nonblocking( ex, sql, peaks, c['name'], c['length'],
@@ -187,7 +187,7 @@ def run_deconv(ex, sql, peaks, chromosomes, read_extension, script_path, via = '
                                            via=via )
     chrlist = dict((v['name'], {'length': v['length']}) for v in chromosomes.values())
     output = unique_filename_in()
-    with new(output,'sql',datatype="quantitative",chrmeta=chrlist) as track:
+    with new(output, 'sql', datatype="quantitative", chrmeta=chrlist) as track:
         pass
     for c,fout in rdeconv_out.iteritems():
         if fout != None:
@@ -205,7 +205,7 @@ def run_deconv(ex, sql, peaks, chromosomes, read_extension, script_path, via = '
 # Workflow #
 
 def workflow_groups( ex, job_or_dict, mapseq_files, chromosomes, script_path='',
-                     via='lsf' ):
+                     genrep=None, via='lsf' ):
     """Runs a chipseq workflow over bam files obtained by mapseq. Will optionally run ``macs`` and 'run_deconv'.
 
     Arguments are:
@@ -250,6 +250,9 @@ def workflow_groups( ex, job_or_dict, mapseq_files, chromosomes, script_path='',
     peak_deconvolution = options.get('peak_deconvolution') or False
     if isinstance(peak_deconvolution,str):
         peak_deconvolution = peak_deconvolution.lower() in ['1','true','t'] 
+    run_meme = options.get('run_meme') or False
+    if isinstance(run_meme,str):
+        run_meme = run_meme.lower() in ['1','true','t'] 
     macs_args = options.get('macs_args') or ["--bw=200","-p",".001"]
     b2w_args = options.get('b2w_args') or []
     if not(isinstance(mapseq_files,dict)):
@@ -297,6 +300,36 @@ def workflow_groups( ex, job_or_dict, mapseq_files, chromosomes, script_path='',
                                            tests, ctrlbam=controls, name=names,
                                            poisson_threshold=p_thresh,
                                            macs_args=macs_args, via=via ) }
+    peak_list = {}
+    if run_meme:
+        import gMiner
+        chrlist = dict((v['name'], {'length': v['length']}) for v in chromosomes.values())
+        for i,name in enumerate(names['tests']):
+            if names['controls']==[None]:
+                macsbed = processed['macs'][(name,)]+"_summits.bed"
+            else:
+                macsbed = cat(ex,[processed['macs'][(name,x)]+"_summits.bed"
+                                  for x in names['controls']],via=via)
+            outdir = unique_filename_in()
+            os.mkdir(outdir)
+            gm_out = gMiner.run(
+                track1 = macsbed,
+                track1_name = group_name+' peak summits',
+                track1_chrs = chrlist,
+                operation_type = 'genomic_manip',
+                manipulation = 'neighborhood',
+                output_location = outdir,
+                before_start = -150,
+                after_end = 150 )[0]
+            outdir = unique_filename_in()
+            os.mkdir(outdir)
+            gm_out = gMiner.run(
+                track1 = gm_out,
+                track1_name = group_name+' peak summits +- 150',
+                operation_type = 'genomic_manip',
+                manipulation = 'merge',
+                output_location = outdir )[0]
+            peak_list[name] = gm_out
     if peak_deconvolution:
         processed['deconv'] = {}
         merged_wig = {}
@@ -327,7 +360,7 @@ def workflow_groups( ex, job_or_dict, mapseq_files, chromosomes, script_path='',
                                               for s in suffixes)
             else:
                 merged_wig[group_name] = wig[0]
-        for i,name in enumerate(names['tests']):
+        for name in names['tests']:
             if names['controls']==[None]:
                 macsbed = processed['macs'][(name,)]+"_peaks.bed"
             else:
@@ -338,6 +371,12 @@ def workflow_groups( ex, job_or_dict, mapseq_files, chromosomes, script_path='',
             [ex.add(v, description=k+':'+name+'_deconv.'+k)
              for k,v in deconv.iteritems()]
             processed['deconv'][name] = deconv
+            peak_list[name] = deconv['bed']
+    if run_meme:
+        from .motif import parallel_meme
+        processed['meme'] = parallel_meme( ex, genrep, chromosomes, 
+                                           peak_list.values(), name=peak_list.keys(), 
+                                           meme_args=['-nmotifs','4','-revcomp'], via=via )
     return processed
 
 #-----------------------------------#

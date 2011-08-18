@@ -38,7 +38,7 @@ class TrackExtras(object):
             # Define generator #
             def shuffle_features(length, data):
                 for i, feature in enumerate(data):
-                    distance     = feature[0] - feature[1]
+                    distance     = feature[1] - feature[0]
                     random_start = random.randint(0, length - distance)
                     random_end   = random_start + distance
                     yield (random_start, random_end, 0.0, "random_feature_"+str(i), 0,"Random feature" ) # start, end, score, name, strand, sttributes, ...

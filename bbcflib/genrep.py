@@ -43,10 +43,12 @@ With a ``ConfigParser``, the previous code would look like::
 """
 
 # Built-in modules #
-import urllib2, json, os
+import urllib2, json, os, re
 from datetime import datetime
 # Internal modules #
 from .common import normalize_url
+# Other modules #
+from bein import unique_filename_in
 
 ################################################################################
 class GenRep(object):
@@ -102,22 +104,14 @@ class GenRep(object):
             raise ValueError("Argument 'assembly' to must be a " + \
                                  "string or integer, got " + str(assembly))
 
-    def get_sequence(self, chr_id, coord_list, chunksize=400):
+    def get_sequence(self, chr_id, coord_list):
         """Parses a slice request to the repository."""
         if len(coord_list) == 0:
             return []
-        s = len(coord_list)
-        list = []
-        for k in range(0,int(s / chunksize) + 1): 
-            end = k*chunksize+chunksize
-            if (k*chunksize+chunksize > s-1):  
-                tmp_list = h_ranges[chr][k*chunksize:s]
-                slices  = ",".join([",".join([str(y) for y in x]) for x in tmp_list])
-                url     = """%s/chromosomes/%i/get_sequence_part?slices=%s""" % (self.url, chr_id, slices)
-                request = urllib2.Request(url)
-                list = urllib2.urlopen(request).read().split(',')
-                list.extend(urllib2.urlopen(request).read().split(','))
-        return list
+        slices  = ",".join([",".join([str(y) for y in x]) for x in coord_list])
+        url     = """%s/chromosomes/%i/get_sequence_part?slices=%s""" % (self.url, chr_id, slices)
+        request = urllib2.Request(url)
+        return urllib2.urlopen(request).read().split(',')
 
     def get_sequence_straight(self, input_list):
         """ each element in input_list are lists containing: the chromosome name, the start and the end position."""    
@@ -141,53 +135,39 @@ class GenRep(object):
 
         Returns the name of the file and the total sequence size.
         """
-        from track import load
+        from .track import load
+        if out == None:
+            out = unique_filename_in()
         def push_slices(slices,start,end,name,cur_chunk):
             if end>start:
                 slices['coord'].append([start,end])
                 slices['names'].append(name)
                 cur_chunk += end-start
             return slices,cur_chunk
-        def flush_slices(slices,cid,out):
-            names=slices['names']
-            coord=slices['coord']
-            chr = chr_names[cid]
+        def flush_slices(slices,chrid,chrn,out):
+            names = slices['names']
+            coord = slices['coord']
             with open(out,"a") as f:
-                for i,s in enumerate(self.get_sequence(cid,coord)):
-                    f.write(">"+names[i]+" "+chr+":"+str(coord[i][0])+"-"+str(coord[i][1])+"\n"+s+"\n")
+                for i,s in enumerate(self.get_sequence(chrid,coord)):
+                    f.write(">"+names[i]+"|"+chrn+":"+str(coord[i][0])+"-"+str(coord[i][1])+"\n"+s+"\n")
             return {'coord':[],'names':[]}
-        def set_feature_name(features_names, feature_name):
-            num             = 0
-            isSearchingName = True
-            if feature_name in features_names:
-                while isSearchingName:
-                    num +=1
-                    tmp_name = feature_name+"_"+str(num)
-                    if tmp_name not in features_names:
-                        isSearchingName = False
-                        feature_name    = tmp_name
-            features_names.add(feature_name)
-            return features_names, feature_name
-        out         = os.path.splitext(data_path)[0]+".fa"
-        slices      = {'coord':[],'names':[]}
-        chr_names   = dict((c[0],cn['name']) for c,cn in chromosomes.iteritems())
-        chr_len     = dict((c[0],cn['length']) for c,cn in chromosomes.iteritems())
-        size        = 0
-        with load(data_path, chrmeta=chromosomes) as t:
-            cur_chunk       = 0
-            features_names  = set()
-            for k in chromosomes.keys():
-                for row in t.read(selection=chr_names[k[0]],fields=["start","end","name"]):
-                    s               = max(row[0],0)
-                    e               = min(row[1],chr_len[k[0]])
-                    features_names, name            = set_feature_name(features_names, row[2])
+        slices = {'coord':[],'names':[]}
+        chrlist = dict((v['name'], {'length': v['length']}) for v in chromosomes.values())
+        size = 0
+        with load(data_path, chrmeta=chrlist) as t:
+            cur_chunk = 0
+            for cid,chrom in chromosomes.iteritems():
+                for row in t.read(selection=chrom['name'], fields=["start","end","name"]):
+                    s = max(row[0],0)
+                    e = min(row[1],chrom['length'])
+                    name = re.sub('\s+','_',row[2])
                     slices,cur_chunk= push_slices(slices,s,e,name,cur_chunk)
                     if cur_chunk > chunk:
-                        size        += cur_chunk
-                        slices      = flush_slices(slices,k[0],out)
-                        cur_chunk   = 0
+                        size += cur_chunk
+                        slices = flush_slices(slices,cid[0],chrom['name'],out)
+                        cur_chunk = 0
                 size += cur_chunk
-                slices = flush_slices(slices,k[0],out)
+                slices = flush_slices(slices,cid[0],chrom['name'],out)
         return (out,size)
 
     def assembly(self, assembly):
@@ -275,7 +255,7 @@ class GenRep(object):
         }
         Total = A + T + G + C
 
-        if matrix_format is True output is by example:
+        if matrix_format is True output is for example:
          >Assembly: sacCer2
         1   0.309798640038793   0.308714120881750   0.190593944221299   0.190893294858157
         """

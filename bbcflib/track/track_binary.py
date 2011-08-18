@@ -3,7 +3,8 @@
 Submodule: bbcflib.track.track_binary
 =====================================
 
-Methods that create a text file upon opening a binary file in the temporary directory and reconverts everything to a binary file file upon closing, all transparently.
+Methods that create a text file upon opening a binary file in the temporary directory 
+and reconverts everything to a binary file file upon closing, all transparently.
 """
 
 # Built-in modules #
