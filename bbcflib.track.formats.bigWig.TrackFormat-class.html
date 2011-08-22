@@ -1,0 +1,536 @@
+<?xml version="1.0" encoding="ascii"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+          "DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+<head>
+  <title>bbcflib.track.formats.bigWig.TrackFormat</title>
+  <link rel="stylesheet" href="epydoc.css" type="text/css" />
+  <script type="text/javascript" src="epydoc.js"></script>
+</head>
+
+<body bgcolor="white" text="black" link="blue" vlink="#204080"
+      alink="#204080">
+<!-- ==================== NAVIGATION BAR ==================== -->
+<table class="navbar" border="0" width="100%" cellpadding="0"
+       bgcolor="#a0c0ff" cellspacing="0">
+  <tr valign="middle">
+  <!-- Home link -->
+      <th>&nbsp;&nbsp;&nbsp;<a
+        href="bbcflib-module.html">Home</a>&nbsp;&nbsp;&nbsp;</th>
+
+  <!-- Tree link -->
+      <th>&nbsp;&nbsp;&nbsp;<a
+        href="module-tree.html">Trees</a>&nbsp;&nbsp;&nbsp;</th>
+
+  <!-- Index link -->
+      <th>&nbsp;&nbsp;&nbsp;<a
+        href="identifier-index.html">Indices</a>&nbsp;&nbsp;&nbsp;</th>
+
+  <!-- Help link -->
+      <th>&nbsp;&nbsp;&nbsp;<a
+        href="help.html">Help</a>&nbsp;&nbsp;&nbsp;</th>
+
+  <!-- Project homepage -->
+      <th class="navbar" align="right" width="100%">
+        <table border="0" cellpadding="0" cellspacing="0">
+          <tr><th class="navbar" align="center"
+            ><a class="navbar" target="_top" href="http://bbcf.epfl.ch/bbcflib">bbcflib</a></th>
+          </tr></table></th>
+  </tr>
+</table>
+<table width="100%" cellpadding="0" cellspacing="0">
+  <tr valign="top">
+    <td width="100%">
+      <span class="breadcrumbs">
+        <a href="bbcflib-module.html">Package&nbsp;bbcflib</a> ::
+        <a href="bbcflib.track-module.html">Package&nbsp;track</a> ::
+        <a href="bbcflib.track.formats-module.html" onclick="show_private();">Package&nbsp;formats</a> ::
+        <a href="bbcflib.track.formats.bigWig-module.html">Module&nbsp;bigWig</a> ::
+        Class&nbsp;TrackFormat
+      </span>
+    </td>
+    <td>
+      <table cellpadding="0" cellspacing="0">
+        <!-- hide/show private -->
+        <tr><td align="right"><span class="options">[<a href="javascript:void(0);" class="privatelink"
+    onclick="toggle_private();">hide&nbsp;private</a>]</span></td></tr>
+        <tr><td align="right"><span class="options"
+            >[<a href="frames.html" target="_top">frames</a
+            >]&nbsp;|&nbsp;<a href="bbcflib.track.formats.bigWig.TrackFormat-class.html"
+            target="_top">no&nbsp;frames</a>]</span></td></tr>
+      </table>
+    </td>
+  </tr>
+</table>
+<!-- ==================== CLASS DESCRIPTION ==================== -->
+<h1 class="epydoc">Class TrackFormat</h1><p class="nomargin-top"></p>
+<center>
+<center>  <map id="uml_class_diagram_for_bbcflib__17" name="uml_class_diagram_for_bbcflib__17">
+<area shape="rect" id="node51" href="bbcflib.track.formats.bigWig.TrackFormat-class.html#backend_format" title="bbcflib.track.formats.bigWig.TrackFormat.backend_format" alt="" coords="261,983,464,1001"/>
+<area shape="rect" id="node51" href="bbcflib.track.formats.bigWig.TrackFormat-class.html#__init__" title="x.__init__(...) initializes x; see x.__class__.__doc__ for signature" alt="" coords="261,1004,464,1023"/>
+<area shape="rect" id="node51" href="bbcflib.track.formats.bigWig.TrackFormat-class.html#binary_to_text" title="bbcflib.track.formats.bigWig.TrackFormat.binary_to_text" alt="" coords="261,1023,464,1041"/>
+<area shape="rect" id="node51" href="bbcflib.track.formats.bigWig.TrackFormat-class.html#text_to_binary" title="bbcflib.track.formats.bigWig.TrackFormat.text_to_binary" alt="" coords="261,1041,464,1060"/>
+<area shape="rect" id="node1" href="bbcflib.track.formats.bigWig.TrackFormat-class.html" title="bbcflib.track.formats.bigWig.TrackFormat" alt="" coords="249,958,476,1066"/>
+<area shape="rect" id="node52" href="bbcflib.track.track_binary.TrackBinary-class.html#dump" title="bbcflib.track.track_binary.TrackBinary.dump" alt="" coords="21,857,392,876"/>
+<area shape="rect" id="node52" href="bbcflib.track.track_binary.TrackBinary-class.html#mutate_destination" title="bbcflib.track.track_binary.TrackBinary.mutate_destination" alt="" coords="21,876,392,895"/>
+<area shape="rect" id="node52" href="bbcflib.track.track_binary.TrackBinary-class.html#run_tool" title="bbcflib.track.track_binary.TrackBinary.run_tool" alt="" coords="21,895,392,913"/>
+<area shape="rect" id="node52" href="bbcflib.track.track_binary.TrackBinary-class.html#unload" title="bbcflib.track.track_binary.TrackBinary.unload" alt="" coords="21,913,392,932"/>
+<area shape="rect" id="node2" href="bbcflib.track.track_binary.TrackBinary-class.html" title="bbcflib.track.track_binary.TrackBinary" alt="" coords="9,825,404,938"/>
+<area shape="rect" id="node3" href="bbcflib.track.track_text.TrackText-class.html" title="bbcflib.track.track_text.TrackText" alt="" coords="333,735,483,779"/>
+<area shape="rect" id="node53" href="bbcflib.track.formats.bedGraph.TrackFormat-class.html#type_identifier" title="bbcflib.track.formats.bedGraph.TrackFormat.type_identifier" alt="" coords="445,877,591,896"/>
+<area shape="rect" id="node4" href="bbcflib.track.formats.bedGraph.TrackFormat-class.html" title="bbcflib.track.formats.bedGraph.TrackFormat" alt="" coords="433,853,601,910"/>
+<area shape="rect" id="node57" href="bbcflib.track.Track-class.html#field_types" title="bbcflib.track.Track.field_types" alt="" coords="17,31,697,49"/>
+<area shape="rect" id="node57" href="bbcflib.track.Track-class.html#qualitative_fields" title="bbcflib.track.Track.qualitative_fields" alt="" coords="17,49,697,68"/>
+<area shape="rect" id="node57" href="bbcflib.track.Track-class.html#quantitative_fields" title="bbcflib.track.Track.quantitative_fields" alt="" coords="17,68,697,87"/>
+<area shape="rect" id="node57" href="bbcflib.track.Track-class.html#__contains__" title="bbcflib.track.Track.__contains__" alt="" coords="17,89,697,108"/>
+<area shape="rect" id="node57" href="bbcflib.track.Track-class.html#__enter__" title="bbcflib.track.Track.__enter__" alt="" coords="17,108,697,127"/>
+<area shape="rect" id="node57" href="bbcflib.track.Track-class.html#__exit__" title="bbcflib.track.Track.__exit__" alt="" coords="17,127,697,145"/>
+<area shape="rect" id="node57" href="bbcflib.track.Track-class.html#__iter__" title="bbcflib.track.Track.__iter__" alt="" coords="17,145,697,164"/>
+<area shape="rect" id="node57" href="bbcflib.track.Track-class.html#__len__" title="bbcflib.track.Track.__len__" alt="" coords="17,164,697,183"/>
+<area shape="rect" id="node57" href="bbcflib.track.Track-class.html#__new__" title="Internal factory&#45;like method that is called before creating a new instance &#160;of Track." alt="" coords="17,183,697,201"/>
+<area shape="rect" id="node57" href="bbcflib.track.Track-class.html#convert" title="Converts a track to a given format dynamically." alt="" coords="17,201,697,220"/>
+<area shape="rect" id="node57" href="bbcflib.track.Track-class.html#export" title="Exports a track to a given location and format." alt="" coords="17,220,697,239"/>
+<area shape="rect" id="node5" href="bbcflib.track.Track-class.html" title="Once a track is loaded you have access to the following attributes:" alt="" coords="5,6,709,245"/>
+<area shape="rect" id="node56" href="bbcflib.track.formats.sql.TrackFormat-class.html#all_tables" title="bbcflib.track.formats.sql.TrackFormat.all_tables" alt="" coords="404,289,848,308"/>
+<area shape="rect" id="node56" href="bbcflib.track.formats.sql.TrackFormat-class.html#attributes" title="bbcflib.track.formats.sql.TrackFormat.attributes" alt="" coords="404,308,848,327"/>
+<area shape="rect" id="node56" href="bbcflib.track.formats.sql.TrackFormat-class.html#chrmeta" title="bbcflib.track.formats.sql.TrackFormat.chrmeta" alt="" coords="404,327,848,345"/>
+<area shape="rect" id="node56" href="bbcflib.track.formats.sql.TrackFormat-class.html#chrs_from_names" title="bbcflib.track.formats.sql.TrackFormat.chrs_from_names" alt="" coords="404,345,848,364"/>
+<area shape="rect" id="node56" href="bbcflib.track.formats.sql.TrackFormat-class.html#chrs_from_tables" title="bbcflib.track.formats.sql.TrackFormat.chrs_from_tables" alt="" coords="404,364,848,383"/>
+<area shape="rect" id="node56" href="bbcflib.track.formats.sql.TrackFormat-class.html#datatype" title="bbcflib.track.formats.sql.TrackFormat.datatype" alt="" coords="404,383,848,401"/>
+<area shape="rect" id="node56" href="bbcflib.track.formats.sql.TrackFormat-class.html#fields" title="bbcflib.track.formats.sql.TrackFormat.fields" alt="" coords="404,401,848,420"/>
+<area shape="rect" id="node56" href="bbcflib.track.formats.sql.TrackFormat-class.html#name" title="bbcflib.track.formats.sql.TrackFormat.name" alt="" coords="404,420,848,439"/>
+<area shape="rect" id="node56" href="bbcflib.track.formats.sql.TrackFormat-class.html#special_tables" title="bbcflib.track.formats.sql.TrackFormat.special_tables" alt="" coords="404,439,848,457"/>
+<area shape="rect" id="node56" href="bbcflib.track.formats.sql.TrackFormat-class.html#attributes_read" title="bbcflib.track.formats.sql.TrackFormat.attributes_read" alt="" coords="404,460,848,479"/>
+<area shape="rect" id="node56" href="bbcflib.track.formats.sql.TrackFormat-class.html#attributes_write" title="bbcflib.track.formats.sql.TrackFormat.attributes_write" alt="" coords="404,479,848,497"/>
+<area shape="rect" id="node56" href="bbcflib.track.formats.sql.TrackFormat-class.html#chrmeta_read" title="bbcflib.track.formats.sql.TrackFormat.chrmeta_read" alt="" coords="404,497,848,516"/>
+<area shape="rect" id="node56" href="bbcflib.track.formats.sql.TrackFormat-class.html#chrmeta_write" title="bbcflib.track.formats.sql.TrackFormat.chrmeta_write" alt="" coords="404,516,848,535"/>
+<area shape="rect" id="node56" href="bbcflib.track.formats.sql.TrackFormat-class.html#count" title="Counts the number of features or entries in a given selection." alt="" coords="404,535,848,553"/>
+<area shape="rect" id="node56" href="bbcflib.track.formats.sql.TrackFormat-class.html#ensembl_to_ucsc" title="Converts all entries of a track from the Ensembl standard to the UCSC &#160;standard." alt="" coords="404,553,848,572"/>
+<area shape="rect" id="node56" href="bbcflib.track.formats.sql.TrackFormat-class.html#get_fields_of_table" title="bbcflib.track.formats.sql.TrackFormat.get_fields_of_table" alt="" coords="404,572,848,591"/>
+<area shape="rect" id="node56" href="bbcflib.track.formats.sql.TrackFormat-class.html#make_missing_indexes" title="bbcflib.track.formats.sql.TrackFormat.make_missing_indexes" alt="" coords="404,591,848,609"/>
+<area shape="rect" id="node56" href="bbcflib.track.formats.sql.TrackFormat-class.html#read" title="Reads data from the genomic file." alt="" coords="404,609,848,628"/>
+<area shape="rect" id="node56" href="bbcflib.track.formats.sql.TrackFormat-class.html#remove" title="Removes data from a given chromosome." alt="" coords="404,628,848,647"/>
+<area shape="rect" id="node56" href="bbcflib.track.formats.sql.TrackFormat-class.html#ucsc_to_ensembl" title="Converts all entries of a track from the UCSC standard to the Ensembl &#160;standard." alt="" coords="404,647,848,665"/>
+<area shape="rect" id="node56" href="bbcflib.track.formats.sql.TrackFormat-class.html#write" title="Writes data to a genomic file." alt="" coords="404,665,848,684"/>
+<area shape="rect" id="node8" href="bbcflib.track.formats.sql.TrackFormat-class.html" title="bbcflib.track.formats.sql.TrackFormat" alt="" coords="392,265,859,690"/>
+<area shape="rect" id="node55" href="bbcflib.track.track_proxy.TrackProxy-class.html#commit" title="bbcflib.track.track_proxy.TrackProxy.commit" alt="" coords="524,743,728,761"/>
+<area shape="rect" id="node55" href="bbcflib.track.track_proxy.TrackProxy-class.html#create" title="bbcflib.track.track_proxy.TrackProxy.create" alt="" coords="524,761,728,780"/>
+<area shape="rect" id="node55" href="bbcflib.track.track_proxy.TrackProxy-class.html#mutate_source" title="Change a &lt;Track&gt; instance to a given format dynamically" alt="" coords="524,780,728,799"/>
+<area shape="rect" id="node6" href="bbcflib.track.track_proxy.TrackProxy-class.html" title="bbcflib.track.track_proxy.TrackProxy" alt="" coords="512,710,739,805"/>
+<area shape="rect" id="node58" href="bbcflib.track.extras.sql.TrackExtras-class.html#get_scores_frequencies" title="Example output: scores = {100.0: 1, 10.0: 3, 1.0: 2}" alt="" coords="751,120,1043,139"/>
+<area shape="rect" id="node58" href="bbcflib.track.extras.sql.TrackExtras-class.html#shuffle_track" title="Makes a new track with the same number of features as the original track or multiplied with a factor." alt="" coords="751,139,1043,157"/>
+<area shape="rect" id="node7" href="bbcflib.track.extras.sql.TrackExtras-class.html" title="bbcflib.track.extras.sql.TrackExtras" alt="" coords="739,87,1053,163"/>
+</map>
+  <img src="uml_class_diagram_for_bbcflib__17.gif" alt='' usemap="#uml_class_diagram_for_bbcflib__17" ismap="ismap" class="graph-without-title" />
+</center>
+</center>
+<hr />
+<!-- ==================== INSTANCE METHODS ==================== -->
+<a name="section-InstanceMethods"></a>
+<table class="summary" border="1" cellpadding="3"
+       cellspacing="0" width="100%" bgcolor="white">
+<tr bgcolor="#70b0f0" class="table-header">
+  <td colspan="2" class="table-header">
+    <table border="0" cellpadding="0" cellspacing="0" width="100%">
+      <tr valign="top">
+        <td align="left"><span class="table-header">Instance Methods</span></td>
+        <td align="right" valign="top"
+         ><span class="options">[<a href="#section-InstanceMethods"
+         class="privatelink" onclick="toggle_private();"
+         >hide private</a>]</span></td>
+      </tr>
+    </table>
+  </td>
+</tr>
+<tr>
+    <td width="15%" align="right" valign="top" class="summary">
+      <span class="summary-type">&nbsp;</span>
+    </td><td class="summary">
+      <table width="100%" cellpadding="0" cellspacing="0" border="0">
+        <tr>
+          <td><span class="summary-sig"><a href="bbcflib.track.formats.bigWig.TrackFormat-class.html#__init__" class="summary-sig-name">__init__</a>(<span class="summary-sig-arg">self</span>,
+        <span class="summary-sig-arg">*args</span>,
+        <span class="summary-sig-arg">**kwargs</span>)</span><br />
+      x.__init__(...) initializes x; see x.__class__.__doc__ for signature</td>
+          <td align="right" valign="top">
+            
+            
+          </td>
+        </tr>
+      </table>
+      
+    </td>
+  </tr>
+<tr>
+    <td width="15%" align="right" valign="top" class="summary">
+      <span class="summary-type">&nbsp;</span>
+    </td><td class="summary">
+      <table width="100%" cellpadding="0" cellspacing="0" border="0">
+        <tr>
+          <td><span class="summary-sig"><a name="binary_to_text"></a><span class="summary-sig-name">binary_to_text</span>(<span class="summary-sig-arg">self</span>,
+        <span class="summary-sig-arg">source</span>,
+        <span class="summary-sig-arg">dest</span>)</span></td>
+          <td align="right" valign="top">
+            
+            
+          </td>
+        </tr>
+      </table>
+      
+    </td>
+  </tr>
+<tr>
+    <td width="15%" align="right" valign="top" class="summary">
+      <span class="summary-type">&nbsp;</span>
+    </td><td class="summary">
+      <table width="100%" cellpadding="0" cellspacing="0" border="0">
+        <tr>
+          <td><span class="summary-sig"><a name="text_to_binary"></a><span class="summary-sig-name">text_to_binary</span>(<span class="summary-sig-arg">self</span>,
+        <span class="summary-sig-arg">source</span>,
+        <span class="summary-sig-arg">dest</span>)</span></td>
+          <td align="right" valign="top">
+            
+            
+          </td>
+        </tr>
+      </table>
+      
+    </td>
+  </tr>
+  <tr>
+    <td colspan="2" class="summary">
+    <p class="indent-wrapped-lines"><b>Inherited from <code><a href="bbcflib.track.track_binary.TrackBinary-class.html">track_binary.TrackBinary</a></code></b>:
+      <code><a href="bbcflib.track.track_binary.TrackBinary-class.html#dump">dump</a></code>,
+      <code><a href="bbcflib.track.track_binary.TrackBinary-class.html#run_tool">run_tool</a></code>,
+      <code><a href="bbcflib.track.track_binary.TrackBinary-class.html#unload">unload</a></code>
+      </p>
+    <div class="private">    <p class="indent-wrapped-lines"><b>Inherited from <code><a href="bbcflib.track.formats.bedGraph.TrackFormat-class.html">bedGraph.TrackFormat</a></code></b> (private):
+      <code><a href="bbcflib.track.formats.bedGraph.TrackFormat-class.html#_read_entries" onclick="show_private();">_read_entries</a></code>,
+      <code><a href="bbcflib.track.formats.bedGraph.TrackFormat-class.html#_write_entries" onclick="show_private();">_write_entries</a></code>
+      </p></div>
+    <div class="private">    <p class="indent-wrapped-lines"><b>Inherited from <code><a href="bbcflib.track.track_text.TrackText-class.html">track_text.TrackText</a></code></b> (private):
+      <code><a href="bbcflib.track.track_text.TrackText-class.html#_read" onclick="show_private();">_read</a></code>,
+      <code><a href="bbcflib.track.track_text.TrackText-class.html#_read_header" onclick="show_private();">_read_header</a></code>,
+      <code><a href="bbcflib.track.track_text.TrackText-class.html#_write" onclick="show_private();">_write</a></code>,
+      <code><a href="bbcflib.track.track_text.TrackText-class.html#_write_header" onclick="show_private();">_write_header</a></code>
+      </p></div>
+    <p class="indent-wrapped-lines"><b>Inherited from <code><a href="bbcflib.track.track_proxy.TrackProxy-class.html">track_proxy.TrackProxy</a></code></b>:
+      <code><a href="bbcflib.track.track_proxy.TrackProxy-class.html#commit">commit</a></code>,
+      <code><a href="bbcflib.track.track_proxy.TrackProxy-class.html#mutate_source">mutate_source</a></code>
+      </p>
+    <p class="indent-wrapped-lines"><b>Inherited from <code><a href="bbcflib.track.formats.sql.TrackFormat-class.html">sql.TrackFormat</a></code></b>:
+      <code><a href="bbcflib.track.formats.sql.TrackFormat-class.html#attributes_read">attributes_read</a></code>,
+      <code><a href="bbcflib.track.formats.sql.TrackFormat-class.html#attributes_write">attributes_write</a></code>,
+      <code><a href="bbcflib.track.formats.sql.TrackFormat-class.html#chrmeta_read">chrmeta_read</a></code>,
+      <code><a href="bbcflib.track.formats.sql.TrackFormat-class.html#chrmeta_write">chrmeta_write</a></code>,
+      <code><a href="bbcflib.track.formats.sql.TrackFormat-class.html#count">count</a></code>,
+      <code><a href="bbcflib.track.formats.sql.TrackFormat-class.html#ensembl_to_ucsc">ensembl_to_ucsc</a></code>,
+      <code><a href="bbcflib.track.formats.sql.TrackFormat-class.html#get_fields_of_table">get_fields_of_table</a></code>,
+      <code><a href="bbcflib.track.formats.sql.TrackFormat-class.html#make_missing_indexes">make_missing_indexes</a></code>,
+      <code><a href="bbcflib.track.formats.sql.TrackFormat-class.html#read">read</a></code>,
+      <code><a href="bbcflib.track.formats.sql.TrackFormat-class.html#remove">remove</a></code>,
+      <code><a href="bbcflib.track.formats.sql.TrackFormat-class.html#ucsc_to_ensembl">ucsc_to_ensembl</a></code>,
+      <code><a href="bbcflib.track.formats.sql.TrackFormat-class.html#write">write</a></code>
+      </p>
+    <p class="indent-wrapped-lines"><b>Inherited from <code><a href="bbcflib.track.Track-class.html" onclick="show_private();">Track</a></code></b>:
+      <code><a href="bbcflib.track.Track-class.html#__contains__">__contains__</a></code>,
+      <code><a href="bbcflib.track.Track-class.html#__enter__">__enter__</a></code>,
+      <code><a href="bbcflib.track.Track-class.html#__exit__">__exit__</a></code>,
+      <code><a href="bbcflib.track.Track-class.html#__iter__">__iter__</a></code>,
+      <code><a href="bbcflib.track.Track-class.html#__len__">__len__</a></code>,
+      <code><a href="bbcflib.track.Track-class.html#convert">convert</a></code>,
+      <code><a href="bbcflib.track.Track-class.html#export">export</a></code>
+      </p>
+    <p class="indent-wrapped-lines"><b>Inherited from <code><a href="bbcflib.track.extras.sql.TrackExtras-class.html">extras.sql.TrackExtras</a></code></b>:
+      <code><a href="bbcflib.track.extras.sql.TrackExtras-class.html#get_scores_frequencies">get_scores_frequencies</a></code>,
+      <code><a href="bbcflib.track.extras.sql.TrackExtras-class.html#shuffle_track">shuffle_track</a></code>
+      </p>
+    <p class="indent-wrapped-lines"><b>Inherited from <code>object</code></b>:
+      <code>__delattr__</code>,
+      <code>__format__</code>,
+      <code>__getattribute__</code>,
+      <code>__hash__</code>,
+      <code>__reduce__</code>,
+      <code>__reduce_ex__</code>,
+      <code>__repr__</code>,
+      <code>__setattr__</code>,
+      <code>__sizeof__</code>,
+      <code>__str__</code>,
+      <code>__subclasshook__</code>
+      </p>
+    </td>
+  </tr>
+</table>
+<!-- ==================== CLASS METHODS ==================== -->
+<a name="section-ClassMethods"></a>
+<table class="summary" border="1" cellpadding="3"
+       cellspacing="0" width="100%" bgcolor="white">
+<tr bgcolor="#70b0f0" class="table-header">
+  <td colspan="2" class="table-header">
+    <table border="0" cellpadding="0" cellspacing="0" width="100%">
+      <tr valign="top">
+        <td align="left"><span class="table-header">Class Methods</span></td>
+        <td align="right" valign="top"
+         ><span class="options">[<a href="#section-ClassMethods"
+         class="privatelink" onclick="toggle_private();"
+         >hide private</a>]</span></td>
+      </tr>
+    </table>
+  </td>
+</tr>
+  <tr>
+    <td colspan="2" class="summary">
+    <p class="indent-wrapped-lines"><b>Inherited from <code><a href="bbcflib.track.track_binary.TrackBinary-class.html">track_binary.TrackBinary</a></code></b>:
+      <code><a href="bbcflib.track.track_binary.TrackBinary-class.html#mutate_destination">mutate_destination</a></code>
+      </p>
+    </td>
+  </tr>
+</table>
+<!-- ==================== STATIC METHODS ==================== -->
+<a name="section-StaticMethods"></a>
+<table class="summary" border="1" cellpadding="3"
+       cellspacing="0" width="100%" bgcolor="white">
+<tr bgcolor="#70b0f0" class="table-header">
+  <td colspan="2" class="table-header">
+    <table border="0" cellpadding="0" cellspacing="0" width="100%">
+      <tr valign="top">
+        <td align="left"><span class="table-header">Static Methods</span></td>
+        <td align="right" valign="top"
+         ><span class="options">[<a href="#section-StaticMethods"
+         class="privatelink" onclick="toggle_private();"
+         >hide private</a>]</span></td>
+      </tr>
+    </table>
+  </td>
+</tr>
+  <tr>
+    <td colspan="2" class="summary">
+    <p class="indent-wrapped-lines"><b>Inherited from <code><a href="bbcflib.track.track_proxy.TrackProxy-class.html">track_proxy.TrackProxy</a></code></b>:
+      <code><a href="bbcflib.track.track_proxy.TrackProxy-class.html#create">create</a></code>
+      </p>
+    <p class="indent-wrapped-lines"><b>Inherited from <code><a href="bbcflib.track.Track-class.html" onclick="show_private();">Track</a></code></b>:
+      <code><a href="bbcflib.track.Track-class.html#__new__">__new__</a></code>
+      </p>
+    </td>
+  </tr>
+</table>
+<!-- ==================== CLASS VARIABLES ==================== -->
+<a name="section-ClassVariables"></a>
+<table class="summary" border="1" cellpadding="3"
+       cellspacing="0" width="100%" bgcolor="white">
+<tr bgcolor="#70b0f0" class="table-header">
+  <td colspan="2" class="table-header">
+    <table border="0" cellpadding="0" cellspacing="0" width="100%">
+      <tr valign="top">
+        <td align="left"><span class="table-header">Class Variables</span></td>
+        <td align="right" valign="top"
+         ><span class="options">[<a href="#section-ClassVariables"
+         class="privatelink" onclick="toggle_private();"
+         >hide private</a>]</span></td>
+      </tr>
+    </table>
+  </td>
+</tr>
+<tr>
+    <td width="15%" align="right" valign="top" class="summary">
+      <span class="summary-type">&nbsp;</span>
+    </td><td class="summary">
+        <a name="backend_format"></a><span class="summary-name">backend_format</span> = <code title="'bedGraph'"><code class="variable-quote">'</code><code class="variable-string">bedGraph</code><code class="variable-quote">'</code></code>
+    </td>
+  </tr>
+  <tr>
+    <td colspan="2" class="summary">
+    <p class="indent-wrapped-lines"><b>Inherited from <code><a href="bbcflib.track.formats.bedGraph.TrackFormat-class.html">bedGraph.TrackFormat</a></code></b>:
+      <code><a href="bbcflib.track.formats.bedGraph.TrackFormat-class.html#type_identifier">type_identifier</a></code>
+      </p>
+    <p class="indent-wrapped-lines"><b>Inherited from <code><a href="bbcflib.track.formats.sql.TrackFormat-class.html">sql.TrackFormat</a></code></b>:
+      <code><a href="bbcflib.track.formats.sql.TrackFormat-class.html#special_tables">special_tables</a></code>
+      </p>
+    <p class="indent-wrapped-lines"><b>Inherited from <code><a href="bbcflib.track.Track-class.html" onclick="show_private();">Track</a></code></b>:
+      <code><a href="bbcflib.track.Track-class.html#field_types">field_types</a></code>,
+      <code><a href="bbcflib.track.Track-class.html#qualitative_fields">qualitative_fields</a></code>,
+      <code><a href="bbcflib.track.Track-class.html#quantitative_fields">quantitative_fields</a></code>
+      </p>
+    </td>
+  </tr>
+</table>
+<!-- ==================== PROPERTIES ==================== -->
+<a name="section-Properties"></a>
+<table class="summary" border="1" cellpadding="3"
+       cellspacing="0" width="100%" bgcolor="white">
+<tr bgcolor="#70b0f0" class="table-header">
+  <td colspan="2" class="table-header">
+    <table border="0" cellpadding="0" cellspacing="0" width="100%">
+      <tr valign="top">
+        <td align="left"><span class="table-header">Properties</span></td>
+        <td align="right" valign="top"
+         ><span class="options">[<a href="#section-Properties"
+         class="privatelink" onclick="toggle_private();"
+         >hide private</a>]</span></td>
+      </tr>
+    </table>
+  </td>
+</tr>
+<tr class="private">
+    <td width="15%" align="right" valign="top" class="summary">
+      <span class="summary-type">&nbsp;</span>
+    </td><td class="summary">
+        <a href="bbcflib.track.formats.bigWig.TrackFormat-class.html#_datatype" class="summary-name" onclick="show_private();">_datatype</a>
+    </td>
+  </tr>
+  <tr>
+    <td colspan="2" class="summary">
+    <div class="private">    <p class="indent-wrapped-lines"><b>Inherited from <code><a href="bbcflib.track.track_text.TrackText-class.html">track_text.TrackText</a></code></b> (private):
+      <code><a href="bbcflib.track.track_text.TrackText-class.html#_fields" onclick="show_private();">_fields</a></code>,
+      <code><a href="bbcflib.track.track_text.TrackText-class.html#_file_obj" onclick="show_private();">_file_obj</a></code>
+      </p></div>
+    <p class="indent-wrapped-lines"><b>Inherited from <code><a href="bbcflib.track.formats.sql.TrackFormat-class.html">sql.TrackFormat</a></code></b>:
+      <code><a href="bbcflib.track.formats.sql.TrackFormat-class.html#all_tables">all_tables</a></code>,
+      <code><a href="bbcflib.track.formats.sql.TrackFormat-class.html#attributes">attributes</a></code>,
+      <code><a href="bbcflib.track.formats.sql.TrackFormat-class.html#chrmeta">chrmeta</a></code>,
+      <code><a href="bbcflib.track.formats.sql.TrackFormat-class.html#chrs_from_names">chrs_from_names</a></code>,
+      <code><a href="bbcflib.track.formats.sql.TrackFormat-class.html#chrs_from_tables">chrs_from_tables</a></code>,
+      <code><a href="bbcflib.track.formats.sql.TrackFormat-class.html#datatype">datatype</a></code>,
+      <code><a href="bbcflib.track.formats.sql.TrackFormat-class.html#fields">fields</a></code>,
+      <code><a href="bbcflib.track.formats.sql.TrackFormat-class.html#name">name</a></code>
+      </p>
+    <p class="indent-wrapped-lines"><b>Inherited from <code>object</code></b>:
+      <code>__class__</code>
+      </p>
+    </td>
+  </tr>
+</table>
+<!-- ==================== METHOD DETAILS ==================== -->
+<a name="section-MethodDetails"></a>
+<table class="details" border="1" cellpadding="3"
+       cellspacing="0" width="100%" bgcolor="white">
+<tr bgcolor="#70b0f0" class="table-header">
+  <td colspan="2" class="table-header">
+    <table border="0" cellpadding="0" cellspacing="0" width="100%">
+      <tr valign="top">
+        <td align="left"><span class="table-header">Method Details</span></td>
+        <td align="right" valign="top"
+         ><span class="options">[<a href="#section-MethodDetails"
+         class="privatelink" onclick="toggle_private();"
+         >hide private</a>]</span></td>
+      </tr>
+    </table>
+  </td>
+</tr>
+</table>
+<a name="__init__"></a>
+<div>
+<table class="details" border="1" cellpadding="3"
+       cellspacing="0" width="100%" bgcolor="white">
+<tr><td>
+  <table width="100%" cellpadding="0" cellspacing="0" border="0">
+  <tr valign="top"><td>
+  <h3 class="epydoc"><span class="sig"><span class="sig-name">__init__</span>(<span class="sig-arg">self</span>,
+        <span class="sig-arg">*args</span>,
+        <span class="sig-arg">**kwargs</span>)</span>
+    <br /><em class="fname">(Constructor)</em>
+  </h3>
+  </td><td align="right" valign="top"
+    >&nbsp;
+    </td>
+  </tr></table>
+  
+  <p>x.__init__(...) initializes x; see x.__class__.__doc__ for 
+  signature</p>
+  <dl class="fields">
+    <dt>Overrides:
+        object.__init__
+        <dd><em class="note">(inherited documentation)</em></dd>
+    </dt>
+  </dl>
+</td></tr></table>
+</div>
+<br />
+<!-- ==================== PROPERTY DETAILS ==================== -->
+<a name="section-PropertyDetails"></a>
+<table class="details" border="1" cellpadding="3"
+       cellspacing="0" width="100%" bgcolor="white">
+<tr bgcolor="#70b0f0" class="table-header">
+  <td colspan="2" class="table-header">
+    <table border="0" cellpadding="0" cellspacing="0" width="100%">
+      <tr valign="top">
+        <td align="left"><span class="table-header">Property Details</span></td>
+        <td align="right" valign="top"
+         ><span class="options">[<a href="#section-PropertyDetails"
+         class="privatelink" onclick="toggle_private();"
+         >hide private</a>]</span></td>
+      </tr>
+    </table>
+  </td>
+</tr>
+</table>
+<a name="_datatype"></a>
+<div class="private">
+<table class="details" border="1" cellpadding="3"
+       cellspacing="0" width="100%" bgcolor="white">
+<tr><td>
+  <h3 class="epydoc">_datatype</h3>
+  
+  <dl class="fields">
+    <dt>Get Method:</dt>
+    <dd class="value"><span class="summary-sig"><i>unreachable</i>._datatype(<span class="summary-sig-arg">self</span>)</span>
+    </dd>
+    <dt>Set Method:</dt>
+    <dd class="value"><span class="summary-sig"><i>unreachable</i>._datatype(<span class="summary-sig-arg">self</span>,
+        <span class="summary-sig-arg">datatype</span>)</span>
+    </dd>
+  </dl>
+</td></tr></table>
+</div>
+<br />
+<!-- ==================== NAVIGATION BAR ==================== -->
+<table class="navbar" border="0" width="100%" cellpadding="0"
+       bgcolor="#a0c0ff" cellspacing="0">
+  <tr valign="middle">
+  <!-- Home link -->
+      <th>&nbsp;&nbsp;&nbsp;<a
+        href="bbcflib-module.html">Home</a>&nbsp;&nbsp;&nbsp;</th>
+
+  <!-- Tree link -->
+      <th>&nbsp;&nbsp;&nbsp;<a
+        href="module-tree.html">Trees</a>&nbsp;&nbsp;&nbsp;</th>
+
+  <!-- Index link -->
+      <th>&nbsp;&nbsp;&nbsp;<a
+        href="identifier-index.html">Indices</a>&nbsp;&nbsp;&nbsp;</th>
+
+  <!-- Help link -->
+      <th>&nbsp;&nbsp;&nbsp;<a
+        href="help.html">Help</a>&nbsp;&nbsp;&nbsp;</th>
+
+  <!-- Project homepage -->
+      <th class="navbar" align="right" width="100%">
+        <table border="0" cellpadding="0" cellspacing="0">
+          <tr><th class="navbar" align="center"
+            ><a class="navbar" target="_top" href="http://bbcf.epfl.ch/bbcflib">bbcflib</a></th>
+          </tr></table></th>
+  </tr>
+</table>
+<table border="0" cellpadding="0" cellspacing="0" width="100%%">
+  <tr>
+    <td align="left" class="footer">
+    Generated by Epydoc 3.0.1 on Mon Aug 22 17:50:30 2011
+    </td>
+    <td align="right" class="footer">
+      <a target="mainFrame" href="http://epydoc.sourceforge.net"
+        >http://epydoc.sourceforge.net</a>
+    </td>
+  </tr>
+</table>
+
+<script type="text/javascript">
+  <!--
+  // Private objects are initially displayed (because if
+  // javascript is turned off then we want them to be
+  // visible); but by default, we want to hide them.  So hide
+  // them unless we have a cookie that says to show them.
+  checkCookie();
+  // -->
+</script>
+</body>
+</html>

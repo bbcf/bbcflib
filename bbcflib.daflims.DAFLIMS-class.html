@@ -1,0 +1,868 @@
+<?xml version="1.0" encoding="ascii"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+          "DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+<head>
+  <title>bbcflib.daflims.DAFLIMS</title>
+  <link rel="stylesheet" href="epydoc.css" type="text/css" />
+  <script type="text/javascript" src="epydoc.js"></script>
+</head>
+
+<body bgcolor="white" text="black" link="blue" vlink="#204080"
+      alink="#204080">
+<!-- ==================== NAVIGATION BAR ==================== -->
+<table class="navbar" border="0" width="100%" cellpadding="0"
+       bgcolor="#a0c0ff" cellspacing="0">
+  <tr valign="middle">
+  <!-- Home link -->
+      <th>&nbsp;&nbsp;&nbsp;<a
+        href="bbcflib-module.html">Home</a>&nbsp;&nbsp;&nbsp;</th>
+
+  <!-- Tree link -->
+      <th>&nbsp;&nbsp;&nbsp;<a
+        href="module-tree.html">Trees</a>&nbsp;&nbsp;&nbsp;</th>
+
+  <!-- Index link -->
+      <th>&nbsp;&nbsp;&nbsp;<a
+        href="identifier-index.html">Indices</a>&nbsp;&nbsp;&nbsp;</th>
+
+  <!-- Help link -->
+      <th>&nbsp;&nbsp;&nbsp;<a
+        href="help.html">Help</a>&nbsp;&nbsp;&nbsp;</th>
+
+  <!-- Project homepage -->
+      <th class="navbar" align="right" width="100%">
+        <table border="0" cellpadding="0" cellspacing="0">
+          <tr><th class="navbar" align="center"
+            ><a class="navbar" target="_top" href="http://bbcf.epfl.ch/bbcflib">bbcflib</a></th>
+          </tr></table></th>
+  </tr>
+</table>
+<table width="100%" cellpadding="0" cellspacing="0">
+  <tr valign="top">
+    <td width="100%">
+      <span class="breadcrumbs">
+        <a href="bbcflib-module.html">Package&nbsp;bbcflib</a> ::
+        <a href="bbcflib.daflims-module.html">Module&nbsp;daflims</a> ::
+        Class&nbsp;DAFLIMS
+      </span>
+    </td>
+    <td>
+      <table cellpadding="0" cellspacing="0">
+        <!-- hide/show private -->
+        <tr><td align="right"><span class="options">[<a href="javascript:void(0);" class="privatelink"
+    onclick="toggle_private();">hide&nbsp;private</a>]</span></td></tr>
+        <tr><td align="right"><span class="options"
+            >[<a href="frames.html" target="_top">frames</a
+            >]&nbsp;|&nbsp;<a href="bbcflib.daflims.DAFLIMS-class.html"
+            target="_top">no&nbsp;frames</a>]</span></td></tr>
+      </table>
+    </td>
+  </tr>
+</table>
+<!-- ==================== CLASS DESCRIPTION ==================== -->
+<h1 class="epydoc">Class DAFLIMS</h1><p class="nomargin-top"></p>
+<center>
+<center>  <map id="uml_class_diagram_for_bbcflib_" name="uml_class_diagram_for_bbcflib_">
+<area shape="rect" id="node0" href="bbcflib.daflims.DAFLIMS-class.html#__init__" title="x.__init__(...) initializes x; see x.__class__.__doc__ for signature" alt="" coords="17,39,509,57"/>
+<area shape="rect" id="node0" href="bbcflib.daflims.DAFLIMS-class.html#fetch_eland" title="Fetch a file from the LIMS to *to*." alt="" coords="17,57,509,76"/>
+<area shape="rect" id="node0" href="bbcflib.daflims.DAFLIMS-class.html#fetch_fastq" title="Fetch a file from the LIMS to *to*." alt="" coords="17,76,509,95"/>
+<area shape="rect" id="node0" href="bbcflib.daflims.DAFLIMS-class.html#fetch_qseq" title="Fetch a file from the LIMS to *to*." alt="" coords="17,95,509,113"/>
+<area shape="rect" id="node1" href="bbcflib.daflims.DAFLIMS-class.html" title="Connect to the DNA Array Facility&#39;s LIMS." alt="" coords="5,6,520,119"/>
+</map>
+  <img src="uml_class_diagram_for_bbcflib_.gif" alt='' usemap="#uml_class_diagram_for_bbcflib_" ismap="ismap" class="graph-without-title" />
+</center>
+</center>
+<hr />
+<pre class="literalblock">
+Connect to the DNA Array Facility's LIMS.
+
+Either specify *username* and *password*, or provide a
+``ConfigParser`` object to the *config* argument.  The
+ConfigParser should define ``daflims_username`` and
+``daflims_password`` in the sections ``daflims`` (you can override
+the section with the *section* argument).  If you specify a
+*config* argument, and one or both of *username* and *password*,
+the latter override the ConfigParser.
+
+  .. py:method:: fetch_fastq(facility, machine, run, lane, to=None)
+
+  .. py:method:: fetch_eland(facility, machine, run, lane, to=None)
+
+  .. automethod:: fetch_qseq
+
+</pre>
+
+<!-- ==================== INSTANCE METHODS ==================== -->
+<a name="section-InstanceMethods"></a>
+<table class="summary" border="1" cellpadding="3"
+       cellspacing="0" width="100%" bgcolor="white">
+<tr bgcolor="#70b0f0" class="table-header">
+  <td colspan="2" class="table-header">
+    <table border="0" cellpadding="0" cellspacing="0" width="100%">
+      <tr valign="top">
+        <td align="left"><span class="table-header">Instance Methods</span></td>
+        <td align="right" valign="top"
+         ><span class="options">[<a href="#section-InstanceMethods"
+         class="privatelink" onclick="toggle_private();"
+         >hide private</a>]</span></td>
+      </tr>
+    </table>
+  </td>
+</tr>
+<tr>
+    <td width="15%" align="right" valign="top" class="summary">
+      <span class="summary-type">&nbsp;</span>
+    </td><td class="summary">
+      <table width="100%" cellpadding="0" cellspacing="0" border="0">
+        <tr>
+          <td><span class="summary-sig"><a href="bbcflib.daflims.DAFLIMS-class.html#__init__" class="summary-sig-name">__init__</a>(<span class="summary-sig-arg">self</span>,
+        <span class="summary-sig-arg">username</span>=<span class="summary-sig-default">None</span>,
+        <span class="summary-sig-arg">password</span>=<span class="summary-sig-default">None</span>,
+        <span class="summary-sig-arg">config</span>=<span class="summary-sig-default">None</span>,
+        <span class="summary-sig-arg">section</span>=<span class="summary-sig-default"><code class="variable-quote">'</code><code class="variable-string">daflims</code><code class="variable-quote">'</code></span>)</span><br />
+      x.__init__(...) initializes x; see x.__class__.__doc__ for signature</td>
+          <td align="right" valign="top">
+            
+            
+          </td>
+        </tr>
+      </table>
+      
+    </td>
+  </tr>
+<tr class="private">
+    <td width="15%" align="right" valign="top" class="summary">
+      <span class="summary-type">&nbsp;</span>
+    </td><td class="summary">
+      <table width="100%" cellpadding="0" cellspacing="0" border="0">
+        <tr>
+          <td><span class="summary-sig"><a href="bbcflib.daflims.DAFLIMS-class.html#_check_description" class="summary-sig-name" onclick="show_private();">_check_description</a>(<span class="summary-sig-arg">self</span>,
+        <span class="summary-sig-arg">facility</span>,
+        <span class="summary-sig-arg">machine</span>,
+        <span class="summary-sig-arg">run</span>,
+        <span class="summary-sig-arg">lane</span>)</span><br />
+      Check if the identifier of a file is valid.</td>
+          <td align="right" valign="top">
+            
+            
+          </td>
+        </tr>
+      </table>
+      
+    </td>
+  </tr>
+<tr class="private">
+    <td width="15%" align="right" valign="top" class="summary">
+      <span class="summary-type">&nbsp;</span>
+    </td><td class="summary">
+      <table width="100%" cellpadding="0" cellspacing="0" border="0">
+        <tr>
+          <td><span class="summary-sig"><a href="bbcflib.daflims.DAFLIMS-class.html#_fetch_structured" class="summary-sig-name" onclick="show_private();">_fetch_structured</a>(<span class="summary-sig-arg">self</span>,
+        <span class="summary-sig-arg">type</span>,
+        <span class="summary-sig-arg">facility</span>,
+        <span class="summary-sig-arg">machine</span>,
+        <span class="summary-sig-arg">run</span>,
+        <span class="summary-sig-arg">lane</span>,
+        <span class="summary-sig-arg">to</span>=<span class="summary-sig-default">None</span>)</span><br />
+      Fetch a file from its description.</td>
+          <td align="right" valign="top">
+            
+            
+          </td>
+        </tr>
+      </table>
+      
+    </td>
+  </tr>
+<tr class="private">
+    <td width="15%" align="right" valign="top" class="summary">
+      <span class="summary-type">&nbsp;</span>
+    </td><td class="summary">
+      <table width="100%" cellpadding="0" cellspacing="0" border="0">
+        <tr>
+          <td><span class="summary-sig"><a href="bbcflib.daflims.DAFLIMS-class.html#_fetch_symlink" class="summary-sig-name" onclick="show_private();">_fetch_symlink</a>(<span class="summary-sig-arg">self</span>,
+        <span class="summary-sig-arg">link_name</span>,
+        <span class="summary-sig-arg">to</span>=<span class="summary-sig-default">None</span>)</span><br />
+      Fetch the data from a file in the LIMS into *to*.</td>
+          <td align="right" valign="top">
+            
+            
+          </td>
+        </tr>
+      </table>
+      
+    </td>
+  </tr>
+<tr class="private">
+    <td width="15%" align="right" valign="top" class="summary">
+      <span class="summary-type">&nbsp;</span>
+    </td><td class="summary">
+      <table width="100%" cellpadding="0" cellspacing="0" border="0">
+        <tr>
+          <td><span class="summary-sig"><a href="bbcflib.daflims.DAFLIMS-class.html#_lanedesc" class="summary-sig-name" onclick="show_private();">_lanedesc</a>(<span class="summary-sig-arg">self</span>,
+        <span class="summary-sig-arg">facility</span>,
+        <span class="summary-sig-arg">machine</span>,
+        <span class="summary-sig-arg">run</span>,
+        <span class="summary-sig-arg">lane</span>)</span><br />
+      Fetch the metadata of particular data set in the LIMS.</td>
+          <td align="right" valign="top">
+            
+            
+          </td>
+        </tr>
+      </table>
+      
+    </td>
+  </tr>
+<tr class="private">
+    <td width="15%" align="right" valign="top" class="summary">
+      <span class="summary-type">&nbsp;</span>
+    </td><td class="summary">
+      <table width="100%" cellpadding="0" cellspacing="0" border="0">
+        <tr>
+          <td><span class="summary-sig"><a href="bbcflib.daflims.DAFLIMS-class.html#_open_url" class="summary-sig-name" onclick="show_private();">_open_url</a>(<span class="summary-sig-arg">self</span>,
+        <span class="summary-sig-arg">url</span>)</span><br />
+      Returns a file-like object connected to a *url*.</td>
+          <td align="right" valign="top">
+            
+            
+          </td>
+        </tr>
+      </table>
+      
+    </td>
+  </tr>
+<tr class="private">
+    <td width="15%" align="right" valign="top" class="summary">
+      <span class="summary-type">&nbsp;</span>
+    </td><td class="summary">
+      <table width="100%" cellpadding="0" cellspacing="0" border="0">
+        <tr>
+          <td><span class="summary-sig"><a href="bbcflib.daflims.DAFLIMS-class.html#_run_method" class="summary-sig-name" onclick="show_private();">_run_method</a>(<span class="summary-sig-arg">self</span>,
+        <span class="summary-sig-arg">method</span>,
+        <span class="summary-sig-arg">facility</span>,
+        <span class="summary-sig-arg">*args</span>)</span><br />
+      Returns a string from running *method* on the LIMS.</td>
+          <td align="right" valign="top">
+            
+            
+          </td>
+        </tr>
+      </table>
+      
+    </td>
+  </tr>
+<tr class="private">
+    <td width="15%" align="right" valign="top" class="summary">
+      <span class="summary-type">&nbsp;</span>
+    </td><td class="summary">
+      <table width="100%" cellpadding="0" cellspacing="0" border="0">
+        <tr>
+          <td><span class="summary-sig"><a href="bbcflib.daflims.DAFLIMS-class.html#_symlinkname" class="summary-sig-name" onclick="show_private();">_symlinkname</a>(<span class="summary-sig-arg">self</span>,
+        <span class="summary-sig-arg">facility</span>,
+        <span class="summary-sig-arg">machine</span>,
+        <span class="summary-sig-arg">run</span>,
+        <span class="summary-sig-arg">lane</span>)</span><br />
+      Fetch the URLs to access data in the LIMS.</td>
+          <td align="right" valign="top">
+            
+            
+          </td>
+        </tr>
+      </table>
+      
+    </td>
+  </tr>
+<tr>
+    <td width="15%" align="right" valign="top" class="summary">
+      <span class="summary-type">&nbsp;</span>
+    </td><td class="summary">
+      <table width="100%" cellpadding="0" cellspacing="0" border="0">
+        <tr>
+          <td><span class="summary-sig"><a href="bbcflib.daflims.DAFLIMS-class.html#fetch_eland" class="summary-sig-name">fetch_eland</a>(<span class="summary-sig-arg">self</span>,
+        <span class="summary-sig-arg">facility</span>,
+        <span class="summary-sig-arg">machine</span>,
+        <span class="summary-sig-arg">run</span>,
+        <span class="summary-sig-arg">lane</span>,
+        <span class="summary-sig-arg">to</span>=<span class="summary-sig-default">None</span>)</span><br />
+      Fetch a file from the LIMS to *to*.</td>
+          <td align="right" valign="top">
+            
+            
+          </td>
+        </tr>
+      </table>
+      
+    </td>
+  </tr>
+<tr>
+    <td width="15%" align="right" valign="top" class="summary">
+      <span class="summary-type">&nbsp;</span>
+    </td><td class="summary">
+      <table width="100%" cellpadding="0" cellspacing="0" border="0">
+        <tr>
+          <td><span class="summary-sig"><a href="bbcflib.daflims.DAFLIMS-class.html#fetch_fastq" class="summary-sig-name">fetch_fastq</a>(<span class="summary-sig-arg">self</span>,
+        <span class="summary-sig-arg">facility</span>,
+        <span class="summary-sig-arg">machine</span>,
+        <span class="summary-sig-arg">run</span>,
+        <span class="summary-sig-arg">lane</span>,
+        <span class="summary-sig-arg">to</span>=<span class="summary-sig-default">None</span>)</span><br />
+      Fetch a file from the LIMS to *to*.</td>
+          <td align="right" valign="top">
+            
+            
+          </td>
+        </tr>
+      </table>
+      
+    </td>
+  </tr>
+<tr>
+    <td width="15%" align="right" valign="top" class="summary">
+      <span class="summary-type">&nbsp;</span>
+    </td><td class="summary">
+      <table width="100%" cellpadding="0" cellspacing="0" border="0">
+        <tr>
+          <td><span class="summary-sig"><a href="bbcflib.daflims.DAFLIMS-class.html#fetch_qseq" class="summary-sig-name">fetch_qseq</a>(<span class="summary-sig-arg">self</span>,
+        <span class="summary-sig-arg">facility</span>,
+        <span class="summary-sig-arg">machine</span>,
+        <span class="summary-sig-arg">run</span>,
+        <span class="summary-sig-arg">lane</span>,
+        <span class="summary-sig-arg">to</span>=<span class="summary-sig-default">None</span>)</span><br />
+      Fetch a file from the LIMS to *to*.</td>
+          <td align="right" valign="top">
+            
+            
+          </td>
+        </tr>
+      </table>
+      
+    </td>
+  </tr>
+  <tr>
+    <td colspan="2" class="summary">
+    <p class="indent-wrapped-lines"><b>Inherited from <code>object</code></b>:
+      <code>__delattr__</code>,
+      <code>__format__</code>,
+      <code>__getattribute__</code>,
+      <code>__hash__</code>,
+      <code>__new__</code>,
+      <code>__reduce__</code>,
+      <code>__reduce_ex__</code>,
+      <code>__repr__</code>,
+      <code>__setattr__</code>,
+      <code>__sizeof__</code>,
+      <code>__str__</code>,
+      <code>__subclasshook__</code>
+      </p>
+    </td>
+  </tr>
+</table>
+<!-- ==================== PROPERTIES ==================== -->
+<a name="section-Properties"></a>
+<table class="summary" border="1" cellpadding="3"
+       cellspacing="0" width="100%" bgcolor="white">
+<tr bgcolor="#70b0f0" class="table-header">
+  <td colspan="2" class="table-header">
+    <table border="0" cellpadding="0" cellspacing="0" width="100%">
+      <tr valign="top">
+        <td align="left"><span class="table-header">Properties</span></td>
+        <td align="right" valign="top"
+         ><span class="options">[<a href="#section-Properties"
+         class="privatelink" onclick="toggle_private();"
+         >hide private</a>]</span></td>
+      </tr>
+    </table>
+  </td>
+</tr>
+  <tr>
+    <td colspan="2" class="summary">
+    <p class="indent-wrapped-lines"><b>Inherited from <code>object</code></b>:
+      <code>__class__</code>
+      </p>
+    </td>
+  </tr>
+</table>
+<!-- ==================== METHOD DETAILS ==================== -->
+<a name="section-MethodDetails"></a>
+<table class="details" border="1" cellpadding="3"
+       cellspacing="0" width="100%" bgcolor="white">
+<tr bgcolor="#70b0f0" class="table-header">
+  <td colspan="2" class="table-header">
+    <table border="0" cellpadding="0" cellspacing="0" width="100%">
+      <tr valign="top">
+        <td align="left"><span class="table-header">Method Details</span></td>
+        <td align="right" valign="top"
+         ><span class="options">[<a href="#section-MethodDetails"
+         class="privatelink" onclick="toggle_private();"
+         >hide private</a>]</span></td>
+      </tr>
+    </table>
+  </td>
+</tr>
+</table>
+<a name="__init__"></a>
+<div>
+<table class="details" border="1" cellpadding="3"
+       cellspacing="0" width="100%" bgcolor="white">
+<tr><td>
+  <table width="100%" cellpadding="0" cellspacing="0" border="0">
+  <tr valign="top"><td>
+  <h3 class="epydoc"><span class="sig"><span class="sig-name">__init__</span>(<span class="sig-arg">self</span>,
+        <span class="sig-arg">username</span>=<span class="sig-default">None</span>,
+        <span class="sig-arg">password</span>=<span class="sig-default">None</span>,
+        <span class="sig-arg">config</span>=<span class="sig-default">None</span>,
+        <span class="sig-arg">section</span>=<span class="sig-default"><code class="variable-quote">'</code><code class="variable-string">daflims</code><code class="variable-quote">'</code></span>)</span>
+    <br /><em class="fname">(Constructor)</em>
+  </h3>
+  </td><td align="right" valign="top"
+    >&nbsp;
+    </td>
+  </tr></table>
+  
+  <p>x.__init__(...) initializes x; see x.__class__.__doc__ for 
+  signature</p>
+  <dl class="fields">
+    <dt>Overrides:
+        object.__init__
+        <dd><em class="note">(inherited documentation)</em></dd>
+    </dt>
+  </dl>
+</td></tr></table>
+</div>
+<a name="_check_description"></a>
+<div class="private">
+<table class="details" border="1" cellpadding="3"
+       cellspacing="0" width="100%" bgcolor="white">
+<tr><td>
+  <table width="100%" cellpadding="0" cellspacing="0" border="0">
+  <tr valign="top"><td>
+  <h3 class="epydoc"><span class="sig"><span class="sig-name">_check_description</span>(<span class="sig-arg">self</span>,
+        <span class="sig-arg">facility</span>,
+        <span class="sig-arg">machine</span>,
+        <span class="sig-arg">run</span>,
+        <span class="sig-arg">lane</span>)</span>
+  </h3>
+  </td><td align="right" valign="top"
+    >&nbsp;
+    </td>
+  </tr></table>
+  
+  <p>Check if the identifier of a file is valid.</p>
+  <p>*facility* and *machine* should be strings.  *run* and *lane* should 
+  be integers.  This is checked by a couple of functions, so we factor it 
+  out here.</p>
+  <dl class="fields">
+  </dl>
+</td></tr></table>
+</div>
+<a name="_fetch_structured"></a>
+<div class="private">
+<table class="details" border="1" cellpadding="3"
+       cellspacing="0" width="100%" bgcolor="white">
+<tr><td>
+  <table width="100%" cellpadding="0" cellspacing="0" border="0">
+  <tr valign="top"><td>
+  <h3 class="epydoc"><span class="sig"><span class="sig-name">_fetch_structured</span>(<span class="sig-arg">self</span>,
+        <span class="sig-arg">type</span>,
+        <span class="sig-arg">facility</span>,
+        <span class="sig-arg">machine</span>,
+        <span class="sig-arg">run</span>,
+        <span class="sig-arg">lane</span>,
+        <span class="sig-arg">to</span>=<span class="sig-default">None</span>)</span>
+  </h3>
+  </td><td align="right" valign="top"
+    >&nbsp;
+    </td>
+  </tr></table>
+  
+  <pre class="literalblock">
+Fetch a file from its description.
+
+The return value is a dictionary containing the following keys
+(all of which refer to strings unless otherwise noted.
+
+  * ``'path'`` (the path to the fetched file)
+  * ``'machine'``
+  * ``'run'`` (integer)
+  * ``'lane'`` (integer)
+  * ``'cycle'`` (integer)
+  * ``'quantity (/pM)'`` (float, the concentration of DNA in picomolar)
+  * ``'library'``
+  * ``'project'``
+  * ``'protocol'``
+  * ``'run type'`` (``'ChipSeq'``, etc.)
+  * ``'PI firstname'``
+  * ``'PI lastname'``
+  * ``'submitter firstname'``
+  * ``'submitter lastname'``
+  * ``'organism'``
+  * ``'NCBI ID'`` (the genome Eland aligns against)
+
+*type* must be one of ``'fastq'``, ``'eland'``, or ``'qseq'``.
+
+</pre>
+  <dl class="fields">
+  </dl>
+</td></tr></table>
+</div>
+<a name="_fetch_symlink"></a>
+<div class="private">
+<table class="details" border="1" cellpadding="3"
+       cellspacing="0" width="100%" bgcolor="white">
+<tr><td>
+  <table width="100%" cellpadding="0" cellspacing="0" border="0">
+  <tr valign="top"><td>
+  <h3 class="epydoc"><span class="sig"><span class="sig-name">_fetch_symlink</span>(<span class="sig-arg">self</span>,
+        <span class="sig-arg">link_name</span>,
+        <span class="sig-arg">to</span>=<span class="sig-default">None</span>)</span>
+  </h3>
+  </td><td align="right" valign="top"
+    >&nbsp;
+    </td>
+  </tr></table>
+  
+  <p>Fetch the data from a file in the LIMS into *to*.</p>
+  <p>*link_name* is a URL to a .tar.gz file in the LIMS.  These .tar.gz 
+  files all contain only one file, which we write to *to*.  If *to* is 
+  omitted, then the data is written to a randomly named file in the current
+  working directory.  If *to* is a directory, the data is written to a 
+  randomly named file in that directory.  Otherwise *to* is taken as the 
+  full path to the file to write to.</p>
+  <p>``_fetch_symlink`` returns the path to the output file, including its 
+  filename.</p>
+  <dl class="fields">
+  </dl>
+</td></tr></table>
+</div>
+<a name="_lanedesc"></a>
+<div class="private">
+<table class="details" border="1" cellpadding="3"
+       cellspacing="0" width="100%" bgcolor="white">
+<tr><td>
+  <table width="100%" cellpadding="0" cellspacing="0" border="0">
+  <tr valign="top"><td>
+  <h3 class="epydoc"><span class="sig"><span class="sig-name">_lanedesc</span>(<span class="sig-arg">self</span>,
+        <span class="sig-arg">facility</span>,
+        <span class="sig-arg">machine</span>,
+        <span class="sig-arg">run</span>,
+        <span class="sig-arg">lane</span>)</span>
+  </h3>
+  </td><td align="right" valign="top"
+    >&nbsp;
+    </td>
+  </tr></table>
+  
+  <pre class="literalblock">
+Fetch the metadata of particular data set in the LIMS.
+
+Returns a dictionary with the following keys (which refer to strings unless otherwise notes):
+
+  * ``'machine'``
+  * ``'run'`` (integer)
+  * ``'lane'`` (integer)
+  * ``'cycle'`` (integer)
+  * ``'quantity (/pM)'`` (float, the concentration of DNA in picomolar)
+  * ``'library'``
+  * ``'project'``
+  * ``'protocol'``
+  * ``'run type'`` (``'ChipSeq'``, etc.)
+  * ``'PI firstname'``
+  * ``'PI lastname'``
+  * ``'submitter firstname'``
+  * ``'submitter lastname'``
+  * ``'organism'``
+  * ``'NCBI ID'`` (the genome Eland aligns against)
+
+</pre>
+  <dl class="fields">
+  </dl>
+</td></tr></table>
+</div>
+<a name="_open_url"></a>
+<div class="private">
+<table class="details" border="1" cellpadding="3"
+       cellspacing="0" width="100%" bgcolor="white">
+<tr><td>
+  <table width="100%" cellpadding="0" cellspacing="0" border="0">
+  <tr valign="top"><td>
+  <h3 class="epydoc"><span class="sig"><span class="sig-name">_open_url</span>(<span class="sig-arg">self</span>,
+        <span class="sig-arg">url</span>)</span>
+  </h3>
+  </td><td align="right" valign="top"
+    >&nbsp;
+    </td>
+  </tr></table>
+  
+  <p>Returns a file-like object connected to a *url*.</p>
+  <p>The *url* is assumed to be part of the DNA Array Facility's LIMS, and 
+  logs in with the ``DAFLIMS`` object's username and password.</p>
+  <dl class="fields">
+  </dl>
+</td></tr></table>
+</div>
+<a name="_run_method"></a>
+<div class="private">
+<table class="details" border="1" cellpadding="3"
+       cellspacing="0" width="100%" bgcolor="white">
+<tr><td>
+  <table width="100%" cellpadding="0" cellspacing="0" border="0">
+  <tr valign="top"><td>
+  <h3 class="epydoc"><span class="sig"><span class="sig-name">_run_method</span>(<span class="sig-arg">self</span>,
+        <span class="sig-arg">method</span>,
+        <span class="sig-arg">facility</span>,
+        <span class="sig-arg">*args</span>)</span>
+  </h3>
+  </td><td align="right" valign="top"
+    >&nbsp;
+    </td>
+  </tr></table>
+  
+  <p>Returns a string from running *method* on the LIMS.</p>
+  <p>Methods on the LIMS are accessed with a uniform URL format. *method* 
+  is the method to run (for example ``&quot;symlinkname&quot;`` or 
+  ``&quot;lanedesc&quot;``).  *facility* is the facility to run against, 
+  and any further arguments to the function are appended as path components
+  of the URL.</p>
+  <dl class="fields">
+  </dl>
+</td></tr></table>
+</div>
+<a name="_symlinkname"></a>
+<div class="private">
+<table class="details" border="1" cellpadding="3"
+       cellspacing="0" width="100%" bgcolor="white">
+<tr><td>
+  <table width="100%" cellpadding="0" cellspacing="0" border="0">
+  <tr valign="top"><td>
+  <h3 class="epydoc"><span class="sig"><span class="sig-name">_symlinkname</span>(<span class="sig-arg">self</span>,
+        <span class="sig-arg">facility</span>,
+        <span class="sig-arg">machine</span>,
+        <span class="sig-arg">run</span>,
+        <span class="sig-arg">lane</span>)</span>
+  </h3>
+  </td><td align="right" valign="top"
+    >&nbsp;
+    </td>
+  </tr></table>
+  
+  <p>Fetch the URLs to access data in the LIMS.</p>
+  <p>Returns a dictionary with the keys ``'fastq'``, ``'eland'``, and 
+  ``'qseq'``, each referring to a URL in the LIMS where that file is 
+  stored.</p>
+  <dl class="fields">
+  </dl>
+</td></tr></table>
+</div>
+<a name="fetch_eland"></a>
+<div>
+<table class="details" border="1" cellpadding="3"
+       cellspacing="0" width="100%" bgcolor="white">
+<tr><td>
+  <table width="100%" cellpadding="0" cellspacing="0" border="0">
+  <tr valign="top"><td>
+  <h3 class="epydoc"><span class="sig"><span class="sig-name">fetch_eland</span>(<span class="sig-arg">self</span>,
+        <span class="sig-arg">facility</span>,
+        <span class="sig-arg">machine</span>,
+        <span class="sig-arg">run</span>,
+        <span class="sig-arg">lane</span>,
+        <span class="sig-arg">to</span>=<span class="sig-default">None</span>)</span>
+  </h3>
+  </td><td align="right" valign="top"
+    >&nbsp;
+    </td>
+  </tr></table>
+  
+  <pre class="literalblock">
+Fetch a file from the LIMS to *to*.
+
+If *to* is omitted, then the data is written to a
+randomly named file in the current working directory.  If
+*to* is a directory, the data is written to a randomly named
+file in that directory.  Otherwise *to* is taken as the full
+path to the file to write to.
+
+The return value is a dictionary containing the following keys
+(all of which refer to strings unless otherwise noted.
+
+  * ``'path'`` (the path to the fetched file)
+  * ``'machine'``
+  * ``'run'`` (integer)
+  * ``'lane'`` (integer)
+  * ``'cycle'`` (integer)
+  * ``'quantity (/pM)'`` (float, the concentration of DNA in picomolar)
+  * ``'library'``
+  * ``'project'``
+  * ``'protocol'``
+  * ``'run type'`` (``'ChipSeq'``, etc.)
+  * ``'PI firstname'``
+  * ``'PI lastname'``
+  * ``'submitter firstname'``
+  * ``'submitter lastname'``
+  * ``'organism'``
+  * ``'NCBI ID'`` (the genome Eland aligns against)
+
+</pre>
+  <dl class="fields">
+  </dl>
+</td></tr></table>
+</div>
+<a name="fetch_fastq"></a>
+<div>
+<table class="details" border="1" cellpadding="3"
+       cellspacing="0" width="100%" bgcolor="white">
+<tr><td>
+  <table width="100%" cellpadding="0" cellspacing="0" border="0">
+  <tr valign="top"><td>
+  <h3 class="epydoc"><span class="sig"><span class="sig-name">fetch_fastq</span>(<span class="sig-arg">self</span>,
+        <span class="sig-arg">facility</span>,
+        <span class="sig-arg">machine</span>,
+        <span class="sig-arg">run</span>,
+        <span class="sig-arg">lane</span>,
+        <span class="sig-arg">to</span>=<span class="sig-default">None</span>)</span>
+  </h3>
+  </td><td align="right" valign="top"
+    >&nbsp;
+    </td>
+  </tr></table>
+  
+  <pre class="literalblock">
+Fetch a file from the LIMS to *to*.
+
+If *to* is omitted, then the data is written to a
+randomly named file in the current working directory.  If
+*to* is a directory, the data is written to a randomly named
+file in that directory.  Otherwise *to* is taken as the full
+path to the file to write to.
+
+The return value is a dictionary containing the following keys
+(all of which refer to strings unless otherwise noted.
+
+  * ``'path'`` (the path to the fetched file)
+  * ``'machine'``
+  * ``'run'`` (integer)
+  * ``'lane'`` (integer)
+  * ``'cycle'`` (integer)
+  * ``'quantity (/pM)'`` (float, the concentration of DNA in picomolar)
+  * ``'library'``
+  * ``'project'``
+  * ``'protocol'``
+  * ``'run type'`` (``'ChipSeq'``, etc.)
+  * ``'PI firstname'``
+  * ``'PI lastname'``
+  * ``'submitter firstname'``
+  * ``'submitter lastname'``
+  * ``'organism'``
+  * ``'NCBI ID'`` (the genome Eland aligns against)
+
+</pre>
+  <dl class="fields">
+  </dl>
+</td></tr></table>
+</div>
+<a name="fetch_qseq"></a>
+<div>
+<table class="details" border="1" cellpadding="3"
+       cellspacing="0" width="100%" bgcolor="white">
+<tr><td>
+  <table width="100%" cellpadding="0" cellspacing="0" border="0">
+  <tr valign="top"><td>
+  <h3 class="epydoc"><span class="sig"><span class="sig-name">fetch_qseq</span>(<span class="sig-arg">self</span>,
+        <span class="sig-arg">facility</span>,
+        <span class="sig-arg">machine</span>,
+        <span class="sig-arg">run</span>,
+        <span class="sig-arg">lane</span>,
+        <span class="sig-arg">to</span>=<span class="sig-default">None</span>)</span>
+  </h3>
+  </td><td align="right" valign="top"
+    >&nbsp;
+    </td>
+  </tr></table>
+  
+  <pre class="literalblock">
+Fetch a file from the LIMS to *to*.
+
+If *to* is omitted, then the data is written to a
+randomly named file in the current working directory.  If
+*to* is a directory, the data is written to a randomly named
+file in that directory.  Otherwise *to* is taken as the full
+path to the file to write to.
+
+The return value is a dictionary containing the following keys
+(all of which refer to strings unless otherwise noted.
+
+  * ``'path'`` (the path to the fetched file)
+  * ``'machine'``
+  * ``'run'`` (integer)
+  * ``'lane'`` (integer)
+  * ``'cycle'`` (integer)
+  * ``'quantity (/pM)'`` (float, the concentration of DNA in picomolar)
+  * ``'library'``
+  * ``'project'``
+  * ``'protocol'``
+  * ``'run type'`` (``'ChipSeq'``, etc.)
+  * ``'PI firstname'``
+  * ``'PI lastname'``
+  * ``'submitter firstname'``
+  * ``'submitter lastname'``
+  * ``'organism'``
+  * ``'NCBI ID'`` (the genome Eland aligns against)
+
+</pre>
+  <dl class="fields">
+  </dl>
+</td></tr></table>
+</div>
+<br />
+<!-- ==================== NAVIGATION BAR ==================== -->
+<table class="navbar" border="0" width="100%" cellpadding="0"
+       bgcolor="#a0c0ff" cellspacing="0">
+  <tr valign="middle">
+  <!-- Home link -->
+      <th>&nbsp;&nbsp;&nbsp;<a
+        href="bbcflib-module.html">Home</a>&nbsp;&nbsp;&nbsp;</th>
+
+  <!-- Tree link -->
+      <th>&nbsp;&nbsp;&nbsp;<a
+        href="module-tree.html">Trees</a>&nbsp;&nbsp;&nbsp;</th>
+
+  <!-- Index link -->
+      <th>&nbsp;&nbsp;&nbsp;<a
+        href="identifier-index.html">Indices</a>&nbsp;&nbsp;&nbsp;</th>
+
+  <!-- Help link -->
+      <th>&nbsp;&nbsp;&nbsp;<a
+        href="help.html">Help</a>&nbsp;&nbsp;&nbsp;</th>
+
+  <!-- Project homepage -->
+      <th class="navbar" align="right" width="100%">
+        <table border="0" cellpadding="0" cellspacing="0">
+          <tr><th class="navbar" align="center"
+            ><a class="navbar" target="_top" href="http://bbcf.epfl.ch/bbcflib">bbcflib</a></th>
+          </tr></table></th>
+  </tr>
+</table>
+<table border="0" cellpadding="0" cellspacing="0" width="100%%">
+  <tr>
+    <td align="left" class="footer">
+    Generated by Epydoc 3.0.1 on Mon Aug 22 17:50:28 2011
+    </td>
+    <td align="right" class="footer">
+      <a target="mainFrame" href="http://epydoc.sourceforge.net"
+        >http://epydoc.sourceforge.net</a>
+    </td>
+  </tr>
+</table>
+
+<script type="text/javascript">
+  <!--
+  // Private objects are initially displayed (because if
+  // javascript is turned off then we want them to be
+  // visible); but by default, we want to hide them.  So hide
+  // them unless we have a cookie that says to show them.
+  checkCookie();
+  // -->
+</script>
+</body>
+</html>

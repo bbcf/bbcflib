@@ -1,0 +1,493 @@
+<?xml version="1.0" encoding="ascii"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+          "DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+<head>
+  <title>bbcflib.track</title>
+  <link rel="stylesheet" href="epydoc.css" type="text/css" />
+  <script type="text/javascript" src="epydoc.js"></script>
+</head>
+
+<body bgcolor="white" text="black" link="blue" vlink="#204080"
+      alink="#204080">
+<!-- ==================== NAVIGATION BAR ==================== -->
+<table class="navbar" border="0" width="100%" cellpadding="0"
+       bgcolor="#a0c0ff" cellspacing="0">
+  <tr valign="middle">
+  <!-- Home link -->
+      <th>&nbsp;&nbsp;&nbsp;<a
+        href="bbcflib-module.html">Home</a>&nbsp;&nbsp;&nbsp;</th>
+
+  <!-- Tree link -->
+      <th>&nbsp;&nbsp;&nbsp;<a
+        href="module-tree.html">Trees</a>&nbsp;&nbsp;&nbsp;</th>
+
+  <!-- Index link -->
+      <th>&nbsp;&nbsp;&nbsp;<a
+        href="identifier-index.html">Indices</a>&nbsp;&nbsp;&nbsp;</th>
+
+  <!-- Help link -->
+      <th>&nbsp;&nbsp;&nbsp;<a
+        href="help.html">Help</a>&nbsp;&nbsp;&nbsp;</th>
+
+  <!-- Project homepage -->
+      <th class="navbar" align="right" width="100%">
+        <table border="0" cellpadding="0" cellspacing="0">
+          <tr><th class="navbar" align="center"
+            ><a class="navbar" target="_top" href="http://bbcf.epfl.ch/bbcflib">bbcflib</a></th>
+          </tr></table></th>
+  </tr>
+</table>
+<table width="100%" cellpadding="0" cellspacing="0">
+  <tr valign="top">
+    <td width="100%">
+      <span class="breadcrumbs">
+        <a href="bbcflib-module.html">Package&nbsp;bbcflib</a> ::
+        Package&nbsp;track
+      </span>
+    </td>
+    <td>
+      <table cellpadding="0" cellspacing="0">
+        <!-- hide/show private -->
+        <tr><td align="right"><span class="options">[<a href="javascript:void(0);" class="privatelink"
+    onclick="toggle_private();">hide&nbsp;private</a>]</span></td></tr>
+        <tr><td align="right"><span class="options"
+            >[<a href="frames.html" target="_top">frames</a
+            >]&nbsp;|&nbsp;<a href="bbcflib.track-module.html"
+            target="_top">no&nbsp;frames</a>]</span></td></tr>
+      </table>
+    </td>
+  </tr>
+</table>
+<!-- ==================== PACKAGE DESCRIPTION ==================== -->
+<h1 class="epydoc">Package track</h1><p class="nomargin-top"></p>
+<p>Provides easy read/write access to genomic tracks in a fashion that is
+  independent from the underlying format. Currently the following formats 
+  are implemented as read/write:</p>
+  <p>* Bio SQLite (http://bbcf.epfl.ch/twiki/bin/view/BBCF/SqLite) * BED
+  (http://genome.ucsc.edu/FAQ/FAQformat.html#format1) * WIG        
+  (http://genome.ucsc.edu/goldenPath/help/wiggle.html) * bedGraph   
+  (http://genome.ucsc.edu/goldenPath/help/bedgraph.html) * bigWig     
+  (http://genome.ucsc.edu/goldenPath/help/bigWig.html)</p>
+  <p>More formats can be added easily.</p>
+  <p>To get access to the information contained inside already existing 
+  tracks, you would do the following whatever the format of the track 
+  is:</p>
+<pre class="literalblock">
+   from bbcflib import track
+   with track.load('tracks/rp_genes.sql') as rpgenes:
+       data = rpgenes.read('chr3')
+</pre>
+  <p>Optionally you can supply a name for every track you load, to help you
+  keep track of your tracks:</p>
+<pre class="literalblock">
+   from bbcflib import track
+   with track.load('tracks/ribi_genes.sql', name='Ribosome genesis from SGD') as ribigenes:
+       data = ribigenes.read('chr7')
+</pre>
+  <p>If your track is in a format that is missing chromosome information 
+  (such as the length of every chromosome), you can supply an assembly name
+  or a chromosome file:</p>
+<pre class="literalblock">
+   from bbcflib import track
+   with track.load('tracks/yeast_genes.bed', chrmeta='sacCer2') as saccer:
+       data = saccer.read('chr4')
+   with track.load('tracks/yeast_genes.bed', chrmeta='tracks/chrs/yeast.chr') as saccer:
+       data = saccer.read('chr4')
+</pre>
+  <p>For instance, the cumulative base coverage of features on chromosome 
+  two can be calculated like this:</p>
+<pre class="literalblock">
+   from bbcflib import track
+   with track.load('tracks/yeast_genes.sql') as saccer:
+       base_coverage = sum([f[1] - f[0] for f in saccer.read('chr2')])
+</pre>
+  <p>To create a new track and then write to it, you would do the 
+  following:</p>
+<pre class="literalblock">
+   from bbcflib.track import new
+   with new('tracks/rap1_peaks.sql', 'sql', name='Rap1 Peaks') as mypeaks:
+       mypeaks.write('chr1', [(10, 20, 'A', 0.0, 1)])
+</pre>
+  <p>For instance, to make a new track from an old one, and invert the 
+  strand of every feature:</p>
+<pre class="literalblock">
+   from bbcflib import track, new
+   def invert_strands(data):
+       for feature in data:
+           yield (feature[0], feature[1], feature[2], feature[3], feature[4] == 1 and -1 or 1)
+   with track.load('tracks/orig.sql', name='Normal strands') as a:
+       with new('tracks/inverted.sql', name='Inverted strands') as b:
+           for chrom in a:
+               b.write(chrom, invert_strands(a.read(chrom)))
+</pre>
+  <p>To convert a track from a format (e.g. BED) to an other format (e.g. 
+  SQL) you first load the track and call the export method on it:</p>
+<pre class="literalblock">
+   from bbcflib import track
+   with track.load('tracks/rp_genes.bed') as rpgenes:
+       rpgenes.export('tracks/rp_genes.sql', 'sql')
+</pre>
+  <p>To set the chromosome metadata or the track metadata you simply asign 
+  to that attribute:</p>
+<pre class="literalblock">
+   from bbcflib import track
+   with track.load('tracks/scores.sql') as t:
+       t.chrmeta    = ``{'chr1': {'length': 197195432}, 'chr2': {'length': 129993255}}``
+       t.attributes = {'datatype': 'quantitative', 'source': 'UCSC'}
+</pre>
+  <p>It is important to note that the general numbering convention of 
+  features on a chromosome varies depending on the source of the data. For 
+  instance, UCSC and Ensembl differ in this point such that an interval 
+  labeled `(start=4,end=8)` will span four base pairs according to UCSC but
+  will span five base pairs according to Ensembl. The representation that 
+  the this packages sticks to is explained `here 
+  &lt;http://bbcf.epfl.ch/twiki/bin/view/BBCF/NumberingConvention&gt;`_.</p>
+
+<!-- ==================== SUBMODULES ==================== -->
+<a name="section-Submodules"></a>
+<table class="summary" border="1" cellpadding="3"
+       cellspacing="0" width="100%" bgcolor="white">
+<tr bgcolor="#70b0f0" class="table-header">
+  <td colspan="2" class="table-header">
+    <table border="0" cellpadding="0" cellspacing="0" width="100%">
+      <tr valign="top">
+        <td align="left"><span class="table-header">Submodules</span></td>
+        <td align="right" valign="top"
+         ><span class="options">[<a href="#section-Submodules"
+         class="privatelink" onclick="toggle_private();"
+         >hide private</a>]</span></td>
+      </tr>
+    </table>
+  </td>
+</tr>
+  <tr><td class="summary">
+  <ul class="nomargin">
+    <li class="private"> <strong class="uidlink"><a href="bbcflib.track.common-module.html" onclick="show_private();">bbcflib.track.common</a></strong>: <em class="summary">=============================== Submodule: bbcflib.track.common 
+        ===============================</em>    </li>
+    <li> <strong class="uidlink"><a href="bbcflib.track.extras-module.html">bbcflib.track.extras</a></strong>: <em class="summary">================================ Subpackage: bbcflib.track.extras 
+        ================================</em>
+    <ul>
+    <li> <strong class="uidlink"><a href="bbcflib.track.extras.sql-module.html">bbcflib.track.extras.sql</a></strong>: <em class="summary">=================================== Submodule: 
+        bbcflib.track.extras.sql ===================================</em>    </li>
+    </ul>
+    </li>
+    <li class="private"> <strong class="uidlink"><a href="bbcflib.track.formats-module.html" onclick="show_private();">bbcflib.track.formats</a></strong>: <em class="summary">================================= Subpackage: bbcflib.track.formats
+        =================================</em>
+    <ul class="private">
+    <li> <strong class="uidlink"><a href="bbcflib.track.formats.bed-module.html">bbcflib.track.formats.bed</a></strong>: <em class="summary">==================================== Submodule: 
+        bbcflib.track.formats.bed ====================================</em>    </li>
+    <li> <strong class="uidlink"><a href="bbcflib.track.formats.bedGraph-module.html">bbcflib.track.formats.bedGraph</a></strong>: <em class="summary">========================================= Submodule: 
+        bbcflib.track.formats.bedgraph 
+        =========================================</em>    </li>
+    <li> <strong class="uidlink"><a href="bbcflib.track.formats.bigWig-module.html">bbcflib.track.formats.bigWig</a></strong>: <em class="summary">======================================= Submodule: 
+        bbcflib.track.formats.bigWig 
+        =======================================</em>    </li>
+    <li> <strong class="uidlink"><a href="bbcflib.track.formats.gzip-module.html">bbcflib.track.formats.gzip</a></strong>: <em class="summary">==================================== Submodule: 
+        bbcflib.track.formats.sql ====================================</em>    </li>
+    <li> <strong class="uidlink"><a href="bbcflib.track.formats.rand-module.html">bbcflib.track.formats.rand</a></strong>: <em class="summary">===================================== Submodule: 
+        bbcflib.track.formats.rand =====================================</em>    </li>
+    <li> <strong class="uidlink"><a href="bbcflib.track.formats.sql-module.html">bbcflib.track.formats.sql</a></strong>: <em class="summary">==================================== Submodule: 
+        bbcflib.track.formats.sql ====================================</em>    </li>
+    <li> <strong class="uidlink"><a href="bbcflib.track.formats.wig-module.html">bbcflib.track.formats.wig</a></strong>: <em class="summary">==================================== Submodule: 
+        bbcflib.track.formats.wig ====================================</em>    </li>
+    </ul>
+    </li>
+    <li class="private"> <strong class="uidlink"><a href="bbcflib.track.magic-module.html" onclick="show_private();">bbcflib.track.magic</a></strong>: <em class="summary">=============================== Subpackage: bbcflib.track.magic 
+        ===============================</em>    </li>
+    <li> <strong class="uidlink"><a href="bbcflib.track.tests-module.html">bbcflib.track.tests</a></strong>: <em class="summary">=============================== Subpackage: bbcflib.track.tests 
+        ===============================</em>    </li>
+    <li> <strong class="uidlink"><a href="bbcflib.track.track_binary-module.html">bbcflib.track.track_binary</a></strong>: <em class="summary">===================================== Submodule: 
+        bbcflib.track.track_binary =====================================</em>    </li>
+    <li> <strong class="uidlink"><a href="bbcflib.track.track_bundle-module.html">bbcflib.track.track_bundle</a></strong>: <em class="summary">====================================== Subpackage: 
+        bbcflib.track.track_bundle ======================================</em>    </li>
+    <li class="private"> <strong class="uidlink"><a href="bbcflib.track.track_meta-module.html" onclick="show_private();">bbcflib.track.track_meta</a></strong>: <em class="summary">======================================= Subpackage: 
+        bbcflib.track.track_chrmeta =======================================</em>    </li>
+    <li> <strong class="uidlink"><a href="bbcflib.track.track_proxy-module.html">bbcflib.track.track_proxy</a></strong>: <em class="summary">==================================== Submodule: 
+        bbcflib.track.track_proxy ====================================</em>    </li>
+    <li> <strong class="uidlink"><a href="bbcflib.track.track_random-module.html">bbcflib.track.track_random</a></strong>: <em class="summary">===================================== Submodule: 
+        bbcflib.track.formats.rand =====================================</em>    </li>
+    <li> <strong class="uidlink"><a href="bbcflib.track.track_text-module.html">bbcflib.track.track_text</a></strong>: <em class="summary">=================================== Submodule: 
+        bbcflib.track.track_text ===================================</em>    </li>
+    <li class="private"> <strong class="uidlink"><a href="bbcflib.track.track_util-module.html" onclick="show_private();">bbcflib.track.track_util</a></strong>: <em class="summary">=================================== Submodule: 
+        bbcflib.track.track_util ===================================</em>    </li>
+  </ul></td></tr>
+</table>
+
+<br />
+<!-- ==================== CLASSES ==================== -->
+<a name="section-Classes"></a>
+<table class="summary" border="1" cellpadding="3"
+       cellspacing="0" width="100%" bgcolor="white">
+<tr bgcolor="#70b0f0" class="table-header">
+  <td colspan="2" class="table-header">
+    <table border="0" cellpadding="0" cellspacing="0" width="100%">
+      <tr valign="top">
+        <td align="left"><span class="table-header">Classes</span></td>
+        <td align="right" valign="top"
+         ><span class="options">[<a href="#section-Classes"
+         class="privatelink" onclick="toggle_private();"
+         >hide private</a>]</span></td>
+      </tr>
+    </table>
+  </td>
+</tr>
+<tr class="private">
+    <td width="15%" align="right" valign="top" class="summary">
+      <span class="summary-type">&nbsp;</span>
+    </td><td class="summary">
+        <a href="bbcflib.track.Track-class.html" class="summary-name" onclick="show_private();">Track</a><br />
+      Once a track is loaded you have access to the following attributes:
+    </td>
+  </tr>
+</table>
+<!-- ==================== FUNCTIONS ==================== -->
+<a name="section-Functions"></a>
+<table class="summary" border="1" cellpadding="3"
+       cellspacing="0" width="100%" bgcolor="white">
+<tr bgcolor="#70b0f0" class="table-header">
+  <td colspan="2" class="table-header">
+    <table border="0" cellpadding="0" cellspacing="0" width="100%">
+      <tr valign="top">
+        <td align="left"><span class="table-header">Functions</span></td>
+        <td align="right" valign="top"
+         ><span class="options">[<a href="#section-Functions"
+         class="privatelink" onclick="toggle_private();"
+         >hide private</a>]</span></td>
+      </tr>
+    </table>
+  </td>
+</tr>
+<tr>
+    <td width="15%" align="right" valign="top" class="summary">
+      <span class="summary-type">&nbsp;</span>
+    </td><td class="summary">
+      <table width="100%" cellpadding="0" cellspacing="0" border="0">
+        <tr>
+          <td><span class="summary-sig"><a href="bbcflib.track-module.html#load" class="summary-sig-name">load</a>(<span class="summary-sig-arg">path</span>,
+        <span class="summary-sig-arg">format</span>=<span class="summary-sig-default">None</span>,
+        <span class="summary-sig-arg">name</span>=<span class="summary-sig-default">None</span>,
+        <span class="summary-sig-arg">chrmeta</span>=<span class="summary-sig-default">None</span>,
+        <span class="summary-sig-arg">datatype</span>=<span class="summary-sig-default">None</span>,
+        <span class="summary-sig-arg">readonly</span>=<span class="summary-sig-default">False</span>)</span><br />
+      Loads a track from disk, whatever the format is.</td>
+          <td align="right" valign="top">
+            
+            
+          </td>
+        </tr>
+      </table>
+      
+    </td>
+  </tr>
+<tr>
+    <td width="15%" align="right" valign="top" class="summary">
+      <span class="summary-type">&nbsp;</span>
+    </td><td class="summary">
+      <table width="100%" cellpadding="0" cellspacing="0" border="0">
+        <tr>
+          <td><span class="summary-sig"><a href="bbcflib.track-module.html#new" class="summary-sig-name">new</a>(<span class="summary-sig-arg">path</span>,
+        <span class="summary-sig-arg">format</span>=<span class="summary-sig-default">None</span>,
+        <span class="summary-sig-arg">name</span>=<span class="summary-sig-default">None</span>,
+        <span class="summary-sig-arg">chrmeta</span>=<span class="summary-sig-default">None</span>,
+        <span class="summary-sig-arg">datatype</span>=<span class="summary-sig-default">None</span>)</span><br />
+      Creates a new empty track in preparation for writing to it.</td>
+          <td align="right" valign="top">
+            
+            
+          </td>
+        </tr>
+      </table>
+      
+    </td>
+  </tr>
+</table>
+<!-- ==================== VARIABLES ==================== -->
+<a name="section-Variables"></a>
+<table class="summary" border="1" cellpadding="3"
+       cellspacing="0" width="100%" bgcolor="white">
+<tr bgcolor="#70b0f0" class="table-header">
+  <td colspan="2" class="table-header">
+    <table border="0" cellpadding="0" cellspacing="0" width="100%">
+      <tr valign="top">
+        <td align="left"><span class="table-header">Variables</span></td>
+        <td align="right" valign="top"
+         ><span class="options">[<a href="#section-Variables"
+         class="privatelink" onclick="toggle_private();"
+         >hide private</a>]</span></td>
+      </tr>
+    </table>
+  </td>
+</tr>
+<tr class="private">
+    <td width="15%" align="right" valign="top" class="summary">
+      <span class="summary-type">&nbsp;</span>
+    </td><td class="summary">
+        <a name="__package__"></a><span class="summary-name">__package__</span> = <code title="'bbcflib.track'"><code class="variable-quote">'</code><code class="variable-string">bbcflib.track</code><code class="variable-quote">'</code></code>
+    </td>
+  </tr>
+</table>
+<!-- ==================== FUNCTION DETAILS ==================== -->
+<a name="section-FunctionDetails"></a>
+<table class="details" border="1" cellpadding="3"
+       cellspacing="0" width="100%" bgcolor="white">
+<tr bgcolor="#70b0f0" class="table-header">
+  <td colspan="2" class="table-header">
+    <table border="0" cellpadding="0" cellspacing="0" width="100%">
+      <tr valign="top">
+        <td align="left"><span class="table-header">Function Details</span></td>
+        <td align="right" valign="top"
+         ><span class="options">[<a href="#section-FunctionDetails"
+         class="privatelink" onclick="toggle_private();"
+         >hide private</a>]</span></td>
+      </tr>
+    </table>
+  </td>
+</tr>
+</table>
+<a name="load"></a>
+<div>
+<table class="details" border="1" cellpadding="3"
+       cellspacing="0" width="100%" bgcolor="white">
+<tr><td>
+  <table width="100%" cellpadding="0" cellspacing="0" border="0">
+  <tr valign="top"><td>
+  <h3 class="epydoc"><span class="sig"><span class="sig-name">load</span>(<span class="sig-arg">path</span>,
+        <span class="sig-arg">format</span>=<span class="sig-default">None</span>,
+        <span class="sig-arg">name</span>=<span class="sig-default">None</span>,
+        <span class="sig-arg">chrmeta</span>=<span class="sig-default">None</span>,
+        <span class="sig-arg">datatype</span>=<span class="sig-default">None</span>,
+        <span class="sig-arg">readonly</span>=<span class="sig-default">False</span>)</span>
+  </h3>
+  </td><td align="right" valign="top"
+    >&nbsp;
+    </td>
+  </tr></table>
+  
+  <pre class="literalblock">
+Loads a track from disk, whatever the format is.
+
+    * *path* is the path to track file to load.
+    * *format* is an optional string specifying the format of the track to load when it cannot be guessed from the file extension.
+    * *name* is an optional string specifying the name of the track to load. This can help with keep track of multiple different tracks.
+    * *chrmeta* is an optional parameter useful in cases where the track to be loaded is missing extra meta data such chromosome length information. One can include this at the load phase by specifying one of three things: *chrmeta* can be the name of an assembly such as ``sacCer2``. *chrmeta* can be a dictionary where each key is chromosome names that specifies the ``length`` as integers. *chrmeta* can be the path to chromosome file. The chromosome file is structured as tab-separated text file containing two columns: the first specifies a chromosomes name and the second its length as an integer.
+    * *datatype* is an optional variable that can take the value of either ``qualitative`` or ``quantitative``. It is only useful when loading a track that is ambiguous towards its datatype, as can be certain text files. For instance, In the case of WIG track becoming qualitative, all features will be missing names, but overlapping features will suddenly be authorized.
+    * *readonly* is an optional boolean variable that defaults to ``False``. When set to ``True``, any operation attempting to write to the track will silently be ignored.
+
+Examples::
+
+    from bbcflib import track
+    with track.load('tracks/rp_genes.sql') as rpgenes:
+        data = rpgenes.read()
+    with track.load('tracks/yeast', 'sql', 'S. cer. genes') as yeast:
+        data = yeast.read()
+    with track.load('tracks/peaks.bed', 'bed', chrmeta='hg19') as peaks:
+        data = peaks.read()
+    with track.load('tracks/scores.wig', 'wig', chrmeta='tracks/cser.chr', datatype='qualitative') as scores:
+        data = scores.read()
+    with track.load('tracks/repeats.sql', readonly=True) as rpgenes:
+        data = rpgenes.read()
+
+``load`` returns a Track instance.
+
+</pre>
+  <dl class="fields">
+  </dl>
+</td></tr></table>
+</div>
+<a name="new"></a>
+<div>
+<table class="details" border="1" cellpadding="3"
+       cellspacing="0" width="100%" bgcolor="white">
+<tr><td>
+  <table width="100%" cellpadding="0" cellspacing="0" border="0">
+  <tr valign="top"><td>
+  <h3 class="epydoc"><span class="sig"><span class="sig-name">new</span>(<span class="sig-arg">path</span>,
+        <span class="sig-arg">format</span>=<span class="sig-default">None</span>,
+        <span class="sig-arg">name</span>=<span class="sig-default">None</span>,
+        <span class="sig-arg">chrmeta</span>=<span class="sig-default">None</span>,
+        <span class="sig-arg">datatype</span>=<span class="sig-default">None</span>)</span>
+  </h3>
+  </td><td align="right" valign="top"
+    >&nbsp;
+    </td>
+  </tr></table>
+  
+  <pre class="literalblock">
+Creates a new empty track in preparation for writing to it.
+
+    * *path* is the path to track file to create.
+    * *format* is an optional string specifying the format of the track to load when it cannot be guessed from the file extension.
+    * *name* is an optional string specifying the name of the track to load. This can help with keep track of multiple different tracks.
+    * *chrmeta* is an optional parameter useful in cases where the track to be loaded is missing extra meta data such chromosome length information. One can include this at the creation phase by specifying one of three things: *chrmeta* can be the name of an assembly such as ``sacCer2``. *chrmeta* can be a dictionary where each key is chromosome names that specifies the ``length`` as integers. *chrmeta* can be the path to chromosome file. The chromosome file is structured as tab-separated text file containing two columns: the first specifies a chromosomes name and the second its length as an integer.
+    * *datatype* is an optional variable that can take the value of either ``qualitative`` or ``quantitative``. It is only useful when creating a track can can support both types, such as the BioSQLite format.
+
+Examples::
+
+    from bbcflib import track
+    with track.new('tmp/track.sql') as t:
+        t.write('chr1', [(10, 20, 'Gene A', 0.0, 1)])
+    with track.new('tracks/peaks.sql', 'sql', name='High affinity peaks') as t:
+        t.write('chr5', [(500, 1200, 'Peak1', 11.3, 0)])
+    with track.new('tracks/scores.sql', 'sql', chrmeta='sacCer2' datatype='quantitative',) as t:
+        t.write('chr1', [(10, 20, 500.0)])
+
+``new`` returns a Track instance.
+
+</pre>
+  <dl class="fields">
+  </dl>
+</td></tr></table>
+</div>
+<br />
+<!-- ==================== NAVIGATION BAR ==================== -->
+<table class="navbar" border="0" width="100%" cellpadding="0"
+       bgcolor="#a0c0ff" cellspacing="0">
+  <tr valign="middle">
+  <!-- Home link -->
+      <th>&nbsp;&nbsp;&nbsp;<a
+        href="bbcflib-module.html">Home</a>&nbsp;&nbsp;&nbsp;</th>
+
+  <!-- Tree link -->
+      <th>&nbsp;&nbsp;&nbsp;<a
+        href="module-tree.html">Trees</a>&nbsp;&nbsp;&nbsp;</th>
+
+  <!-- Index link -->
+      <th>&nbsp;&nbsp;&nbsp;<a
+        href="identifier-index.html">Indices</a>&nbsp;&nbsp;&nbsp;</th>
+
+  <!-- Help link -->
+      <th>&nbsp;&nbsp;&nbsp;<a
+        href="help.html">Help</a>&nbsp;&nbsp;&nbsp;</th>
+
+  <!-- Project homepage -->
+      <th class="navbar" align="right" width="100%">
+        <table border="0" cellpadding="0" cellspacing="0">
+          <tr><th class="navbar" align="center"
+            ><a class="navbar" target="_top" href="http://bbcf.epfl.ch/bbcflib">bbcflib</a></th>
+          </tr></table></th>
+  </tr>
+</table>
+<table border="0" cellpadding="0" cellspacing="0" width="100%%">
+  <tr>
+    <td align="left" class="footer">
+    Generated by Epydoc 3.0.1 on Mon Aug 22 17:50:28 2011
+    </td>
+    <td align="right" class="footer">
+      <a target="mainFrame" href="http://epydoc.sourceforge.net"
+        >http://epydoc.sourceforge.net</a>
+    </td>
+  </tr>
+</table>
+
+<script type="text/javascript">
+  <!--
+  // Private objects are initially displayed (because if
+  // javascript is turned off then we want them to be
+  // visible); but by default, we want to hide them.  So hide
+  // them unless we have a cookie that says to show them.
+  checkCookie();
+  // -->
+</script>
+</body>
+</html>

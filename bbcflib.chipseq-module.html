@@ -1,0 +1,546 @@
+<?xml version="1.0" encoding="ascii"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+          "DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+<head>
+  <title>bbcflib.chipseq</title>
+  <link rel="stylesheet" href="epydoc.css" type="text/css" />
+  <script type="text/javascript" src="epydoc.js"></script>
+</head>
+
+<body bgcolor="white" text="black" link="blue" vlink="#204080"
+      alink="#204080">
+<!-- ==================== NAVIGATION BAR ==================== -->
+<table class="navbar" border="0" width="100%" cellpadding="0"
+       bgcolor="#a0c0ff" cellspacing="0">
+  <tr valign="middle">
+  <!-- Home link -->
+      <th>&nbsp;&nbsp;&nbsp;<a
+        href="bbcflib-module.html">Home</a>&nbsp;&nbsp;&nbsp;</th>
+
+  <!-- Tree link -->
+      <th>&nbsp;&nbsp;&nbsp;<a
+        href="module-tree.html">Trees</a>&nbsp;&nbsp;&nbsp;</th>
+
+  <!-- Index link -->
+      <th>&nbsp;&nbsp;&nbsp;<a
+        href="identifier-index.html">Indices</a>&nbsp;&nbsp;&nbsp;</th>
+
+  <!-- Help link -->
+      <th>&nbsp;&nbsp;&nbsp;<a
+        href="help.html">Help</a>&nbsp;&nbsp;&nbsp;</th>
+
+  <!-- Project homepage -->
+      <th class="navbar" align="right" width="100%">
+        <table border="0" cellpadding="0" cellspacing="0">
+          <tr><th class="navbar" align="center"
+            ><a class="navbar" target="_top" href="http://bbcf.epfl.ch/bbcflib">bbcflib</a></th>
+          </tr></table></th>
+  </tr>
+</table>
+<table width="100%" cellpadding="0" cellspacing="0">
+  <tr valign="top">
+    <td width="100%">
+      <span class="breadcrumbs">
+        <a href="bbcflib-module.html">Package&nbsp;bbcflib</a> ::
+        Module&nbsp;chipseq
+      </span>
+    </td>
+    <td>
+      <table cellpadding="0" cellspacing="0">
+        <!-- hide/show private -->
+        <tr><td align="right"><span class="options">[<a href="javascript:void(0);" class="privatelink"
+    onclick="toggle_private();">hide&nbsp;private</a>]</span></td></tr>
+        <tr><td align="right"><span class="options"
+            >[<a href="frames.html" target="_top">frames</a
+            >]&nbsp;|&nbsp;<a href="bbcflib.chipseq-module.html"
+            target="_top">no&nbsp;frames</a>]</span></td></tr>
+      </table>
+    </td>
+  </tr>
+</table>
+<!-- ==================== MODULE DESCRIPTION ==================== -->
+<h1 class="epydoc">Module chipseq</h1><p class="nomargin-top"></p>
+<p>======================= Module: bbcflib.chipseq 
+  =======================</p>
+  <p>This module provides functions to run a basic ChIP-seq analysis from 
+  reads mapped on a reference genome. The most important steps are the 
+  binding of ``macs`` via the 'add_macs_results' function and the peak 
+  deconvolution algorithm with the 'run_deconv' function.</p>
+  <p>The whole workflow can be run via the function ``workflow_groups`` 
+  with appropriate options in 'job.options'.</p>
+  <p>Below is the script used by the frontend:</p>
+<pre class="literalblock">
+   from bbcflib import daflims, genrep, frontend, email, gdv, common
+   from bbcflib.mapseq import *
+   from bbcflib.chipseq import *
+   M = MiniLIMS( '/path/to/chipseq/minilims' )
+   ms_limspath = '/path/to/mapseq/minilims'
+   working_dir = '/path/to/scratch/on/cluster'
+   hts_key = 'test_key'
+   assembly_id = 'mm9'
+   gl = { 'hts_chipseq': {'url': 'http://htsstation.vital-it.ch/chipseq/'},
+          'hts_mapseq': {'url': 'http://htsstation.vital-it.ch/mapseq/'},
+          'genrep_url': 'http://bbcftools.vital-it.ch/genrep/',
+          'script_path': '/srv/chipseq/lib' }
+   htss = frontend.Frontend( url=gl['hts_chipseq']['url'] )
+   g_rep = genrep.GenRep( gl['genrep_url'], &quot;&quot; )
+   job = htss.job( hts_key )
+   g_rep = genrep.GenRep( gl['genrep_url'], &quot;&quot; )
+   assembly = g_rep.assembly( assembly_id )
+   with execution( M, description=hts_key, remote_working_directory=working_dir ) as ex:
+       (ms_files, job) = get_bam_wig_files( ex, job, ms_limspath, gl['hts_mapseq']['url'], gl['script_path'], via=via )
+       files = workflow_groups( ex, job, ms_files, assembly.chromosomes, gl['script_path'] )
+   print ex.id
+   allfiles = common.get_files( ex.id, M )
+   print allfiles
+</pre>
+
+<!-- ==================== FUNCTIONS ==================== -->
+<a name="section-Functions"></a>
+<table class="summary" border="1" cellpadding="3"
+       cellspacing="0" width="100%" bgcolor="white">
+<tr bgcolor="#70b0f0" class="table-header">
+  <td colspan="2" class="table-header">
+    <table border="0" cellpadding="0" cellspacing="0" width="100%">
+      <tr valign="top">
+        <td align="left"><span class="table-header">Functions</span></td>
+        <td align="right" valign="top"
+         ><span class="options">[<a href="#section-Functions"
+         class="privatelink" onclick="toggle_private();"
+         >hide private</a>]</span></td>
+      </tr>
+    </table>
+  </td>
+</tr>
+<tr>
+    <td width="15%" align="right" valign="top" class="summary">
+      <span class="summary-type">&nbsp;</span>
+    </td><td class="summary">
+      <table width="100%" cellpadding="0" cellspacing="0" border="0">
+        <tr>
+          <td><span class="summary-sig"><a href="bbcflib.chipseq-module.html#add_macs_results" class="summary-sig-name">add_macs_results</a>(<span class="summary-sig-arg">ex</span>,
+        <span class="summary-sig-arg">read_length</span>,
+        <span class="summary-sig-arg">genome_size</span>,
+        <span class="summary-sig-arg">bamfile</span>,
+        <span class="summary-sig-arg">ctrlbam</span>=<span class="summary-sig-default">None</span>,
+        <span class="summary-sig-arg">name</span>=<span class="summary-sig-default">None</span>,
+        <span class="summary-sig-arg">poisson_threshold</span>=<span class="summary-sig-default">None</span>,
+        <span class="summary-sig-arg">alias</span>=<span class="summary-sig-default">None</span>,
+        <span class="summary-sig-arg">macs_args</span>=<span class="summary-sig-default">None</span>,
+        <span class="summary-sig-arg">via</span>=<span class="summary-sig-default"><code class="variable-quote">'</code><code class="variable-string">lsf</code><code class="variable-quote">'</code></span>)</span><br />
+      Calls the ``macs`` function on each possible pair of test and control
+      bam files and adds the respective outputs to the execution 
+      repository.</td>
+          <td align="right" valign="top">
+            
+            
+          </td>
+        </tr>
+      </table>
+      
+    </td>
+  </tr>
+<tr>
+    <td width="15%" align="right" valign="top" class="summary">
+      <span class="summary-type">&nbsp;</span>
+    </td><td class="summary">
+      <table width="100%" cellpadding="0" cellspacing="0" border="0">
+        <tr>
+          <td><span class="summary-sig"><a href="bbcflib.chipseq-module.html#run_deconv" class="summary-sig-name">run_deconv</a>(<span class="summary-sig-arg">ex</span>,
+        <span class="summary-sig-arg">sql</span>,
+        <span class="summary-sig-arg">peaks</span>,
+        <span class="summary-sig-arg">chromosomes</span>,
+        <span class="summary-sig-arg">read_extension</span>,
+        <span class="summary-sig-arg">script_path</span>,
+        <span class="summary-sig-arg">via</span>=<span class="summary-sig-default"><code class="variable-quote">'</code><code class="variable-string">lsf</code><code class="variable-quote">'</code></span>)</span><br />
+      Runs the complete deconvolution process for a set of sql files and a 
+      bed file, parallelized over a set of chromosomes (a dictionary with 
+      keys 'chromosome_id' and values a dictionary with chromosome names 
+      and lengths).</td>
+          <td align="right" valign="top">
+            
+            
+          </td>
+        </tr>
+      </table>
+      
+    </td>
+  </tr>
+<tr>
+    <td width="15%" align="right" valign="top" class="summary">
+      <span class="summary-type">&nbsp;</span>
+    </td><td class="summary">
+      <table width="100%" cellpadding="0" cellspacing="0" border="0">
+        <tr>
+          <td><span class="summary-sig"><a href="bbcflib.chipseq-module.html#workflow_groups" class="summary-sig-name">workflow_groups</a>(<span class="summary-sig-arg">ex</span>,
+        <span class="summary-sig-arg">job_or_dict</span>,
+        <span class="summary-sig-arg">mapseq_files</span>,
+        <span class="summary-sig-arg">chromosomes</span>,
+        <span class="summary-sig-arg">script_path</span>=<span class="summary-sig-default"><code class="variable-quote">'</code><code class="variable-string"></code><code class="variable-quote">'</code></span>,
+        <span class="summary-sig-arg">genrep</span>=<span class="summary-sig-default">None</span>,
+        <span class="summary-sig-arg">via</span>=<span class="summary-sig-default"><code class="variable-quote">'</code><code class="variable-string">lsf</code><code class="variable-quote">'</code></span>)</span><br />
+      Runs a chipseq workflow over bam files obtained by mapseq.</td>
+          <td align="right" valign="top">
+            
+            
+          </td>
+        </tr>
+      </table>
+      
+    </td>
+  </tr>
+</table>
+<!-- ==================== VARIABLES ==================== -->
+<a name="section-Variables"></a>
+<table class="summary" border="1" cellpadding="3"
+       cellspacing="0" width="100%" bgcolor="white">
+<tr bgcolor="#70b0f0" class="table-header">
+  <td colspan="2" class="table-header">
+    <table border="0" cellpadding="0" cellspacing="0" width="100%">
+      <tr valign="top">
+        <td align="left"><span class="table-header">Variables</span></td>
+        <td align="right" valign="top"
+         ><span class="options">[<a href="#section-Variables"
+         class="privatelink" onclick="toggle_private();"
+         >hide private</a>]</span></td>
+      </tr>
+    </table>
+  </td>
+</tr>
+<tr>
+    <td width="15%" align="right" valign="top" class="summary">
+      <span class="summary-type">&nbsp;</span>
+    </td><td class="summary">
+        <a name="__package__"></a><span class="summary-name">__package__</span> = <code title="'bbcflib'"><code class="variable-quote">'</code><code class="variable-string">bbcflib</code><code class="variable-quote">'</code></code>
+    </td>
+  </tr>
+<tr>
+    <td width="15%" align="right" valign="top" class="summary">
+      <span class="summary-type">&nbsp;</span>
+    </td><td class="summary">
+        <a name="bam_to_sam"></a><span class="summary-name">bam_to_sam</span> = <code title="&lt;bein.program object at 0x10c04bc10&gt;">&lt;bein.program object at 0x10c04bc10&gt;</code>
+    </td>
+  </tr>
+<tr>
+    <td width="15%" align="right" valign="top" class="summary">
+      <span class="summary-type">&nbsp;</span>
+    </td><td class="summary">
+        <a name="bowtie"></a><span class="summary-name">bowtie</span> = <code title="&lt;bein.program object at 0x10c04bad0&gt;">&lt;bein.program object at 0x10c04bad0&gt;</code>
+    </td>
+  </tr>
+<tr>
+    <td width="15%" align="right" valign="top" class="summary">
+      <span class="summary-type">&nbsp;</span>
+    </td><td class="summary">
+        <a name="bowtie_build"></a><span class="summary-name">bowtie_build</span> = <code title="&lt;bein.program object at 0x10c04bb50&gt;">&lt;bein.program object at 0x10c04bb50&gt;</code>
+    </td>
+  </tr>
+<tr>
+    <td width="15%" align="right" valign="top" class="summary">
+      <span class="summary-type">&nbsp;</span>
+    </td><td class="summary">
+        <a name="count_lines"></a><span class="summary-name">count_lines</span> = <code title="&lt;bein.program object at 0x10c04ba10&gt;">&lt;bein.program object at 0x10c04ba10&gt;</code>
+    </td>
+  </tr>
+<tr>
+    <td width="15%" align="right" valign="top" class="summary">
+      <span class="summary-type">&nbsp;</span>
+    </td><td class="summary">
+        <a name="external_add_nh_flag"></a><span class="summary-name">external_add_nh_flag</span> = <code title="&lt;bein.program object at 0x10c04bb90&gt;">&lt;bein.program object at 0x10c04bb90&gt;</code>
+    </td>
+  </tr>
+<tr>
+    <td width="15%" align="right" valign="top" class="summary">
+      <span class="summary-type">&nbsp;</span>
+    </td><td class="summary">
+        <a name="index_bam"></a><span class="summary-name">index_bam</span> = <code title="&lt;bein.program object at 0x10c04bd50&gt;">&lt;bein.program object at 0x10c04bd50&gt;</code>
+    </td>
+  </tr>
+<tr>
+    <td width="15%" align="right" valign="top" class="summary">
+      <span class="summary-type">&nbsp;</span>
+    </td><td class="summary">
+        <a name="join_pdf"></a><span class="summary-name">join_pdf</span> = <code title="&lt;bein.program object at 0x10ac1f5d0&gt;">&lt;bein.program object at 0x10ac1f5d0&gt;</code>
+    </td>
+  </tr>
+<tr>
+    <td width="15%" align="right" valign="top" class="summary">
+      <span class="summary-type">&nbsp;</span>
+    </td><td class="summary">
+        <a name="macs"></a><span class="summary-name">macs</span> = <code title="&lt;bein.program object at 0x11061e650&gt;">&lt;bein.program object at 0x11061e650&gt;</code>
+    </td>
+  </tr>
+<tr>
+    <td width="15%" align="right" valign="top" class="summary">
+      <span class="summary-type">&nbsp;</span>
+    </td><td class="summary">
+        <a name="md5sum"></a><span class="summary-name">md5sum</span> = <code title="&lt;bein.program object at 0x10c04b990&gt;">&lt;bein.program object at 0x10c04b990&gt;</code>
+    </td>
+  </tr>
+<tr>
+    <td width="15%" align="right" valign="top" class="summary">
+      <span class="summary-type">&nbsp;</span>
+    </td><td class="summary">
+        <a name="merge_bam"></a><span class="summary-name">merge_bam</span> = <code title="&lt;bein.program object at 0x10c04bd90&gt;">&lt;bein.program object at 0x10c04bd90&gt;</code>
+    </td>
+  </tr>
+<tr>
+    <td width="15%" align="right" valign="top" class="summary">
+      <span class="summary-type">&nbsp;</span>
+    </td><td class="summary">
+        <a name="remove_lines_matching"></a><span class="summary-name">remove_lines_matching</span> = <code title="&lt;bein.program object at 0x10c04b950&gt;">&lt;bein.program object at 0x10c04b950&gt;</code>
+    </td>
+  </tr>
+<tr>
+    <td width="15%" align="right" valign="top" class="summary">
+      <span class="summary-type">&nbsp;</span>
+    </td><td class="summary">
+        <a name="replace_bam_header"></a><span class="summary-name">replace_bam_header</span> = <code title="&lt;bein.program object at 0x10c04bc50&gt;">&lt;bein.program object at 0x10c04bc50&gt;</code>
+    </td>
+  </tr>
+<tr>
+    <td width="15%" align="right" valign="top" class="summary">
+      <span class="summary-type">&nbsp;</span>
+    </td><td class="summary">
+        <a name="run_deconv_r"></a><span class="summary-name">run_deconv_r</span> = <code title="&lt;bein.program object at 0x11061e710&gt;">&lt;bein.program object at 0x11061e710&gt;</code>
+    </td>
+  </tr>
+<tr>
+    <td width="15%" align="right" valign="top" class="summary">
+      <span class="summary-type">&nbsp;</span>
+    </td><td class="summary">
+        <a name="sam_to_bam"></a><span class="summary-name">sam_to_bam</span> = <code title="&lt;bein.program object at 0x10c04bbd0&gt;">&lt;bein.program object at 0x10c04bbd0&gt;</code>
+    </td>
+  </tr>
+<tr>
+    <td width="15%" align="right" valign="top" class="summary">
+      <span class="summary-type">&nbsp;</span>
+    </td><td class="summary">
+        <a name="sleep"></a><span class="summary-name">sleep</span> = <code title="&lt;bein.program object at 0x10c04b9d0&gt;">&lt;bein.program object at 0x10c04b9d0&gt;</code>
+    </td>
+  </tr>
+<tr>
+    <td width="15%" align="right" valign="top" class="summary">
+      <span class="summary-type">&nbsp;</span>
+    </td><td class="summary">
+        <a name="sort_bam"></a><span class="summary-name">sort_bam</span> = <code title="&lt;bein.program object at 0x10c04bc90&gt;">&lt;bein.program object at 0x10c04bc90&gt;</code>
+    </td>
+  </tr>
+<tr>
+    <td width="15%" align="right" valign="top" class="summary">
+      <span class="summary-type">&nbsp;</span>
+    </td><td class="summary">
+        <a name="sort_bam_by_read"></a><span class="summary-name">sort_bam_by_read</span> = <code title="&lt;bein.program object at 0x10c04bcd0&gt;">&lt;bein.program object at 0x10c04bcd0&gt;</code>
+    </td>
+  </tr>
+<tr>
+    <td width="15%" align="right" valign="top" class="summary">
+      <span class="summary-type">&nbsp;</span>
+    </td><td class="summary">
+        <a name="split_file"></a><span class="summary-name">split_file</span> = <code title="&lt;bein.program object at 0x10c04ba50&gt;">&lt;bein.program object at 0x10c04ba50&gt;</code>
+    </td>
+  </tr>
+<tr>
+    <td width="15%" align="right" valign="top" class="summary">
+      <span class="summary-type">&nbsp;</span>
+    </td><td class="summary">
+        <a name="sql_finish_deconv"></a><span class="summary-name">sql_finish_deconv</span> = <code title="&lt;bein.program object at 0x11061e750&gt;">&lt;bein.program object at 0x11061e750&gt;</code>
+    </td>
+  </tr>
+<tr>
+    <td width="15%" align="right" valign="top" class="summary">
+      <span class="summary-type">&nbsp;</span>
+    </td><td class="summary">
+        <a name="sql_prepare_deconv"></a><span class="summary-name">sql_prepare_deconv</span> = <code title="&lt;bein.program object at 0x11061e6d0&gt;">&lt;bein.program object at 0x11061e6d0&gt;</code>
+    </td>
+  </tr>
+<tr>
+    <td width="15%" align="right" valign="top" class="summary">
+      <span class="summary-type">&nbsp;</span>
+    </td><td class="summary">
+        <a name="touch"></a><span class="summary-name">touch</span> = <code title="&lt;bein.program object at 0x10c04b910&gt;">&lt;bein.program object at 0x10c04b910&gt;</code>
+    </td>
+  </tr>
+</table>
+<!-- ==================== FUNCTION DETAILS ==================== -->
+<a name="section-FunctionDetails"></a>
+<table class="details" border="1" cellpadding="3"
+       cellspacing="0" width="100%" bgcolor="white">
+<tr bgcolor="#70b0f0" class="table-header">
+  <td colspan="2" class="table-header">
+    <table border="0" cellpadding="0" cellspacing="0" width="100%">
+      <tr valign="top">
+        <td align="left"><span class="table-header">Function Details</span></td>
+        <td align="right" valign="top"
+         ><span class="options">[<a href="#section-FunctionDetails"
+         class="privatelink" onclick="toggle_private();"
+         >hide private</a>]</span></td>
+      </tr>
+    </table>
+  </td>
+</tr>
+</table>
+<a name="add_macs_results"></a>
+<div>
+<table class="details" border="1" cellpadding="3"
+       cellspacing="0" width="100%" bgcolor="white">
+<tr><td>
+  <table width="100%" cellpadding="0" cellspacing="0" border="0">
+  <tr valign="top"><td>
+  <h3 class="epydoc"><span class="sig"><span class="sig-name">add_macs_results</span>(<span class="sig-arg">ex</span>,
+        <span class="sig-arg">read_length</span>,
+        <span class="sig-arg">genome_size</span>,
+        <span class="sig-arg">bamfile</span>,
+        <span class="sig-arg">ctrlbam</span>=<span class="sig-default">None</span>,
+        <span class="sig-arg">name</span>=<span class="sig-default">None</span>,
+        <span class="sig-arg">poisson_threshold</span>=<span class="sig-default">None</span>,
+        <span class="sig-arg">alias</span>=<span class="sig-default">None</span>,
+        <span class="sig-arg">macs_args</span>=<span class="sig-default">None</span>,
+        <span class="sig-arg">via</span>=<span class="sig-default"><code class="variable-quote">'</code><code class="variable-string">lsf</code><code class="variable-quote">'</code></span>)</span>
+  </h3>
+  </td><td align="right" valign="top"
+    >&nbsp;
+    </td>
+  </tr></table>
+  
+  <p>Calls the ``macs`` function on each possible pair of test and control 
+  bam files and adds the respective outputs to the execution 
+  repository.</p>
+  <p>``macs`` options can be controlled with `macs_args`. If a dictionary 
+  of Poisson thresholds for each sample is given, then the enrichment 
+  bounds ('-m' option) are computed from them otherwise the default is '-m 
+  5,60'.</p>
+  <p>Returns the set of file prefixes.</p>
+  <dl class="fields">
+  </dl>
+</td></tr></table>
+</div>
+<a name="run_deconv"></a>
+<div>
+<table class="details" border="1" cellpadding="3"
+       cellspacing="0" width="100%" bgcolor="white">
+<tr><td>
+  <table width="100%" cellpadding="0" cellspacing="0" border="0">
+  <tr valign="top"><td>
+  <h3 class="epydoc"><span class="sig"><span class="sig-name">run_deconv</span>(<span class="sig-arg">ex</span>,
+        <span class="sig-arg">sql</span>,
+        <span class="sig-arg">peaks</span>,
+        <span class="sig-arg">chromosomes</span>,
+        <span class="sig-arg">read_extension</span>,
+        <span class="sig-arg">script_path</span>,
+        <span class="sig-arg">via</span>=<span class="sig-default"><code class="variable-quote">'</code><code class="variable-string">lsf</code><code class="variable-quote">'</code></span>)</span>
+  </h3>
+  </td><td align="right" valign="top"
+    >&nbsp;
+    </td>
+  </tr></table>
+  
+  <p>Runs the complete deconvolution process for a set of sql files and a 
+  bed file, parallelized over a set of chromosomes (a dictionary with keys 
+  'chromosome_id' and values a dictionary with chromosome names and 
+  lengths).</p>
+  <p>Returns a dictionary of file outputs with keys file types ('pdf', 
+  'sql' and 'bed') and values the file names.</p>
+  <dl class="fields">
+  </dl>
+</td></tr></table>
+</div>
+<a name="workflow_groups"></a>
+<div>
+<table class="details" border="1" cellpadding="3"
+       cellspacing="0" width="100%" bgcolor="white">
+<tr><td>
+  <table width="100%" cellpadding="0" cellspacing="0" border="0">
+  <tr valign="top"><td>
+  <h3 class="epydoc"><span class="sig"><span class="sig-name">workflow_groups</span>(<span class="sig-arg">ex</span>,
+        <span class="sig-arg">job_or_dict</span>,
+        <span class="sig-arg">mapseq_files</span>,
+        <span class="sig-arg">chromosomes</span>,
+        <span class="sig-arg">script_path</span>=<span class="sig-default"><code class="variable-quote">'</code><code class="variable-string"></code><code class="variable-quote">'</code></span>,
+        <span class="sig-arg">genrep</span>=<span class="sig-default">None</span>,
+        <span class="sig-arg">via</span>=<span class="sig-default"><code class="variable-quote">'</code><code class="variable-string">lsf</code><code class="variable-quote">'</code></span>)</span>
+  </h3>
+  </td><td align="right" valign="top"
+    >&nbsp;
+    </td>
+  </tr></table>
+  
+  <p>Runs a chipseq workflow over bam files obtained by mapseq. Will 
+  optionally run ``macs`` and 'run_deconv'.</p>
+  <p>Arguments are:</p>
+  <p>* ``'ex'``: a 'bein' execution environment to run jobs in,</p>
+  <p>* ``'job_or_dict'``: a 'Frontend' 'job' object, or a dictionary with 
+  key 'groups' and 'options' if applicable,</p>
+  <p>* ``'chromosomes'``: a dictionary with keys 'chromosome_id' and values
+  a dictionary with chromosome names and lengths,</p>
+  <p>* ``'script_path'``: only needed if 'run_deconv' is in the job 
+  options, must point to the location of the R scripts.</p>
+  <p>Defaults ``macs`` parameters (overriden by 
+  job_or_dict['options']['macs_args']) are set as follows:</p>
+  <p>* ``'-p'``: .001 (p-value threshold)</p>
+  <p>* ``'-bw'``: 200 ('bandwith')</p>
+  <p>* ``'-m'``: 5,60 ('minimum and maximum enrichments relative to 
+  background or control')</p>
+  <p>The enrichment bounds will be computed from a Poisson threshold *T*, 
+  if available, as *(min(30,T+1),30(T+1))*.</p>
+  <p>Returns a tuple of a dictionary with keys *group_id* from the job 
+  groups, *macs* and *deconv* if applicable and values file description 
+  dictionaries and a dictionary of *group_ids* to *names* used in file 
+  descriptions.</p>
+  <dl class="fields">
+  </dl>
+</td></tr></table>
+</div>
+<br />
+<!-- ==================== NAVIGATION BAR ==================== -->
+<table class="navbar" border="0" width="100%" cellpadding="0"
+       bgcolor="#a0c0ff" cellspacing="0">
+  <tr valign="middle">
+  <!-- Home link -->
+      <th>&nbsp;&nbsp;&nbsp;<a
+        href="bbcflib-module.html">Home</a>&nbsp;&nbsp;&nbsp;</th>
+
+  <!-- Tree link -->
+      <th>&nbsp;&nbsp;&nbsp;<a
+        href="module-tree.html">Trees</a>&nbsp;&nbsp;&nbsp;</th>
+
+  <!-- Index link -->
+      <th>&nbsp;&nbsp;&nbsp;<a
+        href="identifier-index.html">Indices</a>&nbsp;&nbsp;&nbsp;</th>
+
+  <!-- Help link -->
+      <th>&nbsp;&nbsp;&nbsp;<a
+        href="help.html">Help</a>&nbsp;&nbsp;&nbsp;</th>
+
+  <!-- Project homepage -->
+      <th class="navbar" align="right" width="100%">
+        <table border="0" cellpadding="0" cellspacing="0">
+          <tr><th class="navbar" align="center"
+            ><a class="navbar" target="_top" href="http://bbcf.epfl.ch/bbcflib">bbcflib</a></th>
+          </tr></table></th>
+  </tr>
+</table>
+<table border="0" cellpadding="0" cellspacing="0" width="100%%">
+  <tr>
+    <td align="left" class="footer">
+    Generated by Epydoc 3.0.1 on Mon Aug 22 17:50:28 2011
+    </td>
+    <td align="right" class="footer">
+      <a target="mainFrame" href="http://epydoc.sourceforge.net"
+        >http://epydoc.sourceforge.net</a>
+    </td>
+  </tr>
+</table>
+
+<script type="text/javascript">
+  <!--
+  // Private objects are initially displayed (because if
+  // javascript is turned off then we want them to be
+  // visible); but by default, we want to hide them.  So hide
+  // them unless we have a cookie that says to show them.
+  checkCookie();
+  // -->
+</script>
+</body>
+</html>
