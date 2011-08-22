@@ -156,7 +156,7 @@ def inference(cond1_label, cond1, cond2_label, cond2, assembly_id,
     randomly named file, and returns that filename.
     """
 
-    fake_csv = 1
+    fake_csv = 0
     fake_mapping = 1
 
     def translate_gene_ids(res):
@@ -205,10 +205,11 @@ def inference(cond1_label, cond1, cond2_label, cond2, assembly_id,
         res = deseq.nbinomTest(cds, cond1_label, cond2_label)
     else:
         res = robjects.DataFrame.from_csvfile("../temp/fullcsv")
+        exon_ids = list(numpy.array(res.rx("id")[0].levels)[numpy.array(res.rx("id")[0])-1]) #FactorVector
+        fc_exons = dict(zip(exon_ids,numpy.array(res.rx("log2FoldChange")[0])))
 
     print "-init"
-    exon_ids = list(numpy.array(res.rx("id")[0].levels)[numpy.array(res.rx("id")[0])-1]) #FactorVector
-    fc_exons = dict(zip(exon_ids,numpy.array(res.rx("log2FoldChange")[0])))
+    fc_exons = dict(zip(list(res.rx('id')),numpy.array(res.rx("log2FoldChange")[0])))
 
     print "Loading mappings..."
     # - gene_ids is a list of gene ID's
