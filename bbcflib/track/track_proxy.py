@@ -29,7 +29,7 @@ class TrackProxy(TrackBackend):
         tmp_path = named_temporary_path('.' + backend_format)
         with new(tmp_path, backend_format, name=name, datatype=self._datatype) as t:
             if not empty:
-                with open(self._path, 'r') as self._file:
+                with self._file_obj as self._file:
                     t.attributes.update(self._read_header())
                     fields = self._fields
                     for chrom, data in self._read(): t.write(chrom, data, fields)
