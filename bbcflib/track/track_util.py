@@ -60,13 +60,13 @@ def guess_file_format(path):
 def import_implementation(format):
     '''
     Try to import the implementation of a given format.
-    It will look in 'bbcflib.formats' module the given 'format' 
+    It will look in 'bbcflib.formats' module the given 'format'
     exist as a file.
-    e.g. : for  'my_file.bed' it will look for 'bed.py'
+    e.g.: for 'my_file.bed' it will look for 'bed.py'
     '''
     if not hasattr(sys.modules[__package__].formats, format):
         try:
-            __import__(    __package__ + '.formats.' + format)
+            __import__(__package__ + '.formats.' + format)
         except ImportError :
             raise Exception('Format %s not supported' % format)
     return sys.modules[__package__ + '.formats.' + format]
