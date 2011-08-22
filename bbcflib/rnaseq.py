@@ -27,6 +27,7 @@ import rpy2.robjects.packages as rpackages
 import rpy2.robjects.numpy2ri
 import rpy2.rlike.container as rlc
 import cogent.db.ensembl as ensembl
+import csv
 
 ################################################################################
 
@@ -120,24 +121,23 @@ def pairs_to_test(controls):
                 if controls[x] and not(controls[y])]
 
 @program
-def external_deseq(cond1_label, cond1, cond2_label, cond2, method="normal", output=None, gene_names=None):
-    if output:
-        result_filename = output
-    else:
-        result_filename = unique_filename_in()
+def external_deseq(cond1_label, cond1, cond2_label, cond2, assembly_id,
+                   target=["exons","genes","transcripts"], method="normal", maplot=None):
+    result_filename = unique_filename_in()
     c1 = unique_filename_in()
     with open(c1,'wb') as f:
         pickle.dump(cond1,f,pickle.HIGHEST_PROTOCOL)
     c2 = unique_filename_in()
     with open(c2,'wb') as f:
         pickle.dump(cond2,f,pickle.HIGHEST_PROTOCOL)
-    gn = unique_filename_in()
-    with open(gn,'wb') as f:
-        pickle.dump(gene_names,f,pickle.HIGHEST_PROTOCOL)
-    call = ["run_deseq.py", c1, c2, cond1_label, cond2_label, method, result_filename, gn]
+    targ = unique_filename_in()
+    with open(targ,'wb') as f:
+        pickle.dump(target,f,pickle.HIGHEST_PROTOCOL)
+    call = ["run_deseq.py", c1, c2, cond1_label, cond2_label, str(assembly_id), targ, method, str(maplot)]
     return {"arguments": call, "return_value": result_filename}
 
-def inference(cond1_label, cond1, cond2_label, cond2, method="normal", output=None, gene_names=None):
+def inference(cond1_label, cond1, cond2_label, cond2, assembly_id,
+              target=["exons","genes","transcripts"], method="normal", maplot=None):
     """Runs DESeq comparing the counts in *cond1* and *cond2*.
 
     Arguments:
@@ -146,7 +146,6 @@ def inference(cond1_label, cond1, cond2_label, cond2, method="normal", output=No
     transcript.
     *cond1_label* and *cond2_label* are string which will be used
     to identify the two conditions in R.
-    *gene_names* is a dictionary {gene ID: gene name}.
 
     ``deseq_inference`` writes a tab delimited text file of the
     conditions to R, the first column being the transcript name,
@@ -157,23 +156,8 @@ def inference(cond1_label, cond1, cond2_label, cond2, method="normal", output=No
     randomly named file, and returns that filename.
     """
 
-    # Pass the data into R as a data frame
-    data_frame_contents = rlc.OrdDict([(cond1_label+'-'+str(i), robjects.IntVector(c.values()))
-                                       for i,c in enumerate(cond1)] +
-                                      [(cond2_label+'-'+str(i), robjects.IntVector(c.values()))
-                                       for i,c in enumerate(cond2)])
-    data_frame = robjects.DataFrame(data_frame_contents)
-    data_frame.rownames = cond1[0].keys()
-    conds = robjects.StrVector([cond1_label for x in cond1] + [cond2_label for x in cond2]).factor()
-    if cond1[0].keys() != cond2[0].keys(): raise
-
-    ## DESeq full analysis
-    deseq = rpackages.importr('DESeq')
-    cds = deseq.newCountDataSet(data_frame, conds)
-    cds = deseq.estimateSizeFactors(cds)
-    try: cds = deseq.estimateVarianceFunctions(cds,method=method)
-    except : raise rpy2.rinterface.RRuntimeError("Too few reads to estimate variances with DESeq")
-    res = deseq.nbinomTest(cds, cond1_label, cond2_label)
+    fake_csv = 1
+    fake_mapping = 1
 
     def translate_gene_ids(res):
         '''Replace (unique) gene IDs by (not unique) gene names '''
@@ -192,11 +176,102 @@ def inference(cond1_label, cond1, cond2_label, cond2, method="normal", output=No
             res = data_frame
         return res
 
-    if output: result_filename = output
-    else: result_filename = unique_filename_in()
+    def save_results(data):
+        filename = unique_filename_in()
+        with open(filename,"wb") as f:
+            c = csv.writer(f)
+            c.writerow(["id", "log2FoldChange"])
+            for k,v in data.iteritems():
+                c.writerow([k,v])
+        return filename
 
-    res.to_csvfile(result_filename)
-    return result_filename
+    if not fake_csv:
+        # Pass the data into R as a data frame
+        data_frame_contents = rlc.OrdDict([(cond1_label+'-'+str(i), robjects.IntVector(c.values()))
+                                       for i,c in enumerate(cond1)] +
+                                      [(cond2_label+'-'+str(i), robjects.IntVector(c.values()))
+                                       for i,c in enumerate(cond2)])
+        data_frame = robjects.DataFrame(data_frame_contents)
+        data_frame.rownames = cond1[0].keys()
+        conds = robjects.StrVector([cond1_label for x in cond1] + [cond2_label for x in cond2]).factor()
+        if cond1[0].keys() != cond2[0].keys(): raise
+
+        ## DESeq full analysis
+        deseq = rpackages.importr('DESeq')
+        cds = deseq.newCountDataSet(data_frame, conds)
+        cds = deseq.estimateSizeFactors(cds)
+        try: cds = deseq.estimateVarianceFunctions(cds,method=method)
+        except : raise rpy2.rinterface.RRuntimeError("Too few reads to estimate variances with DESeq")
+        res = deseq.nbinomTest(cds, cond1_label, cond2_label)
+    else:
+        res = robjects.DataFrame.from_csvfile("../temp/fullcsv")
+
+    print "-init"
+    exon_ids = list(numpy.array(res.rx("id")[0].levels)[numpy.array(res.rx("id")[0])-1]) #FactorVector
+    fc_exons = dict(zip(exon_ids,numpy.array(res.rx("log2FoldChange")[0])))
+
+    print "Loading mappings..."
+    # - gene_ids is a list of gene ID's
+    # - gene_names is a dict {gene ID: gene name}
+    # - transcript_mapping is a dictionary {transcript ID: gene ID}
+    # - exon_mapping is a dictionary {exon ID: (transcript ID, gene ID)}
+    # - trans_in_gene is a dict {transcript ID: ID of the gene it belongs to}
+    # - exons_in_trans is a dict {exon ID: ID of the transcript it belongs to}
+    ex = 1
+    if fake_mapping:
+        mappings = fetch_mappings(ex,"../archive/maptest.pickle")
+    else:
+        #mappings = fetch_mappings(ex, assembly_id)
+        mappings = fetch_mappings(ex,"../archive/bb27b89826b88823423282438077cdb836e1e6e5.pickle")
+    (gene_ids, gene_names, transcript_mapping, exon_mapping, trans_in_gene, exons_in_trans) = mappings
+    print "Loaded."
+
+    if "exons" in target:
+        exons_filename = save_results(fc_exons)
+        print "Exons: Done successfully."            
+
+    print "Compute fold Changes for genes and transcripts..."
+    ### Get fold change for genes
+    if "genes" in target:
+        fc_genes = dict(zip(gene_ids,numpy.zeros(len(gene_ids))))
+        for e,c in fc_exons.iteritems():
+            e = e.split('|')[0]
+            if exon_mapping.get(e):
+                fc_genes[exon_mapping[e][1]] += c
+        genes_filename = save_results(fc_genes)
+            
+    ### Get fold change for the transcripts using pseudo-inverse
+    if "transcripts" in target:
+        fc_trans = dict(zip(transcript_mapping.keys(),numpy.zeros(len(transcript_mapping.keys()))))
+        for g in gene_ids:
+            tg = trans_in_gene[g]
+            if len(tg) == 1:
+                t = tg[0]
+                eg = exons_in_trans[t]
+                for e in eg:
+                    if fc_exons.get(e):
+                        fc_trans[t] += fc_exons[e]
+            else:
+                eg = []
+                for t in tg:
+                    eg.extend(exons_in_trans[t])
+                M = numpy.zeros((len(eg),len(tg)))
+                exons_expression = numpy.zeros(len(eg))
+                for i,e in enumerate(eg):
+                    for j,t in enumerate(tg):
+                        ebt = exons_in_trans[t]
+                        if e in ebt:
+                            M[i,j] = 1
+                    if exon_pileup.get(e):
+                        exons_expression[i] += fc_exons[e]
+                #pseudo-inverse; DESeq accepts integers only
+                transcripts_expression = numpy.ceil(numpy.dot(pinv(M),exons_expression))
+                for k,t in enumerate(tg):
+                    fc_trans[t] = transcripts_expression[k]
+        trans_filename = save_results(fc_trans)
+
+    return (exons_filename, genes_filename, trans_filename)
+
 
 def rnaseq_workflow(ex, job, assembly, target=["genes"], via="lsf", output=None, maplot="normal"):
     """Run RNASeq inference according to *job_info*.
@@ -218,8 +293,6 @@ def rnaseq_workflow(ex, job, assembly, target=["genes"], via="lsf", output=None,
     frontend, this just means printing it to stdout.
     """
     fake_align = 1
-    fake_mapping = 0
-    fake_csv = 1
 
     names = {}; runs = {}; controls = {}; paths = {}; gids = {}
     groups = job.groups
@@ -258,21 +331,6 @@ def rnaseq_workflow(ex, job, assembly, target=["genes"], via="lsf", output=None,
     # the list of exons from just the first one and use it for all of them.
     # Format: ('exonID|geneID|start|end|strand', length)
     exons = exons_labels(bam_files.values()[0][1]['bam'])
-
-    print "Loading mappings..."
-    # - gene_ids is a list of gene ID's
-    # - gene_names is a dict {gene ID: gene name}
-    # - transcript_mapping is a dictionary {transcript ID: gene ID}
-    # - exon_mapping is a dictionary {exon ID: (transcript ID, gene ID)}
-    # - trans_in_gene is a dict {transcript ID: ID of the gene it belongs to}
-    # - exons_in_trans is a dict {exon ID: ID of the transcript it belongs to}
-    if fake_mapping:
-        mappings = fetch_mappings(ex,"/scratch/cluster/monthly/jdelafon-el/maptest.pickle")
-    else:
-        mappings = fetch_mappings(ex, assembly_id)
-    (gene_ids, gene_names, transcript_mapping, exon_mapping, trans_in_gene, exons_in_trans) = mappings
-    transcripts_ids = transcript_mapping.keys()
-    print "Loaded."
     
     exon_pileups = {}
     for condition,files in bam_files.iteritems():
@@ -281,98 +339,32 @@ def rnaseq_workflow(ex, job, assembly, target=["genes"], via="lsf", output=None,
             exon_pileup = pileup_file(f['bam'], exons) #{exon_id: count}
             exon_pileups[condition].append(exon_pileup) #{cond1: [{pileup bam1},{pileup bam2},...], cond2:...}
 
-    futures_exons = {}
+    futures = {}
     for (c1,c2) in pairs_to_test(controls):
         if len(runs[c1]) + len(runs[c2]) > 2:
             method = "normal"
         else: method = "blind"
         print "DESeq analysis..."
-        if not fake_csv:
-            futures_exons[(c1,c2)] = external_deseq.nonblocking(ex,
-                                          names[c1], exon_pileups[c1],
+            ## futures_exons[(c1,c2)] = external_deseq.nonblocking(ex,
+            ##                               names[c1], exon_pileups[c1],
+            ##                               names[c2], exon_pileups[c2],
+            ##                               method, output, gene_names=gene_names, via=via)
+        futures[(c1,c2)] = inference(names[c1], exon_pileups[c1],
                                           names[c2], exon_pileups[c2],
-                                          method, output, gene_names=gene_names, via=via)
-            for c,f in futures_exons.iteritems():
-                exons_file = f.wait()
-                #ex.add(exons_file, description="Full CSV - inference for exons")
-                if exons_file:
-                    res = robjects.DataFrame.from_csvfile(exons_file)
-                else:
-                    print >>sys.stderr, "Exons: Failed during inference, probably because of too few reads for DESeq stats."
-        else:
-            res = robjects.DataFrame.from_csvfile("../temp/fullcsv")
-
-        print "-init"
-        exon_ids = list(numpy.array(res.rx("id")[0].levels)[numpy.array(res.rx("id")[0])-1]) #FactorVector
-        fc_exons = dict(zip(exon_ids,numpy.array(res.rx("log2FoldChange")[0])))
-
-        if "exons" in target:
-            print "-dataframe"
-            #contents_exons = rlc.OrdDict([("id",fc_exons.keys()),("log2FoldChange",fc_exons.values())])
-            data_frame_exons = robjects.DataFrame(fc_exons)
-            exons_filename = unique_filename_in()
-            print "-addtocsv"
-            data_frame_exons.to_csvfile(exons_filename)
-            print "-addtorepository"
-            ex.add(exons_filename, description="Comparison of EXONS in conditions \
-                                                '%s' and '%s' (CSV)" % (names[c1], names[c2]))
-            print "Exons: Done successfully."
-
-        print "Compute fold Changes for genes and transcripts..."
-        ### Get fold change for genes
-        if "genes" in target:
-            fc_genes = dict(zip(gene_ids,numpy.zeros(len(gene_ids))))
-            for e,c in fc_exons.iteritems():
-                e = e.split('|')[0]
-                if exon_mapping.get(e):
-                    fc_genes[exon_mapping[e][1]] += c
-
-            print "Wait for results..."
-            contents_genes = rlc.OrdDict([("id",fc_genes.keys()),("log2FoldChange",fc_genes.values())])
-            data_frame_genes = robjects.DataFrame(contents_genes)
-            genes_filename = unique_filename_in()
-            data_frame_genes.to_csvfile(genes_filename)
-            ex.add(genes_filename, description="Comparison of GENES in conditions \
-                                            '%s' and '%s' (CSV)" % (names[c1], names[c2]))
-            print "Genes: Done successfully."
-            
-        ### Get fold change for the transcripts using pseudo-inverse (16 sec)
-        if "transcripts" in target:
-            fc_trans = dict(zip(transcript_mapping.keys(),numpy.zeros(len(transcript_mapping.keys()))))
-            for g in gene_ids:
-                tg = trans_in_gene[g]
-                if len(tg) == 1:
-                    t = tg[0]
-                    eg = exons_in_trans[t]
-                    for e in eg:
-                        if fc_exons.get(e):
-                            fc_trans[t] += fc_exons[e]
-                else:
-                    eg = []
-                    for t in tg:
-                        eg.extend(exons_in_trans[t])
-                    M = numpy.zeros((len(eg),len(tg)))
-                    exons_expression = numpy.zeros(len(eg))
-                    for i,e in enumerate(eg):
-                        for j,t in enumerate(tg):
-                            ebt = exons_in_trans[t]
-                            if e in ebt:
-                                M[i,j] = 1
-                        if exon_pileup.get(e):
-                            exons_expression[i] += fc_exons[e]
-                    #pseudo-inverse; DESeq accepts integers only
-                    transcripts_expression = numpy.ceil(numpy.dot(pinv(M),exons_expression))
-                    for k,t in enumerate(tg):
-                        fc_trans[t] = transcripts_expression[k]
-
-            print "Wait for results..."
-            contents_trans = rlc.OrdDict([("id",fc_trans.keys()),("log2FoldChange",fc_trans.values())])
-            data_frame_trans = robjects.DataFrame(contents_trans)
-            trans_filename = unique_filename_in()
-            data_frame_trans.to_csvfile(trans_filename)
-            ex.add(trans_filename, description="Comparison of TRANSCRIPTS in conditions \
-                                            '%s' and '%s' (CSV)" % (names[c1], names[c2]))
-            print "Transcripts: Done successfully."
+                                          assembly_id, target, method, maplot)
+        for c,f in futures.iteritems():
+            (exons_filename, genes_filename, trans_filename) = f#.wait()
+            if not exons_filename:
+                print >>sys.stderr, "Exons: Failed during inference, probably because of too few reads for DESeq stats."
+                raise
+            if "genes" in target:
+                ex.add(genes_filename, description="Comparison of GENES in conditions \
+                                                   '%s' and '%s' (CSV)" % (names[c1], names[c2]))
+                print "GENES: Done successfully."
+            if "transcripts" in target:
+                ex.add(trans_filename, description="Comparison of GENES in conditions \
+                                                   '%s' and '%s' (CSV)" % (names[c1], names[c2]))
+                print "TRANSCRIPTS: Done successfully."
         print "Done."
 
 
