@@ -17,9 +17,8 @@ def guess_file_format(path):
     Try to detect the file type.
     Return one of 'known_formats' value if successfull,
     otherwise return an empty string
-    TODO : magic doesn't work on each systems.
-    keep it or just rest with the extensions ??
-     
+    TODO: magic doesn't work on each systems.
+    keep it or just stay with the extensions ?
     '''
     # Link between descriptions and file extension #
     known_formats = {
