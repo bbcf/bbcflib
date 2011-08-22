@@ -66,7 +66,7 @@ class TrackText(object):
                 try:
                     result = dict([p.split('=',1) for p in shlex.split(line[6:])])
                 except ValueError:
-                    raise Exception("The <track> header line for the file '" + self._path + "' seams to be invalid")
+                    raise Exception("The <track> header line for the file '" + self._path + "' seems to be invalid")
         return result
 
     def _write_header(self):
