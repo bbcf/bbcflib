@@ -25,6 +25,10 @@ def int_to_strand(num):
 
 ###########################################################################
 class TrackText(object):
+    @property
+    def _file_obj(self): return open(self._path, 'r')
+
+    #--------------------------------------------------------------------------#
     def _read(self):
         global chrom, entry, generator
         chrom           = ''
