@@ -123,7 +123,7 @@ def pairs_to_test(controls):
 @program
 def external_deseq(cond1_label, cond1, cond2_label, cond2, assembly_id,
                    target=["exons","genes","transcripts"], method="normal", maplot=None):
-    result_filename = unique_filename_in()
+    output = unique_filename_in()
     c1 = unique_filename_in()
     with open(c1,'wb') as f:
         pickle.dump(cond1,f,pickle.HIGHEST_PROTOCOL)
@@ -133,8 +133,8 @@ def external_deseq(cond1_label, cond1, cond2_label, cond2, assembly_id,
     targ = unique_filename_in()
     with open(targ,'wb') as f:
         pickle.dump(target,f,pickle.HIGHEST_PROTOCOL)
-    call = ["run_deseq.py", c1, c2, cond1_label, cond2_label, str(assembly_id), targ, method, str(maplot)]
-    return {"arguments": call, "return_value": result_filename}
+    call = ["run_deseq.py", c1, c2, cond1_label, cond2_label, str(assembly_id), targ, method, str(maplot), output]
+    return {"arguments": call, "return_value": output}
 
 def inference(cond1_label, cond1, cond2_label, cond2, assembly_id,
               target=["exons","genes","transcripts"], method="normal", maplot=None):
@@ -147,7 +147,7 @@ def inference(cond1_label, cond1, cond2_label, cond2, assembly_id,
     *cond1_label* and *cond2_label* are string which will be used
     to identify the two conditions in R.
 
-    ``deseq_inference`` writes a tab delimited text file of the
+    ``inference`` writes a tab delimited text file of the
     conditions to R, the first column being the transcript name,
     followed by one column for each numpy array in *cond1*, then one
     column for each numpy array in *cond2*.
@@ -156,7 +156,7 @@ def inference(cond1_label, cond1, cond2_label, cond2, assembly_id,
     randomly named file, and returns that filename.
     """
 
-    fake_csv = 0
+    fake_csv = 1
     fake_mapping = 1
 
     def translate_gene_ids(res):
@@ -173,8 +173,7 @@ def inference(cond1_label, cond1, cond2_label, cond2, assembly_id,
             data_frame = robjects.DataFrame({"Name":robjects.StrVector(names)})
             for i in range(2,len(res)+1):
                 data_frame = data_frame.cbind(res.rx(i))
-            res = data_frame
-        return res
+        return data_frame
 
     def save_results(data):
         filename = unique_filename_in()
@@ -184,6 +183,22 @@ def inference(cond1_label, cond1, cond2_label, cond2, assembly_id,
             for k,v in data.iteritems():
                 c.writerow([k,v])
         return filename
+
+    print "Loading mappings..."
+    # - gene_ids is a list of gene ID's
+    # - gene_names is a dict {gene ID: gene name}
+    # - transcript_mapping is a dictionary {transcript ID: gene ID}
+    # - exon_mapping is a dictionary {exon ID: (transcript ID, gene ID)}
+    # - trans_in_gene is a dict {transcript ID: ID of the gene it belongs to}
+    # - exons_in_trans is a dict {exon ID: ID of the transcript it belongs to}
+    ex = 1
+    if fake_mapping:
+        mappings = fetch_mappings(ex,"../archive/maptest.pickle")
+    else:
+        #mappings = fetch_mappings(ex, assembly_id)
+        mappings = fetch_mappings(ex,"../archive/bb27b89826b88823423282438077cdb836e1e6e5.pickle")
+    (gene_ids, gene_names, transcript_mapping, exon_mapping, trans_in_gene, exons_in_trans) = mappings
+    print "Loaded."
 
     if not fake_csv:
         # Pass the data into R as a data frame
@@ -203,29 +218,12 @@ def inference(cond1_label, cond1, cond2_label, cond2, assembly_id,
         try: cds = deseq.estimateVarianceFunctions(cds,method=method)
         except : raise rpy2.rinterface.RRuntimeError("Too few reads to estimate variances with DESeq")
         res = deseq.nbinomTest(cds, cond1_label, cond2_label)
+        res = translate_gene_ids(res)
+        fc_exons = dict(zip(list(res.rx('id')[0]),numpy.array(res.rx("log2FoldChange")[0])))
     else:
         res = robjects.DataFrame.from_csvfile("../temp/fullcsv")
         exon_ids = list(numpy.array(res.rx("id")[0].levels)[numpy.array(res.rx("id")[0])-1]) #FactorVector
         fc_exons = dict(zip(exon_ids,numpy.array(res.rx("log2FoldChange")[0])))
-
-    print "-init"
-    fc_exons = dict(zip(list(res.rx('id')),numpy.array(res.rx("log2FoldChange")[0])))
-
-    print "Loading mappings..."
-    # - gene_ids is a list of gene ID's
-    # - gene_names is a dict {gene ID: gene name}
-    # - transcript_mapping is a dictionary {transcript ID: gene ID}
-    # - exon_mapping is a dictionary {exon ID: (transcript ID, gene ID)}
-    # - trans_in_gene is a dict {transcript ID: ID of the gene it belongs to}
-    # - exons_in_trans is a dict {exon ID: ID of the transcript it belongs to}
-    ex = 1
-    if fake_mapping:
-        mappings = fetch_mappings(ex,"../archive/maptest.pickle")
-    else:
-        #mappings = fetch_mappings(ex, assembly_id)
-        mappings = fetch_mappings(ex,"../archive/bb27b89826b88823423282438077cdb836e1e6e5.pickle")
-    (gene_ids, gene_names, transcript_mapping, exon_mapping, trans_in_gene, exons_in_trans) = mappings
-    print "Loaded."
 
     if "exons" in target:
         exons_filename = save_results(fc_exons)
@@ -271,7 +269,8 @@ def inference(cond1_label, cond1, cond2_label, cond2, assembly_id,
                     fc_trans[t] = transcripts_expression[k]
         trans_filename = save_results(fc_trans)
 
-    return (exons_filename, genes_filename, trans_filename)
+    result = {"exons":exons_filename, "genes":genes_filename, "transcripts":trans_filename}
+    return result
 
 
 def rnaseq_workflow(ex, job, assembly, target=["genes"], via="lsf", output=None, maplot="normal"):
@@ -310,9 +309,7 @@ def rnaseq_workflow(ex, job, assembly, target=["genes"], via="lsf", output=None,
         bam_files = map_groups(ex, job, fastq_root, assembly_or_dict = assembly)
         #print bam_files.values()[0].values()[0]['bam']
         #print bam_files.values()[1].values()[0]['bam']
-        #pause()
     else:
-        ### Load already-made alignment:
         with open("../temp/bam_files","rb") as f:
             bam_files = pickle.load(f)
         id1 = ex.lims.import_file("../temp/"+"100k1.bam")
@@ -346,25 +343,33 @@ def rnaseq_workflow(ex, job, assembly, target=["genes"], via="lsf", output=None,
             method = "normal"
         else: method = "blind"
         print "DESeq analysis..."
-            ## futures_exons[(c1,c2)] = external_deseq.nonblocking(ex,
-            ##                               names[c1], exon_pileups[c1],
-            ##                               names[c2], exon_pileups[c2],
-            ##                               method, output, gene_names=gene_names, via=via)
-        futures[(c1,c2)] = inference(names[c1], exon_pileups[c1],
+        futures[(c1,c2)] = external_deseq.nonblocking(ex,
+                                          names[c1], exon_pileups[c1],
                                           names[c2], exon_pileups[c2],
                                           assembly_id, target, method, maplot)
+                                          #stdout="rnaseq.out", stderr="rnaseq.err")
+        ## futures[(c1,c2)] = inference(names[c1], exon_pileups[c1],
+        ##                                   names[c2], exon_pileups[c2],
+        ##                                   assembly_id, target, method, maplot)
         for c,f in futures.iteritems():
-            (exons_filename, genes_filename, trans_filename) = f#.wait()
-            if not exons_filename:
+            result_filename = f.wait()
+            print result_filename
+            with open(result_filename,"rb") as f:
+                result = pickle.load(f)
+            if not result.get("exons"):
                 print >>sys.stderr, "Exons: Failed during inference, probably because of too few reads for DESeq stats."
                 raise
+            if "exons" in target:
+                ex.add(result.get("exons"), description="Comparison of EXONS in conditions \
+                                                   '%s' and '%s' (CSV)" % (names[c[0]], names[c[1]]))
+                print "EXONS: Done successfully."
             if "genes" in target:
-                ex.add(genes_filename, description="Comparison of GENES in conditions \
-                                                   '%s' and '%s' (CSV)" % (names[c1], names[c2]))
+                ex.add(result.get("genes"), description="Comparison of GENES in conditions \
+                                                   '%s' and '%s' (CSV)" % (names[c[0]], names[c[1]]))
                 print "GENES: Done successfully."
             if "transcripts" in target:
-                ex.add(trans_filename, description="Comparison of GENES in conditions \
-                                                   '%s' and '%s' (CSV)" % (names[c1], names[c2]))
+                ex.add(result.get("transcripts"), description="Comparison of TRANSCRIPTS in conditions \
+                                                   '%s' and '%s' (CSV)" % (names[c[0]], names[c[1]]))
                 print "TRANSCRIPTS: Done successfully."
         print "Done."
 
