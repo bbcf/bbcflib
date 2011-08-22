@@ -1,0 +1,19 @@
+# Temporary files #
+.DS_Store
+*.pyc
+*.swp
+*.swo
+*~
+\#*
+.#*
+._*
+
+# Build files #
+/MANIFEST
+
+# Build directories #
+/build/
+/dist/
+
+# Git files #
+/.gitattributes
