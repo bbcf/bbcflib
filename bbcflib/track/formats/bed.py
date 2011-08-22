@@ -26,25 +26,23 @@ class TrackFormat(TrackText, TrackProxy):
             if len(line) == 0:              continue
             if line.startswith("#"):        continue
             if line.endswith(" \\"):
-                raise Exception("The file '" + self._path + "' includes linebreaks ('\\') which is not supported.")
+                raise Exception("The file '" + self._path + ":" + number + "' includes linebreaks ('\\') which is not supported.")
             if line.startswith("track "):
                 if not seen_track:
                     seen_track = True
                     continue
-                raise Exception("The file '" + self._path + "' contains a second 'track' directive. This is not supported.")
+                raise Exception("The file '" + self._path + ":" + number + "' contains a second 'track' directive. This is not supported.")
             if line.startswith("browser "): continue
             line = line.split(self._seperator)
             if len(line) != self.num_fields + 1:
-                raise Exception("The file '" + self._path + "' has a varying number of columns. This is not supported.")
+                raise Exception("The file '" + self._path + ":" + number + "' has a varying number of columns. This is not supported.")
             try:
                 line[1] = int(line[1])
                 line[2] = int(line[2])
             except ValueError:
-                raise Exception("The file '" + self._path + "' has non integers as interval bounds and is hence not valid.")
+                raise Exception("The file '" + self._path + ":" + number + "' has non integers as interval bounds and is hence not valid.")
             if line[2] <= line[1]:
-                print line
-                print str(line[2]) +' <= '+str(line[1])
-                raise Exception("The file '" + self._path + "' has negative or null intervals and is hence not valid.")
+                raise Exception("The file '" + self._path + ":" + number + "' has negative or null intervals and is hence not valid.")
             try:
                 if  line[3] == '.' or line[3] == '': line[3] = "feature_"+str(number)
             except IndexError:
@@ -56,7 +54,7 @@ class TrackFormat(TrackText, TrackProxy):
             try:
                 line[4] = float(line[4])
             except ValueError:
-                raise Exception("The file '" + self._path + "' has non floats as score values and is hence not valid.")
+                raise Exception("The file '" + self._path + ":" + number + "' has non floats as score values and is hence not valid.")
             try:
                 line[5] = strand_to_int(line[5])
             except IndexError:
@@ -65,12 +63,12 @@ class TrackFormat(TrackText, TrackProxy):
                 try:
                     line[6] = float(line[6])
                 except ValueError:
-                    raise Exception("The file '" + self._path + "' has non integers as thick starts and is hence not valid.")
+                    raise Exception("The file '" + self._path + ":" + number + "' has non integers as thick starts and is hence not valid.")
                 if len(line) > 7:
                     try:
                         line[7] = float(line[7])
                     except ValueError:
-                        raise Exception("The file '" + self._path + "' has non integers as thick ends and is hence not valid.")
+                        raise Exception("The file '" + self._path + ":" + number + "' has non integers as thick ends and is hence not valid.")
             line.insert(5, None) # attribute is None maybe we will add a feature around
             yield line
 
