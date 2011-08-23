@@ -351,15 +351,14 @@ class Track(object):
         raise NotImplementedError
 
     #-----------------------------------------------------------------------------#
-    qualitative_fields  = ['start', 'end', 'score', 'name', 'strand', 'attributes']
+    qualitative_fields  = ['start', 'end',  'name', 'score', 'strand']
     quantitative_fields = ['start', 'end', 'score']
     field_types = {
         'start':        'integer',
         'end':          'integer',
         'score':        'real',
-        'name':         'text',
         'strand':       'integer',
-        'attributes':   'text',
+        'name':         'text',
         'thick_start':  'integer',
         'thick_end':    'integer',
         'item_rgb':     'text',

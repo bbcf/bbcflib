@@ -34,9 +34,9 @@ class Test_Write(unittest.TestCase):
         with track.new(path) as t:
             self.assertEqual(t.datatype, 'qualitative')
             features = {}
-            features['chr1'] = [(10, 20, 'Lorem', 1.0, 1, None),
-                                (30, 40, 'Ipsum', 2.0, 1, None)]
-            features['chr2'] = [(10, 20, 'Dolor', 3.0, 1, None)]
+            features['chr1'] = [(10, 20, 'Lorem', 1.0, 1),
+                                (30, 40, 'Ipsum', 2.0, 1)]
+            features['chr2'] = [(10, 20, 'Dolor', 3.0, 1)]
             for chrom, data in sorted(features.items()):
                 t.write(chrom, data)
         with open(path,                                      'r') as f: A = f.read().split('\n')
@@ -50,7 +50,7 @@ class Test_Overwrite(unittest.TestCase):
         old_path = track_collections['Validation'][1]['path']
         new_path = named_temporary_path('.bed')
         shutil.copyfile(old_path, new_path)
-        feature = (10, 20, 'Dolor', 3.0, 1, None)
+        feature = (10, 20, 'Dolor', 3.0, 1)
         chrom = 'chr2'
         with track.load(new_path) as t:
             t.write(chrom, (feature,))
