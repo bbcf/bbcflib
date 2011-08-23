@@ -180,14 +180,18 @@ class TrackFormat(Track, TrackExtras):
         # Default fields #
         if self.datatype == 'quantitative': fields = Track.quantitative_fields
         if fields        == None:           fields = Track.qualitative_fields
+        # Hack to add an empty column needed by GDV #
+        fields += ['attributes',]
+        def add_empty_element(iterator):
+            for item in iterator: yield item + (None,)
         # Maybe create the table #
         if chrom not in self.chrs_from_tables:
             columns = ','.join([field + ' ' + Track.field_types.get(field, 'text') for field in fields])
             self.cursor.execute('create table "' + chrom + '" (' + columns + ')')
-        # Execute the insertion
+        # Execute the insertion #
         sql_command = 'insert into "' + chrom + '" (' + ','.join(fields) + ') values (' + ','.join(['?' for x in range(len(fields))])+')'
         try:
-            self.cursor.executemany(sql_command, data)
+            self.cursor.executemany(sql_command, add_empty_element(data))
         except sqlite3.OperationalError as err:
             raise Exception("The command '" + sql_command + "' on the database '" + self.path + "' failed with error: " + str(err))
 
