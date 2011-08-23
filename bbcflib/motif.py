@@ -44,16 +44,16 @@ def parse_meme_xml( ex, meme_file, chromosomes ):
                 for col in parray:
                     m[col.attrib['letter_id']] = float(col.text)
                 mat_out.write("1\t%f\t%f\t%f\t%f\n" %(m['letter_A'],m['letter_C'],m['letter_G'],m['letter_T']))
-    def _xmltree(chr,tree):
+    def _xmltree(_c,_t):
         seq_name = {}
         seq_chr = None
-        for it in tree.getiterator():
+        for it in _t.getiterator():
             if it.tag == 'sequence':
                 seq_name[it.attrib['id']] = it.attrib['name']
             if it.tag == 'scanned_sites':
                 name = seq_name[it.attrib['sequence_id']]
                 name,seq_chr,start,end = re.search(r'(.*)\|(.+):(\d+)-(\d+)',name).groups()
-            if it.tag == 'scanned_site' and chr == seq_chr:
+            if it.tag == 'scanned_site' and _c == seq_chr:
                 start = int(start)+int(it.attrib['position'])-1
                 end = str(start+ncol[it.attrib['motif_id']])
                 start = str(start)
@@ -63,26 +63,28 @@ def parse_meme_xml( ex, meme_file, chromosomes ):
     outsql = unique_filename_in()
     chrlist = dict((v['name'], {'length': v['length']}) for v in chromosomes.values())
     with track.new(outsql, format='sql', chrmeta=chrlist, datatype='qualitative') as t:
-        for chr in chrlist.keys():
-            t.write(chr,_xmltree(chr,tree),fields=['start','end','name','score','strand'])
+        track_result.attributes['source'] = 'Meme'
+        for chrom in chrlist.keys():
+            t.write(chrom,_xmltree(chrom,tree),fields=['start','end','name','score','strand'])
     return {'sql':outsql,'matrices':allmatrices}
                 
 
-def parallel_meme( ex, genrep, chromosomes, data, name=None, meme_args=None, via='lsf' ):
+def parallel_meme( ex, genrep, chromosomes, regions, 
+                   name=None, meme_args=None, via='lsf' ):
     """Fetches sequences, then calls ``meme``
     on them and finally saves the results in the repository.
     """
     if meme_args is None:
         meme_args   = []
-    if not(isinstance(data,list)):
-        data = [data]
+    if not(isinstance(regions,list)):
+        regions = [regions]
     if not(isinstance(name,list)):
         if name == None:
             name = '_'
         name = [name]
     futures = {}
     for i,n in enumerate(name):
-        (fasta, size) = genrep.fasta_from_data( chromosomes, data[i], out=unique_filename_in() )
+        (fasta, size) = genrep.fasta_from_regions( chromosomes, regions[i], out=unique_filename_in() )
         futures[n] = meme.nonblocking( ex, fasta, maxsize=size*1.5, args=meme_args, via=via )
     all_res = {}
     for n,f in futures.iteritems():
@@ -107,23 +109,27 @@ def motif_scan( fasta, motif, background, threshold=0 ):
     call = ["S1K", motif, background, str(threshold), fasta]
     return {"arguments": call, "return_value": None}
 
-def save_motif_profile( ex, motifs, background, genrep, chromosomes, data_path,
-                        keep_max_only=False, description='', threshold=0, via='lsf' ):
+def save_motif_profile( ex, motifs, background, genrep, chromosomes, regions,
+                        keep_max_only=False, threshold=0, description='', via='lsf' ):
     """Scan a set of motifs on a set of regions and saves the results as an sql file.
-    The 'motifs' argument is a dictionary with keys motif names and values PWM with 'n' rows like:
-    "1 p(A) p(C) p(G) p(T)" where the sum of the 'p's is 1 and the first column allows to skip a position with a '0'.
+    The 'motifs' argument is a single PWM file or a dictionary with keys motif names and values PWM files 
+    with 'n' rows like:
+    "1 p(A) p(C) p(G) p(T)" 
+    where the sum of the 'p's is 1 and the first column allows to skip a position with a '0'.
     """
-    fasta, size = genrep.fasta_from_data( chromosomes, data_path )
+    fasta, size = genrep.fasta_from_regions( chromosomes, regions )
     sqlout = unique_filename_in()
     if not(isinstance(motifs, dict)):
-        raise ValueError("'Motifs' must be a dictionary with keys 'motif_names' and values the PWMs.")
+        motifs = {"_": motifs}
+#        raise ValueError("'Motifs' must be a dictionary with keys 'motif_names' and values the PWMs.")
     futures = {}
     for name, pwm in motifs.iteritems():
         output = unique_filename_in()
-        futures[name] = ( output, motif_scan.nonblocking( ex, fasta, pwm, background, threshold, stdout=output, via=via ) )
+        futures[name] = ( output, motif_scan.nonblocking( ex, fasta, pwm, background,
+                                                          threshold, stdout=output, via=via ) )
     chrlist = dict((v['name'], {'length': v['length']}) for v in chromosomes.values())
 ##############
-    def _parse_s1k(_f,_c):
+    def _parse_s1k(_f,_c,_n):
         if keep_max_only:
             maxscore = {}
         with open(_f, 'r') as fin:
@@ -139,137 +145,103 @@ def save_motif_profile( ex, motifs, background, genrep, chromosomes, data_path,
                 strnd = row[4]=='+' and 1 or -1
                 if keep_max_only:
                     if not(sname in maxscore) or score>maxscore[sname][3]:
-                        maxscore[sname] = (start,end,name+":"+tag,score,strnd)
+                        maxscore[sname] = (start,end,_n+":"+tag,score,strnd)
                 else:
-                    yield (start,end,name+":"+tag,score,strnd)
+                    yield (start,end,_n+":"+tag,score,strnd)
         if keep_max_only:
             for x in maxscore.values():
                 yield x
 ##############
     with track.new( sqlout, format="sql", datatype="qualitative", chrmeta=chrlist ) as track_result:
-#        track_result.attributes = {'source': 'S1K'}
+        track_result.attributes['source'] = 'S1K'
         for name, future in futures.iteritems():
             _ = future[1].wait()
             for chrom in chrlist.keys():
-                track_result.write( chrom, _parse_s1k(future[0],chrom),
+                track_result.write( chrom, _parse_s1k(future[0],chrom,name),
                                     fields=['start','end','name','score','strand'] )
-    ex.add( sqlout, description = "sql:"+description+"_motif_scan.sql" )
+    ex.add( sqlout, description="sql:"+description+"_motif_scan.sql" )
     return sqlout
 
-def false_discovery_rate_p_value(false_positive_list, true_positive_list, nb_false_positive_hypotesis = 1.0):
+def FDR_threshold( ex, motif, background, genrep, chromosomes, regions, alpha=.1, nb_samples=1, via='lsf' ):
     """
-    Returns false discovery rate
+    Computes a score threshold for 'motif' on 'regions' based on a false discovery rate < alpha and returns the 
+    threshold or a dictionary with keys thresholds and values simulated FDRs when alpha < 0.
     """
-    score_tp = 0
-    score_fp = 0
-    if len(true_positive_list) >0:
-        score_tp = reduce(add, true_positive_list)* nb_false_positive_hypotesis
-    if len(false_positive_list) >0:
-        score_fp = reduce(add, false_positive_list)
-    return score_fp / float(score_tp + score_fp)
+    fasta, size = genrep.fasta_from_regions( chromosomes, regions )
+    shuf_fasta, shuf_size = genrep.fasta_from_regions( chromosomes, regions, shuffled=True )
+    output = unique_filename_in()
+#### Threshold at -100 to get all scores!
+    future = motif_scan.nonblocking( ex, fasta, motif, background, -100, stdout=output, via=via )
+    shuf_futures = {}
+    for i in range(nb_samples):
+        out = unique_filename_in()
+        shuf_futures[out] = motif_scan.nonblocking( ex, shuf_fasta, motif, background, -100, stdout=out, via=via )
+    _ = future.wait()
+    TP_scores = {}
+    ntp = 0
+    with open(output, 'r') as fin:
+        for line in fin:
+            row = line.split("\t")
+            score = int(round(float(row[2])))
+            if score in TP_scores: 
+                TP_scores[score] += 1
+            else: 
+                TP_scores[score] = 1
+            ntp += 1
+    scores = sorted(TP_scores.keys(),reverse=True)
+    scores = [scores[0]+1]+scores+[-101]
+    FP_scores = dict((k,0) for k in scores)
+    nfp = 0
+    for file,fut in shuf_futures.iteritems():
+        _ = fut.wait()
+        with open(file, 'r') as fin:
+            for line in fin:
+                row = line.split("\t")
+                fscore = int(round(float(row[2])))
+                tscore = max([k for k in scores if k<=fscore])
+                FP_scores[tscore] += 1
+                nfp += 1
+    TP_scores[scores[-1]] = ntp
+    TP_scores[scores[0]] = 0
+    FP_scores[scores[-1]] = nfp
+    for i,sc in enumerate(scores[1:-1]):
+        TP_scores[sc] = TP_scores[scores[i]]+TP_scores[sc]
+        FP_scores[sc] = FP_scores[scores[i]]+FP_scores[sc]
+    cur_fdr = 1.0
+    threshold = scores[0]
+    for k in sorted(FP_scores.keys()):
+        if TP_scores[k] > 0 and FP_scores[k]/float(TP_scores[k]) < cur_fdr:
+            cur_fdr = FP_scores[k]/float(TP_scores[k])
+            if cur_fdr <= alpha:
+                threshold = k
+                break
+        FP_scores[k] = cur_fdr
+    if alpha < 0: return FP_scores
+    return threshold
 
-def false_discovery_rate(false_positive, true_positive, alpha = 1, nb_false_positive_hypotesis = 1.0):
+def sqlite_to_false_discovery_rate( ex, motif, background, genrep, chromosomes, regions,
+                                    alpha=0.05, nb_samples=1,
+                                    description='', via='lsf' ):
     """
-    Returns false discovery rate
+    Computes a score threshold for 'motif' on 'regions' based on a false discovery rate < alpha and returns the 
+    thresholded profile.
     """
-    p_value     = 0
-    keys        = []
-    if isinstance(false_positive, dict):
-        keys    +=  false_positive.keys()
-    else:
-        raise TypeError(u"Allowed type for false_positive: tuple, list, dict. Type subited: %s" %type(false_positive))
-    if isinstance(true_positive, dict):
-        keys    += true_positive.keys()
-    else:
-        raise TypeError(u"Allowed type for true_positive: tuple, list, dict. Type subited: %s" %type(true_positive))
-    keys                = tuple(sorted(set(keys)))
-    index               = len(keys) - 1
-    false_positive_list = []
-    true_positive_list  = []
-
-    is_running = True
-    while is_running:
-        if index < 0:
-            is_running = False
-        else:
-            for key in  keys[index:]:
-                if key in false_positive:
-                    false_positive_list.append(false_positive[key])
-                if key in true_positive:
-                    true_positive_list.append(true_positive[key])
-            p_value = false_discovery_rate_p_value(
-                                                    false_positive_list,
-                                                    true_positive_list,
-                                                    nb_false_positive_hypotesis = nb_false_positive_hypotesis
-                                                  )
-            if p_value == alpha:
-                is_running = False
-            elif p_value > alpha:
-                is_running = False
-                index = (index + 1 < len(true_positive)) and index + 1 or index
-            else:
-                index -= 1
-    return keys[index]
-
-def sqlite_to_false_discovery_rate  (
-                                        ex, motifs, background, genrep, chromosomes,
-                                        true_positive_data_path, false_positive_data_path,
-                                        description = '',
-                                        threshold = 0,    via = 'lsf', keep_max_only = False,
-                                        alpha = 0.05, nb_false_positive_hypotesis = 1.0
-                                    ):
-    """
-    sqls or beds take an array (list or tuple) like:
-    sqls = (sql, sql_random)
-    beds = (bed, bed_random)
-    """
-    if true_positive_data_path is None or false_positive_data_path is None:
-        raise ValueError(u"Variables true_positive_data_path or false_positive_data_path is set to None!")
-    true_positive_data_path     = os.path.normcase(os.path.expanduser(true_positive_data_path))
-    false_positive_data_path    = os.path.normcase(os.path.expanduser(false_positive_data_path))
-    true_positive_result        = None
-    false_positive_result       = None
-
-    # original
-    true_positive_result    = save_motif_profile(
-                                                    ex, motifs, background, genrep, chromosomes,
-                                                    true_positive_data_path,
-                                                    description     = description, threshold = threshold,
-                                                    via             = via, keep_max_only = keep_max_only
-                                                )
-    # random
-    false_positive_result   = save_motif_profile(
-                                                    ex, motifs, background, genrep, chromosomes,
-                                                    false_positive_data_path,
-                                                    description     = description, threshold = threshold,
-                                                    via             = via, keep_max_only = keep_max_only
-                                                )
-
-    fp_scores = None
-    tp_scores = None
-    with track.load(false_positive_result,  format = "sql") as data:
-        fp_scores = data.get_scores_frequencies()
-    with track.load(true_positive_result,  format = "sql") as data:
-        tp_scores = data.get_scores_frequencies()
-    fdr = false_discovery_rate  (
-                                    fp_scores, tp_scores,
-                                    alpha = alpha, nb_false_positive_hypotesis = nb_false_positive_hypotesis
-                                )
-    return true_positive_result, fdr
+    threshold = FDR_threshold( motif, background, genrep, chromosomes, regions, alpha=alpha, nb_samples=nb_samples )
+    track = save_motif_profile( ex, motif, background, genrep, chromosomes, regions,
+                                threshold=threshold, description=description, via=via )
+    return track, threshold
 
 def parse_meme_html_output(ex, meme_file, fasta, chromosomes):
     """Legacy signature"""
-    meme_file = re.sub(r'\.html','.xml',meme_file)
+    meme_file = os.path.splitext(meme_file)[0]+".xml"
     return parse_meme_xml( ex, meme_file, chromosomes )
     
-def add_meme_files( ex, genrep, chromosomes, description = '',
-                    bed = None, sql = None, meme_args = None, via = 'lsf' ):
+def add_meme_files( ex, genrep, chromosomes, description='',
+                    bed=None, sql=None, meme_args=None, via='lsf' ):
     """Legacy signature"""
-    data = sql
-    if sql == None:
-        data = bed
-    return parallel_meme( ex, genrep, chromosomes, data=data, name=description, 
-                          meme_args=meme_args, via=via )
+    regions = sql or bed
+    return parallel_meme( ex, genrep, chromosomes, regions=regions, 
+                          name=description, meme_args=meme_args, via=via )
     
 #-----------------------------------#
 # This code was written by the BBCF #
