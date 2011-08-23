@@ -18,7 +18,6 @@ from .genrep import GenRep
 
 # Other modules #
 import numpy
-from numpy.linalg import pinv 
 from bein.util import *
 from scipy import stats
 from scipy.interpolate import UnivariateSpline
@@ -31,6 +30,16 @@ import csv
 import pudb
 
 ################################################################################
+
+def timer(f):
+    """ A decorator that make every decorated function return its execution time """
+    def wrapper(*args, **kwargs):
+        t1 = time.time()
+        result = f(*args, **kwargs)
+        t2 = time.time()
+        print "Execution time of function", f.__name__, ":", str(t2-t1), "s."
+        return result
+    return wrapper
 
 def fetch_mappings(path_or_assembly_id):
     """Given an assembly ID, return a tuple
@@ -158,25 +167,21 @@ def inference(cond1_label, cond1, cond2_label, cond2, assembly_id,
     """
 
     fake_csv = 0
-    fake_mapping = 1
+    fake_mapping = 0
 
-    def translate_gene_ids(res):
+    def translate_gene_ids(fc_ids):
         '''Replace (unique) gene IDs by (not unique) gene names '''
         print "Replace gene IDs to gene names"
-        if gene_names:
-            names = []
-            res_ids = list(res.rx('id')[0])
-            for s in res_ids:
-                start = s.find("ENSG")
-                if start != -1:
-                    end = s.split("ENSG")[1].find("|")
-                    gene_id = "ENSG" + s.split("ENSG")[1].split("|")[0]
-                    names.append(s.replace(gene_id,gene_names.get(gene_id,gene_id)))
-                else: names.append(s)
-            data_frame = robjects.DataFrame({"Name":robjects.StrVector(names)})
-            for i in range(2,len(res)+1):
-                data_frame = data_frame.cbind(res.rx(i))
-        return data_frame
+        names = []
+        for s in fc_ids.keys():
+            start = s.find("ENSG")
+            if start != -1:
+                end = s.split("ENSG")[1].find("|")
+                gene_id = "ENSG" + s.split("ENSG")[1].split("|")[0]
+                names.append(s.replace(gene_id,gene_names.get(gene_id,gene_id)))
+            else: names.append(s)
+        fc_names = dict(zip(names,fc_ids.values()))
+        return fc_names
 
     def save_results(data):
         filename = unique_filename_in()
@@ -188,17 +193,17 @@ def inference(cond1_label, cond1, cond2_label, cond2, assembly_id,
         return filename
 
     print "Loading mappings..."
-    # - gene_ids is a list of gene ID's
-    # - gene_names is a dict {gene ID: gene name}
-    # - transcript_mapping is a dictionary {transcript ID: gene ID}
-    # - exon_mapping is a dictionary {exon ID: (transcript ID, gene ID)}
-    # - trans_in_gene is a dict {transcript ID: ID of the gene it belongs to}
-    # - exons_in_trans is a dict {exon ID: ID of the transcript it belongs to}
+    """ - gene_ids is a list of gene ID's
+        - gene_names is a dict {gene ID: gene name}
+        - transcript_mapping is a dictionary {transcript ID: gene ID}
+        - exon_mapping is a dictionary {exon ID: (transcript ID, gene ID)}
+        - trans_in_gene is a dict {transcript ID: ID of the gene it belongs to}
+        - exons_in_trans is a dict {exon ID: ID of the transcript it belongs to} """
     if fake_mapping:
         mappings = fetch_mappings("../archive/maptest.pickle")
     else:
-        #mappings = fetch_mappings(assembly_id) # on Vital-IT
-        mappings = fetch_mappings("../archive/bb27b89826b88823423282438077cdb836e1e6e5.pickle")
+        mappings = fetch_mappings(assembly_id)
+        #mappings = fetch_mappings("../archive/bb27b89826b88823423282438077cdb836e1e6e5.pickle")
     (gene_ids, gene_names, transcript_mapping, exon_mapping, trans_in_gene, exons_in_trans) = mappings
     print "Loaded."
 
@@ -210,7 +215,6 @@ def inference(cond1_label, cond1, cond2_label, cond2, assembly_id,
     data_frame = robjects.DataFrame(data_frame_contents)
     data_frame.rownames = cond1[0].keys()
     conds = robjects.StrVector([cond1_label for x in cond1] + [cond2_label for x in cond2]).factor()
-    if cond1[0].keys() != cond2[0].keys(): raise
 
     ## DESeq normalization
     deseq = rpackages.importr('DESeq')
@@ -219,20 +223,17 @@ def inference(cond1_label, cond1, cond2_label, cond2, assembly_id,
     try: cds = deseq.estimateVarianceFunctions(cds,method=method)
     except : raise rpy2.rinterface.RRuntimeError("Too few reads to estimate variances with DESeq")
     res = deseq.getVarianceStabilizedData(cds)
-    exon_ids = list(list(res.names)[0]) #'res.names[0]' makes the whole session die
+    exon_ids = list(list(res.names)[0]) #'res.names[0]' makes the whole session die.
     cond1 = numpy.array(res.rx(True,1)) #TestA.0, TestA.1, ...??? replicates?
     cond2 = numpy.array(res.rx(True,2))
-    #for i in range(len(ratios)):
-    #    if not math.isnan(ratios[i]) and not math.isinf(ratios[i]):
     means = numpy.sqrt(cond1*cond2)
-    ratios = numpy.float32(cond1)/numpy.float32(cond2)
-    t2 = time.time()
+    ratios = numpy.log2(numpy.float32(cond1)/numpy.float32(cond2))
     fc_exons = dict(zip(exon_ids,zip(means,ratios)))
 
     if "exons" in target:
-        exons_filename = save_results(fc_exons)
+        exons_filename = save_results(translate_gene_ids(fc_exons))
         
-    print "Compute fold Changes for genes and transcripts..."
+    print "Compute fold change for genes and transcripts..."
     ### Get fold change for genes
     if "genes" in target:
         fc_genes = dict(zip(gene_ids,
@@ -242,7 +243,7 @@ def inference(cond1_label, cond1, cond2_label, cond2, assembly_id,
             e = e.split('|')[0]
             if exon_mapping.get(e):
                 fc_genes[exon_mapping[e][1]] += c
-        genes_filename = save_results(fc_genes)
+        genes_filename = save_results(translate_gene_ids(fc_genes))
             
     ### Get fold change for the transcripts using pseudo-inverse
     if "transcripts" in target:
@@ -262,22 +263,22 @@ def inference(cond1_label, cond1, cond2_label, cond2, assembly_id,
                 for t in tg:
                     eg.extend(exons_in_trans[t])
                 M = numpy.zeros((len(eg),len(tg)))
-                exons_expression = numpy.zeros(len(eg))
+                exons_fold = numpy.zeros(len(eg))
+                exons_mean = numpy.zeros(len(eg))
                 for i,e in enumerate(eg):
                     for j,t in enumerate(tg):
                         ebt = exons_in_trans[t]
                         if e in ebt:
                             M[i,j] = 1
-                    if exon_pileup.get(e):
+                    if fc_exons.get(e):
                         exons_fold[i] += fc_exons[e][1]
                         exons_mean[i] += fc_exons[e][0]
-                #pseudo-inverse; DESeq accepts integers only
-                transcripts_fold = numpy.dot(pinv(M),exons_fold)
-                transcripts_mean = numpy.dot(pinv(M),exons_mean)
+                transcripts_fold = numpy.dot(numpy.linalg.pinv(M),exons_fold)
+                transcripts_mean = numpy.dot(numpy.linalg.pinv(M),exons_mean)
                 for k,t in enumerate(tg):
                     fc_trans[t][1] = transcripts_fold[k]
                     fc_trans[t][0] = transcripts_mean[k]
-        trans_filename = save_results(fc_trans)
+        trans_filename = save_results(translate_gene_ids(fc_trans))
 
     result = {"exons":exons_filename, "genes":genes_filename, "transcripts":trans_filename}
     return result
@@ -354,9 +355,8 @@ def rnaseq_workflow(ex, job, assembly, target=["genes"], via="lsf", output=None,
         else: method = "blind"
         print "External DESeq..."
         futures[(c1,c2)] = external_deseq.nonblocking(ex,
-                                          names[c1], exon_pileups[c1],
-                                          names[c2], exon_pileups[c2],
-                                          assembly_id, target, method, maplot)
+                                   names[c1], exon_pileups[c1], names[c2], exon_pileups[c2],
+                                   assembly_id, target, method, maplot)
         for c,f in futures.iteritems():
             result_filename = f.wait()
             with open(result_filename,"rb") as f:
@@ -395,29 +395,20 @@ def MAplot(data, mode="interactive", deg=4, bins=30, alpha=0.005, assembly_id=No
 
     import matplotlib.pyplot as plt
 
-    ## Extract data from DataFrame
-    pvals = numpy.asarray(data.rx("pval")[0])
-    means = numpy.asarray(data.rx("baseMean")[0])
-    ratios = numpy.asarray(data.rx("log2FoldChange")[0])
-    names = data.rx("Name")[0]
-    a = numpy.asarray(names)
-    b = numpy.asarray(names.levels)
-    names = list(b[a-1])
+    ## Extract data from CSV
+    names=[]; means=[]; ratios=[]
+    with open(data,'r') as f:
+        csvreader = csv.reader(f)
+        for row in csvreader:
+            names.append(row[0]); means.append(row[1]); ratios.append(row[2])
+    names = numpy.asarray(names); means = numpy.asarray(means); ratios = numpy.asarray(ratios)
 
-    points=[]; blackpoints=[]; redpoints=[]; annotes_red=[]; annotes_black=[]; pvals_red=[]; pvals_black=[]
+    badvalues = [0, numpy.nan, numpy.inf]
+    points = [p for p in zip(names, means, ratios) if (p[1] not in badvalues and p[2] not in badvalues)]
     for i in range(len(ratios)):
         if not math.isnan(ratios[i]) and not math.isinf(ratios[i]):
-            p = (names[i],numpy.log10(means[i]),ratios[i],pvals[i])
-            if pvals[i] < alpha:
-                redpoints.append(p)
-                annotes_red.append(p[0])
-                pvals_red.append(p[3])
-            else:
-                blackpoints.append(p)
-                annotes_black.append(p[0])
-                pvals_black.append(p[3])
+            p = (names[i], numpy.log10(means[i]), ratios[i])
             points.append(p)
-    names,means,ratios,pvals = zip(*points)
     xmin = min(means); xmax = max(means); ymin = min(ratios); ymax = max(ratios)
 
     ## Create bins
@@ -441,20 +432,24 @@ def MAplot(data, mode="interactive", deg=4, bins=30, alpha=0.005, assembly_id=No
     figname = None
 
     ### Points
-    blackpts = zip(*blackpoints)[1:3]
-    redpts = zip(*redpoints)[1:3]
-    ax.plot(blackpts[0], blackpts[1], ".", color="black")
-    if len(redpts) != 0:
-        ax.plot(redpts[0], redpts[1], ".", color="red")
+    ax.plot(points[1], points[2], ".", color="black")
 
     ### Lines (best fit of percentiles)
-    spline_annotes=[]; spline_coords={}
+    annotes=[]; spline_annotes=[]; spline_coords={}
     percentiles = [1,5,25,50,75,95,99]
     for k in percentiles:
         h = numpy.ones(bins)
         for b in range(bins):
             if points_in[b] != []:
                 h[b] = stats.scoreatpercentile(perc[b], k)
+                if k==1:
+                    for p in points_in[b]:
+                        if p[2]<h[b]:
+                            annotes.append(p[0])
+                if k==99:
+                    for p in points_in[b]:
+                        if p[2]>h[b]:
+                            annotes.append(p[0])
             else: h[b] = h[b-1]
         x = intervals[:-1]+(intervals[1:]-intervals[:-1])/2.
         spline = UnivariateSpline(x, h, k=deg)
@@ -480,65 +475,65 @@ def MAplot(data, mode="interactive", deg=4, bins=30, alpha=0.005, assembly_id=No
         plt.draw()
         plt.show()
     else:
-        for p in redpoints:
+        for p in annotes:
             ax.annotate(p[0], xy=(p[1],p[2]) )
     figname = unique_filename_in()+".png"
     fig.savefig(figname)
 
-    ## Output for Javascript
-    def rgb_to_hex(rgb):
-        return '#%02x%02x%02x' % rgb
-    redpoints = [(p[1],p[2]) for p in redpoints]
-    blackpoints = [(p[1],p[2]) for p in blackpoints]
-    jsdata = [{"label": "Genes with p-value < " + str(alpha),
-               "data": redpoints,
-               "labels": annotes_red,
-               "pvals": pvals_red,
-               "points": {"symbol":"circle", "show":True},
-               "color": "red"},
-              {"label": "Genes with p-value > " + str(alpha),
-               "data": blackpoints,
-               "labels": annotes_black,
-               "pvals": pvals_black,
-               "points": {"symbol":"circle", "show":True},
-               "color": "black"},
-              {"label": "Mean", "data": spline_coords[50],
-               "lines": {"show":True}, "color": rgb_to_hex((255,0,255)) },
-              {"id": "1% Quantile", "data": spline_coords[1], "lines": {"show":True, "lineWidth":0, "fill": 0.12},
-               "color": rgb_to_hex((255,0,255))},
-              {"id": "5% Quantile", "data": spline_coords[5], "lines": {"show":True, "lineWidth":0, "fill": 0.18},
-               "color": rgb_to_hex((255,0,255))},
-              {"id": "25% Quantile", "data": spline_coords[25], "lines": {"show":True, "lineWidth":0, "fill": 0.3},
-               "color": rgb_to_hex((255,0,255))},
-              {"id": "75% Quantile", "data": spline_coords[75], "lines": {"show":True, "lineWidth":0, "fill": 0.3},
-               "color": rgb_to_hex((255,0,255))},
-              {"id": "95% Quantile", "data": spline_coords[95], "lines": {"show":True, "lineWidth":0, "fill": 0.18},
-               "color": rgb_to_hex((255,0,255))},
-              {"id": "99% Quantile", "data": spline_coords[99], "lines": {"show":True, "lineWidth":0, "fill": 0.12},
-               "color": rgb_to_hex((255,0,255))}
-             ]
-    splinelabels = {"id": "Spline labels",
-                    "data": [spline_coords[k][0] for k in percentiles],
-                    "points": {"show":False}, "lines": {"show":False},
-                    "labels": ["1%","5%","25%","50%","75%","95%","99%"]}
-    jsdata = "var data = " + json.dumps(jsdata) + ";\n" \
-             + "var splinelabels = " + json.dumps(splinelabels) + ";\n"
-    if assembly_id:
-        nr_assemblies = urllib.urlopen("http://bbcftools.vital-it.ch/genrep/nr_assemblies.json").read()
-        nr_assemblies = json.loads(nr_assemblies)
-        if isinstance(assembly_id,str):
-            for a in nr_assemblies:
-                if a['nr_assembly']['name'] == assembly_id:
-                    assembly_id = a['nr_assembly']['id']; break
-        url_template = urllib.urlopen("http://bbcftools.vital-it.ch/genrep/nr_assemblies/" \
-                                      + str(assembly_id) + "/get_links.json?gene_name=%3CName%3E")
-        jsdata = jsdata + "var url_template = " + url_template.read() + ";"
-    jsname = unique_filename_in()+".js"
-    jsname = "data.js"
-    with open(jsname,"w") as js:
-        js.write(jsdata)
+    ## ## Output for Javascript
+    ## def rgb_to_hex(rgb):
+    ##     return '#%02x%02x%02x' % rgb
+    ## redpoints = [(p[1],p[2]) for p in redpoints]
+    ## blackpoints = [(p[1],p[2]) for p in blackpoints]
+    ## jsdata = [{"label": "Genes with p-value < " + str(alpha),
+    ##            "data": redpoints,
+    ##            "labels": annotes_red,
+    ##            "pvals": pvals_red,
+    ##            "points": {"symbol":"circle", "show":True},
+    ##            "color": "red"},
+    ##           {"label": "Genes with p-value > " + str(alpha),
+    ##            "data": blackpoints,
+    ##            "labels": annotes_black,
+    ##            "pvals": pvals_black,
+    ##            "points": {"symbol":"circle", "show":True},
+    ##            "color": "black"},
+    ##           {"label": "Mean", "data": spline_coords[50],
+    ##            "lines": {"show":True}, "color": rgb_to_hex((255,0,255)) },
+    ##           {"id": "1% Quantile", "data": spline_coords[1], "lines": {"show":True, "lineWidth":0, "fill": 0.12},
+    ##            "color": rgb_to_hex((255,0,255))},
+    ##           {"id": "5% Quantile", "data": spline_coords[5], "lines": {"show":True, "lineWidth":0, "fill": 0.18},
+    ##            "color": rgb_to_hex((255,0,255))},
+    ##           {"id": "25% Quantile", "data": spline_coords[25], "lines": {"show":True, "lineWidth":0, "fill": 0.3},
+    ##            "color": rgb_to_hex((255,0,255))},
+    ##           {"id": "75% Quantile", "data": spline_coords[75], "lines": {"show":True, "lineWidth":0, "fill": 0.3},
+    ##            "color": rgb_to_hex((255,0,255))},
+    ##           {"id": "95% Quantile", "data": spline_coords[95], "lines": {"show":True, "lineWidth":0, "fill": 0.18},
+    ##            "color": rgb_to_hex((255,0,255))},
+    ##           {"id": "99% Quantile", "data": spline_coords[99], "lines": {"show":True, "lineWidth":0, "fill": 0.12},
+    ##            "color": rgb_to_hex((255,0,255))}
+    ##          ]
+    ## splinelabels = {"id": "Spline labels",
+    ##                 "data": [spline_coords[k][0] for k in percentiles],
+    ##                 "points": {"show":False}, "lines": {"show":False},
+    ##                 "labels": ["1%","5%","25%","50%","75%","95%","99%"]}
+    ## jsdata = "var data = " + json.dumps(jsdata) + ";\n" \
+    ##          + "var splinelabels = " + json.dumps(splinelabels) + ";\n"
+    ## if assembly_id:
+    ##     nr_assemblies = urllib.urlopen("http://bbcftools.vital-it.ch/genrep/nr_assemblies.json").read()
+    ##     nr_assemblies = json.loads(nr_assemblies)
+    ##     if isinstance(assembly_id,str):
+    ##         for a in nr_assemblies:
+    ##             if a['nr_assembly']['name'] == assembly_id:
+    ##                 assembly_id = a['nr_assembly']['id']; break
+    ##     url_template = urllib.urlopen("http://bbcftools.vital-it.ch/genrep/nr_assemblies/" \
+    ##                                   + str(assembly_id) + "/get_links.json?gene_name=%3CName%3E")
+    ##     jsdata = jsdata + "var url_template = " + url_template.read() + ";"
+    ## jsname = unique_filename_in()+".js"
+    ## jsname = "data.js"
+    ## with open(jsname,"w") as js:
+    ##     js.write(jsdata)
 
-    return figname, jsname
+    return figname#, jsname
 
 class AnnoteFinder:
   """
