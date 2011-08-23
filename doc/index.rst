@@ -26,3 +26,5 @@ Table of Contents:
    bbcflib_rnaseq
    bbcflib_gdv
    bbcflib_track
+
+* `Developer documentation <http://bbcf.github.com/gMiner/>`_
