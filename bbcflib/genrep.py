@@ -113,61 +113,98 @@ class GenRep(object):
         request = urllib2.Request(url)
         return urllib2.urlopen(request).read().split(',')
 
-    def get_sequence_straight(self, input_list):
-        """ each element in input_list are lists containing: the chromosome name, the start and the end position."""    
-        h_data = {}
-        h_result = {}
-        
-        for e in input_list:
-            if (h_data.get(e[0]) == None):
-                h_data[e[0]]=[] 
-            h_data[e[0]].append([e[1],e[2]])
-        for chr in h_data.keys():
-            h_data[chr].sort()
-            res_list=get_sequence(chr, h_data[chr])
-            for i in range(0,len(res_list)):
-                h_results[chr]=[h_data[chr][i], res_list[i]]
-        return h_results
+#    def get_sequence_straight(self, input_list):
+#        """ each element in input_list are lists containing: the chromosome name, the start and the end position."""    
+#        h_data = {}
+#        h_result = {}
+#        
+#        for e in input_list:
+#            if (h_data.get(e[0]) == None):
+#                h_data[e[0]]=[] 
+#            h_data[e[0]].append([e[1],e[2]])
+#        for chr in h_data.keys():
+#            h_data[chr].sort()
+#            res_list=get_sequence(chr, h_data[chr])
+#            for i in range(0,len(res_list)):
+#                h_results[chr]=[h_data[chr][i], res_list[i]]
+#        return h_results
 
-    def fasta_from_data(self, chromosomes, data_path, out=None, chunk=50000):
+    def fasta_from_regions(self, chromosomes, regions, out=None, chunk=50000, shuffled=False):
         """Get a fasta file with sequences corresponding to the features in the
         bed or sqlite file.
 
         Returns the name of the file and the total sequence size.
+
+        If 'out' is a (possibly empty) dictionary, will return the filled dictionary, 
+        if 'regions' is a dictionary {'chr' [[start1,end1],[start2,end2]]} 
+        or a list [['chr',start1,end1],['chr',start2,end2]], 
+        will simply iterate through its items instead of loading a track from file.
         """
         from .track import load
+        from .track.extras.sql import TrackExtras 
         if out == None:
             out = unique_filename_in()
-        def push_slices(slices,start,end,name,cur_chunk):
+        def _push_slices(slices,start,end,name,cur_chunk):
             if end>start:
                 slices['coord'].append([start,end])
                 slices['names'].append(name)
                 cur_chunk += end-start
             return slices,cur_chunk
-        def flush_slices(slices,chrid,chrn,out):
+        def _flush_slices(slices,chrid,chrn,out):
             names = slices['names']
             coord = slices['coord']
-            with open(out,"a") as f:
-                for i,s in enumerate(self.get_sequence(chrid,coord)):
-                    f.write(">"+names[i]+"|"+chrn+":"+str(coord[i][0])+"-"+str(coord[i][1])+"\n"+s+"\n")
+            if isinstance(out,str):
+                with open(out,"a") as f:
+                    for i,s in enumerate(self.get_sequence(chrid,coord)):
+                        f.write(">"+names[i]+"|"+chrn+":"+str(coord[i][0])+"-"+str(coord[i][1])+"\n"+s+"\n")
+            else:
+                out[chrn].extend([s for s in self.get_sequence(chrid,coord)])
             return {'coord':[],'names':[]}
         slices = {'coord':[],'names':[]}
         chrlist = dict((v['name'], {'length': v['length']}) for v in chromosomes.values())
         size = 0
-        with load(data_path, chrmeta=chrlist) as t:
+        if isinstance(regions,list):
+            reg_dict = {}
+            for reg in regions:
+                chrom = reg.pop(0)
+                if not(chrom in reg_dict):
+                    reg_dict[chrom] = []
+                reg_dict[chrom].append(reg)
+            regions = reg_dict
+        if isinstance(regions,dict):
             cur_chunk = 0
             for cid,chrom in chromosomes.iteritems():
-                for row in t.read(selection=chrom['name'], fields=["start","end","name"]):
+                if not(chrom['name'] in regions): continue
+                if isinstance(out,dict): out[chrom['name']] = []
+                for row in regions[chrom['name']]:
                     s = max(row[0],0)
                     e = min(row[1],chrom['length'])
-                    name = re.sub('\s+','_',row[2])
-                    slices,cur_chunk= push_slices(slices,s,e,name,cur_chunk)
+                    slices,cur_chunk = _push_slices(slices,s,e,'',cur_chunk)
                     if cur_chunk > chunk:
                         size += cur_chunk
-                        slices = flush_slices(slices,cid[0],chrom['name'],out)
+                        slices = _flush_slices(slices,cid[0],chrom['name'],out)
                         cur_chunk = 0
                 size += cur_chunk
-                slices = flush_slices(slices,cid[0],chrom['name'],out)
+                slices = _flush_slices(slices,cid[0],chrom['name'],out)
+        else:
+            with load(regions, chrmeta=chrlist) as t:
+                cur_chunk = 0
+                for cid,chrom in chromosomes.iteritems():
+                    if shuffled:
+                        features = t.read_shuffled(chrom['name'], repeat_number=1, fields=["start","end","name"])
+                    else:
+                        features = t.read(chrom['name'], fields=["start","end","name"])
+                    for row in features:
+                        s = max(row[0],0)
+                        e = min(row[1],chrom['length'])
+                        name = re.sub('\s+','_',row[2])
+                        slices,cur_chunk = _push_slices(slices,s,e,name,cur_chunk)
+                        if cur_chunk > chunk:
+                            size += cur_chunk
+                            slices = _flush_slices(slices,cid[0],chrom['name'],out)
+                            cur_chunk = 0
+                    size += cur_chunk
+                    slices = _flush_slices(slices,cid[0],chrom['name'],out)
         return (out,size)
 
     def assembly(self, assembly):
@@ -211,20 +248,18 @@ class GenRep(object):
                              c['chromosome']['length'])
         return a
 
-    def assemblies_available(self):
+    def assemblies_available(self, assembly=None):
         """
         Returns a list of assemblies available on genrep
         """
-        request         = urllib2.Request(self.url + "/assemblies.json")
-        assembly_info   = json.load(urllib2.urlopen(request))
-        assembly_list   = [a['assembly']['name'] for a in assembly_info]
-        return [ a for a in assembly_list if a is not None ]
-
-    def is_available(self, assembly):
-        """
-        Returns a list of assemblies available on genrep
-        """
-        return assembly in self.assemblies_available()
+        request = urllib2.Request(self.url + "/assemblies.json")
+        assembly_list = []
+        for a in json.load(urllib2.urlopen(request)):
+            name = a['assembly'].get('name')
+            if name == None: continue
+            if name == assembly: return True
+            assembly_list.append(name)
+        if assembly == None: return assembly_list
 
     def statistics(self, assembly, output=None, frequency=False, matrix_format=False):
         """
@@ -326,6 +361,12 @@ class GenRep(object):
                         if getattr(obj,k)==v:
                             result.append(obj)
         return result
+
+    def is_available(self, assembly):
+        """
+        Legacy signature
+        """
+        return self.assemblies_available(assembly)
 
 ################################################################################
 class Assembly(object):
