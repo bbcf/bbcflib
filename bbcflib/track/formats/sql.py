@@ -200,8 +200,11 @@ class TrackFormat(Track, TrackExtras):
         try:
             if self.datatype == 'qualitative':  self.cursor.executemany(sql_command, add_empty_element(data))
             if self.datatype == 'quantitative': self.cursor.executemany(sql_command, data)
-        except sqlite3.OperationalError as err:
-            raise Exception("The command '" + sql_command + "' on the database '" + self.path + "' failed with error: " + str(err))
+        except (sqlite3.OperationalError, sqlite3.ProgrammingError) as err:
+            for data in data: break
+            raise Exception("The command '" + sql_command + "' on the database '" + self.path + "' failed with error: " + str(err) + \
+                '\n' + 'The bindings expected: ' + actual_fields + \
+                '\n' + 'You gave: ' + str(data))
 
     def remove(self, chrom=None):
         self.modified = True
