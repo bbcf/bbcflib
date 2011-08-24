@@ -35,7 +35,7 @@ class TrackRandom(Track):
             end = start + (random.randint(1,100) )
             score = random.gammavariate(1, 0.1) * 1000
             strand = map(lambda x: x==1 and 1 or -1, [random.randint(0,1)])[0]
-            yield [start, end, self.name_gen.next(), score, strand]
+            yield (start, end, self.name_gen.next(), score, strand)
 
     @property
     def datatype(self):
@@ -51,7 +51,7 @@ class TrackRandom(Track):
 
     @property
     def attributes(self):
-        return {'type':'random'}
+        return {'type':'random', 'datatype':self.datatype}
 
     def unload(self, *args):
         pass
