@@ -190,6 +190,9 @@ class Test_Attributes(unittest.TestCase):
     def runTest(self):
         path = named_temporary_path('.sql')
         with track.new(path) as t:
+            # Default values #
+            self.assertEqual(t.datatype, 'qualitative')
+            self.assertEqual(t.name, 'Unamed')
             # Overwritting #
             info = {'datatype': 'quantitative', 'source': 'SGD'}
             t.attributes = info
@@ -235,7 +238,7 @@ class Test_Corrupted(unittest.TestCase):
         with track.load(t['path_sql'], readonly=True) as t:
             self.assertEqual(t.all_chrs, ['chr' + str(i) for i in range(1,17)])
             self.assertEqual(t.chrmeta, {})
-            self.assertEqual(t.attributes, {})
+            self.assertEqual(t.attributes, {'datatype': 'qualitative'})
 
 #-------------------------------------------------------------------------------#
 class Test_Conventions(unittest.TestCase):

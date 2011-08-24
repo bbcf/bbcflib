@@ -35,6 +35,8 @@ class TrackFormat(Track, TrackExtras):
             self.chrmeta = self.chrmeta_read()
             self.chrmeta.modified = False
         # Check for missing attributes #
+        if not datatype and not self.datatype: self.datatype = 'qualitative'
+        # Check for present attributes #
         if name: self.name = name
         if datatype:
             if not self.datatype: self.datatype = datatype
@@ -87,7 +89,11 @@ class TrackFormat(Track, TrackExtras):
         return [x for x in self.all_tables if x not in self.special_tables and not x.endswith('_idx')]
 
     def get_fields_of_table(self, table):
-        return [x[1] for x in self.cursor.execute('pragma table_info("' + table + '")').fetchall()]
+        result = [x[1] for x in self.cursor.execute('pragma table_info("' + table + '")').fetchall()]
+        # Hack to add an empty column needed by GDV #
+        try: result.remove('attributes')
+        except ValueError: pass
+        return result
 
     #--------------------------------------------------------------------------#
     def attributes_read(self):
@@ -181,17 +187,19 @@ class TrackFormat(Track, TrackExtras):
         if self.datatype == 'quantitative': fields = Track.quantitative_fields
         if fields        == None:           fields = Track.qualitative_fields
         # Hack to add an empty column needed by GDV #
-        fields += ['attributes',]
         def add_empty_element(iterator):
             for item in iterator: yield item + (None,)
+        if self.datatype == 'qualitative':  actual_fields = fields + ['attributes']
+        if self.datatype == 'quantitative': actual_fields = fields
         # Maybe create the table #
         if chrom not in self.chrs_from_tables:
-            columns = ','.join([field + ' ' + Track.field_types.get(field, 'text') for field in fields])
+            columns = ','.join([field + ' ' + Track.field_types.get(field, 'text') for field in actual_fields])
             self.cursor.execute('create table "' + chrom + '" (' + columns + ')')
         # Execute the insertion #
-        sql_command = 'insert into "' + chrom + '" (' + ','.join(fields) + ') values (' + ','.join(['?' for x in range(len(fields))])+')'
+        sql_command = 'insert into "' + chrom + '" (' + ','.join(actual_fields) + ') values (' + ','.join(['?' for x in range(len(actual_fields))])+')'
         try:
-            self.cursor.executemany(sql_command, add_empty_element(data))
+            if self.datatype == 'qualitative':  self.cursor.executemany(sql_command, add_empty_element(data))
+            if self.datatype == 'quantitative': self.cursor.executemany(sql_command, data)
         except sqlite3.OperationalError as err:
             raise Exception("The command '" + sql_command + "' on the database '" + self.path + "' failed with error: " + str(err))
 

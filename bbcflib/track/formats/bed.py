@@ -65,7 +65,7 @@ class TrackFormat(TrackText, TrackProxy):
                         line[7] = float(line[7])
                     except ValueError:
                         raise Exception("The file '" + self._path + ":" + str(number) + "' has non integers as thick ends and is hence not valid.")
-            yield tuple(line)
+            yield line
 
     def _write_entries(self):
         # Get fields #

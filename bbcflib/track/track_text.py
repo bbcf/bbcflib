@@ -42,7 +42,7 @@ class TrackText(object):
             global chrom, entry
             while True:
                 if entry[0] != chrom: break
-                yield entry[1:]
+                yield tuple(entry[1:])
                 get_next_entry()
         get_next_entry()
         while True:
