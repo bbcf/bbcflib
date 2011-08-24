@@ -243,6 +243,19 @@ class Track(object):
         '''
         raise NotImplementedError
 
+    def rename(self, previous_name, new_name):
+        '''Renames a chromosome from *previous_name* to *new_name*
+
+           Examples::
+
+               from bbcflib import track
+               with track.load('tracks/rp_genes.bed') as t:
+                   t.rename('chr4', 'chrIV')
+
+           ``rename`` returns nothing.
+        '''
+        raise NotImplementedError
+
     def count(self, selection=None):
         '''Counts the number of features or entries in a given selection.
 
@@ -365,6 +378,7 @@ class Track(object):
         'block_count':  'integer',
         'block_sizes':  'text',
         'block_starts': 'text',
+        'attributes':   'text',
     }
 
     #-----------------------------------------------------------------------------#

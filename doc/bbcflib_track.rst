@@ -28,6 +28,8 @@ The Track object
 
     .. automethod:: Track.remove
 
+    .. automethod:: Track.rename
+
     .. automethod:: Track.count
 
     .. automethod:: Track.export

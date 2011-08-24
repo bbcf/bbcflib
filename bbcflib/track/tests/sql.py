@@ -126,10 +126,23 @@ class Test_Remove(unittest.TestCase):
         with track.new(path) as t:
             chrom = 'chr1'
             features = [(i*10, i*10+5, 'X', 0.0, 0) for i in xrange(5)]
+            t.chrmeta['chr1'] = {'length': 200}
             t.write(chrom, features)
             t.remove()
             self.assertEqual(list(t.read()), [])
+            self.assertEqual(t.chrmeta, {})
         os.remove(path)
+
+#------------------------------------------------------------------------------#
+class Test_Rename(unittest.TestCase):
+    def runTest(self):
+        old = track_collections['Validation'][1]['path_sql']
+        new = named_temporary_path('.sql')
+        shutil.copyfile(old, new)
+        with track.load(new, chrmeta = {'chr1': {'length': 200}}) as t:
+            t.rename('chr1', 'chr000001')
+            expected =  {'chr000001': {'length': 200}}
+            self.assertEqual(t.chrmeta, expected)
 
 #------------------------------------------------------------------------------#
 class Test_Readonly(unittest.TestCase):

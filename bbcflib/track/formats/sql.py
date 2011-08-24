@@ -207,10 +207,19 @@ class TrackFormat(Track, TrackExtras):
         if not chrom:
             chrom = self.chrs_from_tables
         if isinstance(chrom, list):
-            for ch in chrom:
-                self.remove(ch)
+            for ch in chrom: self.remove(ch)
         else:
             self.cursor.execute("DROP table '" + chrom + "'")
+            if chrom in self.chrmeta: self.chrmeta.pop(chrom)
+
+    def rename(self, previous_name, new_name):
+        self.modified = True
+        if self.readonly: return
+        if previous_name not in self.chrs_from_tables: raise Exception("The chromomse '" + previous_name + "' doesn't exist.")
+        self.cursor.execute("ALTER TABLE '" + previous_name + "' RENAME TO '" + new_name + "'")
+        if previous_name in self.chrmeta:
+            self.chrmeta[new_name] = self.chrmeta[previous_name]
+            self.chrmeta.pop(previous_name)
 
     def count(self, selection=None):
         # Default selection #
