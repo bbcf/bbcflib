@@ -29,7 +29,7 @@ else:
 yeast_chr_file = tracks_path + 'chr/yeast.chr'
 track_collections = {
 'Validation': {
-  1:   {'path': tracks_path+'qual/bed/validation1.bed',         'type':'qualitative', ' fields':Track.qualitative_fields[:4]},
+  1:   {'path': tracks_path+'qual/bed/validation1.bed',         'type':'qualitative',  'fields':Track.qualitative_fields[:4]},
   2:   {'path': tracks_path+'qual/bed/validation2.bed',         'type':'qualitative',  'fields':Track.qualitative_fields    },
   3:   {'path': tracks_path+'qual/bed/validation3.bed',         'type':'qualitative',  'fields':Track.qualitative_fields    },
   4:   {'path': tracks_path+'qual/bed/validation4.bed',         'type':'qualitative',  'fields':Track.qualitative_fields    },
@@ -67,6 +67,9 @@ track_collections = {
   'All genes':  {'path':tracks_path+'qual/bed/all_yeast_genes.bed',   'type':'qualitative', 'fields':Track.qualitative_fields},
   'Ribi genes': {'path':tracks_path+'qual/bed/ribosome_genesis.bed',  'type':'qualitative', 'fields':Track.qualitative_fields},
   'RP genes':   {'path':tracks_path+'qual/bed/ribosome_proteins.bed', 'type':'qualitative', 'fields':Track.qualitative_fields},
+    },
+'Compressed': {
+  1:  {'path':tracks_path+'qual/gzip/validation1.bed.gz',        'type':'qualitative', 'fields':Track.qualitative_fields[:4]},
     },
 }
 

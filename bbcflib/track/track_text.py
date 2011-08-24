@@ -25,8 +25,8 @@ def int_to_strand(num):
 
 ###########################################################################
 class TrackText(object):
-    @property
-    def _file_obj(self): return open(self._path, 'r')
+    def open(self, path, mode):
+        return open(path, mode)
 
     #--------------------------------------------------------------------------#
     def _read(self):

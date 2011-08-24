@@ -378,8 +378,9 @@ class Track(object):
             elif os.path.isdir(path): raise Exception("The location '" + path + "' is a directory")
             # Get child class #
             if not format: format = determine_format(path)
-            implementation = import_implementation(format)
-            instance       = super(Track, cls).__new__(implementation.TrackFormat)
+            implementation = import_implementation(format).TrackFormat
+            if isinstance(implementation, type): instance = object.__new__(implementation)
+            else: instance = implementation(path, format, name, chrmeta, datatype, readonly, empty)
             # Set attributes #
             instance.format   = format
             instance.modified = False
