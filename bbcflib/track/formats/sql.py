@@ -186,25 +186,20 @@ class TrackFormat(Track, TrackExtras):
         # Default fields #
         if self.datatype == 'quantitative': fields = Track.quantitative_fields
         if fields        == None:           fields = Track.qualitative_fields
-        # Hack to add an empty column needed by GDV #
-        def add_empty_element(iterator):
-            for item in iterator: yield item + (None,)
-        if self.datatype == 'qualitative':  actual_fields = fields + ['attributes']
-        if self.datatype == 'quantitative': actual_fields = fields
         # Maybe create the table #
         if chrom not in self.chrs_from_tables:
-            columns = ','.join([field + ' ' + Track.field_types.get(field, 'text') for field in actual_fields])
+            columns = ','.join([field + ' ' + Track.field_types.get(field, 'text') for field in fields])
+            # Next line is a hack to add an empty column needed by GDV - remove at a later date ###
+            if self.datatype == 'qualitative' and 'attributes' not in fields: columns += 'attributes text'
             self.cursor.execute('create table "' + chrom + '" (' + columns + ')')
-        # Execute the insertion #
-        sql_command = 'insert into "' + chrom + '" (' + ','.join(actual_fields) + ') values (' + ','.join(['?' for x in range(len(actual_fields))])+')'
+        # Execute the insertion
+        sql_command = 'insert into "' + chrom + '" (' + ','.join(fields) + ') values (' + ','.join(['?' for x in range(len(fields))])+')'
         try:
-            if self.datatype == 'qualitative':  self.cursor.executemany(sql_command, add_empty_element(data))
-            if self.datatype == 'quantitative': self.cursor.executemany(sql_command, data)
-        except (sqlite3.OperationalError, sqlite3.ProgrammingError) as err:
-            for data in data: break
-            raise Exception("The command '" + sql_command + "' on the database '" + self.path + "' failed with error: " + str(err) + \
-                '\n' + 'The bindings expected: ' + actual_fields + \
-                '\n' + 'You gave: ' + str(data))
+            self.cursor.executemany(sql_command, data)
+        except sqlite3.OperationalError as err:
+            raise Exception("The command '" + sql_command + "' on the database '" + self.path + "' failed with error: '" + str(err) + "'" + \
+                '\n    ' + 'The bindings: ' + str(columns) + \
+                '\n    ' + 'You gave: ' + str(data))
 
     def remove(self, chrom=None):
         self.modified = True
