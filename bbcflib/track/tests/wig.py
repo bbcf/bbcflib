@@ -56,14 +56,6 @@ class Test_Roundtrips(unittest.TestCase):
             self.assertEqual(A[1:], B)
             os.remove(path)
 
-#-----------------------------------------------------------------------------#
-class Test_Format(unittest.TestCase):
-    def runTest(self):
-        t = track_collections['Scores'][1]
-        with track.load(t['path']) as t:
-            self.assertEqual(t.format, 'wig')
-            self.assertEqual(t.type_identifier, 'wiggle_0')
-
 #------------------------------------------------------------------------------#
 class Test_Format(unittest.TestCase):
     def runTest(self):
