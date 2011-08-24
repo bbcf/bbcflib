@@ -7,8 +7,8 @@ Implementation of the BED format.
 """
 
 # Internal modules #
-from ..track_proxy import TrackProxy
-from ..track_text import TrackText, strand_to_int, int_to_strand
+from bbcflib.track.track_proxy import TrackProxy
+from bbcflib.track.track_text import TrackText, strand_to_int, int_to_strand
 
 # Global variables #
 all_fields_possible = ['start', 'end', 'name', 'score', 'strand', 'thick_start', 'thick_end',

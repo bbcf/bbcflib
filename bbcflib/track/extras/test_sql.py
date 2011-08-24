@@ -2,9 +2,9 @@
 import os
 
 # Internal modules #
-from ..track_collection import track_collections
-from ..common import named_temporary_path
-from ... import track
+from bbcflib.track.track_collection import track_collections
+from bbcflib.track.common import named_temporary_path
+from bbcflib import track
 
 # Unittesting module #
 try:

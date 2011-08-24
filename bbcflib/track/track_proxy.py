@@ -11,9 +11,9 @@ and reconverts everything to a text file file upon closing, all transparently.
 import os, shutil
 
 # Internal modules #
-from . import Track, new
-from .common import named_temporary_path, check_path
-from .formats.sql import TrackFormat as TrackBackend
+from bbcflib.track import Track, new
+from bbcflib.track.common import named_temporary_path, check_path
+from bbcflib.track.formats.sql import TrackFormat as TrackBackend
 
 # Globals #
 backend_format = 'sql'

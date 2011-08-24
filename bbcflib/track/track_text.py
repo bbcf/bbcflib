@@ -10,7 +10,7 @@ Methods common to the text formats.
 import shlex
 
 # Internal modules #
-from . import Track
+from bbcflib.track import Track
 
 #-----------------------------------------------------------------------------#
 def strand_to_int(strand):

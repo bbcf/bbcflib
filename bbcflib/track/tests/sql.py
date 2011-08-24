@@ -2,9 +2,9 @@
 import os, shutil
 
 # Internal modules #
-from ... import track
-from ..common import named_temporary_path, sqlcmp
-from ..track_collection import track_collections, yeast_chr_file
+from bbcflib import track
+from bbcflib.track.common import named_temporary_path, sqlcmp
+from bbcflib.track.track_collection import track_collections, yeast_chr_file
 
 # Unittesting module #
 try:

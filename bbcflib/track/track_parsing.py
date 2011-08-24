@@ -10,8 +10,8 @@ An optional test that is not run with the usual test suite. It evaluates the rob
 import os, re
 
 # Internal modules #
-from . import Track
-from .track_collection import parser_tests, yeast_chr_file
+from bbcflib.track import Track
+from bbcflib.track.track_collection import parser_tests, yeast_chr_file
 
 ################################################################################
 def run(create_sql_files=False):

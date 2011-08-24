@@ -12,7 +12,7 @@ that all formats should have.
 import random
 
 # Internal modules #
-from ... import track
+from bbcflib import track
 
 ###################################################################################
 class TrackExtras(object):

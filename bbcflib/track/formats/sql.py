@@ -10,10 +10,10 @@ Implementation of the SQL format.
 import sqlite3
 
 # Internal modules #
-from .. import Track
-from ..track_util import join_read_queries, make_cond_from_sel
-from ..extras.sql import TrackExtras
-from ..common import natural_sort
+from bbcflib.track import Track
+from bbcflib.track.track_util import join_read_queries, make_cond_from_sel
+from bbcflib.track.extras.sql import TrackExtras
+from bbcflib.track.common import natural_sort
 
 ################################################################################
 class TrackFormat(Track, TrackExtras):

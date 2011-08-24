@@ -10,8 +10,8 @@ Useful stuff for the track package.
 import os, sys, shlex
 
 # Internal modules #
-from . import formats
-from . import magic
+from bbcflib.track import formats
+from bbcflib.track import magic
 
 ###############################################################################
 def determine_format(path):

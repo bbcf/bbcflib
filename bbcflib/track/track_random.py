@@ -11,7 +11,7 @@ Implementation of a random track generator.
 import sys, random, tempfile
 
 # Internal modules #
-from . import Track
+from bbcflib.track import Track
 
 # Variables #
 chrsuffix = 'Awfully super extra long chromosome denomination string '

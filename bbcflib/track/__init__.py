@@ -409,8 +409,8 @@ class Track(object):
         return key in self.all_chrs
 
 # Internal modules #
-from .track_util import determine_format, import_implementation
-from .track_meta import ChromMetaData, TrackMetaData
+from bbcflib.track.track_util import determine_format, import_implementation
+from bbcflib.track.track_meta import ChromMetaData, TrackMetaData
 
 #-----------------------------------#
 # This code was written by the BBCF #
