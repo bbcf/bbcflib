@@ -1,10 +1,9 @@
 # Built-in modules #
-import os, shutil
+import sys
 
 # Internal modules #
 from bbcflib import track
-from bbcflib.track.common import named_temporary_path
-from bbcflib.track.track_collection import track_collections, yeast_chr_file
+from bbcflib.track.track_collection import track_collections
 
 # Unittesting module #
 try:
@@ -18,6 +17,7 @@ __test__ = True
 ################################################################################
 class Test_Read(unittest.TestCase):
     def runTest(self):
+        if sys.version_info < (2, 7): self.skipTest("Gzip support only works in 2.7 for the moment")
         path = track_collections['Compressed'][1]['path']
         with track.load(path) as t:
             # Just the first feature #
