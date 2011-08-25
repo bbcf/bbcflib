@@ -24,8 +24,12 @@ def integer_to_roman(input):
     return result
 
 def convert(chrom):
+    d = {'chrQ':'chrM', 'chrR':'2micron'}
+    if chrom in d: return d[chrom]
     match = re.search('([a-zA-Z]+)([0-9]+)', chrom)
     return match.group(1) + integer_to_roman(int(match.group(2)))
 
 with track.load(sys.argv[1]) as t:
+    print "Old chromosome metadata: " + str(t.chrmeta) + '\n'
     for chrom in t: t.rename(chrom, convert(chrom))
+    print "New chromosome metadata: " + str(t.chrmeta) + '\n'
