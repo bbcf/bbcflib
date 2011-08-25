@@ -3,7 +3,7 @@
 Module: bbcflib.rnaseq
 ======================
 
-No documentation
+Methods of the bbcflib's RNA-seq worfow
 """
 
 # Built-in modules #
@@ -13,8 +13,6 @@ from itertools import combinations
 # Internal modules #
 from .mapseq import map_groups
 from .genrep import GenRep
-
-#started to take a census of used numpy libs
 
 # Other modules #
 import numpy
@@ -27,32 +25,26 @@ import rpy2.robjects.numpy2ri
 import rpy2.rlike.container as rlc
 import cogent.db.ensembl as ensembl
 import csv
-import pudb
+from bbcflib.common import timer
+
+import matplotlib
+matplotlib.use('Agg') #trick to avoid problems with -X ssh sessions (force backend)
 
 ################################################################################
 
-def timer(f):
-    """ A decorator that make every decorated function return its execution time """
-    def wrapper(*args, **kwargs):
-        t1 = time.time()
-        result = f(*args, **kwargs)
-        t2 = time.time()
-        print "Execution time of function", f.__name__, ":", str(t2-t1), "s."
-        return result
-    return wrapper
-
 def fetch_mappings(path_or_assembly_id):
     """Given an assembly ID, return a tuple
-    (gene_ids, gene_names, trans_to_gene_mapping, exons_to_trans_mapping).
-    gene_ids is a list of gene IDs; gene_names is a dictionary {gene ID: gene name};
-    trans_to_gene_mapping is a dictionary {gene ID: [transcripts IDs]};
-    exons_to_trans_mapping is a dictionary {transcript ID: [exons IDs]}.
+    (gene_ids, gene_names, transcript_mapping, exon_mapping, trans_in_gene, exons_in_trans)
+    - gene_ids is a list of gene ID's
+    - gene_names is a dict {gene ID: gene name}
+    - transcript_mapping is a dictionary {transcript ID: gene ID}
+    - exon_mapping is a dictionary {exon ID: (transcript ID, gene ID)}
+    - trans_in_gene is a dict {gene ID: IDs of the transcripts it contains}
+    - exons_in_trans is a dict {transcript ID: IDs of the exons it contains}
 
     *path_or_assembly_id* can be a numeric or nominal ID for GenRep
     (e.g. 76 or 'hg19' for H.Sapiens), or a path to a file containing a
     JSON object which is read to get the mapping.
-
-    Takes about 115 seconds to load.
     """
     assembly_id = path = path_or_assembly_id
     nr_assemblies = urllib.urlopen("http://bbcftools.vital-it.ch/genrep/nr_assemblies.json").read()
@@ -121,14 +113,38 @@ def pairs_to_test(controls):
 
     If all the values are True or all the values are False, then it
     returns all unique pairs of group IDs.  Otherwise it returns all
-    combinations of one group ID with value True and one with value
-    False.
+    combinations of one group ID with value True and one with value False.
     """
     if all(controls.values()) or not(any(controls.values())):
         return list(combinations(controls.keys(), 2))
     else:
         return [(x,y) for x in controls.keys() for y in controls.keys()
                 if controls[x] and not(controls[y])]
+
+def translate_gene_ids(fc_ids, dictionary):
+    '''Replace (unique) gene IDs by (not unique) gene names.
+    *fc_ids* is a dict {gene_id: whatever}
+    *dictionary* is a dict {gene_id: gene_name} '''
+    names = []
+    for s in fc_ids.keys():
+        start = s.find("ENSG")
+        if start != -1:
+            end = s.split("ENSG")[1].find("|")
+            gene_id = "ENSG" + s.split("ENSG")[1].split("|")[0]
+            names.append(s.replace(gene_id, dictionary.get(gene_id,gene_id)))
+        else: names.append(s)
+    fc_names = dict(zip(names,fc_ids.values()))
+    return fc_names
+
+def save_results(data):
+    '''Save results in a CSV file. Data is of the form {id:(mean,fold_change)} '''
+    filename = unique_filename_in()
+    with open(filename,"wb") as f:
+        c = csv.writer(f)
+        c.writerow(["id", "baseMean", "log2FoldChange"])
+        for k,v in data.iteritems():
+            c.writerow([k,v[0],v[1]])
+    return filename
 
 @program
 def external_deseq(cond1_label, cond1, cond2_label, cond2, assembly_id,
@@ -148,64 +164,38 @@ def external_deseq(cond1_label, cond1, cond2_label, cond2, assembly_id,
 
 def inference(cond1_label, cond1, cond2_label, cond2, assembly_id,
               target=["exons","genes","transcripts"], method="normal", maplot=None):
-    """Runs DESeq comparing the counts in *cond1* and *cond2*.
+    """ Writes a CSV file for each selected feature,
+    each row being of the form: Feature_ID // Mean_expression // Log2(fold_change).
+    It calls an R session to use DESeq for size factors and variance stabilization.
 
-    Arguments:
-    *cond1* and *cond2* are lists of numpy arrays. Each
-    array lists the number of reads mapping to a particular
-    transcript.
-    *cond1_label* and *cond2_label* are string which will be used
+    * *cond1* and *cond2* are lists of numpy arrays. Each array lists the number of
+    reads mapping to a particular transcript.
+    * *cond1_label* and *cond2_label* are string which will be used
     to identify the two conditions in R.
-
-    ``inference`` writes a tab delimited text file of the
-    conditions to R, the first column being the transcript name,
-    followed by one column for each numpy array in *cond1*, then one
-    column for each numpy array in *cond2*.
-
-    Then it calls DESeq in R, writes out the results in a new,
-    randomly named file, and returns that filename.
+    * *assembly_id* is a string or an integer identifying the assembly in
+    GenRep (e.g. 'hg19' of 76, for human).
+    * *target* is a string or array of strings indicating the features you want to compare.
+    Targets can be 'genes', 'transcripts', or 'exons'. E.g. ['genes','transcripts'], or 'genes'.
+    * *method* can be 'normal' or 'blind', the method used for DESeq variances estimation.
+    * *maplot*: MA-plot of data.
+    - If 'interactive', one can click on a point (gene or exon) to display its name;
+    - if 'normal', name of genes over 99.9%/under 0.1% quantiles are displayed;
+    - if None, no figure is produced.
     """
 
-    fake_csv = 0
-    fake_mapping = 0
+    fake_mapping = 1
 
-    def translate_gene_ids(fc_ids):
-        '''Replace (unique) gene IDs by (not unique) gene names '''
-        print "Replace gene IDs to gene names"
-        names = []
-        for s in fc_ids.keys():
-            start = s.find("ENSG")
-            if start != -1:
-                end = s.split("ENSG")[1].find("|")
-                gene_id = "ENSG" + s.split("ENSG")[1].split("|")[0]
-                names.append(s.replace(gene_id,gene_names.get(gene_id,gene_id)))
-            else: names.append(s)
-        fc_names = dict(zip(names,fc_ids.values()))
-        return fc_names
-
-    def save_results(data):
-        filename = unique_filename_in()
-        with open(filename,"wb") as f:
-            c = csv.writer(f)
-            c.writerow(["id", "baseMean", "log2FoldChange"])
-            for k,v in data.iteritems():
-                c.writerow([k,v[0],v[1]])
-        return filename
-
-    print "Loading mappings..."
     """ - gene_ids is a list of gene ID's
         - gene_names is a dict {gene ID: gene name}
         - transcript_mapping is a dictionary {transcript ID: gene ID}
         - exon_mapping is a dictionary {exon ID: (transcript ID, gene ID)}
-        - trans_in_gene is a dict {transcript ID: ID of the gene it belongs to}
-        - exons_in_trans is a dict {exon ID: ID of the transcript it belongs to} """
+        - trans_in_gene is a dict {gene ID: IDs of the transcripts it contains}
+        - exons_in_trans is a dict {transcript ID: IDs of the exons it contains} """
     if fake_mapping:
         mappings = fetch_mappings("../archive/maptest.pickle")
     else:
         mappings = fetch_mappings(assembly_id)
-        #mappings = fetch_mappings("../archive/bb27b89826b88823423282438077cdb836e1e6e5.pickle")
     (gene_ids, gene_names, transcript_mapping, exon_mapping, trans_in_gene, exons_in_trans) = mappings
-    print "Loaded."
 
     # Pass the data into R as a data frame
     data_frame_contents = rlc.OrdDict([(cond1_label+'-'+str(i), robjects.IntVector(c.values()))
@@ -214,27 +204,29 @@ def inference(cond1_label, cond1, cond2_label, cond2, assembly_id,
                                        for i,c in enumerate(cond2)])
     data_frame = robjects.DataFrame(data_frame_contents)
     data_frame.rownames = cond1[0].keys()
-    conds = robjects.StrVector([cond1_label for x in cond1] + [cond2_label for x in cond2]).factor()
 
-    ## DESeq normalization
+    conds = robjects.StrVector([cond1_label for x in cond1] + [cond2_label for x in cond2]).factor()
+    
     deseq = rpackages.importr('DESeq')
     cds = deseq.newCountDataSet(data_frame, conds)
     cds = deseq.estimateSizeFactors(cds)
     try: cds = deseq.estimateVarianceFunctions(cds,method=method)
     except : raise rpy2.rinterface.RRuntimeError("Too few reads to estimate variances with DESeq")
     res = deseq.getVarianceStabilizedData(cds)
-    exon_ids = list(list(res.names)[0]) #'res.names[0]' makes the whole session die.
-    cond1 = numpy.array(res.rx(True,1)) #TestA.0, TestA.1, ...??? replicates?
+    
+    exon_ids = list(list(res.names)[0]) # 'res.names[0]' makes the whole session die.
+    cond1 = numpy.array(res.rx(True,1)) # replicates?
     cond2 = numpy.array(res.rx(True,2))
     means = numpy.sqrt(cond1*cond2)
     ratios = numpy.log2(numpy.float32(cond1)/numpy.float32(cond2))
     fc_exons = dict(zip(exon_ids,zip(means,ratios)))
+    genes_figname=None; exons_figname=None; trans_figname=None
 
     if "exons" in target:
-        exons_filename = save_results(translate_gene_ids(fc_exons))
+        exons_filename = save_results(translate_gene_ids(fc_exons, gene_names))
+    fc_exons = dict(zip([e.split('|')[0] for e in fc_exons.keys()], fc_exons.values()))
         
-    print "Compute fold change for genes and transcripts..."
-    ### Get fold change for genes
+    # Get fold change for genes
     if "genes" in target:
         fc_genes = dict(zip(gene_ids,
                             numpy.array(zip(numpy.zeros(len(gene_ids)),
@@ -243,7 +235,10 @@ def inference(cond1_label, cond1, cond2_label, cond2, assembly_id,
             e = e.split('|')[0]
             if exon_mapping.get(e):
                 fc_genes[exon_mapping[e][1]] += c
-        genes_filename = save_results(translate_gene_ids(fc_genes))
+        genes_filename = save_results(translate_gene_ids(fc_genes, gene_names))
+        #if maplot:
+        #    genes_figname = MAplot(genes_filename, mode='normal', assembly_id=assembly_id)
+        #else: genes_figname = None
             
     ### Get fold change for the transcripts using pseudo-inverse
     if "transcripts" in target:
@@ -278,34 +273,61 @@ def inference(cond1_label, cond1, cond2_label, cond2, assembly_id,
                 for k,t in enumerate(tg):
                     fc_trans[t][1] = transcripts_fold[k]
                     fc_trans[t][0] = transcripts_mean[k]
-        trans_filename = save_results(translate_gene_ids(fc_trans))
+        trans_filename = save_results(translate_gene_ids(fc_trans, gene_names))
 
-    result = {"exons":exons_filename, "genes":genes_filename, "transcripts":trans_filename}
+        for g in gene_ids:
+            tg = trans_in_gene[g]
+            if len(tg) == 1:
+                t = tg[0]
+                eg = exons_in_trans[t]
+                for e in eg:
+                    if fc_exons.get(e):
+                        fc_trans[t] += fc_exons[e]
+            eg = []
+            for t in tg:
+                if exons_in_trans.get(t):
+                    eg.extend(exons_in_trans[t])
+            M = numpy.zeros((len(eg),len(tg)))
+            exons_fold = numpy.zeros(len(eg))
+            exons_mean = numpy.zeros(len(eg))
+            for i,e in enumerate(eg):
+                for j,t in enumerate(tg):
+                    if exons_in_trans.get(t):
+                        ebt = exons_in_trans[t]
+                    if e in ebt:
+                        M[i,j] = 1
+                if fc_exons.get(e):
+                    exons_fold[i] += fc_exons[e][1]
+                    exons_mean[i] += fc_exons[e][0]
+            transcripts_fold = numpy.dot(numpy.linalg.pinv(M),exons_fold)
+            transcripts_mean = numpy.dot(numpy.linalg.pinv(M),exons_mean)
+            for k,t in enumerate(tg):
+                if fc_trans.get(t) != None:
+                    fc_trans[t][1] = transcripts_fold[k]
+                    fc_trans[t][0] = transcripts_mean[k]
+        
+    result = {"exons":exons_filename, "genes":genes_filename, "transcripts":trans_filename,
+              "exon_fig":exons_figname, "genes_fig":genes_figname, "transcripts_fig": trans_figname}
     return result
 
 
-def rnaseq_workflow(ex, job, assembly, target=["genes"], via="lsf", output=None, maplot="normal"):
+def rnaseq_workflow(ex, job, assembly, target=["genes"], new_mapping=False, via="lsf", output=None, maplot="normal"):
     """Run RNASeq inference according to *job_info*.
 
-    *output*: alternative name for output file. Otherwise it is random.
-    *maplot*: MA-plot of data.
-    - If 'interactive', one can click on a point (gene or exon) to display its name;
-    - if 'normal', name of genes over 99.9%/under 0.1% quantiles are displayed;
-    - if None, no figure is produced.
-    *target*: a string or array of strings indicating the features you want to compare.
+    * *output*: alternative name for output file. Otherwise it is random.
+    * *maplot*: MA-plot of data.
+    If 'interactive', one can click on a point (gene or exon) to display its name;
+    if 'normal', name of genes over 99.9%/under 0.1% quantiles are displayed;
+    if None, no figure is produced.
+    * *target*: a string or array of strings indicating the features you want to compare.
     Targets can be 'genes', 'transcripts', or 'exons'. E.g. ['genes','transcripts'], or 'genes'.
     (This part of the workflow may fail if there are too few reads for DESeq to estimate
     variances amongst exons.)
-    *job* is as Job object (or a dictionary of the same form) as returned from
+    * *via*: 'local' or 'lsf'
+    * *job* is a Job object (or a dictionary of the same form) as returned from
     HTSStation's frontend.
-
-    Whatever script calls this workflow needs to pass back the JSON string
-    it returns in some sensible way.  For the usual HTSStation
-    frontend, this just means printing it to stdout.
     """
-    fake_align = 1
-
-    names = {}; runs = {}; controls = {}; paths = {}; gids = {}
+    names = {}; runs = {}; controls = {};
     groups = job.groups
     assembly_id = job.assembly_id
     for i,group in groups.iteritems():
@@ -315,11 +337,10 @@ def rnaseq_workflow(ex, job, assembly, target=["genes"], via="lsf", output=None,
     if isinstance(target,str): target=[target]
 
     print "Alignment..."
-    fastq_root = os.path.abspath(ex.working_directory)
-    if not fake_align:
+    if new_mapping:
+        print new_mapping
+        fastq_root = os.path.abspath(ex.working_directory)
         bam_files = map_groups(ex, job, fastq_root, assembly_or_dict = assembly)
-        #print bam_files.values()[0].values()[0]['bam']
-        #print bam_files.values()[1].values()[0]['bam']
     else:
         with open("../temp/bam_files","rb") as f:
             bam_files = pickle.load(f)
@@ -350,8 +371,7 @@ def rnaseq_workflow(ex, job, assembly, target=["genes"], via="lsf", output=None,
 
     futures = {}
     for (c1,c2) in pairs_to_test(controls):
-        if len(runs[c1]) + len(runs[c2]) > 2:
-            method = "normal"
+        if len(runs[c1]) + len(runs[c2]) > 2: method = "normal"
         else: method = "blind"
         print "External DESeq..."
         futures[(c1,c2)] = external_deseq.nonblocking(ex,
@@ -361,57 +381,68 @@ def rnaseq_workflow(ex, job, assembly, target=["genes"], via="lsf", output=None,
             result_filename = f.wait()
             with open(result_filename,"rb") as f:
                 result = pickle.load(f)
-            if not result.get("exons"):
+            exons_file = result.get("exons"); exons_fig = result.get("exons_fig")
+            genes_file = result.get("genes"); genes_fig = result.get("genes_fig")
+            trans_file = result.get("transcripts"); trans_fig = result.get("transcripts_fig")
+            conditions_desc = (names[c[0]], names[c[1]])
+            if not exons_file:
                 print >>sys.stderr, "Exons: Failed during inference, probably because of too few reads for DESeq stats."
                 raise
             if "exons" in target:
-                ex.add(result.get("exons"), description="Comparison of EXONS in conditions \
-                                                   '%s' and '%s' (CSV)" % (names[c[0]], names[c[1]]))
+                ex.add(exons_file, description="csv:Comparison of EXONS in conditions \
+                                                     '%s' and '%s' " % conditions_desc)
+                if exons_fig: ex.add(exons_fig, description="png:MAplot - Exons")
                 print "EXONS: Done successfully."
             if "genes" in target:
-                ex.add(result.get("genes"), description="Comparison of GENES in conditions \
-                                                   '%s' and '%s' (CSV)" % (names[c[0]], names[c[1]]))
+                ex.add(genes_file, description="csv:Comparison of GENES in conditions \
+                                                     '%s' and '%s' " % conditions_desc)
+                if genes_fig: ex.add(genes_fig, description="png:MAplot - Genes")
                 print "GENES: Done successfully."
             if "transcripts" in target:
-                ex.add(result.get("transcripts"), description="Comparison of TRANSCRIPTS in conditions \
-                                                   '%s' and '%s' (CSV)" % (names[c[0]], names[c[1]]))
+                ex.add(trans_file, description="csv:Comparison of TRANSCRIPTS in conditions \
+                                                     '%s' and '%s' " % conditions_desc)
+                if trans_fig: ex.add(trans_fig, description="png:MAplot - Transcripts")
                 print "TRANSCRIPTS: Done successfully."
         print "Done."
 
 
-def MAplot(data, mode="interactive", deg=4, bins=30, alpha=0.005, assembly_id=None):
+def MAplot(data, mode="interactive", deg=4, bins=30, assembly_id=None):
     """
     Creates an "MA-plot" to compare transcription levels of a set of genes
     in two different conditions. It returns the name of the .png file produced,
     and the name of a json containing enough information to reconstruct the plot using Javascript.
 
-    data:  rpy DataFrame object; two columns, each for a different condition.
-    mode:  display mode;
-    - if "interactive", click on a point to display its name
-    - if "normal", name of genes over 99%/under 1% quantile are displayed
-    alpha: a threshold for p-values: points beyond it are emphasized.
-    assembly_id  : if an assembly ID is given, the json output will provide links to information on genes.
+    * *data*:  string, name of a CSV file with rows (feature_name, mean_expression, log2_fold_change)
+    * *mode*:  string, display mode:
+    - if `interactive`, click on a point to display its name
+    - if `normal`, name of genes over 99%/under 1% quantile are displayed
+    * *deg*:  int, the degree of the interpolating polynomial splines
+    * *bins*:  int, the number of divisions of the x axis for quantiles estimation
+    * *assembly_id*:  string of integer. If an assembly ID is given,
+    the json output will provide links to information on genes.
     """
 
     import matplotlib.pyplot as plt
 
-    ## Extract data from CSV
-    names=[]; means=[]; ratios=[]
+    # Extract data from CSV
+    names=[]; means=[]; ratios=[]; points=[]
     with open(data,'r') as f:
         csvreader = csv.reader(f)
+        header = csvreader.next()
         for row in csvreader:
-            names.append(row[0]); means.append(row[1]); ratios.append(row[2])
-    names = numpy.asarray(names); means = numpy.asarray(means); ratios = numpy.asarray(ratios)
+            names.append(row[0]); means.append(float(row[1])); ratios.append(float(row[2]))
+    points = zip(names, means, ratios)
+    points = [p for p in points if (p[1]!=0 and p[2]!=0)]
+    print points[:10]
 
-    badvalues = [0, numpy.nan, numpy.inf]
-    points = [p for p in zip(names, means, ratios) if (p[1] not in badvalues and p[2] not in badvalues)]
-    for i in range(len(ratios)):
-        if not math.isnan(ratios[i]) and not math.isinf(ratios[i]):
-            p = (names[i], numpy.log10(means[i]), ratios[i])
-            points.append(p)
+    #for i in range(len(ratios)):
+    #    if ratios[i] != 0: print ratios[i]
+    #    if not ratios[i]==0 and not math.isnan(ratios[i]) and not math.isinf(ratios[i]):
+    #        p = (names[i], numpy.log10(means[i]), ratios[i])
+    #        points.append(p)
     xmin = min(means); xmax = max(means); ymin = min(ratios); ymax = max(ratios)
 
-    ## Create bins
+    # Create bins
     N = len(points); dN = N/bins #points per bin
     rmeans = numpy.sort(means)
     intervals = []
@@ -425,16 +456,16 @@ def MAplot(data, mode="interactive", deg=4, bins=30, alpha=0.005, assembly_id=No
         points_in[b] = [p for p in points if p[1]>=intervals[b] and p[1]<intervals[b+1]]
         perc[b] = [p[2] for p in points_in[b]]
 
-    ## Figure
+    # Figure
     fig = plt.figure(figsize=[14,9])
     ax = fig.add_subplot(111)
     fig.subplots_adjust(left=0.08, right=0.98, bottom=0.08, top=0.98)
     figname = None
 
-    ### Points
+    #-# Points
     ax.plot(points[1], points[2], ".", color="black")
 
-    ### Lines (best fit of percentiles)
+    #-# Lines (best fit of percentiles)
     annotes=[]; spline_annotes=[]; spline_coords={}
     percentiles = [1,5,25,50,75,95,99]
     for k in percentiles:
@@ -463,7 +494,7 @@ def MAplot(data, mode="interactive", deg=4, bins=30, alpha=0.005, assembly_id=No
         spline_annotes.append((k,x_spline[0],y_spline[0])) #quantile percentages
         spline_coords[k] = zip(x_spline,y_spline)
 
-    ### Decoration
+    #-# Decoration
     ax.set_xlabel("Log10 of sqrt(x1*x2)")
     ax.set_ylabel("Log2 of x1/x2")
     for sa in spline_annotes:
@@ -480,7 +511,7 @@ def MAplot(data, mode="interactive", deg=4, bins=30, alpha=0.005, assembly_id=No
     figname = unique_filename_in()+".png"
     fig.savefig(figname)
 
-    ## ## Output for Javascript
+    ## # Output for Javascript
     ## def rgb_to_hex(rgb):
     ##     return '#%02x%02x%02x' % rgb
     ## redpoints = [(p[1],p[2]) for p in redpoints]
