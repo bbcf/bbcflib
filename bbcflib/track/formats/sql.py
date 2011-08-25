@@ -49,6 +49,7 @@ class TrackFormat(Track, TrackExtras):
         if self.attributes.modified: self.attributes_write()
         if self.chrmeta.modified: self.chrmeta_write()
         self.make_missing_indexes()
+        self.make_missing_tables()
         self.connection.commit()
         self.cursor.close()
         self.connection.close()
@@ -68,6 +69,12 @@ class TrackFormat(Track, TrackExtras):
         except sqlite3.OperationalError as err:
             raise Exception("The index creation on the database '" + self.path + "' failed with error: " + str(err))
 
+    def make_missing_tables(self):
+        if self.readonly: return
+        for chrom in set(self.chrs_from_names) - set(self.chrs_from_tables):
+            columns = ','.join([field + ' ' + Track.field_types.get(field, 'text') for field in self.fields or getattr(Track, self.datatype + '_fields')])
+            self.cursor.execute('create table "' + chrom + '" (' + columns + ')')
+
     #--------------------------------------------------------------------------#
     @property
     def fields(self):
@@ -81,6 +88,7 @@ class TrackFormat(Track, TrackExtras):
 
     @property
     def chrs_from_names(self):
+        if 'chrNames' not in self.all_tables: return []
         self.cursor.execute("select name from chrNames")
         return [x[0].encode('ascii') for x in self.cursor.fetchall()]
 
