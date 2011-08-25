@@ -44,6 +44,10 @@ class TrackFormat(TrackText, TrackProxy):
             if line[2] <= line[1]:
                 raise Exception("The file '" + self._path + ":" + str(number) + "' has negative or null intervals and is hence not valid.")
             try:
+                if line[3] == '.': line[3] = ''
+            except IndexError:
+                line.append('')
+            try:
                 if line[4] == '.' or line[4] == '': line[4] = 0.0
             except IndexError:
                 line.append(0.0)
