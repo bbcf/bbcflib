@@ -112,6 +112,19 @@ class Test_Creation(unittest.TestCase):
         os.remove(path)
 
 #------------------------------------------------------------------------------#
+class Test_Fields(unittest.TestCase):
+    def runTest(self):
+        path = named_temporary_path('.sql')
+        feature = (0,9,'Salut',9.7)
+        def generator():
+            yield feature
+        with track.new(path) as t:
+            t.write('chr1', generator(), fields=(['start','end','name','score']))
+            data = t.read('chr1')
+            self.assertEqual(list(data), [feature])
+        os.remove(path)
+
+#------------------------------------------------------------------------------#
 class Test_Count(unittest.TestCase):
     def runTest(self):
         t = track_collections['Yeast']['All genes']

@@ -190,7 +190,7 @@ class TrackFormat(Track, TrackExtras):
         if chrom not in self.chrs_from_tables:
             columns = ','.join([field + ' ' + Track.field_types.get(field, 'text') for field in fields])
             # Next line is a hack to add an empty column needed by GDV - remove at a later date #
-            if self.datatype == 'qualitative' and 'attributes' not in fields: columns += 'attributes text'
+            if self.datatype == 'qualitative' and 'attributes' not in fields: columns += ',attributes text'
             self.cursor.execute('create table "' + chrom + '" (' + columns + ')')
         # Execute the insertion
         sql_command = 'insert into "' + chrom + '" (' + ','.join(fields) + ') values (' + ','.join(['?' for x in range(len(fields))])+')'
