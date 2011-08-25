@@ -7,7 +7,7 @@ Utility functions common to several pipelines.
 """
 
 # Built-in modules #
-import sys
+import sys, time
 
 ###############################################################################
 def normalize_url(url):
@@ -64,9 +64,12 @@ try:
 
     #-------------------------------------------------------------------------#
     def get_files( id_or_key, minilims ):
-        """Retrieves a dictionary of files created by an htsstation job identified by its key or bein id in a MiniLIMS.
+        """Retrieves a dictionary of files created by an htsstation job identified by its key
+        or bein id in a MiniLIMS.
 
-        The dictionary keys are the file types (e.g. 'pdf', 'bam', 'py' for python objects), the values are dictionaries with keys repository file names and values actual file descriptions (names to provide in the user interface).
+        The dictionary keys are the file types (e.g. 'pdf', 'bam', 'py' for python objects),
+        the values are dictionaries with keys repository file names and values actual file
+        descriptions (names to provide in the user interface).
         """
         import re
         if isinstance(id_or_key, str):
@@ -195,6 +198,17 @@ try:
         output = unique_filename_in()
         call = ["scp"] + args + [ source, destination ]
         return {"arguments": call, "return_value": output}
+
+    #-------------------------------------------------------------------------#
+    def timer(function):
+        """ A decorator that makes the decorated *function* return its execution time. """
+        def wrapper(*args, **kwargs):
+            t1 = time.time()
+            result = function(*args, **kwargs)
+            t2 = time.time()
+            print "Execution time of function", function.__name__, ":", str(t2-t1), "s."
+            return result
+        return wrapper
 
 except:
     print >>sys.stderr, "Bein not found.  Skipping some common functions."
