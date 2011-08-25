@@ -10,8 +10,8 @@ Takes care of managing chromosome meta data.
 import os
 
 # Internal modules #
-from ..genrep import GenRep
-from .common import named_temporary_path, ModifiedDict
+from bbcflib.genrep import GenRep
+from bbcflib.track.common import named_temporary_path, ModifiedDict
 
 ###########################################################################
 class ChromMetaData(ModifiedDict):

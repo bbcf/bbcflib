@@ -4,7 +4,6 @@ Subpackage: bbcflib.track.track_bundle
 ======================================
 
 Provides the TrackBundle class that can be useful for grouping many Track objects together and represent them as one.
-
 """
 
 #############################################################################################

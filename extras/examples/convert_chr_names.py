@@ -5,7 +5,7 @@ format
 
 Usage:
 
-python convert_chr_names.py fileIN fileOUT
+python convert_chr_names.py track.sql
 '''
 
 import sys, re
@@ -27,7 +27,5 @@ def convert(chrom):
     match = re.search('([a-zA-Z]+)([0-9]+)', chrom)
     return match.group(1) + integer_to_roman(int(match.group(2)))
 
-with track.load(sys.argv[1]) as old:
-    with track.new(sys.argv[2]) as new:
-        for chrom in old:
-            new.write(convert(chrom), old.read(chrom))
+with track.load(sys.argv[1]) as t:
+    for chrom in t: t.rename(chrom, convert(chrom))

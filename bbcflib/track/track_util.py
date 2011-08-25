@@ -10,8 +10,8 @@ Useful stuff for the track package.
 import os, sys, shlex
 
 # Internal modules #
-from . import formats
-from . import magic
+from bbcflib.track import formats
+from bbcflib.track import magic
 
 ###############################################################################
 def determine_format(path):
@@ -29,7 +29,6 @@ def determine_format(path):
     known_synonyms = {
         'db': 'sql',
         'bw': 'bigWig',
-        'gz': 'gzip',
     }
     # Return the format #
     return known_synonyms.get(file_format, file_format)

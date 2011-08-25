@@ -30,7 +30,7 @@ bbcflib requires:
           * ./configure
           * make
           * make install
-    Mac OS with homebrew
+    OS X with homebrew --> Tried it. This doesn't seam to work.
         run command below:
             * brew install libmagic
             * chmod +x [Path to Cellar]/libmagic/[version]/bin/file

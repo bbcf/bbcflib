@@ -2,9 +2,9 @@
 import os, shutil
 
 # Internal modules #
-from ... import track
-from ..common import named_temporary_path
-from ..track_collection import track_collections
+from bbcflib import track
+from bbcflib.track.common import named_temporary_path
+from bbcflib.track.track_collection import track_collections
 
 # Unittesting module #
 try:
@@ -55,14 +55,6 @@ class Test_Roundtrips(unittest.TestCase):
             with open(d['path'],'r') as f: B = f.read().split('\n')
             self.assertEqual(A[1:], B)
             os.remove(path)
-
-#-----------------------------------------------------------------------------#
-class Test_Format(unittest.TestCase):
-    def runTest(self):
-        t = track_collections['Scores'][1]
-        with track.load(t['path']) as t:
-            self.assertEqual(t.format, 'wig')
-            self.assertEqual(t.type_identifier, 'wiggle_0')
 
 #------------------------------------------------------------------------------#
 class Test_Format(unittest.TestCase):

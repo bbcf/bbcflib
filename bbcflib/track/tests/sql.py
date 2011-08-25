@@ -2,9 +2,9 @@
 import os, shutil
 
 # Internal modules #
-from ... import track
-from ..common import named_temporary_path, sqlcmp
-from ..track_collection import track_collections, yeast_chr_file
+from bbcflib import track
+from bbcflib.track.common import named_temporary_path, sqlcmp
+from bbcflib.track.track_collection import track_collections, yeast_chr_file
 
 # Unittesting module #
 try:
@@ -70,12 +70,12 @@ class Test_Write(unittest.TestCase):
         with track.new(path) as t:
             # Single feature #
             chrom = 'lorem'
-            features = [(10, 20, 'A', 0.0, 1, None)]
+            features = [(10, 20, 'A', 0.0, 1)]
             t.write(chrom, features)
             self.assertEqual(list(t.read(chrom)), features)
             # Multi feature #
             chrom = '9toto'
-            features = [(i*10, i*10+5, 'X', 0.0, 0, None) for i in xrange(5)]
+            features = [(i*10, i*10+5, 'X', 0.0, 0) for i in xrange(5)]
             t.write(chrom, features)
             self.assertEqual(list(t.read(chrom)), features)
             # Memory Copy #
@@ -86,7 +86,7 @@ class Test_Write(unittest.TestCase):
             self.assertEqual(list(t.read('chrY')), list(t.read(chrom)))
             # More fields #
             chrom = 'chr3'
-            features = [(10, 20, 'A', 0.0, 1, None, 8, 22)]
+            features = [(10, 20, 'A', 0.0, 1, 8, 22)]
             t.write(chrom, features, fields=track.Track.qualitative_fields + ['thick_start', 'thick_end'])
             self.assertEqual(list(t.read(chrom)), features)
         os.remove(path)
@@ -112,6 +112,19 @@ class Test_Creation(unittest.TestCase):
         os.remove(path)
 
 #------------------------------------------------------------------------------#
+class Test_Fields(unittest.TestCase):
+    def runTest(self):
+        path = named_temporary_path('.sql')
+        feature = (0,9,'Salut',9.7)
+        def generator():
+            yield feature
+        with track.new(path) as t:
+            t.write('chr1', generator(), fields=(['start','end','name','score']))
+            data = t.read('chr1')
+            self.assertEqual(list(data), [feature])
+        os.remove(path)
+
+#------------------------------------------------------------------------------#
 class Test_Count(unittest.TestCase):
     def runTest(self):
         t = track_collections['Yeast']['All genes']
@@ -125,11 +138,24 @@ class Test_Remove(unittest.TestCase):
         path = named_temporary_path('.sql')
         with track.new(path) as t:
             chrom = 'chr1'
-            features = [(i*10, i*10+5, 'X', 0.0, 0, None) for i in xrange(5)]
+            features = [(i*10, i*10+5, 'X', 0.0, 0) for i in xrange(5)]
+            t.chrmeta['chr1'] = {'length': 200}
             t.write(chrom, features)
             t.remove()
             self.assertEqual(list(t.read()), [])
+            self.assertEqual(t.chrmeta, {})
         os.remove(path)
+
+#------------------------------------------------------------------------------#
+class Test_Rename(unittest.TestCase):
+    def runTest(self):
+        old = track_collections['Validation'][1]['path_sql']
+        new = named_temporary_path('.sql')
+        shutil.copyfile(old, new)
+        with track.load(new, chrmeta = {'chr1': {'length': 200}}) as t:
+            t.rename('chr1', 'chr000001')
+            expected =  {'chr000001': {'length': 200}}
+            self.assertEqual(t.chrmeta, expected)
 
 #------------------------------------------------------------------------------#
 class Test_Readonly(unittest.TestCase):
@@ -150,7 +176,7 @@ class Test_Modified(unittest.TestCase):
         d = track_collections['Yeast']['All genes']
         with track.load(d['path_sql'], readonly=True) as t:
             self.assertFalse(t.modified)
-            t.write('chrM', [(10, 20, 'A', 0.0, 1, None)])
+            t.write('chrM', [(10, 20, 'A', 0.0, 1)])
             self.assertTrue(t.modified)
             self.assertFalse(t.chrmeta.modified)
             t.chrmeta['chrM'] = {'length': -20}
@@ -190,6 +216,9 @@ class Test_Attributes(unittest.TestCase):
     def runTest(self):
         path = named_temporary_path('.sql')
         with track.new(path) as t:
+            # Default values #
+            self.assertEqual(t.datatype, 'qualitative')
+            self.assertEqual(t.name, 'Unamed')
             # Overwritting #
             info = {'datatype': 'quantitative', 'source': 'SGD'}
             t.attributes = info
@@ -235,7 +264,7 @@ class Test_Corrupted(unittest.TestCase):
         with track.load(t['path_sql'], readonly=True) as t:
             self.assertEqual(t.all_chrs, ['chr' + str(i) for i in range(1,17)])
             self.assertEqual(t.chrmeta, {})
-            self.assertEqual(t.attributes, {})
+            self.assertEqual(t.attributes, {'datatype': 'qualitative'})
 
 #-------------------------------------------------------------------------------#
 class Test_Conventions(unittest.TestCase):

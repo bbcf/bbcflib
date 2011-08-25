@@ -5,6 +5,7 @@ Script: extras/tracks/build.py
 
 A script that can regenerate the SQL tracks from their text version as well as the binary tracks.
 """
+
 # Genreral Modules #
 import os, subprocess
 

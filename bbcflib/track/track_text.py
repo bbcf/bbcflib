@@ -10,7 +10,7 @@ Methods common to the text formats.
 import shlex
 
 # Internal modules #
-from . import Track
+from bbcflib.track import Track
 
 #-----------------------------------------------------------------------------#
 def strand_to_int(strand):
@@ -25,8 +25,8 @@ def int_to_strand(num):
 
 ###########################################################################
 class TrackText(object):
-    @property
-    def _file_obj(self): return open(self._path, 'r')
+    def open(self, path, mode):
+        return open(path, mode)
 
     #--------------------------------------------------------------------------#
     def _read(self):
@@ -42,7 +42,7 @@ class TrackText(object):
             global chrom, entry
             while True:
                 if entry[0] != chrom: break
-                yield entry[1:]
+                yield tuple(entry[1:])
                 get_next_entry()
         get_next_entry()
         while True:

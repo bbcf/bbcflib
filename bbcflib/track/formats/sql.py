@@ -10,10 +10,10 @@ Implementation of the SQL format.
 import sqlite3
 
 # Internal modules #
-from .. import Track
-from ..track_util import join_read_queries, make_cond_from_sel
-from ..extras.sql import TrackExtras
-from ..common import natural_sort
+from bbcflib.track import Track
+from bbcflib.track.track_util import join_read_queries, make_cond_from_sel
+from bbcflib.track.extras.sql import TrackExtras
+from bbcflib.track.common import natural_sort
 
 ################################################################################
 class TrackFormat(Track, TrackExtras):
@@ -35,6 +35,8 @@ class TrackFormat(Track, TrackExtras):
             self.chrmeta = self.chrmeta_read()
             self.chrmeta.modified = False
         # Check for missing attributes #
+        if not datatype and not self.datatype: self.datatype = 'qualitative'
+        # Check for present attributes #
         if name: self.name = name
         if datatype:
             if not self.datatype: self.datatype = datatype
@@ -149,25 +151,29 @@ class TrackFormat(Track, TrackExtras):
         self.attributes['name'] = value
 
     #--------------------------------------------------------------------------#
-    def read(self, selection=None, fields=None, order='start,end', cursor=False):
+    def read(self, selection=None, fields=[], order='start,end', cursor=False):
         # Default selection #
         if not selection:
             selection = self.chrs_from_tables
         # Case list of things #
         if isinstance(selection, (list, tuple)):
             return join_read_queries(self, selection, fields)
+        # Copy input #
+        columns = fields[:]
         # Case chromsome name #
-        if isinstance(selection, basestring):
-            if selection not in self.chrs_from_tables: return ()
-            if not fields: fields = self.get_fields_of_table(selection)
-            sql_request = "select " + ','.join(fields) + " from '" + selection + "'"
+        if isinstance(selection, basestring): chrom = selection
         # Case selection dictionary #
-        if isinstance(selection, dict):
-            chrom = selection['chr']
-            if chrom not in self.chrs_from_tables: return ()
-            if not fields: fields = self.get_fields_of_table(chrom)
-            sql_request = "select " + ','.join(fields) + " from '" + chrom + "' where " + make_cond_from_sel(selection)
-        # Ordering #
+        if isinstance(selection, dict): chrom = selection['chr']
+        # Default columns #
+        if chrom not in self.chrs_from_tables: return ()
+        if not columns: columns = self.get_fields_of_table(chrom)
+        # Next lines are a hack to add an empty column needed by GDV - remove at a later date #
+        if 'attributes' not in fields:
+            try: columns.remove('attributes')
+            except ValueError: pass
+        # Make the query #
+        sql_request = "select " + ','.join(columns) + " from '" + chrom + "'"
+        if isinstance(selection, dict): sql_request += " where " + make_cond_from_sel(selection)
         order_by = 'order by ' + order
         # Return the results #
         if cursor: cur = self.connection.cursor()
@@ -183,13 +189,17 @@ class TrackFormat(Track, TrackExtras):
         # Maybe create the table #
         if chrom not in self.chrs_from_tables:
             columns = ','.join([field + ' ' + Track.field_types.get(field, 'text') for field in fields])
+            # Next line is a hack to add an empty column needed by GDV - remove at a later date #
+            if self.datatype == 'qualitative' and 'attributes' not in fields: columns += ',attributes text'
             self.cursor.execute('create table "' + chrom + '" (' + columns + ')')
         # Execute the insertion
         sql_command = 'insert into "' + chrom + '" (' + ','.join(fields) + ') values (' + ','.join(['?' for x in range(len(fields))])+')'
         try:
             self.cursor.executemany(sql_command, data)
-        except sqlite3.OperationalError as err:
-            raise Exception("The command '" + sql_command + "' on the database '" + self.path + "' failed with error: " + str(err))
+        except (sqlite3.OperationalError, sqlite3.ProgrammingError) as err:
+            raise Exception("The command '" + sql_command + "' on the database '" + self.path + "' failed with error: '" + str(err) + "'" + \
+                '\n    ' + 'The bindings: ' + str(columns) + \
+                '\n    ' + 'You gave: ' + str(data))
 
     def remove(self, chrom=None):
         self.modified = True
@@ -197,10 +207,19 @@ class TrackFormat(Track, TrackExtras):
         if not chrom:
             chrom = self.chrs_from_tables
         if isinstance(chrom, list):
-            for ch in chrom:
-                self.remove(ch)
+            for ch in chrom: self.remove(ch)
         else:
             self.cursor.execute("DROP table '" + chrom + "'")
+            if chrom in self.chrmeta: self.chrmeta.pop(chrom)
+
+    def rename(self, previous_name, new_name):
+        self.modified = True
+        if self.readonly: return
+        if previous_name not in self.chrs_from_tables: raise Exception("The chromomse '" + previous_name + "' doesn't exist.")
+        self.cursor.execute("ALTER TABLE '" + previous_name + "' RENAME TO '" + new_name + "'")
+        if previous_name in self.chrmeta:
+            self.chrmeta[new_name] = self.chrmeta[previous_name]
+            self.chrmeta.pop(previous_name)
 
     def count(self, selection=None):
         # Default selection #

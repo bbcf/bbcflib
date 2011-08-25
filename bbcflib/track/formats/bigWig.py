@@ -10,9 +10,9 @@ Implementation of the bigWig format. Requires the command line utilities "bigWig
 import os
 
 # Internal modules #
-from ..common import check_executable
-from ..track_binary import TrackBinary
-from .bedGraph import TrackFormat as TrackBedgraph
+from bbcflib.track.common import check_executable
+from bbcflib.track.track_binary import TrackBinary
+from bbcflib.track.formats.bedGraph import TrackFormat as TrackBedgraph
 
 ###########################################################################
 class TrackFormat(TrackBinary, TrackBedgraph):

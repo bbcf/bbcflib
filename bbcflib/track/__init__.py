@@ -243,6 +243,19 @@ class Track(object):
         '''
         raise NotImplementedError
 
+    def rename(self, previous_name, new_name):
+        '''Renames a chromosome from *previous_name* to *new_name*
+
+           Examples::
+
+               from bbcflib import track
+               with track.load('tracks/rp_genes.bed') as t:
+                   t.rename('chr4', 'chrIV')
+
+           ``rename`` returns nothing.
+        '''
+        raise NotImplementedError
+
     def count(self, selection=None):
         '''Counts the number of features or entries in a given selection.
 
@@ -351,21 +364,21 @@ class Track(object):
         raise NotImplementedError
 
     #-----------------------------------------------------------------------------#
-    qualitative_fields  = ['start', 'end', 'score', 'name', 'strand', 'attributes']
+    qualitative_fields  = ['start', 'end',  'name', 'score', 'strand']
     quantitative_fields = ['start', 'end', 'score']
     field_types = {
         'start':        'integer',
         'end':          'integer',
         'score':        'real',
-        'name':         'text',
         'strand':       'integer',
-        'attributes':   'text',
+        'name':         'text',
         'thick_start':  'integer',
         'thick_end':    'integer',
         'item_rgb':     'text',
         'block_count':  'integer',
         'block_sizes':  'text',
         'block_starts': 'text',
+        'attributes':   'text',
     }
 
     #-----------------------------------------------------------------------------#
@@ -379,8 +392,9 @@ class Track(object):
             elif os.path.isdir(path): raise Exception("The location '" + path + "' is a directory")
             # Get child class #
             if not format: format = determine_format(path)
-            implementation = import_implementation(format)
-            instance       = super(Track, cls).__new__(implementation.TrackFormat)
+            implementation = import_implementation(format).TrackFormat
+            if isinstance(implementation, type): instance = object.__new__(implementation)
+            else: instance = implementation(path, format, name, chrmeta, datatype, readonly, empty)
             # Set attributes #
             instance.format   = format
             instance.modified = False
@@ -410,8 +424,8 @@ class Track(object):
         return key in self.all_chrs
 
 # Internal modules #
-from .track_util import determine_format, import_implementation
-from .track_meta import ChromMetaData, TrackMetaData
+from bbcflib.track.track_util import determine_format, import_implementation
+from bbcflib.track.track_meta import ChromMetaData, TrackMetaData
 
 #-----------------------------------#
 # This code was written by the BBCF #

@@ -12,11 +12,9 @@ that all formats should have.
 import random
 
 # Internal modules #
-from ... import track
+from bbcflib import track
 
 ###################################################################################
-#### cumulative binned counts:
-#   select y.s,sum(x.c) from (select round(score) as s, count(*) as c from chr1 group by s) as x, (select round(score) as s, count(*) as c from chr1 group by s) as y where x.s>y.s group by y.s order by y.s;
 class TrackExtras(object):
     def get_cumul_binned_scores(self, roundoff=1):
         '''Computes cumulative counts for binned scores. 'roundoff' gives the accuracy of the bins, namely
@@ -56,10 +54,9 @@ class TrackExtras(object):
         for i in range(repeat_number):
             for feat in self.read(chrom, **kwargs):
                 feat_len = feat[1]-feat[0]
-                feature = list(feat)
-                feature[0] = random.randint(0, chr_len-feat_len)
-                feature[1] = feature[0]+feat_len
-                yield tuple(feature)
+                f0 = random.randint(0, chr_len-feat_len)
+                f1 = f0+feat_len
+                yield (f0,f1)+feat[2:]
 
     def shuffle_track(self, new_path, repeat_number=1, **kwargs):
         ''' Makes a new track with 'repeat_number' features for every feature of the
