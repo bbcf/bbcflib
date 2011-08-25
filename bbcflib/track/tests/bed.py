@@ -4,7 +4,7 @@ import os, shutil
 # Internal modules #
 from bbcflib import track
 from bbcflib.track.common import named_temporary_path
-from bbcflib.track.track_collection import track_collections, yeast_chr_file
+from bbcflib.track.track_collection import track_collections, yeast_chr_file, tracks_path
 
 # Unittesting module #
 try:
@@ -69,6 +69,15 @@ class Test_Roundtrips(unittest.TestCase):
             with open(track_dict['path'],'r') as f: B = f.read().split('\n')
             self.assertEqual(A[1:], B)
             os.remove(path)
+
+#------------------------------------------------------------------------------#
+class Test_Fields(unittest.TestCase):
+    def runTest(self):
+        path = tracks_path + 'qual/bed/should_pass/3_fields.bed'
+        with track.load(path) as t:
+            data = list(t.read())
+            expected = [('chr2', 1000, 5000, u'', 0.0, 0), ('chr2', 2000, 6000, u'', 0.0, 0)]
+            self.assertEqual(data, expected)
 
 #------------------------------------------------------------------------------#
 class Test_Chrmeta(unittest.TestCase):

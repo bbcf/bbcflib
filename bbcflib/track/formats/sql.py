@@ -49,6 +49,7 @@ class TrackFormat(Track, TrackExtras):
         if self.attributes.modified: self.attributes_write()
         if self.chrmeta.modified: self.chrmeta_write()
         self.make_missing_indexes()
+        self.make_missing_tables()
         self.connection.commit()
         self.cursor.close()
         self.connection.close()
@@ -68,6 +69,12 @@ class TrackFormat(Track, TrackExtras):
         except sqlite3.OperationalError as err:
             raise Exception("The index creation on the database '" + self.path + "' failed with error: " + str(err))
 
+    def make_missing_tables(self):
+        if self.readonly: return
+        for chrom in set(self.chrs_from_names) - set(self.chrs_from_tables):
+            columns = ','.join([field + ' ' + Track.field_types.get(field, 'text') for field in self.fields or getattr(Track, self.datatype + '_fields')])
+            self.cursor.execute('create table "' + chrom + '" (' + columns + ')')
+
     #--------------------------------------------------------------------------#
     @property
     def fields(self):
@@ -81,6 +88,7 @@ class TrackFormat(Track, TrackExtras):
 
     @property
     def chrs_from_names(self):
+        if 'chrNames' not in self.all_tables: return []
         self.cursor.execute("select name from chrNames")
         return [x[0].encode('ascii') for x in self.cursor.fetchall()]
 
@@ -99,9 +107,10 @@ class TrackFormat(Track, TrackExtras):
 
     def attributes_write(self):
         if self.readonly: return
-        if not 'attributes' in self.all_tables: self.cursor.execute('create table attributes (key text, value text)')
-        if not self.attributes: self.cursor.execute('delete from attributes')
-        for k in self.attributes.keys(): self.cursor.execute('insert into attributes (key,value) values (?,?)', (k, self.attributes[k]))
+        self.cursor.execute('drop table IF EXISTS attributes')
+        if self.attributes:
+            self.cursor.execute('create table attributes (key text, value text)')
+            for k in self.attributes.keys(): self.cursor.execute('insert into attributes (key,value) values (?,?)', (k, self.attributes[k]))
 
     def chrmeta_read(self):
         if not 'chrNames' in self.all_tables: return {}
@@ -112,9 +121,10 @@ class TrackFormat(Track, TrackExtras):
 
     def chrmeta_write(self):
         if self.readonly: return
-        if not 'chrNames' in self.all_tables: self.cursor.execute('create table chrNames (name text, length integer)')
-        if not self.chrmeta: self.cursor.execute('delete from chrNames')
-        for r in self.chrmeta.rows: self.cursor.execute('insert into chrNames (' + ','.join(r.keys()) + ') values (' + ','.join(['?' for x in r.keys()])+')', tuple(r.values()))
+        self.cursor.execute('drop table IF EXISTS chrNames')
+        if self.chrmeta:
+            self.cursor.execute('create table chrNames (name text, length integer)')
+            for r in self.chrmeta.rows: self.cursor.execute('insert into chrNames (' + ','.join(r.keys()) + ') values (' + ','.join(['?' for x in r.keys()])+')', tuple(r.values()))
 
     @property
     def chrmeta(self):
@@ -217,6 +227,9 @@ class TrackFormat(Track, TrackExtras):
         if self.readonly: return
         if previous_name not in self.chrs_from_tables: raise Exception("The chromomse '" + previous_name + "' doesn't exist.")
         self.cursor.execute("ALTER TABLE '" + previous_name + "' RENAME TO '" + new_name + "'")
+        self.cursor.execute("drop index IF EXISTS '" + previous_name + "_range_idx'")
+        self.cursor.execute("drop index IF EXISTS '" + previous_name + "_score_idx'")
+        self.cursor.execute("drop index IF EXISTS '" + previous_name + "_name_idx'")
         if previous_name in self.chrmeta:
             self.chrmeta[new_name] = self.chrmeta[previous_name]
             self.chrmeta.pop(previous_name)

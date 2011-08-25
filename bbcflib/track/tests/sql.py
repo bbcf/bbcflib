@@ -116,8 +116,7 @@ class Test_Fields(unittest.TestCase):
     def runTest(self):
         path = named_temporary_path('.sql')
         feature = (0,9,'Salut',9.7)
-        def generator():
-            yield feature
+        def generator(): yield feature
         with track.new(path) as t:
             t.write('chr1', generator(), fields=(['start','end','name','score']))
             data = t.read('chr1')
