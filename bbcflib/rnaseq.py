@@ -27,9 +27,6 @@ import cogent.db.ensembl as ensembl
 import csv
 from bbcflib.common import timer
 
-import matplotlib
-matplotlib.use('Agg') #trick to avoid problems with -X ssh sessions (force backend)
-
 ################################################################################
 
 def fetch_mappings(path_or_assembly_id):
@@ -136,15 +133,22 @@ def translate_gene_ids(fc_ids, dictionary):
     fc_names = dict(zip(names,fc_ids.values()))
     return fc_names
 
-def save_results(data):
+def save_results(data, filename=None):
     '''Save results in a CSV file. Data is of the form {id:(mean,fold_change)} '''
-    filename = unique_filename_in()
+    if not filename:
+        filename = unique_filename_in()
     with open(filename,"wb") as f:
-        c = csv.writer(f)
-        c.writerow(["id", "baseMean", "log2FoldChange"])
+        c = csv.writer(f, delimiter='\t')
+        c.writerow(["id", "baseMean", "foldChange"])
         for k,v in data.iteritems():
             c.writerow([k,v[0],v[1]])
     return filename
+
+@program
+def external_maplot(csv_filename, mode='normal', deg=4, bins=30, assembly_id=None, output=None):
+    if not output: output = unique_filename_in()
+    call = ["maplot.py", csv_filename, str(mode), str(deg), str(bins), str(assembly_id), str(output)]
+    return {"arguments": call, "return_value": output}
 
 @program
 def external_deseq(cond1_label, cond1, cond2_label, cond2, assembly_id,
@@ -159,13 +163,15 @@ def external_deseq(cond1_label, cond1, cond2_label, cond2, assembly_id,
     targ = unique_filename_in()
     with open(targ,'wb') as f:
         pickle.dump(target,f,pickle.HIGHEST_PROTOCOL)
-    call = ["run_deseq.py", c1, c2, cond1_label, cond2_label, str(assembly_id), targ, method, str(maplot), output]
+    call = ["run_deseq.py", c1, c2, cond1_label, cond2_label, str(assembly_id), 
+            targ, method, str(maplot), output]
     return {"arguments": call, "return_value": output}
 
+@timer
 def inference(cond1_label, cond1, cond2_label, cond2, assembly_id,
               target=["exons","genes","transcripts"], method="normal", maplot=None):
     """ Writes a CSV file for each selected feature,
-    each row being of the form: Feature_ID // Mean_expression // Log2(fold_change).
+    each row being of the form: Feature_ID // Mean_expression // Fold_change.
     It calls an R session to use DESeq for size factors and variance stabilization.
 
     * *cond1* and *cond2* are lists of numpy arrays. Each array lists the number of
@@ -214,13 +220,19 @@ def inference(cond1_label, cond1, cond2_label, cond2, assembly_id,
     except : raise rpy2.rinterface.RRuntimeError("Too few reads to estimate variances with DESeq")
     res = deseq.getVarianceStabilizedData(cds)
     
-    exon_ids = list(list(res.names)[0]) # 'res.names[0]' makes the whole session die.
-    cond1 = numpy.array(res.rx(True,1)) # replicates?
-    cond2 = numpy.array(res.rx(True,2))
+    exon_ids = list(list(res.names)[0]) # 'res.names[0]' kill the python session.
+    cond1 = numpy.array(res.rx(True,1), dtype='f') # replicates?
+    cond2 = numpy.array(res.rx(True,2), dtype='f')
+    names=[]; means=[]; ratios=[]
     means = numpy.sqrt(cond1*cond2)
-    ratios = numpy.log2(numpy.float32(cond1)/numpy.float32(cond2))
+    ratios = cond1/cond2
+    ## for i in range(len(exon_ids)):
+    ##     if cond1[i]!=0 and cond2[i]!=0:
+    ##         mean = numpy.sqrt(cond1[i]*cond2[i])
+    ##         ratio = cond1[i]/cond2[i]
+    ##         names.append(exon_ids[i]); means.append(mean); ratios.append(ratio)
+    ##     else: print cond1[i], cond2[i]
     fc_exons = dict(zip(exon_ids,zip(means,ratios)))
-    genes_figname=None; exons_figname=None; trans_figname=None
 
     if "exons" in target:
         exons_filename = save_results(translate_gene_ids(fc_exons, gene_names))
@@ -236,9 +248,6 @@ def inference(cond1_label, cond1, cond2_label, cond2, assembly_id,
             if exon_mapping.get(e):
                 fc_genes[exon_mapping[e][1]] += c
         genes_filename = save_results(translate_gene_ids(fc_genes, gene_names))
-        #if maplot:
-        #    genes_figname = MAplot(genes_filename, mode='normal', assembly_id=assembly_id)
-        #else: genes_figname = None
             
     ### Get fold change for the transcripts using pseudo-inverse
     if "transcripts" in target:
@@ -306,12 +315,11 @@ def inference(cond1_label, cond1, cond2_label, cond2, assembly_id,
                     fc_trans[t][1] = transcripts_fold[k]
                     fc_trans[t][0] = transcripts_mean[k]
         
-    result = {"exons":exons_filename, "genes":genes_filename, "transcripts":trans_filename,
-              "exon_fig":exons_figname, "genes_fig":genes_figname, "transcripts_fig": trans_figname}
+    result = {"exons":exons_filename, "genes":genes_filename, "transcripts":trans_filename}
     return result
 
 
-def rnaseq_workflow(ex, job, assembly, target=["genes"], new_mapping=False, via="lsf", output=None, maplot="normal"):
+def rnaseq_workflow(ex, job, assembly, target=["genes"], mapping=False, via="lsf", output=None, maplot="normal"):
     """Run RNASeq inference according to *job_info*.
 
     * *output*: alternative name for output file. Otherwise it is random.
@@ -337,8 +345,7 @@ def rnaseq_workflow(ex, job, assembly, target=["genes"], new_mapping=False, via=
     if isinstance(target,str): target=[target]
 
     print "Alignment..."
-    if new_mapping:
-        print new_mapping
+    if not mapping:
         fastq_root = os.path.abspath(ex.working_directory)
         bam_files = map_groups(ex, job, fastq_root, assembly_or_dict = assembly)
     else:
@@ -354,6 +361,18 @@ def rnaseq_workflow(ex, job, assembly, target=["genes"], new_mapping=False, via=
         f2 = ex.use(id2)
         bam_files.values()[0].values()[0]['bam'] = f1
         bam_files.values()[1].values()[0]['bam'] = f2
+
+        ## path = '../archive/mapseq_full2_lims.files/'
+        ## id1 = ex.lims.import_file(os.path.join(path,'eyFS5XeDLCrzIhVuYItV'))
+        ## id2 = ex.lims.import_file(os.path.join(path,'cpCqC1tubV6zoBWAmoqy'))
+        ## id3 = ex.lims.import_file(os.path.join(path,'eyFS5XeDLCrzIhVuYItV.bai'))
+        ## id4 = ex.lims.import_file(os.path.join(path,'cpCqC1tubV6zoBWAmoqy.bai'))
+        ## ex.lims.associate_file(id3,id1,template="%s.bai")
+        ## ex.lims.associate_file(id4,id2,template="%s.bai")
+        ## f1 = ex.use(id1)
+        ## f2 = ex.use(id2)
+        ## bam_files.values()[0].values()[0]['bam'] = f1
+        ## bam_files.values()[1].values()[0]['bam'] = f2
     print "Reads aligned."
     
     # All the bam_files were created against the same index, so
@@ -376,261 +395,26 @@ def rnaseq_workflow(ex, job, assembly, target=["genes"], new_mapping=False, via=
         print "External DESeq..."
         futures[(c1,c2)] = external_deseq.nonblocking(ex,
                                    names[c1], exon_pileups[c1], names[c2], exon_pileups[c2],
-                                   assembly_id, target, method, maplot)
+                                   assembly_id, target, method, maplot, via=via)
         for c,f in futures.iteritems():
             result_filename = f.wait()
             with open(result_filename,"rb") as f:
                 result = pickle.load(f)
-            exons_file = result.get("exons"); exons_fig = result.get("exons_fig")
-            genes_file = result.get("genes"); genes_fig = result.get("genes_fig")
-            trans_file = result.get("transcripts"); trans_fig = result.get("transcripts_fig")
             conditions_desc = (names[c[0]], names[c[1]])
-            if not exons_file:
-                print >>sys.stderr, "Exons: Failed during inference, probably because of too few reads for DESeq stats."
-                raise
             if "exons" in target:
-                ex.add(exons_file, description="csv:Comparison of EXONS in conditions \
-                                                     '%s' and '%s' " % conditions_desc)
-                if exons_fig: ex.add(exons_fig, description="png:MAplot - Exons")
-                print "EXONS: Done successfully."
+                exons_file = result.get("exons")
+                if exons_file:
+                    ex.add(exons_file, description="csv:Comparison of EXONS in conditions '%s' and '%s' " % conditions_desc)
+                    print "EXONS: Done successfully."
+                else: print >>sys.stderr, "Exons: Failed during inference, probably because of too few reads for DESeq stats."
             if "genes" in target:
-                ex.add(genes_file, description="csv:Comparison of GENES in conditions \
-                                                     '%s' and '%s' " % conditions_desc)
-                if genes_fig: ex.add(genes_fig, description="png:MAplot - Genes")
-                print "GENES: Done successfully."
+                genes_file = result.get("genes")
+                if genes_file:
+                    ex.add(genes_file, description="csv:Comparison of GENES in conditions '%s' and '%s' " % conditions_desc)
+                    print "GENES: Done successfully."
             if "transcripts" in target:
-                ex.add(trans_file, description="csv:Comparison of TRANSCRIPTS in conditions \
-                                                     '%s' and '%s' " % conditions_desc)
-                if trans_fig: ex.add(trans_fig, description="png:MAplot - Transcripts")
-                print "TRANSCRIPTS: Done successfully."
+                trans_file = result.get("transcripts");
+                if trans_file:
+                    ex.add(trans_file, description="csv:Comparison of TRANSCRIPTS in conditions '%s' and '%s' " % conditions_desc)
+                    print "TRANSCRIPTS: Done successfully."
         print "Done."
-
-
-def MAplot(data, mode="interactive", deg=4, bins=30, assembly_id=None):
-    """
-    Creates an "MA-plot" to compare transcription levels of a set of genes
-    in two different conditions. It returns the name of the .png file produced,
-    and the name of a json containing enough information to reconstruct the plot using Javascript.
-
-    * *data*:  string, name of a CSV file with rows (feature_name, mean_expression, log2_fold_change)
-    * *mode*:  string, display mode:
-    - if `interactive`, click on a point to display its name
-    - if `normal`, name of genes over 99%/under 1% quantile are displayed
-    * *deg*:  int, the degree of the interpolating polynomial splines
-    * *bins*:  int, the number of divisions of the x axis for quantiles estimation
-    * *assembly_id*:  string of integer. If an assembly ID is given,
-    the json output will provide links to information on genes.
-    """
-
-    import matplotlib.pyplot as plt
-
-    # Extract data from CSV
-    names=[]; means=[]; ratios=[]; points=[]
-    with open(data,'r') as f:
-        csvreader = csv.reader(f)
-        header = csvreader.next()
-        for row in csvreader:
-            names.append(row[0]); means.append(float(row[1])); ratios.append(float(row[2]))
-    points = zip(names, means, ratios)
-    points = [p for p in points if (p[1]!=0 and p[2]!=0)]
-    print points[:10]
-
-    #for i in range(len(ratios)):
-    #    if ratios[i] != 0: print ratios[i]
-    #    if not ratios[i]==0 and not math.isnan(ratios[i]) and not math.isinf(ratios[i]):
-    #        p = (names[i], numpy.log10(means[i]), ratios[i])
-    #        points.append(p)
-    xmin = min(means); xmax = max(means); ymin = min(ratios); ymax = max(ratios)
-
-    # Create bins
-    N = len(points); dN = N/bins #points per bin
-    rmeans = numpy.sort(means)
-    intervals = []
-    for i in range(bins):
-        intervals.append(rmeans[i*dN])
-    intervals.append(xmax)
-    intervals = numpy.array(intervals)
-
-    points_in = {}; perc = {}
-    for b in range(bins):
-        points_in[b] = [p for p in points if p[1]>=intervals[b] and p[1]<intervals[b+1]]
-        perc[b] = [p[2] for p in points_in[b]]
-
-    # Figure
-    fig = plt.figure(figsize=[14,9])
-    ax = fig.add_subplot(111)
-    fig.subplots_adjust(left=0.08, right=0.98, bottom=0.08, top=0.98)
-    figname = None
-
-    #-# Points
-    ax.plot(points[1], points[2], ".", color="black")
-
-    #-# Lines (best fit of percentiles)
-    annotes=[]; spline_annotes=[]; spline_coords={}
-    percentiles = [1,5,25,50,75,95,99]
-    for k in percentiles:
-        h = numpy.ones(bins)
-        for b in range(bins):
-            if points_in[b] != []:
-                h[b] = stats.scoreatpercentile(perc[b], k)
-                if k==1:
-                    for p in points_in[b]:
-                        if p[2]<h[b]:
-                            annotes.append(p[0])
-                if k==99:
-                    for p in points_in[b]:
-                        if p[2]>h[b]:
-                            annotes.append(p[0])
-            else: h[b] = h[b-1]
-        x = intervals[:-1]+(intervals[1:]-intervals[:-1])/2.
-        spline = UnivariateSpline(x, h, k=deg)
-        xs = numpy.array(numpy.linspace(xmin, xmax, 10*bins)) #to increase spline smoothness
-        ys = numpy.array(spline(xs))
-        l = len(xs)
-        xi = numpy.arange(l)[numpy.ceil(l/6):numpy.floor(8*l/9)]
-        x_spline = xs[xi]
-        y_spline = ys[xi]
-        ax.plot(x_spline, y_spline, "-", color="blue") #ax.plot(x, h, "o", color="blue")
-        spline_annotes.append((k,x_spline[0],y_spline[0])) #quantile percentages
-        spline_coords[k] = zip(x_spline,y_spline)
-
-    #-# Decoration
-    ax.set_xlabel("Log10 of sqrt(x1*x2)")
-    ax.set_ylabel("Log2 of x1/x2")
-    for sa in spline_annotes:
-        ax.annotate(str(sa[0])+"%", xy=(sa[1],sa[2]), xytext=(-33,-5), textcoords='offset points',
-                    bbox=dict(facecolor="white",edgecolor=None,boxstyle="square,pad=.4"))
-    if mode == "interactive":
-        af = AnnoteFinder( means, ratios, names )
-        plt.connect('button_press_event', af)
-        plt.draw()
-        plt.show()
-    else:
-        for p in annotes:
-            ax.annotate(p[0], xy=(p[1],p[2]) )
-    figname = unique_filename_in()+".png"
-    fig.savefig(figname)
-
-    ## # Output for Javascript
-    ## def rgb_to_hex(rgb):
-    ##     return '#%02x%02x%02x' % rgb
-    ## redpoints = [(p[1],p[2]) for p in redpoints]
-    ## blackpoints = [(p[1],p[2]) for p in blackpoints]
-    ## jsdata = [{"label": "Genes with p-value < " + str(alpha),
-    ##            "data": redpoints,
-    ##            "labels": annotes_red,
-    ##            "pvals": pvals_red,
-    ##            "points": {"symbol":"circle", "show":True},
-    ##            "color": "red"},
-    ##           {"label": "Genes with p-value > " + str(alpha),
-    ##            "data": blackpoints,
-    ##            "labels": annotes_black,
-    ##            "pvals": pvals_black,
-    ##            "points": {"symbol":"circle", "show":True},
-    ##            "color": "black"},
-    ##           {"label": "Mean", "data": spline_coords[50],
-    ##            "lines": {"show":True}, "color": rgb_to_hex((255,0,255)) },
-    ##           {"id": "1% Quantile", "data": spline_coords[1], "lines": {"show":True, "lineWidth":0, "fill": 0.12},
-    ##            "color": rgb_to_hex((255,0,255))},
-    ##           {"id": "5% Quantile", "data": spline_coords[5], "lines": {"show":True, "lineWidth":0, "fill": 0.18},
-    ##            "color": rgb_to_hex((255,0,255))},
-    ##           {"id": "25% Quantile", "data": spline_coords[25], "lines": {"show":True, "lineWidth":0, "fill": 0.3},
-    ##            "color": rgb_to_hex((255,0,255))},
-    ##           {"id": "75% Quantile", "data": spline_coords[75], "lines": {"show":True, "lineWidth":0, "fill": 0.3},
-    ##            "color": rgb_to_hex((255,0,255))},
-    ##           {"id": "95% Quantile", "data": spline_coords[95], "lines": {"show":True, "lineWidth":0, "fill": 0.18},
-    ##            "color": rgb_to_hex((255,0,255))},
-    ##           {"id": "99% Quantile", "data": spline_coords[99], "lines": {"show":True, "lineWidth":0, "fill": 0.12},
-    ##            "color": rgb_to_hex((255,0,255))}
-    ##          ]
-    ## splinelabels = {"id": "Spline labels",
-    ##                 "data": [spline_coords[k][0] for k in percentiles],
-    ##                 "points": {"show":False}, "lines": {"show":False},
-    ##                 "labels": ["1%","5%","25%","50%","75%","95%","99%"]}
-    ## jsdata = "var data = " + json.dumps(jsdata) + ";\n" \
-    ##          + "var splinelabels = " + json.dumps(splinelabels) + ";\n"
-    ## if assembly_id:
-    ##     nr_assemblies = urllib.urlopen("http://bbcftools.vital-it.ch/genrep/nr_assemblies.json").read()
-    ##     nr_assemblies = json.loads(nr_assemblies)
-    ##     if isinstance(assembly_id,str):
-    ##         for a in nr_assemblies:
-    ##             if a['nr_assembly']['name'] == assembly_id:
-    ##                 assembly_id = a['nr_assembly']['id']; break
-    ##     url_template = urllib.urlopen("http://bbcftools.vital-it.ch/genrep/nr_assemblies/" \
-    ##                                   + str(assembly_id) + "/get_links.json?gene_name=%3CName%3E")
-    ##     jsdata = jsdata + "var url_template = " + url_template.read() + ";"
-    ## jsname = unique_filename_in()+".js"
-    ## jsname = "data.js"
-    ## with open(jsname,"w") as js:
-    ##     js.write(jsdata)
-
-    return figname#, jsname
-
-class AnnoteFinder:
-  """
-  callback for matplotlib to display an annotation when points are clicked on.  The
-  point which is closest to the click and within xtol and ytol is identified.
-
-  Use this function like this:
-
-  plot(xdata, ydata)
-  af = AnnoteFinder(xdata, ydata, annotes)
-  connect('button_press_event', af)
-  """
-
-  def __init__(self, xdata, ydata, annotes, axis=None, xtol=None, ytol=None):
-    self.data = zip(xdata, ydata, annotes)
-    self.xrange = max(xdata) - min(xdata)
-    self.yrange = max(ydata) - min(ydata)
-    if xtol is None:
-      xtol = len(xdata)*(self.xrange/float(len(xdata)))/10
-    if ytol is None:
-      ytol = len(ydata)*(self.yrange/float(len(ydata)))/10
-    self.xtol = xtol
-    self.ytol = ytol
-    if axis is None:
-      self.axis = pylab.gca()
-    else:
-      self.axis= axis
-    self.drawnAnnotations = {}
-    self.links = []
-
-  def distance(self, x1, x2, y1, y2):
-    """distance between two points"""
-    return math.sqrt((x1 - x2)**2 + (y1 - y2)**2)
-
-  def __call__(self, event):
-    if event.inaxes:
-      clickX = event.xdata
-      clickY = event.ydata
-      if self.axis is None or self.axis==event.inaxes:
-        annotes = []
-        for x,y,a in self.data:
-          if  clickX-self.xtol < x < clickX+self.xtol and  clickY-self.ytol < y < clickY+self.ytol :
-            annotes.append((self.distance(x/self.xrange,clickX/self.xrange,y/self.yrange,clickY/self.yrange),x,y, a) )
-        if annotes:
-          annotes.sort()
-          distance, x, y, annote = annotes[0]
-          self.drawAnnote(event.inaxes, x, y, annote)
-          for l in self.links:
-            l.drawSpecificAnnote(annote)
-
-  def drawAnnote(self, axis, x, y, annote):
-    """
-    Draw the annotation on the plot
-    """
-    if (x,y) in self.drawnAnnotations:
-      markers = self.drawnAnnotations[(x,y)]
-      for m in markers:
-        m.set_visible(not m.get_visible())
-      self.axis.figure.canvas.draw()
-    else:
-      t = axis.text(x,y, annote)
-      m = axis.scatter([x],[y], marker='d', c='r', zorder=100)
-      self.drawnAnnotations[(x,y)] =(t,m)
-      self.axis.figure.canvas.draw()
-
-  def drawSpecificAnnote(self, annote):
-    annotesToDraw = [(x,y,a) for x,y,a in self.data if a==annote]
-    for x,y,a in annotesToDraw:
-      self.drawAnnote(self.axis, x, y, a)
