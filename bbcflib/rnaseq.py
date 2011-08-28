@@ -7,7 +7,7 @@ Methods of the bbcflib's RNA-seq worfow
 """
 
 # Built-in modules #
-import pickle, json, pysam, urllib, math, time
+import os, sys, pickle, json, pysam, urllib, math, time
 from itertools import combinations
 
 # Internal modules #
