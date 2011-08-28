@@ -170,7 +170,7 @@ def external_deseq(cond1_label, cond1, cond2_label, cond2, assembly_id,
 @timer
 def inference(cond1_label, cond1, cond2_label, cond2, assembly_id,
               target=["exons","genes","transcripts"], method="normal", maplot=None):
-    """ Writes a CSV file for each selected feature,
+    """ Writes a CSV file for each selected type of feature,
     each row being of the form: Feature_ID // Mean_expression // Fold_change.
     It calls an R session to use DESeq for size factors and variance stabilization.
 
@@ -198,7 +198,7 @@ def inference(cond1_label, cond1, cond2_label, cond2, assembly_id,
         - trans_in_gene is a dict {gene ID: IDs of the transcripts it contains}
         - exons_in_trans is a dict {transcript ID: IDs of the exons it contains} """
     if fake_mapping:
-        mappings = fetch_mappings("../archive/maptest.pickle")
+        mappings = fetch_mappings("../temp/nice_mappings")
     else:
         mappings = fetch_mappings(assembly_id)
     (gene_ids, gene_names, transcript_mapping, exon_mapping, trans_in_gene, exons_in_trans) = mappings
@@ -220,22 +220,17 @@ def inference(cond1_label, cond1, cond2_label, cond2, assembly_id,
     except : raise rpy2.rinterface.RRuntimeError("Too few reads to estimate variances with DESeq")
     res = deseq.getVarianceStabilizedData(cds)
     
-    exon_ids = list(list(res.names)[0]) # 'res.names[0]' kill the python session.
+    exon_ids = list(list(res.names)[0]) # 'res.names[0]' kills the python session.
     cond1 = numpy.array(res.rx(True,1), dtype='f') # replicates?
     cond2 = numpy.array(res.rx(True,2), dtype='f')
     names=[]; means=[]; ratios=[]
     means = numpy.sqrt(cond1*cond2)
     ratios = cond1/cond2
-    ## for i in range(len(exon_ids)):
-    ##     if cond1[i]!=0 and cond2[i]!=0:
-    ##         mean = numpy.sqrt(cond1[i]*cond2[i])
-    ##         ratio = cond1[i]/cond2[i]
-    ##         names.append(exon_ids[i]); means.append(mean); ratios.append(ratio)
-    ##     else: print cond1[i], cond2[i]
     fc_exons = dict(zip(exon_ids,zip(means,ratios)))
 
     if "exons" in target:
         exons_filename = save_results(translate_gene_ids(fc_exons, gene_names))
+        
     fc_exons = dict(zip([e.split('|')[0] for e in fc_exons.keys()], fc_exons.values()))
         
     # Get fold change for genes
@@ -254,35 +249,6 @@ def inference(cond1_label, cond1, cond2_label, cond2, assembly_id,
         fc_trans = dict(zip(transcript_mapping.keys(),
                             numpy.array(zip(numpy.zeros(len(transcript_mapping.keys())),
                                             numpy.zeros(len(transcript_mapping.keys()))))  ))
-        for g in gene_ids:
-            tg = trans_in_gene[g]
-            if len(tg) == 1:
-                t = tg[0]
-                eg = exons_in_trans[t]
-                for e in eg:
-                    if fc_exons.get(e):
-                        fc_trans[t] += fc_exons[e]
-            else:
-                eg = []
-                for t in tg:
-                    eg.extend(exons_in_trans[t])
-                M = numpy.zeros((len(eg),len(tg)))
-                exons_fold = numpy.zeros(len(eg))
-                exons_mean = numpy.zeros(len(eg))
-                for i,e in enumerate(eg):
-                    for j,t in enumerate(tg):
-                        ebt = exons_in_trans[t]
-                        if e in ebt:
-                            M[i,j] = 1
-                    if fc_exons.get(e):
-                        exons_fold[i] += fc_exons[e][1]
-                        exons_mean[i] += fc_exons[e][0]
-                transcripts_fold = numpy.dot(numpy.linalg.pinv(M),exons_fold)
-                transcripts_mean = numpy.dot(numpy.linalg.pinv(M),exons_mean)
-                for k,t in enumerate(tg):
-                    fc_trans[t][1] = transcripts_fold[k]
-                    fc_trans[t][0] = transcripts_mean[k]
-        trans_filename = save_results(translate_gene_ids(fc_trans, gene_names))
 
         for g in gene_ids:
             tg = trans_in_gene[g]
@@ -314,6 +280,7 @@ def inference(cond1_label, cond1, cond2_label, cond2, assembly_id,
                 if fc_trans.get(t) != None:
                     fc_trans[t][1] = transcripts_fold[k]
                     fc_trans[t][0] = transcripts_mean[k]
+        trans_filename = save_results(translate_gene_ids(fc_trans, gene_names))
         
     result = {"exons":exons_filename, "genes":genes_filename, "transcripts":trans_filename}
     return result
@@ -351,6 +318,7 @@ def rnaseq_workflow(ex, job, assembly, target=["genes"], mapping=False, via="lsf
     else:
         with open("../temp/bam_files","rb") as f:
             bam_files = pickle.load(f)
+            
         id1 = ex.lims.import_file("../temp/"+"100k1.bam")
         id2 = ex.lims.import_file("../temp/"+"100k2.bam")
         id3 = ex.lims.import_file("../temp/"+"100k1.bam.bai")
