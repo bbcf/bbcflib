@@ -28,6 +28,8 @@ import rpy2.rlike.container as rlc
 import cogent.db.ensembl as ensembl
 import csv
 
+import pdb
+
 ################################################################################
 
 def fetch_mappings(path_or_assembly_id):
@@ -175,8 +177,8 @@ def inference(cond1_label, cond1, cond2_label, cond2, assembly_id,
     each row being of the form: Feature_ID // Mean_expression // Fold_change.
     It calls an R session to use DESeq for size factors and variance stabilization.
 
-    * *cond1* and *cond2* are lists of numpy arrays. Each array lists the number of
-    reads mapping to a particular transcript.
+    * *cond1* and *cond2* are dictionaries - pileups - of the form
+    {feature ID: number of reads mapping to it}.
     * *cond1_label* and *cond2_label* are string which will be used
     to identify the two conditions in R.
     * *assembly_id* can be a numeric or nominal ID for GenRep
@@ -218,8 +220,9 @@ def inference(cond1_label, cond1, cond2_label, cond2, assembly_id,
     res = deseq.getVarianceStabilizedData(cds)
     
     exon_ids = list(list(res.names)[0]) # 'res.names[0]' kills the python session.
-    cond1 = numpy.array(res.rx(True,1), dtype='f') # replicates?
-    cond2 = numpy.array(res.rx(True,2), dtype='f')
+    cond1 = numpy.abs(numpy.array(res.rx(True,1), dtype='f')) # replicates?
+    cond2 = numpy.abs(numpy.array(res.rx(True,2), dtype='f'))
+          #abs: a zero count may become slightly negative after normalization - see DESeq
     names=[]; means=[]; ratios=[]
     means = numpy.sqrt(cond1*cond2)
     ratios = cond1/cond2
@@ -281,7 +284,7 @@ def inference(cond1_label, cond1, cond2_label, cond2, assembly_id,
     return result
 
 
-def rnaseq_workflow(ex, job, assembly, target=["genes"], mapping=False, via="lsf", output=None, maplot="normal"):
+def rnaseq_workflow(ex, job, assembly, target=["genes"], bam_files=False, via="lsf", output=None, maplot="normal"):
     """Run RNASeq inference according to *job_info*.
 
     * *output*: alternative name for output file. Otherwise it is random.
@@ -306,11 +309,13 @@ def rnaseq_workflow(ex, job, assembly, target=["genes"], mapping=False, via="lsf
         controls[i] = group['control']
     if isinstance(target,str): target=[target]
 
-    print "Alignment..."
-    if not mapping:
+    if not bam_files: #shouldn't be there
+        print "Alignment..."
         fastq_root = os.path.abspath(ex.working_directory)
         bam_files = map_groups(ex, job, fastq_root, assembly_or_dict = assembly)
+        print "Reads aligned."
     else: #testing
+        print "Loading bam files..."
         with open("../temp/bam_files","rb") as f:
             bam_files = pickle.load(f)
             
@@ -324,7 +329,9 @@ def rnaseq_workflow(ex, job, assembly, target=["genes"], mapping=False, via="lsf
         f2 = ex.use(id2)
         bam_files.values()[0].values()[0]['bam'] = f1
         bam_files.values()[1].values()[0]['bam'] = f2
-        assembly_id = "../temp/nice_mappings"
+        print "Loaded."
+
+        #assembly_id = "../temp/nice_mappings"
 
         ## path = '../archive/mapseq_full2_lims.files/'
         ## id1 = ex.lims.import_file(os.path.join(path,'eyFS5XeDLCrzIhVuYItV'))
@@ -337,7 +344,6 @@ def rnaseq_workflow(ex, job, assembly, target=["genes"], mapping=False, via="lsf
         ## f2 = ex.use(id2)
         ## bam_files.values()[0].values()[0]['bam'] = f1
         ## bam_files.values()[1].values()[0]['bam'] = f2
-    print "Reads aligned."
     
     # All the bam_files were created against the same index, so
     # they all have the same header in the same order.  I can take
@@ -357,32 +363,64 @@ def rnaseq_workflow(ex, job, assembly, target=["genes"], mapping=False, via="lsf
         if len(runs[c1]) + len(runs[c2]) > 2: method = "normal"
         else: method = "blind"
         print "External DESeq..."
-        futures[(c1,c2)] = external_deseq.nonblocking(ex,
+        if 1:
+            futures[(c1,c2)] = external_deseq.nonblocking(ex,
                                    names[c1], exon_pileups[c1], names[c2], exon_pileups[c2],
                                    assembly_id, target, method, maplot, via=via)
-        for c,f in futures.iteritems():
-            result_filename = f.wait()
-            with open(result_filename,"rb") as f:
-                result = pickle.load(f)
-            conditions_desc = (names[c[0]], names[c[1]])
-            if "exons" in target:
-                exons_file = result.get("exons")
-                if exons_file:
-                    ex.add(exons_file, description="csv:Comparison of EXONS in conditions \
-                                                    '%s' and '%s' " % conditions_desc)
-                    print "EXONS: Done successfully."
-                else: print >>sys.stderr, "Exons: Failed during inference, \
-                                           probably because of too few reads for DESeq stats."
-            if "genes" in target:
-                genes_file = result.get("genes")
-                if genes_file:
-                    ex.add(genes_file, description="csv:Comparison of GENES in conditions \
-                                                    '%s' and '%s' " % conditions_desc)
-                    print "GENES: Done successfully."
-            if "transcripts" in target:
-                trans_file = result.get("transcripts");
-                if trans_file:
-                    ex.add(trans_file, description="csv:Comparison of TRANSCRIPTS in conditions \
-                                                    '%s' and '%s' " % conditions_desc)
+            
+            for c,f in futures.iteritems():
+                result_filename = f.wait()
+                with open(result_filename,"rb") as f:
+                    result = pickle.load(f)
+
+                conditions_desc = (names[c[0]], names[c[1]])
+                if "exons" in target:
+                    exons_file = result.get("exons")
+                    if exons_file:
+                        ex.add(exons_file, description="csv:Comparison of EXONS in conditions \
+                        '%s' and '%s' " % conditions_desc)
+                        print "EXONS: Done successfully."
+                    else: print >>sys.stderr, "Exons: Failed during inference, \
+                                               probably because of too few reads for DESeq stats."
+                if "genes" in target:
+                    genes_file = result.get("genes")
+                    if genes_file:
+                        ex.add(genes_file, description="csv:Comparison of GENES in conditions \
+                        '%s' and '%s' " % conditions_desc)
+                        print "GENES: Done successfully."
+                if "transcripts" in target:
+                    trans_file = result.get("transcripts");
+                    if trans_file:
+                        ex.add(trans_file, description="csv:Comparison of TRANSCRIPTS in conditions \
+                        '%s' and '%s' " % conditions_desc)
                     print "TRANSCRIPTS: Done successfully."
+
+        if 0: #testing
+            futures[(c1,c2)] = inference(names[c1], exon_pileups[c1], names[c2], exon_pileups[c2],
+                                   assembly_id, target, method, maplot)
+            for c,f in futures.iteritems():
+                result = f
+
+                conditions_desc = (names[c[0]], names[c[1]])
+                if "exons" in target:
+                    exons_file = result.get("exons")
+                    if exons_file:
+                        ex.add(exons_file, description="csv:Comparison of EXONS in conditions \
+                        '%s' and '%s' " % conditions_desc)
+                        print "EXONS: Done successfully."
+                    else: print >>sys.stderr, "Exons: Failed during inference, \
+                                               probably because of too few reads for DESeq stats."
+                if "genes" in target:
+                    genes_file = result.get("genes")
+                    if genes_file:
+                        ex.add(genes_file, description="csv:Comparison of GENES in conditions \
+                        '%s' and '%s' " % conditions_desc)
+                        print "GENES: Done successfully."
+                if "transcripts" in target:
+                    trans_file = result.get("transcripts");
+                    if trans_file:
+                        ex.add(trans_file, description="csv:Comparison of TRANSCRIPTS in conditions \
+                        '%s' and '%s' " % conditions_desc)
+                    print "TRANSCRIPTS: Done successfully."
+            
         print "Done."
