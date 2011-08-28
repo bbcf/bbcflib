@@ -42,7 +42,7 @@ def fetch_mappings(path_or_assembly_id):
 
     *path_or_assembly_id* can be a numeric or nominal ID for GenRep
     (e.g. 76 or 'hg19' for H.Sapiens), or a path to a file containing a
-    JSON object which is read to get the mapping.
+    pickle object which is read to get the mapping.
     """
     assembly_id = path = path_or_assembly_id
     nr_assemblies = urllib.urlopen("http://bbcftools.vital-it.ch/genrep/nr_assemblies.json").read()
@@ -87,7 +87,7 @@ def exons_labels(bamfile):
     return labels
 
 def pileup_file(bamfile, exons):
-    """Return a numpy array of the pileup of *bamfile* in order *exons*."""
+    """Return a dictionary {exon ID: count}, the pileup of *exons* from *bamfile*."""
     counts = {}
     sam = pysam.Samfile(bamfile, 'rb')
 
@@ -135,7 +135,7 @@ def translate_gene_ids(fc_ids, dictionary):
     return fc_names
 
 def save_results(data, filename=None):
-    '''Save results in a CSV file. Data is of the form {id:(mean,fold_change)} '''
+    '''Save results in a CSV file. Data must be of the form {id:(mean,fold_change)} '''
     if not filename:
         filename = unique_filename_in()
     with open(filename,"wb") as f:
@@ -179,8 +179,9 @@ def inference(cond1_label, cond1, cond2_label, cond2, assembly_id,
     reads mapping to a particular transcript.
     * *cond1_label* and *cond2_label* are string which will be used
     to identify the two conditions in R.
-    * *assembly_id* is a string or an integer identifying the assembly in
-    GenRep (e.g. 'hg19' of 76, for human).
+    * *assembly_id* can be a numeric or nominal ID for GenRep
+    (e.g. 76 or 'hg19' for H.Sapiens), or a path to a file containing a
+    pickle file which is read to get the mapping.
     * *target* is a string or array of strings indicating the features you want to compare.
     Targets can be 'genes', 'transcripts', or 'exons'. E.g. ['genes','transcripts'], or 'genes'.
     * *method* can be 'normal' or 'blind', the method used for DESeq variances estimation.
@@ -223,7 +224,6 @@ def inference(cond1_label, cond1, cond2_label, cond2, assembly_id,
     means = numpy.sqrt(cond1*cond2)
     ratios = cond1/cond2
     fc_exons = dict(zip(exon_ids,zip(means,ratios)))
-
     if "exons" in target:
         exons_filename = save_results(translate_gene_ids(fc_exons, gene_names))
         
@@ -245,7 +245,6 @@ def inference(cond1_label, cond1, cond2_label, cond2, assembly_id,
         fc_trans = dict(zip(transcript_mapping.keys(),
                             numpy.array(zip(numpy.zeros(len(transcript_mapping.keys())),
                                             numpy.zeros(len(transcript_mapping.keys()))))  ))
-
         for g in gene_ids:
             tg = trans_in_gene[g]
             if len(tg) == 1:
@@ -369,17 +368,21 @@ def rnaseq_workflow(ex, job, assembly, target=["genes"], mapping=False, via="lsf
             if "exons" in target:
                 exons_file = result.get("exons")
                 if exons_file:
-                    ex.add(exons_file, description="csv:Comparison of EXONS in conditions '%s' and '%s' " % conditions_desc)
+                    ex.add(exons_file, description="csv:Comparison of EXONS in conditions \
+                                                    '%s' and '%s' " % conditions_desc)
                     print "EXONS: Done successfully."
-                else: print >>sys.stderr, "Exons: Failed during inference, probably because of too few reads for DESeq stats."
+                else: print >>sys.stderr, "Exons: Failed during inference, \
+                                           probably because of too few reads for DESeq stats."
             if "genes" in target:
                 genes_file = result.get("genes")
                 if genes_file:
-                    ex.add(genes_file, description="csv:Comparison of GENES in conditions '%s' and '%s' " % conditions_desc)
+                    ex.add(genes_file, description="csv:Comparison of GENES in conditions \
+                                                    '%s' and '%s' " % conditions_desc)
                     print "GENES: Done successfully."
             if "transcripts" in target:
                 trans_file = result.get("transcripts");
                 if trans_file:
-                    ex.add(trans_file, description="csv:Comparison of TRANSCRIPTS in conditions '%s' and '%s' " % conditions_desc)
+                    ex.add(trans_file, description="csv:Comparison of TRANSCRIPTS in conditions \
+                                                    '%s' and '%s' " % conditions_desc)
                     print "TRANSCRIPTS: Done successfully."
         print "Done."
