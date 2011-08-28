@@ -11,12 +11,14 @@ import pickle, json, pysam, urllib, math, time
 from itertools import combinations
 
 # Internal modules #
-from .mapseq import map_groups
-from .genrep import GenRep
+from bbcflib.mapseq import map_groups
+from bbcflib.genrep import GenRep
+from bbcflib.common import timer
+from bein import program, execution, MiniLIMS
+from bein.util import unique_filename_in
 
 # Other modules #
 import numpy
-from bein.util import *
 from scipy import stats
 from scipy.interpolate import UnivariateSpline
 from rpy2 import robjects
@@ -25,7 +27,6 @@ import rpy2.robjects.numpy2ri
 import rpy2.rlike.container as rlc
 import cogent.db.ensembl as ensembl
 import csv
-from bbcflib.common import timer
 
 ################################################################################
 
