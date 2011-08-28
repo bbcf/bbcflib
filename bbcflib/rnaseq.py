@@ -190,18 +190,13 @@ def inference(cond1_label, cond1, cond2_label, cond2, assembly_id,
     - if None, no figure is produced.
     """
 
-    fake_mapping = 1
-
     """ - gene_ids is a list of gene ID's
         - gene_names is a dict {gene ID: gene name}
         - transcript_mapping is a dictionary {transcript ID: gene ID}
         - exon_mapping is a dictionary {exon ID: (transcript ID, gene ID)}
         - trans_in_gene is a dict {gene ID: IDs of the transcripts it contains}
         - exons_in_trans is a dict {transcript ID: IDs of the exons it contains} """
-    if fake_mapping:
-        mappings = fetch_mappings("../temp/nice_mappings")
-    else:
-        mappings = fetch_mappings(assembly_id)
+    mappings = fetch_mappings(assembly_id)
     (gene_ids, gene_names, transcript_mapping, exon_mapping, trans_in_gene, exons_in_trans) = mappings
 
     # Pass the data into R as a data frame
@@ -316,7 +311,7 @@ def rnaseq_workflow(ex, job, assembly, target=["genes"], mapping=False, via="lsf
     if not mapping:
         fastq_root = os.path.abspath(ex.working_directory)
         bam_files = map_groups(ex, job, fastq_root, assembly_or_dict = assembly)
-    else:
+    else: #testing
         with open("../temp/bam_files","rb") as f:
             bam_files = pickle.load(f)
             
@@ -330,6 +325,7 @@ def rnaseq_workflow(ex, job, assembly, target=["genes"], mapping=False, via="lsf
         f2 = ex.use(id2)
         bam_files.values()[0].values()[0]['bam'] = f1
         bam_files.values()[1].values()[0]['bam'] = f2
+        assembly_id = "../temp/nice_mappings"
 
         ## path = '../archive/mapseq_full2_lims.files/'
         ## id1 = ex.lims.import_file(os.path.join(path,'eyFS5XeDLCrzIhVuYItV'))
