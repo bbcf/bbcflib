@@ -27,4 +27,4 @@ Table of Contents:
    bbcflib_gdv
    bbcflib_track
 
-* `Developer documentation <http://bbcf.github.com/gMiner/>`_
+* `Developer documentation <http://bbcf.github.com/bbcflib/>`_
