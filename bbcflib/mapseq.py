@@ -655,17 +655,16 @@ def densities_groups( ex, job_or_dict, file_dict, chromosomes, via='lsf' ):
         raise TypeError("job_or_dict must be a frontend.Job object or a dictionary with keys 'groups'.")
     merge_strands = -1
     suffixes = ["fwd","rev"]
-    if options.get('merge_strands'):
-        if int(options['merge_strands'])>=0:
-            merge_strands = int(options['merge_strands'])
-            suffixes = ["merged"]
+    if merge_strands in options and int(options['merge_strands'])>=0:
+        merge_strands = int(options['merge_strands'])
+        suffixes = ["merged"]
     ucsc_bigwig = False
     if 'ucsc_bigwig' in options:
         ucsc_bigwig = options['ucsc_bigwig']
     b2w_args = []
     if 'b2w_args' in options:
         b2w_args = options['b2w_args']
-    if options.get('read_extension')>0 and not('-q' in b2w_args):
+    if 'read_extension' in options and int(options['read_extension'])>0 and not('-q' in b2w_args):
         b2w_args += ["-q",str(options['read_extension'])]
     processed = {}
     for gid,group in groups.iteritems():
@@ -683,7 +682,7 @@ def densities_groups( ex, job_or_dict, file_dict, chromosomes, via='lsf' ):
                 mapped[k]['libname'] = group_name+"_"+str(k)
             if not 'stats' in mapped[k]:
                 mapped[k]['stats'] = bamstats( ex, mapped[k]["bam"] )
-            if not(options.get('read_extension')>0):
+            if not('read_extension' in options and int(options['read_extension'])>0):
                 options['read_extension'] = mapped[k]['stats']['read_length']
                 if not('-q' in b2w_args):
                     b2w_args += ["-q",str(options['read_extension'])]
