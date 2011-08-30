@@ -170,6 +170,53 @@ def external_deseq(cond1_label, cond1, cond2_label, cond2, assembly_id,
             targ, method, str(maplot), output]
     return {"arguments": call, "return_value": output}
 
+def genes_expression(gene_ids, exon_mapping, dexons):
+    dgenes = dict(zip(gene_ids,
+                        numpy.array(zip(numpy.zeros(len(gene_ids)),
+                                        numpy.zeros(len(gene_ids))))  ))
+    for e,c in dexons.iteritems():
+        e = e.split('|')[0]
+        if exon_mapping.get(e):
+            dgenes[exon_mapping[e][1]] += c
+    return dgenes
+
+def transcripts_expression(gene_ids, transcript_mapping, trans_in_gene, exons_in_trans, dexons):
+    dtrans = dict(zip(transcript_mapping.keys(),
+                        numpy.array(zip(numpy.zeros(len(transcript_mapping.keys())),
+                                        numpy.zeros(len(transcript_mapping.keys()))))  ))
+    for g in gene_ids:
+        tg = trans_in_gene[g]
+        # if len(tg) == 1:
+        #     t = tg[0]
+        #     eg = exons_in_trans[t]
+        #     for e in eg:
+        #         if dexons.get(e):
+        #             dtrans[t] += dexons[e]
+        # else:
+        eg = []
+        for t in tg:
+            if exons_in_trans.get(t):
+                eg.extend(exons_in_trans[t])
+        M = numpy.zeros((len(eg),len(tg)))
+        exons_1 = numpy.zeros(len(eg))
+        exons_2 = numpy.zeros(len(eg))
+        for i,e in enumerate(eg):
+            for j,t in enumerate(tg):
+                if exons_in_trans.get(t):
+                    ebt = exons_in_trans[t]
+                if e in ebt:
+                    M[i,j] = 1
+            if dexons.get(e):
+                exons_1[i] += dexons[e][0]
+                exons_2[i] += dexons[e][1]
+        transcripts_1 = numpy.dot(numpy.linalg.pinv(M),exons_1)
+        transcripts_2 = numpy.dot(numpy.linalg.pinv(M),exons_2)
+        for k,t in enumerate(tg):
+            if dtrans.get(t) != None:
+                dtrans[t][0] = transcripts_1[k]
+                dtrans[t][1] = transcripts_2[k]
+    return dtrans
+
 @timer
 def inference(cond1_label, cond1, cond2_label, cond2, assembly_id,
               target=["exons","genes","transcripts"], method="normal", maplot=None):
@@ -235,65 +282,30 @@ def inference(cond1_label, cond1, cond2_label, cond2, assembly_id,
     res = deseq.getVarianceStabilizedData(cds)
     
     exon_ids = list(list(res.names)[0]) # 'res.names[0]' kills the python session.
+    exon_ids = [e.split('|')[0] for e in exon_ids]
     cond1 = numpy.abs(numpy.array(res.rx(True,1), dtype='f')) # replicates?
     cond2 = numpy.abs(numpy.array(res.rx(True,2), dtype='f'))
           #abs: a zero count may become slightly negative after normalization - see DESeq
-    names=[]; means=[]; ratios=[]
-    means = numpy.sqrt(cond1*cond2)
-    ratios = cond1/cond2
-    fc_exons = dict(zip(exon_ids,zip(means,ratios)))
-    if "exons" in target:
-        exons_filename = save_results(translate_gene_ids(fc_exons, gene_names))
-        
-    fc_exons = dict(zip([e.split('|')[0] for e in fc_exons.keys()], fc_exons.values()))
-        
+    dexons = dict(zip(exon_ids,zip(cond1,cond2)))
+    # if "exons" in target: 
+    #     means=[]; ratios=[]
+    #     means = numpy.sqrt(cond1*cond2)
+    #     ratios = cond1/cond2
+    #     fc_exons = dict(zip(exon_ids,zip(means,ratios)))
+    #     if "exons" in target:
+    #         exons_filename = save_results(translate_gene_ids(fc_exons, gene_names))
+    #     fc_exons = dict(zip([e.split('|')[0] for e in fc_exons.keys()], fc_exons.values()))
+    exons_filename = save_results(translate_gene_ids(dexons, gene_names))
+
     # Get fold change for genes
     if "genes" in target:
-        fc_genes = dict(zip(gene_ids,
-                            numpy.array(zip(numpy.zeros(len(gene_ids)),
-                                            numpy.zeros(len(gene_ids))))  ))
-        for e,c in fc_exons.iteritems():
-            e = e.split('|')[0]
-            if exon_mapping.get(e):
-                fc_genes[exon_mapping[e][1]] += c
-        genes_filename = save_results(translate_gene_ids(fc_genes, gene_names))
+        dgenes = genes_expression(gene_ids, exon_mapping, dexons)
+        genes_filename = save_results(translate_gene_ids(dgenes, gene_names))
             
     ### Get fold change for the transcripts using pseudo-inverse
     if "transcripts" in target:
-        fc_trans = dict(zip(transcript_mapping.keys(),
-                            numpy.array(zip(numpy.zeros(len(transcript_mapping.keys())),
-                                            numpy.zeros(len(transcript_mapping.keys()))))  ))
-        for g in gene_ids:
-            tg = trans_in_gene[g]
-            if len(tg) == 1:
-                t = tg[0]
-                eg = exons_in_trans[t]
-                for e in eg:
-                    if fc_exons.get(e):
-                        fc_trans[t] += fc_exons[e]
-            eg = []
-            for t in tg:
-                if exons_in_trans.get(t):
-                    eg.extend(exons_in_trans[t])
-            M = numpy.zeros((len(eg),len(tg)))
-            exons_fold = numpy.zeros(len(eg))
-            exons_mean = numpy.zeros(len(eg))
-            for i,e in enumerate(eg):
-                for j,t in enumerate(tg):
-                    if exons_in_trans.get(t):
-                        ebt = exons_in_trans[t]
-                    if e in ebt:
-                        M[i,j] = 1
-                if fc_exons.get(e):
-                    exons_fold[i] += fc_exons[e][1]
-                    exons_mean[i] += fc_exons[e][0]
-            transcripts_fold = numpy.dot(numpy.linalg.pinv(M),exons_fold)
-            transcripts_mean = numpy.dot(numpy.linalg.pinv(M),exons_mean)
-            for k,t in enumerate(tg):
-                if fc_trans.get(t) != None:
-                    fc_trans[t][1] = transcripts_fold[k]
-                    fc_trans[t][0] = transcripts_mean[k]
-        trans_filename = save_results(translate_gene_ids(fc_trans, gene_names))
+        dtrans = transcripts_expression(gene_ids, transcript_mapping, trans_in_gene, exons_in_trans, dexons)
+        trans_filename = save_results(translate_gene_ids(dtrans, gene_names))
         
     result = {"exons":exons_filename, "genes":genes_filename, "transcripts":trans_filename}
     return result
@@ -305,7 +317,7 @@ def rnaseq_workflow(ex, job, assembly, target=["genes"], bam_files=False, via="l
     * *output*: alternative name for output file. Otherwise it is random.
     * *maplot*: MA-plot of data.
     If 'interactive', one can click on a point (gene or exon) to display its name;
-    if 'normal', name of genes over 99.9%/under 0.1% quantiles are displayed;
+    if 'normal', a simple .png figure is produced.
     if None, no figure is produced.
     * *target*: a string or array of strings indicating the features you want to compare.
     Targets can be 'genes', 'transcripts', or 'exons'. E.g. ['genes','transcripts'], or 'genes'.
@@ -346,7 +358,7 @@ def rnaseq_workflow(ex, job, assembly, target=["genes"], bam_files=False, via="l
         bam_files.values()[1].values()[0]['bam'] = f2
         print "Loaded."
 
-        #assembly_id = "../temp/nice_mappings"
+        assembly_id = "../temp/nice_mappings"
 
         ## path = '../archive/mapseq_full2_lims.files/'
         ## id1 = ex.lims.import_file(os.path.join(path,'eyFS5XeDLCrzIhVuYItV'))
@@ -378,7 +390,7 @@ def rnaseq_workflow(ex, job, assembly, target=["genes"], bam_files=False, via="l
         if len(runs[c1]) + len(runs[c2]) > 2: method = "normal" #replicates
         else: method = "blind" #no replicates
         print "External DESeq..."
-        if 1:
+        if 0:
             futures[(c1,c2)] = external_deseq.nonblocking(ex,
                                    names[c1], exon_pileups[c1], names[c2], exon_pileups[c2],
                                    assembly_id, target, method, maplot, via=via)
@@ -410,7 +422,7 @@ def rnaseq_workflow(ex, job, assembly, target=["genes"], bam_files=False, via="l
                         '%s' and '%s' " % conditions_desc)
                     print "TRANSCRIPTS: Done successfully."
 
-        if 0: #testing
+        if 1: #testing
             futures[(c1,c2)] = inference(names[c1], exon_pileups[c1], names[c2], exon_pileups[c2],
                                    assembly_id, target, method, maplot)
             for c,f in futures.iteritems():
