@@ -5,10 +5,10 @@
 
 Welcome to bbcflib's documentation!
 ===================================
+The Bioinformatics and Biostatistics Core Facility Python Library.
 
 Table of Contents:
 ''''''''''''''''''
-
 .. toctree::
    :maxdepth: 1
 
@@ -27,4 +27,4 @@ Table of Contents:
    bbcflib_gdv
    bbcflib_track
 
-* `Developer documentation <http://bbcf.github.com/gMiner/>`_
+* `Developer documentation <http://bbcf.github.com/bbcflib/>`_

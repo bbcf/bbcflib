@@ -226,7 +226,7 @@ def sqlite_to_false_discovery_rate( ex, motif, background, genrep, chromosomes, 
     Computes a score threshold for 'motif' on 'regions' based on a false discovery rate < alpha and returns the 
     thresholded profile.
     """
-    threshold = FDR_threshold( motif, background, genrep, chromosomes, regions, alpha=alpha, nb_samples=nb_samples )
+    threshold = FDR_threshold( motif, background, genrep, chromosomes, regions, alpha=alpha, nb_samples=nb_samples, via=via )
     track = save_motif_profile( ex, motif, background, genrep, chromosomes, regions,
                                 threshold=threshold, description=description, via=via )
     return track, threshold
