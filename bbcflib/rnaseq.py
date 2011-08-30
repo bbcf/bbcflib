@@ -179,14 +179,29 @@ def inference(cond1_label, cond1, cond2_label, cond2, assembly_id,
 
     * *cond1* and *cond2* are dictionaries - pileups - of the form
     {feature ID: number of reads mapping to it}.
+    
     * *cond1_label* and *cond2_label* are string which will be used
     to identify the two conditions in R.
+    
     * *assembly_id* can be a numeric or nominal ID for GenRep
     (e.g. 76 or 'hg19' for H.Sapiens), or a path to a file containing a
     pickle file which is read to get the mapping.
+    
     * *target* is a string or array of strings indicating the features you want to compare.
     Targets can be 'genes', 'transcripts', or 'exons'. E.g. ['genes','transcripts'], or 'genes'.
+    
     * *method* can be 'normal' or 'blind', the method used for DESeq variances estimation.
+    - 'normal': For each condition with replicates, estimate a variance function by considering
+    the data from samples for this condition. Then, construct a variance function
+    '_max' that takes the maximum over all other variance functions and assign this one to
+    all samples of unreplicated conditions.
+    - 'blind': Ignore the sample labels and pretend that all samples are replicates of a
+    single condition. This allows to get a variance estimate even if one does not have any
+    biological replicates. However, this can leed to drastic loss of power. The single
+    estimated variance condition is assigned to all samples.
+    - 'pooled': Use the samples from all conditions with replicates to estimate a single
+    pooled variance function, to be assigned to all samples.
+    
     * *maplot*: MA-plot of data.
     - If 'interactive', one can click on a point (gene or exon) to display its name;
     - if 'normal', name of genes over 99.9%/under 0.1% quantiles are displayed;
@@ -214,7 +229,7 @@ def inference(cond1_label, cond1, cond2_label, cond2, assembly_id,
     
     deseq = rpackages.importr('DESeq')
     cds = deseq.newCountDataSet(data_frame, conds)
-    cds = deseq.estimateSizeFactors(cds)
+    cds = deseq.estimateSizeFactors(cds) #,locfunc='median' robjects.median? May be 'short' if low counts
     try: cds = deseq.estimateVarianceFunctions(cds,method=method)
     except : raise rpy2.rinterface.RRuntimeError("Too few reads to estimate variances with DESeq")
     res = deseq.getVarianceStabilizedData(cds)
@@ -360,8 +375,8 @@ def rnaseq_workflow(ex, job, assembly, target=["genes"], bam_files=False, via="l
 
     futures = {}
     for (c1,c2) in pairs_to_test(controls):
-        if len(runs[c1]) + len(runs[c2]) > 2: method = "normal"
-        else: method = "blind"
+        if len(runs[c1]) + len(runs[c2]) > 2: method = "normal" #replicates
+        else: method = "blind" #no replicates
         print "External DESeq..."
         if 1:
             futures[(c1,c2)] = external_deseq.nonblocking(ex,
