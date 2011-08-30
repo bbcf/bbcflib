@@ -144,6 +144,9 @@ class TrackFormat(Track, TrackExtras):
 
     @property
     def datatype(self):
+        # Next line is a hack to remove a new datatype introduced by GDV - remove at a later date #
+        if self.attributes.get('datatype') == 'QUALITATIVE_EXTENDED': return 'qualitative'
+        # End hack #
         return self.attributes.get('datatype')
 
     @datatype.setter
@@ -170,7 +173,7 @@ class TrackFormat(Track, TrackExtras):
             return join_read_queries(self, selection, fields)
         # Copy input #
         columns = fields[:]
-        # Case chromsome name #
+        # Case chromosome name #
         if isinstance(selection, basestring): chrom = selection
         # Case selection dictionary #
         if isinstance(selection, dict): chrom = selection['chr']
@@ -181,6 +184,7 @@ class TrackFormat(Track, TrackExtras):
         if 'attributes' not in fields:
             try: columns.remove('attributes')
             except ValueError: pass
+        # End hack #
         # Make the query #
         sql_request = "select " + ','.join(columns) + " from '" + chrom + "'"
         if isinstance(selection, dict): sql_request += " where " + make_cond_from_sel(selection)
@@ -201,6 +205,7 @@ class TrackFormat(Track, TrackExtras):
             columns = ','.join([field + ' ' + Track.field_types.get(field, 'text') for field in fields])
             # Next line is a hack to add an empty column needed by GDV - remove at a later date #
             if self.datatype == 'qualitative' and 'attributes' not in fields: columns += ',attributes text'
+            # End hack #
             self.cursor.execute('create table "' + chrom + '" (' + columns + ')')
         # Execute the insertion
         sql_command = 'insert into "' + chrom + '" (' + ','.join(fields) + ') values (' + ','.join(['?' for x in range(len(fields))])+')'
