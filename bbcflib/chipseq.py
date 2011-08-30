@@ -245,7 +245,7 @@ def workflow_groups( ex, job_or_dict, mapseq_files, chromosomes, script_path='',
         raise TypeError("job_or_dict must be a frontend.Job object or a dictionary with key 'groups'.")
     merge_strands = -1
     suffixes = ["fwd","rev"]
-    if merge_strands in options and int(options['merge_strands'])>=0:
+    if 'merge_strands' in options and int(options['merge_strands'])>=0:
         merge_strands = int(options['merge_strands'])
     peak_deconvolution = options.get('peak_deconvolution') or False
     if isinstance(peak_deconvolution,str):

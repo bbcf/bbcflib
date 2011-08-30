@@ -655,7 +655,7 @@ def densities_groups( ex, job_or_dict, file_dict, chromosomes, via='lsf' ):
         raise TypeError("job_or_dict must be a frontend.Job object or a dictionary with keys 'groups'.")
     merge_strands = -1
     suffixes = ["fwd","rev"]
-    if merge_strands in options and int(options['merge_strands'])>=0:
+    if 'merge_strands' in options and int(options['merge_strands'])>=0:
         merge_strands = int(options['merge_strands'])
         suffixes = ["merged"]
     ucsc_bigwig = False
