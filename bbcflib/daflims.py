@@ -1,3 +1,10 @@
+## Example to parse:
+#"http://uhts-gva.vital-it.ch/ws/fastq/HWUSI-EAS691/57/3"
+#==DATA
+#42      ATK4    http://uhts-gva.vital-it.ch/symlink/ATK4_tuPEc4EvV9xm.seq.tar.gz        1       1       fastq_gz        1.70
+#42      ATK4    http://uhts-gva.vital-it.ch/symlink/ATK4_HPFoe8sDicMc.seq       1       1       fastq   1.70
+#
+#
 """
 =======================
 Module: bbcflib.daflims
@@ -26,11 +33,10 @@ the three kinds of files stored in the LIMS:
   * ``fetch_fastq``: The FASTQ file of all reads.  You probably want
     this.
 
-  * ``fetch_eland``: The output of aligning all reads against some
+  * ``fetch_export``: The output of aligning all reads against some
     genome with Eland, a proprietary tool from Illumina.
 
-  * ``fetch_qseq``: QSeq is the text format output directly by the
-    sequencer.
+  * ``fetch_qc``: pdf file of the QC.
 
 For example, to fetch the FASTQ file of run 91, lane 3 sequenced on
 R2D2 in Lausanne, write::
@@ -68,9 +74,9 @@ class DAFLIMS(object):
 
       .. py:method:: fetch_fastq(facility, machine, run, lane, to=None)
 
-      .. py:method:: fetch_eland(facility, machine, run, lane, to=None)
+      .. py:method:: fetch_export(facility, machine, run, lane, to=None)
 
-      .. automethod:: fetch_qseq
+      .. automethod:: fetch_qc
     """
     def __init__(self, username=None, password=None, config=None, section="daflims"):
         if (username==None or password==None) and config==None:
@@ -133,22 +139,27 @@ class DAFLIMS(object):
         if not(isinstance(lane, int)):
             raise ValueError("lane must be an integer, found %s" % str(lane))
 
-    def _symlinkname(self, facility, machine, run, lane):
+    def _symlinkname(self, facility, machine, run, lane, type='fastq'):
         """Fetch the URLs to access data in the LIMS.
 
-        Returns a dictionary with the keys ``'fastq'``, ``'eland'``,
-        and ``'qseq'``, each referring to a URL in the LIMS where that
+        Returns a dictionary with the keys ``'fastq'``, ``'export'``,
+        and ``'qc'``, each referring to a URL in the LIMS where that
         file is stored.
         """
+        check_type = {'fastq': 'fastq_gz', 'export': 'gerald_gz'}
         self._check_description(facility, machine, run, lane)
-        response = self._run_method("symlinkname", facility, machine, run, lane).splitlines()
+        response = self._run_method(type, facility, machine, run, lane).splitlines()
         if re.search('==DATA', response[0]) == None or len(response)<2:
             raise ValueError(("symlinkname method failed on DAFLIMS (facility='%s', " + \
                               "machine='%s', run=%d, lane=%d): %s") % (facility, machine, run, lane,
                                                                      '\n'.join(response[1:])))
         else:
-            q = response[1].split('\t')
-            return {'fastq': q[0], 'eland': q[1], 'qseq': q[2]}
+            rtn = []
+            for resp in response:
+                q = resp.split('\t')
+                if type in check_type and q[5] == check_type[type]: 
+                    rtn.append(q[2])
+            return rtn
 
     def _lanedesc(self, facility, machine, run, lane):
         """Fetch the metadata of particular data set in the LIMS.
@@ -205,7 +216,7 @@ class DAFLIMS(object):
     def _fetch_symlink(self, link_name, to=None):
         """Fetch the data from a file in the LIMS into *to*.
 
-        *link_name* is a URL to a .tar.gz file in the LIMS.  These
+        *link_name* is a (list of) URL to a .tar.gz file in the LIMS.  These
         .tar.gz files all contain only one file, which we write to
         *to*.  If *to* is omitted, then the data is written to a
         randomly named file in the current working directory.  If
@@ -222,32 +233,35 @@ class DAFLIMS(object):
             target = os.path.join(to, unique_filename_in())
         else:
             target = to
-
+        
+        if not(isinstance(link_name,list)):
+            link_name = [link_name]
         # *link_name* is a URL to a .tar.gz file in the LIMS
         # containing exactly one file.  We stream from the HTTP
         # connection to a local file in 4kb chunks.
-        url = self._open_url(link_name)
-        tar = tarfile.open(fileobj=url, mode='r|gz')
+        with open(target, 'w') as output_file:
+            for link in link_name:
+                url = self._open_url(link)
+                tar = tarfile.open(fileobj=url, mode='r|gz')
 
         # Since the tar file contains exactly one file, calling
         # ``next()`` on the tar gives us the file we want.  We cannot
         # use ``getnames()[0]`` or similar methods, since they scan
         # all the way through the file, and we cannot rewind on HTTP
         # responses.
-        tar_filename = tar.next()
+                tar_filename = tar.next()
 
         # extractfile returns a file-like object we can stream from.
-        input_file = tar.extractfile(tar_filename)
-        with open(target, 'w') as output_file:
-            while True:
-                chunk = input_file.read(4096)
-                if chunk == '':
-                    break
-                else:
-                    output_file.write(chunk)
+                input_file = tar.extractfile(tar_filename)
+                while True:
+                    chunk = input_file.read(4096)
+                    if chunk == '':
+                        break
+                    else:
+                        output_file.write(chunk)
+                input_file.close()
+                tar.close()
         output_file.close()
-        input_file.close()
-        tar.close()
         return target
 
     def _fetch_structured(self, type, facility, machine, run, lane, to=None):
@@ -273,12 +287,12 @@ class DAFLIMS(object):
           * ``'organism'``
           * ``'NCBI ID'`` (the genome Eland aligns against)
 
-        *type* must be one of ``'fastq'``, ``'eland'``, or ``'qseq'``.
+        *type* must be one of ``'fastq'``, ``'export'``, or ``'qc'``.
         """
-        if type != 'fastq' and type != 'eland' and type != 'qseq':
-            raise ValueError("type must be one of 'fastq', 'eland', or 'qseq'; found %s" % str(type))
-        url = self._symlinkname(facility, machine, run, lane)[type]
+        if type != 'fastq' and type != 'export' and type != 'qc':
+            raise ValueError("type must be one of 'fastq', 'export', or 'qc'; found %s" % str(type))
         info = self._lanedesc(facility, machine, run, lane)
+        url = self._symlinkname(facility, machine, run, lane, type)
         filename = self._fetch_symlink(url, to)
         info['path'] = filename
         return info
@@ -314,7 +328,7 @@ class DAFLIMS(object):
         """
         return self._fetch_structured('fastq', facility, machine, run, lane, to)
 
-    def fetch_eland(self, facility, machine, run, lane, to=None):
+    def fetch_export(self, facility, machine, run, lane, to=None):
         """Fetch a file from the LIMS to *to*.
 
         If *to* is omitted, then the data is written to a
@@ -343,9 +357,9 @@ class DAFLIMS(object):
           * ``'organism'``
           * ``'NCBI ID'`` (the genome Eland aligns against)
         """
-        return self._fetch_structured('eland', facility, machine, run, lane, to)
+        return self._fetch_structured('export', facility, machine, run, lane, to)
 
-    def fetch_qseq(self, facility, machine, run, lane, to=None):
+    def fetch_qc(self, facility, machine, run, lane, to=None):
         """Fetch a file from the LIMS to *to*.
 
         If *to* is omitted, then the data is written to a
@@ -374,7 +388,7 @@ class DAFLIMS(object):
           * ``'organism'``
           * ``'NCBI ID'`` (the genome Eland aligns against)
         """
-        return self._fetch_structured('qseq', facility, machine, run, lane, to)
+        return self._fetch_structured('qc', facility, machine, run, lane, to)
 
 #-----------------------------------#
 # This code was written by the BBCF #
