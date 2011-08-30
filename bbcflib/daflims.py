@@ -1,10 +1,3 @@
-## Example to parse:
-#"http://uhts-gva.vital-it.ch/ws/fastq/HWUSI-EAS691/57/3"
-#==DATA
-#42      ATK4    http://uhts-gva.vital-it.ch/symlink/ATK4_tuPEc4EvV9xm.seq.tar.gz        1       1       fastq_gz        1.70
-#42      ATK4    http://uhts-gva.vital-it.ch/symlink/ATK4_HPFoe8sDicMc.seq       1       1       fastq   1.70
-#
-#
 """
 =======================
 Module: bbcflib.daflims
@@ -146,7 +139,7 @@ class DAFLIMS(object):
         and ``'qc'``, each referring to a URL in the LIMS where that
         file is stored.
         """
-        check_type = {'fastq': 'fastq_gz', 'export': 'gerald_gz'}
+        check_type = {'fastq': 'fastq_gz', 'export': 'gerald_gz', 'qc': None}
         self._check_description(facility, machine, run, lane)
         response = self._run_method(type, facility, machine, run, lane).splitlines()
         if re.search('==DATA', response[0]) == None or len(response)<2:
@@ -155,9 +148,9 @@ class DAFLIMS(object):
                                                                      '\n'.join(response[1:])))
         else:
             rtn = []
-            for resp in response:
+            for resp in response[1:]:
                 q = resp.split('\t')
-                if type in check_type and q[5] == check_type[type]: 
+                if len(q)<6 or q[5] == check_type[type]: 
                     rtn.append(q[2])
             return rtn
 
