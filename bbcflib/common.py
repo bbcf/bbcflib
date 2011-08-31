@@ -7,7 +7,7 @@ Utility functions common to several pipelines.
 """
 
 # Built-in modules #
-import sys, time
+import sys, time, json
 
 ###############################################################################
 def normalize_url(url):
@@ -209,6 +209,20 @@ try:
             print "Execution time of function", function.__name__, ":", str(t2-t1), "s."
             return result
         return wrapper
+
+    #-------------------------------------------------------------------------#
+    def results_to_json(lims, exid):
+        """Create a JSON string describing the results of execution *exid*.
+
+        The execution is sought in *lims*, and all its output files and
+        their descriptions are written to the string.
+        """
+        produced_file_ids = lims.search_files(source=('execution',exid))
+        d = dict([(lims.fetch_file(i)['description'], lims.path_to_file(i))
+                  for i in produced_file_ids])
+        j = json.dumps(d)
+        return j
+    
 
 except:
     print >>sys.stderr, "Bein not found.  Skipping some common functions."
