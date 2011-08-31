@@ -13,7 +13,7 @@ from itertools import combinations
 # Internal modules #
 from bbcflib.mapseq import map_groups
 from bbcflib.genrep import GenRep
-from bbcflib.common import timer
+from bbcflib.common import timer, results_to_json
 from bein import program, execution, MiniLIMS
 from bein.util import unique_filename_in
 
@@ -142,7 +142,7 @@ def save_results(data, filename=None):
         filename = unique_filename_in()
     with open(filename,"wb") as f:
         c = csv.writer(f, delimiter='\t')
-        c.writerow(["id", "baseMean", "foldChange"])
+        c.writerow(["id", "C1", "C2"])
         for k,v in data.iteritems():
             c.writerow([k,v[0],v[1]])
     return filename
