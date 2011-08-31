@@ -16,12 +16,10 @@ from bbcflib.track import magic
 ###############################################################################
 def determine_format(path):
     '''Try to guess the format of a track given its path. Returns a three letter extension'''
-    # Try magic first #
-    file_format = magic.guess_file_format(path)
+    # Try our own sniffing first #
+    file_format = guess_file_format(path)
     # Then try the extension #
     if not file_format: file_format = os.path.splitext(path)[1][1:]
-    # Then try our own sniffing #
-    if not file_format: file_format = guess_file_format(path)
     # If still nothing, raise exception #
     if not file_format:
         raise Exception("The format of the path '" + path + "' cannot be determined. Please specify a format or add an extension.")
@@ -43,16 +41,14 @@ def guess_file_format(path):
         'wiggle_0': 'wig',
     }
     with open(path, 'r') as track_file:
-        for line in track_file:
+        for number, line in enumerate(track_file):
             line = line.strip("\n").lstrip()
-            if len(line) == 0:              continue
-            if line.startswith("#"):        continue
-            if line.startswith("browser "): continue
+            if number > 100:                break
             if line.startswith("track "):
                 try:
                     id = dict([p.split('=',1) for p in shlex.split(line[6:])])['type']
                 except ValueError:
-                    return ''
+                    id = ''
                 return known_identifiers.get(id, id)
 
 #------------------------------------------------------------------------------#
