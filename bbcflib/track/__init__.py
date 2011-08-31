@@ -350,6 +350,21 @@ class Track(object):
         '''
         raise NotImplementedError
 
+    def score_vector(self, chrom):
+        '''Returns an iterable with as many elements as there are base pairs in the chromosomes specified by the *chrom* parameter. Every element of the iterable is a float indicating the score at that position. If the track has no score associated, ones are inserted where features are present.
+
+                * *chrom* is the name of the chromosome on which one wants to create a score vector from.
+
+            Examples::
+
+                from bbcflib import track
+                with track.new('tmp/track.sql') as t:
+                    scores = t.vector('chr1')
+
+            ``score_vector`` returns an iterable yielding floats.
+        '''
+        raise NotImplementedError
+
     #-----------------------------------------------------------------------------#
     def mutate_source(self, path, format):
         '''Change a <Track> instance to a given format dynamically'''

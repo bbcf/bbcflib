@@ -279,6 +279,19 @@ class Test_Conventions(unittest.TestCase):
         self.assertTrue(sqlcmp(new, old))
         os.remove(new)
 
+#-------------------------------------------------------------------------------#
+class Test_ScoreVector(unittest.TestCase):
+    def runTest(self):
+        path = track_collections['Validation'][4]['path_sql']
+        with track.load(path, chrmeta={'chr2':{'length':100}}, readonly=True) as t:
+            scores = list(t.score_vector('chr1'))
+            print scores
+            expected = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+                        1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0,
+                        0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+                        2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0]
+            self.assertEqual(scores, expected)
+
 #-----------------------------------#
 # This code was written by the BBCF #
 # http://bbcf.epfl.ch/              #
