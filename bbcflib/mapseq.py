@@ -864,14 +864,15 @@ def get_bam_wig_files( ex, job, minilims=None, hts_url=None, suffix=['fwd','rev'
                         read_exts[rid] = stats['read_length']
                 else:
                     ms_job = job
-                if (ms_job.options.get('compute_densities') and 
-                    ((ms_job.options.get('merge_strands')<0 and len(suffix)>1) or 
-                     (ms_job.options.get('merge_strands')>-1 and len(suffix)==1))):
-                    wigfile = unique_filename_in()
-                    wig_ids = dict(((allfiles['sql:'+name+'_'+s+'.sql'],s),
-                                    wigfile+'_'+s+'.sql') for s in suffix)
-                    [MMS.export_file(x[0],s) for x,s in wig_ids.iteritems()]
-                    wig = dict((x[1],s) for x,s in wig_ids.iteritems())
+                if ms_job.options.get('compute_densities'):
+                    job.options['merge_strands'] = int(ms_job.options.get('merge_strands'))
+                    if ((ms_job.options.get('merge_strands')<0 and len(suffix)>1) or 
+                        (ms_job.options.get('merge_strands')>-1 and len(suffix)==1)):
+                        wigfile = unique_filename_in()
+                        wig_ids = dict(((allfiles['sql:'+name+'_'+s+'.sql'],s),
+                                        wigfile+'_'+s+'.sql') for s in suffix)
+                        [MMS.export_file(x[0],s) for x,s in wig_ids.iteritems()]
+                        wig = dict((x[1],s) for x,s in wig_ids.iteritems())
             else:
                 raise ValueError("Couldn't find this bam file anywhere: %s." %file_loc)
             mapped_files[gid][rid] = {'bam': bamfile,
