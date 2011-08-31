@@ -147,7 +147,7 @@ class TrackFormat(Track, TrackExtras):
         # Next line is a hack to remove a new datatype introduced by GDV - remove at a later date #
         if self.attributes.get('datatype') == 'QUALITATIVE_EXTENDED': return 'qualitative'
         # End hack #
-        return self.attributes.get('datatype')
+        return self.attributes.get('datatype', '').lower()
 
     @datatype.setter
     def datatype(self, value):
