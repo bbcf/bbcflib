@@ -336,7 +336,7 @@ def rnaseq_workflow(ex, job, assembly, target=["genes"], bam_files=False, via="l
         controls[i] = group['control']
     if isinstance(target,str): target=[target]
 
-    if not bam_files: #shouldn't be there
+    if not bam_files: #shouldn't be here
         print "Alignment..."
         fastq_root = os.path.abspath(ex.working_directory)
         bam_files = map_groups(ex, job, fastq_root, assembly_or_dict = assembly)
@@ -346,31 +346,31 @@ def rnaseq_workflow(ex, job, assembly, target=["genes"], bam_files=False, via="l
         with open("../temp/bam_files","rb") as f:
             bam_files = pickle.load(f)
             
-        id1 = ex.lims.import_file("../temp/"+"100k1.bam")
-        id2 = ex.lims.import_file("../temp/"+"100k2.bam")
-        id3 = ex.lims.import_file("../temp/"+"100k1.bam.bai")
-        id4 = ex.lims.import_file("../temp/"+"100k2.bam.bai")
+        # id1 = ex.lims.import_file("../temp/"+"100k1.bam")
+        # id2 = ex.lims.import_file("../temp/"+"100k2.bam")
+        # id3 = ex.lims.import_file("../temp/"+"100k1.bam.bai")
+        # id4 = ex.lims.import_file("../temp/"+"100k2.bam.bai")
+        # ex.lims.associate_file(id3,id1,template="%s.bai")
+        # ex.lims.associate_file(id4,id2,template="%s.bai")
+        # f1 = ex.use(id1)
+        # f2 = ex.use(id2)
+        # bam_files.values()[0].values()[0]['bam'] = f1
+        # bam_files.values()[1].values()[0]['bam'] = f2
+
+        path = '../archive/RNAseq_full.files/'
+        id1 = ex.lims.import_file(os.path.join(path,'ePF0QuyPZ7qrrudG7dqX'))
+        id2 = ex.lims.import_file(os.path.join(path,'bRLb3NzJQzbVi1rc84jJ'))
+        id3 = ex.lims.import_file(os.path.join(path,'ePF0QuyPZ7qrrudG7dqX.bai'))
+        id4 = ex.lims.import_file(os.path.join(path,'bRLb3NzJQzbVi1rc84jJ.bai'))
         ex.lims.associate_file(id3,id1,template="%s.bai")
         ex.lims.associate_file(id4,id2,template="%s.bai")
         f1 = ex.use(id1)
         f2 = ex.use(id2)
         bam_files.values()[0].values()[0]['bam'] = f1
         bam_files.values()[1].values()[0]['bam'] = f2
+
         print "Loaded."
-
-        assembly_id = "../temp/nice_mappings"
-
-        ## path = '../archive/mapseq_full2_lims.files/'
-        ## id1 = ex.lims.import_file(os.path.join(path,'eyFS5XeDLCrzIhVuYItV'))
-        ## id2 = ex.lims.import_file(os.path.join(path,'cpCqC1tubV6zoBWAmoqy'))
-        ## id3 = ex.lims.import_file(os.path.join(path,'eyFS5XeDLCrzIhVuYItV.bai'))
-        ## id4 = ex.lims.import_file(os.path.join(path,'cpCqC1tubV6zoBWAmoqy.bai'))
-        ## ex.lims.associate_file(id3,id1,template="%s.bai")
-        ## ex.lims.associate_file(id4,id2,template="%s.bai")
-        ## f1 = ex.use(id1)
-        ## f2 = ex.use(id2)
-        ## bam_files.values()[0].values()[0]['bam'] = f1
-        ## bam_files.values()[1].values()[0]['bam'] = f2
+        #assembly_id = "../temp/nice_mappings"
     
     # All the bam_files were created against the same index, so
     # they all have the same header in the same order.  I can take
@@ -404,27 +404,27 @@ def rnaseq_workflow(ex, job, assembly, target=["genes"], bam_files=False, via="l
                 if "exons" in target:
                     exons_file = result.get("exons")
                     if exons_file:
-                        ex.add(exons_file, description="csv:Comparison of EXONS in conditions \
-                        '%s' and '%s' " % conditions_desc)
+                        ex.add(exons_file,
+                               description="csv:Comparison of EXONS in conditions '%s' and '%s' " % conditions_desc)
                         print "EXONS: Done successfully."
                     else: print >>sys.stderr, "Exons: Failed during inference, \
                                                probably because of too few reads for DESeq stats."
                 if "genes" in target:
                     genes_file = result.get("genes")
                     if genes_file:
-                        ex.add(genes_file, description="csv:Comparison of GENES in conditions \
-                        '%s' and '%s' " % conditions_desc)
+                        ex.add(genes_file,
+                               description="csv:Comparison of GENES in conditions '%s' and '%s' " % conditions_desc)
                         print "GENES: Done successfully."
                 if "transcripts" in target:
                     trans_file = result.get("transcripts");
                     if trans_file:
-                        ex.add(trans_file, description="csv:Comparison of TRANSCRIPTS in conditions \
-                        '%s' and '%s' " % conditions_desc)
+                        ex.add(trans_file,
+                               description="csv:Comparison of TRANSCRIPTS in conditions '%s' and '%s' " % conditions_desc)
                     print "TRANSCRIPTS: Done successfully."
 
         if 1: #testing
             futures[(c1,c2)] = inference(names[c1], exon_pileups[c1], names[c2], exon_pileups[c2],
-                                   assembly_id, target, method, maplot)
+                                         assembly_id, target, method, maplot)
             for c,f in futures.iteritems():
                 result = f
 
@@ -432,22 +432,22 @@ def rnaseq_workflow(ex, job, assembly, target=["genes"], bam_files=False, via="l
                 if "exons" in target:
                     exons_file = result.get("exons")
                     if exons_file:
-                        ex.add(exons_file, description="csv:Comparison of EXONS in conditions \
-                        '%s' and '%s' " % conditions_desc)
+                        ex.add(exons_file,
+                               description="csv:Comparison of EXONS in conditions '%s' and '%s' " % conditions_desc)
                         print "EXONS: Done successfully."
                     else: print >>sys.stderr, "Exons: Failed during inference, \
                                                probably because of too few reads for DESeq stats."
                 if "genes" in target:
                     genes_file = result.get("genes")
                     if genes_file:
-                        ex.add(genes_file, description="csv:Comparison of GENES in conditions \
-                        '%s' and '%s' " % conditions_desc)
+                        ex.add(genes_file,
+                               description="csv:Comparison of GENES in conditions '%s' and '%s' " % conditions_desc)
                         print "GENES: Done successfully."
                 if "transcripts" in target:
                     trans_file = result.get("transcripts");
                     if trans_file:
-                        ex.add(trans_file, description="csv:Comparison of TRANSCRIPTS in conditions \
-                        '%s' and '%s' " % conditions_desc)
+                        ex.add(trans_file,
+                               description="csv:Comparison of TRANSCRIPTS in conditions '%s' and '%s' " % conditions_desc)
                     print "TRANSCRIPTS: Done successfully."
             
         print "Done."
