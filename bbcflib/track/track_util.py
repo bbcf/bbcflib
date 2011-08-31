@@ -11,7 +11,6 @@ import os, sys, shlex
 
 # Internal modules #
 from bbcflib.track import formats
-from bbcflib.track import magic
 
 ###############################################################################
 def determine_format(path):
