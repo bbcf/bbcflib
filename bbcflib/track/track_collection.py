@@ -27,6 +27,7 @@ else:
 
 # Tracks collection #
 yeast_chr_file = tracks_path + 'chr/yeast.chr'
+small_chr_file = tracks_path + 'chr/small.chr'
 track_collections = {
 'Validation': {
   1:   {'path': tracks_path+'qual/bed/validation1.bed',         'type':'qualitative',  'fields':Track.qualitative_fields[:4]},

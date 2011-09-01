@@ -13,15 +13,6 @@
 
 import sys, os
 
-###############################
-# Don't import the shared version of the library
-# Otherwise, sphinx will not source the new code doc
-from inspect import getfile, currentframe
-this_dir = getfile(currentframe())
-current_gm_path = '/'.join(os.path.abspath(this_dir).split('/')[:-2]) + '/'
-sys.path.insert(0, current_gm_path)
-################################
-
 # If extensions (or modules to document with autodoc) are in another directory,
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.

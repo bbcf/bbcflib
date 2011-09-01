@@ -147,7 +147,7 @@ class TrackFormat(Track, TrackExtras):
         # Next line is a hack to remove a new datatype introduced by GDV - remove at a later date #
         if self.attributes.get('datatype') == 'QUALITATIVE_EXTENDED': return 'qualitative'
         # End hack #
-        return self.attributes.get('datatype')
+        return self.attributes.get('datatype', '').lower()
 
     @datatype.setter
     def datatype(self, value):
@@ -259,18 +259,28 @@ class TrackFormat(Track, TrackExtras):
         return self.cursor.execute(sql_request).fetchone()[0]
 
     def ucsc_to_ensembl(self):
-        '''Converts all entries of a track from the UCSC standard to the Ensembl standard.
-
-           ``ucsc_to_ensembl`` returns nothing.
-        '''
         for chrom in self.chrs_from_tables: self.cursor.execute("update '" + chrom + "' set start=start+1")
 
     def ensembl_to_ucsc(self):
-        '''Converts all entries of a track from the Ensembl standard to the UCSC standard.
-
-           ``ensembl_to_ucsc`` returns nothing.
-        '''
         for chrom in self.chrs_from_tables: self.cursor.execute("update '" + chrom + "' set start=start-1")
+
+    def score_vector(self, chrom):
+        # Conditions #
+        if 'score' not in self.fields:
+            def add_ones(X):
+                for x in X: yield x + (1.0,)
+            data = add_ones(self.read(chrom, ['start','end']))
+        else:
+            data = self.read(chrom, ['start','end','score'])
+        # Core loop #
+        last_end = 0
+        for x in data:
+            for i in xrange(last_end, x[0]): yield 0.0
+            for i in xrange(x[0],     x[1]): yield x[2]
+            last_end = x[1]
+        # End piece #
+        if self.chrmeta.get(chrom):
+            for i in xrange(x[1], self.chrmeta[chrom]['length']): yield 0.0
 
     #--------------------------------------------------------------------------#
     @staticmethod

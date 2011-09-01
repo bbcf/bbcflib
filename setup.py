@@ -12,13 +12,8 @@ setup(
         install_requires=   ['mailer', 'bein', 'rpy2', 'pysam', 'scipy', 'BeautifulSoup', 'cogent', 'mysql-python', 'sqlalchemy'],
         classifiers     =   ['Topic :: Scientific/Engineering :: Bio-Informatics'],
         packages        =   ['bbcflib',
-                             'bbcflib.tests',
                              'bbcflib.track',
                              'bbcflib.track.extras',
                              'bbcflib.track.formats',
-                             'bbcflib.track.tests',
-                             'bbcflib.track.magic'
                             ],
-        package_dir     =   {'bbcflib.track.magic':'bbcflib/track/magic'},
-        package_data    =   {'bbcflib.track.magic':['magic_data']}
     )

@@ -39,3 +39,5 @@ The Track object
     .. automethod:: Track.ucsc_to_ensembl
 
     .. automethod:: Track.ensembl_to_ucsc
+
+    .. automethod:: Track.score_vector
