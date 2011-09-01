@@ -272,8 +272,10 @@ class TrackFormat(Track, TrackExtras):
             data = add_ones(self.read(chrom, ['start','end']))
         else:
             data = self.read(chrom, ['start','end','score'])
-        # Core loop #
+        # Initialzation #
         last_end = 0
+        x = (-1,0)
+        # Core loop #
         for x in data:
             for i in xrange(last_end, x[0]): yield 0.0
             for i in xrange(x[0],     x[1]): yield x[2]
