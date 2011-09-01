@@ -240,7 +240,7 @@ def inference(cond1_label, cond1, cond2_label, cond2, assembly_id,
     * *method* can be 'normal' or 'blind', the method used for DESeq variances estimation.
     - 'normal': For each condition with replicates, estimate a variance function by considering
     the data from samples for this condition. Then, construct a variance function
-    '_max' that takes the maximum over all other variance functions and assign this one to
+    that takes the maximum over all other variance functions and assign this one to
     all samples of unreplicated conditions.
     - 'blind': Ignore the sample labels and pretend that all samples are replicates of a
     single condition. This allows to get a variance estimate even if one does not have any

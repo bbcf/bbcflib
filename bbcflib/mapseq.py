@@ -876,7 +876,7 @@ def get_bam_wig_files( ex, job, minilims=None, hts_url=None, suffix=['fwd','rev'
             else:
                 raise ValueError("Couldn't find this bam file anywhere: %s." %file_loc)
             mapped_files[gid][rid] = {'bam': bamfile,
-                                      'stats': stats or mapseq.bamstats.nonblocking( ex, bamfile, via=via ),
+                                      'stats': stats or bamstats.nonblocking( ex, bamfile, via=via ),
                                       'poisson_threshold': p_thresh,
                                       'libname': name,
                                       'wig': wig}
