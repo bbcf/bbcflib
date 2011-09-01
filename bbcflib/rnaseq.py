@@ -155,7 +155,7 @@ def external_maplot(csv_filename, mode='normal', deg=4, bins=30, assembly_id=Non
 
 @program
 def external_deseq(cond1_label, cond1, cond2_label, cond2, assembly_id,
-                   target=["exons","genes","transcripts"], method="normal", maplot=None):
+                   target=["exons","genes","transcripts"], method="normal"):
     output = unique_filename_in()
     c1 = unique_filename_in()
     with open(c1,'wb') as f:
@@ -167,7 +167,7 @@ def external_deseq(cond1_label, cond1, cond2_label, cond2, assembly_id,
     with open(targ,'wb') as f:
         pickle.dump(target,f,pickle.HIGHEST_PROTOCOL)
     call = ["run_deseq.py", c1, c2, cond1_label, cond2_label, str(assembly_id), 
-            targ, method, str(maplot), output]
+            targ, method, output]
     return {"arguments": call, "return_value": output}
 
 def genes_expression(gene_ids, exon_mapping, dexons):
@@ -186,13 +186,6 @@ def transcripts_expression(gene_ids, transcript_mapping, trans_in_gene, exons_in
                                         numpy.zeros(len(transcript_mapping.keys()))))  ))
     for g in gene_ids:
         tg = trans_in_gene[g]
-        # if len(tg) == 1:
-        #     t = tg[0]
-        #     eg = exons_in_trans[t]
-        #     for e in eg:
-        #         if dexons.get(e):
-        #             dtrans[t] += dexons[e]
-        # else:
         eg = []
         for t in tg:
             if exons_in_trans.get(t):
@@ -219,7 +212,7 @@ def transcripts_expression(gene_ids, transcript_mapping, trans_in_gene, exons_in
 
 @timer
 def comparisons(cond1_label, cond1, cond2_label, cond2, assembly_id,
-              target=["exons","genes","transcripts"], method="normal", maplot=None):
+              target=["exons","genes","transcripts"], method="normal"):
     """ Writes a CSV file for each selected type of feature,
     each row being of the form: Feature_ID // Mean_expression // Fold_change.
     It calls an R session to use DESeq for size factors and variance stabilization.
@@ -248,11 +241,6 @@ def comparisons(cond1_label, cond1, cond2_label, cond2, assembly_id,
     estimated variance condition is assigned to all samples.
     - 'pooled': Use the samples from all conditions with replicates to estimate a single
     pooled variance function, to be assigned to all samples.
-    
-    * *maplot*: MA-plot of data.
-    - If 'interactive', one can click on a point (gene or exon) to display its name;
-    - if 'normal', name of genes over 99.9%/under 0.1% quantiles are displayed;
-    - if None, no figure is produced.
     """
 
     """ - gene_ids is a list of gene ID's
@@ -261,6 +249,7 @@ def comparisons(cond1_label, cond1, cond2_label, cond2, assembly_id,
         - exon_mapping is a dictionary {exon ID: (transcript ID, gene ID)}
         - trans_in_gene is a dict {gene ID: IDs of the transcripts it contains}
         - exons_in_trans is a dict {transcript ID: IDs of the exons it contains} """
+    assembly_id = "../temp/nice_features/nice_mappings" # testing code
     mappings = fetch_mappings(assembly_id)
     (gene_ids, gene_names, transcript_mapping, exon_mapping, trans_in_gene, exons_in_trans) = mappings
 
@@ -303,14 +292,11 @@ def comparisons(cond1_label, cond1, cond2_label, cond2, assembly_id,
     return result
 
 
-def rnaseq_workflow(ex, job, assembly, target=["genes"], bam_files=False, via="lsf", output=None, maplot="normal"):
-    """Run RNASeq inference according to *job_info*.
-
+def rnaseq_workflow(ex, job, assembly, bam_files, target=["genes"], via="lsf", output=None):
+    """
+    Main function of the workflow. 
+    
     * *output*: alternative name for output file. Otherwise it is random.
-    * *maplot*: MA-plot of data.
-    If 'interactive', one can click on a point (gene or exon) to display its name;
-    if 'normal', a simple .png figure is produced.
-    if None, no figure is produced.
     * *target*: a string or array of strings indicating the features you want to compare.
     Targets can be 'genes', 'transcripts', or 'exons'. E.g. ['genes','transcripts'], or 'genes'.
     (This part of the workflow may fail if there are too few reads for DESeq to estimate
@@ -327,8 +313,6 @@ def rnaseq_workflow(ex, job, assembly, target=["genes"], bam_files=False, via="l
         runs[i] = group['runs'].values()
         controls[i] = group['control']
     if isinstance(target,str): target=[target]
-
-    #assembly_id = "../temp/nice_mappings" # testing code
     
     # All the bam_files were created against the same index, so
     # they all have the same header in the same order.  I can take
@@ -347,11 +331,11 @@ def rnaseq_workflow(ex, job, assembly, target=["genes"], bam_files=False, via="l
     for (c1,c2) in pairs_to_test(controls):
         if len(runs[c1]) + len(runs[c2]) > 2: method = "normal" #replicates
         else: method = "blind" #no replicates
-        print "Comparisons..."
-        if 0:
+        if 1:
+            print "Comparisons..."
             futures[(c1,c2)] = external_deseq.nonblocking(ex,
                                    names[c1], exon_pileups[c1], names[c2], exon_pileups[c2],
-                                   assembly_id, target, method, maplot, via=via)
+                                   assembly_id, target, method, via=via)
             
             for c,f in futures.iteritems():
                 result_filename = f.wait()
@@ -380,9 +364,10 @@ def rnaseq_workflow(ex, job, assembly, target=["genes"], bam_files=False, via="l
                                description="csv:Comparison of TRANSCRIPTS in conditions '%s' and '%s' " % conditions_desc)
                     print "TRANSCRIPTS: Done successfully."
 
-        if 1: #testing
-            futures[(c1,c2)] = inference(names[c1], exon_pileups[c1], names[c2], exon_pileups[c2],
-                                         assembly_id, target, method, maplot)
+        if 0: #testing
+            print "Comparisons (LOCAL)"
+            futures[(c1,c2)] = comparisons(names[c1], exon_pileups[c1], names[c2], exon_pileups[c2],
+                                         assembly_id, target, method)
             for c,f in futures.iteritems():
                 result = f
 
