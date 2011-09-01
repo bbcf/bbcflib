@@ -8,6 +8,9 @@
 .#*
 ._*
 
+# IDE files #
+/.idea
+
 # Build files #
 /MANIFEST
 
