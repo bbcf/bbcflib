@@ -218,7 +218,7 @@ def transcripts_expression(gene_ids, transcript_mapping, trans_in_gene, exons_in
     return dtrans
 
 @timer
-def inference(cond1_label, cond1, cond2_label, cond2, assembly_id,
+def comparisons(cond1_label, cond1, cond2_label, cond2, assembly_id,
               target=["exons","genes","transcripts"], method="normal", maplot=None):
     """ Writes a CSV file for each selected type of feature,
     each row being of the form: Feature_ID // Mean_expression // Fold_change.
@@ -287,14 +287,6 @@ def inference(cond1_label, cond1, cond2_label, cond2, assembly_id,
     cond2 = numpy.abs(numpy.array(res.rx(True,2), dtype='f'))
           #abs: a zero count may become slightly negative after normalization - see DESeq
     dexons = dict(zip(exon_ids,zip(cond1,cond2)))
-    # if "exons" in target: 
-    #     means=[]; ratios=[]
-    #     means = numpy.sqrt(cond1*cond2)
-    #     ratios = cond1/cond2
-    #     fc_exons = dict(zip(exon_ids,zip(means,ratios)))
-    #     if "exons" in target:
-    #         exons_filename = save_results(translate_gene_ids(fc_exons, gene_names))
-    #     fc_exons = dict(zip([e.split('|')[0] for e in fc_exons.keys()], fc_exons.values()))
     exons_filename = save_results(translate_gene_ids(dexons, gene_names))
 
     # Get fold change for genes
@@ -336,41 +328,7 @@ def rnaseq_workflow(ex, job, assembly, target=["genes"], bam_files=False, via="l
         controls[i] = group['control']
     if isinstance(target,str): target=[target]
 
-    if not bam_files: #shouldn't be here
-        print "Alignment..."
-        fastq_root = os.path.abspath(ex.working_directory)
-        bam_files = map_groups(ex, job, fastq_root, assembly_or_dict = assembly)
-        print "Reads aligned."
-    else: #testing
-        print "Loading bam files..."
-        with open("../temp/bam_files","rb") as f:
-            bam_files = pickle.load(f)
-            
-        # id1 = ex.lims.import_file("../temp/"+"100k1.bam")
-        # id2 = ex.lims.import_file("../temp/"+"100k2.bam")
-        # id3 = ex.lims.import_file("../temp/"+"100k1.bam.bai")
-        # id4 = ex.lims.import_file("../temp/"+"100k2.bam.bai")
-        # ex.lims.associate_file(id3,id1,template="%s.bai")
-        # ex.lims.associate_file(id4,id2,template="%s.bai")
-        # f1 = ex.use(id1)
-        # f2 = ex.use(id2)
-        # bam_files.values()[0].values()[0]['bam'] = f1
-        # bam_files.values()[1].values()[0]['bam'] = f2
-
-        path = '../archive/RNAseq_full.files/'
-        id1 = ex.lims.import_file(os.path.join(path,'ePF0QuyPZ7qrrudG7dqX'))
-        id2 = ex.lims.import_file(os.path.join(path,'bRLb3NzJQzbVi1rc84jJ'))
-        id3 = ex.lims.import_file(os.path.join(path,'ePF0QuyPZ7qrrudG7dqX.bai'))
-        id4 = ex.lims.import_file(os.path.join(path,'bRLb3NzJQzbVi1rc84jJ.bai'))
-        ex.lims.associate_file(id3,id1,template="%s.bai")
-        ex.lims.associate_file(id4,id2,template="%s.bai")
-        f1 = ex.use(id1)
-        f2 = ex.use(id2)
-        bam_files.values()[0].values()[0]['bam'] = f1
-        bam_files.values()[1].values()[0]['bam'] = f2
-
-        print "Loaded."
-        #assembly_id = "../temp/nice_mappings"
+    #assembly_id = "../temp/nice_mappings" # testing code
     
     # All the bam_files were created against the same index, so
     # they all have the same header in the same order.  I can take
@@ -389,7 +347,7 @@ def rnaseq_workflow(ex, job, assembly, target=["genes"], bam_files=False, via="l
     for (c1,c2) in pairs_to_test(controls):
         if len(runs[c1]) + len(runs[c2]) > 2: method = "normal" #replicates
         else: method = "blind" #no replicates
-        print "External DESeq..."
+        print "Comparisons..."
         if 0:
             futures[(c1,c2)] = external_deseq.nonblocking(ex,
                                    names[c1], exon_pileups[c1], names[c2], exon_pileups[c2],
