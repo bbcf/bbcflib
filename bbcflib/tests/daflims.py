@@ -11,7 +11,7 @@ except ImportError:
     import unittest
 
 # Nosetest flag #
-__test__ = True
+__test__ = False
 
 #--------------------------------------------------------------------------------#
 test_config_file = '''[daflims]
