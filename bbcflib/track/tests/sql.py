@@ -217,7 +217,7 @@ class Test_Attributes(unittest.TestCase):
         with track.new(path) as t:
             # Default values #
             self.assertEqual(t.datatype, 'qualitative')
-            self.assertEqual(t.name, 'Unamed')
+            self.assertEqual(t.name, 'Unnamed')
             # Overwritting #
             info = {'datatype': 'quantitative', 'source': 'SGD'}
             t.attributes = info
@@ -291,6 +291,18 @@ class Test_ScoreVector(unittest.TestCase):
                         0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
                         2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0]
             self.assertEqual(scores, expected)
+
+#-------------------------------------------------------------------------------#
+class Test_Roman(unittest.TestCase):
+    def runTest(self):
+        old = track_collections['Validation'][4]['path_sql']
+        new = named_temporary_path('.sql')
+        shutil.copyfile(old, new)
+        with track.load(new) as t:
+            t.integer_to_roman()
+            self.assertEqual(list(t), ['chrI','chrII'])
+            t.roman_to_integer()
+            self.assertEqual(list(t), ['chr1','chr2'])
 
 #-----------------------------------#
 # This code was written by the BBCF #

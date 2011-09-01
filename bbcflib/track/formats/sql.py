@@ -7,13 +7,13 @@ Implementation of the SQL format.
 """
 
 # Built-in modules #
-import sqlite3
+import re, sqlite3
 
 # Internal modules #
 from bbcflib.track import Track
 from bbcflib.track.track_util import join_read_queries, make_cond_from_sel
 from bbcflib.track.extras.sql import TrackExtras
-from bbcflib.track.common import natural_sort
+from bbcflib.track.common import natural_sort, int_to_roman, roman_to_int
 
 ################################################################################
 class TrackFormat(Track, TrackExtras):
@@ -29,7 +29,7 @@ class TrackFormat(Track, TrackExtras):
         # Get the track meta data #
         self.attributes = self.attributes_read()
         self.attributes.modified = False
-        # Get the chrom meta data #
+        # Get the chromosome meta data #
         if chrmeta: self.chrmeta = chrmeta
         else:
             self.chrmeta = self.chrmeta_read()
@@ -42,8 +42,7 @@ class TrackFormat(Track, TrackExtras):
             if not self.datatype: self.datatype = datatype
             if self.datatype != datatype: raise Exception("You cannot change the datatype of the track '" + self.path + "'")
         # Set chromosome list #
-        self.all_chrs = self.chrs_from_tables
-        self.all_chrs.sort(key=natural_sort)
+        self.chrs_from_tables
 
     def unload(self, datatype=None, value=None, traceback=None):
         if self.attributes.modified: self.attributes_write()
@@ -94,7 +93,9 @@ class TrackFormat(Track, TrackExtras):
 
     @property
     def chrs_from_tables(self):
-        return [x for x in self.all_tables if x not in self.special_tables and not x.endswith('_idx')]
+        self.all_chrs = [x for x in self.all_tables if x not in self.special_tables and not x.endswith('_idx')]
+        self.all_chrs.sort(key=natural_sort)
+        return self.all_chrs
 
     def get_fields_of_table(self, table):
         return [x[1] for x in self.cursor.execute('pragma table_info("' + table + '")').fetchall()]
@@ -117,7 +118,7 @@ class TrackFormat(Track, TrackExtras):
         self.cursor.execute("pragma table_info(chrNames)")
         column_names = [x[1] for x in self.cursor.fetchall()]
         all_rows = self.cursor.execute("select * from chrNames").fetchall()
-        return (column_names, all_rows)
+        return column_names, all_rows
 
     def chrmeta_write(self):
         if self.readonly: return
@@ -157,31 +158,31 @@ class TrackFormat(Track, TrackExtras):
 
     @property
     def name(self):
-        return self.attributes.get('name', 'Unamed')
+        return self.attributes.get('name', 'Unnamed')
 
     @name.setter
     def name(self, value):
         self.attributes['name'] = value
 
     #--------------------------------------------------------------------------#
-    def read(self, selection=None, fields=[], order='start,end', cursor=False):
+    def read(self, selection=None, fields=None, order='start,end', cursor=False):
         # Default selection #
-        if not selection:
-            selection = self.chrs_from_tables
+        if not selection: selection = self.chrs_from_tables
         # Case list of things #
         if isinstance(selection, (list, tuple)):
             return join_read_queries(self, selection, fields)
-        # Copy input #
-        columns = fields[:]
         # Case chromosome name #
-        if isinstance(selection, basestring): chrom = selection
+        elif isinstance(selection, basestring): chrom = selection
         # Case selection dictionary #
-        if isinstance(selection, dict): chrom = selection['chr']
-        # Default columns #
+        elif isinstance(selection, dict): chrom = selection['chr']
+        # Other cases #
+        else: raise TypeError, 'The following selection parameter: "' + selection + '" was not understood'
+        # Empty chromosome case #
         if chrom not in self.chrs_from_tables: return ()
-        if not columns: columns = self.get_fields_of_table(chrom)
+        # Default columns #
+        columns = fields and fields[:] or self.get_fields_of_table(chrom)
         # Next lines are a hack to add an empty column needed by GDV - remove at a later date #
-        if 'attributes' not in fields:
+        if not fields or 'attributes' not in fields:
             try: columns.remove('attributes')
             except ValueError: pass
         # End hack #
@@ -199,7 +200,7 @@ class TrackFormat(Track, TrackExtras):
         if self.readonly: return
         # Default fields #
         if self.datatype == 'quantitative': fields = Track.quantitative_fields
-        if fields        == None:           fields = Track.qualitative_fields
+        if not fields:                      fields = Track.qualitative_fields
         # Maybe create the table #
         if chrom not in self.chrs_from_tables:
             columns = ','.join([field + ' ' + Track.field_types.get(field, 'text') for field in fields])
@@ -213,7 +214,7 @@ class TrackFormat(Track, TrackExtras):
             self.cursor.executemany(sql_command, data)
         except (sqlite3.OperationalError, sqlite3.ProgrammingError) as err:
             raise Exception("The command '" + sql_command + "' on the database '" + self.path + "' failed with error: '" + str(err) + "'" + \
-                '\n    ' + 'The bindings: ' + str(columns) + \
+                '\n    ' + 'The bindings: ' + str(fields) + \
                 '\n    ' + 'You gave: ' + str(data))
 
     def remove(self, chrom=None):
@@ -230,7 +231,7 @@ class TrackFormat(Track, TrackExtras):
     def rename(self, previous_name, new_name):
         self.modified = True
         if self.readonly: return
-        if previous_name not in self.chrs_from_tables: raise Exception("The chromomse '" + previous_name + "' doesn't exist.")
+        if previous_name not in self.chrs_from_tables: raise Exception("The chromosome '" + previous_name + "' doesn't exist.")
         self.cursor.execute("ALTER TABLE '" + previous_name + "' RENAME TO '" + new_name + "'")
         self.cursor.execute("drop index IF EXISTS '" + previous_name + "_range_idx'")
         self.cursor.execute("drop index IF EXISTS '" + previous_name + "_score_idx'")
@@ -238,23 +239,26 @@ class TrackFormat(Track, TrackExtras):
         if previous_name in self.chrmeta:
             self.chrmeta[new_name] = self.chrmeta[previous_name]
             self.chrmeta.pop(previous_name)
+        self.chrs_from_tables
 
     def count(self, selection=None):
         # Default selection #
         if not selection:
             selection = self.chrs_from_tables
-        # Case multi-chromosome #
+        # Case several chromosome #
         if isinstance(selection, list) or isinstance(selection, tuple):
             return sum([self.count(s) for s in selection])
-        # Case chromsome name #
-        if isinstance(selection, basestring):
+        # Case chromosome name #
+        elif isinstance(selection, basestring):
             if selection not in self.chrs_from_tables: return 0
             sql_request = "select COUNT(*) from '" + selection + "'"
         # Case span dictionary #
-        if isinstance(selection, dict):
+        elif isinstance(selection, dict):
             chrom = selection['chr']
             if chrom not in self.chrs_from_tables: return 0
             sql_request = "select COUNT(*) from '" + chrom + "' where " + make_cond_from_sel(selection)
+        # Other cases #
+        else: raise TypeError, 'The following selection parameter: "' + selection + '" was not understood'
         # Return the results #
         return self.cursor.execute(sql_request).fetchone()[0]
 
@@ -272,7 +276,7 @@ class TrackFormat(Track, TrackExtras):
             data = add_ones(self.read(chrom, ['start','end']))
         else:
             data = self.read(chrom, ['start','end','score'])
-        # Initialzation #
+        # Initialization #
         last_end = 0
         x = (-1,0)
         # Core loop #
@@ -283,6 +287,21 @@ class TrackFormat(Track, TrackExtras):
         # End piece #
         if self.chrmeta.get(chrom):
             for i in xrange(x[1], self.chrmeta[chrom]['length']): yield 0.0
+
+    def roman_to_integer(self, names={'chrM':'chrQM', '2micron':'chrR'}):
+        def convert(chrom):
+            if chrom in names: return names[chrom]
+            match = re.search('([a-zA-Z]*?)([IVX]+)$', chrom)
+            print match.group(1), match.group(2)
+            return match.group(1) + str(roman_to_int(match.group(2)))
+        for chrom in self: self.rename(chrom, convert(chrom))
+
+    def integer_to_roman(self, names={'chrQ':'chrM', 'chrR':'2micron'}):
+        def convert(chrom):
+            if chrom in names: return names[chrom]
+            match = re.search('([a-zA-Z]*)([0-9]+)$', chrom)
+            return match.group(1) + int_to_roman(int(match.group(2)))
+        for chrom in self: self.rename(chrom, convert(chrom))
 
     #--------------------------------------------------------------------------#
     @staticmethod

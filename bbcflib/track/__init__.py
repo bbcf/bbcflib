@@ -365,6 +365,32 @@ class Track(object):
         '''
         raise NotImplementedError
 
+    def roman_to_integer(self):
+        '''Converts the name of all chromosomes from the roman numeral standard to the arabic numeral standard. For instance, 'chrI' will become 'chr1' while 'chrII' will become 'chr2', etc.
+
+            Examples::
+
+                from bbcflib import track
+                with track.new('tmp/track.sql') as t:
+                    scores = t.roman_to_integer()
+
+            ``roman_to_integer`` returns nothing.
+        '''
+        raise NotImplementedError
+
+    def integer_to_roman(self):
+        '''Converts the name of all chromosomes from the arabic numeral standard to the roman numeral standard. For instance, 'chr1' will become 'chrI' while 'chr2' will become 'chrII', etc.
+
+            Examples::
+
+                from bbcflib import track
+                with track.new('tmp/track.sql') as t:
+                    scores = t.roman_to_integer()
+
+            ``integer_to_roman`` returns nothing.
+        '''
+        raise NotImplementedError
+
     #-----------------------------------------------------------------------------#
     def mutate_source(self, path, format):
         '''Change a <Track> instance to a given format dynamically'''
