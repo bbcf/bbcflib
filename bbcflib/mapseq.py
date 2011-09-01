@@ -892,10 +892,10 @@ def get_bam_wig_files( ex, job, minilims=None, hts_url=None, suffix=['fwd','rev'
             if not(isinstance(mapped_files[gid][rid]['stats'],dict)):
                 stats = mapped_files[gid][rid]['stats'].wait()
                 mapped_files[gid][rid]['stats'] = stats
-                pdf = mapseq.add_pdf_stats( ex, {gid:{rid:{'stats':stats}}},
+                pdf = add_pdf_stats( ex, {gid:{rid:{'stats':stats}}},
                                             {gid: mapped_files[gid][rid]['libname']},
                                             script_path )
-                mapped_files[gid][rid]['p_thresh'] = mapseq.poisson_threshold( 50*stats["actual_coverage"] )
+                mapped_files[gid][rid]['p_thresh'] = poisson_threshold( 50*stats["actual_coverage"] )
     return (mapped_files,job)
 
 
