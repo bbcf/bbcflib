@@ -12,7 +12,7 @@ except ImportError:
     import unittest
 
 # Nosetest flag #
-__test__ = True
+__test__ = False
 
 ################################################################################
 class Test_Read(unittest.TestCase):

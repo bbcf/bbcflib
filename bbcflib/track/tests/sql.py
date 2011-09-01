@@ -295,8 +295,8 @@ class Test_ScoreVector(unittest.TestCase):
 #-------------------------------------------------------------------------------#
 class Test_Roman(unittest.TestCase):
     def runTest(self):
-        old = track_collections['Validation'][4]['path_sql']
-        new = named_temporary_path('.sql')
+        old = track_collections['Validation'][4]['path']
+        new = named_temporary_path('.bed')
         shutil.copyfile(old, new)
         with track.load(new) as t:
             t.integer_to_roman()

@@ -87,6 +87,7 @@ class Test_Convert(unittest.TestCase):
             self.assertEqual(t.format, 'wig')
         with open(path_new_wig, 'r') as f: A = f.read().split('\n')
         with open(path_ref_wig, 'r') as f: B = f.read().split('\n')
+        self.assertEqual(A[1:], B)
         # Case 2: BEDGRAPH to SQL #
         with track.load(path_ref_bg, chrmeta=yeast_chr_file) as t:
             t.convert(path_new_sql)
@@ -127,6 +128,7 @@ class Test_Export(unittest.TestCase):
             t.export(path_new_wig)
         with open(path_new_wig, 'r') as f: A = f.read().split('\n')
         with open(path_ref_wig, 'r') as f: B = f.read().split('\n')
+        self.assertEqual(A[1:], B)
         # Case 2: BEDGRAPH to SQL #
         with track.load(path_ref_bg, chrmeta=yeast_chr_file) as t:
             t.export(path_new_sql)

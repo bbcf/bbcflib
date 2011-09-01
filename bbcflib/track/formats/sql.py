@@ -47,8 +47,8 @@ class TrackFormat(Track, TrackExtras):
     def unload(self, datatype=None, value=None, traceback=None):
         if self.attributes.modified: self.attributes_write()
         if self.chrmeta.modified: self.chrmeta_write()
-        self.make_missing_indexes()
         self.make_missing_tables()
+        self.make_missing_indexes()
         self.connection.commit()
         self.cursor.close()
         self.connection.close()
