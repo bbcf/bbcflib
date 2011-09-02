@@ -223,6 +223,8 @@ class GenRep(object):
         root = os.path.join(self.root,"nr_assemblies/bowtie")
         if self.intype == 1:
             root = os.path.join(self.root,"nr_assemblies/exons_bowtie")
+        elif self.intype == 2:
+            root = os.path.join(self.root,"nr_assemblies/cdna_bowtie")
         a = Assembly(assembly_id = int(assembly_info['assembly']['id']),
                      assembly_name = assembly_info['assembly']['name'],
                      index_path = os.path.join(root,str(assembly_info['assembly']['md5'])),
@@ -328,6 +330,9 @@ class GenRep(object):
             path = os.path.join(root,chr_id+".fa.gz")
         elif self.intype == 1:
             root = os.path.join(self.root,"nr_assemblies/exons_fasta")
+            path = os.path.join(root,assembly.md5+".fa.gz")
+        elif self.intype == 2:
+            root = os.path.join(self.root,"nr_assemblies/cdna")
             path = os.path.join(root,assembly.md5+".fa.gz")
         return path
 

@@ -42,7 +42,7 @@ import shutil, pickle, urllib, re, os
 
 # Internal modules #
 from . import frontend, mapseq
-from .common import merge_sql, merge_many_bed, join_pdf
+from .common import merge_sql, merge_many_bed, join_pdf, cat
 
 # Other modules #
 from bein import *
