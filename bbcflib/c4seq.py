@@ -144,7 +144,7 @@ def density_to_countsPerFrag(ex,density_file,density_name,assembly_name,reffile,
 	sortedBedGraph_sql=unique_filename_in()
 	touch(ex,sortedBedGraph_sql)
 	with track.load(sortedBedGraph,'bedGraph', chrmeta=assembly_name) as t:
-                t.convert(sortedBedGraph_sql,'sql')
+                t.convert(sortedBedGraph_sql+"sql",'sql')
 	#ex.add(sortedBedGraph_sql,description="sql:res_segToFrag_"+density_name+" (bedGraph sorted)")
 	ex.add(sortedBedGraph_sql,description="none:res_segToFrag_"+density_name+".sql (template)")
 	ex.add(sortedBedGraph_sql+".sql",description="sql:res_segToFrag_"+density_name+'.sql (bedGraph sorted)',
