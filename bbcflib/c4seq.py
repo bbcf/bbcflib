@@ -120,7 +120,7 @@ def density_to_countsPerFrag(ex,density_file,density_name,assembly_name,reffile,
                                        'output_name':outdir
                       }
 	print(gMiner_job)
-	res = common.run_gMiner.nonblocking(ex,gMiner_job,via='lsf').wait()
+	res = common.run_gMiner.nonblocking(ex,gMiner_job,via='local').wait()
 	#ex.add(wd+outdir+".sql",description="sql:meanScorePerFeature_"+density_name)
 	ex.add(wd+outdir, description='none:meanScorePerFeature_'+density_name+'.sql (template)' )
 	ex.add(wd+outdir+".sql",description="sql:meanScorePerFeature_"+density_name+'.sql',
