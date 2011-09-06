@@ -105,7 +105,8 @@ def loadPrimers(primersFile):
 # ex: resfiles=density_to_countsPerFrag(ex,mapped_files[gid][rid]['wig']['merged'],mapped_files[gid][rid]['libname'],assembly.name,reffile,regToExclude,working_dir, script_path, 'lsf')
 def density_to_countsPerFrag(ex,density_file,density_name,assembly_name,reffile,regToExclude,wd,script_path, via='lsf'):
 	print("will call mean_score_by_feature for t1="+density_file+"(name="+density_name+") and t2="+reffile)
-        outdir=unique_filename_in()
+        outdir=unique_filename_in(wd)
+        touch(ex,wd+outdir)
         #ok: res=gm.run(track1=density_file,track1_name=density_name,track2=reffile,track2_name='libFile',track2_chrfile=assembly.name,operation_type='genomic_manip',manipulation='mean_score_by_feature',output_location=wd,output_name=outdir)
 	
 	gMiner_job = { 'track1': density_file,
@@ -141,6 +142,7 @@ def density_to_countsPerFrag(ex,density_file,density_name,assembly_name,reffile,
 	sortedBedGraph=common.cat([headerFile,resBedGraph])
 	ex.add(sortedBedGraph,description="bedgraph:res_segToFrag_"+density_name+" (bedGraph sorted)")	
 	sortedBedGraph_sql=unique_filename_in()
+	touch(ex,sortedBedGraph_sql)
 	with track.load(sortedBedGraph,'bedGraph', chrmeta=assembly_name) as t:
                 t.convert(sortedBedGraph_sql,'sql')
 	#ex.add(sortedBedGraph_sql,description="sql:res_segToFrag_"+density_name+" (bedGraph sorted)")
