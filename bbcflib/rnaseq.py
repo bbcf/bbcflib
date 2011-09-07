@@ -210,6 +210,31 @@ def transcripts_expression(gene_ids, transcript_mapping, trans_in_gene, exons_in
                 dtrans[t][1] = transcripts_2[k]
     return dtrans
 
+def estimate_size_factors(*counts):
+    """
+    The total number of reads may be different between conditions or replicates.
+    This treatment makes different count sets being comparable. If rows are features
+    and columns are different conditions/replicates, each column is divided by the
+    geometric mean of the rows. The median of these ratios is used as the size factor
+    for this column.
+    
+    * *counts* are lists of integers (counts).
+    """
+    dataframe = numpy.array(counts)
+    geo_means = numpy.exp(numpy.mean(numpy.log(dataframe), axis=0))
+    mean = dataframe/geo_means
+    size_factors = numpy.median(mean[:,geo_means>0], axis=1)
+    return size_factors
+
+    # DESeq code:
+    #       geomeans <- exp( rowMeans( log( counts(cds) ) ) )
+    #       sizeFactors(cds) <- 
+    #          apply( counts(cds), 2, function(cnts) 
+    #             median( ( cnts / geomeans )[ geomeans>0 ] ) )
+
+def estimate_variance_functions(*counts):
+    pass
+
 @timer
 def comparisons(cond1_label, cond1, cond2_label, cond2, assembly_id,
               target=["exons","genes","transcripts"], method="normal"):
@@ -262,10 +287,11 @@ def comparisons(cond1_label, cond1, cond2_label, cond2, assembly_id,
     data_frame.rownames = cond1[0].keys()
 
     conds = robjects.StrVector([cond1_label for x in cond1] + [cond2_label for x in cond2]).factor()
-    
+
+    # DESeq normalization
     deseq = rpackages.importr('DESeq')
     cds = deseq.newCountDataSet(data_frame, conds)
-    cds = deseq.estimateSizeFactors(cds) #,locfunc='median' robjects.median? May be 'short' if low counts
+    cds = deseq.estimateSizeFactors(cds) #,locfunc='median' - robjects.median? May be 'short' if low counts
     try: cds = deseq.estimateVarianceFunctions(cds,method=method)
     except : raise rpy2.rinterface.RRuntimeError("Too few reads to estimate variances with DESeq")
     res = deseq.getVarianceStabilizedData(cds)
