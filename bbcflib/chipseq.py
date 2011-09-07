@@ -308,8 +308,7 @@ def workflow_groups( ex, job_or_dict, mapseq_files, chromosomes, script_path='',
             if names['controls']==[None]:
                 macsbed = processed['macs'][(name,)]+"_summits.bed"
             else:
-                macsbed = cat(ex,[processed['macs'][(name,x)]+"_summits.bed"
-                                  for x in names['controls']],via=via)
+                macsbed = cat([processed['macs'][(name,x)]+"_summits.bed" for x in names['controls']])
             outdir = unique_filename_in()
             os.mkdir(outdir)
             gm_out = gMiner.run(
