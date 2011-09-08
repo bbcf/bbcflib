@@ -25,10 +25,7 @@ from rpy2 import robjects
 import rpy2.robjects.packages as rpackages
 import rpy2.robjects.numpy2ri
 import rpy2.rlike.container as rlc
-import cogent.db.ensembl as ensembl
 import csv
-
-import pdb
 
 ################################################################################
 
@@ -343,12 +340,6 @@ def rnaseq_workflow(ex, job, assembly, bam_files, target=["genes"], via="lsf", o
         runs[i] = group['runs'].values()
         controls[i] = group['control']
     if isinstance(target,str): target=[target]
-
-    print groups
-    print '\n'
-    print runs
-    print '\n'
-    print groups.values()[0]['runs'].keys()[0]
     
     # All the bam_files were created against the same index, so
     # they all have the same header in the same order.  I can take
@@ -367,7 +358,7 @@ def rnaseq_workflow(ex, job, assembly, bam_files, target=["genes"], via="lsf", o
     for (c1,c2) in pairs_to_test(controls):
         if len(runs[c1]) + len(runs[c2]) > 2: method = "normal" #replicates
         else: method = "blind" #no replicates
-        if 1:
+        if 0:
             print "Comparisons..."
             futures[(c1,c2)] = external_deseq.nonblocking(ex,
                                    names[c1], exon_pileups[c1], names[c2], exon_pileups[c2],
@@ -400,7 +391,7 @@ def rnaseq_workflow(ex, job, assembly, bam_files, target=["genes"], via="lsf", o
                                description="csv:Comparison of TRANSCRIPTS in conditions '%s' and '%s' " % conditions_desc)
                     print "TRANSCRIPTS: Done successfully."
 
-        if 0: #testing
+        if 1: #testing
             print "Comparisons (LOCAL)"
             futures[(c1,c2)] = comparisons(names[c1], exon_pileups[c1], names[c2], exon_pileups[c2],
                                          assembly_id, target, method)
