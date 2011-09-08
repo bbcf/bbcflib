@@ -275,7 +275,7 @@ def comparisons(cond1_label, cond1, cond2_label, cond2, assembly_id,
         - exon_mapping is a dictionary {exon ID: (transcript ID, gene ID)}
         - trans_in_gene is a dict {gene ID: IDs of the transcripts it contains}
         - exons_in_trans is a dict {transcript ID: IDs of the exons it contains} """
-    assembly_id = "../temp/nice_features/nice_mappings" # testing code
+    #assembly_id = "../temp/nice_features/nice_mappings" # testing code
     mappings = fetch_mappings(assembly_id)
     (gene_ids, gene_names, transcript_mapping, exon_mapping, trans_in_gene, exons_in_trans) = mappings
 
@@ -358,7 +358,7 @@ def rnaseq_workflow(ex, job, assembly, bam_files, target=["genes"], via="lsf", o
     for (c1,c2) in pairs_to_test(controls):
         if len(runs[c1]) + len(runs[c2]) > 2: method = "normal" #replicates
         else: method = "blind" #no replicates
-        if 0:
+        if 1:
             print "Comparisons..."
             futures[(c1,c2)] = external_deseq.nonblocking(ex,
                                    names[c1], exon_pileups[c1], names[c2], exon_pileups[c2],
@@ -391,7 +391,7 @@ def rnaseq_workflow(ex, job, assembly, bam_files, target=["genes"], via="lsf", o
                                description="csv:Comparison of TRANSCRIPTS in conditions '%s' and '%s' " % conditions_desc)
                     print "TRANSCRIPTS: Done successfully."
 
-        if 1: #testing
+        if 0: #testing
             print "Comparisons (LOCAL)"
             futures[(c1,c2)] = comparisons(names[c1], exon_pileups[c1], names[c2], exon_pileups[c2],
                                          assembly_id, target, method)
