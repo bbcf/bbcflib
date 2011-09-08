@@ -218,7 +218,7 @@ def estimate_size_factors(*counts):
     geometric mean of the rows. The median of these ratios is used as the size factor
     for this column.
     
-    * *counts* are lists of integers (counts).
+    * *counts* are lists of integers (counts), or an array of counts.
     """
     dataframe = numpy.array(counts)
     geo_means = numpy.exp(numpy.mean(numpy.log(dataframe), axis=0))
@@ -232,7 +232,11 @@ def estimate_size_factors(*counts):
     #          apply( counts(cds), 2, function(cnts) 
     #             median( ( cnts / geomeans )[ geomeans>0 ] ) )
 
-def estimate_variance_functions(*counts):
+def estimate_variance_functions(size_factors, *counts):
+    """
+    * *size_factors* is an array as returned by estimate_size_factors.
+    * *counts* are lists of integers (counts), or an array of counts.
+    """
     pass
 
 @timer
@@ -344,7 +348,7 @@ def rnaseq_workflow(ex, job, assembly, bam_files, target=["genes"], via="lsf", o
     # they all have the same header in the same order.  I can take
     # the list of exons from just the first one and use it for all of them.
     # Format: ('exonID|geneID|start|end|strand', length)
-    exons = exons_labels(bam_files.values()[0][1]['bam'])
+    exons = exons_labels(bam_files.values()[0][groups.keys()[0]]['bam'])
     
     exon_pileups = {}
     for condition,files in bam_files.iteritems():
