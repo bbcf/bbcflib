@@ -349,7 +349,7 @@ def rnaseq_workflow(ex, job, assembly, bam_files, target=["genes"], via="lsf", o
     for (c1,c2) in pairs_to_test(controls):
         if len(runs[c1]) + len(runs[c2]) > 2: method = "normal" #replicates
         else: method = "blind" #no replicates
-        if 0:
+        if 1:
             print "Comparisons..."
             futures[(c1,c2)] = external_deseq.nonblocking(ex,
                                    names[c1], exon_pileups[c1], names[c2], exon_pileups[c2],
@@ -382,7 +382,7 @@ def rnaseq_workflow(ex, job, assembly, bam_files, target=["genes"], via="lsf", o
                                description="csv:Comparison of TRANSCRIPTS in conditions '%s' and '%s' " % conditions_desc)
                     print "TRANSCRIPTS: Done successfully."
 
-        if 1: #testing
+        if 0: #testing
             print "Comparisons (LOCAL)"
             futures[(c1,c2)] = comparisons(names[c1], exon_pileups[c1], names[c2], exon_pileups[c2],
                                          assembly_id, target, method)
