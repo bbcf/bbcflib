@@ -19,8 +19,6 @@ from bein.util import unique_filename_in
 
 # Other modules #
 import numpy
-from scipy import stats
-from scipy.interpolate import UnivariateSpline
 from rpy2 import robjects
 import rpy2.robjects.packages as rpackages
 import rpy2.robjects.numpy2ri
@@ -40,32 +38,23 @@ def fetch_mappings(path_or_assembly_id):
     - exons_in_trans is a dict {transcript ID: IDs of the exons it contains}
 
     *path_or_assembly_id* can be a numeric or nominal ID for GenRep
-    (e.g. 76 or 'hg19' for H.Sapiens), or a path to a file containing a
+    (e.g. 11, 76 or 'hg19' for H.Sapiens), or a path to a file containing a
     pickle object which is read to get the mapping.
     """
-    assembly_id = path = path_or_assembly_id
-    nr_assemblies = urllib.urlopen("http://bbcftools.vital-it.ch/genrep/nr_assemblies.json").read()
-    nr_assemblies = json.loads(nr_assemblies)
-    for a in nr_assemblies:
-        if a['nr_assembly']['id'] == assembly_id or a['nr_assembly']['name'] == assembly_id:
-            mdfive = a['nr_assembly']['md5']; break
-
-    if os.path.exists(str(path)):
-        with open(str(path), 'rb') as pickle_file:
+    if os.path.exists(path_or_assembly_id):
+        with open(path_or_assembly_id, 'rb') as pickle_file:
             mapping = pickle.load(pickle_file)
-        print "Mapping found in", os.path.dirname(str(path))
-        return mapping
-    elif os.path.exists("/db/genrep/nr_assemblies/exons_pickle/"+str(mdfive)+".pickle"):
-        with open("/db/genrep/nr_assemblies/exons_pickle/"+mdfive+".pickle", 'rb') as pickle_file:
-            mapping = pickle.load(pickle_file)
-        print "Mapping found in /db/"
+        print "Mapping found in", os.path.abspath(path_or_assembly_id)
         return mapping
     else:
-        genrep = GenRep('http://bbcftools.vital-it.ch/genrep/','/db/genrep/nr_assemblies/exons_pickle')
-        assembly = genrep.assembly(mdfive)
-        with open(assembly.index_path + '.pickle', 'rb') as pickle_file:
+        grep_root = '/db/genrep'
+        grep = GenRep(url='http://bbcftools.vital-it.ch/genrep/',root=grep_root)
+        assembly = grep.assembly(path_or_assembly_id)
+        mdfive = assembly.md5
+        mappings_path = os.path.join(grep_root,'nr_assemblies/exons_pickle/')+mdfive+".pickle"
+        with open(mappings_path, 'rb') as pickle_file:
             mapping = pickle.load(pickle_file)
-        print "Mapping found on GenRep"
+        print "Mapping for assembly", mdfive, "found in /db/"
         return mapping
 
 def map_runs(fun, runs):
@@ -276,7 +265,9 @@ def comparisons(cond1_label, cond1, cond2_label, cond2, assembly_id,
         - trans_in_gene is a dict {gene ID: IDs of the transcripts it contains}
         - exons_in_trans is a dict {transcript ID: IDs of the exons it contains} """
     #assembly_id = "../temp/nice_features/nice_mappings" # testing code
+    print "Loading mappings..."
     mappings = fetch_mappings(assembly_id)
+    print "Loaded."
     (gene_ids, gene_names, transcript_mapping, exon_mapping, trans_in_gene, exons_in_trans) = mappings
 
     # Pass the data into R as a data frame
@@ -358,7 +349,7 @@ def rnaseq_workflow(ex, job, assembly, bam_files, target=["genes"], via="lsf", o
     for (c1,c2) in pairs_to_test(controls):
         if len(runs[c1]) + len(runs[c2]) > 2: method = "normal" #replicates
         else: method = "blind" #no replicates
-        if 1:
+        if 0:
             print "Comparisons..."
             futures[(c1,c2)] = external_deseq.nonblocking(ex,
                                    names[c1], exon_pileups[c1], names[c2], exon_pileups[c2],
@@ -391,7 +382,7 @@ def rnaseq_workflow(ex, job, assembly, bam_files, target=["genes"], via="lsf", o
                                description="csv:Comparison of TRANSCRIPTS in conditions '%s' and '%s' " % conditions_desc)
                     print "TRANSCRIPTS: Done successfully."
 
-        if 0: #testing
+        if 1: #testing
             print "Comparisons (LOCAL)"
             futures[(c1,c2)] = comparisons(names[c1], exon_pileups[c1], names[c2], exon_pileups[c2],
                                          assembly_id, target, method)
