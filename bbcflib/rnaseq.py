@@ -41,7 +41,7 @@ def fetch_mappings(path_or_assembly_id):
     (e.g. 11, 76 or 'hg19' for H.Sapiens), or a path to a file containing a
     pickle object which is read to get the mapping.
     """
-    if os.path.exists(path_or_assembly_id):
+    if os.path.exists(str(path_or_assembly_id)):
         with open(path_or_assembly_id, 'rb') as pickle_file:
             mapping = pickle.load(pickle_file)
         print "Mapping found in", os.path.abspath(path_or_assembly_id)
