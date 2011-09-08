@@ -343,13 +343,18 @@ def rnaseq_workflow(ex, job, assembly, bam_files, target=["genes"], via="lsf", o
         runs[i] = group['runs'].values()
         controls[i] = group['control']
     if isinstance(target,str): target=[target]
+
+    print groups
+    print '\n'
+    print runs
+    print '\n'
+    print groups.values()[0]['runs'].keys()[0]
     
     # All the bam_files were created against the same index, so
     # they all have the same header in the same order.  I can take
     # the list of exons from just the first one and use it for all of them.
     # Format: ('exonID|geneID|start|end|strand', length)
-    exons = exons_labels(bam_files[groups.keys()[0]][runs.keys()[0]]['bam'])
-    print exons[:10]
+    exons = exons_labels(bam_files[groups.keys()[0]][groups.values()[0]['runs'].keys()[0]]['bam'])
     
     exon_pileups = {}
     for condition,files in bam_files.iteritems():
