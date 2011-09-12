@@ -288,15 +288,16 @@ class TrackFormat(Track, TrackExtras):
         if self.chrmeta.get(chrom):
             for i in xrange(x[1], self.chrmeta[chrom]['length']): yield 0.0
 
-    def roman_to_integer(self, names={'chrM':'chrQM', '2micron':'chrR'}):
+    def roman_to_integer(self, names=None):
+        names = names or {'chrM':'chrQ', '2micron':'chrR'}
         def convert(chrom):
             if chrom in names: return names[chrom]
             match = re.search('([a-zA-Z]*?)([IVX]+)$', chrom)
-            print match.group(1), match.group(2)
             return match.group(1) + str(roman_to_int(match.group(2)))
         for chrom in self: self.rename(chrom, convert(chrom))
 
-    def integer_to_roman(self, names={'chrQ':'chrM', 'chrR':'2micron'}):
+    def integer_to_roman(self, names=None):
+        names = names or {'chrQ':'chrM', 'chrR':'2micron'}
         def convert(chrom):
             if chrom in names: return names[chrom]
             match = re.search('([a-zA-Z]*)([0-9]+)$', chrom)
