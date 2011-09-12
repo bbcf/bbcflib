@@ -371,7 +371,7 @@ def workflow_groups( ex, job_or_dict, mapseq_files, chromosomes, script_path='',
              for k,v in deconv.iteritems()]
             processed['deconv'][name] = deconv
             peak_list[name] = deconv['bed']
-    if run_meme:
+    if run_meme and not(genrep == None):
         from .motif import parallel_meme
         processed['meme'] = parallel_meme( ex, genrep, chromosomes, 
                                            peak_list.values(), name=peak_list.keys(), 
