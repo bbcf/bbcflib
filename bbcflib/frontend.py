@@ -161,10 +161,10 @@ class Job(object):
 
     def add_group(self, id, name, group = None):
         if self.groups.has_key(id):
-            if group is not None:
-                self.groups[id].update(group)
-            else:
+            if group is None:
                 raise ValueError("A group with ID %d was already added." % id)
+            else:
+                self.groups[id].update(group)
         else:
             self.groups[id] = {'name': name,
                                'runs': {}}
