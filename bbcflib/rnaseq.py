@@ -14,7 +14,7 @@ from itertools import combinations
 from bbcflib.mapseq import map_groups
 from bbcflib.genrep import GenRep
 from bbcflib.common import timer, results_to_json
-from bein import program, execution, MiniLIMS
+from bein import program
 from bein.util import unique_filename_in
 
 # Other modules #
@@ -108,9 +108,9 @@ def pairs_to_test(controls):
                 if controls[x] and not(controls[y])]
 
 def translate_gene_ids(fc_ids, dictionary):
-    '''Replace (unique) gene IDs by (not unique) gene names.
+    """Replace (unique) gene IDs by (not unique) gene names.
     *fc_ids* is a dict {gene_id: whatever}
-    *dictionary* is a dict {gene_id: gene_name} '''
+    *dictionary* is a dict {gene_id: gene_name} """
     names = []
     for s in fc_ids.keys():
         start = s.find("ENSG")
@@ -123,7 +123,7 @@ def translate_gene_ids(fc_ids, dictionary):
     return fc_names
 
 def save_results(data, filename=None):
-    '''Save results in a CSV file. Data must be of the form {id:(mean,fold_change)} '''
+    """Save results in a CSV file. Data must be of the form {id:(mean,fold_change)} """
     if not filename:
         filename = unique_filename_in()
     with open(filename,"wb") as f:
@@ -191,7 +191,7 @@ def transcripts_expression(gene_ids, transcript_mapping, trans_in_gene, exons_in
         transcripts_1 = numpy.dot(numpy.linalg.pinv(M),exons_1)
         transcripts_2 = numpy.dot(numpy.linalg.pinv(M),exons_2)
         for k,t in enumerate(tg):
-            if dtrans.get(t) != None:
+            if dtrans.get(t) is not None:
                 dtrans[t][0] = transcripts_1[k]
                 dtrans[t][1] = transcripts_2[k]
     return dtrans
