@@ -329,7 +329,7 @@ def rnaseq_workflow(ex, job, assembly, bam_files, target=["genes"], via="lsf", o
     for i,group in groups.iteritems():
         names[i] = str(group['name'])
         runs[i] = group['runs'].values()
-        controls[i] = group['control']
+        controls[i] = group.get('control')
     if isinstance(target,str): target=[target]
     
     # All the bam_files were created against the same index, so
