@@ -213,12 +213,12 @@ class GenRep(object):
         *assembly* may be an integer giving the assembly ID, or a
         string giving the assembly name.
         """
-        if isinstance(assembly, basestring):
-            assembly_info = json.load(urllib2.urlopen(self.query_url('assemblies', assembly)))[0]
-        elif isinstance(assembly, int):
-            assembly_info = json.load(urllib2.urlopen("""%s/assemblies/%d.json""" % (self.url, assembly)))
-        else:
-            raise ValueError("Argument 'assembly' must be a string or integer, got " + str(assembly))
+        #if isinstance(assembly, basestring):
+        assembly_info = json.load(urllib2.urlopen(self.query_url('assemblies', assembly)))[0]
+            #elif isinstance(assembly, int):
+            #assembly_info = json.load(urllib2.urlopen("""%s/assemblies/%d.json""" % (self.url, assembly)))
+            #else:
+            #raise ValueError("Argument 'assembly' must be a string or integer, got " + str(assembly))
 
         root = os.path.join(self.root,"nr_assemblies/bowtie")
         if self.intype == 1:
