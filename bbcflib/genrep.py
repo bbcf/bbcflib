@@ -94,16 +94,6 @@ class GenRep(object):
             return False
         return True
 
-    def query_url(self, method, assembly):
-        """Assemble a URL to call *method* for *assembly* on the repository."""
-        if isinstance(assembly, basestring):
-            return urllib2.Request("""%s/%s.json?assembly_name=%s""" % (self.url, method, assembly))
-        elif isinstance(assembly, int):
-            return urllib2.Request("""%s/%s.json?assembly_id=%d""" % (self.url, method, assembly))
-        else:
-            raise ValueError("Argument 'assembly' to must be a " + \
-                                 "string or integer, got " + str(assembly))
-
     def get_sequence(self, chr_id, coord_list):
         """Parses a slice request to the repository."""
         if len(coord_list) == 0:
@@ -210,16 +200,23 @@ class GenRep(object):
     def assembly(self, assembly):
         """Get an Assembly object corresponding to *assembly*.
 
-        *assembly* may be an integer giving the assembly ID, or a
-        string giving the assembly name.
+        *assembly* may be an integer giving the assembly ID, or a string giving the assembly name.
         """
-        #if isinstance(assembly, basestring):
-        assembly_info = json.load(urllib2.urlopen(self.query_url('assemblies', assembly)))[0]
-            #elif isinstance(assembly, int):
-            #assembly_info = json.load(urllib2.urlopen("""%s/assemblies/%d.json""" % (self.url, assembly)))
-            #else:
-            #raise ValueError("Argument 'assembly' must be a string or integer, got " + str(assembly))
+        try:
+            assembly = int(assembly)
+            assembly_info = json.load(urllib2.urlopen(urllib2.Request("""%s/assemblies/%d.json"""
+                                                               % (self.url, assembly))))
+            address = """%s/chromosomes.json?assembly_id=%d""" % (self.url, assembly)
+            chromosomes = json.load(urllib2.urlopen(urllib2.Request("""%s/chromosomes.json?assembly_id=%d"""
+                                                                       % (self.url, assembly))))
+        except: 
+            assembly_info = json.load(urllib2.urlopen(urllib2.Request("""%s/assemblies.json?assembly_name=%s"""
+                                                               % (self.url, assembly))))[0]
+            chromosomes = json.load(urllib2.urlopen(urllib2.Request("""%s/chromosomes.json?assembly_name=%s"""
+                                                                       % (self.url, assembly))))
 
+        print assembly_info
+        print chromosomes
         root = os.path.join(self.root,"nr_assemblies/bowtie")
         if self.intype == 1:
             root = os.path.join(self.root,"nr_assemblies/exons_bowtie")
@@ -238,7 +235,6 @@ class GenRep(object):
                      source_id = int(assembly_info['assembly']['source_id']),
                      created_at = datetime.strptime(assembly_info['assembly']['created_at'],
                                                     '%Y-%m-%dT%H:%M:%SZ'))
-        chromosomes = json.load(urllib2.urlopen(self.query_url('chromosomes', assembly)))
         for c in chromosomes:
             name_dictionary = dict([ (x['chr_name']['assembly_id'],
                                       x['chr_name']['value'])
