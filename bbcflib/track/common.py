@@ -6,7 +6,7 @@ Submodule: bbcflib.track.common
 Common stuff for the track package.
 """
 
-###########################################################################
+################################################################################
 def check_path(path):
     """
     Raises an exception if the path *path* is already taken.
@@ -14,7 +14,7 @@ def check_path(path):
     import os
     if os.path.exists(path): raise Exception("The location '" + path + "' is already taken")
 
-###########################################################################
+################################################################################
 def check_executable(tool_name):
     """
     Raises an exception if the executable *tool_name* is not found.
@@ -25,7 +25,7 @@ def check_executable(tool_name):
     except OSError:
          raise Exception("The executable '" + tool_name + "' cannot be found")
 
-###########################################################################
+################################################################################
 def natural_sort(item):
     """
     Will sort strings that contain numbers correctly
@@ -41,12 +41,12 @@ def natural_sort(item):
         except ValueError: return s
     return map(try_int, re.findall(r'(\d+|\D+)', item))
 
-###############################################################################
+################################################################################
 def named_temporary_path(suffix=''):
     """
     Often, one nee  ds a new random and temporary file path
     instead of the random and temporary file object provided
-    by the tempfile module
+    by the 'tempfile' module
     """
     import tempfile
     file = tempfile.NamedTemporaryFile(suffix=suffix)
@@ -54,7 +54,7 @@ def named_temporary_path(suffix=''):
     file.close()
     return path
 
-###############################################################################
+################################################################################
 def sentinelize(iterable, sentinel):
     """
     Add an item to the end of an iterable
@@ -65,7 +65,7 @@ def sentinelize(iterable, sentinel):
     for item in iterable: yield item
     yield sentinel
 
-###############################################################################
+################################################################################
 def sqlcmp(file_a, file_b):
     """
     Compare two two sqlite3 databases via their dumps
@@ -77,7 +77,7 @@ def sqlcmp(file_a, file_b):
         if a != b: return "A: " + a + "\nB:" + b
     return True
 
-###############################################################################
+################################################################################
 def int_to_roman(input):
     """
     Convert an integer to a roman numeral.
@@ -96,7 +96,7 @@ def int_to_roman(input):
        input  -= ints[i] * count
     return result
 
-###############################################################################
+################################################################################
 def roman_to_int(input):
     """
     Convert a roman numeral to an integer.
@@ -127,7 +127,7 @@ def roman_to_int(input):
     if int_to_roman(output) == input: return output
     else: raise ValueError, 'Input is not a valid roman numeral: "%s."' % input
 
-###############################################################################
+################################################################################
 terminal_colors = {
     'end':    '\033[0m',    # Text Reset
     'blink':  '\033[5m',    # Blink
@@ -173,7 +173,7 @@ terminal_colors = {
     'bakwht': '\033[47m',   # White
 }
 
-###############################################################################
+################################################################################
 class ModifiedDict(object):
     """
     A dictionary like object that tracks modification
@@ -202,8 +202,8 @@ class ModifiedDict(object):
         self.modified = True
         del self.data[key]
 
-    def __iter__(self): return iter(self.data)
     def __repr__(self): return repr(self.data)
+    def __iter__(self): return iter(self.data)
     def __contains__(self, key): return key in self.data
     def __len__(self): return len(self.data)
     def keys(self): return self.data.keys()
