@@ -236,7 +236,7 @@ def map_reads( ex, fastq_file, chromosomes, bowtie_index,
     """
     if bwt_args is None:
         bwt_args = []
-    bwtarg = ["-Sam", str(max(20,maxhits)), "--best", "--strata"]+bwt_args
+    bwtarg = ["-Sam", str(max(20,maxhits)), "--best", "--strata","--chunkmbs","256"]+bwt_args
     if count_lines( ex, fastq_file )>10000000:
         bam = parallel_bowtie( ex, bowtie_index, fastq_file,
                                n_lines=8000000,
