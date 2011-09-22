@@ -37,7 +37,7 @@ Below is the script used by the frontend::
     hts_key = 'test_key'
     gl = { 'hts_mapseq': {'url': 'http://htsstation.vital-it.ch/mapseq/'},
            'genrep_url': 'http://bbcftools.vital-it.ch/genrep/',
-           'bwt_root': '/db/genrep/nr_assemblies',
+           'bwt_root': '/db/genrep/',
            'script_path': '/srv/chipseq/lib',
            'lims': {'user': 'alice',
                      'passwd': {'lgtf': 'bob123',

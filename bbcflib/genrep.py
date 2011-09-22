@@ -156,10 +156,10 @@ class GenRep(object):
         if isinstance(regions,list):
             reg_dict = {}
             for reg in regions:
-                chrom = reg.pop(0)
+                chrom = reg[0]
                 if not(chrom in reg_dict):
                     reg_dict[chrom] = []
-                reg_dict[chrom].append(reg)
+                reg_dict[chrom].append(reg[1:])
             regions = reg_dict
         if isinstance(regions,dict):
             cur_chunk = 0
