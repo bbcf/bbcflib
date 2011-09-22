@@ -201,16 +201,18 @@ def estimate_size_factors(*counts):
     The total number of reads may be different between conditions or replicates.
     This treatment makes different count sets being comparable. If rows are features
     and columns are different conditions/replicates, each column is divided by the
-    geometric mean of the rows. The median of these ratios is used as the size factor
-    for this column.
+    geometric mean of the rows.
+    The median of these ratios is used as the size factor for this column. Size
+    factors may be used for further variance sabilization.
     
     * *counts* are lists of integers (counts), or an array of counts.
     """
-    dataframe = numpy.array(counts)
-    geo_means = numpy.exp(numpy.mean(numpy.log(dataframe), axis=0))
-    mean = dataframe/geo_means
+    counts = numpy.asarray(counts)
+    geo_means = numpy.exp(numpy.mean(numpy.log(counts), axis=0))
+    mean = counts/geo_means
     size_factors = numpy.median(mean[:,geo_means>0], axis=1)
-    return size_factors
+    res = numpy.transpose(counts)/size_factors
+    return res, size_factors
 
     # DESeq code:
     #       geomeans <- exp( rowMeans( log( counts(cds) ) ) )
@@ -218,25 +220,12 @@ def estimate_size_factors(*counts):
     #          apply( counts(cds), 2, function(cnts) 
     #             median( ( cnts / geomeans )[ geomeans>0 ] ) )
 
-def estimate_variance_functions(size_factors, *counts):
-    """
-    * *size_factors* is an array as returned by estimate_size_factors.
-    * *counts* are lists of integers (counts), or an array of counts.
-    """
-    pass
-
 @timer
-def comparisons(cond1_label, cond1, cond2_label, cond2, assembly_id,
-              target=["exons","genes","transcripts"], method="normal"):
-    """ Writes a CSV file for each selected type of feature,
-    each row being of the form: Feature_ID // Mean_expression // Fold_change.
-    It calls an R session to use DESeq for size factors and variance stabilization.
-
-    * *cond1* and *cond2* are dictionaries - pileups - of the form
-    {feature ID: number of reads mapping to it}.
-    
-    * *cond1_label* and *cond2_label* are string which will be used
-    to identify the two conditions in R.
+def get_expressions(assembly_id, target=["exons","genes","transcripts"], method="normal", pileups):
+    """
+    Get transcripts expression from exons expression values.
+    Size factors are computed to make pileups comparable is one had much more
+    read counts than the other one.
     
     * *assembly_id* can be a numeric or nominal ID for GenRep
     (e.g. 76 or 'hg19' for H.Sapiens), or a path to a file containing a
@@ -244,51 +233,27 @@ def comparisons(cond1_label, cond1, cond2_label, cond2, assembly_id,
     
     * *target* is a string or array of strings indicating the features you want to compare.
     Targets can be 'genes', 'transcripts', or 'exons'. E.g. ['genes','transcripts'], or 'genes'.
-    
-    * *method* can be 'normal' or 'blind', the method used for DESeq variances estimation.
-    - 'normal': For each condition with replicates, estimate a variance function by considering
-    the data from samples for this condition. Then, construct a variance function
-    that takes the maximum over all other variance functions and assign this one to
-    all samples of unreplicated conditions.
-    - 'blind': Ignore the sample labels and pretend that all samples are replicates of a
-    single condition. This allows to get a variance estimate even if one does not have any
-    biological replicates. However, this can leed to drastic loss of power. The single
-    estimated variance condition is assigned to all samples.
-    - 'pooled': Use the samples from all conditions with replicates to estimate a single
-    pooled variance function, to be assigned to all samples.
+
+    * *pileups* is a dictionary of the form {cond1: [{pileup bam1},{pileup bam2},...], cond2:...},
+    where each *pileup* is a dictionary {transcript id: number of reads}.
     """
 
+    print "Loading mappings..."
+    #assembly_id = "../temp/nice_features/nice_mappings" # testing code
+    mappings = fetch_mappings(assembly_id)
     """ - gene_ids is a list of gene ID's
         - gene_names is a dict {gene ID: gene name}
         - transcript_mapping is a dictionary {transcript ID: gene ID}
         - exon_mapping is a dictionary {exon ID: (transcript ID, gene ID)}
         - trans_in_gene is a dict {gene ID: IDs of the transcripts it contains}
         - exons_in_trans is a dict {transcript ID: IDs of the exons it contains} """
-    #assembly_id = "../temp/nice_features/nice_mappings" # testing code
-    print "Loading mappings..."
-    mappings = fetch_mappings(assembly_id)
     print "Loaded."
     (gene_ids, gene_names, transcript_mapping, exon_mapping, trans_in_gene, exons_in_trans) = mappings
 
-    # Pass the data into R as a data frame
-    data_frame_contents = rlc.OrdDict([(cond1_label+'-'+str(i), robjects.IntVector(c.values()))
-                                       for i,c in enumerate(cond1)] +
-                                      [(cond2_label+'-'+str(i), robjects.IntVector(c.values()))
-                                       for i,c in enumerate(cond2)])
-    data_frame = robjects.DataFrame(data_frame_contents)
-    data_frame.rownames = cond1[0].keys()
+    res = numpy.array([p.values() for p in pileups])
+    res = estimate_size_factors(res)
 
-    conds = robjects.StrVector([cond1_label for x in cond1] + [cond2_label for x in cond2]).factor()
-
-    # DESeq normalization
-    deseq = rpackages.importr('DESeq')
-    cds = deseq.newCountDataSet(data_frame, conds)
-    cds = deseq.estimateSizeFactors(cds) #,locfunc='median' - robjects.median? May be 'short' if low counts
-    try: cds = deseq.estimateVarianceFunctions(cds,method=method)
-    except : raise rpy2.rinterface.RRuntimeError("Too few reads to estimate variances with DESeq")
-    res = deseq.getVarianceStabilizedData(cds)
-    
-    exon_ids = list(list(res.names)[0]) # 'res.names[0]' kills the python session.
+    exon_ids = pileups[group_names[0]].keys()
     exon_ids = [e.split('|')[0] for e in exon_ids]
     cond1 = numpy.abs(numpy.array(res.rx(True,1), dtype='f')) # replicates?
     cond2 = numpy.abs(numpy.array(res.rx(True,2), dtype='f'))
@@ -323,11 +288,11 @@ def rnaseq_workflow(ex, job, assembly, bam_files, target=["genes"], via="lsf", o
     * *job* is a Job object (or a dictionary of the same form) as returned from
     HTSStation's frontend.
     """
-    names = {}; runs = {}; controls = {};
+    group_names = {}; runs = {}; controls = {};
     groups = job.groups
     assembly_id = job.assembly_id
     for i,group in groups.iteritems():
-        names[i] = str(group['name'])
+        group_names[i] = str(group['name'])
         runs[i] = group['runs'].values()
         controls[i] = group.get('control')
     if isinstance(target,str): target=[target]
@@ -339,76 +304,35 @@ def rnaseq_workflow(ex, job, assembly, bam_files, target=["genes"], via="lsf", o
     exons = exons_labels(bam_files[groups.keys()[0]][groups.values()[0]['runs'].keys()[0]]['bam'])
     
     exon_pileups = {}
-    for condition,files in bam_files.iteritems():
-        exon_pileups[condition] = []
+    for cond,files in bam_files.iteritems():
+        exon_pileups[cond] = []
         for f in files.values():
             exon_pileup = pileup_file(f['bam'], exons) #{exon_id: count}
-            exon_pileups[condition].append(exon_pileup) #{cond1: [{pileup bam1},{pileup bam2},...], cond2:...}
+            exon_pileups[cond].append(exon_pileup) #{cond1: [{pileup bam1},{pileup bam2},...], cond2:...}
 
-    futures = {}
-    for (c1,c2) in pairs_to_test(controls):
-        if len(runs[c1]) + len(runs[c2]) > 2: method = "normal" #replicates
-        else: method = "blind" #no replicates
-        if 1:
-            print "Comparisons..."
-            futures[(c1,c2)] = external_deseq.nonblocking(ex,
-                                   names[c1], exon_pileups[c1], names[c2], exon_pileups[c2],
-                                   assembly_id, target, method, via=via)
+    print "Get transcript expressions..."
+    result = get_expressions(assembly_id, target, method, exon_pileups)
+    
+    conditions_desc = group_names.values()
+    if "exons" in target:
+        exons_file = result.get("exons")
+        if exons_file:
+            ex.add(exons_file,
+                   description="csv:Comparison of EXONS in conditions '%s' and '%s' " % conditions_desc)
+            print "EXONS: Done successfully."
+        else: print >>sys.stderr, "Exons: Failed during inference, \
+                                   probably because of too few reads for DESeq stats."
+    if "genes" in target:
+        genes_file = result.get("genes")
+        if genes_file:
+            ex.add(genes_file,
+                   description="csv:Comparison of GENES in conditions '%s' and '%s' " % conditions_desc)
+            print "GENES: Done successfully."
+    if "transcripts" in target:
+        trans_file = result.get("transcripts");
+        if trans_file:
+            ex.add(trans_file,
+                   description="csv:Comparison of TRANSCRIPTS in conditions '%s' and '%s' " % conditions_desc)
+            print "TRANSCRIPTS: Done successfully."
             
-            for c,f in futures.iteritems():
-                result_filename = f.wait()
-                with open(result_filename,"rb") as f:
-                    result = pickle.load(f)
-
-                conditions_desc = (names[c[0]], names[c[1]])
-                if "exons" in target:
-                    exons_file = result.get("exons")
-                    if exons_file:
-                        ex.add(exons_file,
-                               description="csv:Comparison of EXONS in conditions '%s' and '%s' " % conditions_desc)
-                        print "EXONS: Done successfully."
-                    else: print >>sys.stderr, "Exons: Failed during inference, \
-                                               probably because of too few reads for DESeq stats."
-                if "genes" in target:
-                    genes_file = result.get("genes")
-                    if genes_file:
-                        ex.add(genes_file,
-                               description="csv:Comparison of GENES in conditions '%s' and '%s' " % conditions_desc)
-                        print "GENES: Done successfully."
-                if "transcripts" in target:
-                    trans_file = result.get("transcripts");
-                    if trans_file:
-                        ex.add(trans_file,
-                               description="csv:Comparison of TRANSCRIPTS in conditions '%s' and '%s' " % conditions_desc)
-                    print "TRANSCRIPTS: Done successfully."
-
-        if 0: #testing
-            print "Comparisons (LOCAL)"
-            futures[(c1,c2)] = comparisons(names[c1], exon_pileups[c1], names[c2], exon_pileups[c2],
-                                         assembly_id, target, method)
-            for c,f in futures.iteritems():
-                result = f
-
-                conditions_desc = (names[c[0]], names[c[1]])
-                if "exons" in target:
-                    exons_file = result.get("exons")
-                    if exons_file:
-                        ex.add(exons_file,
-                               description="csv:Comparison of EXONS in conditions '%s' and '%s' " % conditions_desc)
-                        print "EXONS: Done successfully."
-                    else: print >>sys.stderr, "Exons: Failed during inference, \
-                                               probably because of too few reads for DESeq stats."
-                if "genes" in target:
-                    genes_file = result.get("genes")
-                    if genes_file:
-                        ex.add(genes_file,
-                               description="csv:Comparison of GENES in conditions '%s' and '%s' " % conditions_desc)
-                        print "GENES: Done successfully."
-                if "transcripts" in target:
-                    trans_file = result.get("transcripts");
-                    if trans_file:
-                        ex.add(trans_file,
-                               description="csv:Comparison of TRANSCRIPTS in conditions '%s' and '%s' " % conditions_desc)
-                    print "TRANSCRIPTS: Done successfully."
-            
-        print "Done."
+    print "Done."
