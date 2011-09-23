@@ -200,64 +200,6 @@ def transcripts_expression(gene_ids, transcript_mapping, trans_in_gene, exons_in
                     dtrans[t][1] = transcripts_2[k]
     return dtrans
 
-@timer
-def get_expressions(ex, pileups, assembly_id, target=["genes","exons","transcripts"]):
-    """
-    Get transcripts expression from exons expression values.
-    Size factors are computed to make pileups comparable is one had much more
-    read counts than the other one.
-    
-    * *assembly_id* can be a numeric or nominal ID for GenRep
-    (e.g. 76 or 'hg19' for H.Sapiens), or a path to a file containing a
-    pickle file which is read to get the mapping.
-    * *target* is a string or array of strings indicating the features you want to compare.
-    Targets can be 'genes', 'transcripts', or 'exons'. E.g. ['genes','transcripts'], or 'genes'.
-    * *pileups* is a dictionary of the form {cond1: [{pileup bam1},{pileup bam2},...], cond2:...},
-    where each *pileup* is a dictionary {transcript id: number of reads}.
-    """
-
-    print "Loading mappings..."
-    #assembly_id = "../temp/nice_features/nice_mappings" # testing code
-    mappings = fetch_mappings(assembly_id)
-    """ - gene_ids is a list of gene ID's
-        - gene_names is a dict {gene ID: gene name}
-        - transcript_mapping is a dictionary {transcript ID: gene ID}
-        - exon_mapping is a dictionary {exon ID: (transcript ID, gene ID)}
-        - trans_in_gene is a dict {gene ID: IDs of the transcripts it contains}
-        - exons_in_trans is a dict {transcript ID: IDs of the exons it contains} """
-    print "Loaded."
-    (gene_ids, gene_names, transcript_mapping, exon_mapping, trans_in_gene, exons_in_trans) = mappings
-
-    conditions = pileups.keys()
-    res = numpy.array([p.values() for p in pileups.values()], dtype=numpy.float32)
-    for i in range(len(res.ravel())):
-        if res.flat[i]==0: res.flat[i] += 1.0
-    res, size_factors = estimate_size_factors(res)
-    print "Size factors:", size_factors
-    
-    exons = pileups[conditions[0]].keys()
-    genes = [e.split('|')[1] for e in exons]
-    coords = [(e.split('|')[2],e.split('|')[3]) for e in exons]
-    exon_ids = [e.split('|')[0] for e in exons]
-    
-    dexons = dict(zip(exon_ids,zip(*res)))
-    if "exons" in target:
-        save_results(ex, translate_gene_ids(dexons, gene_names),
-                     conditions=conditions, name="EXONS")
-        
-    # Get counts for genes
-    if "genes" in target:
-        dgenes = genes_expression(gene_ids, exon_mapping, dexons)
-        save_results(ex, translate_gene_ids(dgenes, gene_names),
-                     conditions=conditions, name="GENES")
-        
-    ### Get counts for the transcripts using pseudo-inverse
-    if "transcripts" in target:
-        dtrans = transcripts_expression(gene_ids, transcript_mapping, trans_in_gene, exons_in_trans, dexons)
-        save_results(ex, translate_gene_ids(dtrans, gene_names),
-                     conditions=conditions, name="TRANSCRIPTS")
-
-
 def rnaseq_workflow(ex, job, assembly, bam_files, target=["genes"], via="lsf", output=None):
     """
     Main function of the workflow. 
@@ -269,6 +211,9 @@ def rnaseq_workflow(ex, job, assembly, bam_files, target=["genes"], via="lsf", o
     variances amongst exons.)
     * *via*: 'local' or 'lsf'
     * *job*: a Job object (or a dictionary of the same form) as returned from HTSStation's frontend.
+
+    To do: -use lsf -add rpkm -control with known refseqs -debug transcripts -debug size factors
+    -exons is extracted twice
     """
     group_names={}
     assembly_id = job.assembly_id
@@ -283,7 +228,7 @@ def rnaseq_workflow(ex, job, assembly, bam_files, target=["genes"], via="lsf", o
     # Format: ('exonID|geneID|start|end|strand', length)
     exons = exons_labels(bam_files[groups.keys()[0]][groups.values()[0]['runs'].keys()[0]]['bam'])
 
-    # Build pileups from bam files
+    ## Build pileups from bam files
     print "Build pileups"
     exon_pileups = {}
     for gid,files in bam_files.iteritems():
@@ -295,6 +240,40 @@ def rnaseq_workflow(ex, job, assembly, bam_files, target=["genes"], via="lsf", o
             exon_pileup = pileup_file(f['bam'], exons) #{exon_id: counts}
             exon_pileups[name] = exon_pileup #{cond1.run1: {pileup}, cond1.run2: {pileup}...}
 
-    print "Get expressions"
-    get_expressions(ex, exon_pileups, assembly_id, target)
-    print "Done."
+    #assembly_id = "../temp/nice_features/nice_mappings" # testing code
+    mappings = fetch_mappings(assembly_id)
+    """ - gene_ids is a list of gene ID's
+        - gene_names is a dict {gene ID: gene name}
+        - transcript_mapping is a dictionary {transcript ID: gene ID}
+        - exon_mapping is a dictionary {exon ID: (transcript ID, gene ID)}
+        - trans_in_gene is a dict {gene ID: IDs of the transcripts it contains}
+        - exons_in_trans is a dict {transcript ID: IDs of the exons it contains} """
+    (gene_ids, gene_names, transcript_mapping, exon_mapping, trans_in_gene, exons_in_trans) = mappings
+
+    ## Get counts for exons from bam files
+    res = numpy.array([p.values() for p in exon_pileups.values()], dtype=numpy.float32)
+    for i in range(len(res.ravel())):
+        # if zero counts, add 1 for further comparisons
+        if res.flat[i]==0: res.flat[i] += 1.0
+    res, size_factors = estimate_size_factors(res)
+    print "Size factors:", size_factors
+
+    conditions = exon_pileups.keys()
+    exons = exon_pileups[conditions[0]].keys()
+    genes = [e.split('|')[1] for e in exons]
+    coords = [(e.split('|')[2],e.split('|')[3]) for e in exons]
+    exon_ids = [e.split('|')[0] for e in exons]
+    
+    dexons = dict(zip(exon_ids,zip(*res)))
+    if "exons" in target:
+        save_results(ex, translate_gene_ids(dexons, gene_names), conditions=conditions, name="EXONS")
+        
+    ## Get counts for genes from exons
+    if "genes" in target:
+        dgenes = genes_expression(gene_ids, exon_mapping, dexons)
+        save_results(ex, translate_gene_ids(dgenes, gene_names), conditions=conditions, name="GENES")
+        
+    ## Get counts for the transcripts from exons, using pseudo-inverse
+    if "transcripts" in target:
+        dtrans = transcripts_expression(gene_ids, transcript_mapping, trans_in_gene, exons_in_trans, dexons)
+        save_results(ex, translate_gene_ids(dtrans, gene_names), conditions=conditions, name="TRANSCRIPTS")
