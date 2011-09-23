@@ -19,10 +19,6 @@ from bein.util import unique_filename_in
 
 # Other modules #
 import numpy
-from rpy2 import robjects
-import rpy2.robjects.packages as rpackages
-import rpy2.robjects.numpy2ri
-import rpy2.rlike.container as rlc
 import csv
 
 ################################################################################
