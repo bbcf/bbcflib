@@ -122,6 +122,26 @@ def translate_gene_ids(fc_ids, dictionary):
     fc_names = dict(zip(names,fc_ids.values()))
     return fc_names
 
+def estimate_size_factors(counts):
+    """
+    The total number of reads may be different between conditions or replicates.
+    This treatment makes different count sets being comparable. If rows are features
+    and columns are different conditions/replicates, each column is divided by the
+    geometric mean of the rows.
+    The median of these ratios is used as the size factor for this column. Size
+    factors may be used for further variance sabilization.
+    
+    * *counts* is an array of counts, each line representing a transcript, each
+    column a different run.
+    """
+    counts = numpy.array(counts)
+    geo_means = numpy.exp(numpy.mean(numpy.log(counts), axis=0))
+    mean = counts/geo_means
+    size_factors = numpy.median(mean[:,geo_means>0], axis=1)
+    res = counts.transpose()/size_factors
+    res = res.transpose()
+    return res, size_factors
+
 def save_results(data, conditions=["C1","C2"], filename=None):
     """Save results in a CSV file, one line per transcript, one column per run """
     if not filename:
@@ -135,8 +155,10 @@ def save_results(data, conditions=["C1","C2"], filename=None):
 
 @timer
 def genes_expression(gene_ids, exon_mapping, dexons):
-    z = numpy.array([[0]*len(gene_ids)]*len(dexons))
+    z = numpy.array([[0]*len(dexons)]*len(gene_ids))
     dgenes = dict(zip(gene_ids,z))
+    print dexons.iteritems().next()[0]
+    print dexons.iteritems().next()[1]
     for e,c in dexons.iteritems():
         e = e.split('|')[0]
         if exon_mapping.get(e):
@@ -145,7 +167,7 @@ def genes_expression(gene_ids, exon_mapping, dexons):
 
 @timer
 def transcripts_expression(gene_ids, transcript_mapping, trans_in_gene, exons_in_trans, dexons):
-    z = numpy.array([[0]*len(transcript_mapping.keys())]*len(dexons))
+    z = numpy.array([[0]*len(dexons)]*len(transcript_mapping.keys()))
     dtrans = dict(zip(transcript_mapping.keys(),z))
     for g in gene_ids:
         if trans_in_gene.get(g):
@@ -173,25 +195,6 @@ def transcripts_expression(gene_ids, transcript_mapping, trans_in_gene, exons_in
                     dtrans[t][0] = transcripts_1[k]
                     dtrans[t][1] = transcripts_2[k]
     return dtrans
-
-def estimate_size_factors(counts):
-    """
-    The total number of reads may be different between conditions or replicates.
-    This treatment makes different count sets being comparable. If rows are features
-    and columns are different conditions/replicates, each column is divided by the
-    geometric mean of the rows.
-    The median of these ratios is used as the size factor for this column. Size
-    factors may be used for further variance sabilization.
-    
-    * *counts* is an array of counts, each line representing a transcript, each
-    column a different run.
-    """
-    counts = numpy.array(counts)
-    geo_means = numpy.exp(numpy.mean(numpy.log(counts), axis=0))
-    mean = counts/geo_means
-    size_factors = numpy.median(mean[:,geo_means>0], axis=1)
-    res = numpy.transpose(counts)/size_factors
-    return res, size_factors
 
 @timer
 def get_expressions(pileups, assembly_id, target=["exons","genes","transcripts"]):
@@ -233,17 +236,19 @@ def get_expressions(pileups, assembly_id, target=["exons","genes","transcripts"]
     exon_ids = [e.split('|')[0] for e in exon_ids]
     
     dexons = dict(zip(exon_ids,zip(*res)))
-    exons_filename = save_results(translate_gene_ids(dexons, gene_names), conditions)
+    exons_filename = save_results(translate_gene_ids(dexons, gene_names), conditions=conditions)
 
     # Get fold change for genes
+    genes_filename=None
     if "genes" in target:
         dgenes = genes_expression(gene_ids, exon_mapping, dexons)
-        genes_filename = save_results(translate_gene_ids(dgenes, gene_names), conditions)
+        genes_filename = save_results(translate_gene_ids(dgenes, gene_names), conditions=conditions)
 
     ### Get fold change for the transcripts using pseudo-inverse
+    trans_filename=None
     if "transcripts" in target:
         dtrans = transcripts_expression(gene_ids, transcript_mapping, trans_in_gene, exons_in_trans, dexons)
-        trans_filename = save_results(translate_gene_ids(dtrans, gene_names), conditions)
+        trans_filename = save_results(translate_gene_ids(dtrans, gene_names), conditions=conditions)
         
     result = {"exons":exons_filename, "genes":genes_filename, "transcripts":trans_filename,
               "conditions": conditions, "size factors": size_factors}
@@ -263,29 +268,14 @@ def rnaseq_workflow(ex, job, assembly, bam_files, target=["genes"], via="lsf", o
     * *job* is a Job object (or a dictionary of the same form) as returned from
     HTSStation's frontend.
     """
-    group_names = {}; run_names = {}; runs = {}; controls = {};
+    group_names={}; run_names={}; runs={}; controls={};
     groups = job.groups
-    """
-    job.groups:
-    {gid: {'runs':{rid:{...}},'name':str}, __ gid: {'runs':{rid:{...}},'name':str}, __ gid: ...}
-    """
     assembly_id = job.assembly_id
     for gid,group in groups.iteritems():
         group_names[gid] = str(group['name']) # group_names = {gid: name}
         for rid, run in group['runs'].iteritems():
             runs[str(gid)+'.'+str(rid)] = (gid, run["url"])    # runs = {gid: [{run info}, {run info}]}
     if isinstance(target,str): target=[target]
-
-    """
-    bam_files:
-    {
-    ##cond## 12:
-    ##runs## {44: {'wig': {}, 'libname': 'TestA', 'stats': {'expected_coverage': 3.8000000000000002e-05, 'genome_size': 180210825, 'multi_hits': {1: 6027, 2: 3868, 3: 1979, 4: 1066, 5: 737}, 'read_length': 75, 'mismatches': {0: 20942, 1: 4600, 2: 2107}, 'actual_coverage': 7.4999999999999993e-05, 'nb_positions': 27168, 'unmapped': 0, 'total': 13677, 'alignments': {'fwd': 13266, 'total': 27649, 'rev': 14383}}, 'poisson_threshold': None, 'p_thresh': 0, 'bam': 'zE9Bv1Bweyu8Z31KkO55'}},
-
-    ##cond## 23:
-    ##runs## {55: {'wig': {}, 'libname': 'TestB', 'stats': {'expected_coverage': 3.8000000000000002e-05, 'genome_size': 180210825, 'multi_hits': {1: 6062, 2: 3999, 3: 2017, 4: 1057, 5: 621}, 'read_length': 75, 'mismatches': {0: 20819, 1: 4472, 2: 2153}, 'actual_coverage': 7.4999999999999993e-05, 'nb_positions': 27090, 'unmapped': 0, 'total': 13756, 'alignments': {'fwd': 13176, 'total': 27444, 'rev': 14268}}, 'poisson_threshold': None, 'p_thresh': 0, 'bam': 'kN0OSNhZkwapoVdmakfU'}}
-    }
-    """
     
     # All the bam_files were created against the same index, so
     # they all have the same header in the same order.  I can take
@@ -303,31 +293,27 @@ def rnaseq_workflow(ex, job, assembly, bam_files, target=["genes"], via="lsf", o
             exon_pileup = pileup_file(f['bam'], exons) #{exon_id: count}
             exon_pileups[name] = exon_pileup #{cond1.run1: {pileup}, cond1.run2: {pileup}...}
 
-    print "Get transcript expressions..."
+    print "Get expressions for genes and transcripts..."
     result = get_expressions(exon_pileups, assembly_id, target)
     
-    conditions = result["conditions"]
-    print conditions
-    conditions_s = '%s and '*(len(conditions)-1)+'%s'
-    print conditions_s
+    conditions = tuple(result["conditions"])
+    conditions_s = '%s, '*(len(conditions)-1)+' and %s'
     if "exons" in target:
         exons_file = result.get("exons")
         if exons_file:
             ex.add(exons_file,
-                   description="csv:Comparison of EXONS in conditions '%s' and '%s' " % conditions)
+                   description="csv:Comparison of EXONS in conditions "+conditions_s % conditions)
             print "EXONS: Done successfully."
-        else: print >>sys.stderr, "Exons: Failed during inference, \
-                                   probably because of too few reads for DESeq stats."
     if "genes" in target:
         genes_file = result.get("genes")
         if genes_file:
             ex.add(genes_file,
-                   description="csv:Comparison of GENES in conditions '%s' and '%s' " % conditions)
+                   description="csv:Comparison of GENES in conditions "+conditions_s % conditions)
             print "GENES: Done successfully."
     if "transcripts" in target:
         trans_file = result.get("transcripts");
         if trans_file:
             ex.add(trans_file,
-                   description="csv:Comparison of TRANSCRIPTS in conditions '%s' and '%s' " % conditions)
+                   description="csv:Comparison of TRANSCRIPTS in conditions "+conditions_s % conditions)
             print "TRANSCRIPTS: Done successfully."
     print "Done."
