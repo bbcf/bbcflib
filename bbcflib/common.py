@@ -222,6 +222,14 @@ try:
                   for i in produced_file_ids])
         j = json.dumps(d)
         return j
+
+    #-------------------------------------------------------------------------#
+    def rstring(len=20):
+        """Generate a random string of length *len* (usually for filenames).
+        Equivalent to bein's unique_filename_in(), without requiring the import.
+        """
+        import string, random
+        return "".join([random.choice(string.letters+string.digits) for x in range(len)])
     
 
 except:
