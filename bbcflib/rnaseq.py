@@ -122,81 +122,59 @@ def translate_gene_ids(fc_ids, dictionary):
     fc_names = dict(zip(names,fc_ids.values()))
     return fc_names
 
-def save_results(data, filename=None):
-    """Save results in a CSV file. Data must be of the form {id:(mean,fold_change)} """
+def save_results(data, conditions=["C1","C2"], filename=None):
+    """Save results in a CSV file, one line per transcript, one column per run """
     if not filename:
         filename = unique_filename_in()
     with open(filename,"wb") as f:
         c = csv.writer(f, delimiter='\t')
-        c.writerow(["id", "C1", "C2"])
+        c.writerow(["id"]+conditions)
         for k,v in data.iteritems():
-            c.writerow([k,v[0],v[1]])
+            c.writerow([k]+list(v))
     return filename
 
-@program
-def external_maplot(csv_filename, mode='normal', deg=4, bins=30, assembly_id=None, output=None):
-    if not output: output = unique_filename_in()
-    call = ["maplot.py", csv_filename, str(mode), str(deg), str(bins), str(assembly_id), str(output)]
-    return {"arguments": call, "return_value": output}
-
-@program
-def external_deseq(cond1_label, cond1, cond2_label, cond2, assembly_id,
-                   target=["exons","genes","transcripts"], method="normal"):
-    output = unique_filename_in()
-    c1 = unique_filename_in()
-    with open(c1,'wb') as f:
-        pickle.dump(cond1,f,pickle.HIGHEST_PROTOCOL)
-    c2 = unique_filename_in()
-    with open(c2,'wb') as f:
-        pickle.dump(cond2,f,pickle.HIGHEST_PROTOCOL)
-    targ = unique_filename_in()
-    with open(targ,'wb') as f:
-        pickle.dump(target,f,pickle.HIGHEST_PROTOCOL)
-    call = ["run_deseq.py", c1, c2, cond1_label, cond2_label, str(assembly_id), 
-            targ, method, output]
-    return {"arguments": call, "return_value": output}
-
+@timer
 def genes_expression(gene_ids, exon_mapping, dexons):
-    dgenes = dict(zip(gene_ids,
-                        numpy.array(zip(numpy.zeros(len(gene_ids)),
-                                        numpy.zeros(len(gene_ids))))  ))
+    z = numpy.array([[0]*len(gene_ids)]*len(dexons))
+    dgenes = dict(zip(gene_ids,z))
     for e,c in dexons.iteritems():
         e = e.split('|')[0]
         if exon_mapping.get(e):
             dgenes[exon_mapping[e][1]] += c
     return dgenes
 
+@timer
 def transcripts_expression(gene_ids, transcript_mapping, trans_in_gene, exons_in_trans, dexons):
-    dtrans = dict(zip(transcript_mapping.keys(),
-                        numpy.array(zip(numpy.zeros(len(transcript_mapping.keys())),
-                                        numpy.zeros(len(transcript_mapping.keys()))))  ))
+    z = numpy.array([[0]*len(transcript_mapping.keys())]*len(dexons))
+    dtrans = dict(zip(transcript_mapping.keys(),z))
     for g in gene_ids:
-        tg = trans_in_gene[g]
-        eg = []
-        for t in tg:
-            if exons_in_trans.get(t):
-                eg.extend(exons_in_trans[t])
-        M = numpy.zeros((len(eg),len(tg)))
-        exons_1 = numpy.zeros(len(eg))
-        exons_2 = numpy.zeros(len(eg))
-        for i,e in enumerate(eg):
-            for j,t in enumerate(tg):
+        if trans_in_gene.get(g):
+            tg = trans_in_gene[g]
+            eg = []
+            for t in tg:
                 if exons_in_trans.get(t):
-                    ebt = exons_in_trans[t]
-                if e in ebt:
-                    M[i,j] = 1
-            if dexons.get(e):
-                exons_1[i] += dexons[e][0]
-                exons_2[i] += dexons[e][1]
-        transcripts_1 = numpy.dot(numpy.linalg.pinv(M),exons_1)
-        transcripts_2 = numpy.dot(numpy.linalg.pinv(M),exons_2)
-        for k,t in enumerate(tg):
-            if dtrans.get(t) is not None:
-                dtrans[t][0] = transcripts_1[k]
-                dtrans[t][1] = transcripts_2[k]
+                    eg.extend(exons_in_trans[t])
+            M = numpy.zeros((len(eg),len(tg)))
+            exons_1 = numpy.zeros(len(eg))
+            exons_2 = numpy.zeros(len(eg))
+            for i,e in enumerate(eg):
+                for j,t in enumerate(tg):
+                    if exons_in_trans.get(t):
+                        ebt = exons_in_trans[t]
+                    if e in ebt:
+                        M[i,j] = 1
+                if dexons.get(e):
+                    exons_1[i] += dexons[e][0]
+                    exons_2[i] += dexons[e][1]
+            transcripts_1 = numpy.dot(numpy.linalg.pinv(M),exons_1)
+            transcripts_2 = numpy.dot(numpy.linalg.pinv(M),exons_2)
+            for k,t in enumerate(tg):
+                if dtrans.get(t) is not None:
+                    dtrans[t][0] = transcripts_1[k]
+                    dtrans[t][1] = transcripts_2[k]
     return dtrans
 
-def estimate_size_factors(*counts):
+def estimate_size_factors(counts):
     """
     The total number of reads may be different between conditions or replicates.
     This treatment makes different count sets being comparable. If rows are features
@@ -205,23 +183,18 @@ def estimate_size_factors(*counts):
     The median of these ratios is used as the size factor for this column. Size
     factors may be used for further variance sabilization.
     
-    * *counts* are lists of integers (counts), or an array of counts.
+    * *counts* is an array of counts, each line representing a transcript, each
+    column a different run.
     """
-    counts = numpy.asarray(counts)
+    counts = numpy.array(counts)
     geo_means = numpy.exp(numpy.mean(numpy.log(counts), axis=0))
     mean = counts/geo_means
     size_factors = numpy.median(mean[:,geo_means>0], axis=1)
     res = numpy.transpose(counts)/size_factors
     return res, size_factors
 
-    # DESeq code:
-    #       geomeans <- exp( rowMeans( log( counts(cds) ) ) )
-    #       sizeFactors(cds) <- 
-    #          apply( counts(cds), 2, function(cnts) 
-    #             median( ( cnts / geomeans )[ geomeans>0 ] ) )
-
 @timer
-def get_expressions(assembly_id, target=["exons","genes","transcripts"], method="normal", pileups):
+def get_expressions(pileups, assembly_id, target=["exons","genes","transcripts"]):
     """
     Get transcripts expression from exons expression values.
     Size factors are computed to make pileups comparable is one had much more
@@ -230,16 +203,14 @@ def get_expressions(assembly_id, target=["exons","genes","transcripts"], method=
     * *assembly_id* can be a numeric or nominal ID for GenRep
     (e.g. 76 or 'hg19' for H.Sapiens), or a path to a file containing a
     pickle file which is read to get the mapping.
-    
     * *target* is a string or array of strings indicating the features you want to compare.
     Targets can be 'genes', 'transcripts', or 'exons'. E.g. ['genes','transcripts'], or 'genes'.
-
     * *pileups* is a dictionary of the form {cond1: [{pileup bam1},{pileup bam2},...], cond2:...},
     where each *pileup* is a dictionary {transcript id: number of reads}.
     """
 
     print "Loading mappings..."
-    #assembly_id = "../temp/nice_features/nice_mappings" # testing code
+    assembly_id = "../temp/nice_features/nice_mappings" # testing code
     mappings = fetch_mappings(assembly_id)
     """ - gene_ids is a list of gene ID's
         - gene_names is a dict {gene ID: gene name}
@@ -250,28 +221,32 @@ def get_expressions(assembly_id, target=["exons","genes","transcripts"], method=
     print "Loaded."
     (gene_ids, gene_names, transcript_mapping, exon_mapping, trans_in_gene, exons_in_trans) = mappings
 
-    res = numpy.array([p.values() for p in pileups])
-    res = estimate_size_factors(res)
+    conditions = pileups.keys()
+    res = numpy.array([p.values() for p in pileups.values()], dtype=numpy.float32)
+    for i in range(len(res.ravel())):
+        if res.flat[i]==0: res.flat[i] += 1.0
+    res, size_factors = estimate_size_factors(res)
 
-    exon_ids = pileups[group_names[0]].keys()
+    exon_ids = pileups[conditions[0]].keys()
+    gene_ids = [e.split('|')[1] for e in exon_ids]
+    coords = [(e.split('|')[2],e.split('|')[3]) for e in exon_ids]
     exon_ids = [e.split('|')[0] for e in exon_ids]
-    cond1 = numpy.abs(numpy.array(res.rx(True,1), dtype='f')) # replicates?
-    cond2 = numpy.abs(numpy.array(res.rx(True,2), dtype='f'))
-          #abs: a zero count may become slightly negative after normalization - see DESeq
-    dexons = dict(zip(exon_ids,zip(cond1,cond2)))
-    exons_filename = save_results(translate_gene_ids(dexons, gene_names))
+    
+    dexons = dict(zip(exon_ids,zip(*res)))
+    exons_filename = save_results(translate_gene_ids(dexons, gene_names), conditions)
 
     # Get fold change for genes
     if "genes" in target:
         dgenes = genes_expression(gene_ids, exon_mapping, dexons)
-        genes_filename = save_results(translate_gene_ids(dgenes, gene_names))
-            
+        genes_filename = save_results(translate_gene_ids(dgenes, gene_names), conditions)
+
     ### Get fold change for the transcripts using pseudo-inverse
     if "transcripts" in target:
         dtrans = transcripts_expression(gene_ids, transcript_mapping, trans_in_gene, exons_in_trans, dexons)
-        trans_filename = save_results(translate_gene_ids(dtrans, gene_names))
+        trans_filename = save_results(translate_gene_ids(dtrans, gene_names), conditions)
         
-    result = {"exons":exons_filename, "genes":genes_filename, "transcripts":trans_filename}
+    result = {"exons":exons_filename, "genes":genes_filename, "transcripts":trans_filename,
+              "conditions": conditions, "size factors": size_factors}
     return result
 
 
@@ -288,14 +263,29 @@ def rnaseq_workflow(ex, job, assembly, bam_files, target=["genes"], via="lsf", o
     * *job* is a Job object (or a dictionary of the same form) as returned from
     HTSStation's frontend.
     """
-    group_names = {}; runs = {}; controls = {};
+    group_names = {}; run_names = {}; runs = {}; controls = {};
     groups = job.groups
+    """
+    job.groups:
+    {gid: {'runs':{rid:{...}},'name':str}, __ gid: {'runs':{rid:{...}},'name':str}, __ gid: ...}
+    """
     assembly_id = job.assembly_id
-    for i,group in groups.iteritems():
-        group_names[i] = str(group['name'])
-        runs[i] = group['runs'].values()
-        controls[i] = group.get('control')
+    for gid,group in groups.iteritems():
+        group_names[gid] = str(group['name']) # group_names = {gid: name}
+        for rid, run in group['runs'].iteritems():
+            runs[str(gid)+'.'+str(rid)] = (gid, run["url"])    # runs = {gid: [{run info}, {run info}]}
     if isinstance(target,str): target=[target]
+
+    """
+    bam_files:
+    {
+    ##cond## 12:
+    ##runs## {44: {'wig': {}, 'libname': 'TestA', 'stats': {'expected_coverage': 3.8000000000000002e-05, 'genome_size': 180210825, 'multi_hits': {1: 6027, 2: 3868, 3: 1979, 4: 1066, 5: 737}, 'read_length': 75, 'mismatches': {0: 20942, 1: 4600, 2: 2107}, 'actual_coverage': 7.4999999999999993e-05, 'nb_positions': 27168, 'unmapped': 0, 'total': 13677, 'alignments': {'fwd': 13266, 'total': 27649, 'rev': 14383}}, 'poisson_threshold': None, 'p_thresh': 0, 'bam': 'zE9Bv1Bweyu8Z31KkO55'}},
+
+    ##cond## 23:
+    ##runs## {55: {'wig': {}, 'libname': 'TestB', 'stats': {'expected_coverage': 3.8000000000000002e-05, 'genome_size': 180210825, 'multi_hits': {1: 6062, 2: 3999, 3: 2017, 4: 1057, 5: 621}, 'read_length': 75, 'mismatches': {0: 20819, 1: 4472, 2: 2153}, 'actual_coverage': 7.4999999999999993e-05, 'nb_positions': 27090, 'unmapped': 0, 'total': 13756, 'alignments': {'fwd': 13176, 'total': 27444, 'rev': 14268}}, 'poisson_threshold': None, 'p_thresh': 0, 'bam': 'kN0OSNhZkwapoVdmakfU'}}
+    }
+    """
     
     # All the bam_files were created against the same index, so
     # they all have the same header in the same order.  I can take
@@ -304,21 +294,27 @@ def rnaseq_workflow(ex, job, assembly, bam_files, target=["genes"], via="lsf", o
     exons = exons_labels(bam_files[groups.keys()[0]][groups.values()[0]['runs'].keys()[0]]['bam'])
     
     exon_pileups = {}
-    for cond,files in bam_files.iteritems():
-        exon_pileups[cond] = []
-        for f in files.values():
+    for gid,files in bam_files.iteritems():
+        for rid,f in files.iteritems():
+            name = group_names[gid]+'.'+str(rid)
+            exon_pileups[name] = []
+        for rid,f in files.iteritems():
+            name = group_names[gid]+'.'+str(rid)
             exon_pileup = pileup_file(f['bam'], exons) #{exon_id: count}
-            exon_pileups[cond].append(exon_pileup) #{cond1: [{pileup bam1},{pileup bam2},...], cond2:...}
+            exon_pileups[name] = exon_pileup #{cond1.run1: {pileup}, cond1.run2: {pileup}...}
 
     print "Get transcript expressions..."
-    result = get_expressions(assembly_id, target, method, exon_pileups)
+    result = get_expressions(exon_pileups, assembly_id, target)
     
-    conditions_desc = group_names.values()
+    conditions = result["conditions"]
+    print conditions
+    conditions_s = '%s and '*(len(conditions)-1)+'%s'
+    print conditions_s
     if "exons" in target:
         exons_file = result.get("exons")
         if exons_file:
             ex.add(exons_file,
-                   description="csv:Comparison of EXONS in conditions '%s' and '%s' " % conditions_desc)
+                   description="csv:Comparison of EXONS in conditions '%s' and '%s' " % conditions)
             print "EXONS: Done successfully."
         else: print >>sys.stderr, "Exons: Failed during inference, \
                                    probably because of too few reads for DESeq stats."
@@ -326,13 +322,12 @@ def rnaseq_workflow(ex, job, assembly, bam_files, target=["genes"], via="lsf", o
         genes_file = result.get("genes")
         if genes_file:
             ex.add(genes_file,
-                   description="csv:Comparison of GENES in conditions '%s' and '%s' " % conditions_desc)
+                   description="csv:Comparison of GENES in conditions '%s' and '%s' " % conditions)
             print "GENES: Done successfully."
     if "transcripts" in target:
         trans_file = result.get("transcripts");
         if trans_file:
             ex.add(trans_file,
-                   description="csv:Comparison of TRANSCRIPTS in conditions '%s' and '%s' " % conditions_desc)
+                   description="csv:Comparison of TRANSCRIPTS in conditions '%s' and '%s' " % conditions)
             print "TRANSCRIPTS: Done successfully."
-            
     print "Done."
