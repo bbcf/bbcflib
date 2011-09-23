@@ -142,23 +142,25 @@ def estimate_size_factors(counts):
     res = res.transpose()
     return res, size_factors
 
-def save_results(data, conditions=["C1","C2"], filename=None):
-    """Save results in a CSV file, one line per transcript, one column per run """
-    if not filename:
-        filename = unique_filename_in()
-    with open(filename,"wb") as f:
+def save_results(ex, data, conditions=[], name='counts', output=None):
+    """Save results in a CSV file, one line per feature, one column per run."""
+    conditions_s = '%s, '*(len(conditions)-1)+'and %s.'
+    if not output: output = unique_filename_in()
+    with open(output,"wb") as f:
         c = csv.writer(f, delimiter='\t')
         c.writerow(["id"]+conditions)
         for k,v in data.iteritems():
             c.writerow([k]+list(v))
-    return filename
+    conditions = tuple(conditions)
+    ex.add(output, description="csv:Comparison of "+name+" in conditions "+conditions_s % conditions)
+    print name+": Done successfully."
 
 @timer
 def genes_expression(gene_ids, exon_mapping, dexons):
-    z = numpy.array([[0]*len(dexons)]*len(gene_ids))
+    """Get gene counts from exons counts."""
+    ncond = len(dexons.iteritems().next()[1])
+    z = numpy.array([[0]*ncond]*len(gene_ids))
     dgenes = dict(zip(gene_ids,z))
-    print dexons.iteritems().next()[0]
-    print dexons.iteritems().next()[1]
     for e,c in dexons.iteritems():
         e = e.split('|')[0]
         if exon_mapping.get(e):
@@ -167,7 +169,9 @@ def genes_expression(gene_ids, exon_mapping, dexons):
 
 @timer
 def transcripts_expression(gene_ids, transcript_mapping, trans_in_gene, exons_in_trans, dexons):
-    z = numpy.array([[0]*len(dexons)]*len(transcript_mapping.keys()))
+    """Get transcript counts from exon counts."""
+    ncond = len(dexons.iteritems().next()[1])
+    z = numpy.array([[0]*ncond]*len(transcript_mapping.keys()))
     dtrans = dict(zip(transcript_mapping.keys(),z))
     for g in gene_ids:
         if trans_in_gene.get(g):
@@ -197,7 +201,7 @@ def transcripts_expression(gene_ids, transcript_mapping, trans_in_gene, exons_in
     return dtrans
 
 @timer
-def get_expressions(pileups, assembly_id, target=["exons","genes","transcripts"]):
+def get_expressions(ex, pileups, assembly_id, target=["genes","exons","transcripts"]):
     """
     Get transcripts expression from exons expression values.
     Size factors are computed to make pileups comparable is one had much more
@@ -213,7 +217,7 @@ def get_expressions(pileups, assembly_id, target=["exons","genes","transcripts"]
     """
 
     print "Loading mappings..."
-    assembly_id = "../temp/nice_features/nice_mappings" # testing code
+    #assembly_id = "../temp/nice_features/nice_mappings" # testing code
     mappings = fetch_mappings(assembly_id)
     """ - gene_ids is a list of gene ID's
         - gene_names is a dict {gene ID: gene name}
@@ -229,30 +233,29 @@ def get_expressions(pileups, assembly_id, target=["exons","genes","transcripts"]
     for i in range(len(res.ravel())):
         if res.flat[i]==0: res.flat[i] += 1.0
     res, size_factors = estimate_size_factors(res)
-
-    exon_ids = pileups[conditions[0]].keys()
-    gene_ids = [e.split('|')[1] for e in exon_ids]
-    coords = [(e.split('|')[2],e.split('|')[3]) for e in exon_ids]
-    exon_ids = [e.split('|')[0] for e in exon_ids]
+    print "Size factors:", size_factors
+    
+    exons = pileups[conditions[0]].keys()
+    genes = [e.split('|')[1] for e in exons]
+    coords = [(e.split('|')[2],e.split('|')[3]) for e in exons]
+    exon_ids = [e.split('|')[0] for e in exons]
     
     dexons = dict(zip(exon_ids,zip(*res)))
-    exons_filename = save_results(translate_gene_ids(dexons, gene_names), conditions=conditions)
-
-    # Get fold change for genes
-    genes_filename=None
+    if "exons" in target:
+        save_results(ex, translate_gene_ids(dexons, gene_names),
+                     conditions=conditions, name="EXONS")
+        
+    # Get counts for genes
     if "genes" in target:
         dgenes = genes_expression(gene_ids, exon_mapping, dexons)
-        genes_filename = save_results(translate_gene_ids(dgenes, gene_names), conditions=conditions)
-
-    ### Get fold change for the transcripts using pseudo-inverse
-    trans_filename=None
+        save_results(ex, translate_gene_ids(dgenes, gene_names),
+                     conditions=conditions, name="GENES")
+        
+    ### Get counts for the transcripts using pseudo-inverse
     if "transcripts" in target:
         dtrans = transcripts_expression(gene_ids, transcript_mapping, trans_in_gene, exons_in_trans, dexons)
-        trans_filename = save_results(translate_gene_ids(dtrans, gene_names), conditions=conditions)
-        
-    result = {"exons":exons_filename, "genes":genes_filename, "transcripts":trans_filename,
-              "conditions": conditions, "size factors": size_factors}
-    return result
+        save_results(ex, translate_gene_ids(dtrans, gene_names),
+                     conditions=conditions, name="TRANSCRIPTS")
 
 
 def rnaseq_workflow(ex, job, assembly, bam_files, target=["genes"], via="lsf", output=None):
@@ -265,16 +268,13 @@ def rnaseq_workflow(ex, job, assembly, bam_files, target=["genes"], via="lsf", o
     (This part of the workflow may fail if there are too few reads for DESeq to estimate
     variances amongst exons.)
     * *via*: 'local' or 'lsf'
-    * *job* is a Job object (or a dictionary of the same form) as returned from
-    HTSStation's frontend.
+    * *job*: a Job object (or a dictionary of the same form) as returned from HTSStation's frontend.
     """
-    group_names={}; run_names={}; runs={}; controls={};
-    groups = job.groups
+    group_names={}
     assembly_id = job.assembly_id
+    groups = job.groups
     for gid,group in groups.iteritems():
         group_names[gid] = str(group['name']) # group_names = {gid: name}
-        for rid, run in group['runs'].iteritems():
-            runs[str(gid)+'.'+str(rid)] = (gid, run["url"])    # runs = {gid: [{run info}, {run info}]}
     if isinstance(target,str): target=[target]
     
     # All the bam_files were created against the same index, so
@@ -282,7 +282,9 @@ def rnaseq_workflow(ex, job, assembly, bam_files, target=["genes"], via="lsf", o
     # the list of exons from just the first one and use it for all of them.
     # Format: ('exonID|geneID|start|end|strand', length)
     exons = exons_labels(bam_files[groups.keys()[0]][groups.values()[0]['runs'].keys()[0]]['bam'])
-    
+
+    # Build pileups from bam files
+    print "Build pileups"
     exon_pileups = {}
     for gid,files in bam_files.iteritems():
         for rid,f in files.iteritems():
@@ -290,30 +292,9 @@ def rnaseq_workflow(ex, job, assembly, bam_files, target=["genes"], via="lsf", o
             exon_pileups[name] = []
         for rid,f in files.iteritems():
             name = group_names[gid]+'.'+str(rid)
-            exon_pileup = pileup_file(f['bam'], exons) #{exon_id: count}
+            exon_pileup = pileup_file(f['bam'], exons) #{exon_id: counts}
             exon_pileups[name] = exon_pileup #{cond1.run1: {pileup}, cond1.run2: {pileup}...}
 
-    print "Get expressions for genes and transcripts..."
-    result = get_expressions(exon_pileups, assembly_id, target)
-    
-    conditions = tuple(result["conditions"])
-    conditions_s = '%s, '*(len(conditions)-1)+' and %s'
-    if "exons" in target:
-        exons_file = result.get("exons")
-        if exons_file:
-            ex.add(exons_file,
-                   description="csv:Comparison of EXONS in conditions "+conditions_s % conditions)
-            print "EXONS: Done successfully."
-    if "genes" in target:
-        genes_file = result.get("genes")
-        if genes_file:
-            ex.add(genes_file,
-                   description="csv:Comparison of GENES in conditions "+conditions_s % conditions)
-            print "GENES: Done successfully."
-    if "transcripts" in target:
-        trans_file = result.get("transcripts");
-        if trans_file:
-            ex.add(trans_file,
-                   description="csv:Comparison of TRANSCRIPTS in conditions "+conditions_s % conditions)
-            print "TRANSCRIPTS: Done successfully."
+    print "Get expressions"
+    get_expressions(ex, exon_pileups, assembly_id, target)
     print "Done."
