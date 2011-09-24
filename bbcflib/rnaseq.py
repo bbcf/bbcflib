@@ -90,19 +90,6 @@ def pileup_file(bamfile, exons):
     sam.close()
     return counts
 
-def pairs_to_test(controls):
-    """*controls* is a dictionary of group_ids to True/False.
-
-    If all the values are True or all the values are False, then it
-    returns all unique pairs of group IDs.  Otherwise it returns all
-    combinations of one group ID with value True and one with value False.
-    """
-    if all(controls.values()) or not(any(controls.values())):
-        return list(combinations(controls.keys(), 2))
-    else:
-        return [(x,y) for x in controls.keys() for y in controls.keys()
-                if controls[x] and not(controls[y])]
-
 def translate_gene_ids(fc_ids, dictionary):
     """Replace (unique) gene IDs by (not unique) gene names.
     *fc_ids* is a dict {gene_id: whatever}
@@ -185,9 +172,11 @@ def transcripts_expression(gene_ids, transcript_mapping, trans_in_gene, exons_in
                         ebt = exons_in_trans[t]
                     if e in ebt:
                         M[i,j] = 1
-                if dexons.get(e):
+                if dexons.get(e) is not None:
+		    print "a"
                     exons_1[i] += dexons[e][0]
                     exons_2[i] += dexons[e][1]
+	    print "b"
             transcripts_1 = numpy.dot(numpy.linalg.pinv(M),exons_1)
             transcripts_2 = numpy.dot(numpy.linalg.pinv(M),exons_2)
             for k,t in enumerate(tg):
@@ -241,9 +230,9 @@ def rnaseq_workflow(ex, job, assembly, bam_files, target=["genes"], via="lsf", o
     """ - gene_ids is a list of gene ID's
         - gene_names is a dict {gene ID: gene name}
         - transcript_mapping is a dictionary {transcript ID: gene ID}
-        - exon_mapping is a dictionary {exon ID: (transcript ID, gene ID)}
-        - trans_in_gene is a dict {gene ID: IDs of the transcripts it contains}
-        - exons_in_trans is a dict {transcript ID: IDs of the exons it contains} """
+        - exon_mapping is a dictionary {exon ID: ([transcript IDs], gene ID)}
+        - trans_in_gene is a dict {gene ID: [IDs of the transcripts it contains]}
+        - exons_in_trans is a dict {transcript ID: [IDs of the exons it contains]} """
     (gene_ids, gene_names, transcript_mapping, exon_mapping, trans_in_gene, exons_in_trans) = mappings
 
     ## Get counts for exons from bam files
