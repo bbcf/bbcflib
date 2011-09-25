@@ -159,30 +159,32 @@ def transcripts_expression(gene_ids, transcript_mapping, trans_in_gene, exons_in
     for g in gene_ids:
         if trans_in_gene.get(g):
             tg = trans_in_gene[g]
-            eg = []
+	    # get all exons in the gene
+            eg = set()
             for t in tg:
                 if exons_in_trans.get(t):
-                    eg.extend(exons_in_trans[t])
-            M = numpy.zeros((len(eg),len(tg)))
-            exons_1 = numpy.zeros(len(eg))
-            exons_2 = numpy.zeros(len(eg))
+                    eg = eg.union(set(exons_in_trans[t]))
+            # create the correspondance matrix
+	    M = numpy.zeros((len(eg),len(tg)))
+	    cexons = []; ctrans = []
+	    for c in range(ncond):
+	        cexons.append( numpy.zeros(len(eg)) )
             for i,e in enumerate(eg):
                 for j,t in enumerate(tg):
-                    if exons_in_trans.get(t):
-                        ebt = exons_in_trans[t]
-                    if e in ebt:
+                    if exons_in_trans.get(t) and e in exons_in_trans[t]:
                         M[i,j] = 1
+		# retrieve exon counts
                 if dexons.get(e) is not None:
-		    print "a"
-                    exons_1[i] += dexons[e][0]
-                    exons_2[i] += dexons[e][1]
-	    print "b"
-            transcripts_1 = numpy.dot(numpy.linalg.pinv(M),exons_1)
-            transcripts_2 = numpy.dot(numpy.linalg.pinv(M),exons_2)
-            for k,t in enumerate(tg):
+		    for c in range(ncond):
+                        cexons[c][i] += dexons[e][c]
+	    # compute transcript counts
+	    for c in range(ncond):
+                ctrans.append( numpy.dot(numpy.linalg.pinv(M),cexons[c]) )
+            # store results in a dict
+	    for k,t in enumerate(tg):
                 if dtrans.get(t) is not None:
-                    dtrans[t][0] = transcripts_1[k]
-                    dtrans[t][1] = transcripts_2[k]
+		    for c in range(ncond):
+                        dtrans[t][c] = ctrans[c][k]
     return dtrans
 
 def rnaseq_workflow(ex, job, assembly, bam_files, target=["genes"], via="lsf", output=None):
