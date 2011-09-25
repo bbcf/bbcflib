@@ -239,11 +239,11 @@ def rnaseq_workflow(ex, job, assembly, bam_files, target=["genes"], via="lsf", o
 
     ## Get counts for exons from bam files
     res = numpy.array([p.values() for p in exon_pileups.values()], dtype=numpy.float32)
+    res, size_factors = estimate_size_factors(res)
+    print "Size factors:", size_factors
     for i in range(len(res.ravel())):
         # if zero counts, add 1 for further comparisons
         if res.flat[i]==0: res.flat[i] += 1.0
-    res, size_factors = estimate_size_factors(res)
-    print "Size factors:", size_factors
 
     conditions = exon_pileups.keys()
     exons = exon_pileups[conditions[0]].keys()
