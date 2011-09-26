@@ -96,10 +96,10 @@ def translate_gene_ids(fc_ids, dictionary):
     *dictionary* is a dict {gene_id: gene_name} """
     names = []
     for s in fc_ids.keys():
-        start = s.find("ENSG")
+        start = s.find("ENS")
         if start != -1:
-            end = s.split("ENSG")[1].find("|")
-            gene_id = "ENSG" + s.split("ENSG")[1].split("|")[0]
+            end = s.split("ENS")[1].find("|")
+            gene_id = "ENS" + s.split("ENS")[1].split("|")[0]
             names.append(s.replace(gene_id, dictionary.get(gene_id,gene_id)))
         else: names.append(s)
     fc_names = dict(zip(names,fc_ids.values()))
