@@ -217,8 +217,8 @@ def pprint_bamstats(sample_stats) :
 ############################################################
 
 def map_reads( ex, fastq_file, chromosomes, bowtie_index,
-               maxhits = 5, antibody_enrichment = 50, name = '',
-               remove_pcr_duplicates = True, bwt_args = None, via = 'lsf' ):
+               maxhits=5, antibody_enrichment=50, name='',
+               remove_pcr_duplicates=True, bwt_args=None, via='lsf' ):
     """Runs ``bowtie`` in parallel over lsf for the `fastq_file` input.
     Returns the full bamfile, its filtered version (see 'remove_duplicate_reads')
     and the mapping statistics dictionary (see 'bamstats').
@@ -236,11 +236,13 @@ def map_reads( ex, fastq_file, chromosomes, bowtie_index,
     """
     if bwt_args is None:
         bwt_args = []
-    bwtarg = ["-Sam", str(max(20,maxhits)), "--best", "--strata","--chunkmbs","256"]+bwt_args
+    bwtarg = ["-Sam", str(max(20,maxhits))]+bwt_args
+    if not("--best" in bwtarg):     bwtarg += ["--best"]
+    if not("--strata" in bwtarg):   bwtarg += ["--strata"]
+    if not("--chunkmbs" in bwtarg): bwtarg += ["--chunkmbs","512"]
     if count_lines( ex, fastq_file )>10000000:
         bam = parallel_bowtie( ex, bowtie_index, fastq_file,
-                               n_lines=8000000,
-                               bowtie_args=bwtarg,
+                               n_lines=8000000, bowtie_args=bwtarg,
                                add_nh_flags=True, via=via )
     else:
         future = bowtie.nonblocking( ex, bowtie_index, fastq_file, bwtarg, via=via )
