@@ -3,6 +3,7 @@ import datetime, ConfigParser, cStringIO
 
 # Internal modules #
 from bbcflib.rnaseq import *
+from bein import execution
 
 # Unitesting modules #
 try: import unittest2 as unittest
@@ -13,8 +14,7 @@ from numpy import array
 # Nosetest flag #
 __test__ = True
 
-
-class Test_Rnaseq(unittest.TestCase):
+class Test_Expressions(unittest.TestCase):
     def setUp(self):
 	# add some that are not in the mappings from Ensembl
         e1="e1"; e2="e2";
@@ -54,7 +54,12 @@ class Test_Rnaseq(unittest.TestCase):
         self.assertEqual(self.counts.shape, res.shape)
         assert_almost_equal(size_factors, array([2.5, 0.41666]), decimal=3)
         assert_almost_equal(res, array([[10.8, 4.8],[7.2, 7.2]]))
+
+    def test_save_results(self):
+        with execution(None) as ex:
+            save_results(ex,self.dexons,conditions=["c"])
         
+class Test_NNLS(unittest.TestCase):
     def test_lsqnonneg(self):
         C = numpy.array([[0.0372, 0.2869],
                          [0.6861, 0.7071],
@@ -102,6 +107,8 @@ class Test_Rnaseq(unittest.TestCase):
         [x, resnorm, residual] = lsqnonneg(k1, l)
         dres = abs(resnorm - 2.8639)          # compare with matlab result
         self.assertLess(dres, 0.01)
+
+        
 
 #-----------------------------------#
 # This code was written by the BBCF #
