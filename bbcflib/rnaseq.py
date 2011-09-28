@@ -23,6 +23,81 @@ import csv
 
 ################################################################################
 
+def lsqnonneg(C, d, x0=None, tol=None, itmax_factor=3):
+    '''Linear least squares with nonnegativity constraints (NNLS), based on MATLAB's lsqnonneg function.
+
+    (x, resnorm, residual) = lsqnonneg(C,d) returns the vector x that minimizes norm(d-C*x)
+    subject to x >= 0, C and d must be real
+    
+    References: Lawson, C.L. and R.J. Hanson, Solving Least-Squares Problems, Prentice-Hall, Chapter 23, p. 161, 1974.
+    http://code.google.com/p/diffusion-mri/source/browse/trunk/Python/lsqnonneg.py?spec=svn17&r=17
+    '''
+    eps = 2.22e-16    # from matlab
+    def norm1(x):
+        return abs(x).sum().max()
+
+    def msize(x, dim):
+        s = x.shape
+        if dim >= len(s):
+            return 1
+        else:
+            return s[dim]
+
+    if tol is None: tol = 10*eps*norm1(C)*(max(C.shape)+1)
+    C = numpy.asarray(C)
+    (m,n) = C.shape
+    P = numpy.zeros(n)
+    Z = numpy.arange(1, n+1)
+    if x0 is None: x=P
+    else:
+        if any(x0 < 0): x=P
+        else: x=x0
+    ZZ=Z
+    resid = d - numpy.dot(C, x)
+    w = numpy.dot(C.T, resid)
+    outeriter=0; it=0
+    itmax=itmax_factor*n
+    exitflag=1
+
+    # outer loop to put variables into set to hold positive coefficients
+    while numpy.any(Z) and numpy.any(w[ZZ-1] > tol):
+        outeriter += 1
+        t = w[ZZ-1].argmax()
+        t = ZZ[t]
+        P[t-1]=t
+        Z[t-1]=0
+        PP = numpy.where(P <> 0)[0]+1
+        ZZ = numpy.where(Z <> 0)[0]+1
+        CP = numpy.zeros(C.shape)
+        CP[:, PP-1] = C[:, PP-1]
+        CP[:, ZZ-1] = numpy.zeros((m, msize(ZZ, 1)))
+        z=numpy.dot(numpy.linalg.pinv(CP), d)
+        z[ZZ-1] = numpy.zeros((msize(ZZ,1), msize(ZZ,0)))
+
+        # inner loop to remove elements from the positve set which no longer belong
+        while numpy.any(z[PP-1] <= tol):
+            it += 1
+            if it > itmax:
+                max_error = z[PP-1].max()
+                raise Exception('Exiting: Iteration count (=%d) exceeded\n Try raising the \
+                                 tolerance tol. (max_error=%d)' % (it, max_error))
+            QQ = numpy.where((z <= tol) & (P <> 0))[0]
+            alpha = min(x[QQ]/(x[QQ] - z[QQ]))
+            x = x + alpha*(z-x)
+            ij = numpy.where((abs(x) < tol) & (P <> 0))[0]+1
+            Z[ij-1] = ij
+            P[ij-1] = numpy.zeros(max(ij.shape))
+            PP = numpy.where(P <> 0)[0]+1
+            ZZ = numpy.where(Z <> 0)[0]+1
+            CP[:, PP-1] = C[:, PP-1]
+            CP[:, ZZ-1] = numpy.zeros((m, msize(ZZ, 1)))
+            z=numpy.dot(numpy.linalg.pinv(CP), d)
+            z[ZZ-1] = numpy.zeros((msize(ZZ,1), msize(ZZ,0)))
+        x = z
+        resid = d - numpy.dot(C, x)
+        w = numpy.dot(C.T, resid)
+    return (x, sum(resid * resid), resid)
+
 def fetch_mappings(path_or_assembly_id):
     """Given an assembly ID, return a tuple
     (gene_ids, gene_names, transcript_mapping, exon_mapping, trans_in_gene, exons_in_trans)
@@ -72,6 +147,8 @@ def exons_labels(bamfile):
 
 def pileup_file(bamfile, exons):
     """Return a dictionary {exon ID: count}, the pileup of *exons* from *bamfile*."""
+    # samtools.pileup??
+    # exons = sam.references
     counts = {}
     sam = pysam.Samfile(bamfile, 'rb')
 
@@ -94,6 +171,7 @@ def translate_gene_ids(fc_ids, dictionary):
     """Replace (unique) gene IDs by (not unique) gene names.
     *fc_ids* is a dict {gene_id: whatever}
     *dictionary* is a dict {gene_id: gene_name} """
+    # Maybe better use regexp here
     names = []
     for s in fc_ids.keys():
         start = s.find("ENS")
@@ -142,7 +220,7 @@ def save_results(ex, data, conditions=[], name='counts', output=None):
 def genes_expression(gene_ids, exon_mapping, dexons):
     """Get gene counts from exons counts."""
     ncond = len(dexons.iteritems().next()[1])
-    z = numpy.array([[0]*ncond]*len(gene_ids))
+    z = numpy.array([[0.]*ncond]*len(gene_ids))
     dgenes = dict(zip(gene_ids,z))
     for e,c in dexons.iteritems():
         e = e.split('|')[0]
@@ -154,7 +232,7 @@ def genes_expression(gene_ids, exon_mapping, dexons):
 def transcripts_expression(gene_ids, transcript_mapping, trans_in_gene, exons_in_trans, dexons):
     """Get transcript counts from exon counts."""
     ncond = len(dexons.iteritems().next()[1])
-    z = numpy.array([[0]*ncond]*len(transcript_mapping.keys()))
+    z = numpy.array([[0.]*ncond]*len(transcript_mapping.keys()))
     dtrans = dict(zip(transcript_mapping.keys(),z))
     for g in gene_ids:
         if trans_in_gene.get(g):
@@ -229,12 +307,12 @@ def rnaseq_workflow(ex, job, assembly, bam_files, target=["genes"], via="lsf", o
 
     #assembly_id = "../temp/nice_features/nice_mappings" # testing code
     mappings = fetch_mappings(assembly_id)
-    """ - gene_ids is a list of gene ID's
-        - gene_names is a dict {gene ID: gene name}
-        - transcript_mapping is a dictionary {transcript ID: gene ID}
-        - exon_mapping is a dictionary {exon ID: ([transcript IDs], gene ID)}
-        - trans_in_gene is a dict {gene ID: [IDs of the transcripts it contains]}
-        - exons_in_trans is a dict {transcript ID: [IDs of the exons it contains]} """
+    """ [0] gene_ids is a list of gene ID's
+        [1] gene_names is a dict {gene ID: gene name}
+        [2] transcript_mapping is a dictionary {transcript ID: gene ID}
+        [3] exon_mapping is a dictionary {exon ID: ([transcript IDs], gene ID)}
+        [4] trans_in_gene is a dict {gene ID: [IDs of the transcripts it contains]}
+        [5] exons_in_trans is a dict {transcript ID: [IDs of the exons it contains]} """
     (gene_ids, gene_names, transcript_mapping, exon_mapping, trans_in_gene, exons_in_trans) = mappings
 
     ## Get counts for exons from bam files
