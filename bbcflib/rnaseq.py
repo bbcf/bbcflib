@@ -38,10 +38,8 @@ def lsqnonneg(C, d, x0=None, tol=None, itmax_factor=3):
 
     def msize(x, dim):
         s = x.shape
-        if dim >= len(s):
-            return 1
-        else:
-            return s[dim]
+        if dim >= len(s): return 1
+        else: return s[dim]
 
     if tol is None: tol = 10*eps*norm1(C)*(max(C.shape)+1)
     C = numpy.asarray(C)
@@ -66,8 +64,8 @@ def lsqnonneg(C, d, x0=None, tol=None, itmax_factor=3):
         t = ZZ[t]
         P[t-1]=t
         Z[t-1]=0
-        PP = numpy.where(P <> 0)[0]+1
-        ZZ = numpy.where(Z <> 0)[0]+1
+        PP = numpy.where(P != 0)[0]+1
+        ZZ = numpy.where(Z != 0)[0]+1
         CP = numpy.zeros(C.shape)
         CP[:, PP-1] = C[:, PP-1]
         CP[:, ZZ-1] = numpy.zeros((m, msize(ZZ, 1)))
@@ -81,14 +79,14 @@ def lsqnonneg(C, d, x0=None, tol=None, itmax_factor=3):
                 max_error = z[PP-1].max()
                 raise Exception('Exiting: Iteration count (=%d) exceeded\n Try raising the \
                                  tolerance tol. (max_error=%d)' % (it, max_error))
-            QQ = numpy.where((z <= tol) & (P <> 0))[0]
+            QQ = numpy.where((z <= tol) & (P != 0))[0]
             alpha = min(x[QQ]/(x[QQ] - z[QQ]))
             x = x + alpha*(z-x)
             ij = numpy.where((abs(x) < tol) & (P <> 0))[0]+1
             Z[ij-1] = ij
             P[ij-1] = numpy.zeros(max(ij.shape))
-            PP = numpy.where(P <> 0)[0]+1
-            ZZ = numpy.where(Z <> 0)[0]+1
+            PP = numpy.where(P != 0)[0]+1
+            ZZ = numpy.where(Z != 0)[0]+1
             CP[:, PP-1] = C[:, PP-1]
             CP[:, ZZ-1] = numpy.zeros((m, msize(ZZ, 1)))
             z=numpy.dot(numpy.linalg.pinv(CP), d)

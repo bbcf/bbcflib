@@ -4,14 +4,17 @@ import datetime, ConfigParser, cStringIO
 # Internal modules #
 from bbcflib.rnaseq import *
 
-# Unitesting module #
-import unittest2
+# Unitesting modules #
+try: import unittest2 as unittest
+except ImportError: import unittest
+from numpy.testing import assert_almost_equal, assert_equal
+from numpy import array
 
 # Nosetest flag #
 __test__ = True
 
 
-class Test_Rnaseq(unittest2.TestCase):
+class Test_Rnaseq(unittest.TestCase):
     def setUp(self):
 	# add some that are not in the mappings from Ensembl
         e1="e1"; e2="e2";
@@ -26,26 +29,31 @@ class Test_Rnaseq(unittest2.TestCase):
         self.trans_in_gene = {g1:[t1,t2]}
         self.exons_in_trans = {t1:[e1], t2:[e1,e2]}
         """
-            Cond1
-        |=====g1====|
-        |-t1-|       
-        |-----t2----|
-          v      v   
-          27     12   
-        |.e1.| |.e2.|
-        
+            Cond1         Cond2
+        |=====g1====| |=====g1====|
+        |-t1-|        |-t1-| 
+        |-----t2----| |-----t2----|
+          v      v      v      v  
+          27     12     3      3 
+        |.e1.| |.e2.| |.e1.| |.e2.|
 	"""
     def test_transcripts_expression(self):
         texp = transcripts_expression(self.gene_ids, self.transcript_mapping,
 		self.trans_in_gene, self.exons_in_trans, self.dexons)
-        self.assertListEqual(list(texp["t1"]), [15,0])
-        self.assertListEqual(list(texp["t2"]), [12,3])
+        assert_almost_equal(texp["t1"], array([15., 0.]))
+        assert_almost_equal(texp["t2"], array([12., 3.]))
         
     def test_genes_expression(self):
         gexp = genes_expression(self.gene_ids, self.exon_mapping, self.dexons)
+        assert_almost_equal(gexp["g1"], array([39., 6.]))
         
     def test_estimate_size_factors(self):
         res, size_factors = estimate_size_factors(self.counts)
+        self.assertIsInstance(self.counts, numpy.ndarray)
+        self.assertEqual(type(self.counts), type(res))
+        self.assertEqual(self.counts.shape, res.shape)
+        assert_almost_equal(size_factors, array([2.5, 0.41666]), decimal=3)
+        assert_almost_equal(res, array([[10.8, 4.8],[7.2, 7.2]]))
         
     def test_lsqnonneg(self):
         C = numpy.array([[0.0372, 0.2869],
