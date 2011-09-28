@@ -7,7 +7,7 @@ Methods of the bbcflib's RNA-seq worfow
 """
 
 # Built-in modules #
-import os, sys, pickle, json, pysam, urllib, math, time
+import os, sys, cPickle, json, pysam, urllib, math, time
 from itertools import combinations
 
 # Internal modules #
@@ -23,7 +23,7 @@ import csv
 ################################################################################
 
 def lsqnonneg(C, d, x0=None, tol=None, itmax_factor=3):
-    '''Linear least squares with nonnegativity constraints (NNLS), based on MATLAB's lsqnonneg function.
+    """Linear least squares with nonnegativity constraints (NNLS), based on MATLAB's lsqnonneg function.
 
     (x,resnorm,res) = lsqnonneg(C,d) returns
     * the vector x that minimizes norm(d-C*x) subject to x >= 0, C and d must be real
@@ -32,7 +32,7 @@ def lsqnonneg(C, d, x0=None, tol=None, itmax_factor=3):
     
     References: Lawson, C.L. and R.J. Hanson, Solving Least-Squares Problems, Prentice-Hall, Chapter 23, p. 161, 1974.
     http://code.google.com/p/diffusion-mri/source/browse/trunk/Python/lsqnonneg.py?spec=svn17&r=17
-    '''
+    """
     eps = 2.22e-16    # from matlab
     def norm1(x):
         return abs(x).sum().max()
@@ -113,7 +113,7 @@ def fetch_mappings(path_or_assembly_id):
     """
     if os.path.exists(str(path_or_assembly_id)):
         with open(path_or_assembly_id, 'rb') as pickle_file:
-            mapping = pickle.load(pickle_file)
+            mapping = cPickle.load(pickle_file)
         print "Mapping found in", os.path.abspath(path_or_assembly_id)
         return mapping
     else:
@@ -123,7 +123,7 @@ def fetch_mappings(path_or_assembly_id):
         mdfive = assembly.md5
         mappings_path = os.path.join(grep_root,'nr_assemblies/exons_pickle/')+mdfive+".pickle"
         with open(mappings_path, 'rb') as pickle_file:
-            mapping = pickle.load(pickle_file)
+            mapping = cPickle.load(pickle_file)
         print "Mapping for assembly", mdfive, "found in /db/"
         return mapping
 
@@ -144,6 +144,7 @@ def exons_labels(bamfile):
     sam.close()
     return labels
 
+@timer
 def pileup_file(bamfile, exons):
     """Return a dictionary {exon ID: count}, the pileup of *exons* from *bamfile*."""
     # samtools.pileup??
@@ -183,12 +184,12 @@ def translate_gene_ids(fc_ids, dictionary):
     return fc_names
 
 def estimate_size_factors(counts):
-    """
-    The total number of reads may be different between conditions or replicates.
+    """The total number of reads may differ between conditions or replicates.
     This treatment makes different count sets being comparable. If rows are features
     and columns are different conditions/replicates, each column is divided by the
     geometric mean of the rows.
-    The median of these ratios is used as the size factor for this column. Size
+    The median of these ratios is used as the size factor for this column. Each
+    column is divided by its size factor in order to normalize the data. Size
     factors may be used for further variance sabilization.
     
     * *counts* is an array of counts, each line representing a transcript, each
@@ -202,10 +203,12 @@ def estimate_size_factors(counts):
     res = res.transpose()
     return res, size_factors
 
-def save_results(ex, data, conditions=[], name='counts', output=None):
-    """Save results in a CSV file, one line per feature, one column per run."""
+def save_results(ex, data, conditions=[], name='counts'):
+    """Save results in a CSV file, one line per feature, one column per run.
+    *data* is a dictionary {ID: [counts in each condition]}
+    """
     conditions_s = '%s, '*(len(conditions)-1)+'and %s.'
-    if not output: output = rstring()
+    output = rstring()
     with open(output,"wb") as f:
         c = csv.writer(f, delimiter='\t')
         c.writerow(["id"]+conditions)
@@ -257,11 +260,11 @@ def transcripts_expression(gene_ids, transcript_mapping, trans_in_gene, exons_in
             cexons = numpy.array(cexons)
 	    # Compute transcript counts
 	    for c in range(ncond):
-                # NNLS is more accurate but slow.
+                # - NNLS is more accurate but slow.
                 x, resnorm, res = lsqnonneg(M,cexons[c])
                 ctrans.append(x)
-                # Usual least squares, setting negative values to zero is fast an may work in practice (?).
-                #ctrans.append( numpy.dot(numpy.linalg.pinv(M),cexons[c]) ) # faster
+                # - Usual least squares, setting negative values to zero is fast an may work in practice (?).
+                #ctrans.append( numpy.dot(numpy.linalg.pinv(M),cexons[c]) )
             # Store results in a dict
 	    for k,t in enumerate(tg):
                 if dtrans.get(t) is not None:
@@ -269,6 +272,7 @@ def transcripts_expression(gene_ids, transcript_mapping, trans_in_gene, exons_in
                         dtrans[t][c] = ctrans[c][k]
     return dtrans
 
+@timer
 def rnaseq_workflow(ex, job, assembly, bam_files, target=["genes"], via="lsf", output=None):
     """
     Main function of the workflow. 
