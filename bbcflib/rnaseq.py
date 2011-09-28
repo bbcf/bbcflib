@@ -13,9 +13,8 @@ from itertools import combinations
 # Internal modules #
 from bbcflib.mapseq import map_groups
 from bbcflib.genrep import GenRep
-from bbcflib.common import timer, results_to_json
+from bbcflib.common import timer, results_to_json, rstring
 from bein import program
-from bein.util import unique_filename_in
 
 # Other modules #
 import numpy
@@ -26,8 +25,10 @@ import csv
 def lsqnonneg(C, d, x0=None, tol=None, itmax_factor=3):
     '''Linear least squares with nonnegativity constraints (NNLS), based on MATLAB's lsqnonneg function.
 
-    (x, resnorm, residual) = lsqnonneg(C,d) returns the vector x that minimizes norm(d-C*x)
-    subject to x >= 0, C and d must be real
+    (x,resnorm,res) = lsqnonneg(C,d) returns
+    * the vector x that minimizes norm(d-C*x) subject to x >= 0, C and d must be real
+    * the norm of residuals *resnorm*
+    * the residuals *res* 
     
     References: Lawson, C.L. and R.J. Hanson, Solving Least-Squares Problems, Prentice-Hall, Chapter 23, p. 161, 1974.
     http://code.google.com/p/diffusion-mri/source/browse/trunk/Python/lsqnonneg.py?spec=svn17&r=17
@@ -94,7 +95,7 @@ def lsqnonneg(C, d, x0=None, tol=None, itmax_factor=3):
         x = z
         resid = d - numpy.dot(C, x)
         w = numpy.dot(C.T, resid)
-    return (x, sum(resid * resid), resid)
+    return (x, sum(resid*resid), resid)
 
 def fetch_mappings(path_or_assembly_id):
     """Given an assembly ID, return a tuple
@@ -204,7 +205,7 @@ def estimate_size_factors(counts):
 def save_results(ex, data, conditions=[], name='counts', output=None):
     """Save results in a CSV file, one line per feature, one column per run."""
     conditions_s = '%s, '*(len(conditions)-1)+'and %s.'
-    if not output: output = unique_filename_in()
+    if not output: output = rstring()
     with open(output,"wb") as f:
         c = csv.writer(f, delimiter='\t')
         c.writerow(["id"]+conditions)
@@ -235,12 +236,12 @@ def transcripts_expression(gene_ids, transcript_mapping, trans_in_gene, exons_in
     for g in gene_ids:
         if trans_in_gene.get(g):
             tg = trans_in_gene[g]
-	    # get all exons in the gene
+	    # Get all exons in the gene
             eg = set()
             for t in tg:
                 if exons_in_trans.get(t):
                     eg = eg.union(set(exons_in_trans[t]))
-            # create the correspondance matrix
+            # Create the correspondance matrix
 	    M = numpy.zeros((len(eg),len(tg)))
 	    cexons = []; ctrans = []
 	    for c in range(ncond):
@@ -249,14 +250,19 @@ def transcripts_expression(gene_ids, transcript_mapping, trans_in_gene, exons_in
                 for j,t in enumerate(tg):
                     if exons_in_trans.get(t) and e in exons_in_trans[t]:
                         M[i,j] = 1
-		# retrieve exon counts
+		# Retrieve exon counts
                 if dexons.get(e) is not None:
 		    for c in range(ncond):
                         cexons[c][i] += dexons[e][c]
-	    # compute transcript counts
+            cexons = numpy.array(cexons)
+	    # Compute transcript counts
 	    for c in range(ncond):
-                ctrans.append( numpy.dot(numpy.linalg.pinv(M),cexons[c]) )
-            # store results in a dict
+                # NNLS is more accurate but slow.
+                x, resnorm, res = lsqnonneg(M,cexons[c])
+                ctrans.append(x)
+                # Usual least squares, setting negative values to zero is fast an may work in practice (?).
+                #ctrans.append( numpy.dot(numpy.linalg.pinv(M),cexons[c]) ) # faster
+            # Store results in a dict
 	    for k,t in enumerate(tg):
                 if dtrans.get(t) is not None:
 		    for c in range(ncond):
