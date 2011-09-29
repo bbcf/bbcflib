@@ -45,14 +45,20 @@ With a ``ConfigParser``, the previous code would look like::
 # Built-in modules #
 import urllib2, json, os, re
 from datetime import datetime
+
 # Internal modules #
+
 from .common import normalize_url
+
 # Other modules #
 from bein import unique_filename_in
 
+# Constants #
+default_url = 'http://bbcftools.vital-it.ch/genrep/'
+
 ################################################################################
 class GenRep(object):
-    def __init__(self, url='http://bbcftools.vital-it.ch/genrep/', root='/db/genrep', intype=0, config=None, section='genrep'):
+    def __init__(self, url=default_url, root='/db/genrep', intype=0, config=None, section='genrep'):
         """Create an object to query a GenRep repository.
 
         GenRep is the in-house repository for sequence assemblies for the
@@ -104,13 +110,13 @@ class GenRep(object):
         return urllib2.urlopen(request).read().split(',')
 
 #    def get_sequence_straight(self, input_list):
-#        """ each element in input_list are lists containing: the chromosome name, the start and the end position."""    
+#        """ each element in input_list are lists containing: the chromosome name, the start and the end position."""
 #        h_data = {}
 #        h_result = {}
-#        
+#
 #        for e in input_list:
 #            if (h_data.get(e[0]) == None):
-#                h_data[e[0]]=[] 
+#                h_data[e[0]]=[]
 #            h_data[e[0]].append([e[1],e[2]])
 #        for chr in h_data.keys():
 #            h_data[chr].sort()
@@ -125,13 +131,13 @@ class GenRep(object):
 
         Returns the name of the file and the total sequence size.
 
-        If 'out' is a (possibly empty) dictionary, will return the filled dictionary, 
-        if 'regions' is a dictionary {'chr' [[start1,end1],[start2,end2]]} 
-        or a list [['chr',start1,end1],['chr',start2,end2]], 
+        If 'out' is a (possibly empty) dictionary, will return the filled dictionary,
+        if 'regions' is a dictionary {'chr' [[start1,end1],[start2,end2]]}
+        or a list [['chr',start1,end1],['chr',start2,end2]],
         will simply iterate through its items instead of loading a track from file.
         """
         from .track import load
-        from .track.extras.sql import TrackExtras 
+        from .track.extras.sql import TrackExtras
         if out == None:
             out = unique_filename_in()
         def _push_slices(slices,start,end,name,cur_chunk):
@@ -208,7 +214,7 @@ class GenRep(object):
                             """%s/assemblies/%d.json""" % (self.url, assembly))))
             chromosomes = json.load(urllib2.urlopen(urllib2.Request(
                             """%s/chromosomes.json?assembly_id=%d""" % (self.url, assembly))))
-        except: 
+        except:
             assembly_info = json.load(urllib2.urlopen(urllib2.Request(
                             """%s/assemblies.json?assembly_name=%s""" % (self.url, assembly))))[0]
             chromosomes = json.load(urllib2.urlopen(urllib2.Request(
@@ -448,7 +454,7 @@ class Assembly(object):
         """
         return dict([(v['name'], dict([('length', v['length'])])) for v in self.chromosomes.values()])
 
-
+################################################################################
 class GenrepObject(object):
     """
     Class wich will reference all different objects used by GenRep
@@ -459,6 +465,89 @@ class GenrepObject(object):
         self.__dict__.update(info[key])
 
 
+################################################################################
+class JsonJit(object):
+    """
+    JsonJit is a class for Just In Time instantiation of JSON resources.
+    __lazy__ is called only when the first attribute is either get or set.
+    You can use it like this:
+
+        >>> from bbcflib import genrep
+        >>> print genrep.assemblies
+        [{u'source_name': u'UCSC', u'name': u'ce6', u'created_at': u'2010-12-19T20:52:31Z', u'updated_at': u'2011-01-05T14:58:43Z', u'bbcf_valid': True, u'nr_assembly_id': 106, u'source_id': 4, u'genome_id': 8, u'id': 14, u'md5': u'fd56 ......
+
+        >>> print genrep.assemblies.name
+        [u'ce6', u'danRer7', u'dm3', u'GRCh37', u'hg19', u'MLeprae_TN', u'mm9', ......
+    """
+
+    def __init__(self, url, list_key=None):
+        """
+        url: Location of the JSON to load.
+        list_key: Optional dictionary key to unpack the elements of JSON with.
+        """
+        self.__dict__['url'] = url
+        self.__dict__['list_key'] = list_key
+        self.__dict__['obj'] = None
+
+    def __lazy__(self):
+        """Fetch resource and instantiate object."""
+        import json, urllib2
+        try:
+            content = urllib2.urlopen(self.url).read()
+            # Create the child object #
+            self.__dict__['obj'] = json.loads(content)
+        except urllib2.URLError as err:
+            self.__dict__['obj'] = err
+        # Unpack the child object #
+        if self.list_key:
+            for num, item in enumerate(self.obj):
+                self.obj[num] = item[self.list_key]
+
+    def __getattr__(self, name):
+        if not self.obj: self.__lazy__()
+        # Search in the child object #
+        try: return getattr(self.obj, name)
+        except AttributeError as err:
+            # Search in the parent object #
+            if name in self.__dict__: return self.__dict__[name]
+            else: return [x.get(name) for x in self.obj]
+
+    def __setattr__(self, name, value):
+        if not self.obj: self.__lazy__()
+        try: setattr(self.obj, name, value)
+        except AttributeError:
+            self.__dict__[name] = value
+
+    def __len__(self):
+        if not self.obj: self.__lazy__()
+        return self.obj.__len__()
+
+    def __iter__(self):
+        if not self.obj: self.__lazy__()
+        return self.obj.__iter__()
+
+    def __repr__(self):
+        if not self.obj: self.__lazy__()
+        return self.obj.__repr__()
+
+    def __getitem__(self, key):
+        if not self.obj: self.__lazy__()
+        return self.obj[key]
+
+    def __setitem__(self, key, item):
+        if not self.obj: self.__lazy__()
+        self.obj[key] = item
+
+    def __delitem__(self, key):
+        if not self.obj: self.__lazy__()
+        del self.obj[key]
+
+# Expose base resources #
+organisms     = JsonJit(default_url + "organisms.json",     'organism')
+genomes       = JsonJit(default_url + "genomes.json",       'genome')
+nr_assemblies = JsonJit(default_url + "nr_assemblies.json", 'nr_assembly')
+assemblies    = JsonJit(default_url + "assemblies.json",    'assembly')
+sources       = JsonJit(default_url + "sources.json",       'source')
 
 #-----------------------------------#
 # This code was written by the BBCF #
