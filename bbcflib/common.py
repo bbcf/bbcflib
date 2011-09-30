@@ -230,6 +230,59 @@ try:
         """
         import string, random
         return "".join([random.choice(string.letters+string.digits) for x in range(len)])
+        
+    import os, sys,csv
+    
+    #-------------------------------------------------------------------------#
+
+    def writecols(file, cols, header=None, sep="\t"):
+        """Write a list of iterables *cols* as columns in a *sep*-delimited text file.
+        One can precise an array *header* to define column names.
+        The parameter *sep* defines the delimiter character between columns.
+        """
+        ncols = len(cols)
+        with open(file,"wb") as f:
+            w = csv.writer(f, delimiter=sep)
+            if header: 
+                if len(header) < len(cols):
+                    header = header + ["c"+str(i+1+len(header)) for i in range(ncols-len(header))]
+                    print >>sys.stderr, "Warning: header has less elements than there are columns."
+                elif len(header) > len(cols):
+                    header = header[:ncols]
+                    print >>sys.stderr, "Warning: header has more elements than there are columns."
+                w.writerow(header)
+            maxlen = max([len(c) for c in cols])
+            for c in cols:
+                if len(c) < maxlen:
+                    c.extend( [""]*(maxlen-len(c)) )
+            for row in zip(*cols):
+                w.writerow(row)
+
+    def readcols(filename, header=False, sep="\t", skip=0):
+        """Read a *sep*-delimited text file *filename* and stores it
+        in a dictionary, which keys are column headers if present, and values
+        are the columns of the file.
+        If *header*=True, the first line is interpreted as the header. 
+        If *header* is an array, its elements become the column headers.
+        One can skip the first *skip* lines of the file.
+        """
+        with open(filename,"rb") as f:
+            r = csv.reader(f, delimiter=sep)
+            for i in range(skip):
+                f.next()
+            if header:
+                if not getattr(header, '__iter__', False): # if not iterable
+                    header = r.next() # then the first line is read as the header
+            rows = [row for row in r]
+            if not header:
+                header = range(1,len(rows[0])+1)
+            elif len(header) != len(rows[0]):
+                header = header + [i+1+len(header) for i in range(len(rows[0])-len(header))]
+                print >>sys.stderr, "Warning: header and columns don't have the same number of elements."
+            parsedfile = dict(zip(header,zip(*rows)))
+        return parsedfile
+        
+    #-------------------------------------------------------------------------#
     
 
 except:
