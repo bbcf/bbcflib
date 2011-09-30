@@ -464,7 +464,6 @@ class GenrepObject(object):
     def __init__(self, info, key):
         self.__dict__.update(info[key])
 
-
 ################################################################################
 class JsonJit(object):
     """
@@ -472,18 +471,13 @@ class JsonJit(object):
     __lazy__ is called only when the first attribute is either get or set.
     You can use it like this:
 
-        >>> from bbcflib import genrep
-        >>> print genrep.assemblies
-        [{u'source_name': u'UCSC', u'name': u'ce6', u'created_at': u'2010-12-19T20:52:31Z', u'updated_at': u'2011-01-05T14:58:43Z', u'bbcf_valid': True, u'nr_assembly_id': 106, u'source_id': 4, u'genome_id': 8, u'id': 14, u'md5': u'fd56 ......
-
-        >>> print genrep.assemblies.name
-        [u'ce6', u'danRer7', u'dm3', u'GRCh37', u'hg19', u'MLeprae_TN', u'mm9', ......
+        assemblies = JsonJit('http://bbcftools.vital-it.ch/genrep/assemblies.json', 'assembly')
     """
 
     def __init__(self, url, list_key=None):
         """
-        url: Location of the JSON to load.
-        list_key: Optional dictionary key to unpack the elements of JSON with.
+        *url*: Location of the JSON to load.
+        *list_key*: Optional dictionary key to unpack the elements of JSON with.
         """
         self.__dict__['url'] = url
         self.__dict__['list_key'] = list_key
@@ -503,16 +497,46 @@ class JsonJit(object):
             for num, item in enumerate(self.obj):
                 self.obj[num] = item[self.list_key]
 
+    def get(self, value):
+        """Retrieve an item from the JSON
+           by searching all attributes of all items
+           for *name*"""
+        for x in self.obj:
+            if [k for k,v in x.items() if v == value]: return x
+
+    def filter(self, key, value):
+        """Retrieve an item from the JSON
+           by search a key that is equal to value in
+           all elements"""
+        return [x for x in self.obj for k,v in x.items() if v == value and k == key]
+
+    def by(self, name):
+        """Return a list of attributes present
+           in every element of the JSON"""
+        return [x.get(name).encode('ascii') for x in self.obj]
+
+    def make(self, name):
+        """Return an object whoes attributes are the
+           keys of the element's dictionary"""
+        class JsonObject(object): pass
+        obj = JsonObject()
+        obj.__dict__.update(self.get(name))
+        return obj
+
     def __getattr__(self, name):
+        """Method called when an attribute is
+           not found in __dict__."""
         if not self.obj: self.__lazy__()
         # Search in the child object #
         try: return getattr(self.obj, name)
         except AttributeError as err:
             # Search in the parent object #
             if name in self.__dict__: return self.__dict__[name]
-            else: return [x.get(name) for x in self.obj]
+            else: return self.make(name)
 
     def __setattr__(self, name, value):
+        """Method called when an attribute is
+           assigned to."""
         if not self.obj: self.__lazy__()
         try: setattr(self.obj, name, value)
         except AttributeError:
@@ -541,6 +565,28 @@ class JsonJit(object):
     def __delitem__(self, key):
         if not self.obj: self.__lazy__()
         del self.obj[key]
+
+"""
+You can now use it like this:
+
+    >>> from bbcflib import genrep
+    >>> print genrep.assemblies
+    [{u'source_name': u'UCSC', u'name': u'ce6', u'created_at': u'2010-12-19T20:52:31Z', u'updated_at': u'2011-01-05T14:58:43Z', u'bbcf_valid': True, u'nr_assembly_id': 106, u'source_id': 4, u'genome_id': 8, u'id': 14, u'md5': u'fd56 ......
+
+    >>> print genrep.assemblies.by('name')
+    ['ce6', 'danRer7', 'dm3', 'GRCh37', 'hg19', 'MLeprae_TN', ......
+
+    >>> print genrep.assemblies.get('hg19')
+    {u'bbcf_valid': True, u'created_at': u'2010-12-16T16:08:13Z', u'genome_id': 5, u'id': 11, ......
+
+    >>> print genrep.assemblies.filter('genome_id', 5)
+    [{u'bbcf_valid': False, u'created_at': u'2011-03-25T01:56:41Z', u'genome_id': 5, u'id': 22, ......
+
+    >>> print genrep.assemblies.hg19.id
+    11
+
+    Same goes for organisms, genomes, etc.
+"""
 
 # Expose base resources #
 organisms     = JsonJit(default_url + "organisms.json",     'organism')
