@@ -3,22 +3,19 @@
 Module: bbcflib.rnaseq
 ======================
 
-Methods of the bbcflib's RNA-seq worfow
+Methods of the bbcflib's RNA-seq worflow. The main function is rnaseq_workflow().
 """
 
 # Built-in modules #
-import os, sys, cPickle, json, pysam, urllib, math, time
-from itertools import combinations
+import os, sys, cPickle, json, pysam, urllib, math, time, csv
 
 # Internal modules #
 from bbcflib.mapseq import map_groups
 from bbcflib.genrep import GenRep
 from bbcflib.common import timer, results_to_json, rstring
-from bein import program
 
 # Other modules #
 import numpy
-import csv
 
 ################################################################################
 
@@ -127,16 +124,6 @@ def fetch_mappings(path_or_assembly_id):
         print "Mapping for assembly", mdfive, "found in /db/"
         return mapping
 
-def map_runs(fun, runs):
-    """Parallelization of fun(run) executions"""
-    futures = {}
-    for group_id, run_list in runs.iteritems():
-        futures[group_id] = [fun(run) for run in run_list]
-    results = {}
-    for group_id, future_list in futures.iteritems():
-        results[group_id] = [f.wait() for f in future_list]
-    return results
-
 def exons_labels(bamfile):
     """List of the exons labels (SN: 'reference sequence name'; LN: 'sequence length') in *bamfile*."""
     sam = pysam.Samfile(bamfile, 'rb')
@@ -193,7 +180,7 @@ def estimate_size_factors(counts):
     * *counts* is an array of counts, each line representing a transcript, each
     column a different run.
     """
-    numpy.seterr(all='warn') # Divisions by zero counts
+    numpy.seterr(divide='ignore') # Divisions by zero counts
     counts = numpy.array(counts)
     geo_means = numpy.exp(numpy.mean(numpy.log(counts), axis=0))
     mean = counts/geo_means
@@ -214,7 +201,7 @@ def save_results(ex, data, conditions=[], name='counts'):
         for k,v in data.iteritems():
             c.writerow([k]+list(v))
     conditions = tuple(conditions)
-    ex.add(output, description="csv:Comparison of "+name+" in conditions "+conditions_s % conditions)
+    ex.add(output, description="csv:Expression level of "+name+" in samples "+conditions_s % conditions)
     print name+": Done successfully."
 
 @timer
@@ -238,36 +225,33 @@ def transcripts_expression(gene_ids, transcript_mapping, trans_in_gene, exons_in
     for g in gene_ids:
         if trans_in_gene.get(g):
             tg = trans_in_gene[g]
-	    # Get all exons in the gene
+            # Get all exons in the gene
             eg = set()
             for t in tg:
                 if exons_in_trans.get(t):
                     eg = eg.union(set(exons_in_trans[t]))
             # Create the correspondance matrix
-	    M = numpy.zeros((len(eg),len(tg)))
-	    cexons = []; ctrans = []
-	    for c in range(ncond):
-	        cexons.append( numpy.zeros(len(eg)) )
+            M = numpy.zeros((len(eg),len(tg)))
+            cexons = []; ctrans = []
+            for c in range(ncond):
+                cexons.append( numpy.zeros(len(eg)) )
             for i,e in enumerate(eg):
                 for j,t in enumerate(tg):
                     if exons_in_trans.get(t) and e in exons_in_trans[t]:
                         M[i,j] = 1
-		# Retrieve exon counts
+                # Retrieve exon counts
                 if dexons.get(e) is not None:
-		    for c in range(ncond):
+                    for c in range(ncond):
                         cexons[c][i] += dexons[e][c]
             cexons = numpy.array(cexons)
-	    # Compute transcript counts
-	    for c in range(ncond):
-                # - NNLS is more accurate but slow.
+            # Compute transcript counts
+            for c in range(ncond):
                 x, resnorm, res = lsqnonneg(M,cexons[c])
                 ctrans.append(x)
-                # - Usual least squares, setting negative values to zero is fast an may work in practice (?).
-                #ctrans.append( numpy.dot(numpy.linalg.pinv(M),cexons[c]) )
             # Store results in a dict
-	    for k,t in enumerate(tg):
+            for k,t in enumerate(tg):
                 if dtrans.get(t) is not None:
-		    for c in range(ncond):
+                    for c in range(ncond):
                         dtrans[t][c] = ctrans[c][k]
     return dtrans
 
@@ -276,16 +260,18 @@ def rnaseq_workflow(ex, job, assembly, bam_files, target=["genes"], via="lsf", o
     """
     Main function of the workflow. 
     
-    * *output*: alternative name for output file. Otherwise it is random.
+    * *ex*: the bein's execution Id.
+    * *job*: a Job object (or a dictionary of the same form) as returned from HTSStation's frontend.
+    * *assembly*: the assembly Id of the species, string or int (e.g. 'hg19' or 76).
+    * *bam_files*: a complicated dictionary as returned by mapseq.get_bam_wig_files.
     * *target*: a string or array of strings indicating the features you want to compare.
     Targets can be 'genes', 'transcripts', or 'exons'. E.g. ['genes','transcripts'], or 'genes'.
     (This part of the workflow may fail if there are too few reads for DESeq to estimate
     variances amongst exons.)
-    * *via*: 'local' or 'lsf'
-    * *job*: a Job object (or a dictionary of the same form) as returned from HTSStation's frontend.
+    * *via*: 'local' or 'lsf'  
+    * *output*: alternative name for output file. Otherwise it is random.  
 
-    To do: -use lsf -add rpkm -control with known refseqs -debug transcripts -debug size factors
-    -exons is extracted twice
+    To do: -use lsf -pass rpkm, start, end and gene name to output -control with known refseqs
     """
     group_names={}
     assembly_id = job.assembly_id
@@ -334,13 +320,14 @@ def rnaseq_workflow(ex, job, assembly, bam_files, target=["genes"], via="lsf", o
         if res.flat[i]==0: res.flat[i] += 1.0
     
     """ Extract information from bam headers """
-    exon_lengths=[]; exon_ids=[]; genes=[]; coords=[]
+    exon_lengths=[]; exon_ids=[]; genes=[]; starts=[]; ends=[]
     for e in exons:
         exon, gene, start, end, strand = e[0].split('|')
         exon_lengths.append(e[1])
         exon_ids.append(exon)
+        starts.append(start)
+        ends.append(end)
         genes.append(gene)
-        #coords.append((start,end))
     
     dexons = dict(zip(exon_ids,zip(*res)))
     if "exons" in target:
