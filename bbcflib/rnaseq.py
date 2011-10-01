@@ -144,12 +144,10 @@ def exons_labels(bamfile):
     sam.close()
     return labels
 
-@timer
 def pileup_file(bamfile, exons):
     """Return a dictionary {exon ID: count}, the pileup of *exons* from *bamfile*."""
-    # samtools.pileup??
-    # exons = sam.references
-    counts = {}
+    # exons = sam.references #tuple
+    counts = []
     sam = pysam.Samfile(bamfile, 'rb')
 
     class Counter(object):
@@ -162,7 +160,7 @@ def pileup_file(bamfile, exons):
     for i,exon in enumerate(exons):
         sam.fetch(exon[0], 0, exon[1], callback=c) #(exon_name,0,exon_length,Counter())
         #The callback (c.n += 1) is executed for each alignment in a region
-        counts[exon[0]] = c.n
+        counts.append(c.n)
         c.n = 0
     sam.close()
     return counts
@@ -195,6 +193,7 @@ def estimate_size_factors(counts):
     * *counts* is an array of counts, each line representing a transcript, each
     column a different run.
     """
+    numpy.seterr(all='warn') # Divisions by zero counts
     counts = numpy.array(counts)
     geo_means = numpy.exp(numpy.mean(numpy.log(counts), axis=0))
     mean = counts/geo_means
@@ -301,19 +300,21 @@ def rnaseq_workflow(ex, job, assembly, bam_files, target=["genes"], via="lsf", o
     # Format: ('exonID|geneID|start|end|strand', length)
     exons = exons_labels(bam_files[groups.keys()[0]][groups.values()[0]['runs'].keys()[0]]['bam'])
 
-    ## Build pileups from bam files
+    """ Build pileups from bam files """
     print "Build pileups"
-    exon_pileups = {}
+    exon_pileups = {}; conditions = []
     for gid,files in bam_files.iteritems():
         for rid,f in files.iteritems():
-            name = group_names[gid]+'.'+str(rid)
-            exon_pileups[name] = []
+            cond = group_names[gid]+'.'+str(rid)
+            exon_pileups[cond] = []
+            conditions.append(cond)
         for rid,f in files.iteritems():
-            name = group_names[gid]+'.'+str(rid)
-            exon_pileup = pileup_file(f['bam'], exons) #{exon_id: counts}
-            exon_pileups[name] = exon_pileup #{cond1.run1: {pileup}, cond1.run2: {pileup}...}
-
+            cond = group_names[gid]+'.'+str(rid)
+            exon_pileup = pileup_file(f['bam'], exons)
+            exon_pileups[cond] = exon_pileup #{cond1.run1: {pileup}, cond1.run2: {pileup}...}
+         
     #assembly_id = "../temp/nice_features/nice_mappings" # testing code
+    print "Load mappings"
     mappings = fetch_mappings(assembly_id)
     """ [0] gene_ids is a list of gene ID's
         [1] gene_names is a dict {gene ID: gene name}
@@ -323,30 +324,34 @@ def rnaseq_workflow(ex, job, assembly, bam_files, target=["genes"], via="lsf", o
         [5] exons_in_trans is a dict {transcript ID: [IDs of the exons it contains]} """
     (gene_ids, gene_names, transcript_mapping, exon_mapping, trans_in_gene, exons_in_trans) = mappings
 
-    ## Get counts for exons from bam files
-    res = numpy.array([p.values() for p in exon_pileups.values()], dtype=numpy.float32)
+    """ Get counts for exons from bam files """
+    print "Normalize"
+    res = numpy.array([exon_pileups[cond] for cond in conditions], dtype=numpy.float32)
     res, size_factors = estimate_size_factors(res)
     print "Size factors:", size_factors
     for i in range(len(res.ravel())):
         # if zero counts, add 1 for further comparisons
         if res.flat[i]==0: res.flat[i] += 1.0
-
-    conditions = exon_pileups.keys()
-    exons = exon_pileups[conditions[0]].keys()
-    genes = [e.split('|')[1] for e in exons]
-    coords = [(e.split('|')[2],e.split('|')[3]) for e in exons]
-    exon_ids = [e.split('|')[0] for e in exons]
+    
+    """ Extract information from bam headers """
+    exon_lengths=[]; exon_ids=[]; genes=[]; coords=[]
+    for e in exons:
+        exon, gene, start, end, strand = e[0].split('|')
+        exon_lengths.append(e[1])
+        exon_ids.append(exon)
+        genes.append(gene)
+        #coords.append((start,end))
     
     dexons = dict(zip(exon_ids,zip(*res)))
     if "exons" in target:
         save_results(ex, translate_gene_ids(dexons, gene_names), conditions=conditions, name="EXONS")
         
-    ## Get counts for genes from exons
+    """ Get counts for genes from exons """
     if "genes" in target:
         dgenes = genes_expression(gene_ids, exon_mapping, dexons)
         save_results(ex, translate_gene_ids(dgenes, gene_names), conditions=conditions, name="GENES")
         
-    ## Get counts for the transcripts from exons, using pseudo-inverse
+    """ Get counts for the transcripts from exons, using pseudo-inverse """
     if "transcripts" in target:
         dtrans = transcripts_expression(gene_ids, transcript_mapping, trans_in_gene, exons_in_trans, dexons)
         save_results(ex, translate_gene_ids(dtrans, gene_names), conditions=conditions, name="TRANSCRIPTS")
