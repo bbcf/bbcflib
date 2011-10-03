@@ -10,9 +10,8 @@ Methods of the bbcflib's RNA-seq worflow. The main function is rnaseq_workflow()
 import os, sys, cPickle, json, pysam, urllib, math, time, csv
 
 # Internal modules #
-from bbcflib.mapseq import map_groups
 from bbcflib.genrep import GenRep
-from bbcflib.common import timer, results_to_json, rstring
+from bbcflib.common import timer, rstring
 
 # Other modules #
 import numpy
@@ -25,8 +24,8 @@ def lsqnonneg(C, d, x0=None, tol=None, itmax_factor=3):
     (x,resnorm,res) = lsqnonneg(C,d) returns
     * the vector x that minimizes norm(d-C*x) subject to x >= 0, C and d must be real
     * the norm of residuals *resnorm*
-    * the residuals *res* 
-    
+    * the residuals *res*
+
     References: Lawson, C.L. and R.J. Hanson, Solving Least-Squares Problems, Prentice-Hall, Chapter 23, p. 161, 1974.
     http://code.google.com/p/diffusion-mri/source/browse/trunk/Python/lsqnonneg.py?spec=svn17&r=17
     """
@@ -176,7 +175,7 @@ def estimate_size_factors(counts):
     The median of these ratios is used as the size factor for this column. Each
     column is divided by its size factor in order to normalize the data. Size
     factors may be used for further variance sabilization.
-    
+
     * *counts* is an array of counts, each line representing a transcript, each
     column a different run.
     """
@@ -193,7 +192,7 @@ def save_results(ex, data, conditions=[], name='counts'):
     """Save results in a CSV file, one line per feature, one column per run.
     *data* is a dictionary {ID: [counts in each condition]}
     """
-    conditions_s = '%s, '*(len(conditions)-1)+'and %s.'
+    conditions_s = '%s, '*(len(conditions)-1)+'%s.'
     output = rstring()
     with open(output,"wb") as f:
         c = csv.writer(f, delimiter='\t')
@@ -258,8 +257,8 @@ def transcripts_expression(gene_ids, transcript_mapping, trans_in_gene, exons_in
 @timer
 def rnaseq_workflow(ex, job, assembly, bam_files, target=["genes"], via="lsf", output=None):
     """
-    Main function of the workflow. 
-    
+    Main function of the workflow.
+
     * *ex*: the bein's execution Id.
     * *job*: a Job object (or a dictionary of the same form) as returned from HTSStation's frontend.
     * *assembly*: the assembly Id of the species, string or int (e.g. 'hg19' or 76).
@@ -268,10 +267,10 @@ def rnaseq_workflow(ex, job, assembly, bam_files, target=["genes"], via="lsf", o
     Targets can be 'genes', 'transcripts', or 'exons'. E.g. ['genes','transcripts'], or 'genes'.
     (This part of the workflow may fail if there are too few reads for DESeq to estimate
     variances amongst exons.)
-    * *via*: 'local' or 'lsf'  
-    * *output*: alternative name for output file. Otherwise it is random.  
+    * *via*: 'local' or 'lsf'
+    * *output*: alternative name for output file. Otherwise it is random.
 
-    To do: -use lsf -pass rpkm, start, end and gene name to output -control with known refseqs
+    To do: -use lsf -pass rpkm, start, end and gene name to output -control with known refseqs -sort by ratios
     """
     group_names={}
     assembly_id = job.assembly_id
@@ -279,7 +278,7 @@ def rnaseq_workflow(ex, job, assembly, bam_files, target=["genes"], via="lsf", o
     for gid,group in groups.iteritems():
         group_names[gid] = str(group['name']) # group_names = {gid: name}
     if isinstance(target,str): target=[target]
-    
+
     # All the bam_files were created against the same index, so
     # they all have the same header in the same order.  I can take
     # the list of exons from just the first one and use it for all of them.
@@ -298,7 +297,7 @@ def rnaseq_workflow(ex, job, assembly, bam_files, target=["genes"], via="lsf", o
             cond = group_names[gid]+'.'+str(rid)
             exon_pileup = pileup_file(f['bam'], exons)
             exon_pileups[cond] = exon_pileup #{cond1.run1: {pileup}, cond1.run2: {pileup}...}
-         
+
     #assembly_id = "../temp/nice_features/nice_mappings" # testing code
     print "Load mappings"
     mappings = fetch_mappings(assembly_id)
@@ -318,7 +317,7 @@ def rnaseq_workflow(ex, job, assembly, bam_files, target=["genes"], via="lsf", o
     for i in range(len(res.ravel())):
         # if zero counts, add 1 for further comparisons
         if res.flat[i]==0: res.flat[i] += 1.0
-    
+
     """ Extract information from bam headers """
     exon_lengths=[]; exon_ids=[]; genes=[]; starts=[]; ends=[]
     for e in exons:
@@ -328,16 +327,16 @@ def rnaseq_workflow(ex, job, assembly, bam_files, target=["genes"], via="lsf", o
         starts.append(start)
         ends.append(end)
         genes.append(gene)
-    
+
     dexons = dict(zip(exon_ids,zip(*res)))
     if "exons" in target:
         save_results(ex, translate_gene_ids(dexons, gene_names), conditions=conditions, name="EXONS")
-        
+
     """ Get counts for genes from exons """
     if "genes" in target:
         dgenes = genes_expression(gene_ids, exon_mapping, dexons)
         save_results(ex, translate_gene_ids(dgenes, gene_names), conditions=conditions, name="GENES")
-        
+
     """ Get counts for the transcripts from exons, using pseudo-inverse """
     if "transcripts" in target:
         dtrans = transcripts_expression(gene_ids, transcript_mapping, trans_in_gene, exons_in_trans, dexons)

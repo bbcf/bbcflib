@@ -7,7 +7,7 @@ Utility functions common to several pipelines.
 """
 
 # Built-in modules #
-import sys, time, json
+import os, sys, time, json, csv
 
 ###############################################################################
 def normalize_url(url):
@@ -230,9 +230,7 @@ try:
         """
         import string, random
         return "".join([random.choice(string.letters+string.digits) for x in range(len)])
-        
-    import os, sys,csv
-    
+
     #-------------------------------------------------------------------------#
 
     def writecols(file, cols, header=None, sep="\t"):
@@ -243,7 +241,7 @@ try:
         ncols = len(cols)
         with open(file,"wb") as f:
             w = csv.writer(f, delimiter=sep)
-            if header: 
+            if header:
                 if len(header) < len(cols):
                     header = header + ["c"+str(i+1+len(header)) for i in range(ncols-len(header))]
                     print >>sys.stderr, "Warning: header has less elements than there are columns."
@@ -262,7 +260,7 @@ try:
         """Read a *sep*-delimited text file *filename* and stores it
         in a dictionary, which keys are column headers if present, and values
         are the columns of the file.
-        If *header*=True, the first line is interpreted as the header. 
+        If *header*=True, the first line is interpreted as the header.
         If *header* is an array, its elements become the column headers.
         One can skip the first *skip* lines of the file.
         """
@@ -281,9 +279,9 @@ try:
                 print >>sys.stderr, "Warning: header and columns don't have the same number of elements."
             parsedfile = dict(zip(header,zip(*rows)))
         return parsedfile
-        
+
     #-------------------------------------------------------------------------#
-    
+
 
 except:
     print >>sys.stderr, "Bein not found.  Skipping some common functions."
