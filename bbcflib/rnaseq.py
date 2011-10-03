@@ -11,7 +11,7 @@ import os, sys, cPickle, json, pysam, urllib, math, time, csv
 
 # Internal modules #
 from bbcflib.genrep import GenRep
-from bbcflib.common import timer, rstring
+from bbcflib.common import timer, rstring, writecols
 
 # Other modules #
 import numpy

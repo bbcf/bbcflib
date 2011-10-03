@@ -282,6 +282,15 @@ try:
 
     #-------------------------------------------------------------------------#
 
+    def isnum(s):
+        """Return True if string *s* represents a number, False otherwise"""
+        try:
+            float(s)
+            return True
+        except ValueError:
+            return False
+
+
 
 except:
     print >>sys.stderr, "Bein not found.  Skipping some common functions."
