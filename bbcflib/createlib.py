@@ -241,7 +241,7 @@ def get_libForGrp(ex,group,fasta_or_assembly,new_libraries, job_id, g_rep):
 			reffile=call_gunzip(reffile)
 		else:
 			raise TypeError("library file ("+reffile+") is not valid")
-	elif 'library_file_url'' in group and group['library_file_url'] != "" :
+	elif 'library_file_url' in group and group['library_file_url'] != "" :
 		reffile=group['library_file_url']
 	else:
 		reffile=None
