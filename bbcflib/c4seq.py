@@ -164,7 +164,8 @@ def workflow_groups(ex, job, primers_dict, g_rep, mapseq_files, mapseq_url, scri
 		'density' : {},
 		'4cseq' : {}
 		}
-	job_groups=job.groups
+	
+        job_groups=job.groups
 	htss_mapseq = frontend.Frontend( url=mapseq_url )
 
 	new_libs=[]

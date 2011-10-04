@@ -163,11 +163,10 @@ class Job(object):
         if self.groups.has_key(id):
             if group is None:
                 raise ValueError("A group with ID %d was already added." % id)
-            else:
-                self.groups[id].update(group)
         else:
             self.groups[id] = {'name': name,
                                'runs': {}}
+        self.groups[id].update(group)
 
     def add_run(self, id, group, facility, facility_location, machine, machine_id, run, lane, url, key):
         try:
