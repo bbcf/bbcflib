@@ -212,7 +212,7 @@ def createLibrary(ex,fasta_allchr,params, g_rep):
 def get_libForGrp(ex,group,fasta_or_assembly,new_libraries, job_id, g_rep):
 	#wd_archive="/archive/epfl/bbcf/mleleu/pipeline_vMarion/pipeline_3Cseq/vWebServer_Bein/" #temporary: will be /scratch/cluster/monthly/htsstation/4cseq/job.id
 	lib_dir = "/scratch/cluster/monthly/htsstation/4cseq/" + str(job_id) + "/"
-	if group['library_param_file'] != "" :
+	if 'library_param_file' in group and group['library_param_file'] != "" :
 		paramslib=load_libraryParamsFile(lib_dir + group['library_param_file']);
 		lib_id=lib_exists(paramslib)
 		ex_libfile=lib_exists(paramslib,new_libraries,returnType="filename")
@@ -229,7 +229,7 @@ def get_libForGrp(ex,group,fasta_or_assembly,new_libraries, job_id, g_rep):
 		else:
 			print("This library has just been created ("+ex_libfile+")")
 			reffile=ex_libfile
-	elif group['library_id'] > 0:
+	elif 'library_id' in group and group['library_id'] > 0:
 		reffile=get_libfile(group['library_id'])
 		if reffile==None:
 			raise TypeError("No valid parameter passed for the library.")
@@ -241,7 +241,7 @@ def get_libForGrp(ex,group,fasta_or_assembly,new_libraries, job_id, g_rep):
 			reffile=call_gunzip(reffile)
 		else:
 			raise TypeError("library file ("+reffile+") is not valid")
-	elif group['library_file_url'] != "" :
+	elif 'library_file_url'' in group and group['library_file_url'] != "" :
 		reffile=group['library_file_url']
 	else:
 		reffile=None
