@@ -826,7 +826,7 @@ def get_bam_wig_files( ex, job, minilims=None, hts_url=None, suffix=['fwd','rev'
                     name += "_".join(['',run['machine'],str(run['run']),str(run['lane'])])
                 else:
                     name += "_"+os.path.splitext(file_loc.split("/")[-1])[0]
-            if file_loc.startswith("http://") or file_loc.startswith("https://"):
+            if file_loc.startswith("http://") or file_loc.startswith("https://") or file_loc.startswith("ftp://"):
                 urllib.urlretrieve( file_loc, bamfile )
                 urllib.urlretrieve( file_loc+".bai", bamfile+".bai" )
             elif os.path.exists(file_loc):
