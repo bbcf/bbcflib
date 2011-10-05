@@ -212,13 +212,16 @@ def createLibrary(ex,fasta_allchr,params, g_rep):
 def get_libForGrp(ex,group,fasta_or_assembly,new_libraries, job_id, g_rep):
 	#wd_archive="/archive/epfl/bbcf/mleleu/pipeline_vMarion/pipeline_3Cseq/vWebServer_Bein/" #temporary: will be /scratch/cluster/monthly/htsstation/4cseq/job.id
 	lib_dir = "/scratch/cluster/monthly/htsstation/4cseq/" + str(job_id) + "/"
+	print "Group:\n"
+	print group
 	if 'library_param_file' in group and group['library_param_file'] != "" :
-		paramslib=load_libraryParamsFile(lib_dir + group['library_param_file']);
+		library_filename = lib_dir + 'group_' + group['name'] + "_paramsFileLibrary.txt"
+		paramslib=load_libraryParamsFile(library_filename);
 		lib_id=lib_exists(paramslib)
 		ex_libfile=lib_exists(paramslib,new_libraries,returnType="filename")
 		print("lib_id="+str(lib_id))
 		if lib_id == 0 and ex_libfile == None :
-			print("will call createlib.createLibrary with:"+str(fasta_or_assembly)+" and "+ lib_dir + group['library_param_file'])
+			print("will call createlib.createLibrary with:"+str(fasta_or_assembly)+" and "+ library_filename)
 			libfiles=createLibrary(ex,fasta_or_assembly,paramslib, g_rep);
 			reffile=libfiles[2]
 			ex.add(reffile,description='bed:new_library_grp')
