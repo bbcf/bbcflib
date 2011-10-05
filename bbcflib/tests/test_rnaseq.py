@@ -9,14 +9,18 @@ from bein import execution
 try: import unittest2 as unittest
 except ImportError: import unittest
 from numpy.testing import assert_almost_equal, assert_equal
+
+# Other modules #
 from numpy import array
+import tempfile
 
 # Nosetest flag #
 __test__ = True
 
+
 class Test_Expressions(unittest.TestCase):
     def setUp(self):
-	# add some that are not in the mappings from Ensembl
+        # add some that are not in the mappings from Ensembl
         e1="e1"; e2="e2";
         t1="t1"; t2="t2";
         g1="g1";
@@ -31,22 +35,22 @@ class Test_Expressions(unittest.TestCase):
         """
             Cond1         Cond2
         |=====g1====| |=====g1====|
-        |-t1-|        |-t1-| 
+        |-t1-|        |-t1-|
         |-----t2----| |-----t2----|
-          v      v      v      v  
-          27     12     3      3 
+          v      v      v      v
+          27     12     3      3
         |.e1.| |.e2.| |.e1.| |.e2.|
-	"""
+        """
     def test_transcripts_expression(self):
         texp = transcripts_expression(self.gene_ids, self.transcript_mapping,
-		self.trans_in_gene, self.exons_in_trans, self.dexons)
+                    self.trans_in_gene, self.exons_in_trans, self.dexons)
         assert_almost_equal(texp["t1"], array([15., 0.]))
         assert_almost_equal(texp["t2"], array([12., 3.]))
-        
+
     def test_genes_expression(self):
         gexp = genes_expression(self.gene_ids, self.exon_mapping, self.dexons)
         assert_almost_equal(gexp["g1"], array([39., 6.]))
-        
+
     def test_estimate_size_factors(self):
         res, size_factors = estimate_size_factors(self.counts)
         self.assertIsInstance(self.counts, numpy.ndarray)
@@ -58,7 +62,17 @@ class Test_Expressions(unittest.TestCase):
     def test_save_results(self):
         with execution(None) as ex:
             save_results(ex,self.dexons,conditions=["c"])
-        
+
+
+class Test_Translation(unittest.TestCase):
+    def test_translate_gene_ids(self):
+        gene_id = "ENSG00000111640"
+        fc_ids = {gene_id:1}
+        gene_names = {"ENSG00000111640":"Gapdh"}
+        gene_name = translate_gene_ids(fc_ids,gene_names)
+        self.assertEqual(gene_name,{"Gapdh":1})
+
+
 class Test_NNLS(unittest.TestCase):
     def test_lsqnonneg(self):
         C = numpy.array([[0.0372, 0.2869],
@@ -108,7 +122,47 @@ class Test_NNLS(unittest.TestCase):
         dres = abs(resnorm - 2.8639)          # compare with matlab result
         self.assertLess(dres, 0.01)
 
-        
+
+class Test_Pileup(unittest.TestCase):
+    def setUp(self):
+        #self.bamfile = tempfile.NamedTemporaryFile()
+        #self.bam = self.bamfile.name
+        self.gene_name = "Gapdh" # Control gene - always highly expressed
+        self.gene_id = "ENSG00000111640"
+        self.chr = 12
+        self.start = 6643093
+        self.end = 6647537
+        self.exons = []
+        self.counts = []
+        self.bam = "fakebam"
+        self.bamfile = open(self.bam,"wb")
+        fakebam_content = [
+"@HD\tVN:1.0\tSO:unsorted\n",
+"@SQ\tSN:ENSE00002188685|ENSG00000111640|6645660|6645759|1\tLN:100\n",
+"@SQ\tSN:ENSE00001902446|ENSG00000111640|6647267|6647537|1\tLN:271\n",
+"C3PO_0038:5:79:17771:14659#0/1\t16\tENSE00001902446|ENSG00000111640|6647267|6647537|1\t167\t255\t75M\t*\t0\t0\tAATCTCCCCTCCTCACAGTTGCCATGTAGACCCCTTGAAGAGGGGAGGGGCCTAGGGAGCCGCACCTTGTCATGT\t`]Z`V``bb\edagdedbdbbedbacdb]abbb_bQ]`ZZVcfcc]ffffggcdgggggggggeggggggggggg\tXA:i:0\tMD:Z:75\tNM:i:0\tNH:i:5\n",
+"C3PO_0038:5:93:2476:20366#0/1\t16\tENSE00001902446|ENSG00000111640|6647267|6647537|1\t167\t255\t75M\t*\t0\t0\tAATCTCCCCTCCTCACAGTTGCCATGTAGACCCCTTGAAGAGGGGAGGGGCCTAGGGAGCCGCACCTTGTCATGT\tBBBBBBBBBB__\_V_^^_a\\\XR_aaaYabaaa_aa]_Xchhbaeffdgdfghhhhhghhhhhhhhhhhhhhh\tXA:i:0\tMD:Z:75\tNM:i:0\tNH:i:5\n",
+"C3PO_0038:5:72:16306:11928#0/1\t16\tENSE00001902446|ENSG00000111640|6647267|6647537|1\t167\t255\t75M\t*\t0\t0\tAATCTCCCCTCCTCACAGTTGCCATGTAGACCCCTTGAAGAGGGGAGGGGCCTAGGGAGCCGCACCTTGTCATGT	\[PZP\\`^\^^R^Uaacccccaac__b`Qbbb^b``b``]cffc]fffagddaggggggggggggggggggggg\tXA:i:0\tMD:Z:75\tNM:i:0\tNH:i:5\n",
+"C3PO_0038:5:94:4758:4564#0/1\t0\tENSE00002188685|ENSG00000111640|6645660|6645759|1\t6\t255\t75M\t*\t0\t0\tGTCGTATTGGGCGCCTGGTCACCAGGGCTGCTTTTAACTCTGGTAAAGTGGATATTGTTGCCATCAATGACCCCT\thhhghhhhhhhhhhhhhhhhhhhghhhghhghghhgfhhhhhhfhhhhchhdegeggdgghhdghehffcdhffb\tXA:i:0\tMD:Z:75\tNM:i:0\tNH:i:3\n",
+"C3PO_0038:5:94:14981:4668#0/1\t0\tENSE00002188685|ENSG00000111640|6645660|6645759|1\t6\t255\t75M\t*\t0\t0\tGTCGTATTGGGCGCCTGGTCACCAGGGCTGCTTTTAACTCTGGTAAAGTGGATATTGTTGCCATCAATGACCCCT\tghhhhhhhfgdhhhhgghfehhhcffhahfhchhhhfhhchchdhhhfahfdRffhabegacWaacc`cadcggd\tXA:i:0\tMD:Z:75\tNM:i:0\tNH:i:3\n" ]
+        self.bamfile.writelines(fakebam_content)
+        self.bamfile.close()
+
+    def test_exon_labels(self):
+        self.exons = exons_labels(self.bam)
+        exons = [("ENSE00002188685|ENSG00000111640|6645660|6645759|1",100),
+                 ("ENSE00001902446|ENSG00000111640|6647267|6647537|1",271)]
+        self.assertItemsEqual(self.exons,exons)
+
+    def test_pileup_file(self):
+        self.counts = pileup_file(self.bam, self.exons)
+        print self.counts,"\n"
+        counts = [3,2]
+        #self.assertItemsEqual(self.counts,counts)
+
+        os.remove(self.bam)
+
+
 
 #-----------------------------------#
 # This code was written by the BBCF #

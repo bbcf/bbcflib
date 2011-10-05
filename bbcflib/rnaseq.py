@@ -96,12 +96,12 @@ def lsqnonneg(C, d, x0=None, tol=None, itmax_factor=3):
 def fetch_mappings(path_or_assembly_id):
     """Given an assembly ID, return a tuple
     (gene_ids, gene_names, transcript_mapping, exon_mapping, trans_in_gene, exons_in_trans)
-    - gene_ids is a list of gene ID's
-    - gene_names is a dict {gene ID: gene name}
-    - transcript_mapping is a dictionary {transcript ID: gene ID}
-    - exon_mapping is a dictionary {exon ID: (transcript ID, gene ID)}
-    - trans_in_gene is a dict {gene ID: IDs of the transcripts it contains}
-    - exons_in_trans is a dict {transcript ID: IDs of the exons it contains}
+    [0] gene_ids is a list of gene ID's
+    [1] gene_names is a dict {gene ID: gene name}
+    [2] transcript_mapping is a dictionary {transcript ID: gene ID}
+    [3] exon_mapping is a dictionary {exon ID: ([transcript IDs], gene ID)}
+    [4] trans_in_gene is a dict {gene ID: [IDs of the transcripts it contains]}
+    [5] exons_in_trans is a dict {transcript ID: [IDs of the exons it contains]}
 
     *path_or_assembly_id* can be a numeric or nominal ID for GenRep
     (e.g. 11, 76 or 'hg19' for H.Sapiens), or a path to a file containing a
@@ -125,7 +125,8 @@ def fetch_mappings(path_or_assembly_id):
 
 def exons_labels(bamfile):
     """List of the exons labels (SN: 'reference sequence name'; LN: 'sequence length') in *bamfile*."""
-    sam = pysam.Samfile(bamfile, 'rb')
+    try: sam = pysam.Samfile(bamfile, 'rb')
+    except ValueError: sam = pysam.Samfile(bamfile,'r')
     labels = [(t['SN'],t['LN']) for t in sam.header['SQ']]
     sam.close()
     return labels
@@ -133,8 +134,10 @@ def exons_labels(bamfile):
 def pileup_file(bamfile, exons):
     """Return a dictionary {exon ID: count}, the pileup of *exons* from *bamfile*."""
     # exons = sam.references #tuple
+    # put it together with exons_labels? It opens the file twice.
     counts = []
-    sam = pysam.Samfile(bamfile, 'rb')
+    try: sam = pysam.Samfile(bamfile, 'rb')
+    except ValueError: sam = pysam.Samfile(bamfile,'r')
 
     class Counter(object):
         def __init__(self):
@@ -143,7 +146,7 @@ def pileup_file(bamfile, exons):
             self.n += 1
 
     c = Counter()
-    for i,exon in enumerate(exons):
+    for exon in exons:
         sam.fetch(exon[0], 0, exon[1], callback=c) #(exon_name,0,exon_length,Counter())
         #The callback (c.n += 1) is executed for each alignment in a region
         counts.append(c.n)
@@ -159,6 +162,7 @@ def translate_gene_ids(fc_ids, dictionary):
     names = []
     for s in fc_ids.keys():
         start = s.find("ENS")
+        #start = s.find(re.search(r'ENS*G',s).groups()[0])
         if start != -1:
             end = s.split("ENS")[1].find("|")
             gene_id = "ENS" + s.split("ENS")[1].split("|")[0]
@@ -203,7 +207,6 @@ def save_results(ex, data, conditions=[], name='counts'):
     ex.add(output, description="csv:Expression level of "+name+" in samples "+conditions_s % conditions)
     print name+": Done successfully."
 
-@timer
 def genes_expression(gene_ids, exon_mapping, dexons):
     """Get gene counts from exons counts."""
     ncond = len(dexons.iteritems().next()[1])
@@ -215,7 +218,6 @@ def genes_expression(gene_ids, exon_mapping, dexons):
             dgenes[exon_mapping[e][1]] += c
     return dgenes
 
-@timer
 def transcripts_expression(gene_ids, transcript_mapping, trans_in_gene, exons_in_trans, dexons):
     """Get transcript counts from exon counts."""
     ncond = len(dexons.iteritems().next()[1])
@@ -264,9 +266,7 @@ def rnaseq_workflow(ex, job, assembly, bam_files, target=["genes"], via="lsf", o
     * *assembly*: the assembly Id of the species, string or int (e.g. 'hg19' or 76).
     * *bam_files*: a complicated dictionary as returned by mapseq.get_bam_wig_files.
     * *target*: a string or array of strings indicating the features you want to compare.
-    Targets can be 'genes', 'transcripts', or 'exons'. E.g. ['genes','transcripts'], or 'genes'.
-    (This part of the workflow may fail if there are too few reads for DESeq to estimate
-    variances amongst exons.)
+    Targets can be 'genes', 'transcripts', or 'exons'.
     * *via*: 'local' or 'lsf'
     * *output*: alternative name for output file. Otherwise it is random.
 
