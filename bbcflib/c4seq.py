@@ -92,6 +92,7 @@ def loadPrimers(primersFile):
 				if re.search('Exclude',infos[len(infos)-1]):
 					n=n-1
 					primerInfos['regToExclude']=(infos[len(infos)-1]).split('=')[1]
+                                        print "primerInfos['regToExclude']: " + primerInfos['regToExclude']
 				primerInfos['seqToFilter']=infos[4:n]
 				if not name in primers:	
 					primers[name]=primerInfos
@@ -177,14 +178,14 @@ def workflow_groups(ex, job, primers_dict, g_rep, mapseq_files, mapseq_url, scri
 #		reffile='/archive/epfl/bbcf/data/DubouleDaan/library_Nla_30bps/library_Nla_30bps_segmentInfos.bed'
 		processed['lib'][gid]=reffile
 		for rid,run in group['runs'].iteritems():
-                        job_mapseq=htss_mapseq.job(run['key'])
+                        #job_mapseq=htss_mapseq.job(run['key'])
 			if 'regToExclude' in primers_dict[mapseq_files[gid][rid]['libname']]:
                                 regToExclude=primers_dict[mapseq_files[gid][rid]['libname']]['regToExclude']
 			else:
 			        regToExclude=None
-                        if not job_mapseq.options.get('compute_densities') or job_mapseq.options.get('merge_strands') != 0:
+                        if not job.options.get('compute_densities') or job.options.get('merge_strands') != 0:
 				print("will call parallel_density_sql with bam:"+mapseq_files[gid][rid]['bam']+"\n")
-				density_file=mapseq.parallel_density_sql( ex, mapseq_files[gid][rid]['bam'],
+				density_file=parallel_density_sql( ex, mapseq_files[gid][rid]['bam'],
                         						assembly.chromosomes,
                         			                        nreads=mapseq_files[gid][rid]['stats']["total"],
                                                  			merge=0,
@@ -195,8 +196,11 @@ def workflow_groups(ex, job, primers_dict, g_rep, mapseq_files, mapseq_url, scri
                         else:
                                 print("Will use existing density file:"+mapseq_files[gid][rid]['wig']['merged'])
 
-			ex.add(mapseq_files[gid][rid]['wig']['merged'],description='sql:density_file_'+mapseq_files[gid][rid]['libname'])
-			processed['density'][mapseq_files[gid][rid]['libname']]=mapseq_files[gid][rid]['wig']['merged']
+		        ex.add(mapseq_files[gid][rid]['wig']['merged'],description='sql:density_file_'+mapseq_files[gid][rid]['libname'])
+                        #ex.add(mapseq_files[gid][rid]['wig']['merged'],description='none:density_file_'+mapseq_files[gid][rid]['libname']+'.sql (template)')
+                        #ex.add(mapseq_files[gid][rid]['wig']['merged']+".sql",description='sql:density_file_'+mapseq_files[gid][rid]['libname']+'.sql (sql density file)', 
+                        #        associate_to_filename=mapseq_files[gid][rid]['wig']['merged'], template='%s'+'.sql')	
+                        processed['density'][mapseq_files[gid][rid]['libname']]=mapseq_files[gid][rid]['wig']['merged']
 
 			print("Will process to the main part of 4cseq module: calculate normalised counts per fragments from density file:"+mapseq_files[gid][rid]['wig']['merged'])
 			resfiles=density_to_countsPerFrag(ex,mapseq_files[gid][rid]['wig']['merged'],mapseq_files[gid][rid]['libname'],assembly.name,reffile,regToExclude,ex.remote_working_directory+'/',script_path, via)
