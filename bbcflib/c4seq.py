@@ -179,6 +179,7 @@ def workflow_groups(ex, job, primers_dict, g_rep, mapseq_files, mapseq_url, scri
 		processed['lib'][gid]=reffile
 		for rid,run in group['runs'].iteritems():
                         #job_mapseq=htss_mapseq.job(run['key'])
+		
 			if 'regToExclude' in primers_dict[mapseq_files[gid][rid]['libname']]:
                                 regToExclude=primers_dict[mapseq_files[gid][rid]['libname']]['regToExclude']
 			else:
