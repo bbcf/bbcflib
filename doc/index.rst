@@ -24,6 +24,7 @@ Table of Contents:
    bbcflib_mapseq
    bbcflib_chipseq
    bbcflib_rnaseq
+   bbcflib_c4seq
    bbcflib_gdv
    bbcflib_track
 
