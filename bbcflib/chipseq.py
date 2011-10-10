@@ -367,8 +367,7 @@ def workflow_groups( ex, job_or_dict, mapseq_files, chromosomes, script_path='',
                                              for x in names['controls']],via=via)
             deconv = run_deconv( ex, merged_wig[name], macsbed, chromosomes,
                                  options['read_extension'], script_path, via=via )
-            [ex.add(v, description=k+':'+name+'_deconv.'+k)
-             for k,v in deconv.iteritems()]
+            [ex.add(v, description=k+':'+name+'_deconv.'+k) for k,v in deconv.iteritems()]
             processed['deconv'][name] = deconv
             peak_list[name] = deconv['bed']
     if run_meme and not(genrep == None):
