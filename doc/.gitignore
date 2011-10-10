@@ -1,5 +1,2 @@
 # Build directories #
 /_*
-
-# Bash scripts #
-/update.sh
