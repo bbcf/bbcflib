@@ -157,6 +157,7 @@ def workflow_groups(ex, job, scriptPath):
 			paramsFile = lib_dir + 'group_' + group['name'] + "_param_file.txt"	
 			ex.add(paramsFile,description='group_' + group['name'] + '_param_file.txt')
 			params=load_paramsFile(paramsFile)
+			print(params)	
 #demultiplex(ex,infile,opts['-p'],int(opts['-s']),opts['-n'],opts['-x'],opts['-l'],via="lsf")
 			resExonerate = demultiplex(ex,infile,primersFile,params['s'],params['n'],params['x'],params['l'],via='lsf')
 			
