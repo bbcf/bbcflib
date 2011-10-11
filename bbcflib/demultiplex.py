@@ -152,8 +152,8 @@ def workflow_groups(ex, job, scriptPath):
 			lib_dir="/scratch/cluster/monthly/htsstation/demultiplexing/" + str(job.id) + "/"
 			infile=getFileFromURL(run['url'],lib_dir)
 			ex.add(infile,description="infile")
-			primersFile = lib_dir + 'group_' + group['name'] + "_primers_file.fa"	
-			ex.add(primersFile,description='group_' + group['name'] + "_primers_file.fa")
+			primersFile = lib_dir + 'group_' + group['name'] + "_primer_file.fa"	
+			ex.add(primersFile,description='group_' + group['name'] + "_primer_file.fa")
 			paramsFile = lib_dir + 'group_' + group['name'] + "_param_file.txt"	
 			ex.add(paramsFile,description='group_' + group['name'] + '_param_file.txt')
 			params=load_paramsFile(paramsFile)
