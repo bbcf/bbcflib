@@ -165,6 +165,7 @@ def workflow_groups(ex, job, scriptPath):
         		        ex.add(f,description="k:"+k+".fastq")
 
 		        print "Will filter the sequences\n"
+			print(resExonerate)	
 		        filteredFastq=filterSeq(ex,resExonerate,primersFile)
 
 		        for k,f in filteredFastq.iteritems():
