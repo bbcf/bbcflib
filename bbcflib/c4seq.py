@@ -23,6 +23,10 @@ import createlib
 # call script segToFrag.awk
 @program
 def segToFrag(in_countsPerFragFile,regToExclude=None, script_path='./'):
+	''' 
+		This function calls segToFrag.awk (which transforms the counts per segment to a normalised count per fragment) 
+		Gives the region to exclude if any 
+	'''
 	def parseStdout(p):
 		print('will parse the Stdout')
 		filename = unique_filename_in()
@@ -36,8 +40,8 @@ def segToFrag(in_countsPerFragFile,regToExclude=None, script_path='./'):
 		return {'arguments': ["awk","-f",script_path+'segToFrag.awk',in_countsPerFragFile],
 			'return_value':None}
 	else:	
-		print('will call: awk -f '+script_path+'segToFrag.awk '+' -v regToExclude='+regToExclude+' '+in_countsPerFragFile)
-		return {'arguments': ["awk","-f",script_path+'segToFrag.awk ',"-v","regToExclude="+regToExclude,in_countsPerFragFile],
+		print('will call: awk -f '+script_path+'segToFrag.awk '+' -v reg2Excl='+regToExclude+' '+in_countsPerFragFile)
+		return {'arguments': ["awk","-f",script_path+'segToFrag.awk ',"-v","reg2Excl="+regToExclude,in_countsPerFragFile],
 			'return_value':None}
 
 def call_segToFrag(*args, **kwargs):
@@ -49,6 +53,7 @@ def call_segToFrag(*args, **kwargs):
 
 # *** parse the output of call_segToFrag
 def parseSegToFrag(infile):
+	''' Parse the output of segToFrag '''
 	filename = unique_filename_in()
 	output = open(filename,'w')
 	with open(infile,"r") as f:
@@ -77,6 +82,9 @@ def call_sortOnCoord(*args, **kwargs):
 # *** Create a dictionary with infos for each primer (from file primers.fa)
 # ex: primers_dict=loadPrimers('/archive/epfl/bbcf/data/DubouleDaan/finalAnalysis/XmNGdlXjqoj6BN8Rj2Tl/primers.fa')
 def loadPrimers(primersFile):
+	'''
+		Create a dictionary with infos for each primer (from file primers.fa) 
+	'''
 	primers={}
 	with open(primersFile,'r') as f:
 		for s in f.readlines():
@@ -105,6 +113,9 @@ def loadPrimers(primersFile):
 # *** main function to compute normalised counts per fragments from a density file
 # ex: resfiles=density_to_countsPerFrag(ex,mapped_files[gid][rid]['wig']['merged'],mapped_files[gid][rid]['libname'],assembly.name,reffile,regToExclude,working_dir, script_path, 'lsf')
 def density_to_countsPerFrag(ex,density_file,density_name,assembly_name,reffile,regToExclude,wd,script_path, via='lsf'):
+	'''
+		main function to compute normalised counts per fragments from a density file 
+	'''
 	print("will call mean_score_by_feature for t1="+density_file+"(name="+density_name+") and t2="+reffile)
         outdir=unique_filename_in(wd)
         touch(ex,wd+outdir)
@@ -159,6 +170,14 @@ def density_to_countsPerFrag(ex,density_file,density_name,assembly_name,reffile,
 # *** 1.when necessary, calculate the density file from the bam file (mapseq.parallel_density_sql)
 # ### 2.calculate the count per fragment for each denstiy file with gFeatMiner:mean_score_by_feature to calculate)
 def workflow_groups(ex, job, primers_dict, g_rep, mapseq_files, mapseq_url, script_path='', via='lsf' ):
+	'''
+		# Main 
+		#-------------------------------------------#
+		# *** open the 4C-seq minilims and create execution
+		# *** 0.get/create the library 
+		# *** 1.when necessary, calculate the density file from the bam file (mapseq.parallel_density_sql)
+		# ### 2.calculate the count per fragment for each denstiy file with gFeatMiner:mean_score_by_feature to calculate)
+	'''
 	assembly = g_rep.assembly(job.assembly_id)
 	processed={
 		'lib' : {},
