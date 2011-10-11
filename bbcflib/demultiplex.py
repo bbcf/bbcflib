@@ -149,16 +149,16 @@ def createReport(ex):
 	out.write('Primer\tTotal_number_of_reads\tnFiltered\tnValidReads\n')
 	allfiles = common.get_files( ex.id, M )
 	allcounts={}
-	for f in allfiles['fastq'].iteritems()
-		curPrimer=f[0:f.index(':')]
-		if curPrimer not in allcounts: allcounts[curPrimer]=[0,0,0]
-		if re.search(r'filtered',f):
-			allcounts[curPrimer][1]=count_lines(f)
-		else:
-			allcounts[curPrimer][0]=count_lines(f)
+#	for f in allfiles['fastq']
+#		curPrimer=f[0:f.index(':')]
+#		if curPrimer not in allcounts: allcounts[curPrimer]=[0,0,0]
+#		if re.search(r'filtered',f):
+#			allcounts[curPrimer][1]=count_lines(f)
+#		else:
+#			allcounts[curPrimer][0]=count_lines(f)
 	
-	resFile=unique_filename_in()
-	call_createReport(countsFile,resFile)
+#	resFile=unique_filename_in()
+#	call_createReport(countsFile,resFile)
 #bsub -J "${runName}_generateReportDemultiplexing" -o "${wd}${runName}_generatReportDemultiplexing.log" -e "${wd}${runName}_generateReportDemultiplexing.err" "${RPath}R CMD BATCH --vanilla --no-restore '--args ${reportStep1} ${reportStep2} ${plotsDemultiplexing}' ${scriptsDirectory}plotGraphsDemultiplexing.R ${wd}${runName}_generateReportDemultiplexing.Rout"
 	
 
