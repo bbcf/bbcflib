@@ -144,12 +144,10 @@ def load_paramsFile(paramsfile):
 def workflow_groups(ex, job, scriptPath):
 	processed = {}
 	job_groups=job.groups
-#	job_groups=['group','grp2']
 	for gid, group in job_groups.iteritems():
 		for rid,run in group['runs'].iteritems():
 			print(group)
 			print(run)
-#			print("infile="+run['infile']+";group['primersFile']="+group['primersFile']+";group['paramsFile']="+group['paramsFile'])
 			lib_dir="/scratch/cluster/monthly/htsstation/demultiplexing/" + str(job.id) + "/"
 			infile=getFileFromURL(run['url'],lib_dir)
 			ex.add(infile,description="infile")
@@ -159,7 +157,7 @@ def workflow_groups(ex, job, scriptPath):
 			ex.add(paramsFile,description='group_' + group['name'] + '_param_file.txt')
 			params=load_paramsFile(paramsFile)
 			print(params)	
-#demultiplex(ex,infile,opts['-p'],int(opts['-s']),opts['-n'],opts['-x'],opts['-l'],via="lsf")
+			#demultiplex(ex,infile,opts['-p'],int(opts['-s']),opts['-n'],opts['-x'],opts['-l'],via="lsf")
 			resExonerate = demultiplex(ex,infile,primersFile,params['s'],params['n'],params['x'],params['l'],via='lsf')
 			
 	        	filteredFastq={}
@@ -167,7 +165,7 @@ def workflow_groups(ex, job, scriptPath):
         		        ex.add(f,description="k:"+k+".fastq")
 
 		        print "Will filter the sequences\n"
-		        filteredFastq=filterSeq(ex,resExonerate,group['primersFile'])
+		        filteredFastq=filterSeq(ex,resExonerate,primersFile)
 
 		        for k,f in filteredFastq.iteritems():
 		                ex.add(f,description="k:"+k+"_filtered.fastq")
@@ -175,7 +173,7 @@ def workflow_groups(ex, job, scriptPath):
 					resExonerate.append(f)
 
 			reportFile=unique_filename_in()
-			
+#		!! STILL HAVE TO GENERATE THE REPORT...	
 			ex.add(reportFile,description="pdf:report_demultiplexing")
 			resExonerate.append(reportFile)
 
