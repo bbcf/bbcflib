@@ -108,8 +108,6 @@ def workflow_groups(ex, job, scriptPath):
 #	job_groups=['group','grp2']
 	for gid, group in job_groups.iteritems():
 		for rid,run in group['runs'].iteritems():
-			group=job['group']
-			rid=gid['run']
 			print("infile="+rid['infile']+";group['primersFile']="+group['primersFile']+";group['paramsFile']=group['paramsFile']")
 #demultiplex(ex,infile,opts['-p'],int(opts['-s']),opts['-n'],opts['-x'],opts['-l'],via="lsf")
 			resExonerate = demultiplex(ex,rid['infile'],group['primersFile'],group['paramsFile'],via='lsf')
