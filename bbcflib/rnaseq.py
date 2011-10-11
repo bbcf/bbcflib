@@ -91,7 +91,8 @@ def lsqnonneg(C, d, x0=None, tol=None, itmax_factor=3):
         x = z
         resid = d - numpy.dot(C, x)
         w = numpy.dot(C.T, resid)
-    return (x, sum(resid*resid), resid)
+    #return (x, sum(resid*resid), resid)
+    return (x, sum(numpy.absolute(resid)), resid)
 
 def fetch_mappings(path_or_assembly_id):
     """Given an assembly ID, return a tuple
@@ -192,72 +193,32 @@ def estimate_size_factors(counts):
     res = res.transpose()
     return res, size_factors
 
-def save_results(ex, data, conditions=[], name='counts'):
+def save_results(ex, cols, conditions, header=[], desc='counts'):
     """Save results in a CSV file, one line per feature, one column per run.
     *data* is a dictionary {ID: [counts in each condition]}
     """
     conditions_s = '%s, '*(len(conditions)-1)+'%s.'
     output = rstring()
-    with open(output,"wb") as f:
-        c = csv.writer(f, delimiter='\t')
-        c.writerow(["id"]+conditions)
-        for k,v in data.iteritems():
-            c.writerow([k]+list(v))
+    writecols(output,cols,header=header, sep="\t")
     conditions = tuple(conditions)
-    ex.add(output, description="csv:Expression level of "+name+" in samples "+conditions_s % conditions)
-    print name+": Done successfully."
-
-def genes_expression(gene_ids, exon_mapping, dexons):
-    """Get gene counts from exons counts."""
-    ncond = len(dexons.iteritems().next()[1])
-    z = numpy.array([[0.]*ncond]*len(gene_ids))
-    dgenes = dict(zip(gene_ids,z))
-    for e,c in dexons.iteritems():
-        e = e.split('|')[0]
-        if exon_mapping.get(e):
-            dgenes[exon_mapping[e][1]] += c
-    return dgenes
-
-def transcripts_expression(gene_ids, transcript_mapping, trans_in_gene, exons_in_trans, dexons):
-    """Get transcript counts from exon counts."""
-    ncond = len(dexons.iteritems().next()[1])
-    z = numpy.array([[0.]*ncond]*len(transcript_mapping.keys()))
-    dtrans = dict(zip(transcript_mapping.keys(),z))
-    for g in gene_ids:
-        if trans_in_gene.get(g):
-            tg = trans_in_gene[g]
-            # Get all exons in the gene
-            eg = set()
-            for t in tg:
-                if exons_in_trans.get(t):
-                    eg = eg.union(set(exons_in_trans[t]))
-            # Create the correspondance matrix
-            M = numpy.zeros((len(eg),len(tg)))
-            cexons = []; ctrans = []
-            for c in range(ncond):
-                cexons.append( numpy.zeros(len(eg)) )
-            for i,e in enumerate(eg):
-                for j,t in enumerate(tg):
-                    if exons_in_trans.get(t) and e in exons_in_trans[t]:
-                        M[i,j] = 1
-                # Retrieve exon counts
-                if dexons.get(e) is not None:
-                    for c in range(ncond):
-                        cexons[c][i] += dexons[e][c]
-            cexons = numpy.array(cexons)
-            # Compute transcript counts
-            for c in range(ncond):
-                x, resnorm, res = lsqnonneg(M,cexons[c])
-                ctrans.append(x)
-            # Store results in a dict
-            for k,t in enumerate(tg):
-                if dtrans.get(t) is not None:
-                    for c in range(ncond):
-                        dtrans[t][c] = ctrans[c][k]
-    return dtrans
+    ex.add(output, description="csv:Expression level of "+desc+" in sample(s) "+conditions_s % conditions)
+    print desc+": Done successfully."
 
 @timer
-def rnaseq_workflow(ex, job, assembly, bam_files, target=["genes"], via="lsf", output=None):
+def genes_expression(exons_data, exon_to_gene, ncond):
+    """Get gene counts from exons counts."""
+    # this is stupid because we already have the correspondance exon-gene, but works.
+    genes = exons_data[1]
+    z = numpy.array([[0.]*ncond]*len(genes))
+    gcounts = dict(zip(genes,z))
+    grpkms = dict(zip(genes,z))
+    for e,c in zip(exons_data[0],zip(*exons_data[2:ncond+ncond+2])):
+        gcounts[exon_to_gene[e]] += c[:ncond]
+        grpkms[exon_to_gene[e]] += c[ncond:]
+    return gcounts,grpkms
+
+@timer
+def rnaseq_workflow(ex, job, assembly, bam_files, pileup_level=["genes"], via="lsf", output=None):
     """
     Main function of the workflow.
 
@@ -265,7 +226,7 @@ def rnaseq_workflow(ex, job, assembly, bam_files, target=["genes"], via="lsf", o
     * *job*: a Job object (or a dictionary of the same form) as returned from HTSStation's frontend.
     * *assembly*: the assembly Id of the species, string or int (e.g. 'hg19' or 76).
     * *bam_files*: a complicated dictionary as returned by mapseq.get_bam_wig_files.
-    * *target*: a string or array of strings indicating the features you want to compare.
+    * *pileup_level*: a string or array of strings indicating the features you want to compare.
     Targets can be 'genes', 'transcripts', or 'exons'.
     * *via*: 'local' or 'lsf'
     * *output*: alternative name for output file. Otherwise it is random.
@@ -277,7 +238,7 @@ def rnaseq_workflow(ex, job, assembly, bam_files, target=["genes"], via="lsf", o
     groups = job.groups
     for gid,group in groups.iteritems():
         group_names[gid] = str(group['name']) # group_names = {gid: name}
-    if isinstance(target,str): target=[target]
+    if isinstance(pileup_level,str): pileup_level=[pileup_level]
 
     # All the bam_files were created against the same index, so
     # they all have the same header in the same order.  I can take
@@ -296,10 +257,10 @@ def rnaseq_workflow(ex, job, assembly, bam_files, target=["genes"], via="lsf", o
         for rid,f in files.iteritems():
             cond = group_names[gid]+'.'+str(rid)
             exon_pileup = pileup_file(f['bam'], exons)
-            exon_pileups[cond] = exon_pileup #{cond1.run1: {pileup}, cond1.run2: {pileup}...}
+            exon_pileups[cond] = exon_pileup # {cond1.run1: {pileup}, cond1.run2: {pileup}...}
 
-    #assembly_id = "../temp/nice_features/nice_mappings" # testing code
     print "Load mappings"
+    #assembly_id = "../temp/nice_features/nice_mappings" # testing code
     mappings = fetch_mappings(assembly_id)
     """ [0] gene_ids is a list of gene ID's
         [1] gene_names is a dict {gene ID: gene name}
@@ -309,35 +270,94 @@ def rnaseq_workflow(ex, job, assembly, bam_files, target=["genes"], via="lsf", o
         [5] exons_in_trans is a dict {transcript ID: [IDs of the exons it contains]} """
     (gene_ids, gene_names, transcript_mapping, exon_mapping, trans_in_gene, exons_in_trans) = mappings
 
-    """ Get counts for exons from bam files """
-    print "Normalize"
-    res = numpy.array([exon_pileups[cond] for cond in conditions], dtype=numpy.float32)
-    res, size_factors = estimate_size_factors(res)
-    print "Size factors:", size_factors
-    for i in range(len(res.ravel())):
-        # if zero counts, add 1 for further comparisons
-        if res.flat[i]==0: res.flat[i] += 1.0
-
     """ Extract information from bam headers """
-    exon_lengths=[]; exon_ids=[]; genes=[]; starts=[]; ends=[]
+    exon_lengths=[]; exonsID=[]; genesID=[]; genesName=[]; starts=[]; ends=[]; exon_to_gene={}
     for e in exons:
-        exon, gene, start, end, strand = e[0].split('|')
+        exon, gene, start, end, strand = e[0].split('|') # fails
         exon_lengths.append(e[1])
-        exon_ids.append(exon)
+        exonsID.append(exon)
+        exon_to_gene[exon] = gene
         starts.append(start)
         ends.append(end)
-        genes.append(gene)
+        genesID.append(gene)
+        genesName.append(gene_names.get(gene,gene))
 
-    dexons = dict(zip(exon_ids,zip(*res)))
-    if "exons" in target:
-        save_results(ex, translate_gene_ids(dexons, gene_names), conditions=conditions, name="EXONS")
+    """ Treat data """
+    print "Process data"
+    starts = numpy.asarray(starts, dtype=numpy.int_)
+    ends = numpy.asarray(ends, dtype=numpy.int_)
+    counts = numpy.asarray([exon_pileups[cond] for cond in conditions], dtype=numpy.float_)
+    #counts, size_factors = estimate_size_factors(counts)
+    for i in range(len(counts.ravel())):
+        if counts.flat[i]==0: counts.flat[i] += 1.0 # if zero counts, add 1 for further comparisons
+    rpkms = counts/(starts-ends)
+    exons_data = [exonsID,genesID]+list(counts)+list(rpkms)+[starts,ends,genesName]
+    print "Get counts"
+
+    """ Print counts for exons """
+    if "exons" in pileup_level:
+        header = ["ExonID","GeneID"] + conditions*2 + ["Start","End","GeneName"]
+        save_results(ex, exons_data, conditions, header=header, desc="EXONS")
 
     """ Get counts for genes from exons """
-    if "genes" in target:
-        dgenes = genes_expression(gene_ids, exon_mapping, dexons)
-        save_results(ex, translate_gene_ids(dgenes, gene_names), conditions=conditions, name="GENES")
+    if "genes" in pileup_level:
+        header = ["GeneID"] + conditions*2 #+ ["Start","End","GeneName"]
+        gcounts,grpkms = genes_expression(exons_data, exon_to_gene, len(conditions))
+        genes_data = [gcounts.keys()]+list(zip(*gcounts.values()))+list(zip(*grpkms.values()))
+        save_results(ex, genes_data, conditions, header=header, desc="GENES")
+
+    @timer
+    def Ttranscripts_expression(exons_data, transcript_mapping, trans_in_gene, exons_in_trans, ncond):
+        """Get transcript counts from exon counts."""
+        genes = list(set(exons_data[1]))
+        exons_counts = dict(zip( exons_data[0], zip(*exons_data[2:ncond+2])) )
+        z = numpy.zeros((len(transcript_mapping.keys()),ncond))
+        tcounts = dict(zip(transcript_mapping.keys(),z))
+        totalerror = 0
+        total = 0
+        for g in genes:
+            if trans_in_gene.get(g): # if the gene is still in the Ensembl database
+                # Get all transcripts in the gene
+                tg = trans_in_gene[g]
+                # Get all exons in the gene
+                eg = set()
+                for t in tg:
+                    if exons_in_trans.get(t):
+                        eg = eg.union(set(exons_in_trans[t]))
+                # Create the correspondance matrix
+                M = numpy.zeros((len(eg),len(tg)))
+                ecnts = numpy.zeros((ncond,len(eg)))
+                tcnts = []
+                for i,e in enumerate(eg):
+                    for j,t in enumerate(tg):
+                        if exons_in_trans.get(t) and e in exons_in_trans[t]:
+                            M[i,j] = 1
+                    # Retrieve exon counts
+                    if exons_counts.get(e) is not None:
+                        for c in range(ncond):
+                            ecnts[c][i] += exons_counts[e][c]
+                # Compute transcript counts
+                for c in range(ncond):
+                    tcnts.append( numpy.dot(numpy.linalg.pinv(M),ecnts[c]) ) # Pseudo-inverse method
+                    totalerror += numpy.linalg.norm(numpy.dot(M,numpy.linalg.pinv(M))-numpy.identity(min(numpy.shape(M))),1)
+                    #x, resnorm, res = lsqnonneg(M,ecnts[c])
+                    #tcnts.append(x)
+                    #totalerror += resnorm
+                    total += numpy.sum(ecnts[c])
+                # Store results in a dict *tcounts*
+                for k,t in enumerate(tg):
+                    if tcounts.get(t) is not None:
+                        for c in range(ncond):
+                            tcounts[t][c] = tcnts[c][k]
+        print "Error, in number of reads:",int(totalerror)
+        print "Total number of reads:",int(total)
+        print "Ratio error/total:",float(totalerror)/total
+        return tcounts, totalerror
 
     """ Get counts for the transcripts from exons, using pseudo-inverse """
-    if "transcripts" in target:
-        dtrans = transcripts_expression(gene_ids, transcript_mapping, trans_in_gene, exons_in_trans, dexons)
-        save_results(ex, translate_gene_ids(dtrans, gene_names), conditions=conditions, name="TRANSCRIPTS")
+    if "transcripts" in pileup_level:
+        header = ["TranscriptID","GeneID"] + conditions #*2 + ["Start","End","GeneName"]
+        tcounts, res = Ttranscripts_expression(exons_data,
+                            transcript_mapping,trans_in_gene,exons_in_trans,len(conditions))
+        trans_data = [tcounts.keys()]+list(zip(*tcounts.values()))
+        save_results(ex, trans_data, conditions, header=header, desc="TRANSCRIPTS")
