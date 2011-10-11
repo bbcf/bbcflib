@@ -42,7 +42,7 @@ def load_libraryParamsFile(paramsfile):
 
  
 @program
-def call_getRestEnzymeOccAndSeq(assembly_or_fasta,prim_site,sec_site,l_seg,g_rep, remote_working_directory, l_type='typeI',script_path):
+def call_getRestEnzymeOccAndSeq(assembly_or_fasta,prim_site,sec_site,l_seg,g_rep, remote_working_directory, script_path, l_type='typeI'):
 	'''
 		Will create segments and fragments files of the new library from the genome sequence (via a call to getRestEnzymeOccAndSeq.pl)
 		The genome sequence (assembly_or_fasta) can be given either as a genrep assembly or as a fasta file.  
@@ -226,7 +226,7 @@ def createLibrary(ex,fasta_allchr,params, g_rep,script_path):
 		return [None,None,None,None]
 	print('Will call call_getRestEnzymeOccAndSeq')
 	print(fasta_allchr)
-	libfiles=call_getRestEnzymeOccAndSeq(ex,fasta_allchr,params['primary'],params['secondary'],params['length'],g_rep, ex.remote_working_directory + "/", params['type'],script_path)
+	libfiles=call_getRestEnzymeOccAndSeq(ex,fasta_allchr,params['primary'],params['secondary'],params['length'],g_rep, ex.remote_working_directory + "/", script_path, params['type'])
 	print('parse fragment file to create segment info bed file and fragment bed file\n')
 	bedfiles=parse_fragFile(libfiles[1])
 	print('calculate coverage in repeats for segments')
