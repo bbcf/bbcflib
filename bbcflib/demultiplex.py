@@ -248,7 +248,7 @@ def filterSeq(ex,fastqFiles,primersFile):
 			futures[k]=bowtie.nonblocking( ex, bowtie_index[k], fastqFiles[k],  
                                      bwtarg, via='lsf')
 		else:
-			print("key"+k"not defined in fastqFiles")
+			print("key "+k+" is not defined in fastqFiles")
 			print fastqFiles
 
 	for k,f in filenames.iteritems():
