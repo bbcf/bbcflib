@@ -102,6 +102,18 @@ def demultiplex(ex,fastaFile,dbFile,minScore=77,n=1,x=22,l=30,via="local"):
                         	resFiles[k]=v
 	return resFiles
 
+
+def getFileFromURL(file_loc,od=""):
+	resfile=os.path.join(od,unique_filename_in())
+        if file_loc.startswith("http://") or file_loc.startswith("https://") or file_loc.startswith("ftp://"):
+		urllib.urlretrieve( file_loc, resfile )
+        elif os.path.exists(file_loc):
+                shutil.copy( file_loc, resfile )
+	else
+		raise ValueError("Couldn't find this file anywhere: %s." %file_loc)
+
+	return resfile
+
 def workflow_groups(ex, job, scriptPath):
 	processed = {}
 	job_groups=job.groups
@@ -113,10 +125,15 @@ def workflow_groups(ex, job, scriptPath):
 #			print("infile="+run['infile']+";group['primersFile']="+group['primersFile']+";group['paramsFile']="+group['paramsFile'])
 
 	if 1<0:
+			lib_dir="/scratch/cluster/monthly/htsstation/demultiplexing/" + str(job_id) + "/"
+			infile=lib_dir+getFileFromURL(run['url'])
+			primersFile = lib_dir + 'group_' + group['name'] + "_primers_file.txt"	
+			paramsFile = lib_dir + 'group_' + group['name'] + "_param_file.txt"	
 #demultiplex(ex,infile,opts['-p'],int(opts['-s']),opts['-n'],opts['-x'],opts['-l'],via="lsf")
-			resExonerate = demultiplex(ex,rid['infile'],group['primersFile'],group['paramsFile'],via='lsf')
+			resExonerate = demultiplex(ex,rid['url'],group['primer_file'],group['param_file'],via='lsf')
 	# !! STILL NEED TO PARSE THE paramsFile
-			ex.add(rid['infile'],description="infile")
+			
+			ex.add(rid['url'],description="infile")
 	        	filteredFastq={}
 	        	for k,f in resExonerate.iteritems():
         		        ex.add(f,description="k:"+k+".fastq")
