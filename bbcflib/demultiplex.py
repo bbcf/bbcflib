@@ -133,7 +133,7 @@ def load_paramsFile(paramsfile):
 			if re.search('Generate fastq output files (-q;leave blank otherwise)',k):
 				if re.search('Y',v) or re.search('y',v):
 					params['q']=True
-				else
+				else:
 					params['q']=False
 			if re.search('Length of the reads to align (-l 30)',k):
 				params['l']=v
