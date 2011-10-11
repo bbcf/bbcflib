@@ -109,7 +109,7 @@ def getFileFromURL(file_loc,od=""):
 		urllib.urlretrieve( file_loc, resfile )
         elif os.path.exists(file_loc):
                 shutil.copy( file_loc, resfile )
-	else
+	else:
 		raise ValueError("Couldn't find this file anywhere: %s." %file_loc)
 
 	return resfile
