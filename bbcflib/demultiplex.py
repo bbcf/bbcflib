@@ -127,7 +127,7 @@ def load_paramsFile(paramsfile):
 				(k,v)=s.split('=')
 				if re.search('Search the primer from base i',k):
 					params['n']=v
-				if re.search('Search the primer in the next n bps of the reads [i to i+n]',k):
+				if re.search('Search the primer in the next n bps of the reads',k):
 					params['x']=v
 				if re.search('Minimum score for Exonerate',k):
 					params['s']=v
