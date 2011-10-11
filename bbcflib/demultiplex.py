@@ -109,6 +109,8 @@ def workflow_groups(ex, job, scriptPath):
 	for gid, group in job_groups.iteritems():
 		for rid,run in group['runs'].iteritems():
 			print("infile="+run['infile']+";group['primersFile']="+group['primersFile']+";group['paramsFile']="+group['paramsFile'])
+
+	if 1<0:
 #demultiplex(ex,infile,opts['-p'],int(opts['-s']),opts['-n'],opts['-x'],opts['-l'],via="lsf")
 			resExonerate = demultiplex(ex,rid['infile'],group['primersFile'],group['paramsFile'],via='lsf')
 	# !! STILL NEED TO PARSE THE paramsFile
