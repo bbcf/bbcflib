@@ -108,7 +108,9 @@ def workflow_groups(ex, job, scriptPath):
 #	job_groups=['group','grp2']
 	for gid, group in job_groups.iteritems():
 		for rid,run in group['runs'].iteritems():
-			print("infile="+run['infile']+";group['primersFile']="+group['primersFile']+";group['paramsFile']="+group['paramsFile'])
+			print(group)
+			print(run)
+#			print("infile="+run['infile']+";group['primersFile']="+group['primersFile']+";group['paramsFile']="+group['paramsFile'])
 
 	if 1<0:
 #demultiplex(ex,infile,opts['-p'],int(opts['-s']),opts['-n'],opts['-x'],opts['-l'],via="lsf")
