@@ -237,16 +237,20 @@ def filterSeq(ex,fastqFiles,primersFile):
 	alignedFiles={}
 	futures={}
 
-	for k,f in filenames.iteritems():		
-		#bowtie_index[k]=indexFiles[k]
-		bowtie_index[k]=indexFiles[k].wait()
-		unalignedFiles[k]=unique_filename_in()
-		print("primer="+k+"=>index="+bowtie_index[k])
-		print "Will filter reads (call bowtie)\n"
-		bwtarg=["-a","-q","-n","2","-l","20","--un",unalignedFiles[k]]
-		futures[k]=bowtie.nonblocking( ex, bowtie_index[k], fastqFiles[k],  
+	for k,f in filenames.iteritems():	
+		if k in fastqFiles:	
+			#bowtie_index[k]=indexFiles[k]
+			bowtie_index[k]=indexFiles[k].wait()
+			unalignedFiles[k]=unique_filename_in()
+			print("primer="+k+"=>index="+bowtie_index[k])
+			print "Will filter reads (call bowtie)\n"
+			bwtarg=["-a","-q","-n","2","-l","20","--un",unalignedFiles[k]]
+			futures[k]=bowtie.nonblocking( ex, bowtie_index[k], fastqFiles[k],  
                                      bwtarg, via='lsf')
-	
+		else:
+			print("key"+k"not defined in fastqFiles")
+			print fastqFiles
+
 	for k,f in filenames.iteritems():
 		alignedFiles[k]=futures[k].wait()
 
