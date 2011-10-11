@@ -143,7 +143,7 @@ def call_createReport(numbersFile,reportFile):
         	'return_value':None}
 
 
-def createReport(ex)
+def createReport(ex):
 	countsFile=unique_filename_in()
 	out=open(countsFile,'w')
 	out.write('Primer\tTotal_number_of_reads\tnFiltered\tnValidReads\n')
