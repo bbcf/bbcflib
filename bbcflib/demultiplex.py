@@ -125,18 +125,18 @@ def load_paramsFile(paramsfile):
 			if not re.search('^#',s):
 				s=s.strip('\n')
 				(k,v)=s.split('=')
-				if re.search('Search the primer from base i (-n)',k):
+				if re.search('Search the primer from base i',k):
 					params['n']=v
-				if re.search('Search the primer in the next n bps of the reads [i to i+n] (-x 22)',k):
+				if re.search('Search the primer in the next n bps of the reads [i to i+n]',k):
 					params['x']=v
-				if re.search('Minimum score for Exonerate (-s 75)',k):
+				if re.search('Minimum score for Exonerate',k):
 					params['s']=v
-				if re.search('Generate fastq output files (-q;leave blank otherwise)',k):
+				if re.search('Generate fastq output files',k):
 					if re.search('Y',v) or re.search('y',v):
 						params['q']=True
 					else:
 						params['q']=False
-				if re.search('Length of the reads to align (-l 30)',k):
+				if re.search('Length of the reads to align',k):
 					params['l']=v
 	return params
 
