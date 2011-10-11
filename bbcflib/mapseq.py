@@ -597,7 +597,7 @@ def parallel_density_sql( ex, bamfile, chromosomes,
         def _wig(infile,strnd="+"):
             for row in infile:
                 r = row.split("\t")
-                if r[5][0] == strnd:
+                if len(r)>5 and r[5][0] == strnd:
                     yield((r[1],r[2],r[4]))
         with new(output+"rev.sql",datatype="quantitative",chrmeta=chrlist) as trev:
             with new(output+"fwd.sql",datatype="quantitative",chrmeta=chrlist) as tfwd:
@@ -616,7 +616,8 @@ def parallel_density_sql( ex, bamfile, chromosomes,
             for row in infile:
                 if not row.startswith('track'): 
                     r = row.split("\t")
-                    yield((r[1],r[2],r[3]))
+                    if len(r)>3:
+                        yield((r[1],r[2],r[3]))
         with new(output+"merged.sql",datatype="quantitative",chrmeta=chrlist) as tboth:
             for k,v in chromosomes.iteritems():
                 try:
@@ -625,7 +626,6 @@ def parallel_density_sql( ex, bamfile, chromosomes,
                         tboth.write(v['name'],_bedgr(f))
                 except (ProgramFailed, IOError):
                     tboth.write(v['name'],[])
-
     return output
 
 ############################################################
