@@ -114,6 +114,32 @@ def getFileFromURL(file_loc,od=""):
 
 	return resfile
 
+
+def load_paramsFile(paramsfile):
+	'''
+		Return a dictionary with the parameters required for exonerate
+	'''
+	params={}
+	with open(paramsfile) as f:
+		for s in f.readlines():
+			s=s.strip('\n')
+			(k,v)=s.split('=')
+			if re.search('Search the primer from base i (-n)',k):
+				params['n']=v
+			if re.search('Search the primer in the next n bps of the reads [i to i+n] (-x 22)',k):
+				params['x']=v
+			if re.search('Minimum score for Exonerate (-s 75)',k):
+				params['s']=v
+			if re.search('Generate fastq output files (-q;leave blank otherwise)',k):
+				if re.search('Y',v) or re.search('y',v):
+					params['q']=True
+				else
+					params['q']=False
+			if re.search('Length of the reads to align (-l 30)',k):
+				params['l']=v
+
+	return params
+
 def workflow_groups(ex, job, scriptPath):
 	processed = {}
 	job_groups=job.groups
@@ -123,17 +149,17 @@ def workflow_groups(ex, job, scriptPath):
 			print(group)
 			print(run)
 #			print("infile="+run['infile']+";group['primersFile']="+group['primersFile']+";group['paramsFile']="+group['paramsFile'])
-
-	if 1<0:
 			lib_dir="/scratch/cluster/monthly/htsstation/demultiplexing/" + str(job_id) + "/"
 			infile=lib_dir+getFileFromURL(run['url'])
-			primersFile = lib_dir + 'group_' + group['name'] + "_primers_file.txt"	
+			ex.add(infile,description="infile")
+			primersFile = lib_dir + 'group_' + group['name'] + "_primers_file.fa"	
+			ex.add(primersFile,description='group_' + group['name'] + "_primers_file.fa")
 			paramsFile = lib_dir + 'group_' + group['name'] + "_param_file.txt"	
+			ex.add(paramsFile,description='group_' + group['name'] + '_param_file.txt')
+			params=load_paramsFile(paramsFile)
 #demultiplex(ex,infile,opts['-p'],int(opts['-s']),opts['-n'],opts['-x'],opts['-l'],via="lsf")
-			resExonerate = demultiplex(ex,rid['url'],group['primer_file'],group['param_file'],via='lsf')
-	# !! STILL NEED TO PARSE THE paramsFile
+			resExonerate = demultiplex(ex,infile,primersFile,params['s'],params['n'],params['x'],params['l'],via='lsf')
 			
-			ex.add(rid['url'],description="infile")
 	        	filteredFastq={}
 	        	for k,f in resExonerate.iteritems():
         		        ex.add(f,description="k:"+k+".fastq")
