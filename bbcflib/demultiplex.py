@@ -149,7 +149,7 @@ def workflow_groups(ex, job, scriptPath):
 			print(group)
 			print(run)
 #			print("infile="+run['infile']+";group['primersFile']="+group['primersFile']+";group['paramsFile']="+group['paramsFile'])
-			lib_dir="/scratch/cluster/monthly/htsstation/demultiplexing/" + str(job_id) + "/"
+			lib_dir="/scratch/cluster/monthly/htsstation/demultiplexing/" + str(job.id) + "/"
 			infile=lib_dir+getFileFromURL(run['url'])
 			ex.add(infile,description="infile")
 			primersFile = lib_dir + 'group_' + group['name'] + "_primers_file.fa"	
