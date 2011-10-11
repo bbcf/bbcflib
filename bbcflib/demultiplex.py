@@ -53,6 +53,7 @@ def exonerate(ex,infile, dbFile, minScore=77,n=1,x=22,l=30,via="local"):
 	#kwargs["stdout"] = filename
         print "Will prepare fasta file from input file\n"
 	subfiles=split_file(ex,infile,n_lines=8000000)
+	faSubFiles=[]
         if re.search(r'\.fa$',infile) or re.search(r'\.fasta$',infile):
                 faSubFiles=subfiles
         elif re.search(r'export',infile):
