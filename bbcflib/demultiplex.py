@@ -54,6 +54,7 @@ def exonerate(ex,infile, dbFile, minScore=77,n=1,x=22,l=30,via="local"):
         print "Will prepare fasta file from input file\n"
 	subfiles=split_file(ex,infile,n_lines=8000000)
 	faSubFiles=[]
+	
         if re.search(r'\.fa$',infile) or re.search(r'\.fasta$',infile):
                 faSubFiles=subfiles
         elif re.search(r'export',infile):
@@ -68,6 +69,8 @@ def exonerate(ex,infile, dbFile, minScore=77,n=1,x=22,l=30,via="local"):
 	
 	print("Will call raw_exonerate for each fasta files")	
 #	faSubFiles=split_file(ex,faFile,n_lines=500000)
+	#print faSubFiles
+
 	futures = []
 	res = []
 	resExonerate = []
@@ -75,12 +78,13 @@ def exonerate(ex,infile, dbFile, minScore=77,n=1,x=22,l=30,via="local"):
 		subResFile = unique_filename_in() 
 		futures.append(raw_exonerate.nonblocking(ex,sf,dbFile,minScore=minScore,n=n,x=x,l=l,via=via,stdout=subResFile))
 		resExonerate.append(subResFile)
+	#print resExonerate
 	for f in futures: f.wait()
 	for f in resExonerate:
 		ex.add(f,description="exonerate (part)")
 		res.append(split_exonerate(f,n=n,x=x,l=l))
 
-	print res
+	#print res
  
 	return res
 
@@ -89,12 +93,13 @@ def demultiplex(ex,fastaFile,dbFile,minScore=77,n=1,x=22,l=30,via="local"):
 	resFiles={}
 	print("in demultiplex, call exonerate\n")
 	exonerated = exonerate(ex, fastaFile, dbFile, minScore=int(minScore),n=n,x=x,l=int(l),via=via)
+	#print exonerated
 #	ex.add(exonerated,description="fileExonerate")
 #	split_files = split_exonerate(exonerated,n=n, x=x, l=l)
 	print("demultiplex done\n")
 	for sr in exonerated:
 		for k,v in sr.iteritems():
-               		print("k="+k)
+               		#print("k="+k)
                         if k in resFiles:
 				f=open(resFiles[k],"a+")
 				f.write(open(v).read())
@@ -104,8 +109,9 @@ def demultiplex(ex,fastaFile,dbFile,minScore=77,n=1,x=22,l=30,via="local"):
 	return resFiles
 
 
-def getFileFromURL(file_loc,od=""):
-	resfile=os.path.join(od,unique_filename_in())
+def getFileFromURL(file_loc,od="", suffix=None):
+	suffix = (suffix and ("." + suffix)) or ''
+	resfile=os.path.join(od,unique_filename_in()) + suffix
         if file_loc.startswith("http://") or file_loc.startswith("https://") or file_loc.startswith("ftp://"):
 		urllib.urlretrieve( file_loc, resfile )
         elif os.path.exists(file_loc):
@@ -144,12 +150,15 @@ def load_paramsFile(paramsfile):
 def workflow_groups(ex, job, scriptPath):
 	processed = {}
 	job_groups=job.groups
+	resFiles={}
 	for gid, group in job_groups.iteritems():
 		for rid,run in group['runs'].iteritems():
 			print(group)
 			print(run)
 			lib_dir="/scratch/cluster/monthly/htsstation/demultiplexing/" + str(job.id) + "/"
-			infile=getFileFromURL(run['url'],lib_dir)
+			suffix = run['url'].split('.')[-1]
+			print suffix
+			infile=getFileFromURL(run['url'],lib_dir, suffix)
 			ex.add(infile,description="infile")
 			primersFile = lib_dir + 'group_' + group['name'] + "_primer_file.fa"	
 			ex.add(primersFile,description='group_' + group['name'] + "_primer_file.fa")
@@ -165,20 +174,21 @@ def workflow_groups(ex, job, scriptPath):
         		        ex.add(f,description="k:"+k+".fastq")
 
 		        print "Will filter the sequences\n"
-			print(resExonerate)	
+			#print(resExonerate)	
 		        filteredFastq=filterSeq(ex,resExonerate,primersFile)
-
+			
 		        for k,f in filteredFastq.iteritems():
+        #                        resFiles[k]=[]
 		                ex.add(f,description="k:"+k+"_filtered.fastq")
-				if k in resExonerate:
-					resExonerate.append(f)
+	#			if k in resFiles:
+	#				resFiles[k].append(f)
 
 			reportFile=unique_filename_in()
 #		!! STILL HAVE TO GENERATE THE REPORT...	
-			ex.add(reportFile,description="pdf:report_demultiplexing")
-			resExonerate.append(reportFile)
+	#		ex.add(reportFile,description="pdf:report_demultiplexing")
+	#		resExonerate.append(reportFile)
 
-	return resExonerate 
+	return resFiles 
 
 
 @program
@@ -243,14 +253,14 @@ def filterSeq(ex,fastqFiles,primersFile):
 			#bowtie_index[k]=indexFiles[k]
 			bowtie_index[k]=indexFiles[k].wait()
 			unalignedFiles[k]=unique_filename_in()
-			print("primer="+k+"=>index="+bowtie_index[k])
+			#print("primer="+k+"=>index="+bowtie_index[k])
 			print "Will filter reads (call bowtie)\n"
 			bwtarg=["-a","-q","-n","2","-l","20","--un",unalignedFiles[k]]
 			futures[k]=bowtie.nonblocking( ex, bowtie_index[k], fastqFiles[k],  
                                      bwtarg, via='lsf')
 		else:
 			print("key "+k+" is not defined in fastqFiles")
-			print fastqFiles
+			#print fastqFiles
 
 	for k,f in filenames.iteritems():
 		alignedFiles[k]=futures[k].wait()
