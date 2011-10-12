@@ -5,6 +5,9 @@ import sys, getopt, os
 # call 
 #python demultiplex.py -i "/archive/epfl/bbcf/mleleu/pipeline_vMarion/pipeline_3Cseq/vWebServer_Bein/tests/export_part.fa" -p "/archive/epfl/bbcf/mleleu/pipeline_vMarion/pipeline_3Cseq/vWebServer_Bein/tests/primers.fa" -x 30 -n 1 -s 108 -l 50
 
+grpId=1
+step=0
+
 @program
 def exportToFasta(exportFile,n=1,x=22):
 	faFile=unique_filename_in()
@@ -69,7 +72,6 @@ def exonerate(ex,infile, dbFile, minScore=77,n=1,x=22,l=30,via="local"):
 
 	for f in faSubFiles:
 		ex.add(f,description="input.fasta (part) [group:" + str(grpId) + ",step:"+ str(step) + ",type:fa,view:admin]")
-	step += 1
 	
 	print("Will call raw_exonerate for each fasta files")	
 #	faSubFiles=split_file(ex,faFile,n_lines=500000)
@@ -151,12 +153,13 @@ def load_paramsFile(paramsfile):
 					params['l']=v
 	return params
 
+
 def workflow_groups(ex, job, scriptPath):
 	processed = {}
 	job_groups=job.groups
 	resFiles={}
-	grpId = 1
-	step = 0
+	global grpId
+	global step
 	for gid, group in job_groups.iteritems():
 		for rid,run in group['runs'].iteritems():
 			print(group)
