@@ -290,6 +290,24 @@ try:
         except ValueError:
             return False
 
+    #-------------------------------------------------------------------------#
+
+    def unique(seq, idfun=None):
+        """
+        Return all unique elements in *seq*, preserving order - unlike list(set(seq)),
+        and almost as fast. Permits this sort of filter: unique(seq, lambda x: x.lower())
+        """
+        if idfun is None:
+            def idfun(x): return x
+        seen = {}
+        result = []
+        for item in seq:
+            marker = idfun(item)
+            if marker in seen: continue
+            seen[marker] = 1
+            result.append(item)
+        return result
+
 
 
 except:
