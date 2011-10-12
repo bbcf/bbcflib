@@ -135,13 +135,13 @@ def density_to_countsPerFrag(ex,density_file,density_name,assembly_name,reffile,
 	res = common.run_gMiner.nonblocking(ex,gMiner_job,via='local').wait()
 	#ex.add(wd+outdir+".sql",description="sql:meanScorePerFeature_"+density_name)
 	ex.add(wd+outdir, description='none:meanScorePerFeature_'+density_name+'.sql (template)' )
-	ex.add(wd+outdir+".sql",description="sql:meanScorePerFeature_"+density_name+'.sql',
+	ex.add(wd+outdir+".sql",description="sql:meanScorePerFeature_"+density_name+'.sql [group:density_name,step:1,type:sql]',
                         associate_to_filename=wd+outdir, template='%s'+'.sql')
 
 	countsPerFragFile=unique_filename_in()+".bed"
 	with track.load(wd+outdir+".sql",'sql') as t:
 		t.convert(countsPerFragFile,'bed')
-	ex.add(countsPerFragFile,description="bed:meanScorePerFeature_"+density_name)
+	ex.add(countsPerFragFile,description="bed:meanScorePerFeature_"+density_name+'.bed [group:density_name,step:1,type:bed]')
 	res=call_segToFrag(ex, countsPerFragFile, regToExclude, script_path, via=via)
 	ex.add(res,description="none:res_segToFrag_"+density_name+" (rough)")
 	resBedGraph=parseSegToFrag(res)
