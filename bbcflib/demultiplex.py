@@ -51,6 +51,9 @@ def raw_exonerate(fastaFile,dbFile,minScore=77,n=1,x=22,l=30):
 def exonerate(ex,infile, dbFile, minScore=77,n=1,x=22,l=30,via="local"):
 #	filename = unique_filename_in()
 	#kwargs["stdout"] = filename
+	global grpId
+	global step
+
         print "Will prepare fasta file from input file\n"
 	subfiles=split_file(ex,infile,n_lines=8000000)
 	faSubFiles=[]
@@ -66,6 +69,7 @@ def exonerate(ex,infile, dbFile, minScore=77,n=1,x=22,l=30,via="local"):
 
 	for f in faSubFiles:
 		ex.add(f,description="input.fasta (part) [group:" + grpId + ",step:"+ step + ",type:fa,view:admin]")
+	step += 1
 	
 	print("Will call raw_exonerate for each fasta files")	
 #	faSubFiles=split_file(ex,faFile,n_lines=500000)
@@ -83,7 +87,7 @@ def exonerate(ex,infile, dbFile, minScore=77,n=1,x=22,l=30,via="local"):
 	for f in resExonerate:
 		ex.add(f,description="exonerate (part) [group:" + grpId + ",step:" + step + ",type:txt,view:admin]")
 		res.append(split_exonerate(f,n=n,x=x,l=l))
-
+	step += 1
 	#print res
  
 	return res
@@ -151,6 +155,8 @@ def workflow_groups(ex, job, scriptPath):
 	processed = {}
 	job_groups=job.groups
 	resFiles={}
+	grpId = 1
+	step = 0
 	for gid, group in job_groups.iteritems():
 		for rid,run in group['runs'].iteritems():
 			print(group)
@@ -172,6 +178,8 @@ def workflow_groups(ex, job, scriptPath):
 	        	for k,f in resExonerate.iteritems():
         		        ex.add(f,description="k:"+k+".fastq [group:" + grpId + ",step:"+ step + ",type:fastq,view:admin]")
 
+			step += 1
+
 		        print "Will filter the sequences\n"
 		        filteredFastq=filterSeq(ex,resExonerate,primersFile)
 			
@@ -181,10 +189,14 @@ def workflow_groups(ex, job, scriptPath):
 	#			if k in resFiles:
 	#				resFiles[k].append(f)
 
+			step += 1
 			reportFile=unique_filename_in()
 #		!! STILL HAVE TO GENERATE THE REPORT...	
 	#		ex.add(reportFile,description="pdf:report_demultiplexing")
 	#		resExonerate.append(reportFile)
+
+		grpId += 1
+		step = 0
 
 	return resFiles 
 
@@ -219,6 +231,9 @@ def filterSeq(ex,fastqFiles,primersFile):
 #seqToFilter=`awk -v primer=${curPrimer} '{if($0 ~ /^>/){n=split($0,a,"|");curPrimer=a[1];gsub(">","",curPrimer); if(curPrimer == primer){seqToFilter="";for(i=5;i<n;i++){if(a[i] !~ /Exclude=/){seqToFilter=seqToFilter""a[i]","}} if(a[n] !~ /Exclude=/){seqToFilter=seqToFilter""a[n]}else{gsub(/,$/,"",seqToFilter)};print seqToFilter}}}' ${primersFile}`
 	seqToFilter={}
 	filenames={}
+	global grpId
+	global step 
+
 	with open(primersFile,"r") as f:
 		for s in f:	
 			if re.search(r'^>',s):
