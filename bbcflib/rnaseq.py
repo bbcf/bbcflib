@@ -91,8 +91,8 @@ def lsqnonneg(C, d, x0=None, tol=None, itmax_factor=3):
         x = z
         resid = d - numpy.dot(C, x)
         w = numpy.dot(C.T, resid)
-    #return (x, sum(resid*resid), resid)
-    return (x, sum(numpy.absolute(resid)), resid)
+    return (x, sum(resid*resid), resid)
+    #return (x, sum(numpy.absolute(resid)), resid)
 
 def fetch_mappings(path_or_assembly_id):
     """Given an assembly ID, return a tuple
@@ -155,44 +155,6 @@ def pileup_file(bamfile, exons):
     sam.close()
     return counts
 
-def translate_gene_ids(fc_ids, dictionary):
-    """Replace (unique) gene IDs by (not unique) gene names.
-    *fc_ids* is a dict {gene_id: whatever}
-    *dictionary* is a dict {gene_id: gene_name} """
-    # Maybe better use regexp here
-    names = []
-    for s in fc_ids.keys():
-        start = s.find("ENS")
-        #start = s.find(re.search(r'ENS*G',s).groups()[0])
-        if start != -1:
-            end = s.split("ENS")[1].find("|")
-            gene_id = "ENS" + s.split("ENS")[1].split("|")[0]
-            names.append(s.replace(gene_id, dictionary.get(gene_id,gene_id)))
-        else: names.append(s)
-    fc_names = dict(zip(names,fc_ids.values()))
-    return fc_names
-
-def estimate_size_factors(counts):
-    """The total number of reads may differ between conditions or replicates.
-    This treatment makes different count sets being comparable. If rows are features
-    and columns are different conditions/replicates, each column is divided by the
-    geometric mean of the rows.
-    The median of these ratios is used as the size factor for this column. Each
-    column is divided by its size factor in order to normalize the data. Size
-    factors may be used for further variance sabilization.
-
-    * *counts* is an array of counts, each line representing a transcript, each
-    column a different run.
-    """
-    numpy.seterr(divide='ignore') # Divisions by zero counts
-    counts = numpy.array(counts)
-    geo_means = numpy.exp(numpy.mean(numpy.log(counts), axis=0))
-    mean = counts/geo_means
-    size_factors = numpy.median(mean[:,geo_means>0], axis=1)
-    res = counts.transpose()/size_factors
-    res = res.transpose()
-    return res, size_factors
-
 def save_results(ex, cols, conditions, header=[], desc='counts'):
     """Save results in a CSV file, one line per feature, one column per run.
     *data* is a dictionary {ID: [counts in each condition]}
@@ -208,9 +170,10 @@ def save_results(ex, cols, conditions, header=[], desc='counts'):
 def genes_expression(exons_data, exon_to_gene, ncond):
     """Get gene counts from exons counts."""
     genes = list(set(exons_data[1]))
-    z = numpy.array([[0.]*ncond]*len(genes))
+    z  = [numpy.zeros(ncond,dtype=numpy.float_)]*len(genes)
+    zz = [numpy.zeros(ncond,dtype=numpy.float_)]*len(genes)
     gcounts = dict(zip(genes,z))
-    grpkms = dict(zip(genes,z))
+    grpkms = dict(zip(genes,zz))
     for e,c in zip(exons_data[0],zip(*exons_data[2:ncond+ncond+2])):
         gcounts[exon_to_gene[e]] += c[:ncond]
         grpkms[exon_to_gene[e]] += c[ncond:]
@@ -227,9 +190,9 @@ def transcripts_expression(exons_data, trans_in_gene, exons_in_trans, ncond):
     z = numpy.zeros((len(transcripts),ncond))
     tcounts = dict(zip(transcripts,z))
     exons_counts = dict(zip( exons_data[0], zip(*exons_data[2:ncond+2])) )
-    totalerror = 0
-    totalcount = 0
-    unknown = 0
+    totalerror = 0; totalcount = 0; unknown = 0
+    pinv = numpy.linalg.pinv; norm = numpy.linalg.norm; zeros = numpy.zeros;
+    identity = numpy.identity; sum = numpy.sum; dot = numpy.dot; shape = numpy.shape
     for g in genes:
         if trans_in_gene.get(g): # if the gene is still in the Ensembl database
             # Get all transcripts in the gene
@@ -240,8 +203,8 @@ def transcripts_expression(exons_data, trans_in_gene, exons_in_trans, ncond):
                 if exons_in_trans.get(t):
                     eg = eg.union(set(exons_in_trans[t]))
             # Create the correspondance matrix
-            M = numpy.zeros((len(eg),len(tg)))
-            ecnts = numpy.zeros((ncond,len(eg)))
+            M = zeros((len(eg),len(tg)))
+            ecnts = zeros((ncond,len(eg)))
             tcnts = []
             for i,e in enumerate(eg):
                 for j,t in enumerate(tg):
@@ -253,20 +216,22 @@ def transcripts_expression(exons_data, trans_in_gene, exons_in_trans, ncond):
                         ecnts[c][i] += exons_counts[e][c]
             # Compute transcript counts
             for c in range(ncond):
-                #-----------------------#
-                # Pseudo-inverse method #
-                #-----------------------#
-                x = numpy.dot(numpy.linalg.pinv(M),ecnts[c])
-                tcnts.append(x)
-                totalerror += numpy.linalg.norm(numpy.dot(M,numpy.linalg.pinv(M))-numpy.identity(numpy.shape(M)[0]) ,1)
-                totalcount += numpy.sum(ecnts[c])
-                #-----------------------------------#
-                # Non-negative least squares method #
-                #-----------------------------------#
-                #x, resnorm, res = lsqnonneg(M,ecnts[c])
-                #tcnts.append(x)
-                #totalerror += resnorm
-                #totalcount += numpy.sum(ecnts[c])
+                if 1:
+                    #-----------------------#
+                    # Pseudo-inverse method #
+                    #-----------------------#
+                    x = dot(pinv(M),ecnts[c])
+                    tcnts.append(x)
+                    totalerror += norm(dot(M,pinv(M))-identity(shape(M)[0]) ,1) # norm 1
+                    totalcount += sum(ecnts[c])
+                if 0:
+                    #-----------------------------------#
+                    # Non-negative least squares method #
+                    #-----------------------------------#
+                    x, resnorm, res = lsqnonneg(M,ecnts[c]) # norm 2
+                    tcnts.append(x)
+                    totalerror += resnorm
+                    totalcount += sum(ecnts[c])
             # Store results in a dict *tcounts*
             for k,t in enumerate(tg):
                 if tcounts.get(t) is not None:
@@ -274,7 +239,9 @@ def transcripts_expression(exons_data, trans_in_gene, exons_in_trans, ncond):
                         tcounts[t][c] = tcnts[c][k]
         else:
             unknown += 1
-    print "\tUnknown transcripts for", unknown, "genes."
+    print "Evaluation of error for transcript counts:"
+    print "\tUnknown transcripts for %d of %d genes (%.2f %%)" \
+                       % (unknown, len(genes), 100*float(unknown)/float(len(genes)) )
     print "\tError in number of reads:",int(totalerror)
     print "\tTotal number of reads:",int(totalcount)
     print "\tRatio error/total:",float(totalerror)/totalcount
@@ -293,8 +260,6 @@ def rnaseq_workflow(ex, job, assembly, bam_files, pileup_level=["genes"], via="l
     Targets can be 'genes', 'transcripts', or 'exons'.
     * *via*: 'local' or 'lsf'
     * *output*: alternative name for output file. Otherwise it is random.
-
-    To do: -use lsf -pass rpkm, start, end and gene name to output -control with known refseqs -sort by ratios
     """
     group_names={}
     assembly_id = job.assembly_id
