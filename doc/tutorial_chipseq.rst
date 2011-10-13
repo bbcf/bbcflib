@@ -1,5 +1,5 @@
-Tutorial
-========
+ChIP-seq Tutorial
+=================
 
 Here is a typical workflow that uses both ``mapseq`` and ``chipseq``. First prepare a configuration file with the following sections: first a ``Global variables`` section that defines the local environment for the pipelines::
 
