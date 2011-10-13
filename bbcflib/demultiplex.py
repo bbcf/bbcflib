@@ -154,6 +154,14 @@ def load_paramsFile(paramsfile):
 	return params
 
 
+@program
+def count_lines(filename):
+   def parse_output(p):
+        m = re.search(r'^\s*(\d+)\s+' + filename, ''.join(p.stdout))
+        return int(m.groups()[0])
+   return {'arguments': ["wc","-l",filename],
+           'return_value': parse_output}
+
 def workflow_groups(ex, job, scriptPath):
 	processed = {}
 	job_groups=job.groups
@@ -195,6 +203,7 @@ def workflow_groups(ex, job, scriptPath):
 			step += 1
 			reportFile=unique_filename_in()
 #		!! STILL HAVE TO GENERATE THE REPORT...	
+		# for each fastq file, call count_lines(fastq)/4
 	#		ex.add(reportFile,description="pdf:report_demultiplexing")
 	#		resExonerate.append(reportFile)
 

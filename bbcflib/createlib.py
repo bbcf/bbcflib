@@ -30,7 +30,7 @@ def load_libraryParamsFile(paramsfile):
 				paramslib['secondary']=s.split('=')[1]
 			elif re.search('Segment length',s.split('=')[0]):
 				paramslib['length']=s.split('=')[1]
-			elif re.search('type',s.split('=')[0]):
+			elif re.search('Type',s.split('=')[0]):
 				paramslib['type']=s.split('=')[1]
 	if len(paramslib['name']) < 2:
 		paramslib['name']='myLibrary'
