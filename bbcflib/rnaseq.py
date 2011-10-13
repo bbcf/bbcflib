@@ -102,8 +102,8 @@ def lsqnonneg(C, d, x0=None, tol=None, itmax_factor=3):
         x = z
         resid = d - numpy.dot(C, x)
         w = numpy.dot(C.T, resid)
-    #return (x, sum(resid*resid), resid) # norm2
-    return (x, sum(numpy.absolute(resid)), resid) # norm1
+    return (x, sum(resid*resid), resid) # norm2
+    #return (x, sum(numpy.absolute(resid)), resid) # norm1
 
 def fetch_mappings(path_or_assembly_id):
     """Given an assembly ID, return a tuple

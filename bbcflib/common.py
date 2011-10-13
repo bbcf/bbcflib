@@ -34,7 +34,7 @@ def cat(files):
     """Concatenates files.
     """
     if len(files) > 1:
-        out = unique_filename_in()
+        out = rstring()
         with open(out,"w") as f1:
             for inf in files:
                 with open(inf,"r") as f2:
@@ -54,106 +54,197 @@ def cat(files):
 #    with track.new(path, format, name, chrmeta, datatype) as t:
 #        for chrom in chrmeta: t.write(chrom, (), getattr(track.Track, datatype + '_fields'))
 #
+
+
+#-------------------------------------------------------------------------#
+def get_files( id_or_key, minilims ):
+    """Retrieves a dictionary of files created by an htsstation job identified by its key
+    or bein id in a MiniLIMS.
+
+    The dictionary keys are the file types (e.g. 'pdf', 'bam', 'py' for python objects),
+    the values are dictionaries with keys repository file names and values actual file
+    descriptions (names to provide in the user interface).
+    """
+    import re
+    if isinstance(id_or_key, str):
+        try:
+            exid = max(minilims.search_executions(with_text=id_or_key))
+        except ValueError, v:
+            raise ValueError("No execution with key "+id_or_key)
+    else:
+        exid = id_or_key
+    file_dict = {}
+    all = dict((y['repository_name'],y['description']) for y in
+               [minilims.fetch_file(x) for x in minilims.search_files(source=('execution',exid))])
+    for f,d in all.iteritems():
+        cat,name = re.search(r'([^:]+):(.*)$',d).groups()
+        name = re.sub(r'\s+\(BAM INDEX\)','.bai',name)
+        if cat in file_dict:
+            file_dict[cat].update({f: name})
+        else:
+            file_dict[cat] = {f: name}
+    return file_dict
+
+#-------------------------------------------------------------------------#
+def merge_sql( ex, sqls, names, description="merged.sql", outdir=None, via='lsf' ):
+    """Run ``gMiner``'s 'merge_score' function on a set of sql files
+    """
+    import os
+    if outdir == None:
+        outdir = rstring()
+    if not(os.path.exists(outdir)):
+        os.mkdir(outdir)
+    if not(isinstance(names,list)):
+        names = []
+    if len(names) < len(sqls):
+        n = sqls
+        n[:len(names)] = names
+        names = n
+    gMiner_job = dict([('track'+str(i+1),f) for i,f in enumerate(sqls)]
+                      +[('track'+str(i+1)+'_name',str(ni))
+                        for i,ni in enumerate(names)])
+    gMiner_job['operation_type'] = 'genomic_manip'
+    gMiner_job['manipulation'] = 'merge_scores'
+    gMiner_job['output_location'] = outdir
+    files = run_gMiner.nonblocking(ex,gMiner_job,via=via).wait()
+    ex.add( files[0], description=description )
+    return files[0]
+
+#-------------------------------------------------------------------------#
+def merge_many_bed(ex,files,via='lsf'):
+    """Runs ``intersectBed`` iteratively over a list of bed files.
+    """
+    out = files[0]
+    for f in files[1:]:
+        next = rstring()
+        _ = merge_two_bed.nonblocking( ex, out, f, via=via, stdout=next ).wait()
+        out = next
+    return out
+
+#-------------------------------------------------------------------------#
+def timer(function):
+    """ A decorator that makes the decorated *function* return its execution time. """
+    def wrapper(*args, **kwargs):
+        t1 = time.time()
+        result = function(*args, **kwargs)
+        t2 = time.time()
+        print "Execution time of function", function.__name__, ":", str(t2-t1), "s."
+        return result
+    return wrapper
+
+#-------------------------------------------------------------------------#
+def results_to_json(lims, exid):
+    """Create a JSON string describing the results of execution *exid*.
+
+    The execution is sought in *lims*, and all its output files and
+    their descriptions are written to the string.
+    """
+    produced_file_ids = lims.search_files(source=('execution',exid))
+    d = dict([(lims.fetch_file(i)['description'], lims.path_to_file(i))
+              for i in produced_file_ids])
+    j = json.dumps(d)
+    return j
+
+#-------------------------------------------------------------------------#
+def rstring(len=20):
+    """Generate a random string of length *len* (usually for filenames).
+    Equivalent to bein's unique_filename_in(), without requiring the import.
+    """
+    import string, random
+    return "".join([random.choice(string.letters+string.digits) for x in range(len)])
+
+#-------------------------------------------------------------------------#
+
+def writecols(file, cols, header=None, sep="\t"):
+    """Write a list of iterables *cols* as columns in a *sep*-delimited text file.
+    One can precise an array *header* to define column names.
+    The parameter *sep* defines the delimiter character between columns.
+    """
+    ncols = len(cols)
+    with open(file,"wb") as f:
+        w = csv.writer(f, delimiter=sep)
+        if header:
+            if len(header) < len(cols):
+                header = header + ["c"+str(i+1+len(header)) for i in range(ncols-len(header))]
+                print >>sys.stderr, "Warning: header has less elements than there are columns."
+            elif len(header) > len(cols):
+                header = header[:ncols]
+                print >>sys.stderr, "Warning: header has more elements than there are columns."
+            w.writerow(header)
+        maxlen = max([len(c) for c in cols])
+        for c in cols:
+            if len(c) < maxlen:
+                c.extend( [""]*(maxlen-len(c)) )
+        for row in zip(*cols):
+            w.writerow(row)
+
+def readcols(filename, header=False, sep="\t", skip=0):
+    """Read a *sep*-delimited text file *filename* and stores it
+    in a dictionary, which keys are column headers if present, and values
+    are the columns of the file.
+    If *header*=True, the first line is interpreted as the header.
+    If *header* is an array, its elements become the column headers.
+    One can skip the first *skip* lines of the file.
+    """
+    with open(filename,"rb") as f:
+        r = csv.reader(f, delimiter=sep)
+        for i in range(skip):
+            f.next()
+        if header:
+            if not getattr(header, '__iter__', False): # if not iterable
+                header = r.next() # then the first line is read as the header
+        rows = [row for row in r]
+        if not header:
+            header = range(1,len(rows[0])+1)
+        elif len(header) != len(rows[0]):
+            header = header + [i+1+len(header) for i in range(len(rows[0])-len(header))]
+            print >>sys.stderr, "Warning: header and columns don't have the same number of elements."
+        parsedfile = dict(zip(header,zip(*rows)))
+    return parsedfile
+
+#-------------------------------------------------------------------------#
+
+def isnum(s):
+    """Return True if string *s* represents a number, False otherwise"""
+    try:
+        float(s)
+        return True
+    except ValueError:
+        return False
+
+#-------------------------------------------------------------------------#
+
+def unique(seq, idfun=None):
+    """
+    Return all unique elements in *seq*, preserving order - unlike list(set(seq)),
+    and almost as fast. Permits this sort of filter: unique(seq, lambda x: x.lower())
+    """
+    if idfun is None:
+        def idfun(x): return x
+    seen = {}
+    result = []
+    for item in seq:
+        marker = idfun(item)
+        if marker in seen: continue
+        seen[marker] = 1
+        result.append(item)
+    return result
+
+
+
 ###############################################################################
 ###############################################################################
 ##################### BIG TRY STATEMENT STARTING... ###########################
 ###############################################################################
 ###############################################################################
 try:
-    from bein import unique_filename_in, program
-
-    #-------------------------------------------------------------------------#
-    def get_files( id_or_key, minilims ):
-        """Retrieves a dictionary of files created by an htsstation job identified by its key
-        or bein id in a MiniLIMS.
-
-        The dictionary keys are the file types (e.g. 'pdf', 'bam', 'py' for python objects),
-        the values are dictionaries with keys repository file names and values actual file
-        descriptions (names to provide in the user interface).
-        """
-        import re
-        if isinstance(id_or_key, str):
-            try:
-                exid = max(minilims.search_executions(with_text=id_or_key))
-            except ValueError, v:
-                raise ValueError("No execution with key "+id_or_key)
-        else:
-            exid = id_or_key
-        file_dict = {}
-        all = dict((y['repository_name'],y['description']) for y in
-                   [minilims.fetch_file(x) for x in minilims.search_files(source=('execution',exid))])
-        for f,d in all.iteritems():
-            cat,name = re.search(r'([^:]+):(.*)$',d).groups()
-            name = re.sub(r'\s+\(BAM INDEX\)','.bai',name)
-            if cat in file_dict:
-                file_dict[cat].update({f: name})
-            else:
-                file_dict[cat] = {f: name}
-        return file_dict
-
-    #-------------------------------------------------------------------------#
-    @program
-    def run_gMiner( job ):
-        import pickle
-        job_file = unique_filename_in()
-        with open(job_file,'w') as f:
-            pickle.dump(job,f)
-        def get_output_files(p):
-            with open(job_file,'r') as f:
-                job = pickle.load(f)
-            return job['job_output']
-        return {"arguments": ["run_gminer.py",job_file],
-                "return_value": get_output_files}
-
-    #-------------------------------------------------------------------------#
-    def merge_sql( ex, sqls, names, description="merged.sql", outdir=None, via='lsf' ):
-        """Run ``gMiner``'s 'merge_score' function on a set of sql files
-        """
-        import os
-        if outdir == None:
-            outdir = unique_filename_in()
-        if not(os.path.exists(outdir)):
-            os.mkdir(outdir)
-        if not(isinstance(names,list)):
-            names = []
-        if len(names) < len(sqls):
-            n = sqls
-            n[:len(names)] = names
-            names = n
-        gMiner_job = dict([('track'+str(i+1),f) for i,f in enumerate(sqls)]
-                          +[('track'+str(i+1)+'_name',str(ni))
-                            for i,ni in enumerate(names)])
-        gMiner_job['operation_type'] = 'genomic_manip'
-        gMiner_job['manipulation'] = 'merge_scores'
-        gMiner_job['output_location'] = outdir
-        files = run_gMiner.nonblocking(ex,gMiner_job,via=via).wait()
-        ex.add( files[0], description=description )
-        return files[0]
-
-    #-------------------------------------------------------------------------#
-    @program
-    def merge_two_bed(file1,file2):
-        """Binds ``intersectBed`` from the 'BedTools' suite.
-        """
-        return {"arguments": ['intersectBed','-a',file1,'-b',file2], "return_value": None}
-
-    #-------------------------------------------------------------------------#
-    def merge_many_bed(ex,files,via='lsf'):
-        """Runs ``intersectBed`` iteratively over a list of bed files.
-        """
-        out = files[0]
-        for f in files[1:]:
-            next = unique_filename_in()
-            _ = merge_two_bed.nonblocking( ex, out, f, via=via, stdout=next ).wait()
-            out = next
-        return out
-
+    from bein import program
     #-------------------------------------------------------------------------#
     @program
     def join_pdf(files):
         """Uses 'ghostscript' to join several pdf files into one.
         """
-        out = unique_filename_in()
+        out = rstring()
         gs_args = ['gs','-dBATCH','-dNOPAUSE','-q','-sDEVICE=pdfwrite',
                    '-sOutputFile=%s'%out]
         gs_args += files
@@ -168,7 +259,7 @@ try:
         - bzip2, bz
         - lxzma, xz
         """
-        archive = unique_filename_in()
+        archive = rstring()
         call    = None
         if compression_type == "lxzma" or compression_type == "xz":
             call = ["tar", "cJf", archive, path]
@@ -186,7 +277,7 @@ try:
         """
         uncompress tar archive
         """
-        output = unique_filename_in()
+        output = rstring()
         call = ["tar", "xvf", path]
         return {"arguments": call, "return_value": output}
 
@@ -195,120 +286,30 @@ try:
     def scp(source, destination, args = None):
         if args is None:
             args = []
-        output = unique_filename_in()
+        output = rstring()
         call = ["scp"] + args + [ source, destination ]
         return {"arguments": call, "return_value": output}
 
     #-------------------------------------------------------------------------#
-    def timer(function):
-        """ A decorator that makes the decorated *function* return its execution time. """
-        def wrapper(*args, **kwargs):
-            t1 = time.time()
-            result = function(*args, **kwargs)
-            t2 = time.time()
-            print "Execution time of function", function.__name__, ":", str(t2-t1), "s."
-            return result
-        return wrapper
+    @program
+    def merge_two_bed(file1,file2):
+        """Binds ``intersectBed`` from the 'BedTools' suite.
+        """
+        return {"arguments": ['intersectBed','-a',file1,'-b',file2], "return_value": None}
 
     #-------------------------------------------------------------------------#
-    def results_to_json(lims, exid):
-        """Create a JSON string describing the results of execution *exid*.
-
-        The execution is sought in *lims*, and all its output files and
-        their descriptions are written to the string.
-        """
-        produced_file_ids = lims.search_files(source=('execution',exid))
-        d = dict([(lims.fetch_file(i)['description'], lims.path_to_file(i))
-                  for i in produced_file_ids])
-        j = json.dumps(d)
-        return j
-
-    #-------------------------------------------------------------------------#
-    def rstring(len=20):
-        """Generate a random string of length *len* (usually for filenames).
-        Equivalent to bein's unique_filename_in(), without requiring the import.
-        """
-        import string, random
-        return "".join([random.choice(string.letters+string.digits) for x in range(len)])
-
-    #-------------------------------------------------------------------------#
-
-    def writecols(file, cols, header=None, sep="\t"):
-        """Write a list of iterables *cols* as columns in a *sep*-delimited text file.
-        One can precise an array *header* to define column names.
-        The parameter *sep* defines the delimiter character between columns.
-        """
-        ncols = len(cols)
-        with open(file,"wb") as f:
-            w = csv.writer(f, delimiter=sep)
-            if header:
-                if len(header) < len(cols):
-                    header = header + ["c"+str(i+1+len(header)) for i in range(ncols-len(header))]
-                    print >>sys.stderr, "Warning: header has less elements than there are columns."
-                elif len(header) > len(cols):
-                    header = header[:ncols]
-                    print >>sys.stderr, "Warning: header has more elements than there are columns."
-                w.writerow(header)
-            maxlen = max([len(c) for c in cols])
-            for c in cols:
-                if len(c) < maxlen:
-                    c.extend( [""]*(maxlen-len(c)) )
-            for row in zip(*cols):
-                w.writerow(row)
-
-    def readcols(filename, header=False, sep="\t", skip=0):
-        """Read a *sep*-delimited text file *filename* and stores it
-        in a dictionary, which keys are column headers if present, and values
-        are the columns of the file.
-        If *header*=True, the first line is interpreted as the header.
-        If *header* is an array, its elements become the column headers.
-        One can skip the first *skip* lines of the file.
-        """
-        with open(filename,"rb") as f:
-            r = csv.reader(f, delimiter=sep)
-            for i in range(skip):
-                f.next()
-            if header:
-                if not getattr(header, '__iter__', False): # if not iterable
-                    header = r.next() # then the first line is read as the header
-            rows = [row for row in r]
-            if not header:
-                header = range(1,len(rows[0])+1)
-            elif len(header) != len(rows[0]):
-                header = header + [i+1+len(header) for i in range(len(rows[0])-len(header))]
-                print >>sys.stderr, "Warning: header and columns don't have the same number of elements."
-            parsedfile = dict(zip(header,zip(*rows)))
-        return parsedfile
-
-    #-------------------------------------------------------------------------#
-
-    def isnum(s):
-        """Return True if string *s* represents a number, False otherwise"""
-        try:
-            float(s)
-            return True
-        except ValueError:
-            return False
-
-    #-------------------------------------------------------------------------#
-
-    def unique(seq, idfun=None):
-        """
-        Return all unique elements in *seq*, preserving order - unlike list(set(seq)),
-        and almost as fast. Permits this sort of filter: unique(seq, lambda x: x.lower())
-        """
-        if idfun is None:
-            def idfun(x): return x
-        seen = {}
-        result = []
-        for item in seq:
-            marker = idfun(item)
-            if marker in seen: continue
-            seen[marker] = 1
-            result.append(item)
-        return result
-
-
+    @program
+    def run_gMiner( job ):
+        import pickle
+        job_file = rstring()
+        with open(job_file,'w') as f:
+            pickle.dump(job,f)
+        def get_output_files(p):
+            with open(job_file,'r') as f:
+                job = pickle.load(f)
+            return job['job_output']
+        return {"arguments": ["run_gminer.py",job_file],
+                "return_value": get_output_files}
 
 except:
     print >>sys.stderr, "Bein not found.  Skipping some common functions."
