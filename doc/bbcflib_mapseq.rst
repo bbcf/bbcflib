@@ -3,5 +3,4 @@
 
     .. autofunction:: bamstats
     .. autofunction:: plot_stats
-    .. autofunction:: wigToBigWig
     .. autofunction:: bam_to_density

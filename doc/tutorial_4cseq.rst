@@ -1,142 +1,86 @@
-Tutorial
-========
+4C-seq Tutorial
+===============
 
-Here is a short tutorial showing how you can easily launch a ``4c-seq`` analysis from the interface http://htsstation.vital-it.ch/4cseq/
+Here is a short tutorial showing how to launch a 4c-seq analysis from the interface http://htsstation.vital-it.ch/4cseq/.
+
+
+Get aligned data?
+-----------------
+A 4C-seq analysis works from aligned data, given as BAM file(s) through the URL field (there is one BAM file per run). 
+The URL can be given directly (as a http:// or ftp:// address accessible from outside) or retrieved by using the `Mapping key` obtained when running the `mapping module <http://htsstation.vital-it.ch/mapseq/>`_. In such case, fields related to the sequencing facility (`#Run, Facility, Machine, Run number and Lane number`) might be automatically filled in if relevant (see tutorial of mapseq for more details about those fields).   
+The image bellow shows how such key can be used. In this example, data were not coming directly from a sequencing facilty, so the corresponding fields are left empty.  
+
+.. image:: images/4Cseq_newJob1.png
+
+You can add as many groups and as many runs per group you want by using the links `Add group of runs` and `Add run in this group` (see tutorial xxx for a more detailed explanation of what are groups and runs). In a 4C-seq analysis, several runs in one group means that all reads coming from the different datasets will be merged up for the analysis. Defining several Groups will run an analysis on different datasets simultaneously (e.g., several viewpoints). 
+Do not forget to name each group. This name is used for naming the results files as well as in the reports. This name should be identical to the one used in the primer file (see `4C-seq options`). Make sure to use short names without spaces (prefer "_" character to separate words) and without any special characters in it (e.g,  %&?! ...) 
+
+Finally, you will have to select an assembly from the list. Make sure you are selecting the one used for the mapping! If your assembly is not listed, please send us an `email<mailto:webmaster.bbcf@epfl.ch>`_.
+
  
+General Parameters
+------------------
 
-Here is a typical workflow that uses both ``mapseq`` and ``chipseq``. First prepare a configuration file with the following sections: first a ``Global variables`` section that defines the local environment for the pipelines::
+Name your analysis. Please, use short names, without spaces (prefer "_" character to separate words) and without any special characters (e.g., %&?! ... ).  
+Finally, submit the relevant information to receive an email upon completion of the pipeline.
 
-    [Global variables]
-    genrep_url='http://bbcftools.vital-it.ch/genrep/'
-    bwt_root='/db/genrep'
-    fastq_root='/scratch/cluster/daily/htsstation/mapseq/'
-    script_path='/archive/epfl/bbcf/share'
-    [[hts_chipseq]]
-    url='http://htsstation.vital-it.ch/chipseq/'
-    download='http://htsstation.vital-it.ch/lims/chipseq/chipseq_minilims.files/'
-    [[hts_mapseq]]
-    url='http://htsstation.vital-it.ch/mapseq/'
-    download='http://htsstation.vital-it.ch/lims/mapseq/mapseq_minilims.files/'
-    [[gdv]] 
-    url='http://svitsrv25.epfl.ch/gdv'
-    email='your.email@yourplace.org'
-    key='pErS0na1&keY%0Ng2V'
+.. image:: images/4Cseq_newJob2.png
 
-For example, if you intend to download data from the LIMS, you need to setup your account::
+4C-Seq options
+--------------
 
-    [[lims]] 
-    user='limslogin'
-    [[[passwd]]] 
-    lgtf='xxxxxxxx'
-    gva='yyyyyyy'
+A 4C-seq analysis requires a library (one per group) as well as one primer file (see below for details). 
 
-Similarly, if you want to receive an email upon completion of the pipeline, submit the relevant informations for the sender email::
+A library is a list of restriction fragments with quality parameters that allow discrimination between valid and invalid fragments. The format is highly specific (a detailed description will be given shortly) and for this reason we recommend to either use an existing library or to create a new library by providing a library parameter file (see description below). If a library will be used many times, we can add it to our list of predefined libraries. In this case, please contact us by `email <mailto:webmaster.bbcf@epfl.ch>`_.   
 
-    [[email]] 
-    sender='webmaster@lab.edu'
-    smtp='local.machine.edu'
-    
-Then comes the job description::
+.. image:: images/4Cseq_newJob3.png
 
-    [Job]
-    description='config test'
-    assembly_id=mm9
-    email=toto@place.no
-    [Options]
-    read_extension=65
-    input_type=0
-    compute_densities=True
-    discard_pcr_duplicates=True
-    
-Experimental conditions correspond to `groups` which are numbered, each condition may have any number of replicates (called `runs`) which are associated with their respective group via its numeric `group_id`::
+Library parameter file
+----------------------
 
-    [Groups]
-    [[1]]
-    control=True
-    name=unstimulated
-    [[2]]
-    control=False
-    name=stimulated
-    
-    [Runs]
-    [[1]]
-    url=http://some.place.edu/my_control.fastq
-    group_id=1
-    [[2]]
-    url=http://some.place.edu/my_test1.fastq
-    group_id=2
-    [[3]]
-    url=http://some.place.edu/my_test2.fastq
-    group_id=2
+This file contains the basic information required for the creation of a new library. 
+Below is an example of such file::
 
-Such a configuration file can be passed as command-line argument to the scripts `run_mapseq.py <https://github.com/bbcf/bbcfutils/blob/master/Python/run_mapseq.py>`_ and `run_chipseq.py <https://github.com/bbcf/bbcfutils/blob/master/Python/run_chipseq.py>`_, e.g.::
+    Genome name (e.g., mm9)=mm9
+    Primary restriction site (e.g., CATG for NlaIII)=CATG
+    Secondary restriction site (e.g., GATC for DpnII)=GATC
+    Segment length(default:30bps)=30
+    Library name (default:myLibrary)=library_mm9_30bps
+    Type (typeI or typeII)=typeI        
 
-    python run_mapseq.py -c my_config.txt -d test_lims
+The primary restriction site is the sequence recognized by the first restriction enzyme (i.e. before decrosslinking). The secondary restriction site is the sequence recognized by the secondary restriction site (i.e. after decrosslinking). The segment length is the genomic interval adjacent to the restriction site from which reads are taken into account (we advice a length of 30 bp). The type of the library (typeI or typeII) depends on the design of the inverse 4C-seq primers. If the inverse forward primer is aimed towards the primary restriction site, the library is typeI. If the inverse forward primer is aimed towards the secondary restriction site, the library is type II.
 
-We next analyse how these python scripts are using these configuration and processing the files. First we import all the relevant modules::
+To ensure the use of consistent formatting, we advise to use the following :download:`template <doc:params_library_template.txt>` 
 
-    from bbcflib import daflims, genrep, frontend, gdv, common
-    from bbcflib.mapseq import *
-    from bbcflib.chipseq import *
-    
-Then connect to a ``MiniLIMS`` and parse the configuration file::
 
-    M = MiniLIMS( 'test_lims' )
-    (job,gl) = frontend.parseConfig( 'my_config.txt' )
+Primer file
+-----------
 
-This returns two dictionaries, one with the job description and one with the global variables sections. Then we fetch an assembly and define a few options::
+A primer file is a `fasta` file containing information about each primer/viewpoint used in the 4C-seq analysis.
+Below is an example of such file::
 
-    g_rep = genrep.GenRep( url=gl["genrep_url"], root=gl["bwt_root"], intype=job.options.get('input_type') )
-    assembly = g_rep.assembly( job.assembly_id )
-    dafl = dict((loc,daflims.DAFLIMS( username=gl['lims']['user'], password=pwd )) for loc,pwd in gl['lims']['passwd'].iteritems())
-    job.options['ucsc_bigwig'] = job.options.get('ucsc_bigwig') or True
-    job.options['gdv_project'] = job.options.get('gdv_project') or False
-    via = 'lsf'
+    >HoxD13|AAAATCCTAGACCTGGTCATG|chr2:74504332-74506317|CATG|CATGGTCAAATTCAAACCCGGAGGGTCTCTCCAGGTTTTT|AAAAACCTGGAGAGACCCTCCGGGTTTGAATTTGACCATG|CATGGCGCGCTGCGCCTCCTCCCTCCTCGCTGTGTTCCGC|GCGGAACACAGCGAGGAGGGAGGAGGCGCAGCGCGCCATG|CATGACCAGGTCTAGGATTTTTAAAAGTTATACAAATTCT|AGAATTTGTATAACTTTTAAAAATCCTAGACCTGGTCATG|Exclude=chr2:74501237-74508317
+    AAAATCCTAGACCTGGTCA
+    >HoxD4|AGGACAATAAAGCATCCATAGGCGACATG|chr2:74561329-74562566|CATG
+    AGGACAATAAAGCATCCAT
 
-then start an execution environment in which we
+The header contains information about each individual primer. The sequence is the primer sequence previously used during the de-multiplexing.
 
-* fetch the fastq files using :func:`bbcflib.mapseq.get_fastq_files`
-* launch the bowtie mapping via :func:`bbcflib.mapseq.map_groups`
-* generate a pdf report of the mapping statistics with :func:`bbcflib.mapseq.add_pdf_stats`
-* if requested, make a density profile using :func:`bbcflib.mapseq.densities_groups`
-* create the corresponfing project and tracks in :doc:`GDV <bbcflib_gdv>`.
+Header::
 
-This corresponds to the code below::
+    1. >
+    2. primer name (without any spaces or special characters). Should be exactly the same as the groups name!
+    3. primer sequence extended up to the restriction site (e.g., CATG for NlaIII)
+    4. coordinates of the restriction fragments used as viewpoint
+    5. sequence recognized by the primary restriction enzyme (e.g. CATG for NlaIII)
+    6. (optional) sequences to be filter out, separated by the character "|" . Examples of such sequences are undigested, self-ligated and bait sequences. Ideally, both forward and reverse complement sequences of 40bp long are given. Shorter or incomplete sequences can be filled in with "---". 
+    7. (optional) regions that should be excluded from the analysis (e.g. a region surrounding the viewpoint) Reads and fragments overlapping with this region will be excluded. The input for these coordinates should be preceded by the string "Exclude=". Multiple regions may be separated by a comma "," (e.g., Exclude=chr2:74521560-74562637,chr2:74601162-74604549)
 
-    with execution( M, description='test_mapseq' ) as ex:
-        job = get_fastq_files( job, ex.working_directory, dafl )
-        mapped_files = map_groups( ex, job, ex.working_directory, assembly, {'via': via} )
-        pdf = add_pdf_stats( ex, mapped_files,
-                             dict((k,v['name']) for k,v in job.groups.iteritems()),
-                             gl['script_path'] )
-        if job.options['compute_densities']:
-            if not(job.options.get('read_extension')>0):
-                job.options['read_extension'] = mapped_files.values()[0].values()[0]['stats']['read_length']
-            density_files = densities_groups( ex, job, mapped_files, assembly.chromosomes, via=via )
-            if job.options['gdv_project']:
-                gdv_project = gdv.create_gdv_project( gl['gdv']['key'], gl['gdv']['email'],
-                                                      job.description, hts_key, 
-                                                      assembly.nr_assembly_id,
-                                                      gdv_url=gl['gdv']['url'], public=True )
-                add_pickle( ex, gdv_project, description='py:gdv_json' )
+Fields must be separated by the character "|" (pipe - usually Alt+7) without spaces in between, and order should be respected.
 
-Finally all the output files are returned as a dictionary::
 
-    allfiles = common.get_files( ex.id, M )
+Sequence::
 
-this dictionary will be organized by file type and provide a descriptive name and the actual (repository) file name, e.g.::
-
-    {'none': {'7XgDex9cTCn8JjEk005Q': 'test.sql'}, 
-    'py': {'hkwjU7nnhE0uuZostJmF': 'file_names', 'M844kgtaGpgybnq5APsb': 'test_full_bamstat', 'cRzKabyKnN0dcRHaAVsj': 'test_Poisson_threshold', 'j4EWGj2riic7Xz47hKhj': 'test_filter_bamstat'}, 
-    'sql': {'7XgDex9cTCn8JjEk005Q_merged.sql': 'test_merged.sql'}, 
-    'bigwig': {'UjaseL2p8Z1RnDetZ2YX': 'test_merged.bw'},
-    'pdf': {'13wUAjrQEikA5hXEgTt': 'mapping_report.pdf'}, 
-    'bam': {'mJP4dqP1f2K6Pw2iZ2LZ': 'test_filtered.bam', 'IRn3o49zIZ2JOOkMxAJl.bai': 'test_complete.bam.bai', 'IRn3o49zIZ2JOOkMxAJl': 'test_complete.bam', 'mJP4dqP1f2K6Pw2iZ2LZ.bai': 'test_filtered.bam.bai'}}
-
-If you then want to continue with a ChIP-seq analysis, you can start a new execution, collect the files with :func:`bbcflib.chipseq.get_bam_wig_files` and run :func:`bbcflib.chipseq.workflow_groups`::
-
-    with execution( M, description='test_chipseq' ) as ex:
-        (mapped_files, job) = get_bam_wig_files( ex, job, 'test_lims', gl['hts_mapseq']['url'], gl['script_path'], via=via )
-        chipseq_files = workflow_groups( ex, job, mapped_files, assembly.chromosomes, gl['script_path'] )
+    The sequence of your primer. For optimal results, we suggest to truncate the sequence as defined by n-3 (as defined in the parameter file for de-multiplexing).  
 
 

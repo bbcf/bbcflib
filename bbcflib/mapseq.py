@@ -316,7 +316,7 @@ def get_fastq_files( job, fastq_root, dafl=None, set_seed_length=True ):
             elif isinstance(run,str):
                 fq_file = unique_filename_in(fastq_root)
                 target = os.path.join(fastq_root,fq_file)
-                if run.startswith("http://") or run.startswith("https://"):
+                if run.startswith("http://") or run.startswith("https://") or run.startswith("ftp://"):
                     urllib.urlretrieve( run, target )
                 else:
                     shutil.copy(run,target)

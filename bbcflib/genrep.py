@@ -109,24 +109,9 @@ class GenRep(object):
         request = urllib2.Request(url)
         return urllib2.urlopen(request).read().split(',')
 
-#    def get_sequence_straight(self, input_list):
-#        """ each element in input_list are lists containing: the chromosome name, the start and the end position."""
-#        h_data = {}
-#        h_result = {}
-#
-#        for e in input_list:
-#            if (h_data.get(e[0]) == None):
-#                h_data[e[0]]=[]
-#            h_data[e[0]].append([e[1],e[2]])
-#        for chr in h_data.keys():
-#            h_data[chr].sort()
-#            res_list=get_sequence(chr, h_data[chr])
-#            for i in range(0,len(res_list)):
-#                h_results[chr]=[h_data[chr][i], res_list[i]]
-#        return h_results
-
     def fasta_from_regions(self, chromosomes, regions, out=None, chunk=50000, shuffled=False):
-        """Get a fasta file with sequences corresponding to the features in the
+        """
+        Get a fasta file with sequences corresponding to the features in the
         bed or sqlite file.
 
         Returns the name of the file and the total sequence size.

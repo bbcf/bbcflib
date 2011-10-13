@@ -30,7 +30,7 @@ def load_libraryParamsFile(paramsfile):
 				paramslib['secondary']=s.split('=')[1]
 			elif re.search('Segment length',s.split('=')[0]):
 				paramslib['length']=s.split('=')[1]
-			elif re.search('type',s.split('=')[0]):
+			elif re.search('Type',s.split('=')[0]):
 				paramslib['type']=s.split('=')[1]
 	if len(paramslib['name']) < 2:
 		paramslib['name']='myLibrary'
@@ -125,6 +125,11 @@ def getCoverageInRepeats(ex,infile,genomeName='mm9',via='lsf'):
 	repeatsPath="/archive/epfl/bbcf/data/genomes/repeats/"
 	repeatsFile=repeatsPath+'/'+genomeName+'/'+genomeName+'_rmsk.bed'
 	print("repeatsFile="+repeatsFile)
+
+	if ! os.path.exists(repeatsFile):
+		print("coverage in repeats not calculated as file "+repeatsFile+" does not exist.")
+		return(infile)
+
 	tmpfile = unique_filename_in()
 	_ = call_coverageBed.nonblocking(ex,repeatsFile,infile,via=via,stdout=tmpfile).wait()
 	resfile = unique_filename_in()

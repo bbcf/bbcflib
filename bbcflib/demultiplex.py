@@ -154,6 +154,14 @@ def load_paramsFile(paramsfile):
 	return params
 
 
+@program
+def count_lines(filename):
+   def parse_output(p):
+        m = re.search(r'^\s*(\d+)\s+' + filename, ''.join(p.stdout))
+        return int(m.groups()[0])
+   return {'arguments': ["wc","-l",filename],
+           'return_value': parse_output}
+
 def workflow_groups(ex, job, scriptPath):
 	processed = {}
 	job_groups=job.groups
@@ -169,9 +177,9 @@ def workflow_groups(ex, job, scriptPath):
 			print suffix
 			infile=getFileFromURL(run['url'],lib_dir, suffix)
 			primersFile = lib_dir + 'group_' + group['name'] + "_primer_file.fa"	
-			ex.add(primersFile,description='group_' + group['name'] + "_primer_file.fa [group:"+ str(grpId) +",step:"+ str(step) + ",type:fa]" )
+			ex.add(primersFile,description="group_" + group['name'] + "_primer_file.fa [group:"+ str(grpId) +",step:"+ str(step) + ",type:fa]" )
 			paramsFile = lib_dir + 'group_' + group['name'] + "_param_file.txt"	
-			ex.add(paramsFile,description='group_' + group['name'] + '_param_file.txt [group:'+ str(grpId) +',step:' + str(step) + ',type:txt]')
+			ex.add(paramsFile,description="group_" + group['name'] + "_param_file.txt [group:"+ str(grpId) +",step:" + str(step) + ",type:txt]")
 			params=load_paramsFile(paramsFile)
 			print(params)	
 			#demultiplex(ex,infile,opts['-p'],int(opts['-s']),opts['-n'],opts['-x'],opts['-l'],via="lsf")
@@ -195,6 +203,7 @@ def workflow_groups(ex, job, scriptPath):
 			step += 1
 			reportFile=unique_filename_in()
 #		!! STILL HAVE TO GENERATE THE REPORT...	
+		# for each fastq file, call count_lines(fastq)/4
 	#		ex.add(reportFile,description="pdf:report_demultiplexing")
 	#		resExonerate.append(reportFile)
 
