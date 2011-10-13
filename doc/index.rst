@@ -13,7 +13,8 @@ Table of Contents:
    :maxdepth: 1
 
    bbcflib
-   tutorial
+   tutorial_chipseq
+   tutorial_4cseq
    specification
 
    bbcflib_common
