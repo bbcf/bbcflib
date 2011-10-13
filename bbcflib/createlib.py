@@ -125,6 +125,11 @@ def getCoverageInRepeats(ex,infile,genomeName='mm9',via='lsf'):
 	repeatsPath="/archive/epfl/bbcf/data/genomes/repeats/"
 	repeatsFile=repeatsPath+'/'+genomeName+'/'+genomeName+'_rmsk.bed'
 	print("repeatsFile="+repeatsFile)
+
+	if ! os.path.exists(repeatsFile):
+		print("coverage in repeats not calculated as file "+repeatsFile+" does not exist.")
+		return(infile)
+
 	tmpfile = unique_filename_in()
 	_ = call_coverageBed.nonblocking(ex,repeatsFile,infile,via=via,stdout=tmpfile).wait()
 	resfile = unique_filename_in()
