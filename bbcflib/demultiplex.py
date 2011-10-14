@@ -95,7 +95,7 @@ def exonerate(ex,infile, dbFile, minScore=77,n=1,x=22,l=30,via="local"):
 	#print resExonerate
 	for f in futures: f.wait()
 	for f in resExonerate:
-		ex.add(f,description="exonerate (part) [group:" + str(grpId) + ",step:" + str(step) + ",type:txt,view:admin]")
+		ex.add(f,description="txt:exonerate (part) [group:" + str(grpId) + ",step:" + str(step) + ",type:txt,view:admin]")
 		res.append(split_exonerate(f,n=n,x=x,l=l))
 	step += 1
 	#print res
@@ -197,7 +197,7 @@ def workflow_groups(ex, job, scriptPath):
 			
 	        	filteredFastq={}
 	        	for k,f in resExonerate.iteritems():
-        		        ex.add(f,description="k:"+k+".fastq [group:" + str(grpId) + ",step:"+ str(step) + ",type:fastq,view:admin]")
+        		        ex.add(f,description="fastq:"+k+".fastq [group:" + str(grpId) + ",step:"+ str(step) + ",type:fastq,view:admin]")
 
 			step += 1
 
@@ -206,7 +206,7 @@ def workflow_groups(ex, job, scriptPath):
 			
 		        for k,f in filteredFastq.iteritems():
         #                        resFiles[k]=[]
-		                ex.add(f,description="k:"+k+"_filtered.fastq [group:" + str(grpId) + ",step:" + str(step) + ",type:fastq,view:admin]")
+		                ex.add(f,description="fastq:"+k+"_filtered.fastq [group:" + str(grpId) + ",step:" + str(step) + ",type:fastq,view:admin]")
 	#			if k in resFiles:
 	#				resFiles[k].append(f)
 
@@ -273,7 +273,7 @@ def filterSeq(ex,fastqFiles,primersFile):
 	
 	indexFiles={}	
 	for k,f in filenames.iteritems():
-                ex.add(f,description=k+":"+k+"_seqToFilter.fa [group:"+ str(grpId) + ",step:" + str(step) + ",type:fa,view:admin]")
+                ex.add(f,description="fa:"+k+"_seqToFilter.fa [group:"+ str(grpId) + ",step:" + str(step) + ",type:fa,view:admin]")
 		#indexFiles[k]=add_bowtie_index(ex,f,description=k+'_bowtie index',stdout="../out")
 		indexFiles[k]=bowtie_build.nonblocking(ex,f,via='lsf')
 
