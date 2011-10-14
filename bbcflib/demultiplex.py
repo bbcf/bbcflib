@@ -1,3 +1,9 @@
+"""
+===========================
+Module: bbcflib.demultiplex
+===========================
+
+"""
 from bein import *
 from bein.util import *
 import sys, getopt, os

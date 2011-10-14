@@ -1,9 +1,9 @@
 """
 ======================
-createlib.py 
+Module: bbcflib.createlib.py 
 ======================
 
-functions used for the creation of a library in a 4c-seq analysis.
+Functions used for the creation of a library in a 4c-seq analysis.
 """
 
 from bein import *
@@ -14,7 +14,7 @@ import tarfile
 
 def load_libraryParamsFile(paramsfile):
 	'''
-		Return a dictionary with the parameters required for the creation of a new library
+        Returns a dictionary with the parameters required for the creation of a new library
 	'''
 	paramslib={}
 	with open(paramsfile) as f:
@@ -126,7 +126,7 @@ def getCoverageInRepeats(ex,infile,genomeName='mm9',via='lsf'):
 	repeatsFile=repeatsPath+'/'+genomeName+'/'+genomeName+'_rmsk.bed'
 	print("repeatsFile="+repeatsFile)
 
-	if ! os.path.exists(repeatsFile):
+	if not(os.path.exists(repeatsFile)):
 		print("coverage in repeats not calculated as file "+repeatsFile+" does not exist.")
 		return(infile)
 
