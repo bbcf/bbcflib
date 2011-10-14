@@ -122,6 +122,7 @@ def density_to_countsPerFrag(ex,density_file,density_name,assembly_name,reffile,
 
 	print("will call mean_score_by_feature for t1="+density_file+"(name="+density_name+") and t2="+reffile)
 	outdir=unique_filename_in()
+	os.mkdir(outdir)
 #        touch(ex,wd+outdir)
         #ok: res=gm.run(track1=density_file,track1_name=density_name,track2=reffile,track2_name='libFile',track2_chrfile=assembly.name,operation_type='genomic_manip',manipulation='mean_score_by_feature',output_location=wd,output_name=outdir)
 	
@@ -132,7 +133,7 @@ def density_to_countsPerFrag(ex,density_file,density_name,assembly_name,reffile,
                                        'track2_chrfile':assembly_name,
                                        'operation_type':'genomic_manip',
                                        'manipulation':'mean_score_by_feature',
-                                       'output_name':outdir
+                                       'output_location':outdir
                       }
 
      #  'output_location':wd,
@@ -140,8 +141,8 @@ def density_to_countsPerFrag(ex,density_file,density_name,assembly_name,reffile,
 
 	# calculate mean score per segments (via gFeatMiner)
 	res = common.run_gMiner.nonblocking(ex,gMiner_job,via='local').wait()
-	ex.add(outdir, description="none:meanScorePerFeature_"+density_name+".sql (template) [group"+str(grpId)+",step:"+str(step)+",type:template,view:admin]")
-	ex.add(outdir+".sql",description="sql:meanScorePerFeature_"+density_name+".sql [group:"+str(grpId)+",step:"+str(step)+",type:sql,view:admin]",
+	ex.add(res[0], description="none:meanScorePerFeature_"+density_name+".sql (template) [group"+str(grpId)+",step:"+str(step)+",type:template,view:admin]")
+	ex.add(res[0]+".sql",description="sql:meanScorePerFeature_"+density_name+".sql [group:"+str(grpId)+",step:"+str(step)+",type:sql,view:admin]",
                         associate_to_filename=outdir, template='%s'+'.sql')
 
 	countsPerFragFile=unique_filename_in()+".bed"
@@ -231,6 +232,7 @@ def workflow_groups(ex, job, primers_dict, g_rep, mapseq_files, mapseq_url, scri
                                                  			convert=False,
                                                  			via=via )
 				mapseq_files[gid][rid]['wig']['merged']=density_file+"merged.sql"
+				print("name of density_file after parallel_density_sql="+density_file)
 				print("density file:"+mapseq_files[gid][rid]['wig']['merged'])
                         else:
                                 print("Will use existing density file:"+mapseq_files[gid][rid]['wig']['merged'])

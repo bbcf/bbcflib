@@ -3,6 +3,11 @@
 
 Here is a short tutorial showing how to launch a 4c-seq analysis from the interface http://htsstation.vital-it.ch/4cseq/.
 
+For details about the underlying method, please refer to the following paper:
+        
+Noordermeer et al., The dynamic architecture of Hox gene clusters, `Science, 334:222-225, 2011 <http://www.sciencemag.org/content/334/6053/222.abstract>`_
+
+.. `mutliplex method page` (in preparation)
 
 Get aligned data?
 -----------------

@@ -18,7 +18,7 @@ For now, please refer to us with the URL below:
 Map-seq:
 -------
 
-- Leleu M, Lefebvre G, Rougemont J: Processing and analyzing ChIP-seq data: from short reads to regulatory interactions, `Brief Funct Genomics, 9(5-6):466-476, 2010 <http://www.ncbi.nlm.nih.gov/pubmed/20861161>`_.
+Leleu M, Lefebvre G, Rougemont J: Processing and analyzing ChIP-seq data: from short reads to regulatory interactions, `Brief Funct Genomics, 9(5-6):466-476, 2010 <http://www.ncbi.nlm.nih.gov/pubmed/20861161>`_.
 
 
 ChIP-seq:
@@ -30,5 +30,5 @@ Rey G, et al.: Genome-Wide and Phase-Specific DNA-Binding Rhythms of BMAL1 Contr
 4C-seq:
 -------
 
-- Noordermeer et al., The dynamic architecture of Hox gene clusters, `Science, 334:222-225, 2011 <http://www.sciencemag.org/content/334/6053/222.abstract>`_ 
+Noordermeer et al., The dynamic architecture of Hox gene clusters, `Science, 334:222-225, 2011 <http://www.sciencemag.org/content/334/6053/222.abstract>`_ 
 
