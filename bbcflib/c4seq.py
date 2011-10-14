@@ -230,7 +230,7 @@ def workflow_groups(ex, job, primers_dict, g_rep, mapseq_files, mapseq_url, scri
                                                  			merge=0,
                                                  			convert=False,
                                                  			via=via )
-				mapseq_files[gid][rid]['wig']['merged']=density_file+"merged.sql"
+				mapseq_files[gid][rid]['wig']['merged']=density_file+"_merged.sql"
 				print("density file:"+mapseq_files[gid][rid]['wig']['merged'])
                         else:
                                 print("Will use existing density file:"+mapseq_files[gid][rid]['wig']['merged'])
@@ -238,11 +238,11 @@ def workflow_groups(ex, job, primers_dict, g_rep, mapseq_files, mapseq_url, scri
 			print("density files:")
 			print(mapseq_files[gid][rid]['wig']['merged'])
 			print("Will convert density file .sql to .wig")
-			mapseq_wig = unique_filename_in()+".wig"
+			mapseq_wig = unique_filename_in()
 			with track.load(mapseq_files[gid][rid]['wig']['merged'],'sql') as t:
-                		t.convert(mapseq_wig,'wig')
+                		t.convert(mapseq_wig+".wig",'wig')
 			ex.add(mapseq_wig,description="none:density_file_"+mapseq_files[gid][rid]['libname']+".wig (template) [group:"+str(grpId)+",step:"+str(step)+",type:template,view:admin]")
-			ex.add(mapseq_wig,description="wig:density_file_"+mapseq_files[gid][rid]['libname']+".wig [group:"+str(grpId)+",step:"+str(step)+",type:wig]",
+			ex.add(mapseq_wig+".wig",description="wig:density_file_"+mapseq_files[gid][rid]['libname']+".wig [group:"+str(grpId)+",step:"+str(step)+",type:wig]",
 				associate_to_filename=mapseq_wig, template="%s"+".wig")
 
 		        ex.add(mapseq_files[gid][rid]['wig']['merged'],description="sql:density_file_"+mapseq_files[gid][rid]['libname']+" [group:"+str(grpId)+",step:"+str(step)+",type:sql]"  )
