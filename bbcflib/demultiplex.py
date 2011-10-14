@@ -182,10 +182,12 @@ def workflow_groups(ex, job, scriptPath):
 			suffix = run['url'].split('.')[-1]
 			print suffix
 			infile=getFileFromURL(run['url'],lib_dir, suffix)
-			primersFile = lib_dir + 'group_' + group['name'] + "_primer_file.fa"	
-			ex.add(primersFile,description="group_" + group['name'] + "_primer_file.fa [group:"+ str(grpId) +",step:"+ str(step) + ",type:fa]" )
-			paramsFile = lib_dir + 'group_' + group['name'] + "_param_file.txt"	
-			ex.add(paramsFile,description="group_" + group['name'] + "_param_file.txt [group:"+ str(grpId) +",step:" + str(step) + ",type:txt]")
+			primersFilename = 'group_' + group['name'] + "_primer_file.fa"
+			primersFile = lib_dir + primersFilename	
+			ex.add(primersFile,description="fa:"+primersFilename+" [group:"+ str(grpId) +",step:"+ str(step) + ",type:fa]" )
+			paramsFilename = 'group_' + group['name'] + "_param_file.txt"
+			paramsFile = lib_dir + paramsFilename	
+			ex.add(paramsFile,description="txt:"+ paramsFilename + " [group:"+ str(grpId) +",step:" + str(step) + ",type:txt]")
 			params=load_paramsFile(paramsFile)
 			print(params)	
 			#demultiplex(ex,infile,opts['-p'],int(opts['-s']),opts['-n'],opts['-x'],opts['-l'],via="lsf")
