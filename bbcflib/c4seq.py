@@ -234,6 +234,9 @@ def workflow_groups(ex, job, primers_dict, g_rep, mapseq_files, mapseq_url, scri
                         else:
                                 print("Will use existing density file:"+mapseq_files[gid][rid]['wig']['merged'])
 
+			print("density files:")
+			print(mapseq_files[gid][rid]['wig']['merged'])
+			print("Will convert density file .sql to .wig")
 			mapseq_wig = unique_filename_in()
 			with track.load(mapseq_files[gid][rid]['wig']['merged'],'sql') as t:
                 		t.convert(mapseq_wig,'wig')
