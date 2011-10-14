@@ -230,7 +230,7 @@ def workflow_groups(ex, job, primers_dict, g_rep, mapseq_files, mapseq_url, scri
                                                  			merge=0,
                                                  			convert=False,
                                                  			via=via )
-				mapseq_files[gid][rid]['wig']['merged']=density_file+"_merged.sql"
+				mapseq_files[gid][rid]['wig']['merged']=density_file+"merged.sql"
 				print("density file:"+mapseq_files[gid][rid]['wig']['merged'])
                         else:
                                 print("Will use existing density file:"+mapseq_files[gid][rid]['wig']['merged'])
