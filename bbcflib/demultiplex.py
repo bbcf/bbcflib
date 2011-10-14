@@ -76,8 +76,10 @@ def exonerate(ex,infile, dbFile, minScore=77,n=1,x=22,l=30,via="local"):
 		futures=[fastqToFasta.nonblocking(ex,sf,n=n,x=x,via=via) for sf in subfiles]
                 faSubFiles=[f.wait() for f in futures]
 
-	for f in faSubFiles:
-		ex.add(f,description="input.fasta (part) [group:" + str(grpId) + ",step:"+ str(step) + ",type:fa,view:admin]")
+	for f in faSubFiles[0:5]:
+		ex.add(f,description="input.fasta (part)"+ "[group:" + str(grpId) + ",step:"+ str(step) + ",type:fa,view:admin]")
+		print(f)
+		print("input.fasta (part)"+ "[group:" + str(grpId) + ",step:"+ str(step) + ",type:fa,view:admin]")	
 	
 	print("Will call raw_exonerate for each fasta files")	
 #	faSubFiles=split_file(ex,faFile,n_lines=500000)
