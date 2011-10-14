@@ -4,6 +4,11 @@ Module: bbcflib.rnaseq
 ======================
 
 Methods of the bbcflib's RNA-seq worflow. The main function is rnaseq_workflow().
+
+From a BAM file produced by an alignement on the *exonome*, gets counts of reads
+on the exons, add them to get counts on genes, and uses least-squares to infer
+counts on transcripts, avoiding to map on either genome or transcriptome.
+Note that the result counts on transcripts are approximate.
 """
 
 # Built-in modules #
@@ -21,13 +26,21 @@ import numpy
 def lsqnonneg(C, d, x0=None, tol=None, itmax_factor=3):
     """Linear least squares with nonnegativity constraints (NNLS), based on MATLAB's lsqnonneg function.
 
-    (x,resnorm,res) = lsqnonneg(C,d) returns
-    * the vector x that minimizes norm(d-C*x) subject to x >= 0, C and d must be real
+    ``(x,resnorm,res) = lsqnonneg(C,d)`` returns
+    * the vector *x* that minimizes norm(d-C*x) subject to x >= 0
     * the norm of residuals *resnorm*
     * the residuals *res*
 
-    References: Lawson, C.L. and R.J. Hanson, Solving Least-Squares Problems, Prentice-Hall, Chapter 23, p. 161, 1974.
-    http://code.google.com/p/diffusion-mri/source/browse/trunk/Python/lsqnonneg.py?spec=svn17&r=17
+    :param x0: Initial point for x.
+    :param tol: Tolerance to determine when the error is small enough.
+    :param itmax_factor: Maximum number of iterations.
+
+    :rtype x: numpy array
+    :rtype resnorm: float
+    :rtype res: numpy array
+
+    Reference: Lawson, C.L. and R.J. Hanson, Solving Least-Squares Problems, Prentice-Hall, Chapter 23, p. 161, 1974.
+    http://diffusion-mri.googlecode.com/svn/trunk/Python/lsqnonneg.py
     """
     eps = 2.22e-16    # from matlab
     def norm1(x):
@@ -42,17 +55,15 @@ def lsqnonneg(C, d, x0=None, tol=None, itmax_factor=3):
     C = numpy.asarray(C)
     (m,n) = C.shape
     P = numpy.zeros(n)
-    Z = numpy.arange(1, n+1)
+    Z = ZZ = numpy.arange(1, n+1)
     if x0 is None: x=P
     else:
         if any(x0 < 0): x=P
         else: x=x0
-    ZZ=Z
     resid = d - numpy.dot(C, x)
     w = numpy.dot(C.T, resid)
     outeriter=0; it=0
     itmax=itmax_factor*n
-    exitflag=1
 
     # outer loop to put variables into set to hold positive coefficients
     while numpy.any(Z) and numpy.any(w[ZZ-1] > tol):
@@ -91,8 +102,8 @@ def lsqnonneg(C, d, x0=None, tol=None, itmax_factor=3):
         x = z
         resid = d - numpy.dot(C, x)
         w = numpy.dot(C.T, resid)
-    return (x, sum(resid*resid), resid)
-    #return (x, sum(numpy.absolute(resid)), resid)
+    return (x, sum(resid*resid), resid) # norm2
+    #return (x, sum(numpy.absolute(resid)), resid) # norm1
 
 def fetch_mappings(path_or_assembly_id):
     """Given an assembly ID, return a tuple
@@ -104,7 +115,7 @@ def fetch_mappings(path_or_assembly_id):
     [4] trans_in_gene is a dict {gene ID: [IDs of the transcripts it contains]}
     [5] exons_in_trans is a dict {transcript ID: [IDs of the exons it contains]}
 
-    *path_or_assembly_id* can be a numeric or nominal ID for GenRep
+    :param path_or_assembly_id: can be a numeric or nominal ID for GenRep
     (e.g. 11, 76 or 'hg19' for H.Sapiens), or a path to a file containing a
     pickle object which is read to get the mapping.
     """
@@ -157,7 +168,7 @@ def pileup_file(bamfile, exons):
 
 def save_results(ex, cols, conditions, header=[], desc='counts'):
     """Save results in a CSV file, one line per feature, one column per run.
-    *data* is a dictionary {ID: [counts in each condition]}
+    :param data: a dictionary {ID: [counts in each condition]}
     """
     conditions_s = '%s, '*(len(conditions)-1)+'%s.'
     output = rstring()
@@ -180,8 +191,11 @@ def genes_expression(exons_data, exon_to_gene, ncond):
     return gcounts,grpkms
 
 @timer
-def transcripts_expression(exons_data, trans_in_gene, exons_in_trans, ncond):
-    """Get transcript counts from exon counts."""
+def transcripts_expression(exons_data, trans_in_gene, exons_in_trans, ncond, method="nnls"):
+    """Get transcript counts from exon counts.
+    :param method: "nnls" or "pinv", respectively non-negative least-squares and pseudoinverse.
+    """
+    print "Method:", method
     genes = list(set(exons_data[1]))
     transcripts = []
     for g in genes:
@@ -216,7 +230,7 @@ def transcripts_expression(exons_data, trans_in_gene, exons_in_trans, ncond):
                         ecnts[c][i] += exons_counts[e][c]
             # Compute transcript counts
             for c in range(ncond):
-                if 1:
+                if method == "pinv":
                     #-----------------------#
                     # Pseudo-inverse method #
                     #-----------------------#
@@ -224,11 +238,11 @@ def transcripts_expression(exons_data, trans_in_gene, exons_in_trans, ncond):
                     tcnts.append(x)
                     totalerror += norm(dot(M,pinv(M))-identity(shape(M)[0]) ,1) # norm 1
                     totalcount += sum(ecnts[c])
-                if 0:
+                if method == "nnls":
                     #-----------------------------------#
                     # Non-negative least squares method #
                     #-----------------------------------#
-                    x, resnorm, res = lsqnonneg(M,ecnts[c]) # norm 2
+                    x, resnorm, res = lsqnonneg(M,ecnts[c],itmax_factor=5)
                     tcnts.append(x)
                     totalerror += resnorm
                     totalcount += sum(ecnts[c])
@@ -252,14 +266,15 @@ def rnaseq_workflow(ex, job, assembly, bam_files, pileup_level=["genes"], via="l
     """
     Main function of the workflow.
 
-    * *ex*: the bein's execution Id.
-    * *job*: a Job object (or a dictionary of the same form) as returned from HTSStation's frontend.
-    * *assembly*: the assembly Id of the species, string or int (e.g. 'hg19' or 76).
-    * *bam_files*: a complicated dictionary as returned by mapseq.get_bam_wig_files.
-    * *pileup_level*: a string or array of strings indicating the features you want to compare.
+    :param ex: the bein's execution Id.
+    :param job: a Job object (or a dictionary of the same form) as returned from HTSStation's frontend.
+    :param assembly: the assembly Id of the species, string or int (e.g. 'hg19' or 76).
+    :param bam_files: a complicated dictionary as returned by mapseq.get_bam_wig_files.
+    :param pileup_level: a string or array of strings indicating the features you want to compare.
     Targets can be 'genes', 'transcripts', or 'exons'.
-    * *via*: 'local' or 'lsf'
-    * *output*: alternative name for output file. Otherwise it is random.
+    :param via: 'local' or 'lsf'
+    :param output: alternative name for output file. Otherwise it is random.
+    :rtype: None
     """
     group_names={}
     assembly_id = job.assembly_id
