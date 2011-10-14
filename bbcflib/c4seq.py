@@ -10,11 +10,10 @@ a reference genome.
 
 from bein import *
 from bein.util import *
-from bbcflib import daflims, genrep, frontend, email, gdv, common, track
+from bbcflib import daflims, genrep, frontend, email, gdv, common, track, createlib
 from bbcflib.mapseq import *
 import sys, getopt, os, json, re
 import gMiner as gm
-import createlib
 
 grpId=1
 step=0
