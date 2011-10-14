@@ -15,7 +15,7 @@ The image bellow shows how such key can be used. In this example, data were not 
 You can add as many groups and as many runs per group you want by using the links `Add group of runs` and `Add run in this group` (see tutorial xxx for a more detailed explanation of what are groups and runs). In a 4C-seq analysis, several runs in one group means that all reads coming from the different datasets will be merged up for the analysis. Defining several Groups will run an analysis on different datasets simultaneously (e.g., several viewpoints). 
 Do not forget to name each group. This name is used for naming the results files as well as in the reports. This name should be identical to the one used in the primer file (see `4C-seq options`). Make sure to use short names without spaces (prefer "_" character to separate words) and without any special characters in it (e.g,  %&?! ...) 
 
-Finally, you will have to select an assembly from the list. Make sure you are selecting the one used for the mapping! If your assembly is not listed, please send us an `email<mailto:webmaster.bbcf@epfl.ch>`_.
+Finally, you will have to select an assembly from the list. Make sure you are selecting the one used for the mapping! If your assembly is not listed, please send us an `email <mailto:webmaster.bbcf@epfl.ch>`_.
 
  
 General Parameters
@@ -50,7 +50,7 @@ Below is an example of such file::
 
 The primary restriction site is the sequence recognized by the first restriction enzyme (i.e. before decrosslinking). The secondary restriction site is the sequence recognized by the secondary restriction site (i.e. after decrosslinking). The segment length is the genomic interval adjacent to the restriction site from which reads are taken into account (we advice a length of 30 bp). The type of the library (typeI or typeII) depends on the design of the inverse 4C-seq primers. If the inverse forward primer is aimed towards the primary restriction site, the library is typeI. If the inverse forward primer is aimed towards the secondary restriction site, the library is type II.
 
-To ensure the use of consistent formatting, we advise to use the following :download:`template <doc:params_library_template.txt>` 
+To ensure the use of consistent formatting, we advise to use the following :download:`template <params_library_template.txt>`
 
 
 Primer file

@@ -13,6 +13,7 @@ Table of Contents:
    :maxdepth: 1
 
    bbcflib
+   references
    tutorial_chipseq
    tutorial_4cseq
    specification
@@ -22,6 +23,7 @@ Table of Contents:
    bbcflib_email
    bbcflib_frontend
    bbcflib_genrep
+   bbcflib_demultiplex
    bbcflib_mapseq
    bbcflib_chipseq
    bbcflib_rnaseq
