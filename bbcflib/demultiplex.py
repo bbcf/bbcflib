@@ -76,8 +76,10 @@ def exonerate(ex,infile, dbFile, minScore=77,n=1,x=22,l=30,via="local"):
 		futures=[fastqToFasta.nonblocking(ex,sf,n=n,x=x,via=via) for sf in subfiles]
                 faSubFiles=[f.wait() for f in futures]
 
-	for f in faSubFiles:
-		ex.add(f,description="input.fasta (part) [group:" + str(grpId) + ",step:"+ str(step) + ",type:fa,view:admin]")
+	for f in faSubFiles[0:5]:
+		ex.add(f,description="fa:input.fasta (part)"+ "[group:" + str(grpId) + ",step:"+ str(step) + ",type:fa,view:admin]")
+		print(f)
+		print("fa:input.fasta (part)"+ "[group:" + str(grpId) + ",step:"+ str(step) + ",type:fa,view:admin]")	
 	
 	print("Will call raw_exonerate for each fasta files")	
 #	faSubFiles=split_file(ex,faFile,n_lines=500000)
@@ -93,7 +95,7 @@ def exonerate(ex,infile, dbFile, minScore=77,n=1,x=22,l=30,via="local"):
 	#print resExonerate
 	for f in futures: f.wait()
 	for f in resExonerate:
-		ex.add(f,description="exonerate (part) [group:" + str(grpId) + ",step:" + str(step) + ",type:txt,view:admin]")
+		ex.add(f,description="txt:exonerate (part) [group:" + str(grpId) + ",step:" + str(step) + ",type:txt,view:admin]")
 		res.append(split_exonerate(f,n=n,x=x,l=l))
 	step += 1
 	#print res
@@ -182,10 +184,12 @@ def workflow_groups(ex, job, scriptPath):
 			suffix = run['url'].split('.')[-1]
 			print suffix
 			infile=getFileFromURL(run['url'],lib_dir, suffix)
-			primersFile = lib_dir + 'group_' + group['name'] + "_primer_file.fa"	
-			ex.add(primersFile,description="group_" + group['name'] + "_primer_file.fa [group:"+ str(grpId) +",step:"+ str(step) + ",type:fa]" )
-			paramsFile = lib_dir + 'group_' + group['name'] + "_param_file.txt"	
-			ex.add(paramsFile,description="group_" + group['name'] + "_param_file.txt [group:"+ str(grpId) +",step:" + str(step) + ",type:txt]")
+			primersFilename = 'group_' + group['name'] + "_primer_file.fa"
+			primersFile = lib_dir + primersFilename	
+			ex.add(primersFile,description="fa:"+primersFilename+" [group:"+ str(grpId) +",step:"+ str(step) + ",type:fa]" )
+			paramsFilename = 'group_' + group['name'] + "_param_file.txt"
+			paramsFile = lib_dir + paramsFilename	
+			ex.add(paramsFile,description="txt:"+ paramsFilename + " [group:"+ str(grpId) +",step:" + str(step) + ",type:txt]")
 			params=load_paramsFile(paramsFile)
 			print(params)	
 			#demultiplex(ex,infile,opts['-p'],int(opts['-s']),opts['-n'],opts['-x'],opts['-l'],via="lsf")
@@ -193,7 +197,7 @@ def workflow_groups(ex, job, scriptPath):
 			
 	        	filteredFastq={}
 	        	for k,f in resExonerate.iteritems():
-        		        ex.add(f,description="k:"+k+".fastq [group:" + str(grpId) + ",step:"+ str(step) + ",type:fastq,view:admin]")
+        		        ex.add(f,description="fastq:"+k+".fastq [group:" + str(grpId) + ",step:"+ str(step) + ",type:fastq,view:admin]")
 
 			step += 1
 
@@ -202,7 +206,7 @@ def workflow_groups(ex, job, scriptPath):
 			
 		        for k,f in filteredFastq.iteritems():
         #                        resFiles[k]=[]
-		                ex.add(f,description="k:"+k+"_filtered.fastq [group:" + str(grpId) + ",step:" + str(step) + ",type:fastq,view:admin]")
+		                ex.add(f,description="fastq:"+k+"_filtered.fastq [group:" + str(grpId) + ",step:" + str(step) + ",type:fastq,view:admin]")
 	#			if k in resFiles:
 	#				resFiles[k].append(f)
 
@@ -269,7 +273,7 @@ def filterSeq(ex,fastqFiles,primersFile):
 	
 	indexFiles={}	
 	for k,f in filenames.iteritems():
-                ex.add(f,description=k+":"+k+"_seqToFilter.fa [group:"+ str(grpId) + ",step:" + str(step) + ",type:fa,view:admin]")
+                ex.add(f,description="fa:"+k+"_seqToFilter.fa [group:"+ str(grpId) + ",step:" + str(step) + ",type:fa,view:admin]")
 		#indexFiles[k]=add_bowtie_index(ex,f,description=k+'_bowtie index',stdout="../out")
 		indexFiles[k]=bowtie_build.nonblocking(ex,f,via='lsf')
 

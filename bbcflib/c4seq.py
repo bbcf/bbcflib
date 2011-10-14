@@ -234,7 +234,10 @@ def workflow_groups(ex, job, primers_dict, g_rep, mapseq_files, mapseq_url, scri
                         else:
                                 print("Will use existing density file:"+mapseq_files[gid][rid]['wig']['merged'])
 
-			mapseq_wig = unique_filename_in()
+			print("density files:")
+			print(mapseq_files[gid][rid]['wig']['merged'])
+			print("Will convert density file .sql to .wig")
+			mapseq_wig = unique_filename_in()+".wig"
 			with track.load(mapseq_files[gid][rid]['wig']['merged'],'sql') as t:
                 		t.convert(mapseq_wig,'wig')
 			ex.add(mapseq_wig,description="none:density_file_"+mapseq_files[gid][rid]['libname']+".wig (template) [group:"+str(grpId)+",step:"+str(step)+",type:template,view:admin]")
