@@ -141,8 +141,10 @@ def density_to_countsPerFrag(ex,density_file,density_name,assembly_name,reffile,
 
 	# calculate mean score per segments (via gFeatMiner)
 	res = common.run_gMiner.nonblocking(ex,gMiner_job,via='local').wait()
-	ex.add(res[0], description="none:meanScorePerFeature_"+density_name+".sql (template) [group"+str(grpId)+",step:"+str(step)+",type:template,view:admin]")
-	ex.add(res[0]+".sql",description="sql:meanScorePerFeature_"+density_name+".sql [group:"+str(grpId)+",step:"+str(step)+",type:sql,view:admin]",
+	print("res file="+res[0])
+	touch(ex,outdir)
+	ex.add(outdir, description="none:meanScorePerFeature_"+density_name+".sql (template) [group"+str(grpId)+",step:"+str(step)+",type:template,view:admin]")
+	ex.add(res[0],description="sql:meanScorePerFeature_"+density_name+".sql [group:"+str(grpId)+",step:"+str(step)+",type:sql,view:admin]",
                         associate_to_filename=outdir, template='%s'+'.sql')
 
 	countsPerFragFile=unique_filename_in()+".bed"
