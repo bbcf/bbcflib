@@ -7,12 +7,11 @@ Welcome to *bbcflib's* documentation!
 =====================================
 The Bioinformatics and Biostatistics Core Facility Python Library.
 
-Table of Contents:
-''''''''''''''''''
+Tutorials
+'''''''''
 .. toctree::
    :maxdepth: 1
 
-   bbcflib
    references
    tutorial_demultiplexing
    tutorial_mapseq
@@ -20,6 +19,14 @@ Table of Contents:
    tutorial_4cseq
    tutorial_config_files
 
+Library guide:
+''''''''''''''
+.. specification
+
+.. toctree::
+   :maxdepth: 1
+
+   bbcflib
    bbcflib_common
    bbcflib_daflims
    bbcflib_email
@@ -32,5 +39,7 @@ Table of Contents:
    bbcflib_c4seq
    bbcflib_gdv
    bbcflib_track
+
+
 
 Also see the `developer documentation <http://bbcf.github.com/bbcflib/>`_.
