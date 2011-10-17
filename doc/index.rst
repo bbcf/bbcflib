@@ -15,9 +15,10 @@ Table of Contents:
    bbcflib
    references
    tutorial_demultiplexing
+   tutorial_mapseq
    tutorial_chipseq
    tutorial_4cseq
-   specification
+   tutorial_config_files
 
    bbcflib_common
    bbcflib_daflims
