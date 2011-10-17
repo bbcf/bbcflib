@@ -14,6 +14,7 @@ Table of Contents:
 
    bbcflib
    references
+   tutorial_demultiplexing
    tutorial_chipseq
    tutorial_4cseq
    specification

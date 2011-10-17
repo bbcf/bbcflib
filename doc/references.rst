@@ -13,8 +13,6 @@ For now, please refer to us with the URL below:
 
 http://htsstation.vital-it.ch/
 
-.. David et al., htsstation: xxx , xxx , 2012
-
 
 Map-seq
 -------

@@ -30,8 +30,9 @@ def fastqToFasta(fqFile,n=1,x=22):
 
 def split_exonerate(filename,n=1,x=22,l=30):	    
 	correction={}
-	files={}
+	files = {}
 	filenames={}
+
 	with open(filename,"r") as f:
 		for s in f:
 			s=s.strip('\n')
@@ -57,24 +58,24 @@ def raw_exonerate(fastaFile,dbFile,minScore=77,n=1,x=22,l=30):
 	return{'arguments': ["exonerate","--model","affine:local","-o","-4","-e","-12","-s",str(minScore),fastaFile,dbFile],
 	       'return_value': None} 
 
-def exonerate(ex,infile, dbFile, minScore=77,n=1,x=22,l=30,via="local"):
+def exonerate(ex,subfiles, dbFile, minScore=77,n=1,x=22,l=30,via="local"):
 #	filename = unique_filename_in()
 	#kwargs["stdout"] = filename
 	global grpId
 	global step
 
         print "Will prepare fasta file from input file\n"
-	subfiles=split_file(ex,infile,n_lines=8000000)
+#	subfiles=split_file(ex,infile,n_lines=8000000)
 	faSubFiles=[]
 	
-        if re.search(r'\.fa$',infile) or re.search(r'\.fasta$',infile):
-                faSubFiles=subfiles
-        elif re.search(r'export',infile):
-                futures=[exportToFasta.nonblocking(ex,exportFile=sf,n=n,x=x,via=via) for sf in subfiles]
-		faSubFiles=[f.wait() for f in futures]
-        elif re.search(r'\.fastq$',infile) or re.search(r'\.fq$',infile):
-		futures=[fastqToFasta.nonblocking(ex,sf,n=n,x=x,via=via) for sf in subfiles]
-                faSubFiles=[f.wait() for f in futures]
+#        if re.search(r'\.fa$',infile) or re.search(r'\.fasta$',infile):
+#                faSubFiles=subfiles
+#        elif re.search(r'export',infile):
+#                futures=[exportToFasta.nonblocking(ex,exportFile=sf,n=n,x=x,via=via) for sf in subfiles]
+#		faSubFiles=[f.wait() for f in futures]
+#        elif re.search(r'\.fastq$',infile) or re.search(r'\.fq$',infile):
+	futures=[fastqToFasta.nonblocking(ex,sf,n=n,x=x,via=via) for sf in subfiles]
+        faSubFiles=[f.wait() for f in futures]
 
 	for f in faSubFiles[0:5]:
 		ex.add(f,description="fa:input.fasta (part)"+ "[group:" + str(grpId) + ",step:"+ str(step) + ",type:fa,view:admin]")
@@ -103,13 +104,11 @@ def exonerate(ex,infile, dbFile, minScore=77,n=1,x=22,l=30,via="local"):
 	return res
 
 
-def demultiplex(ex,fastaFile,dbFile,minScore=77,n=1,x=22,l=30,via="local"):
+def demultiplex(ex,subFiles,dbFile,minScore=77,n=1,x=22,l=30,via="local"):
 	resFiles={}
 	print("in demultiplex, call exonerate\n")
-	exonerated = exonerate(ex, fastaFile, dbFile, minScore=int(minScore),n=n,x=x,l=int(l),via=via)
-	#print exonerated
-#	ex.add(exonerated,description="fileExonerate")
-#	split_files = split_exonerate(exonerated,n=n, x=x, l=l)
+	exonerated = exonerate(ex, subFiles, dbFile, minScore=int(minScore),n=n,x=x,l=int(l),via=via)
+	
 	print("demultiplex done\n")
 	for sr in exonerated:
 		for k,v in sr.iteritems():
@@ -177,6 +176,18 @@ def workflow_groups(ex, job, scriptPath):
 	global grpId
 	global step
 	for gid, group in job_groups.iteritems():
+		grpId += 1
+		step = 0
+		primersFilename = 'group_' + group['name'] + "_primer_file.fa"
+		primersFile = lib_dir + primersFilename
+		ex.add(primersFile,description="fa:"+primersFilename+" [group:"+ str(grpId) +",step:"+ str(step) + ",type:fa]" )
+		paramsFilename = 'group_' + group['name'] + "_param_file.txt"
+		paramsFile = lib_dir + paramsFilename
+		ex.add(paramsFile,description="txt:"+ paramsFilename + " [group:"+ str(grpId) +",step:" + str(step) + ",type:txt]")
+		params=load_paramsFile(paramsFile)
+		print(params)
+		infiles = []
+		allSubFiles = [] 
 		for rid,run in group['runs'].iteritems():
 			print(group)
 			print(run)
@@ -184,41 +195,41 @@ def workflow_groups(ex, job, scriptPath):
 			suffix = run['url'].split('.')[-1]
 			print suffix
 			infile=getFileFromURL(run['url'],lib_dir, suffix)
-			primersFilename = 'group_' + group['name'] + "_primer_file.fa"
-			primersFile = lib_dir + primersFilename	
-			ex.add(primersFile,description="fa:"+primersFilename+" [group:"+ str(grpId) +",step:"+ str(step) + ",type:fa]" )
-			paramsFilename = 'group_' + group['name'] + "_param_file.txt"
-			paramsFile = lib_dir + paramsFilename	
-			ex.add(paramsFile,description="txt:"+ paramsFilename + " [group:"+ str(grpId) +",step:" + str(step) + ",type:txt]")
-			params=load_paramsFile(paramsFile)
-			print(params)	
-			#demultiplex(ex,infile,opts['-p'],int(opts['-s']),opts['-n'],opts['-x'],opts['-l'],via="lsf")
-			resExonerate = demultiplex(ex,infile,primersFile,params['s'],params['n'],params['x'],params['l'],via='lsf')
+			infiles.append(infile)
+			subfiles=split_file(ex,infile,n_lines=8000000)
+			for sf in subfiles: allSubFiles.append(sf)
+	
+		#demultiplex(ex,infile,opts['-p'],int(opts['-s']),opts['-n'],opts['-x'],opts['-l'],via="lsf")
+		resExonerate = demultiplex(ex,allSubFiles,primersFile,params['s'],params['n'],params['x'],params['l'],via='lsf')
 			
-	        	filteredFastq={}
-	        	for k,f in resExonerate.iteritems():
-        		        ex.add(f,description="fastq:"+k+".fastq [group:" + str(grpId) + ",step:"+ str(step) + ",type:fastq,view:admin]")
+        	filteredFastq={}
+        	for k,f in resExonerate.iteritems():
+       		        ex.add(f,description="fastq:"+k+".fastq [group:" + str(grpId) + ",step:"+ str(step) + ",type:fastq,view:admin]")
 
-			step += 1
+		step += 1
 
-		        print "Will filter the sequences\n"
-		        filteredFastq=filterSeq(ex,resExonerate,primersFile)
+		print "Will get sequences to filter\n"
+		seqToFilter=getSeqToFilter(ex,primersFile)
+
+		# if seqToFilter is NOT none...	
+	        print "Will filter the sequences\n"
+	        filteredFastq=filterSeq(ex,resExonerate,seqToFilter)
 			
-		        for k,f in filteredFastq.iteritems():
-        #                        resFiles[k]=[]
+	        for k,f in filteredFastq.iteritems():
+      #                        resFiles[k]=[]
 		                ex.add(f,description="fastq:"+k+"_filtered.fastq [group:" + str(grpId) + ",step:" + str(step) + ",type:fastq,view:admin]")
 	#			if k in resFiles:
 	#				resFiles[k].append(f)
 
 			step += 1
-			reportFile=unique_filename_in()
+
+		# Prepare report per group of runs
+		reportFile=unique_filename_in()
 #		!! STILL HAVE TO GENERATE THE REPORT...	
 		# for each fastq file, call count_lines(fastq)/4
-	#		ex.add(reportFile,description="pdf:report_demultiplexing")
-	#		resExonerate.append(reportFile)
+	#	ex.add(reportFile,description="pdf:report_demultiplexing")
+	#	resExonerate.append(reportFile)
 
-		grpId += 1
-		step = 0
 
 	return resFiles 
 
@@ -249,12 +260,11 @@ def createReport(ex):
 #bsub -J "${runName}_generateReportDemultiplexing" -o "${wd}${runName}_generatReportDemultiplexing.log" -e "${wd}${runName}_generateReportDemultiplexing.err" "${RPath}R CMD BATCH --vanilla --no-restore '--args ${reportStep1} ${reportStep2} ${plotsDemultiplexing}' ${scriptsDirectory}plotGraphsDemultiplexing.R ${wd}${runName}_generateReportDemultiplexing.Rout"
 	
 
-def filterSeq(ex,fastqFiles,primersFile):
-#seqToFilter=`awk -v primer=${curPrimer} '{if($0 ~ /^>/){n=split($0,a,"|");curPrimer=a[1];gsub(">","",curPrimer); if(curPrimer == primer){seqToFilter="";for(i=5;i<n;i++){if(a[i] !~ /Exclude=/){seqToFilter=seqToFilter""a[i]","}} if(a[n] !~ /Exclude=/){seqToFilter=seqToFilter""a[n]}else{gsub(/,$/,"",seqToFilter)};print seqToFilter}}}' ${primersFile}`
+def getSeqToFilter(ex,primersFile):
 	seqToFilter={}
-	filenames={}
-	global grpId
-	global step 
+
+        global grpId
+        global step
 
 	with open(primersFile,"r") as f:
 		for s in f:	
@@ -266,6 +276,15 @@ def filterSeq(ex,fastqFiles,primersFile):
 					if not cmp(s.split('|')[i],'.') == 0 or not cmp(s.split('|')[i],'Exclude'):
 						seqToFilter[key].write(">seq"+str(i)+"\n"+s.split('|')[i]+"\n")
 	
+	return allSeqToFilter
+
+
+def filterSeq(ex,fastqFiles,seqToFilter):
+#seqToFilter=`awk -v primer=${curPrimer} '{if($0 ~ /^>/){n=split($0,a,"|");curPrimer=a[1];gsub(">","",curPrimer); if(curPrimer == primer){seqToFilter="";for(i=5;i<n;i++){if(a[i] !~ /Exclude=/){seqToFilter=seqToFilter""a[i]","}} if(a[n] !~ /Exclude=/){seqToFilter=seqToFilter""a[n]}else{gsub(/,$/,"",seqToFilter)};print seqToFilter}}}' ${primersFile}`
+	filenames={}
+	global grpId
+	global step 
+
 	print "Will build bowtie indexes for seqToFilter\n" 
 	indexSeqToFilter={}
 	for k,f in seqToFilter.iteritems():
