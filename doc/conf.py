@@ -22,7 +22,7 @@ sys.path.insert(0, os.path.abspath('../'))
 
 # Add any Sphinx extension module names here, as strings. They can be extensions
 # coming with Sphinx (named 'sphinx.ext.*') or your custom ones.
-extensions = ['sphinx.ext.autodoc', 'sphinx.ext.doctest', 'sphinx.ext.intersphinx', 'sphinx.ext.todo', 'sphinx.ext.coverage', 'sphinx.ext.pngmath', 'sphinx.ext.ifconfig', 'sphinx.ext.viewcode']
+extensions = ['sphinx.ext.autodoc', 'sphinx.ext.doctest', 'sphinx.ext.intersphinx', 'sphinx.ext.todo', 'sphinx.ext.coverage', 'sphinx.ext.pngmath', 'sphinx.ext.ifconfig', 'sphinx.ext.viewcode', 'sphinxcontrib.googleanalytics']
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['templates']
@@ -163,6 +163,8 @@ html_show_sphinx = False
 # Output file base name for HTML help builder.
 htmlhelp_basename = 'bbcflibdoc'
 
+# Google analytics
+googleanalytics_id = "UA-24167610-17"
 
 # -- Options for LaTeX output --------------------------------------------------
 
@@ -175,8 +177,7 @@ htmlhelp_basename = 'bbcflibdoc'
 # Grouping the document tree into LaTeX files. List of tuples
 # (source start file, target name, title, author, documentclass [howto/manual]).
 latex_documents = [
-  ('index', 'bbcflib.tex', u'bbcflib Documentation',
-   u'EPFL BBCF', 'manual'),
+  ('index', 'bbcflib.tex', u'bbcflib Documentation', u'EPFL BBCF', 'manual'),
 ]
 
 # The name of an image file (relative to this directory) to place at the top of
@@ -208,10 +209,8 @@ latex_documents = [
 # One entry per manual page. List of tuples
 # (source start file, name, description, authors, manual section).
 man_pages = [
-    ('index', 'bbcflib', u'bbcflib Documentation',
-     [u'EPFL BBCF'], 1)
+    ('index', 'bbcflib', u'bbcflib Documentation', [u'EPFL BBCF'], 1)
 ]
-
 
 # Example configuration for intersphinx: refer to the Python standard library.
 intersphinx_mapping = {'http://docs.python.org/': None}
