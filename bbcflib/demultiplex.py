@@ -17,15 +17,15 @@ step=0
 @program
 def exportToFasta(exportFile,n=1,x=22):
 	faFile=unique_filename_in()
-	scriptPath="/archive/epfl/bbcf/mleleu/pipeline_vMarion/pipeline_3Cseq/vWebServer_Bein/"
-	return{'arguments': ["python",scriptPath+"exportToFasta.py","-i",exportFile,"-n",str(n),"-x",str(x)],
+	script_path="/archive/epfl/bbcf/mleleu/pipeline_vMarion/pipeline_3Cseq/vWebServer_Bein/"
+	return{'arguments': ["python",script_path+"exportToFasta.py","-i",exportFile,"-n",str(n),"-x",str(x)],
                'return_value':faFile}
 
 @program
 def fastqToFasta(fqFile,n=1,x=22):
 	faFile=unique_filename_in()
-	scriptPath="/archive/epfl/bbcf/mleleu/pipeline_vMarion/pipeline_3Cseq/vWebServer_Bein/"
-        return{'arguments': ["python",scriptPath+"fastqToFasta.py","-i",fqFile,"-o",faFile,"-n",str(n),"-x",str(x)],
+	script_path="/archive/epfl/bbcf/mleleu/pipeline_vMarion/pipeline_3Cseq/vWebServer_Bein/"
+        return{'arguments': ["python",script_path+"fastqToFasta.py","-i",fqFile,"-o",faFile,"-n",str(n),"-x",str(x)],
                'return_value':faFile}
 
 def split_exonerate(filename,n=1,x=22,l=30):	    
@@ -161,15 +161,41 @@ def load_paramsFile(paramsfile):
 	return params
 
 
-@program
-def count_lines(filename):
-   def parse_output(p):
-        m = re.search(r'^\s*(\d+)\s+' + filename, ''.join(p.stdout))
-        return int(m.groups()[0])
-   return {'arguments': ["wc","-l",filename],
-           'return_value': parse_output}
+def prepareReport(ex,name,tot_counts,counts_primers,counts_primers_filtered):
+	tot_counts_primers = 0
+	for k,v in counts_primers:
+		tot_counts_primers = tot_counts_primers + v
 
-def workflow_groups(ex, job, scriptPath):
+	dataReport = unique_filename_in()
+	out=open(dataReport,'w')
+	out.write("Primer\tTotal_number_of_reads\tnFiltered\tnValidReads\n")
+
+	for k,v in counts_primers:
+		nFiltered=v-counts_primers_filtered[k]
+		out.write(k+"\t"+str(v)+"\t"+str(Filtered)+"\t"+str(counts_primers_filtered[k])+"\n")
+
+	out.write("Unclassified\t"+str(tot_counts_primers))
+	out.write("Total\t"+str(tot_counts)+"\n")
+
+	#Primer  Total_number_of_reads   nFiltered       nValidReads
+	#HoxD13  9406932 4296211 5110721
+	#HoxD4   3835395 415503  3419892
+	#HoxD9   6908054 594449  6313605
+	#Unclassified    1304048
+	#Total   21454429
+
+	out.close()
+	return dataReport
+
+
+@program
+def call_generateReport(data_report): 
+	resfile=unique_filename_in()
+plotsDemultiplexing=${wd}${runName}"_reportDemultiplexing.pdf"
+bsub -J "${runName}_generateReportDemultiplexing" -o "${wd}${runName}_generatReportDemultiplexing.log" -e "${wd}${runName}_generateReportDemultiplexing.err" "${RPath}R CMD BATCH --vanilla --no-restore '--args ${reportStep1} ${reportStep2} ${plotsDemultiplexing}' ${scriptsDirectory}plotGraphsDemultiplexing.R ${wd}${runName}_generateReportDemultiplexing.Rout"
+	return{}
+
+def workflow_groups(ex, job, script_path):
 	processed = {}
 	job_groups=job.groups
 	resFiles={}
@@ -181,31 +207,43 @@ def workflow_groups(ex, job, scriptPath):
 		primersFilename = 'group_' + group['name'] + "_primer_file.fa"
 		primersFile = lib_dir + primersFilename
 		ex.add(primersFile,description="fa:"+primersFilename+" [group:"+ str(grpId) +",step:"+ str(step) + ",type:fa]" )
+		
 		paramsFilename = 'group_' + group['name'] + "_param_file.txt"
 		paramsFile = lib_dir + paramsFilename
 		ex.add(paramsFile,description="txt:"+ paramsFilename + " [group:"+ str(grpId) +",step:" + str(step) + ",type:txt]")
 		params=load_paramsFile(paramsFile)
 		print(params)
+		
 		infiles = []
+		tot_counts = 0
 		allSubFiles = [] 
 		for rid,run in group['runs'].iteritems():
-			print(group)
-			print(run)
+			print(group); print(run)
 			lib_dir="/scratch/cluster/monthly/htsstation/demultiplexing/" + str(job.id) + "/"
 			suffix = run['url'].split('.')[-1]
 			print suffix
 			infile=getFileFromURL(run['url'],lib_dir, suffix)
 			infiles.append(infile)
 			subfiles=split_file(ex,infile,n_lines=8000000)
-			for sf in subfiles: allSubFiles.append(sf)
+			for sf in subfiles: 
+				allSubFiles.append(sf)
+				n=count_lines(sf)
+				tot_counts = tot_counts+n
+					
 	
 		#demultiplex(ex,infile,opts['-p'],int(opts['-s']),opts['-n'],opts['-x'],opts['-l'],via="lsf")
 		resExonerate = demultiplex(ex,allSubFiles,primersFile,params['s'],params['n'],params['x'],params['l'],via='lsf')
 			
         	filteredFastq={}
+		counts_primers={}
+		tot_counts_primers=0
+		counts_primers_filtered={}
         	for k,f in resExonerate.iteritems():
        		        ex.add(f,description="fastq:"+k+".fastq [group:" + str(grpId) + ",step:"+ str(step) + ",type:fastq,view:admin]")
-
+			counts_primers[k]=count_lines(f)
+			tot_counts_primers=tot_counts_primers+counts_primers[k]	
+			counts_primers_filtered[k]=0
+			
 		step += 1
 
 		print "Will get sequences to filter\n"
@@ -216,49 +254,25 @@ def workflow_groups(ex, job, scriptPath):
 	        filteredFastq=filterSeq(ex,resExonerate,seqToFilter)
 			
 	        for k,f in filteredFastq.iteritems():
-      #                        resFiles[k]=[]
-		                ex.add(f,description="fastq:"+k+"_filtered.fastq [group:" + str(grpId) + ",step:" + str(step) + ",type:fastq,view:admin]")
-	#			if k in resFiles:
-	#				resFiles[k].append(f)
-
-			step += 1
+	                ex.add(f,description="fastq:"+k+"_filtered.fastq [group:" + str(grpId) + ",step:" + str(step) + ",type:fastq,view:admin]")
+			counts_primers_filtered[k]=count_lines(f)
+		step += 1
 
 		# Prepare report per group of runs
-		reportFile=unique_filename_in()
-#		!! STILL HAVE TO GENERATE THE REPORT...	
-		# for each fastq file, call count_lines(fastq)/4
-	#	ex.add(reportFile,description="pdf:report_demultiplexing")
-	#	resExonerate.append(reportFile)
-
+		reportFile=prepareReport(ex,group['name'],tot_counts,counts_primers,tot_counts_primers,counts_primers_filtered)
+		ex.add(reportFile,description="txt:"+group['name']+"report_demultiplexing.txt [group:" + str(grpId) + ",step:" + str(step) + ",type:txt,view:admin]" )
+		reportFile_pdf=unique_filename_in()
+		call_createReport(reportFile,reportFile_pdf,script_path)
+		ex.add(reportFile_pdf,description="pdf:"+group['name']+"report_demultiplexing.pdf [group:" + str(grpId) + ",step:" + str(step) + ",type:pdf]" ) 
 
 	return resFiles 
 
 
 @program
-def call_createReport(numbersFile,reportFile):
-	Rout=unique_filename_in()
-	return{'arguments': ['R','CMD','BATCH','--vanilla','--no-restore','"--args',numbersFile, numbersFile ,reportFile,'"',scriptPath+"plotGraphsDemultiplexing.R",Rout],
+def call_createReport(numbersFile,reportFile,script_path='./'):
+	return{'arguments': ['R','CMD','BATCH','--vanilla','--no-restore','"--args',numbersFile, numbersFile ,reportFile,'"',script_path+"plotGraphsDemultiplexing.R",Rout],
         	'return_value':None}
 
-
-def createReport(ex):
-	countsFile=unique_filename_in()
-	out=open(countsFile,'w')
-	out.write('Primer\tTotal_number_of_reads\tnFiltered\tnValidReads\n')
-	allfiles = common.get_files( ex.id, M )
-	allcounts={}
-#	for f in allfiles['fastq']
-#		curPrimer=f[0:f.index(':')]
-#		if curPrimer not in allcounts: allcounts[curPrimer]=[0,0,0]
-#		if re.search(r'filtered',f):
-#			allcounts[curPrimer][1]=count_lines(f)
-#		else:
-#			allcounts[curPrimer][0]=count_lines(f)
-	
-#	resFile=unique_filename_in()
-#	call_createReport(countsFile,resFile)
-#bsub -J "${runName}_generateReportDemultiplexing" -o "${wd}${runName}_generatReportDemultiplexing.log" -e "${wd}${runName}_generateReportDemultiplexing.err" "${RPath}R CMD BATCH --vanilla --no-restore '--args ${reportStep1} ${reportStep2} ${plotsDemultiplexing}' ${scriptsDirectory}plotGraphsDemultiplexing.R ${wd}${runName}_generateReportDemultiplexing.Rout"
-	
 
 def getSeqToFilter(ex,primersFile):
 	seqToFilter={}
