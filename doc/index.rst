@@ -19,8 +19,8 @@ Tutorials
    tutorial_4cseq
    tutorial_config_files
 
-Library guide:
-''''''''''''''
+Library guide
+'''''''''''''
 .. specification
 
 .. toctree::
