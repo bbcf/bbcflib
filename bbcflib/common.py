@@ -48,16 +48,21 @@ def cat(files):
     return out
 
 ###############################################################################
-#def create_sql_track(path, chrmeta, datatype = "quantitative", format = 'sql', name #= "Unamed"):
-#    """ This function shouldn't be used"""
-#    from bbcflib import track
-#    with track.new(path, format, name, chrmeta, datatype) as t:
-#        for chrom in chrmeta: t.write(chrom, (), getattr(track.Track, datatype + '_fields'))
-#
-
+def set_file_descr(filename, tag=None, comment=None, params=None):
+    file_descr = ''
+    if not(tag == None):
+        file_descr = tag
+    file_descr += ":"+filename
+    if isinstance(params,dict):
+        plst = (",").join([str(k)+":"+str(v) for k,v in params.iteritems()])
+        file_descr += "["+plst+"]"
+    if not(comment == None):
+        file_descr += " ("+comment+")"
+    return file_descr
+#    tag:filename[group:grpId,step:stepId,type:fileType,view:admin] (comment) 
 
 #-------------------------------------------------------------------------#
-def get_files( id_or_key, minilims ):
+def get_files_old( id_or_key, minilims ):
     """Retrieves a dictionary of files created by an htsstation job identified by its key
     or bein id in a MiniLIMS.
 
@@ -79,6 +84,39 @@ def get_files( id_or_key, minilims ):
     for f,d in all.iteritems():
         cat,name = re.search(r'([^:]+):(.*)$',d).groups()
         name = re.sub(r'\s+\(BAM INDEX\)','.bai',name)
+        if cat in file_dict:
+            file_dict[cat].update({f: name})
+        else:
+            file_dict[cat] = {f: name}
+    return file_dict
+
+#-------------------------------------------------------------------------#
+def get_files( id_or_key, minilims, by_type=False ):
+    """Retrieves a dictionary of files created by an htsstation job identified by its key
+    or bein id in a MiniLIMS.
+
+    The dictionary keys are the file types (e.g. 'pdf', 'bam', 'py' for python objects),
+    the values are dictionaries with keys repository file names and values actual file
+    descriptions (names to provide in the user interface).
+    """
+    import re
+    if isinstance(id_or_key, str):
+        try:
+            exid = max(minilims.search_executions(with_text=id_or_key))
+        except ValueError, v:
+            raise ValueError("No execution with key "+id_or_key)
+    else:
+        exid = id_or_key
+    file_dict = {}
+    all = dict((y['repository_name'],y['description']) for y in
+               [minilims.fetch_file(x) for x in minilims.search_files(source=('execution',exid))])
+    for f,d in all.iteritems():
+        tag,name,pars = re.search(r'([^:]*):(\S+)\[([^\]]+)\]\s*',d).groups()
+        par_dict = dict([x.split(":") for x in pars.split(",")])
+        if by_type:
+            cat = par_dict.get('type') or 'none'
+        else:
+            cat = tag or 'none'
         if cat in file_dict:
             file_dict[cat].update({f: name})
         else:
