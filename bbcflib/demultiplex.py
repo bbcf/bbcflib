@@ -174,7 +174,7 @@ def prepareReport(ex,name,tot_counts,counts_primers,counts_primers_filtered):
 
 	for k,v in counts_primers.iteritems():
 		nFiltered=v-counts_primers_filtered[k]
-		out.write(k+"\t"+str(v)+"\t"+str(Filtered)+"\t"+str(counts_primers_filtered[k])+"\n")
+		out.write(k+"\t"+str(v)+"\t"+str(nFiltered)+"\t"+str(counts_primers_filtered[k])+"\n")
 
 	out.write("Unclassified\t"+str(tot_counts_primers))
 	out.write("Total\t"+str(tot_counts)+"\n")
