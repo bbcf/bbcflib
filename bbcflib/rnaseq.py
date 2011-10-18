@@ -8,7 +8,7 @@ Methods of the bbcflib's RNA-seq worflow. The main function is rnaseq_workflow()
 From a BAM file produced by an alignement on the *exonome*, gets counts of reads
 on the exons, add them to get counts on genes, and uses least-squares to infer
 counts on transcripts, avoiding to map on either genome or transcriptome.
-Note that the result counts on transcripts are approximate.
+Note that the resulting counts on transcripts are approximate.
 """
 
 # Built-in modules #
@@ -27,7 +27,7 @@ def lsqnonneg(C, d, x0=None, tol=None, itmax_factor=3):
     """Linear least squares with nonnegativity constraints (NNLS), based on MATLAB's lsqnonneg function.
 
     ``(x,resnorm,res) = lsqnonneg(C,d)`` returns
-    * the vector *x* that minimizes norm(d-C*x) subject to x >= 0
+    * the vector *x* that minimizes norm(d-Cx) subject to x >= 0
     * the norm of residuals *resnorm*
     * the residuals *res*
 
@@ -35,9 +35,12 @@ def lsqnonneg(C, d, x0=None, tol=None, itmax_factor=3):
     :param tol: Tolerance to determine when the error is small enough.
     :param itmax_factor: Maximum number of iterations.
 
-    :rtype x: numpy array
-    :rtype resnorm: float
-    :rtype res: numpy array
+    :type C: numpy 2-dimensional array or matrix
+    :type d: numpy array
+    :type x0: numpy array
+    :type tol: float
+    :type itmax_factor: int
+    :rtype: *x*: numpy array, *resnorm*: float, *res*: numpy array
 
     Reference: Lawson, C.L. and R.J. Hanson, Solving Least-Squares Problems, Prentice-Hall, Chapter 23, p. 161, 1974.
     http://diffusion-mri.googlecode.com/svn/trunk/Python/lsqnonneg.py
@@ -107,13 +110,14 @@ def lsqnonneg(C, d, x0=None, tol=None, itmax_factor=3):
 
 def fetch_mappings(path_or_assembly_id):
     """Given an assembly ID, return a tuple
-    (gene_ids, gene_names, transcript_mapping, exon_mapping, trans_in_gene, exons_in_trans)
-    [0] gene_ids is a list of gene ID's
-    [1] gene_names is a dict {gene ID: gene name}
-    [2] transcript_mapping is a dictionary {transcript ID: gene ID}
-    [3] exon_mapping is a dictionary {exon ID: ([transcript IDs], gene ID)}
-    [4] trans_in_gene is a dict {gene ID: [IDs of the transcripts it contains]}
-    [5] exons_in_trans is a dict {transcript ID: [IDs of the exons it contains]}
+    ``(gene_ids, gene_names, transcript_mapping, exon_mapping, trans_in_gene, exons_in_trans)``
+
+    * [0] gene_ids is a list of gene ID's
+    * [1] gene_names is a dict ``{gene ID: gene name}``
+    * [2] transcript_mapping is a dictionary ``{transcript ID: gene ID}``
+    * [3] exon_mapping is a dictionary ``{exon ID: ([transcript IDs], gene ID)}``
+    * [4] trans_in_gene is a dict ``{gene ID: [IDs of the transcripts it contains]}``
+    * [5] exons_in_trans is a dict ``{transcript ID: [IDs of the exons it contains]}``
 
     :param path_or_assembly_id: can be a numeric or nominal ID for GenRep
     (e.g. 11, 76 or 'hg19' for H.Sapiens), or a path to a file containing a
@@ -136,7 +140,8 @@ def fetch_mappings(path_or_assembly_id):
         return mapping
 
 def exons_labels(bamfile):
-    """List of the exons labels (SN: 'reference sequence name'; LN: 'sequence length') in *bamfile*."""
+    """Return a list of the exons labels
+    ``(SN: 'reference sequence name'; LN: 'sequence length')`` in *bamfile*."""
     try: sam = pysam.Samfile(bamfile, 'rb')
     except ValueError: sam = pysam.Samfile(bamfile,'r')
     labels = [(t['SN'],t['LN']) for t in sam.header['SQ']]
@@ -144,7 +149,7 @@ def exons_labels(bamfile):
     return labels
 
 def pileup_file(bamfile, exons):
-    """Return a dictionary {exon ID: count}, the pileup of *exons* from *bamfile*."""
+    """Return a dictionary ``{exon ID: count}``, the pileup of *exons* from *bamfile*."""
     # exons = sam.references #tuple
     # put it together with exons_labels? It opens the file twice.
     counts = []
@@ -167,7 +172,7 @@ def pileup_file(bamfile, exons):
     return counts
 
 def save_results(ex, cols, conditions, header=[], desc='counts'):
-    """Save results in a CSV file, one line per feature, one column per run.
+    """Save results in a tab-delimited file, one line per feature, one column per run.
     :param data: a dictionary {ID: [counts in each condition]}
     """
     conditions_s = '%s, '*(len(conditions)-1)+'%s.'
