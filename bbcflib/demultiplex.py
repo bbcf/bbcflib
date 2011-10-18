@@ -196,6 +196,7 @@ def workflow_groups(ex, job, script_path):
 	for gid, group in job_groups.iteritems():
 		grpId += 1
 		step = 0
+		lib_dir="/scratch/cluster/monthly/htsstation/demultiplexing/" + str(job.id) + "/"
 		primersFilename = 'group_' + group['name'] + "_primer_file.fa"
 		primersFile = lib_dir + primersFilename
 		ex.add(primersFile,description="fa:"+primersFilename+" [group:"+ str(grpId) +",step:"+ str(step) + ",type:fa]" )
@@ -211,7 +212,6 @@ def workflow_groups(ex, job, script_path):
 		allSubFiles = [] 
 		for rid,run in group['runs'].iteritems():
 			print(group); print(run)
-			lib_dir="/scratch/cluster/monthly/htsstation/demultiplexing/" + str(job.id) + "/"
 			suffix = run['url'].split('.')[-1]
 			print suffix
 			infile=getFileFromURL(run['url'],lib_dir, suffix)
