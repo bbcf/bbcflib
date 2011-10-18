@@ -165,14 +165,14 @@ def prepareReport(ex,name,tot_counts,counts_primers,counts_primers_filtered):
 	print("counts_primers in prepareReport")
 	print(counts_primers)
 
-	for k,v in counts_primers:
+	for k,v in counts_primers.iteritems():
 		tot_counts_primers = tot_counts_primers + v
 
 	dataReport = unique_filename_in()
 	out=open(dataReport,'w')
 	out.write("Primer\tTotal_number_of_reads\tnFiltered\tnValidReads\n")
 
-	for k,v in counts_primers:
+	for k,v in counts_primers.iteritems():
 		nFiltered=v-counts_primers_filtered[k]
 		out.write(k+"\t"+str(v)+"\t"+str(Filtered)+"\t"+str(counts_primers_filtered[k])+"\n")
 
