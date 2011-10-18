@@ -160,7 +160,6 @@ def load_paramsFile(paramsfile):
 					params['l']=v
 	return params
 
-
 def prepareReport(ex,name,tot_counts,counts_primers,counts_primers_filtered):
 	tot_counts_primers = 0
 	for k,v in counts_primers:
@@ -187,13 +186,6 @@ def prepareReport(ex,name,tot_counts,counts_primers,counts_primers_filtered):
 	out.close()
 	return dataReport
 
-
-@program
-def call_generateReport(data_report): 
-	resfile=unique_filename_in()
-plotsDemultiplexing=${wd}${runName}"_reportDemultiplexing.pdf"
-bsub -J "${runName}_generateReportDemultiplexing" -o "${wd}${runName}_generatReportDemultiplexing.log" -e "${wd}${runName}_generateReportDemultiplexing.err" "${RPath}R CMD BATCH --vanilla --no-restore '--args ${reportStep1} ${reportStep2} ${plotsDemultiplexing}' ${scriptsDirectory}plotGraphsDemultiplexing.R ${wd}${runName}_generateReportDemultiplexing.Rout"
-	return{}
 
 def workflow_groups(ex, job, script_path):
 	processed = {}
@@ -236,12 +228,10 @@ def workflow_groups(ex, job, script_path):
 			
         	filteredFastq={}
 		counts_primers={}
-		tot_counts_primers=0
 		counts_primers_filtered={}
         	for k,f in resExonerate.iteritems():
-       		        ex.add(f,description="fastq:"+k+".fastq [group:" + str(grpId) + ",step:"+ str(step) + ",type:fastq,view:admin]")
+       		        ex.add(f,description="fastq:"+k+".fastq [group:" + str(grpId) + ",step:"+ str(step) + ",type:fastq]")
 			counts_primers[k]=count_lines(f)
-			tot_counts_primers=tot_counts_primers+counts_primers[k]	
 			counts_primers_filtered[k]=0
 			
 		step += 1
@@ -254,12 +244,12 @@ def workflow_groups(ex, job, script_path):
 	        filteredFastq=filterSeq(ex,resExonerate,seqToFilter)
 			
 	        for k,f in filteredFastq.iteritems():
-	                ex.add(f,description="fastq:"+k+"_filtered.fastq [group:" + str(grpId) + ",step:" + str(step) + ",type:fastq,view:admin]")
+	                ex.add(f,description="fastq:"+k+"_filtered.fastq [group:" + str(grpId) + ",step:" + str(step) + ",type:fastq]")
 			counts_primers_filtered[k]=count_lines(f)
 		step += 1
 
 		# Prepare report per group of runs
-		reportFile=prepareReport(ex,group['name'],tot_counts,counts_primers,tot_counts_primers,counts_primers_filtered)
+		reportFile=prepareReport(ex,group['name'],tot_counts,counts_primers,counts_primers_filtered)
 		ex.add(reportFile,description="txt:"+group['name']+"report_demultiplexing.txt [group:" + str(grpId) + ",step:" + str(step) + ",type:txt,view:admin]" )
 		reportFile_pdf=unique_filename_in()
 		call_createReport(reportFile,reportFile_pdf,script_path)
@@ -283,12 +273,13 @@ def getSeqToFilter(ex,primersFile):
 	with open(primersFile,"r") as f:
 		for s in f:	
 			if re.search(r'^>',s):
-				key=s.split('|')[0].replace(">","")
+				s_split=s.split('|')
+				key=s_split[0].replace(">","")
 				filenames[key]=unique_filename_in() 
 				seqToFilter[key]=open(filenames[key],"w")
-				for i in range(4,len(s.split('|'))):
-					if not cmp(s.split('|')[i],'.') == 0 or not cmp(s.split('|')[i],'Exclude'):
-						seqToFilter[key].write(">seq"+str(i)+"\n"+s.split('|')[i]+"\n")
+				for i in range(4,len(s_split)):
+					if not cmp(s_split[i],'.') == 0 or not re.search('Exclude',s_split[i]):
+						seqToFilter[key].write(">seq"+str(i)+"\n"+s_split[i]+"\n")
 	
 	return allSeqToFilter
 
