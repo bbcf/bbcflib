@@ -151,8 +151,8 @@ def density_to_countsPerFrag(ex,density_file,density_name,assembly_name,reffile,
 	countsPerFragFile=unique_filename_in()+".bed"
 	with track.load(res[0],'sql') as t:
 		t.convert(countsPerFragFile,'bed')
-#	ex.add(countsPerFragFile,description="none:bed:meanScorePerFeature_"+density_name+".bed (template) [group:"+str(grpId)+",step:"+step+",type:template,view:admin]")
-	ex.add(countsPerFragFile+".bed",description="bed:meanScorePerFeature_"+density_name+".bed [group:"+str(grpId)+",step:"+step+",type:bed]")
+#	ex.add(countsPerFragFile,description="none:bed:meanScorePerFeature_"+density_name+".bed (template) [group:"+str(grpId)+",step:"+str(step)+",type:template,view:admin]")
+	ex.add(countsPerFragFile+".bed",description="bed:meanScorePerFeature_"+density_name+".bed [group:"+str(grpId)+",step:"+str(step)+",type:bed]")
 #			associate_to_filename=countsPerFragFile, template="%s"+".bed")
 	step += 1
 
