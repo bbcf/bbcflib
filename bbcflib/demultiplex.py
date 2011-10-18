@@ -162,6 +162,9 @@ def load_paramsFile(paramsfile):
 
 def prepareReport(ex,name,tot_counts,counts_primers,counts_primers_filtered):
 	tot_counts_primers = 0
+	print("counts_primers in prepareReport")
+	print(counts_primers)
+
 	for k,v in counts_primers:
 		tot_counts_primers = tot_counts_primers + v
 
