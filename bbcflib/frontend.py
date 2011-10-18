@@ -69,7 +69,11 @@ class Frontend(object):
                           "library_id": a.get("library_id") or 0,
                           "library_param_file": str(a.get("library_param_file") or "")})
             for k,v in a.iteritems():
-                if not(k in b): b[k] = str(v)
+                if not(k in b): 
+                    if isinstance(v,unicode):
+                        b[k] = str(v)
+                    else 
+                        b[k] = v                    
             return b
         return [_f(g) for g in json.load(urllib2.urlopen(self.query_url('groups', key)))]
 
