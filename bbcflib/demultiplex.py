@@ -173,10 +173,14 @@ def prepareReport(ex,name,tot_counts,counts_primers,counts_primers_filtered):
 	out.write("Primer\tTotal_number_of_reads\tnFiltered\tnValidReads\n")
 
 	for k,v in counts_primers.iteritems():
-		nFiltered=v-counts_primers_filtered[k]
+		if counts_primers_filtered[k]>0:
+			nFiltered=v-counts_primers_filtered[k]
+		else:
+			nFiltered=0
+			counts_primers_filtered[k]=v
 		out.write(k+"\t"+str(v)+"\t"+str(nFiltered)+"\t"+str(counts_primers_filtered[k])+"\n")
 
-	out.write("Unclassified\t"+str(tot_counts_primers))
+	out.write("Unclassified\t"+str(tot_counts_primers)+"\n")
 	out.write("Total\t"+str(tot_counts)+"\n")
 
 	#Primer  Total_number_of_reads   nFiltered       nValidReads
@@ -261,7 +265,7 @@ def workflow_groups(ex, job, script_path):
 		reportFile=prepareReport(ex,group['name'],tot_counts,counts_primers,counts_primers_filtered)
 		ex.add(reportFile,description="txt:"+group['name']+"report_demultiplexing.txt [group:" + str(grpId) + ",step:" + str(step) + ",type:txt,view:admin]" )
 		reportFile_pdf=unique_filename_in()
-		call_createReport(reportFile,reportFile_pdf,script_path)
+		call_createReport(ex,reportFile,reportFile_pdf,script_path)
 		ex.add(reportFile_pdf,description="pdf:"+group['name']+"report_demultiplexing.pdf [group:" + str(grpId) + ",step:" + str(step) + ",type:pdf]" ) 
 
 	return resFiles 
