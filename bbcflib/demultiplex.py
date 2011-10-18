@@ -265,7 +265,8 @@ def call_createReport(numbersFile,reportFile,script_path='./'):
 
 
 def getSeqToFilter(ex,primersFile):
-	seqToFilter={}
+	allSeqToFilter={}
+	filenames={}
 
         global grpId
         global step
@@ -276,10 +277,10 @@ def getSeqToFilter(ex,primersFile):
 				s_split=s.split('|')
 				key=s_split[0].replace(">","")
 				filenames[key]=unique_filename_in() 
-				seqToFilter[key]=open(filenames[key],"w")
+				allSeqToFilter[key]=open(filenames[key],"w")
 				for i in range(4,len(s_split)):
 					if not cmp(s_split[i],'.') == 0 or not re.search('Exclude',s_split[i]):
-						seqToFilter[key].write(">seq"+str(i)+"\n"+s_split[i]+"\n")
+						allSeqToFilter[key].write(">seq"+str(i)+"\n"+s_split[i]+"\n")
 	
 	return allSeqToFilter
 
