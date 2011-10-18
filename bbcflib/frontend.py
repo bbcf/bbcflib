@@ -72,7 +72,7 @@ class Frontend(object):
                 if not(k in b): 
                     if isinstance(v,unicode):
                         b[k] = str(v)
-                    else 
+                    else: 
                         b[k] = v                    
             return b
         return [_f(g) for g in json.load(urllib2.urlopen(self.query_url('groups', key)))]
