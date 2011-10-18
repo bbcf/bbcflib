@@ -149,7 +149,7 @@ def density_to_countsPerFrag(ex,density_file,density_name,assembly_name,reffile,
  #                       associate_to_filename=resfilename, template='%s'+'.sql')
 
 	countsPerFragFile=unique_filename_in()+".bed"
-	with track.load(outdir+".sql",'sql') as t:
+	with track.load(res[0],'sql') as t:
 		t.convert(countsPerFragFile,'bed')
 #	ex.add(countsPerFragFile,description="none:bed:meanScorePerFeature_"+density_name+".bed (template) [group:"+str(grpId)+",step:"+step+",type:template,view:admin]")
 	ex.add(countsPerFragFile+".bed",description="bed:meanScorePerFeature_"+density_name+".bed [group:"+str(grpId)+",step:"+step+",type:bed]")
@@ -179,7 +179,7 @@ def density_to_countsPerFrag(ex,density_file,density_name,assembly_name,reffile,
 	ex.add(sortedBedGraph_sql+".sql",description="sql:res_segToFrag_"+density_name+".sql (bedGraph sorted) [group:"+str(grpId)+"step:"+str(step)+",type:sql,view:admin]")
  #                       associate_to_filename=sortedBedGraph_sql, template='%s'+'.sql')
 	step += 1
-	return [outdir+".sql",countsPerFragFile,res,resBedGraph,sortedBedGraph,sortedBedGraph_sql]
+	return [res[0],countsPerFragFile,res,resBedGraph,sortedBedGraph,sortedBedGraph_sql]
 
 # Main 
 #-------------------------------------------#
