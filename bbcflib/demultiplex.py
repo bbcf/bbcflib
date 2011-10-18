@@ -225,13 +225,17 @@ def workflow_groups(ex, job, script_path):
 	
 		#demultiplex(ex,infile,opts['-p'],int(opts['-s']),opts['-n'],opts['-x'],opts['-l'],via="lsf")
 		resExonerate = demultiplex(ex,allSubFiles,primersFile,params['s'],params['n'],params['x'],params['l'],via='lsf')
-			
+	
+		print("resExonerate")
+		print(resExonerate)
+		
         	filteredFastq={}
 		counts_primers={}
 		counts_primers_filtered={}
         	for k,f in resExonerate.iteritems():
        		        ex.add(f,description="fastq:"+k+".fastq [group:" + str(grpId) + ",step:"+ str(step) + ",type:fastq]")
 			counts_primers[k]=count_lines(ex,f)
+			print("counts_primers["+k+"]="+str(counts_primers[k]))
 			counts_primers_filtered[k]=0
 			
 		step += 1
@@ -249,6 +253,8 @@ def workflow_groups(ex, job, script_path):
 		step += 1
 
 		# Prepare report per group of runs
+		print("counts_primers=")
+		print(counts_primers)	
 		reportFile=prepareReport(ex,group['name'],tot_counts,counts_primers,counts_primers_filtered)
 		ex.add(reportFile,description="txt:"+group['name']+"report_demultiplexing.txt [group:" + str(grpId) + ",step:" + str(step) + ",type:txt,view:admin]" )
 		reportFile_pdf=unique_filename_in()
