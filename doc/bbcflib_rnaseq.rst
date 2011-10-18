@@ -1,2 +1,5 @@
 .. automodule:: bbcflib.rnaseq
-   :members:
+    :members:
+    :member-order: bysource
+    :show-inheritance:
+

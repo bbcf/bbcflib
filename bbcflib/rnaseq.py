@@ -3,7 +3,7 @@
 Module: bbcflib.rnaseq
 ======================
 
-Methods of the bbcflib's RNA-seq worflow. The main function is rnaseq_workflow().
+Methods of the bbcflib's RNA-seq worflow. The main function is **rnaseq_workflow()**.
 
 From a BAM file produced by an alignement on the *exonome*, gets counts of reads
 on the exons, add them to get counts on genes, and uses least-squares to infer
@@ -27,6 +27,7 @@ def lsqnonneg(C, d, x0=None, tol=None, itmax_factor=3):
     """Linear least squares with nonnegativity constraints (NNLS), based on MATLAB's lsqnonneg function.
 
     ``(x,resnorm,res) = lsqnonneg(C,d)`` returns
+
     * the vector *x* that minimizes norm(d-Cx) subject to x >= 0
     * the norm of residuals *resnorm*
     * the residuals *res*
@@ -109,10 +110,10 @@ def lsqnonneg(C, d, x0=None, tol=None, itmax_factor=3):
     #return (x, sum(numpy.absolute(resid)), resid) # norm1
 
 def fetch_mappings(path_or_assembly_id):
-    """Given an assembly ID, return a tuple
+    """Given an assembly ID, returns a tuple
     ``(gene_ids, gene_names, transcript_mapping, exon_mapping, trans_in_gene, exons_in_trans)``
 
-    * [0] gene_ids is a list of gene ID's
+    * [0] gene_ids is a list of gene IDs
     * [1] gene_names is a dict ``{gene ID: gene name}``
     * [2] transcript_mapping is a dictionary ``{transcript ID: gene ID}``
     * [3] exon_mapping is a dictionary ``{exon ID: ([transcript IDs], gene ID)}``
@@ -140,8 +141,7 @@ def fetch_mappings(path_or_assembly_id):
         return mapping
 
 def exons_labels(bamfile):
-    """Return a list of the exons labels
-    ``(SN: 'reference sequence name'; LN: 'sequence length')`` in *bamfile*."""
+    """Returns a list of the exons labels in format ``(reference name, sequence length)`` in *bamfile*."""
     try: sam = pysam.Samfile(bamfile, 'rb')
     except ValueError: sam = pysam.Samfile(bamfile,'r')
     labels = [(t['SN'],t['LN']) for t in sam.header['SQ']]
@@ -149,7 +149,12 @@ def exons_labels(bamfile):
     return labels
 
 def pileup_file(bamfile, exons):
-    """Return a dictionary ``{exon ID: count}``, the pileup of *exons* from *bamfile*."""
+    """Returns a dictionary ``{exon ID: count}``, the pileup of *exons* from *bamfile*.
+
+    :param bamfile: name of a BAM file.
+    :param exons: exons labels as returned by **exons_labels()**
+    :type bamfile: string
+    """
     # exons = sam.references #tuple
     # put it together with exons_labels? It opens the file twice.
     counts = []
@@ -171,20 +176,33 @@ def pileup_file(bamfile, exons):
     sam.close()
     return counts
 
-def save_results(ex, cols, conditions, header=[], desc='counts'):
+def save_results(ex, cols, conditions, header=[], desc='features'):
     """Save results in a tab-delimited file, one line per feature, one column per run.
-    :param data: a dictionary {ID: [counts in each condition]}
+
+    :param ex: bein's execution.
+    :param cols: list of iterables, each element being a column to write in the output.
+    :param conditions: list of strings corresponding to descriptions of the different samples.
+    :param header: list of strings, the column headers of the output file.
+    :param desc: the kind of feature of which you measure the expression.
+    :type desc: string
     """
     conditions_s = '%s, '*(len(conditions)-1)+'%s.'
+    conditions = tuple(conditions)
     output = rstring()
     writecols(output,cols,header=header, sep="\t")
-    conditions = tuple(conditions)
     ex.add(output, description="csv:Expression level of "+desc+" in sample(s) "+conditions_s % conditions)
     print desc+": Done successfully."
 
-@timer
+#@timer
 def genes_expression(exons_data, exon_to_gene, ncond):
-    """Get gene counts from exons counts."""
+    """Get gene counts from exons counts.
+
+    Returns two dictionaries, one for counts and one for rpkm, of the form ``{gene ID: float}``.
+
+    :param exons_data: list of lists ``[exonsID,genesID,counts_1,..,counts_n,rpkm_1,..,rpkm_n, (others)]``.
+    :param exon_to_gene: dictionary ``{exon ID: gene ID}``.
+    :param ncond: number of samples.
+    """
     genes = list(set(exons_data[1]))
     z  = [numpy.zeros(ncond,dtype=numpy.float_)]*len(genes)
     zz = [numpy.zeros(ncond,dtype=numpy.float_)]*len(genes)
@@ -195,10 +213,17 @@ def genes_expression(exons_data, exon_to_gene, ncond):
         grpkms[exon_to_gene[e]] += c[ncond:]
     return gcounts,grpkms
 
-@timer
+#@timer
 def transcripts_expression(exons_data, trans_in_gene, exons_in_trans, ncond, method="nnls"):
-    """Get transcript counts from exon counts.
-    :param method: "nnls" or "pinv", respectively non-negative least-squares and pseudoinverse.
+    """Get transcript rpkms from exon rpkms.
+
+    Returns a dictionary of the form ``{transcript ID: rpkm}``.
+
+    :param exons_data: list of lists ``[exonsID,genesID,counts_1,..,counts_n,rpkm_1,..,rpkm_n, (others)]``.
+    :param trans_in_gene: dictionary ``{gene ID: [transcript IDs it contains]}``.
+    :param exons_in_trans: dictionary ``{transcript ID: [exon IDs it contains]}``.
+    :param ncond: number of samples.
+    :param method: "nnls" or "pinv" - respectively non-negative least-squares and pseudoinverse.
     """
     print "Method:", method
     genes = list(set(exons_data[1]))
@@ -266,20 +291,21 @@ def transcripts_expression(exons_data, trans_in_gene, exons_in_trans, ncond, met
     print "\tRatio error/total:",float(totalerror)/totalcount
     return tcounts, totalerror
 
-@timer
+#@timer
 def rnaseq_workflow(ex, job, assembly, bam_files, pileup_level=["genes"], via="lsf", output=None):
     """
     Main function of the workflow.
+
+    :rtype: None
 
     :param ex: the bein's execution Id.
     :param job: a Job object (or a dictionary of the same form) as returned from HTSStation's frontend.
     :param assembly: the assembly Id of the species, string or int (e.g. 'hg19' or 76).
     :param bam_files: a complicated dictionary as returned by mapseq.get_bam_wig_files.
     :param pileup_level: a string or array of strings indicating the features you want to compare.
-    Targets can be 'genes', 'transcripts', or 'exons'.
-    :param via: 'local' or 'lsf'
+                         Targets can be 'genes', 'transcripts', or 'exons'.
+    :param via: 'local' or 'lsf'.
     :param output: alternative name for output file. Otherwise it is random.
-    :rtype: None
     """
     group_names={}
     assembly_id = job.assembly_id
