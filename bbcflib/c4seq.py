@@ -220,7 +220,7 @@ def workflow_groups(ex, job, primers_dict, g_rep, mapseq_files, mapseq_url, scri
 
 	for gid, group in job_groups.iteritems():
 		reffile=createlib.get_libForGrp(ex,group,fasta_allchr,new_libs, job.id, g_rep,script_path)
-a		reffile='/archive/epfl/bbcf/data/DubouleDaan/library_Nla_30bps/library_Nla_30bps_segmentInfos.bed'
+#		reffile='/archive/epfl/bbcf/data/DubouleDaan/library_Nla_30bps/library_Nla_30bps_segmentInfos.bed'
 		processed['lib'][gid]=reffile
 		ex.add(reffile,description=set_file_descr("library.bed",tag="bed",group=grpId,step=step,type="bed"))	
 #		ex.add(reffile,description="bed:library [group:"+str(grpId)+",step:"+str(step)+",type:bed]")
