@@ -251,22 +251,24 @@ def map_reads( ex, fastq_file, chromosomes, bowtie_index,
         future = bowtie.nonblocking( ex, bowtie_index, fastq_file, bwtarg, via=via )
         samfile = future.wait()
         bam = add_nh_flag( samfile )
-    sorted_bam = add_and_index_bam( ex, bam, set_file_descr(name+"complete.bam",'bam',{'step': wrkflw_step, 'type':'bam'}) )
+    bam_descr = {'tag':'bam','step': wrkflw_step, 'type':'bam'}
+    py_descr = {'type':'py','step': wrkflw_step, 'type':'py','view':'admin'}
+    sorted_bam = add_and_index_bam( ex, bam, set_file_descr(name+"complete.bam",**bam_descr) )
 #"bam:"+name+"complete.bam"
     full_stats = bamstats( ex, sorted_bam )
-    add_pickle( ex, full_stats, set_file_descr(name+"full_bamstat",'py',{'step': wrkflw_step, 'type':'py','view':'admin'}) )
+    add_pickle( ex, full_stats, set_file_descr(name+"full_bamstat",**py_descr) )
 #"py:"+name+"full_bamstat" 
     return_dict = {"fullbam": sorted_bam}
     if remove_pcr_duplicates:
         thresh = poisson_threshold( antibody_enrichment*full_stats["actual_coverage"] )
-        add_pickle( ex, thresh, set_file_descr(name+"Poisson_threshold",'py',{'step': wrkflw_step, 'type':'py','view':'admin'}) )
+        add_pickle( ex, thresh, set_file_descr(name+"Poisson_threshold",**py_descr) )
 #"py:"+name+"Poisson_threshold" 
         bam2 = remove_duplicate_reads( sorted_bam, chromosomes,
                                        maxhits, thresh, convert=True )
-        reduced_bam = add_and_index_bam( ex, bam2, set_file_descr(name+"filtered.bam",'bam',{'step': wrkflw_step, 'type':'bam'}) )
+        reduced_bam = add_and_index_bam( ex, bam2, set_file_descr(name+"filtered.bam",**bam_descr) )
 #"bam:"+name+"filtered.bam"
         filtered_stats = bamstats( ex, reduced_bam )
-        add_pickle( ex, filtered_stats, set_file_descr(name+"filter_bamstat",'py',{'step': wrkflw_step, 'type':'py','view':'admin'}) )
+        add_pickle( ex, filtered_stats, set_file_descr(name+"filter_bamstat",**py_descr) )
 #"py:"+name+"filter_bamstat"
         return_dict['bam'] = reduced_bam
         return_dict['fullstats'] = full_stats
@@ -289,7 +291,7 @@ def map_reads( ex, fastq_file, chromosomes, bowtie_index,
                 outfile.write(read)
         outfile.close()
         infile.close()
-        reduced_bam = add_and_index_bam( ex, bam2, set_file_descr(name+"filtered.bam",'bam',{'step': wrkflw_step, 'type':'bam'}) )
+        reduced_bam = add_and_index_bam( ex, bam2, set_file_descr(name+"filtered.bam",**bam_descr) )
 #"bam:"+name+"filtered.bam"
         return_dict['bam'] = reduced_bam
         return_dict['stats'] = full_stats
@@ -453,7 +455,8 @@ def map_groups( ex, job_or_dict, fastq_root, assembly_or_dict, map_args=None ):
             file_names[gid][rid] = str(name)
             m.update({'libname': str(name)})
             processed[gid][rid] = m
-    add_pickle( ex, file_names, set_file_descr('file_names','py',{'step': wrkflw_step,'type':'py','view':'admin'}) )
+    add_pickle( ex, file_names, set_file_descr('file_names',tag='py',step=wrkflw_step,
+                                               type='py',view='admin') )
     return processed
 
 def add_pdf_stats( ex, processed, group_names, script_path,
@@ -702,8 +705,8 @@ def densities_groups( ex, job_or_dict, file_dict, chromosomes, via='lsf' ):
                 if not('-q' in b2w_args):
                     b2w_args += ["-q",str(options['read_extension'])]
         wig = []
-        pars0 = {'group':gid, 'step': wrkflw_step, 'type':'none', 'view':'admin'}
-        pars1 = {'group':gid, 'step': wrkflw_step, 'type':'sql'}
+        pars0 = {'tag':'none', 'group':gid, 'step': wrkflw_step, 'type':'none', 'view':'admin'}
+        pars1 = {'tag':'sql', 'group':gid, 'step': wrkflw_step, 'type':'sql'}
         for m in mapped.values():
             output = parallel_density_sql( ex, m["bam"], chromosomes,
                                            nreads=m["stats"]["total"],
@@ -711,8 +714,8 @@ def densities_groups( ex, job_or_dict, file_dict, chromosomes, via='lsf' ):
                                            convert=False,
                                            b2w_args=b2w_args, via=via )
             wig.append(output)
-            ex.add( output, description=set_file_descr(m['libname']+'.sql','none',pars0) )
-            [ex.add( output+s+'.sql', description=set_file_descr(m['libname']+'_'+s+'.sql','sql',pars1),
+            ex.add( output, description=set_file_descr(m['libname']+'.sql',**pars0) )
+            [ex.add( output+s+'.sql', description=set_file_descr(m['libname']+'_'+s+'.sql',**pars1),
                      associate_to_filename=output, template='%s_'+s+'.sql' )
              for s in suffixes]
         if len(mapped)>1:
@@ -720,7 +723,7 @@ def densities_groups( ex, job_or_dict, file_dict, chromosomes, via='lsf' ):
             ids = [m['libname'] for m in mapped.values()]
             merged_wig = dict((s, 
                                merge_sql(ex, [x+s+".sql" for x in wig], ids,
-                                         description=set_file_descr(group_name+"_"+s+".sql",'sql',pars1),
+                                         description=set_file_descr(group_name+"_"+s+".sql",**pars1),
                                          via='local'))
                               for s in suffixes)
         else:
@@ -734,8 +737,8 @@ def densities_groups( ex, job_or_dict, file_dict, chromosomes, via='lsf' ):
                 with Track(merged_wig[s]) as t:
                     t.convert(out+s,"bigWig")
                 ex.add(out+s,
-                       description=set_file_descr(group_name+"_"+s+".bw",'bigwig',
-                                                  {'group':gid, 'step': wrkflw_step, 'type':'bigwig'}))
+                       description=set_file_descr(group_name+"_"+s+".bw",tag='bigwig',
+                                                  group=gid, step=wrkflw_step, type='bigwig'))
     processed.update({'read_extension': options.get('read_extension'),
                       'genome_size': mapped.values()[0]['stats']['genome_size']})
     return processed
@@ -915,7 +918,7 @@ def get_bam_wig_files( ex, job, minilims=None, hts_url=None, suffix=['fwd','rev'
                 pdf = add_pdf_stats( ex, {gid:{rid:{'stats':stats}}},
                                      {gid: mapped_files[gid][rid]['libname']},
                                      script_path,
-                                     set_file_descr("mapping_report.pdf","pdf",{'step':0,'type':'pdf'} ) )
+                                     set_file_descr("mapping_report.pdf",tag="pdf",step=0,type='pdf') )
                 mapped_files[gid][rid]['p_thresh'] = poisson_threshold( 50*stats["actual_coverage"] )
     return (mapped_files,job)
 

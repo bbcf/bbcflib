@@ -48,16 +48,24 @@ def cat(files):
     return out
 
 ###############################################################################
-def set_file_descr(filename, tag=None, params=None, comment=None):
+def set_file_descr(filename,**kwargs):
+    """Implements file naming compatible with the 'get_files' function.
+    Example: set_file_descr("toto",**{'tag':'pdf','step':1,'type':'doc','comment':'ahaha'})
+    returns 'pdf:toto[step:1,type:doc] (ahaha)'
+    """
     file_descr = ''
-    if not(tag == None):
-        file_descr = tag
+    argskeys = kwargs.keys()
+    if 'tag' in kwargs:
+        file_descr = kwargs['tag']
+        argskeys.remove('tag')
     file_descr += ":"+filename
-    if isinstance(params,dict):
-        plst = (",").join([str(k)+":"+str(v) for k,v in params.iteritems()])
-        file_descr += "["+plst+"]"
-    if not(comment == None):
-        file_descr += " ("+comment+")"
+    comment = ''
+    if 'comment' in argskeys:
+        comment =  " ("+str(kwargs['comment'])+")"
+        argskeys.remove('comment')
+    plst = (",").join([str(k)+":"+str(kwargs[k]) for k in argskeys])
+    file_descr += "["+plst+"]"
+    file_descr += comment
     return file_descr
 #    tag:filename[group:grpId,step:stepId,type:fileType,view:admin] (comment) 
 
