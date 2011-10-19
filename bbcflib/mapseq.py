@@ -252,7 +252,7 @@ def map_reads( ex, fastq_file, chromosomes, bowtie_index,
         samfile = future.wait()
         bam = add_nh_flag( samfile )
     bam_descr = {'tag':'bam','step': wrkflw_step, 'type':'bam'}
-    py_descr = {'type':'py','step': wrkflw_step, 'type':'py','view':'admin'}
+    py_descr = {'tag':'py','step': wrkflw_step, 'type':'py','view':'admin'}
     sorted_bam = add_and_index_bam( ex, bam, set_file_descr(name+"complete.bam",**bam_descr) )
 #"bam:"+name+"complete.bam"
     full_stats = bamstats( ex, sorted_bam )
