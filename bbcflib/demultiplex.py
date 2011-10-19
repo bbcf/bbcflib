@@ -273,6 +273,7 @@ def workflow_groups(ex, job, script_path):
 
 @program
 def call_createReport(numbersFile,reportFile,script_path='./'):
+	Rout = unique_filename_in()
 	return{'arguments': ['R','CMD','BATCH','--vanilla','--no-restore','"--args',numbersFile, numbersFile ,reportFile,'"',script_path+"plotGraphsDemultiplexing.R",Rout],
         	'return_value':None}
 
