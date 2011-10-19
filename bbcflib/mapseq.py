@@ -76,7 +76,7 @@ Below is the script used by the frontend::
 import os, re, json, shutil, gzip, tarfile, pickle, urllib
 
 # Internal modules #
-from . import frontend, genrep, daflims, 
+from . import frontend, genrep, daflims
 from .common import get_files, cat, set_file_descr, merge_sql
 from .track import Track, new
 
@@ -88,6 +88,7 @@ from scipy.misc import  factorial
 from bein       import  *
 from bein.util  import  *
 
+wrkflw_step=0
 ################################################################################
 # Preprocessing #
 @program
@@ -235,6 +236,7 @@ def map_reads( ex, fastq_file, chromosomes, bowtie_index,
     The mapping statistics dictionary is pickled and added to the execution's
     repository, as well as both the full and filtered bam files.
     """
+    global wrkflw_step
     if bwt_args is None:
         bwt_args = []
     bwtarg = ["-Sam", str(max(20,maxhits))]+bwt_args
@@ -391,6 +393,8 @@ def map_groups( ex, job_or_dict, fastq_root, assembly_or_dict, map_args=None ):
     Returns a dictionary with keys *group_id* from the job object and values dictionaries
     mapping *run_id* to the corresponding return value of the 'map_reads' function.
     """
+    global wrkflw_step
+    wrkflw_step += 1
     processed = {}
     file_names = {}
     options = {}
@@ -420,7 +424,6 @@ def map_groups( ex, job_or_dict, fastq_root, assembly_or_dict, map_args=None ):
     else:
         raise TypeError("assembly_or_dict must be a genrep.Assembly object or a dictionary \
                          with keys 'chromosomes' and 'index_path'.")
-    global wrkflw_step
     for gid,group in groups.iteritems():
         processed[gid] = {}
         file_names[gid] = {}
@@ -450,7 +453,7 @@ def map_groups( ex, job_or_dict, fastq_root, assembly_or_dict, map_args=None ):
             file_names[gid][rid] = str(name)
             m.update({'libname': str(name)})
             processed[gid][rid] = m
-    add_pickle( ex, file_names, set_file_descr('file_names',tag='py',params={'type':'py','view':'admin'}) )
+    add_pickle( ex, file_names, set_file_descr('file_names','py',{'step': wrkflw_step,'type':'py','view':'admin'}) )
     return processed
 
 def add_pdf_stats( ex, processed, group_names, script_path,
@@ -652,6 +655,8 @@ def densities_groups( ex, job_or_dict, file_dict, chromosomes, via='lsf' ):
 
     Returns a dictionary with keys *group_id* from the job object and values the files fo each group ('bam' and 'wig').
     """
+    global wrkflw_step
+    wrkflw_step += 1
     processed = {}
     options = {}
     if isinstance(job_or_dict,frontend.Job):
@@ -677,8 +682,6 @@ def densities_groups( ex, job_or_dict, file_dict, chromosomes, via='lsf' ):
     if 'read_extension' in options and int(options['read_extension'])>0 and not('-q' in b2w_args):
         b2w_args += ["-q",str(options['read_extension'])]
     processed = {}
-    global wrkflw_step
-    wrkflw_step += 1
     for gid,group in groups.iteritems():
         if 'name' in group:
             group_name = re.sub(r'\s+','_',group['name'])
@@ -708,10 +711,8 @@ def densities_groups( ex, job_or_dict, file_dict, chromosomes, via='lsf' ):
                                            convert=False,
                                            b2w_args=b2w_args, via=via )
             wig.append(output)
-            ex.add( output, description=set_file_descr(
-                    m['libname']+'.sql',tag='none',params=pars0) )
-            [ex.add( output+s+'.sql', description=set_file_descr(
-                        m['libname']+'_'+s+'.sql',tag='sql',params=pars1),
+            ex.add( output, description=set_file_descr(m['libname']+'.sql','none',pars0) )
+            [ex.add( output+s+'.sql', description=set_file_descr(m['libname']+'_'+s+'.sql','sql',pars1),
                      associate_to_filename=output, template='%s_'+s+'.sql' )
              for s in suffixes]
         if len(mapped)>1:
@@ -719,8 +720,7 @@ def densities_groups( ex, job_or_dict, file_dict, chromosomes, via='lsf' ):
             ids = [m['libname'] for m in mapped.values()]
             merged_wig = dict((s, 
                                merge_sql(ex, [x+s+".sql" for x in wig], ids,
-                                         description=set_file_descr(
-                            group_name+"_"+s+".sql",tag='sql',params=pars1),
+                                         description=set_file_descr(group_name+"_"+s+".sql",'sql',pars1),
                                          via='local'))
                               for s in suffixes)
         else:
@@ -734,8 +734,8 @@ def densities_groups( ex, job_or_dict, file_dict, chromosomes, via='lsf' ):
                 with Track(merged_wig[s]) as t:
                     t.convert(out+s,"bigWig")
                 ex.add(out+s,
-                       description=set_file_descr(group_name+"_"+s+".bw",tag='bigwig',
-                                                  params={'group':gid, 'step': wrkflw_step, 'type':'bigwig'}))
+                       description=set_file_descr(group_name+"_"+s+".bw",'bigwig',
+                                                  {'group':gid, 'step': wrkflw_step, 'type':'bigwig'}))
     processed.update({'read_extension': options.get('read_extension'),
                       'genome_size': mapped.values()[0]['stats']['genome_size']})
     return processed
@@ -915,7 +915,7 @@ def get_bam_wig_files( ex, job, minilims=None, hts_url=None, suffix=['fwd','rev'
                 pdf = add_pdf_stats( ex, {gid:{rid:{'stats':stats}}},
                                      {gid: mapped_files[gid][rid]['libname']},
                                      script_path,
-                                     set_file_descr("mapping_report.pdf","pdf",{'step':wrkflw_step,'type':'pdf'} )
+                                     set_file_descr("mapping_report.pdf","pdf",{'step':0,'type':'pdf'} ) )
                 mapped_files[gid][rid]['p_thresh'] = poisson_threshold( 50*stats["actual_coverage"] )
     return (mapped_files,job)
 

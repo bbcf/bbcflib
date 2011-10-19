@@ -48,7 +48,7 @@ def cat(files):
     return out
 
 ###############################################################################
-def set_file_descr(filename, tag=None, comment=None, params=None):
+def set_file_descr(filename, tag=None, params=None, comment=None):
     file_descr = ''
     if not(tag == None):
         file_descr = tag
