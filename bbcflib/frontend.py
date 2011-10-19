@@ -112,6 +112,8 @@ class Frontend(object):
                    'description': j.pop('description'),
                    'email': j.pop('email')}
         ret_val.update({'options': j})
+        for k,v in ret_val['options'].iteritems():
+            if isinstance(v,unicode): ret_val['options'][k]=str(v)
         return ret_val
 
     def job(self, key):

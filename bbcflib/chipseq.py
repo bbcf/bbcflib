@@ -114,23 +114,24 @@ def add_macs_results( ex, read_length, genome_size, bamfile,
     prefixes = dict((n,f.wait()) for n,f in futures.iteritems())
     global wrkflw_step
     macs_descr0 = {'tag':'none','step':wrkflw_step,'type':'none','view':'admin'}
-    macs_descr1 = {'tag':'macs','step':wrkflw_step}
+    macs_descr1 = {'tag':'macs','step':wrkflw_step,'type':'xls'}
+    macs_descr2 = {'tag':'macs','step':wrkflw_step,'type':'bed'}
     for n,p in prefixes.iteritems():
         filename = "_vs_".join(n)
         touch( ex, p )
         ex.add( p, description=set_file_descr(filename,**macs_descr0), alias=alias )
         ex.add( p+"_peaks.xls", 
-                description=set_file_descr(filename+"_peaks.xls",**(macs_descr1+{'type':'xls'})),
+                description=set_file_descr(filename+"_peaks.xls",**macs_descr1),
                 associate_to_filename=p, template='%s_peaks.xls' )
         ex.add( p+"_peaks.bed", 
-                description=set_file_descr(filename+"_peaks.bed",**(macs_descr1+{'type':'bed'})),
+                description=set_file_descr(filename+"_peaks.bed",**macs_descr2),
                 associate_to_filename=p, template='%s_peaks.bed' )
         ex.add( p+"_summits.bed",
-                description=set_file_descr(filename+"_summits.bed",**(macs_descr1+{'type':'bed'})),
+                description=set_file_descr(filename+"_summits.bed",**macs_descr2),
                 associate_to_filename=p, template='%s_summits.bed' )
         if len(n)>1:
             ex.add( p+"_negative_peaks.xls", 
-                    description=set_file_descr(filename+"_negative_peaks.xls",**(macs_descr1+{'type':'xls'})),
+                    description=set_file_descr(filename+"_negative_peaks.xls",**macs_descr1),
                     associate_to_filename=p, template='%s_negative_peaks.xls' )
     return prefixes
 
