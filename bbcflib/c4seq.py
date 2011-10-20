@@ -55,16 +55,21 @@ def call_segToFrag(*args, **kwargs):
 # *** parse the output of call_segToFrag
 def parseSegToFrag(infile):
 	''' Parse the output of segToFrag '''
+	filename_all = unique_filename_in()
+	out_all = open(filename_all,'w')
 	filename = unique_filename_in()
 	output = open(filename,'w')
 	with open(infile,"r") as f:
 		for s in f.readlines():
 			s=s.strip('\n')
-			if re.search(r'IsValid',s.split('\t')[2]) and float(s.split('\t')[11])>0.0 :
+			if re.search(r'IsValid',s.split('\t')[2]) :
 				coord=((s.split('\t')[1]).split(':')[1]).split('-')
-				output.write((s.split('\t')[1]).split(':')[0]+'\t'+str(int(coord[0])-1)+'\t'+coord[1]+'\t'+s.split('\t')[11]+'\n')
+				out_all.write((s.split('\t')[1]).split(':')[0]+'\t'+str(int(coord[0])-1)+'\t'+coord[1]+'\t'+s.split('\t')[11]+'\n')
+				if float(s.split('\t')[11])>0.0:
+					output.write((s.split('\t')[1]).split(':')[0]+'\t'+str(int(coord[0])-1)+'\t'+coord[1]+'\t'+s.split('\t')[11]+'\n')
 	output.close()
-	return filename
+	out_all.close()
+	return [filename,filename_all]
 
 # *** To sort a file on coordinates
 @program
@@ -162,8 +167,9 @@ def density_to_countsPerFrag(ex,density_file,density_name,assembly_name,reffile,
 	res=call_segToFrag(ex, countsPerFragFile, regToExclude, script_path, via=via)
 	ex.add(res,description=set_file_descr("res_segToFrag_"+density_name+".bedGraph",tag="bedGraph",group=grpId,step=step,type="bedGraph",view="admin",comment="rough"))
 #	ex.add(res,description="none:res_segToFrag_"+density_name+" (rough) [group:"+str(grpId)+",step:"+str(step)+",type:bedGraph,view:admin]")
-	resBedGraph=parseSegToFrag(res)
+	[resBedGraph,resBedGraph_all]=parseSegToFrag(res)
 	ex.add(resBedGraph,description=set_file_descr("res_segToFrag_"+density_name+".bedGraph",tag="bedGraph",group=grpId,step=step,type="bedGraph",view="admin",comment="bedGraph non-sorted"))
+	ex.add(resBedGraph_all,description=set_file_descr("res_segToFrag_"+density_name+"_all.bedGraph",tag="bedGraph",group=grpId,step=step,type="bedGraph",view="admin",comment="all informative frags - null included - bedGraph non-sorted"))
 #	ex.add(resBedGraph,description="none:res_segToFrag_"+density_name+" (bedGraph non-sorted) [group:"+str(grpId)+",step:"+str(step)+"type:bedGraph,view:admin]")
 	resBedGraph=call_sortOnCoord(ex,resBedGraph,via=via)
 	headerFile=unique_filename_in();
