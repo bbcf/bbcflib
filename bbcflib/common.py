@@ -121,9 +121,9 @@ def get_files( id_or_key, minilims, by_type=False ):
     for f,d in all.iteritems():
 	pars="group:0,step:0,type:none,view:admin"
 	if re.search(r'([^:]*):(\S+)\[',d):
-	        tag,name,pars = re.search(r'([^:]*):(\S+)\[([^\]]+)\]\s*',d).groups()
+            tag,name,pars = re.search(r'([^:]*):(\S+)\[([^\]]+)\]\s*',d).groups()
 	else:
-		tag,name = re.search(r'([^:]*):(\S+)',d).groups()
+            tag,name = re.search(r'([^:]*):(\S+)',d).groups()
         par_dict = dict([x.split(":") for x in pars.split(",")])
         if by_type:
             cat = par_dict.get('type') or 'none'
