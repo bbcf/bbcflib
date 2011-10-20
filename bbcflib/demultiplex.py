@@ -183,7 +183,7 @@ def prepareReport(ex,name,tot_counts,counts_primers,counts_primers_filtered):
 			counts_primers_filtered[k]=v
 		out.write(k+"\t"+str(v)+"\t"+str(nFiltered)+"\t"+str(counts_primers_filtered[k])+"\n")
 
-	out.write("Unclassified\t"+str(tot_counts_primers)+"\n")
+	out.write("Unclassified\t"+str(tot_counts-tot_counts_primers)+"\n")
 	out.write("Total\t"+str(tot_counts)+"\n")
 
 	#Primer  Total_number_of_reads   nFiltered       nValidReads
