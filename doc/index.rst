@@ -17,6 +17,7 @@ Tutorials
    tutorial_mapseq
    tutorial_chipseq
    tutorial_4cseq
+   tutorial_rnaseq
    tutorial_config_files
 
 Library guide
