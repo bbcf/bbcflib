@@ -178,7 +178,7 @@ def density_to_countsPerFrag(ex,density_file,density_name,assembly_name,reffile,
 	hfile.close()
 	sortedBedGraph=common.cat([headerFile,resBedGraph])
 ##	ex.add(sortedBedGraph,description="none:res_segToFrag"+denstiy_name+" (template) [group:"+str(grpId)+",step:"+str(step)+",type:template,view:admin]")
-	ex.add(sortedBedGraph+".bedGraph",description=set_file_descr("res_segToFrag_"+density_name+".bedGraph",tag="bedGraph",group=grpId,step=step,type="bedGraph",comment="bedGraph sorted"))
+	ex.add(sortedBedGraph,description=set_file_descr("res_segToFrag_"+density_name+".bedGraph",tag="bedGraph",group=grpId,step=step,type="bedGraph",comment="bedGraph sorted"))
 #	ex.add(sortedBedGraph+".bedGraph",description="bedgraph:res_segToFrag_"+density_name+" (bedGraph sorted) [group:"+str(grpId)+",step:"+str(step)+",type:bedGraph]")
 #			associate_to_filename=sortedBedGraph, template="%s"+".bedGraph")	
 	sortedBedGraph_sql=unique_filename_in()
