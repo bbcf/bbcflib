@@ -169,7 +169,9 @@ def density_to_countsPerFrag(ex,density_file,density_name,assembly_name,reffile,
 #	ex.add(res,description="none:res_segToFrag_"+density_name+" (rough) [group:"+str(grpId)+",step:"+str(step)+",type:bedGraph,view:admin]")
 	[resBedGraph,resBedGraph_all]=parseSegToFrag(res)
 	ex.add(resBedGraph,description=set_file_descr("res_segToFrag_"+density_name+".bedGraph",tag="bedGraph",group=grpId,step=step,type="bedGraph",view="admin",comment="bedGraph non-sorted"))
-	ex.add(resBedGraph_all,description=set_file_descr("res_segToFrag_"+density_name+"_all.bedGraph",tag="bedGraph",group=grpId,step=step,type="bedGraph",view="admin",comment="all informative frags - null included - bedGraph non-sorted"))
+	ex.add(resBedGraph_all,description=set_file_descr("res_segToFrag_"+density_name+"_all_nonSorted.bedGraph",tag="bedGraph",group=grpId,step=step,type="bedGraph",view="admin",comment="all informative frags - null included - bedGraph non-sorted"))
+	resBedGraph_all=call_sortOnCoord(ex,resBedGraph_all,via=via)
+	ex.add(resBedGraph_all,description=set_file_descr("res_segToFrag_"+density_name+"_all.bedGraph",tag="bedGraph",group=grpId,step=step,type="bedGraph",view="admin",comment="all informative frags - null included -sorted bedGraph"))
 #	ex.add(resBedGraph,description="none:res_segToFrag_"+density_name+" (bedGraph non-sorted) [group:"+str(grpId)+",step:"+str(step)+"type:bedGraph,view:admin]")
 	resBedGraph=call_sortOnCoord(ex,resBedGraph,via=via)
 	headerFile=unique_filename_in();
