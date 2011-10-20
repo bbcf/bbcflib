@@ -229,7 +229,7 @@ def workflow_groups(ex, job, script_path):
 			subfiles=split_file(ex,infile,n_lines=8000000)
 			for sf in subfiles: 
 				allSubFiles.append(sf)
-				n=count_lines(ex,sf)
+				n=count_lines(ex,sf)/4
 				tot_counts = tot_counts+n
 					
 	
@@ -245,7 +245,7 @@ def workflow_groups(ex, job, script_path):
         	for k,f in resExonerate.iteritems():
 			ex.add(f,description=set_file_descr(group['name']+"_"+k+".fastq",tag="fastq",group=grpId,step=step,type="fastq"))
 #      		        ex.add(f,description="fastq:"+k+".fastq [group:" + str(grpId) + ",step:"+ str(step) + ",type:fastq]")
-			counts_primers[k]=count_lines(ex,f)
+			counts_primers[k]=count_lines(ex,f)/4
 			print("counts_primers["+k+"]="+str(counts_primers[k]))
 			counts_primers_filtered[k]=0
 			
@@ -261,7 +261,7 @@ def workflow_groups(ex, job, script_path):
 	        for k,f in filteredFastq.iteritems():
 			ex.add(f,description=set_file_descr(group['name']+"_"+k+"_filtered.fastq",tag="fastq",group=grpId,step=step,type="fastq"))
 #	                ex.add(f,description="fastq:"+k+"_filtered.fastq [group:" + str(grpId) + ",step:" + str(step) + ",type:fastq]")
-			counts_primers_filtered[k]=count_lines(ex,f)
+			counts_primers_filtered[k]=count_lines(ex,f)/4
 		step += 1
 
 		# Prepare report per group of runs
