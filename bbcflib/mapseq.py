@@ -863,7 +863,7 @@ def get_bam_wig_files( ex, job, minilims=None, hts_url=None, suffix=['fwd','rev'
                 allfiles = {}
                 for fid in MMS.search_files(source=('execution',exid)):
                     tf = MMS.fetch_file(fid)
-                    filename = re.search(r':(\S+)\[', tf['description']).groups()[0]
+                    filename = re.search(r':(\S+)[\s\[]', tf['description']).groups()[0]
                     allfiles[filename] = fid
                     if not(run.get('run')) and str(run['url']) == str(tf['repository_name']):
                         name = re.search(r':(.*)_[^_]*.bam', tf['description']).groups()[0]
