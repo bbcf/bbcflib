@@ -1,7 +1,7 @@
 Mapping Tutorial
 =================
 
-This is a short description of the options available in the `mapping interface <http://htsstation.vital-it.ch/mapseq/>`_ application, which is practically an interface to the `Bowtie <http://bowtie-bio.sourceforge.net/>`_ software with a few additional post-processing options as described in `Leleu M, Lefebvre G, Rougemont J, Brief Funct Genomics, <http://www.ncbi.nlm.nih.gov/pubmed/20861161>`_.
+This is a short description of the options available in the `mapping interface <http://htsstation.vital-it.ch/mapseq/>`_ application, which is practically an interface to the `Bowtie <http://bowtie-bio.sourceforge.net/>`_ software with a few additional post-processing options as described in `Leleu M, Lefebvre G, Rougemont J, Brief Funct Genomics, 2010<http://www.ncbi.nlm.nih.gov/pubmed/20861161>`_.
 
 Provide Reads
 -------------
@@ -39,8 +39,9 @@ Please give a name to your analysis that can be refered to later, in particular 
 Bowtie options
 --------------
 
-Default Bowtie options are `--best --strata --chunkmbs 512 -Sam 20`.
-Output is converted to `BAM <http://samtools.sourceforge.net/>`_ (file `sample_name_complete.bam`) then filtered to retain only the mapped reads with at most **5** hits in the reference. If the `Discard PCR duplicates` option is given, only at most **n** reads per strand-specific genomic position will be kept, where **n** is computed as the 95% percentile of a Poisson distribution with the same mean as the expected genome coverage. These filtered hits will be provided as the `sample_name_filtered.bam`.
+Default Bowtie options are 
+ * --best --strata --chunkmbs 512 -Sam 20
+Output is converted to `BAM <http://samtools.sourceforge.net/>`_ (file `sampleName_complete.bam`) then filtered to retain only the mapped reads with at most **5** hits in the reference. If the `Discard PCR duplicates` option is given, only at most **n** reads per strand-specific genomic position will be kept, where **n** is computed as the 95% percentile of a Poisson distribution with the same mean as the expected genome coverage. These filtered hits will be provided as the `sampleName_filtered.bam`.
 
 Mapping report
 --------------

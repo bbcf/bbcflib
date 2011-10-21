@@ -3,7 +3,7 @@ ChIP-seq Tutorial
 
 In this short tutorial we explain the ChIP-seq analysis workflow behind the interface `ChIP-seq <http://htsstation.vital-it.ch/chipseq/>`_ interface.
 
-For details about the underlying methods, please refer to the following paper: `Rey G, et al., PLoS Biol., 2011 <http://www.ncbi.nlm.nih.gov/pubmed/21364973>`_.
+For details about the underlying methods, please refer to the following paper: `Rey G, et al., PLoS Biol., 2011<http://www.ncbi.nlm.nih.gov/pubmed/21364973>`_.
 
 
 Import aligned data
