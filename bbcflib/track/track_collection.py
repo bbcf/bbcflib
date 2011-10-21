@@ -34,6 +34,8 @@ track_collections = {
   2:   {'path': tracks_path+'qual/bed/validation2.bed',         'type':'qualitative',  'fields':Track.qualitative_fields    },
   3:   {'path': tracks_path+'qual/bed/validation3.bed',         'type':'qualitative',  'fields':Track.qualitative_fields    },
   4:   {'path': tracks_path+'qual/bed/validation4.bed',         'type':'qualitative',  'fields':Track.qualitative_fields    },
+  5:   {'path': tracks_path+'qual/bed/validation5.bed',         'type':'qualitative',  'fields':Track.qualitative_fields    },
+  6:   {'path': tracks_path+'qual/bed/validation6.bed',         'type':'qualitative',  'fields':Track.qualitative_fields    },
   },
 'Scores': {
   1:   {'path': tracks_path+'quan/wig/scores1.wig',             'type':'quantitative', 'fields':Track.quantitative_fields   },
