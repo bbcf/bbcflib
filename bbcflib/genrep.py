@@ -45,14 +45,20 @@ With a ``ConfigParser``, the previous code would look like::
 # Built-in modules #
 import urllib2, json, os, re
 from datetime import datetime
+
 # Internal modules #
+
 from .common import normalize_url
+
 # Other modules #
 from bein import unique_filename_in
 
+# Constants #
+default_url = 'http://bbcftools.vital-it.ch/genrep/'
+
 ################################################################################
 class GenRep(object):
-    def __init__(self, url='http://bbcftools.vital-it.ch/genrep/', root='/db/genrep', intype=0, config=None, section='genrep'):
+    def __init__(self, url=default_url, root='/db/genrep', intype=0, config=None, section='genrep'):
         """Create an object to query a GenRep repository.
 
         GenRep is the in-house repository for sequence assemblies for the
@@ -94,16 +100,6 @@ class GenRep(object):
             return False
         return True
 
-    def query_url(self, method, assembly):
-        """Assemble a URL to call *method* for *assembly* on the repository."""
-        if isinstance(assembly, basestring):
-            return urllib2.Request("""%s/%s.json?assembly_name=%s""" % (self.url, method, assembly))
-        elif isinstance(assembly, int):
-            return urllib2.Request("""%s/%s.json?assembly_id=%d""" % (self.url, method, assembly))
-        else:
-            raise ValueError("Argument 'assembly' to must be a " + \
-                                 "string or integer, got " + str(assembly))
-
     def get_sequence(self, chr_id, coord_list):
         """Parses a slice request to the repository."""
         if len(coord_list) == 0:
@@ -113,35 +109,20 @@ class GenRep(object):
         request = urllib2.Request(url)
         return urllib2.urlopen(request).read().split(',')
 
-#    def get_sequence_straight(self, input_list):
-#        """ each element in input_list are lists containing: the chromosome name, the start and the end position."""    
-#        h_data = {}
-#        h_result = {}
-#        
-#        for e in input_list:
-#            if (h_data.get(e[0]) == None):
-#                h_data[e[0]]=[] 
-#            h_data[e[0]].append([e[1],e[2]])
-#        for chr in h_data.keys():
-#            h_data[chr].sort()
-#            res_list=get_sequence(chr, h_data[chr])
-#            for i in range(0,len(res_list)):
-#                h_results[chr]=[h_data[chr][i], res_list[i]]
-#        return h_results
-
     def fasta_from_regions(self, chromosomes, regions, out=None, chunk=50000, shuffled=False):
-        """Get a fasta file with sequences corresponding to the features in the
+        """
+        Get a fasta file with sequences corresponding to the features in the
         bed or sqlite file.
 
         Returns the name of the file and the total sequence size.
 
-        If 'out' is a (possibly empty) dictionary, will return the filled dictionary, 
-        if 'regions' is a dictionary {'chr' [[start1,end1],[start2,end2]]} 
-        or a list [['chr',start1,end1],['chr',start2,end2]], 
+        If 'out' is a (possibly empty) dictionary, will return the filled dictionary,
+        if 'regions' is a dictionary {'chr' [[start1,end1],[start2,end2]]}
+        or a list [['chr',start1,end1],['chr',start2,end2]],
         will simply iterate through its items instead of loading a track from file.
         """
         from .track import load
-        from .track.extras.sql import TrackExtras 
+        from .track.extras.sql import TrackExtras
         if out == None:
             out = unique_filename_in()
         def _push_slices(slices,start,end,name,cur_chunk):
@@ -166,10 +147,10 @@ class GenRep(object):
         if isinstance(regions,list):
             reg_dict = {}
             for reg in regions:
-                chrom = reg.pop(0)
+                chrom = reg[0]
                 if not(chrom in reg_dict):
                     reg_dict[chrom] = []
-                reg_dict[chrom].append(reg)
+                reg_dict[chrom].append(reg[1:])
             regions = reg_dict
         if isinstance(regions,dict):
             cur_chunk = 0
@@ -210,15 +191,19 @@ class GenRep(object):
     def assembly(self, assembly):
         """Get an Assembly object corresponding to *assembly*.
 
-        *assembly* may be an integer giving the assembly ID, or a
-        string giving the assembly name.
+        *assembly* may be an integer giving the assembly ID, or a string giving the assembly name.
         """
-        if isinstance(assembly, basestring):
-            assembly_info = json.load(urllib2.urlopen(self.query_url('assemblies', assembly)))[0]
-        elif isinstance(assembly, int):
-            assembly_info = json.load(urllib2.urlopen("""%s/assemblies/%d.json""" % (self.url, assembly)))
-        else:
-            raise ValueError("Argument 'assembly' must be a string or integer, got " + str(assembly))
+        try:
+            assembly = int(assembly)
+            assembly_info = json.load(urllib2.urlopen(urllib2.Request(
+                            """%s/assemblies/%d.json""" % (self.url, assembly))))
+            chromosomes = json.load(urllib2.urlopen(urllib2.Request(
+                            """%s/chromosomes.json?assembly_id=%d""" % (self.url, assembly))))
+        except:
+            assembly_info = json.load(urllib2.urlopen(urllib2.Request(
+                            """%s/assemblies.json?assembly_name=%s""" % (self.url, assembly))))[0]
+            chromosomes = json.load(urllib2.urlopen(urllib2.Request(
+                            """%s/chromosomes.json?assembly_name=%s""" % (self.url, assembly))))
 
         root = os.path.join(self.root,"nr_assemblies/bowtie")
         if self.intype == 1:
@@ -238,7 +223,6 @@ class GenRep(object):
                      source_id = int(assembly_info['assembly']['source_id']),
                      created_at = datetime.strptime(assembly_info['assembly']['created_at'],
                                                     '%Y-%m-%dT%H:%M:%SZ'))
-        chromosomes = json.load(urllib2.urlopen(self.query_url('chromosomes', assembly)))
         for c in chromosomes:
             name_dictionary = dict([ (x['chr_name']['assembly_id'],
                                       x['chr_name']['value'])
@@ -485,7 +469,7 @@ class Assembly(object):
         """
         return dict([(v['name'], dict([('length', v['length'])])) for v in self.chromosomes.values()])
 
-
+################################################################################
 class GenrepObject(object):
     """
     Class wich will reference all different objects used by GenRep
@@ -495,7 +479,136 @@ class GenrepObject(object):
     def __init__(self, info, key):
         self.__dict__.update(info[key])
 
+################################################################################
+class JsonJit(object):
+    """
+    JsonJit is a class for Just In Time instantiation of JSON resources.
+    __lazy__ is called only when the first attribute is either get or set.
+    You can use it like this:
 
+        assemblies = JsonJit('http://bbcftools.vital-it.ch/genrep/assemblies.json', 'assembly')
+    """
+
+    def __init__(self, url, list_key=None):
+        """
+        *url*: Location of the JSON to load.
+        *list_key*: Optional dictionary key to unpack the elements of JSON with.
+        """
+        self.__dict__['url'] = url
+        self.__dict__['list_key'] = list_key
+        self.__dict__['obj'] = None
+
+    def __lazy__(self):
+        """Fetch resource and instantiate object."""
+        import json, urllib2
+        try:
+            content = urllib2.urlopen(self.url).read()
+            # Create the child object #
+            self.__dict__['obj'] = json.loads(content)
+        except urllib2.URLError as err:
+            self.__dict__['obj'] = err
+        # Unpack the child object #
+        if self.list_key:
+            for num, item in enumerate(self.obj):
+                self.obj[num] = item[self.list_key]
+
+    def get(self, value):
+        """Retrieve an item from the JSON
+           by searching all attributes of all items
+           for *name*"""
+        for x in self.obj:
+            if [k for k,v in x.items() if v == value]: return x
+
+    def filter(self, key, value):
+        """Retrieve an item from the JSON
+           by search a key that is equal to value in
+           all elements"""
+        return [x for x in self.obj for k,v in x.items() if v == value and k == key]
+
+    def by(self, name):
+        """Return a list of attributes present
+           in every element of the JSON"""
+        return [x.get(name).encode('ascii') for x in self.obj]
+
+    def make(self, name):
+        """Return an object whoes attributes are the
+           keys of the element's dictionary"""
+        class JsonObject(object): pass
+        obj = JsonObject()
+        obj.__dict__.update(self.get(name))
+        return obj
+
+    def __getattr__(self, name):
+        """Method called when an attribute is
+           not found in __dict__."""
+        if not self.obj: self.__lazy__()
+        # Search in the child object #
+        try: return getattr(self.obj, name)
+        except AttributeError as err:
+            # Search in the parent object #
+            if name in self.__dict__: return self.__dict__[name]
+            else: return self.make(name)
+
+    def __setattr__(self, name, value):
+        """Method called when an attribute is
+           assigned to."""
+        if not self.obj: self.__lazy__()
+        try: setattr(self.obj, name, value)
+        except AttributeError:
+            self.__dict__[name] = value
+
+    def __len__(self):
+        if not self.obj: self.__lazy__()
+        return self.obj.__len__()
+
+    def __iter__(self):
+        if not self.obj: self.__lazy__()
+        return self.obj.__iter__()
+
+    def __repr__(self):
+        if not self.obj: self.__lazy__()
+        return self.obj.__repr__()
+
+    def __getitem__(self, key):
+        if not self.obj: self.__lazy__()
+        return self.obj[key]
+
+    def __setitem__(self, key, item):
+        if not self.obj: self.__lazy__()
+        self.obj[key] = item
+
+    def __delitem__(self, key):
+        if not self.obj: self.__lazy__()
+        del self.obj[key]
+
+"""
+You can now use it like this:
+
+    >>> from bbcflib import genrep
+    >>> print genrep.assemblies
+    [{u'source_name': u'UCSC', u'name': u'ce6', u'created_at': u'2010-12-19T20:52:31Z', u'updated_at': u'2011-01-05T14:58:43Z', u'bbcf_valid': True, u'nr_assembly_id': 106, u'source_id': 4, u'genome_id': 8, u'id': 14, u'md5': u'fd56 ......
+
+    >>> print genrep.assemblies.by('name')
+    ['ce6', 'danRer7', 'dm3', 'GRCh37', 'hg19', 'MLeprae_TN', ......
+
+    >>> print genrep.assemblies.get('hg19')
+    {u'bbcf_valid': True, u'created_at': u'2010-12-16T16:08:13Z', u'genome_id': 5, u'id': 11, ......
+
+    >>> print genrep.assemblies.filter('genome_id', 5)
+    [{u'bbcf_valid': False, u'created_at': u'2011-03-25T01:56:41Z', u'genome_id': 5, u'id': 22, ......
+
+    >>> print genrep.assemblies.hg19.id
+    11
+
+    Same goes for organisms, genomes, etc.
+"""
+
+# Expose base resources #
+organisms     = JsonJit(default_url + "organisms.json",     'organism')
+genomes       = JsonJit(default_url + "genomes.json",       'genome')
+nr_assemblies = JsonJit(default_url + "nr_assemblies.json", 'nr_assembly')
+assemblies    = JsonJit(default_url + "assemblies.json",    'assembly')
+sources       = JsonJit(default_url + "sources.json",       'source')
 
 #-----------------------------------#
 # This code was written by the BBCF #

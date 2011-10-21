@@ -42,12 +42,13 @@ import shutil, pickle, urllib, re, os
 
 # Internal modules #
 from . import frontend, mapseq
-from .common import merge_sql, merge_many_bed, join_pdf, cat
+from .common import merge_sql, merge_many_bed, join_pdf, cat, set_file_descr
 
 # Other modules #
 from bein import *
 from bein.util import *
 
+wrkflw_step=0
 ################################################################################
 # Peaks and annotation #
 
@@ -66,13 +67,12 @@ def macs( read_length, genome_size, bamfile, ctrlbam = None, args = None ):
     macs_args = ["macs14","-t",bamfile]
     if ctrlbam != None:
         macs_args += ["-c",ctrlbam]
-    macs_args += ["-n",outname,"-f","BAM",
-                  "-g",str(genome_size),"-s",str(read_length)]
+    macs_args += ["-n",outname,"-f","BAM","-g",str(genome_size),"-s",str(read_length)]
     return {"arguments": macs_args+args, "return_value": outname}
 
 def add_macs_results( ex, read_length, genome_size, bamfile,
-                      ctrlbam = None, name = None, poisson_threshold = None,
-                      alias = None, macs_args = None, via = 'lsf' ):
+                      ctrlbam=None, name=None, poisson_threshold=None,
+                      alias=None, macs_args=None, via='lsf' ):
     """Calls the ``macs`` function on each possible pair
     of test and control bam files and adds
     the respective outputs to the execution repository.
@@ -112,18 +112,26 @@ def add_macs_results( ex, read_length, genome_size, bamfile,
                                             args=macs_args+["-m",enrich_bounds],
                                             via=via )
     prefixes = dict((n,f.wait()) for n,f in futures.iteritems())
+    global wrkflw_step
+    macs_descr0 = {'tag':'none','step':wrkflw_step,'type':'none','view':'admin'}
+    macs_descr1 = {'tag':'macs','step':wrkflw_step,'type':'xls'}
+    macs_descr2 = {'tag':'macs','step':wrkflw_step,'type':'bed'}
     for n,p in prefixes.iteritems():
-        description = "_vs_".join(n)
+        filename = "_vs_".join(n)
         touch( ex, p )
-        ex.add( p, description="none:"+description, alias=alias )
-        ex.add( p+"_peaks.xls", description="macs:"+description+"_peaks.xls",
+        ex.add( p, description=set_file_descr(filename,**macs_descr0), alias=alias )
+        ex.add( p+"_peaks.xls", 
+                description=set_file_descr(filename+"_peaks.xls",**macs_descr1),
                 associate_to_filename=p, template='%s_peaks.xls' )
-        ex.add( p+"_peaks.bed", description="macs:"+description+"_peaks.bed",
+        ex.add( p+"_peaks.bed", 
+                description=set_file_descr(filename+"_peaks.bed",**macs_descr2),
                 associate_to_filename=p, template='%s_peaks.bed' )
-        ex.add( p+"_summits.bed", description="macs:"+description+"_summits.bed",
+        ex.add( p+"_summits.bed",
+                description=set_file_descr(filename+"_summits.bed",**macs_descr2),
                 associate_to_filename=p, template='%s_summits.bed' )
         if len(n)>1:
-            ex.add( p+"_negative_peaks.xls", description="macs:"+description+"_negative_peaks.xls",
+            ex.add( p+"_negative_peaks.xls", 
+                    description=set_file_descr(filename+"_negative_peaks.xls",**macs_descr1),
                     associate_to_filename=p, template='%s_negative_peaks.xls' )
     return prefixes
 
@@ -230,6 +238,8 @@ def workflow_groups( ex, job_or_dict, mapseq_files, chromosomes, script_path='',
 
     Returns a tuple of a dictionary with keys *group_id* from the job groups, *macs* and *deconv* if applicable and values file description dictionaries and a dictionary of *group_ids* to *names* used in file descriptions.
 """
+    global wrkflw_step
+    wrkflw_step = 1
     options = {}
     if isinstance(job_or_dict,frontend.Job):
         options = job_or_dict.options
@@ -330,6 +340,7 @@ def workflow_groups( ex, job_or_dict, mapseq_files, chromosomes, script_path='',
                 output_location = outdir )[0]
             peak_list[name] = gm_out
     if peak_deconvolution:
+        wrkflw_step += 1
         processed['deconv'] = {}
         merged_wig = {}
         if not('read_extensions' in options and int(options['read_extension'])>0):
@@ -367,11 +378,12 @@ def workflow_groups( ex, job_or_dict, mapseq_files, chromosomes, script_path='',
                                              for x in names['controls']],via=via)
             deconv = run_deconv( ex, merged_wig[name], macsbed, chromosomes,
                                  options['read_extension'], script_path, via=via )
-            [ex.add(v, description=k+':'+name+'_deconv.'+k)
+            [ex.add(v, description=set_file_descr(name+'_deconv.'+k,tag=k,type=k,step=wrkflw_step)) 
              for k,v in deconv.iteritems()]
             processed['deconv'][name] = deconv
             peak_list[name] = deconv['bed']
-    if run_meme:
+    if run_meme and not(genrep == None):
+        wrkflw_step += 1
         from .motif import parallel_meme
         processed['meme'] = parallel_meme( ex, genrep, chromosomes, 
                                            peak_list.values(), name=peak_list.keys(), 

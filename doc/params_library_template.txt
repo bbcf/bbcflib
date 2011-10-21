@@ -1,0 +1,6 @@
+Genome name (e.g., mm9)=
+Primary restriction site (e.g., CATG for NlaIII)=
+Secondary restriction site (e.g., GATC for DpnII)=
+Segment length(default:30bps)=
+Library name (default:myLibrary)=
+type (typeI or typeII)= 

@@ -1,0 +1,2 @@
+.. automodule:: bbcflib.demultiplex
+   :members:

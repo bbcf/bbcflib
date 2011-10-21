@@ -37,7 +37,7 @@ Below is the script used by the frontend::
     hts_key = 'test_key'
     gl = { 'hts_mapseq': {'url': 'http://htsstation.vital-it.ch/mapseq/'},
            'genrep_url': 'http://bbcftools.vital-it.ch/genrep/',
-           'bwt_root': '/db/genrep/nr_assemblies',
+           'bwt_root': '/db/genrep/',
            'script_path': '/srv/chipseq/lib',
            'lims': {'user': 'alice',
                      'passwd': {'lgtf': 'bob123',
@@ -59,7 +59,7 @@ Below is the script used by the frontend::
         mapped_files = map_groups( ex, job, ex.working_directory, assembly )
         pdf = add_pdf_stats( ex, mapped_files,
                              dict((k,v['name']) for k,v in job.groups.iteritems()),
-                             gl['script_path'] )
+                             gl['script_path'] ) 
         density_files = densities_groups( ex, job, mapped_files, assembly.chromosomes )
         gdv_project = gdv.create_gdv_project( gl['gdv']['key'], gl['gdv']['email'],
                                               job.description, hts_key,
@@ -68,7 +68,7 @@ Below is the script used by the frontend::
                                               public=True )
         add_pickle( ex, gdv_project, description='py:gdv_json' )
     print ex.id
-    allfiles = common.get_files( ex.id, M )
+    allfiles = get_files( ex.id, M )
     print allfiles
 """
 
@@ -76,7 +76,8 @@ Below is the script used by the frontend::
 import os, re, json, shutil, gzip, tarfile, pickle, urllib
 
 # Internal modules #
-from . import frontend, genrep, daflims, common
+from . import frontend, genrep, daflims
+from .common import get_files, cat, set_file_descr, merge_sql
 from .track import Track, new
 
 
@@ -87,6 +88,7 @@ from scipy.misc import  factorial
 from bein       import  *
 from bein.util  import  *
 
+wrkflw_step=0
 ################################################################################
 # Preprocessing #
 @program
@@ -136,7 +138,7 @@ def plot_stats(sample_stats,script_path="./"):
     """
     stats_file = unique_filename_in()
     with open( stats_file, 'w' ) as f:
-        f.write(json.dumps(sample_stats))
+        json.dump(sample_stats,f)
     pdf_file = unique_filename_in()
     return {'arguments': ["R","--vanilla","--slave","-f",
                           os.path.join(script_path,"pdfstats.R"),
@@ -217,8 +219,8 @@ def pprint_bamstats(sample_stats) :
 ############################################################
 
 def map_reads( ex, fastq_file, chromosomes, bowtie_index,
-               maxhits = 5, antibody_enrichment = 50, name = '',
-               remove_pcr_duplicates = True, bwt_args = None, via = 'lsf' ):
+               maxhits=5, antibody_enrichment=50, name='',
+               remove_pcr_duplicates=True, bwt_args=None, via='lsf' ):
     """Runs ``bowtie`` in parallel over lsf for the `fastq_file` input.
     Returns the full bamfile, its filtered version (see 'remove_duplicate_reads')
     and the mapping statistics dictionary (see 'bamstats').
@@ -234,30 +236,40 @@ def map_reads( ex, fastq_file, chromosomes, bowtie_index,
     The mapping statistics dictionary is pickled and added to the execution's
     repository, as well as both the full and filtered bam files.
     """
+    global wrkflw_step
     if bwt_args is None:
         bwt_args = []
-    bwtarg = ["-Sam", str(max(20, maxhits)), "--best", "--strata"]+bwt_args
+    bwtarg = ["-Sam", str(max(20,maxhits))]+bwt_args
+    if not("--best" in bwtarg):     bwtarg += ["--best"]
+    if not("--strata" in bwtarg):   bwtarg += ["--strata"]
+    if not("--chunkmbs" in bwtarg): bwtarg += ["--chunkmbs","512"]
     if count_lines( ex, fastq_file )>10000000:
         bam = parallel_bowtie( ex, bowtie_index, fastq_file,
-                               n_lines=8000000,
-                               bowtie_args=bwtarg,
+                               n_lines=8000000, bowtie_args=bwtarg,
                                add_nh_flags=True, via=via )
     else:
         future = bowtie.nonblocking( ex, bowtie_index, fastq_file, bwtarg, via=via )
         samfile = future.wait()
         bam = add_nh_flag( samfile )
-    sorted_bam = add_and_index_bam( ex, bam, "bam:"+name+"complete.bam" )
+    bam_descr = {'tag':'bam','step': wrkflw_step, 'type':'bam'}
+    py_descr = {'tag':'py','step': wrkflw_step, 'type':'py','view':'admin'}
+    sorted_bam = add_and_index_bam( ex, bam, set_file_descr(name+"complete.bam",**bam_descr) )
+#"bam:"+name+"complete.bam"
     full_stats = bamstats( ex, sorted_bam )
-    add_pickle( ex, full_stats, "py:"+name+"full_bamstat" )
+    add_pickle( ex, full_stats, set_file_descr(name+"full_bamstat",**py_descr) )
+#"py:"+name+"full_bamstat" 
     return_dict = {"fullbam": sorted_bam}
     if remove_pcr_duplicates:
         thresh = poisson_threshold( antibody_enrichment*full_stats["actual_coverage"] )
-        add_pickle( ex, thresh, "py:"+name+"Poisson_threshold" )
+        add_pickle( ex, thresh, set_file_descr(name+"Poisson_threshold",**py_descr) )
+#"py:"+name+"Poisson_threshold" 
         bam2 = remove_duplicate_reads( sorted_bam, chromosomes,
                                        maxhits, thresh, convert=True )
-        reduced_bam = add_and_index_bam( ex, bam2, "bam:"+name+"filtered.bam" )
+        reduced_bam = add_and_index_bam( ex, bam2, set_file_descr(name+"filtered.bam",**bam_descr) )
+#"bam:"+name+"filtered.bam"
         filtered_stats = bamstats( ex, reduced_bam )
-        add_pickle( ex, filtered_stats, "py:"+name+"filter_bamstat" )
+        add_pickle( ex, filtered_stats, set_file_descr(name+"filter_bamstat",**py_descr) )
+#"py:"+name+"filter_bamstat"
         return_dict['bam'] = reduced_bam
         return_dict['fullstats'] = full_stats
         return_dict['stats'] = filtered_stats
@@ -279,7 +291,8 @@ def map_reads( ex, fastq_file, chromosomes, bowtie_index,
                 outfile.write(read)
         outfile.close()
         infile.close()
-        reduced_bam = add_and_index_bam( ex, bam2, "bam:"+name+"filtered.bam" )
+        reduced_bam = add_and_index_bam( ex, bam2, set_file_descr(name+"filtered.bam",**bam_descr) )
+#"bam:"+name+"filtered.bam"
         return_dict['bam'] = reduced_bam
         return_dict['stats'] = full_stats
     return return_dict
@@ -314,7 +327,7 @@ def get_fastq_files( job, fastq_root, dafl=None, set_seed_length=True ):
             elif isinstance(run,str):
                 fq_file = unique_filename_in(fastq_root)
                 target = os.path.join(fastq_root,fq_file)
-                if run.startswith("http://") or run.startswith("https://"):
+                if run.startswith("http://") or run.startswith("https://") or run.startswith("ftp://"):
                     urllib.urlretrieve( run, target )
                 else:
                     shutil.copy(run,target)
@@ -363,7 +376,7 @@ def get_fastq_files( job, fastq_root, dafl=None, set_seed_length=True ):
 
 ############################################################
 
-def map_groups( ex, job_or_dict, fastq_root, assembly_or_dict, map_args = None):
+def map_groups( ex, job_or_dict, fastq_root, assembly_or_dict, map_args=None ):
     """Fetches fastq files and bowtie indexes, and runs the 'map_reads' function for
     a collection of samples described in a 'Frontend' 'job'.
 
@@ -382,6 +395,8 @@ def map_groups( ex, job_or_dict, fastq_root, assembly_or_dict, map_args = None):
     Returns a dictionary with keys *group_id* from the job object and values dictionaries
     mapping *run_id* to the corresponding return value of the 'map_reads' function.
     """
+    global wrkflw_step
+    wrkflw_step += 1
     processed = {}
     file_names = {}
     options = {}
@@ -440,11 +455,12 @@ def map_groups( ex, job_or_dict, fastq_root, assembly_or_dict, map_args = None):
             file_names[gid][rid] = str(name)
             m.update({'libname': str(name)})
             processed[gid][rid] = m
-    add_pickle( ex, file_names, "py:file_names" )
+    add_pickle( ex, file_names, set_file_descr('file_names',tag='py',step=wrkflw_step,
+                                               type='py',view='admin') )
     return processed
 
 def add_pdf_stats( ex, processed, group_names, script_path,
-                   description = "pdf:mapping_report.pdf" ):
+                   description="mapping_report.pdf" ):
     """Runs the 'plot_stats' function and adds its pdf output to the execution's repository.
 
     Arguments are the output of 'map_groups' ('processed'),
@@ -547,9 +563,9 @@ def _compact_chromosome_name(key):
         raise ValueError("Can't handle this chromosomes key ",key)
 
 def parallel_density_wig( ex, bamfile, chromosomes,
-                          nreads = 1, merge = -1, read_extension = -1, convert = True,
-                          description = "", alias = None,
-                          b2w_args = None, via = 'lsf' ):
+                          nreads=1, merge=-1, read_extension=-1, convert=True,
+                          description="", alias=None,
+                          b2w_args=None, via='lsf' ):
     """Runs 'bam_to_density' in parallel
     for every chromosome in the 'chromosomes' list with 'sql' set to False.
     Returns a single text wig file.
@@ -567,13 +583,13 @@ def parallel_density_wig( ex, bamfile, chromosomes,
             results.append(f.wait())
         except ProgramFailed:
             pass
-    output = common.cat(results)
+    output = cat(results)
     ex.add( output, description=description, alias=alias )
     return output
 
 def parallel_density_sql( ex, bamfile, chromosomes,
-                          nreads = 1, merge = -1, read_extension = -1, convert = True,
-                          b2w_args = None, via = 'lsf' ):
+                          nreads=1, merge=-1, read_extension=-1, convert=True,
+                          b2w_args=None, via='lsf' ):
     """Runs 'bam_to_density' for every chromosome in the 'chromosomes' list.
 
     Generates 1 or 2 files depending
@@ -595,7 +611,7 @@ def parallel_density_sql( ex, bamfile, chromosomes,
         def _wig(infile,strnd="+"):
             for row in infile:
                 r = row.split("\t")
-                if r[5][0] == strnd:
+                if len(r)>5 and r[5][0] == strnd:
                     yield((r[1],r[2],r[4]))
         with new(output+"rev.sql",datatype="quantitative",chrmeta=chrlist) as trev:
             with new(output+"fwd.sql",datatype="quantitative",chrmeta=chrlist) as tfwd:
@@ -614,7 +630,8 @@ def parallel_density_sql( ex, bamfile, chromosomes,
             for row in infile:
                 if not row.startswith('track'): 
                     r = row.split("\t")
-                    yield((r[1],r[2],r[3]))
+                    if len(r)>3:
+                        yield((r[1],r[2],r[3]))
         with new(output+"merged.sql",datatype="quantitative",chrmeta=chrlist) as tboth:
             for k,v in chromosomes.iteritems():
                 try:
@@ -623,7 +640,6 @@ def parallel_density_sql( ex, bamfile, chromosomes,
                         tboth.write(v['name'],_bedgr(f))
                 except (ProgramFailed, IOError):
                     tboth.write(v['name'],[])
-
     return output
 
 ############################################################
@@ -642,6 +658,8 @@ def densities_groups( ex, job_or_dict, file_dict, chromosomes, via='lsf' ):
 
     Returns a dictionary with keys *group_id* from the job object and values the files fo each group ('bam' and 'wig').
     """
+    global wrkflw_step
+    wrkflw_step += 1
     processed = {}
     options = {}
     if isinstance(job_or_dict,frontend.Job):
@@ -687,6 +705,8 @@ def densities_groups( ex, job_or_dict, file_dict, chromosomes, via='lsf' ):
                 if not('-q' in b2w_args):
                     b2w_args += ["-q",str(options['read_extension'])]
         wig = []
+        pars0 = {'tag':'none', 'group':gid, 'step': wrkflw_step, 'type':'none', 'view':'admin'}
+        pars1 = {'tag':'sql', 'group':gid, 'step': wrkflw_step, 'type':'sql'}
         for m in mapped.values():
             output = parallel_density_sql( ex, m["bam"], chromosomes,
                                            nreads=m["stats"]["total"],
@@ -694,15 +714,17 @@ def densities_groups( ex, job_or_dict, file_dict, chromosomes, via='lsf' ):
                                            convert=False,
                                            b2w_args=b2w_args, via=via )
             wig.append(output)
-            ex.add( output, description='none:'+m['libname']+'.sql' )
-            [ex.add( output+s+'.sql', description='sql:'+m['libname']+'_'+s+'.sql',
+            ex.add( output, description=set_file_descr(m['libname']+'.sql',**pars0) )
+            [ex.add( output+s+'.sql', description=set_file_descr(m['libname']+'_'+s+'.sql',**pars1),
                      associate_to_filename=output, template='%s_'+s+'.sql' )
              for s in suffixes]
         if len(mapped)>1:
             merged_bam = merge_bam(ex, [m['bam'] for m in mapped.values()])
             ids = [m['libname'] for m in mapped.values()]
-            merged_wig = dict((s, common.merge_sql(ex, [x+s+".sql" for x in wig], ids,
-                                                   description="sql:"+group_name+"_"+s+".sql", via='local'))
+            merged_wig = dict((s, 
+                               merge_sql(ex, [x+s+".sql" for x in wig], ids,
+                                         description=set_file_descr(group_name+"_"+s+".sql",**pars1),
+                                         via='local'))
                               for s in suffixes)
         else:
             merged_bam = mapped.values()[0]['bam']
@@ -714,7 +736,9 @@ def densities_groups( ex, job_or_dict, file_dict, chromosomes, via='lsf' ):
             for s in suffixes:
                 with Track(merged_wig[s]) as t:
                     t.convert(out+s,"bigWig")
-                ex.add(out+s,description='bigwig:'+group_name+'_'+s+'.bw')
+                ex.add(out+s,
+                       description=set_file_descr(group_name+"_"+s+".bw",tag='bigwig',
+                                                  group=gid, step=wrkflw_step, type='bigwig'))
     processed.update({'read_extension': options.get('read_extension'),
                       'genome_size': mapped.values()[0]['stats']['genome_size']})
     return processed
@@ -824,7 +848,7 @@ def get_bam_wig_files( ex, job, minilims=None, hts_url=None, suffix=['fwd','rev'
                     name += "_".join(['',run['machine'],str(run['run']),str(run['lane'])])
                 else:
                     name += "_"+os.path.splitext(file_loc.split("/")[-1])[0]
-            if file_loc.startswith("http://") or file_loc.startswith("https://"):
+            if file_loc.startswith("http://") or file_loc.startswith("https://") or file_loc.startswith("ftp://"):
                 urllib.urlretrieve( file_loc, bamfile )
                 urllib.urlretrieve( file_loc+".bai", bamfile+".bai" )
             elif os.path.exists(file_loc):
@@ -836,24 +860,23 @@ def get_bam_wig_files( ex, job, minilims=None, hts_url=None, suffix=['fwd','rev'
                 shutil.copy( file_loc, bamfile )
                 shutil.copy( file_loc+".bai", bamfile+".bai" )
                 exid = max(MMS.search_executions(with_text=run['key']))
-#                allfiles = dict((MMS.fetch_file(x)['description'],x)
-#                                for x in MMS.search_files(source=('execution',exid)))
                 allfiles = {}
                 for fid in MMS.search_files(source=('execution',exid)):
                     tf = MMS.fetch_file(fid)
-                    allfiles[tf['description']] = fid
+                    filename = re.search(r':([^\s\[]+)', tf['description']).groups()[0]
+                    allfiles[filename] = fid
                     if not(run.get('run')) and str(run['url']) == str(tf['repository_name']):
-                        name = str(re.search(r'bam:(.*)_[^_]*.bam', tf['description']).groups()[0])
-                stats_id = allfiles.get("py:"+name+"_filter_bamstat") or allfiles.get("py:"+name+"_full_bamstat")
+                        name = re.search(r':(.*)_[^_]*.bam', tf['description']).groups()[0]
+                stats_id = allfiles.get(name+"_filter_bamstat") or allfiles.get(name+"_full_bamstat")
                 with open(MMS.path_to_file(stats_id)) as q:
                     stats = pickle.load(q)
                 p_thresh = -1
-                if "py:"+name+"_Poisson_threshold" in allfiles:
-                    pickle_thresh = allfiles["py:"+name+"_Poisson_threshold"]
+                if name+"_Poisson_threshold" in allfiles:
+                    pickle_thresh = allfiles[name+"_Poisson_threshold"]
                     with open(MMS.path_to_file(pickle_thresh)) as q:
                         p_thresh = pickle.load(q)
-                if 'py:gdv_json' in allfiles:
-                    with open(MMS.path_to_file(allfiles['py:gdv_json'])) as q:
+                if 'gdv_json' in allfiles:
+                    with open(MMS.path_to_file(allfiles['gdv_json'])) as q:
                         job.options['gdv_project'] = pickle.load(q)
                 if hts_url != None:
                     htss = frontend.Frontend( url=hts_url )
@@ -869,7 +892,7 @@ def get_bam_wig_files( ex, job, minilims=None, hts_url=None, suffix=['fwd','rev'
                     if ((ms_job.options.get('merge_strands')<0 and len(suffix)>1) or 
                         (ms_job.options.get('merge_strands')>-1 and len(suffix)==1)):
                         wigfile = unique_filename_in()
-                        wig_ids = dict(((allfiles['sql:'+name+'_'+s+'.sql'],s),
+                        wig_ids = dict(((allfiles[name+'_'+s+'.sql'],s),
                                         wigfile+'_'+s+'.sql') for s in suffix)
                         [MMS.export_file(x[0],s) for x,s in wig_ids.iteritems()]
                         wig = dict((x[1],s) for x,s in wig_ids.iteritems())
@@ -893,8 +916,9 @@ def get_bam_wig_files( ex, job, minilims=None, hts_url=None, suffix=['fwd','rev'
                 stats = mapped_files[gid][rid]['stats'].wait()
                 mapped_files[gid][rid]['stats'] = stats
                 pdf = add_pdf_stats( ex, {gid:{rid:{'stats':stats}}},
-                                            {gid: mapped_files[gid][rid]['libname']},
-                                            script_path )
+                                     {gid: mapped_files[gid][rid]['libname']},
+                                     script_path,
+                                     set_file_descr("mapping_report.pdf",tag="pdf",step=0,type='pdf') )
                 mapped_files[gid][rid]['p_thresh'] = poisson_threshold( 50*stats["actual_coverage"] )
     return (mapped_files,job)
 

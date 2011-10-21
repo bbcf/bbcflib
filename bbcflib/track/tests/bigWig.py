@@ -3,7 +3,7 @@ import os, filecmp, shutil
 
 # Internal modules #
 from bbcflib import track
-from bbcflib.track.common import named_temporary_path
+from bbcflib.track.common import named_temporary_path, sqlcmp
 from bbcflib.track.track_collection import track_collections, yeast_chr_file
 
 # Unittesting module #
@@ -100,7 +100,7 @@ class Test_Convert(unittest.TestCase):
         with track.load(path_ref_bw, chrmeta=yeast_chr_file) as t:
             t.convert(path_new_sql)
             self.assertEqual(t.format, 'sql')
-        self.assertTrue(filecmp.cmp(path_new_sql, path_ref_sql))
+        self.assertTrue(sqlcmp(path_new_sql, path_ref_sql))
         # Case 3b: SQL to BIGWIG #
         with track.load(path_ref_sql) as t:
             t.convert(path_new_bw)

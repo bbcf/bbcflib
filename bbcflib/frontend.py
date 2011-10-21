@@ -68,6 +68,12 @@ class Frontend(object):
                           "library_file_url": str(a.get("library_file_url") or ""),
                           "library_id": a.get("library_id") or 0,
                           "library_param_file": str(a.get("library_param_file") or "")})
+            for k,v in a.iteritems():
+                if not(k in b): 
+                    if isinstance(v,unicode):
+                        b[k] = str(v)
+                    else: 
+                        b[k] = v                    
             return b
         return [_f(g) for g in json.load(urllib2.urlopen(self.query_url('groups', key)))]
 
@@ -106,6 +112,8 @@ class Frontend(object):
                    'description': j.pop('description'),
                    'email': j.pop('email')}
         ret_val.update({'options': j})
+        for k,v in ret_val['options'].iteritems():
+            if isinstance(v,unicode): ret_val['options'][k]=str(v)
         return ret_val
 
     def job(self, key):
@@ -161,12 +169,11 @@ class Job(object):
 
     def add_group(self, id, name, group = None):
         if self.groups.has_key(id):
-            raise ValueError("A group with ID %d was already added." % id)
+            if group is None:
+                raise ValueError("A group with ID %d was already added." % id)
         else:
-            self.groups[id] = {'name': name,
-                               'runs': {}}
-        if group != None:
-            self.groups[id].update(group)
+            self.groups[id] = {'name': name, 'runs': {}}
+        self.groups[id].update(group)
 
     def add_run(self, id, group, facility, facility_location, machine, machine_id, run, lane, url, key):
         try:

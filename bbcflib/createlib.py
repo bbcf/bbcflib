@@ -1,9 +1,9 @@
 """
 ======================
-createlib.py 
+Module: bbcflib.createlib.py 
 ======================
 
-functions used for the creation of a library in a 4c-seq analysis.
+Functions used for the creation of a library in a 4c-seq analysis.
 """
 
 from bein import *
@@ -13,6 +13,9 @@ import sys, getopt, os, json, re
 import tarfile
 
 def load_libraryParamsFile(paramsfile):
+	'''
+        Returns a dictionary with the parameters required for the creation of a new library
+	'''
 	paramslib={}
 	with open(paramsfile) as f:
 		for s in f.readlines():
@@ -27,7 +30,7 @@ def load_libraryParamsFile(paramsfile):
 				paramslib['secondary']=s.split('=')[1]
 			elif re.search('Segment length',s.split('=')[0]):
 				paramslib['length']=s.split('=')[1]
-			elif re.search('type',s.split('=')[0]):
+			elif re.search('Type',s.split('=')[0]):
 				paramslib['type']=s.split('=')[1]
 	if len(paramslib['name']) < 2:
 		paramslib['name']='myLibrary'
@@ -39,7 +42,11 @@ def load_libraryParamsFile(paramsfile):
 
  
 @program
-def call_getRestEnzymeOccAndSeq(assembly_or_fasta,prim_site,sec_site,l_seg,g_rep, remote_working_directory, l_type='typeI'):
+def call_getRestEnzymeOccAndSeq(assembly_or_fasta,prim_site,sec_site,l_seg,g_rep, remote_working_directory, script_path, l_type='typeI'):
+	'''
+		Will create segments and fragments files of the new library from the genome sequence (via a call to getRestEnzymeOccAndSeq.pl)
+		The genome sequence (assembly_or_fasta) can be given either as a genrep assembly or as a fasta file.  
+	'''
 	print(assembly_or_fasta)
 	print(isinstance(assembly_or_fasta,genrep.Assembly))
 	if isinstance(assembly_or_fasta,genrep.Assembly):
@@ -64,17 +71,20 @@ def call_getRestEnzymeOccAndSeq(assembly_or_fasta,prim_site,sec_site,l_seg,g_rep
 	logFile = unique_filename_in()
 	outfiles=[segFile, fragFile, logFile,fasta_file]
 	print("outfiles will be:"+outfiles[0])
-	script_dir='/archive/epfl/bbcf/mleleu/pipeline_vMarion/pipeline_3Cseq/vWebServer_SAM/'
+#	script_path='/archive/epfl/bbcf/mleleu/pipeline_vMarion/pipeline_3Cseq/vWebServer_SAM/'
 	if cmp(l_type,'typeI') == 0:
 		print('type:typeI')
-		return {'arguments': [script_dir+"getRestEnzymeOccAndSeq.pl","-i",fasta_file,"-m",prim_site,"-s",sec_site,"-l",l_seg,"-o",segFile,"-f",fragFile,"-x",logFile],
+		return {'arguments': [script_path+"getRestEnzymeOccAndSeq.pl","-i",fasta_file,"-m",prim_site,"-s",sec_site,"-l",l_seg,"-o",segFile,"-f",fragFile,"-x",logFile],
                         'return_value':outfiles}
 	else:
-                return {'arguments': [script_dir+"getRestEnzymeOccAndSeq_forNele.pl","-i",fasta_file,"-m",prim_site,"-s",sec_site,"-l",l_seg,"-o",segFile,"-f",fragFile,"-x",logFile],
+                return {'arguments': [script_path+"getRestEnzymeOccAndSeq_typeII.pl","-i",fasta_file,"-m",prim_site,"-s",sec_site,"-l",l_seg,"-o",segFile,"-f",fragFile,"-x",logFile],
                         'return_value':outfiles}
 
 
 def parse_fragFile(fragfile):
+	'''
+		Parse fragment file to create segment info bed file and fragment bed file	
+	'''
 	segInfoBedFile=unique_filename_in()
 	fragmentBedFile=unique_filename_in()
 	segmentBedFile=unique_filename_in()
@@ -108,9 +118,18 @@ def call_coverageBed(file1,file2):
 	return {"arguments": ['coverageBed','-a',file1,'-b',file2], "return_value":None}
 
 def getCoverageInRepeats(ex,infile,genomeName='mm9',via='lsf'):
+	'''
+	Will complete the segment info bed file with the coverage in repeats of each segment 	
+	For now, works only for mm9, hg19 and dm3 	
+	'''
 	repeatsPath="/archive/epfl/bbcf/data/genomes/repeats/"
 	repeatsFile=repeatsPath+'/'+genomeName+'/'+genomeName+'_rmsk.bed'
 	print("repeatsFile="+repeatsFile)
+
+	if not(os.path.exists(repeatsFile)):
+		print("coverage in repeats not calculated as file "+repeatsFile+" does not exist.")
+		return(infile)
+
 	tmpfile = unique_filename_in()
 	_ = call_coverageBed.nonblocking(ex,repeatsFile,infile,via=via,stdout=tmpfile).wait()
 	resfile = unique_filename_in()
@@ -126,6 +145,9 @@ def getCoverageInRepeats(ex,infile,genomeName='mm9',via='lsf'):
 	return resfile
 
 def getEnzymeSeq(enzyme_id,enzymes_dict=None):
+	'''
+		Return the restriction site corresponding to a given enzyme id (from existing enzymes)
+	'''
 	if enzymes_dict == None or not isinstance(enzymes_dict,list):
 		enzymes='/archive/epfl/bbcf/mleleu/pipeline_vMarion/pipeline_3Cseq/vWebServer_Bein/tests/enzymes.json'
 	        g=open(enzymes)
@@ -138,6 +160,9 @@ def getEnzymeSeq(enzyme_id,enzymes_dict=None):
 	return None
 
 def getEnzymeId(enzyme_seq,enzymes_dict=None):
+	'''
+		Return the enzyme id corresponding to a given restriction site sequence (from existing enzymes).
+	'''
 	if enzymes_dict == None or not isinstance(enzymes_dict,list):
 		enzymes='/archive/epfl/bbcf/mleleu/pipeline_vMarion/pipeline_3Cseq/vWebServer_Bein/tests/enzymes.json'
 		g=open(enzymes)
@@ -149,6 +174,9 @@ def getEnzymeId(enzyme_seq,enzymes_dict=None):
 	return 0
 	
 def lib_exists(params,libs_dict=None,returnType="id"):
+	'''
+		Return id or filename corresponding to the library described in params. 	
+	'''
 	if libs_dict == None :	
 		libs='/archive/epfl/bbcf/mleleu/pipeline_vMarion/pipeline_3Cseq/vWebServer_Bein/tests/libraries.json'
 		f=open(libs)
@@ -193,14 +221,17 @@ def call_gunzip(path):
 	return {"arguments": call, "return_value": output}
 
 # *** main call to create the library
-def createLibrary(ex,fasta_allchr,params, g_rep):	
+def createLibrary(ex,fasta_allchr,params, g_rep,script_path):
+	'''
+		main call to create the library
+	'''	
 	if len(params['primary'])<2 or len(params['secondary'])<2:
 		print('Some parameters are missing, cannot create the library')
 		print('primary='+params['primary']+" ; "+'secondary='+params['secondary'])
 		return [None,None,None,None]
 	print('Will call call_getRestEnzymeOccAndSeq')
 	print(fasta_allchr)
-	libfiles=call_getRestEnzymeOccAndSeq(ex,fasta_allchr,params['primary'],params['secondary'],params['length'],g_rep, ex.remote_working_directory + "/", params['type'])
+	libfiles=call_getRestEnzymeOccAndSeq(ex,fasta_allchr,params['primary'],params['secondary'],params['length'],g_rep, ex.remote_working_directory + "/", script_path, params['type'])
 	print('parse fragment file to create segment info bed file and fragment bed file\n')
 	bedfiles=parse_fragFile(libfiles[1])
 	print('calculate coverage in repeats for segments')
@@ -209,17 +240,20 @@ def createLibrary(ex,fasta_allchr,params, g_rep):
 	return([libfiles,bedfiles,resfile,infos_lib])
 
 
-def get_libForGrp(ex,group,fasta_or_assembly,new_libraries, job_id, g_rep):
+def get_libForGrp(ex,group,fasta_or_assembly,new_libraries, job_id, g_rep,script_path):
 	#wd_archive="/archive/epfl/bbcf/mleleu/pipeline_vMarion/pipeline_3Cseq/vWebServer_Bein/" #temporary: will be /scratch/cluster/monthly/htsstation/4cseq/job.id
 	lib_dir = "/scratch/cluster/monthly/htsstation/4cseq/" + str(job_id) + "/"
-	if group['library_param_file'] != "" :
-		paramslib=load_libraryParamsFile(lib_dir + group['library_param_file']);
+	print "Group:\n"
+	print group
+	if 'library_param_file' in group and group['library_param_file'] != "" :
+		library_filename = lib_dir + 'group_' + group['name'] + "_paramsFileLibrary.txt"
+		paramslib=load_libraryParamsFile(library_filename);
 		lib_id=lib_exists(paramslib)
 		ex_libfile=lib_exists(paramslib,new_libraries,returnType="filename")
 		print("lib_id="+str(lib_id))
 		if lib_id == 0 and ex_libfile == None :
-			print("will call createlib.createLibrary with:"+str(fasta_or_assembly)+" and "+ lib_dir + group['library_param_file'])
-			libfiles=createLibrary(ex,fasta_or_assembly,paramslib, g_rep);
+			print("will call createlib.createLibrary with:"+str(fasta_or_assembly)+" and "+ library_filename)
+			libfiles=createLibrary(ex,fasta_or_assembly,paramslib, g_rep,script_path);
 			reffile=libfiles[2]
 			ex.add(reffile,description='bed:new_library_grp')
 			new_libraries.append({'library':libfiles[3]})	
@@ -229,7 +263,7 @@ def get_libForGrp(ex,group,fasta_or_assembly,new_libraries, job_id, g_rep):
 		else:
 			print("This library has just been created ("+ex_libfile+")")
 			reffile=ex_libfile
-	elif group['library_id'] > 0:
+	elif 'library_id' in group and group['library_id'] > 0:
 		reffile=get_libfile(group['library_id'])
 		if reffile==None:
 			raise TypeError("No valid parameter passed for the library.")
@@ -241,7 +275,7 @@ def get_libForGrp(ex,group,fasta_or_assembly,new_libraries, job_id, g_rep):
 			reffile=call_gunzip(reffile)
 		else:
 			raise TypeError("library file ("+reffile+") is not valid")
-	elif group['library_file_url'] != "" :
+	elif 'library_file_url' in group and group['library_file_url'] != "" :
 		reffile=group['library_file_url']
 	else:
 		reffile=None

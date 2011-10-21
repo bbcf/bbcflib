@@ -3,95 +3,163 @@
 Module: bbcflib.rnaseq
 ======================
 
-Methods of the bbcflib's RNA-seq worfow
+Methods of the bbcflib's RNA-seq worflow. The main function is **rnaseq_workflow()**.
+
+From a BAM file produced by an alignement on the *exonome*, gets counts of reads
+on the exons, add them to get counts on genes, and uses least-squares to infer
+counts on transcripts, avoiding to map on either genome or transcriptome.
+Note that the resulting counts on transcripts are approximate.
 """
 
 # Built-in modules #
-import os, sys, pickle, json, pysam, urllib, math, time
-from itertools import combinations
+import os, sys, cPickle, json, pysam, urllib, math, time, csv
 
 # Internal modules #
-from bbcflib.mapseq import map_groups
 from bbcflib.genrep import GenRep
-from bbcflib.common import timer, results_to_json
-from bein import program, execution, MiniLIMS
-from bein.util import unique_filename_in
+from bbcflib.common import timer, rstring, writecols
 
 # Other modules #
 import numpy
-from scipy import stats
-from scipy.interpolate import UnivariateSpline
-from rpy2 import robjects
-import rpy2.robjects.packages as rpackages
-import rpy2.robjects.numpy2ri
-import rpy2.rlike.container as rlc
-import cogent.db.ensembl as ensembl
-import csv
-
-import pdb
 
 ################################################################################
 
-def fetch_mappings(path_or_assembly_id):
-    """Given an assembly ID, return a tuple
-    (gene_ids, gene_names, transcript_mapping, exon_mapping, trans_in_gene, exons_in_trans)
-    - gene_ids is a list of gene ID's
-    - gene_names is a dict {gene ID: gene name}
-    - transcript_mapping is a dictionary {transcript ID: gene ID}
-    - exon_mapping is a dictionary {exon ID: (transcript ID, gene ID)}
-    - trans_in_gene is a dict {gene ID: IDs of the transcripts it contains}
-    - exons_in_trans is a dict {transcript ID: IDs of the exons it contains}
+def lsqnonneg(C, d, x0=None, tol=None, itmax_factor=3):
+    """Linear least squares with nonnegativity constraints (NNLS), based on MATLAB's lsqnonneg function.
 
-    *path_or_assembly_id* can be a numeric or nominal ID for GenRep
-    (e.g. 76 or 'hg19' for H.Sapiens), or a path to a file containing a
+    ``(x,resnorm,res) = lsqnonneg(C,d)`` returns
+
+    * the vector *x* that minimizes norm(d-Cx) subject to x >= 0
+    * the norm of residuals *resnorm*
+    * the residuals *res*
+
+    :param x0: Initial point for x.
+    :param tol: Tolerance to determine when the error is small enough.
+    :param itmax_factor: Maximum number of iterations.
+
+    :type C: numpy 2-dimensional array or matrix
+    :type d: numpy array
+    :type x0: numpy array
+    :type tol: float
+    :type itmax_factor: int
+    :rtype: *x*: numpy array, *resnorm*: float, *res*: numpy array
+
+    Reference: Lawson, C.L. and R.J. Hanson, Solving Least-Squares Problems, Prentice-Hall, Chapter 23, p. 161, 1974.
+    http://diffusion-mri.googlecode.com/svn/trunk/Python/lsqnonneg.py
+    """
+    eps = 2.22e-16    # from matlab
+    def norm1(x):
+        return abs(x).sum().max()
+
+    def msize(x, dim):
+        s = x.shape
+        if dim >= len(s): return 1
+        else: return s[dim]
+
+    if tol is None: tol = 10*eps*norm1(C)*(max(C.shape)+1)
+    C = numpy.asarray(C)
+    (m,n) = C.shape
+    P = numpy.zeros(n)
+    Z = ZZ = numpy.arange(1, n+1)
+    if x0 is None: x=P
+    else:
+        if any(x0 < 0): x=P
+        else: x=x0
+    resid = d - numpy.dot(C, x)
+    w = numpy.dot(C.T, resid)
+    outeriter=0; it=0
+    itmax=itmax_factor*n
+
+    # outer loop to put variables into set to hold positive coefficients
+    while numpy.any(Z) and numpy.any(w[ZZ-1] > tol):
+        outeriter += 1
+        t = w[ZZ-1].argmax()
+        t = ZZ[t]
+        P[t-1]=t
+        Z[t-1]=0
+        PP = numpy.where(P != 0)[0]+1
+        ZZ = numpy.where(Z != 0)[0]+1
+        CP = numpy.zeros(C.shape)
+        CP[:, PP-1] = C[:, PP-1]
+        CP[:, ZZ-1] = numpy.zeros((m, msize(ZZ, 1)))
+        z=numpy.dot(numpy.linalg.pinv(CP), d)
+        z[ZZ-1] = numpy.zeros((msize(ZZ,1), msize(ZZ,0)))
+
+        # inner loop to remove elements from the positve set which no longer belong
+        while numpy.any(z[PP-1] <= tol):
+            it += 1
+            if it > itmax:
+                max_error = z[PP-1].max()
+                raise Exception('Exiting: Iteration count (=%d) exceeded\n Try raising the \
+                                 tolerance tol. (max_error=%d)' % (it, max_error))
+            QQ = numpy.where((z <= tol) & (P != 0))[0]
+            alpha = min(x[QQ]/(x[QQ] - z[QQ]))
+            x = x + alpha*(z-x)
+            ij = numpy.where((abs(x) < tol) & (P <> 0))[0]+1
+            Z[ij-1] = ij
+            P[ij-1] = numpy.zeros(max(ij.shape))
+            PP = numpy.where(P != 0)[0]+1
+            ZZ = numpy.where(Z != 0)[0]+1
+            CP[:, PP-1] = C[:, PP-1]
+            CP[:, ZZ-1] = numpy.zeros((m, msize(ZZ, 1)))
+            z=numpy.dot(numpy.linalg.pinv(CP), d)
+            z[ZZ-1] = numpy.zeros((msize(ZZ,1), msize(ZZ,0)))
+        x = z
+        resid = d - numpy.dot(C, x)
+        w = numpy.dot(C.T, resid)
+    return (x, sum(resid*resid), resid) # norm2
+    #return (x, sum(numpy.absolute(resid)), resid) # norm1
+
+def fetch_mappings(path_or_assembly_id):
+    """Given an assembly ID, returns a tuple
+    ``(gene_ids, gene_names, transcript_mapping, exon_mapping, trans_in_gene, exons_in_trans)``
+
+    * [0] gene_ids is a list of gene IDs
+    * [1] gene_names is a dict ``{gene ID: gene name}``
+    * [2] transcript_mapping is a dictionary ``{transcript ID: gene ID}``
+    * [3] exon_mapping is a dictionary ``{exon ID: ([transcript IDs], gene ID)}``
+    * [4] trans_in_gene is a dict ``{gene ID: [IDs of the transcripts it contains]}``
+    * [5] exons_in_trans is a dict ``{transcript ID: [IDs of the exons it contains]}``
+
+    :param path_or_assembly_id: can be a numeric or nominal ID for GenRep
+    (e.g. 11, 76 or 'hg19' for H.Sapiens), or a path to a file containing a
     pickle object which is read to get the mapping.
     """
-    assembly_id = path = path_or_assembly_id
-    nr_assemblies = urllib.urlopen("http://bbcftools.vital-it.ch/genrep/nr_assemblies.json").read()
-    nr_assemblies = json.loads(nr_assemblies)
-    for a in nr_assemblies:
-        if a['nr_assembly']['id'] == assembly_id or a['nr_assembly']['name'] == assembly_id:
-            mdfive = a['nr_assembly']['md5']; break
-
-    if os.path.exists(str(path)):
-        with open(str(path), 'rb') as pickle_file:
-            mapping = pickle.load(pickle_file)
-        print "Mapping found in", os.path.dirname(str(path))
-        return mapping
-    elif os.path.exists("/db/genrep/nr_assemblies/exons_pickle/"+str(mdfive)+".pickle"):
-        with open("/db/genrep/nr_assemblies/exons_pickle/"+mdfive+".pickle", 'rb') as pickle_file:
-            mapping = pickle.load(pickle_file)
-        print "Mapping found in /db/"
+    if os.path.exists(str(path_or_assembly_id)):
+        with open(path_or_assembly_id, 'rb') as pickle_file:
+            mapping = cPickle.load(pickle_file)
+        print "Mapping found in", os.path.abspath(path_or_assembly_id)
         return mapping
     else:
-        genrep = GenRep('http://bbcftools.vital-it.ch/genrep/','/db/genrep/nr_assemblies/exons_pickle')
-        assembly = genrep.assembly(mdfive)
-        with open(assembly.index_path + '.pickle', 'rb') as pickle_file:
-            mapping = pickle.load(pickle_file)
-        print "Mapping found on GenRep"
+        grep_root = '/db/genrep'
+        grep = GenRep(url='http://bbcftools.vital-it.ch/genrep/',root=grep_root)
+        assembly = grep.assembly(path_or_assembly_id)
+        mdfive = assembly.md5
+        mappings_path = os.path.join(grep_root,'nr_assemblies/exons_pickle/')+mdfive+".pickle"
+        with open(mappings_path, 'rb') as pickle_file:
+            mapping = cPickle.load(pickle_file)
+        print "Mapping for assembly", mdfive, "found in /db/"
         return mapping
 
-def map_runs(fun, runs):
-    """Parallelization of fun(run) executions"""
-    futures = {}
-    for group_id, run_list in runs.iteritems():
-        futures[group_id] = [fun(run) for run in run_list]
-    results = {}
-    for group_id, future_list in futures.iteritems():
-        results[group_id] = [f.wait() for f in future_list]
-    return results
-
 def exons_labels(bamfile):
-    """List of the exons labels (SN: 'reference sequence name'; LN: 'sequence length') in *bamfile*."""
-    sam = pysam.Samfile(bamfile, 'rb')
+    """Returns a list of the exons labels in format ``(reference name, sequence length)`` in *bamfile*."""
+    try: sam = pysam.Samfile(bamfile, 'rb')
+    except ValueError: sam = pysam.Samfile(bamfile,'r')
     labels = [(t['SN'],t['LN']) for t in sam.header['SQ']]
     sam.close()
     return labels
 
 def pileup_file(bamfile, exons):
-    """Return a dictionary {exon ID: count}, the pileup of *exons* from *bamfile*."""
-    counts = {}
-    sam = pysam.Samfile(bamfile, 'rb')
+    """Returns a dictionary ``{exon ID: count}``, the pileup of *exons* from *bamfile*.
+
+    :param bamfile: name of a BAM file.
+    :param exons: exons labels as returned by **exons_labels()**
+    :type bamfile: string
+    """
+    # exons = sam.references #tuple
+    # put it together with exons_labels? It opens the file twice.
+    counts = []
+    try: sam = pysam.Samfile(bamfile, 'rb')
+    except ValueError: sam = pysam.Samfile(bamfile,'r')
 
     class Counter(object):
         def __init__(self):
@@ -100,297 +168,226 @@ def pileup_file(bamfile, exons):
             self.n += 1
 
     c = Counter()
-    for i,exon in enumerate(exons):
+    for exon in exons:
         sam.fetch(exon[0], 0, exon[1], callback=c) #(exon_name,0,exon_length,Counter())
         #The callback (c.n += 1) is executed for each alignment in a region
-        counts[exon[0]] = c.n
+        counts.append(c.n)
         c.n = 0
     sam.close()
     return counts
 
-def pairs_to_test(controls):
-    """*controls* is a dictionary of group_ids to True/False.
+def save_results(ex, cols, conditions, header=[], desc='features'):
+    """Save results in a tab-delimited file, one line per feature, one column per run.
 
-    If all the values are True or all the values are False, then it
-    returns all unique pairs of group IDs.  Otherwise it returns all
-    combinations of one group ID with value True and one with value False.
+    :param ex: bein's execution.
+    :param cols: list of iterables, each element being a column to write in the output.
+    :param conditions: list of strings corresponding to descriptions of the different samples.
+    :param header: list of strings, the column headers of the output file.
+    :param desc: the kind of feature of which you measure the expression.
+    :type desc: string
     """
-    if all(controls.values()) or not(any(controls.values())):
-        return list(combinations(controls.keys(), 2))
-    else:
-        return [(x,y) for x in controls.keys() for y in controls.keys()
-                if controls[x] and not(controls[y])]
+    conditions_s = '%s, '*(len(conditions)-1)+'%s.'
+    conditions = tuple(conditions)
+    output = rstring()
+    writecols(output,cols,header=header, sep="\t")
+    ex.add(output, description="csv:Expression level of "+desc+" in sample(s) "+conditions_s % conditions)
+    print desc+": Done successfully."
 
-def translate_gene_ids(fc_ids, dictionary):
-    '''Replace (unique) gene IDs by (not unique) gene names.
-    *fc_ids* is a dict {gene_id: whatever}
-    *dictionary* is a dict {gene_id: gene_name} '''
-    names = []
-    for s in fc_ids.keys():
-        start = s.find("ENSG")
-        if start != -1:
-            end = s.split("ENSG")[1].find("|")
-            gene_id = "ENSG" + s.split("ENSG")[1].split("|")[0]
-            names.append(s.replace(gene_id, dictionary.get(gene_id,gene_id)))
-        else: names.append(s)
-    fc_names = dict(zip(names,fc_ids.values()))
-    return fc_names
+#@timer
+def genes_expression(exons_data, exon_to_gene, ncond):
+    """Get gene counts from exons counts.
 
-def save_results(data, filename=None):
-    '''Save results in a CSV file. Data must be of the form {id:(mean,fold_change)} '''
-    if not filename:
-        filename = unique_filename_in()
-    with open(filename,"wb") as f:
-        c = csv.writer(f, delimiter='\t')
-        c.writerow(["id", "C1", "C2"])
-        for k,v in data.iteritems():
-            c.writerow([k,v[0],v[1]])
-    return filename
+    Returns two dictionaries, one for counts and one for rpkm, of the form ``{gene ID: float}``.
 
-@program
-def external_maplot(csv_filename, mode='normal', deg=4, bins=30, assembly_id=None, output=None):
-    if not output: output = unique_filename_in()
-    call = ["maplot.py", csv_filename, str(mode), str(deg), str(bins), str(assembly_id), str(output)]
-    return {"arguments": call, "return_value": output}
+    :param exons_data: list of lists ``[exonsID,genesID,counts_1,..,counts_n,rpkm_1,..,rpkm_n, (others)]``.
+    :param exon_to_gene: dictionary ``{exon ID: gene ID}``.
+    :param ncond: number of samples.
+    """
+    genes = list(set(exons_data[1]))
+    z  = [numpy.zeros(ncond,dtype=numpy.float_)]*len(genes)
+    zz = [numpy.zeros(ncond,dtype=numpy.float_)]*len(genes)
+    gcounts = dict(zip(genes,z))
+    grpkms = dict(zip(genes,zz))
+    for e,c in zip(exons_data[0],zip(*exons_data[2:ncond+ncond+2])):
+        gcounts[exon_to_gene[e]] += c[:ncond]
+        grpkms[exon_to_gene[e]] += c[ncond:]
+    return gcounts,grpkms
 
-@program
-def external_deseq(cond1_label, cond1, cond2_label, cond2, assembly_id,
-                   target=["exons","genes","transcripts"], method="normal"):
-    output = unique_filename_in()
-    c1 = unique_filename_in()
-    with open(c1,'wb') as f:
-        pickle.dump(cond1,f,pickle.HIGHEST_PROTOCOL)
-    c2 = unique_filename_in()
-    with open(c2,'wb') as f:
-        pickle.dump(cond2,f,pickle.HIGHEST_PROTOCOL)
-    targ = unique_filename_in()
-    with open(targ,'wb') as f:
-        pickle.dump(target,f,pickle.HIGHEST_PROTOCOL)
-    call = ["run_deseq.py", c1, c2, cond1_label, cond2_label, str(assembly_id), 
-            targ, method, output]
-    return {"arguments": call, "return_value": output}
+#@timer
+def transcripts_expression(exons_data, trans_in_gene, exons_in_trans, ncond, method="nnls"):
+    """Get transcript rpkms from exon rpkms.
 
-def genes_expression(gene_ids, exon_mapping, dexons):
-    dgenes = dict(zip(gene_ids,
-                        numpy.array(zip(numpy.zeros(len(gene_ids)),
-                                        numpy.zeros(len(gene_ids))))  ))
-    for e,c in dexons.iteritems():
-        e = e.split('|')[0]
-        if exon_mapping.get(e):
-            dgenes[exon_mapping[e][1]] += c
-    return dgenes
+    Returns a dictionary of the form ``{transcript ID: rpkm}``.
 
-def transcripts_expression(gene_ids, transcript_mapping, trans_in_gene, exons_in_trans, dexons):
-    dtrans = dict(zip(transcript_mapping.keys(),
-                        numpy.array(zip(numpy.zeros(len(transcript_mapping.keys())),
-                                        numpy.zeros(len(transcript_mapping.keys()))))  ))
-    for g in gene_ids:
-        tg = trans_in_gene[g]
-        eg = []
-        for t in tg:
-            if exons_in_trans.get(t):
-                eg.extend(exons_in_trans[t])
-        M = numpy.zeros((len(eg),len(tg)))
-        exons_1 = numpy.zeros(len(eg))
-        exons_2 = numpy.zeros(len(eg))
-        for i,e in enumerate(eg):
-            for j,t in enumerate(tg):
+    :param exons_data: list of lists ``[exonsID,genesID,counts_1,..,counts_n,rpkm_1,..,rpkm_n, (others)]``.
+    :param trans_in_gene: dictionary ``{gene ID: [transcript IDs it contains]}``.
+    :param exons_in_trans: dictionary ``{transcript ID: [exon IDs it contains]}``.
+    :param ncond: number of samples.
+    :param method: "nnls" or "pinv" - respectively non-negative least-squares and pseudoinverse.
+    """
+    print "Method:", method
+    genes = list(set(exons_data[1]))
+    transcripts = []
+    for g in genes:
+        transcripts.extend(trans_in_gene.get(g,[]))
+    transcripts = list(set(transcripts))
+    z = numpy.zeros((len(transcripts),ncond))
+    tcounts = dict(zip(transcripts,z))
+    exons_counts = dict(zip( exons_data[0], zip(*exons_data[2:ncond+2])) )
+    totalerror = 0; totalcount = 0; unknown = 0
+    pinv = numpy.linalg.pinv; norm = numpy.linalg.norm; zeros = numpy.zeros;
+    identity = numpy.identity; sum = numpy.sum; dot = numpy.dot; shape = numpy.shape
+    for g in genes:
+        if trans_in_gene.get(g): # if the gene is still in the Ensembl database
+            # Get all transcripts in the gene
+            tg = trans_in_gene[g]
+            # Get all exons in the gene
+            eg = set()
+            for t in tg:
                 if exons_in_trans.get(t):
-                    ebt = exons_in_trans[t]
-                if e in ebt:
-                    M[i,j] = 1
-            if dexons.get(e):
-                exons_1[i] += dexons[e][0]
-                exons_2[i] += dexons[e][1]
-        transcripts_1 = numpy.dot(numpy.linalg.pinv(M),exons_1)
-        transcripts_2 = numpy.dot(numpy.linalg.pinv(M),exons_2)
-        for k,t in enumerate(tg):
-            if dtrans.get(t) != None:
-                dtrans[t][0] = transcripts_1[k]
-                dtrans[t][1] = transcripts_2[k]
-    return dtrans
+                    eg = eg.union(set(exons_in_trans[t]))
+            # Create the correspondance matrix
+            M = zeros((len(eg),len(tg)))
+            ecnts = zeros((ncond,len(eg)))
+            tcnts = []
+            for i,e in enumerate(eg):
+                for j,t in enumerate(tg):
+                    if exons_in_trans.get(t) and e in exons_in_trans[t]:
+                        M[i,j] = 1
+                # Retrieve exon counts
+                if exons_counts.get(e) is not None:
+                    for c in range(ncond):
+                        ecnts[c][i] += exons_counts[e][c]
+            # Compute transcript counts
+            for c in range(ncond):
+                if method == "pinv":
+                    #-----------------------#
+                    # Pseudo-inverse method #
+                    #-----------------------#
+                    x = dot(pinv(M),ecnts[c])
+                    tcnts.append(x)
+                    totalerror += norm(dot(M,pinv(M))-identity(shape(M)[0]) ,1) # norm 1
+                    totalcount += sum(ecnts[c])
+                if method == "nnls":
+                    #-----------------------------------#
+                    # Non-negative least squares method #
+                    #-----------------------------------#
+                    x, resnorm, res = lsqnonneg(M,ecnts[c],itmax_factor=5)
+                    tcnts.append(x)
+                    totalerror += resnorm
+                    totalcount += sum(ecnts[c])
+            # Store results in a dict *tcounts*
+            for k,t in enumerate(tg):
+                if tcounts.get(t) is not None:
+                    for c in range(ncond):
+                        tcounts[t][c] = tcnts[c][k]
+        else:
+            unknown += 1
+    print "Evaluation of error for transcript counts:"
+    print "\tUnknown transcripts for %d of %d genes (%.2f %%)" \
+                       % (unknown, len(genes), 100*float(unknown)/float(len(genes)) )
+    print "\tError in number of reads:",int(totalerror)
+    print "\tTotal number of reads:",int(totalcount)
+    print "\tRatio error/total:",float(totalerror)/totalcount
+    return tcounts, totalerror
 
-@timer
-def comparisons(cond1_label, cond1, cond2_label, cond2, assembly_id,
-              target=["exons","genes","transcripts"], method="normal"):
-    """ Writes a CSV file for each selected type of feature,
-    each row being of the form: Feature_ID // Mean_expression // Fold_change.
-    It calls an R session to use DESeq for size factors and variance stabilization.
-
-    * *cond1* and *cond2* are dictionaries - pileups - of the form
-    {feature ID: number of reads mapping to it}.
-    
-    * *cond1_label* and *cond2_label* are string which will be used
-    to identify the two conditions in R.
-    
-    * *assembly_id* can be a numeric or nominal ID for GenRep
-    (e.g. 76 or 'hg19' for H.Sapiens), or a path to a file containing a
-    pickle file which is read to get the mapping.
-    
-    * *target* is a string or array of strings indicating the features you want to compare.
-    Targets can be 'genes', 'transcripts', or 'exons'. E.g. ['genes','transcripts'], or 'genes'.
-    
-    * *method* can be 'normal' or 'blind', the method used for DESeq variances estimation.
-    - 'normal': For each condition with replicates, estimate a variance function by considering
-    the data from samples for this condition. Then, construct a variance function
-    that takes the maximum over all other variance functions and assign this one to
-    all samples of unreplicated conditions.
-    - 'blind': Ignore the sample labels and pretend that all samples are replicates of a
-    single condition. This allows to get a variance estimate even if one does not have any
-    biological replicates. However, this can leed to drastic loss of power. The single
-    estimated variance condition is assigned to all samples.
-    - 'pooled': Use the samples from all conditions with replicates to estimate a single
-    pooled variance function, to be assigned to all samples.
+#@timer
+def rnaseq_workflow(ex, job, assembly, bam_files, pileup_level=["genes"], via="lsf", output=None):
     """
+    Main function of the workflow.
 
-    """ - gene_ids is a list of gene ID's
-        - gene_names is a dict {gene ID: gene name}
-        - transcript_mapping is a dictionary {transcript ID: gene ID}
-        - exon_mapping is a dictionary {exon ID: (transcript ID, gene ID)}
-        - trans_in_gene is a dict {gene ID: IDs of the transcripts it contains}
-        - exons_in_trans is a dict {transcript ID: IDs of the exons it contains} """
-    assembly_id = "../temp/nice_features/nice_mappings" # testing code
-    mappings = fetch_mappings(assembly_id)
-    (gene_ids, gene_names, transcript_mapping, exon_mapping, trans_in_gene, exons_in_trans) = mappings
+    :rtype: None
 
-    # Pass the data into R as a data frame
-    data_frame_contents = rlc.OrdDict([(cond1_label+'-'+str(i), robjects.IntVector(c.values()))
-                                       for i,c in enumerate(cond1)] +
-                                      [(cond2_label+'-'+str(i), robjects.IntVector(c.values()))
-                                       for i,c in enumerate(cond2)])
-    data_frame = robjects.DataFrame(data_frame_contents)
-    data_frame.rownames = cond1[0].keys()
-
-    conds = robjects.StrVector([cond1_label for x in cond1] + [cond2_label for x in cond2]).factor()
-    
-    deseq = rpackages.importr('DESeq')
-    cds = deseq.newCountDataSet(data_frame, conds)
-    cds = deseq.estimateSizeFactors(cds) #,locfunc='median' robjects.median? May be 'short' if low counts
-    try: cds = deseq.estimateVarianceFunctions(cds,method=method)
-    except : raise rpy2.rinterface.RRuntimeError("Too few reads to estimate variances with DESeq")
-    res = deseq.getVarianceStabilizedData(cds)
-    
-    exon_ids = list(list(res.names)[0]) # 'res.names[0]' kills the python session.
-    exon_ids = [e.split('|')[0] for e in exon_ids]
-    cond1 = numpy.abs(numpy.array(res.rx(True,1), dtype='f')) # replicates?
-    cond2 = numpy.abs(numpy.array(res.rx(True,2), dtype='f'))
-          #abs: a zero count may become slightly negative after normalization - see DESeq
-    dexons = dict(zip(exon_ids,zip(cond1,cond2)))
-    exons_filename = save_results(translate_gene_ids(dexons, gene_names))
-
-    # Get fold change for genes
-    if "genes" in target:
-        dgenes = genes_expression(gene_ids, exon_mapping, dexons)
-        genes_filename = save_results(translate_gene_ids(dgenes, gene_names))
-            
-    ### Get fold change for the transcripts using pseudo-inverse
-    if "transcripts" in target:
-        dtrans = transcripts_expression(gene_ids, transcript_mapping, trans_in_gene, exons_in_trans, dexons)
-        trans_filename = save_results(translate_gene_ids(dtrans, gene_names))
-        
-    result = {"exons":exons_filename, "genes":genes_filename, "transcripts":trans_filename}
-    return result
-
-
-def rnaseq_workflow(ex, job, assembly, bam_files, target=["genes"], via="lsf", output=None):
+    :param ex: the bein's execution Id.
+    :param job: a Job object (or a dictionary of the same form) as returned from HTSStation's frontend.
+    :param assembly: the assembly Id of the species, string or int (e.g. 'hg19' or 76).
+    :param bam_files: a complicated dictionary as returned by mapseq.get_bam_wig_files.
+    :param pileup_level: a string or array of strings indicating the features you want to compare.
+                         Targets can be 'genes', 'transcripts', or 'exons'.
+    :param via: 'local' or 'lsf'.
+    :param output: alternative name for output file. Otherwise it is random.
     """
-    Main function of the workflow. 
-    
-    * *output*: alternative name for output file. Otherwise it is random.
-    * *target*: a string or array of strings indicating the features you want to compare.
-    Targets can be 'genes', 'transcripts', or 'exons'. E.g. ['genes','transcripts'], or 'genes'.
-    (This part of the workflow may fail if there are too few reads for DESeq to estimate
-    variances amongst exons.)
-    * *via*: 'local' or 'lsf'
-    * *job* is a Job object (or a dictionary of the same form) as returned from
-    HTSStation's frontend.
-    """
-    names = {}; runs = {}; controls = {};
-    groups = job.groups
+    group_names={}
     assembly_id = job.assembly_id
-    for i,group in groups.iteritems():
-        names[i] = str(group['name'])
-        runs[i] = group['runs'].values()
-        controls[i] = group['control']
-    if isinstance(target,str): target=[target]
-    
+    groups = job.groups
+    for gid,group in groups.iteritems():
+        group_names[gid] = str(group['name']) # group_names = {gid: name}
+    if isinstance(pileup_level,str): pileup_level=[pileup_level]
+
     # All the bam_files were created against the same index, so
     # they all have the same header in the same order.  I can take
     # the list of exons from just the first one and use it for all of them.
     # Format: ('exonID|geneID|start|end|strand', length)
-    exons = exons_labels(bam_files.values()[0][1]['bam'])
-    
-    exon_pileups = {}
-    for condition,files in bam_files.iteritems():
-        exon_pileups[condition] = []
-        for f in files.values():
-            exon_pileup = pileup_file(f['bam'], exons) #{exon_id: count}
-            exon_pileups[condition].append(exon_pileup) #{cond1: [{pileup bam1},{pileup bam2},...], cond2:...}
+    exons = exons_labels(bam_files[groups.keys()[0]][groups.values()[0]['runs'].keys()[0]]['bam'])
 
-    futures = {}
-    for (c1,c2) in pairs_to_test(controls):
-        if len(runs[c1]) + len(runs[c2]) > 2: method = "normal" #replicates
-        else: method = "blind" #no replicates
-        if 1:
-            print "Comparisons..."
-            futures[(c1,c2)] = external_deseq.nonblocking(ex,
-                                   names[c1], exon_pileups[c1], names[c2], exon_pileups[c2],
-                                   assembly_id, target, method, via=via)
-            
-            for c,f in futures.iteritems():
-                result_filename = f.wait()
-                with open(result_filename,"rb") as f:
-                    result = pickle.load(f)
+    """ Build pileups from bam files """
+    print "Build pileups"
+    exon_pileups = {}; conditions = []
+    for gid,files in bam_files.iteritems():
+        for rid,f in files.iteritems():
+            cond = group_names[gid]+'.'+str(rid)
+            exon_pileups[cond] = []
+            conditions.append(cond)
+        for rid,f in files.iteritems():
+            cond = group_names[gid]+'.'+str(rid)
+            exon_pileup = pileup_file(f['bam'], exons)
+            exon_pileups[cond] = exon_pileup # {cond1.run1: {pileup}, cond1.run2: {pileup}...}
 
-                conditions_desc = (names[c[0]], names[c[1]])
-                if "exons" in target:
-                    exons_file = result.get("exons")
-                    if exons_file:
-                        ex.add(exons_file,
-                               description="csv:Comparison of EXONS in conditions '%s' and '%s' " % conditions_desc)
-                        print "EXONS: Done successfully."
-                    else: print >>sys.stderr, "Exons: Failed during inference, \
-                                               probably because of too few reads for DESeq stats."
-                if "genes" in target:
-                    genes_file = result.get("genes")
-                    if genes_file:
-                        ex.add(genes_file,
-                               description="csv:Comparison of GENES in conditions '%s' and '%s' " % conditions_desc)
-                        print "GENES: Done successfully."
-                if "transcripts" in target:
-                    trans_file = result.get("transcripts");
-                    if trans_file:
-                        ex.add(trans_file,
-                               description="csv:Comparison of TRANSCRIPTS in conditions '%s' and '%s' " % conditions_desc)
-                    print "TRANSCRIPTS: Done successfully."
+    print "Load mappings"
+    #assembly_id = "../temp/nice_features/nice_mappings" # testing code
+    mappings = fetch_mappings(assembly_id)
+    """ [0] gene_ids is a list of gene ID's
+        [1] gene_names is a dict {gene ID: gene name}
+        [2] transcript_mapping is a dictionary {transcript ID: gene ID}
+        [3] exon_mapping is a dictionary {exon ID: ([transcript IDs], gene ID)}
+        [4] trans_in_gene is a dict {gene ID: [IDs of the transcripts it contains]}
+        [5] exons_in_trans is a dict {transcript ID: [IDs of the exons it contains]} """
+    (gene_ids, gene_names, transcript_mapping, exon_mapping, trans_in_gene, exons_in_trans) = mappings
 
-        if 0: #testing
-            print "Comparisons (LOCAL)"
-            futures[(c1,c2)] = comparisons(names[c1], exon_pileups[c1], names[c2], exon_pileups[c2],
-                                         assembly_id, target, method)
-            for c,f in futures.iteritems():
-                result = f
+    """ Extract information from bam headers """
+    exonsID=[]; genesID=[]; genesName=[]; starts=[]; ends=[]; exon_lengths=[]; exon_to_gene={};
+    for e in exons:
+        (exon, gene, start, end, strand) = e[0].split('|')
+        starts.append(start)
+        ends.append(end)
+        exon_lengths.append(e[1])
+        exonsID.append(exon)
+        genesID.append(gene)
+        exon_to_gene[exon] = gene
+        genesName.append(gene_names.get(gene,gene))
 
-                conditions_desc = (names[c[0]], names[c[1]])
-                if "exons" in target:
-                    exons_file = result.get("exons")
-                    if exons_file:
-                        ex.add(exons_file,
-                               description="csv:Comparison of EXONS in conditions '%s' and '%s' " % conditions_desc)
-                        print "EXONS: Done successfully."
-                    else: print >>sys.stderr, "Exons: Failed during inference, \
-                                               probably because of too few reads for DESeq stats."
-                if "genes" in target:
-                    genes_file = result.get("genes")
-                    if genes_file:
-                        ex.add(genes_file,
-                               description="csv:Comparison of GENES in conditions '%s' and '%s' " % conditions_desc)
-                        print "GENES: Done successfully."
-                if "transcripts" in target:
-                    trans_file = result.get("transcripts");
-                    if trans_file:
-                        ex.add(trans_file,
-                               description="csv:Comparison of TRANSCRIPTS in conditions '%s' and '%s' " % conditions_desc)
-                    print "TRANSCRIPTS: Done successfully."
-            
-        print "Done."
+    """ Treat data """
+    print "Process data"
+    starts = numpy.asarray(starts, dtype=numpy.int_)
+    ends = numpy.asarray(ends, dtype=numpy.int_)
+    counts = numpy.asarray([exon_pileups[cond] for cond in conditions], dtype=numpy.float_)
+    for i in range(len(counts.ravel())):
+        if counts.flat[i]==0: counts.flat[i] += 1.0 # if zero counts, add 1 for further comparisons
+    rpkms = counts/(starts-ends)
+
+    print "Get counts"
+    exons_data = [exonsID,genesID]+list(counts)+list(rpkms)+[starts,ends,genesName]
+
+    """ Print counts for exons """
+    if "exons" in pileup_level:
+        header = ["ExonID","GeneID"] + conditions*2 + ["Start","End","GeneName"]
+        save_results(ex, exons_data, conditions, header=header, desc="EXONS")
+
+    """ Get counts for genes from exons """
+    if "genes" in pileup_level:
+        header = ["GeneID"] + conditions*2 #+ ["Start","End","GeneName"]
+        (gcounts, grpkms) = genes_expression(exons_data, exon_to_gene, len(conditions))
+        gnames = gcounts.keys()
+        genes_data = [gnames]+list(zip(*gcounts.values()))+list(zip(*grpkms.values()))
+        save_results(ex, genes_data, conditions, header=header, desc="GENES")
+
+    """ Get counts for the transcripts from exons, using pseudo-inverse """
+    if "transcripts" in pileup_level:
+        header = ["TranscriptID","GeneID"] + conditions #*2 + ["Start","End","GeneName"]
+        (tcounts, error) = transcripts_expression(exons_data,
+                                 trans_in_gene,exons_in_trans,len(conditions))
+        tnames = tcounts.keys()
+        gnames = [transcript_mapping[t] for t in tnames]
+        (gnames, tnames) = zip(*sorted(zip(gnames,tnames))) # sort w.r.t. gene names
+        trans_data = [tnames,gnames]+list(zip(*tcounts.values()))
+        save_results(ex, trans_data, conditions, header=header, desc="TRANSCRIPTS")

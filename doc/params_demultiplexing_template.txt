@@ -1,0 +1,4 @@
+Search the primer from base i (-n)=
+Search the primer in the next n bps of the reads [i to i+n] (-x 22)=
+Minimum score for Exonerate (-s 77)=
+Length of the reads to align (-l 30)=

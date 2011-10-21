@@ -6,7 +6,7 @@ Submodule: bbcflib.track.common
 Common stuff for the track package.
 """
 
-###########################################################################
+################################################################################
 def check_path(path):
     """
     Raises an exception if the path *path* is already taken.
@@ -14,18 +14,18 @@ def check_path(path):
     import os
     if os.path.exists(path): raise Exception("The location '" + path + "' is already taken")
 
-###########################################################################
+################################################################################
 def check_executable(tool_name):
     """
     Raises an exception if the executable *tool_name* is not found.
     """
     import subprocess
     try:
-        proc = subprocess.Popen([tool_name], stderr=subprocess.PIPE)
+        subprocess.Popen([tool_name], stderr=subprocess.PIPE)
     except OSError:
          raise Exception("The executable '" + tool_name + "' cannot be found")
 
-###########################################################################
+################################################################################
 def natural_sort(item):
     """
     Will sort strings that contain numbers correctly
@@ -38,24 +38,23 @@ def natural_sort(item):
     import re
     def try_int(s):
         try: return int(s)
-        except: return s
+        except ValueError: return s
     return map(try_int, re.findall(r'(\d+|\D+)', item))
 
-###############################################################################
+################################################################################
 def named_temporary_path(suffix=''):
     """
-    Often, one needs a new random and temporary file path
+    Often, one nee  ds a new random and temporary file path
     instead of the random and temporary file object provided
-    by the tempfile module
+    by the 'tempfile' module
     """
-    import os, tempfile
-    file = tempfile.NamedTemporaryFile(suffix=suffix, delete=False)
+    import tempfile
+    file = tempfile.NamedTemporaryFile(suffix=suffix)
     path = file.name
     file.close()
-    os.remove(path)
     return path
 
-###############################################################################
+################################################################################
 def sentinelize(iterable, sentinel):
     """
     Add an item to the end of an iterable
@@ -66,7 +65,7 @@ def sentinelize(iterable, sentinel):
     for item in iterable: yield item
     yield sentinel
 
-###############################################################################
+################################################################################
 def sqlcmp(file_a, file_b):
     """
     Compare two two sqlite3 databases via their dumps
@@ -75,17 +74,17 @@ def sqlcmp(file_a, file_b):
     A = sqlite3.connect(file_a)
     B = sqlite3.connect(file_b)
     for a,b in itertools.izip_longest(A.iterdump(), B.iterdump()):
-        if a != b: return False
+        if a != b: return "A: " + a + "\nB:" + b
     return True
 
-###############################################################################
+################################################################################
 def int_to_roman(input):
-    '''
+    """
     Convert an integer to a roman numeral.
 
     >>> int_to_roman(1999)
     'MCMXCIX'
-    '''
+    """
     ints = (1000, 900,  500, 400, 100,  90, 50,  40, 10,  9,   5,  4,   1)
     nums = ('M',  'CM', 'D', 'CD', 'C', 'XC', 'L', 'XL', 'X', 'IX', 'V', 'IV', 'I')
     if type(input) != type(1): raise TypeError, 'Expected integer, got "%s."' % type(input)
@@ -97,9 +96,9 @@ def int_to_roman(input):
        input  -= ints[i] * count
     return result
 
-###############################################################################
+################################################################################
 def roman_to_int(input):
-    '''
+    """
     Convert a roman numeral to an integer.
 
     >>> orig_integers = range(1, 4000)
@@ -107,7 +106,7 @@ def roman_to_int(input):
     >>> computed_integers = [roman_to_int(r) for r in romans]
     >>> print orig_integers == computed_integers
     True
-    '''
+    """
     ints = [1000, 500, 100, 50,  10,  5,   1]
     nums = ['M', 'D', 'C', 'L', 'X', 'V', 'I']
     if type(input) != type(""): raise TypeError, 'Expected string, got "%s."' % type(input)
@@ -128,7 +127,7 @@ def roman_to_int(input):
     if int_to_roman(output) == input: return output
     else: raise ValueError, 'Input is not a valid roman numeral: "%s."' % input
 
-###############################################################################
+################################################################################
 terminal_colors = {
     'end':    '\033[0m',    # Text Reset
     'blink':  '\033[5m',    # Blink
@@ -174,37 +173,26 @@ terminal_colors = {
     'bakwht': '\033[47m',   # White
 }
 
-###############################################################################
+################################################################################
 class ModifiedDict(object):
-    ''' A dictionary like object that tracks modification
-        and has a special boolean self.modified value'''
+    """
+    A dictionary like object that tracks modification
+    and has a special boolean self.modified value
+    """
 
     def __init__(self, d=None):
         self.data = {}
         if d is not None: self.update(d)
         self.modified = False
 
-    def __call__(self, *args, **kwargs):
-        self.modified = True
-        super(ModifiedDict, self)(*args, **kwargs)
-
-    def __repr__(self):
-        return repr(self.data)
-
     def __cmp__(self, d):
         if isinstance(d, ModifiedDict): return cmp(self.data, d.data)
         else: return cmp(self.data, d)
 
-    def __len__(self):
-        return len(self.data)
-
     def __getitem__(self, key):
         if key in self.data: return self.data[key]
-        if hasattr(self.__class__, "__missing__"): return self.__class__.__missing__(self, key)
+        if hasattr(self.__class__, "__missing__"): return getattr(self.__class__, "__missing__")(self, key)
         raise KeyError(key)
-
-    def __contains__(self, key):
-        return key in self.data
 
     def __setitem__(self, key, item):
         self.modified = True
@@ -214,9 +202,10 @@ class ModifiedDict(object):
         self.modified = True
         del self.data[key]
 
-    def __iter__(self):
-        return iter(self.data)
-
+    def __repr__(self): return repr(self.data)
+    def __iter__(self): return iter(self.data)
+    def __contains__(self, key): return key in self.data
+    def __len__(self): return len(self.data)
     def keys(self): return self.data.keys()
     def items(self): return self.data.items()
     def iteritems(self): return self.data.iteritems()
@@ -248,16 +237,7 @@ class ModifiedDict(object):
         return self.data.popitem()
 
     def copy(self):
-        if self.__class__ is ModifiedDict: return ModifiedDict(self.data.copy())
-        import copy
-        data = self.data
-        try:
-            self.data = {}
-            c = copy.copy(self)
-        finally:
-            self.data = data
-        c.update(self)
-        return c
+        return ModifiedDict(self.data.copy())
 
     def update(self, d=None, **kwargs):
         if d is None: return
