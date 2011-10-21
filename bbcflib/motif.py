@@ -11,7 +11,8 @@ import re, os
 from operator import add
 
 # Internal modules #
-from . import track, common
+from . import track, 
+from .common import set_file_descr, compress
 
 # Other modules #
 from bein import unique_filename_in, program
@@ -89,16 +90,16 @@ def parallel_meme( ex, genrep, chromosomes, regions,
     all_res = {}
     for n,f in futures.iteritems():
         meme_out = f.wait()
-        archive = common.compress( ex, meme_out, 'gz' )
+        archive = compress( ex, meme_out, 'gz' )
         meme_res = parse_meme_xml( ex, os.path.join(meme_out, "meme.xml"),
                                    chromosomes )
         ex.add( os.path.join(meme_out, "meme.html"),
-                description="html:"+n+"_meme.html" )
-        ex.add( meme_res['sql'], description="sql:"+n+"_meme_sites.sql" )
-        ex.add( archive, description="tar:"+n+"_meme.tgz" )
+                description=set_file_descr(n+"_meme.html",tag='meme',type='html') )
+        ex.add( meme_res['sql'], description=set_file_descr(n+"_meme_sites.sql",tag='meme',type='sql') )
+        ex.add( archive, description=set_file_descr(n+"_meme.tgz",tag='meme',type='tar') )
         for i,motif in enumerate(meme_res['matrices'].keys()):
-            ex.add( meme_res['matrices'][motif], description="txt:"+n+"_meme_"+motif+".txt" )
-            ex.add( os.path.join(meme_out, "logo"+str(i+1)+".png"), description="png:"+n+"_meme_"+motif+".png" )
+            ex.add( meme_res['matrices'][motif], description=set_file_descr(n+"_meme_"+motif+".txt",tag='meme',type='txt') )
+            ex.add( os.path.join(meme_out, "logo"+str(i+1)+".png"), description=set_file_descr(n+"_meme_"+motif+".png",tag='meme',type='png') )
         all_res[n] = meme_res
     return all_res
 
@@ -159,7 +160,7 @@ def save_motif_profile( ex, motifs, background, genrep, chromosomes, regions,
             for chrom in chrlist.keys():
                 track_result.write( chrom, _parse_s1k(future[0],chrom,name),
                                     fields=['start','end','name','score','strand'] )
-    ex.add( sqlout, description="sql:"+description+"_motif_scan.sql" )
+    ex.add( sqlout, description=set_file_descr(description+"_motif_scan.sql",tag="sql",type="sql") )
     return sqlout
 
 def FDR_threshold( ex, motif, background, genrep, chromosomes, regions, alpha=.1, nb_samples=1, via='lsf' ):
