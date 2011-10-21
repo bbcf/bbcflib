@@ -94,12 +94,12 @@ def parallel_meme( ex, genrep, chromosomes, regions,
         meme_res = parse_meme_xml( ex, os.path.join(meme_out, "meme.xml"),
                                    chromosomes )
         ex.add( os.path.join(meme_out, "meme.html"),
-                description=set_file_descr(n+"_meme.html",tag='meme',type='html') )
-        ex.add( meme_res['sql'], description=set_file_descr(n+"_meme_sites.sql",tag='meme',type='sql') )
-        ex.add( archive, description=set_file_descr(n+"_meme.tgz",tag='meme',type='tar') )
+                description=set_file_descr(n+"_meme.html",step='meme',type='html',group=n) )
+        ex.add( meme_res['sql'], description=set_file_descr(n+"_meme_sites.sql",step='meme',type='sql',group=n) )
+        ex.add( archive, description=set_file_descr(n+"_meme.tgz",step='meme',type='tar',group=n) )
         for i,motif in enumerate(meme_res['matrices'].keys()):
-            ex.add( meme_res['matrices'][motif], description=set_file_descr(n+"_meme_"+motif+".txt",tag='meme',type='txt') )
-            ex.add( os.path.join(meme_out, "logo"+str(i+1)+".png"), description=set_file_descr(n+"_meme_"+motif+".png",tag='meme',type='png') )
+            ex.add( meme_res['matrices'][motif], description=set_file_descr(n+"_meme_"+motif+".txt",step='meme',type='txt',group=n) )
+            ex.add( os.path.join(meme_out, "logo"+str(i+1)+".png"), description=set_file_descr(n+"_meme_"+motif+".png",step='meme',type='png',group=n) )
         all_res[n] = meme_res
     return all_res
 
@@ -111,7 +111,7 @@ def motif_scan( fasta, motif, background, threshold=0 ):
     return {"arguments": call, "return_value": None}
 
 def save_motif_profile( ex, motifs, background, genrep, chromosomes, regions,
-                        keep_max_only=False, threshold=0, description='', via='lsf' ):
+                        keep_max_only=False, threshold=0, description='motif_scan.sql', via='lsf' ):
     """Scan a set of motifs on a set of regions and saves the results as an sql file.
     The 'motifs' argument is a single PWM file or a dictionary with keys motif names and values PWM files 
     with 'n' rows like:
@@ -160,7 +160,7 @@ def save_motif_profile( ex, motifs, background, genrep, chromosomes, regions,
             for chrom in chrlist.keys():
                 track_result.write( chrom, _parse_s1k(future[0],chrom,name),
                                     fields=['start','end','name','score','strand'] )
-    ex.add( sqlout, description=set_file_descr(description+"_motif_scan.sql",tag="sql",type="sql") )
+    ex.add( sqlout, description=description )
     return sqlout
 
 def FDR_threshold( ex, motif, background, genrep, chromosomes, regions, alpha=.1, nb_samples=1, via='lsf' ):

@@ -48,7 +48,6 @@ from .common import merge_sql, merge_many_bed, join_pdf, cat, set_file_descr
 from bein import *
 from bein.util import *
 
-wrkflw_step=0
 ################################################################################
 # Peaks and annotation #
 
@@ -112,11 +111,10 @@ def add_macs_results( ex, read_length, genome_size, bamfile,
                                             args=macs_args+["-m",enrich_bounds],
                                             via=via )
     prefixes = dict((n,f.wait()) for n,f in futures.iteritems())
-    global wrkflw_step
-    macs_descr0 = {'tag':'none','step':wrkflw_step,'type':'none','view':'admin'}
-    macs_descr1 = {'tag':'macs','step':wrkflw_step,'type':'xls'}
-    macs_descr2 = {'tag':'macs','step':wrkflw_step,'type':'bed'}
     for n,p in prefixes.iteritems():
+        macs_descr0 = {'step':'macs','type':'none','view':'admin'}
+        macs_descr1 = {'step':'macs','type':'xls','group':n[0]}
+        macs_descr2 = {'step':'macs','type':'bed','group':n[0]}
         filename = "_vs_".join(n)
         touch( ex, p )
         ex.add( p, description=set_file_descr(filename,**macs_descr0), alias=alias )
@@ -238,8 +236,6 @@ def workflow_groups( ex, job_or_dict, mapseq_files, chromosomes, script_path='',
 
     Returns a tuple of a dictionary with keys *group_id* from the job groups, *macs* and *deconv* if applicable and values file description dictionaries and a dictionary of *group_ids* to *names* used in file descriptions.
 """
-    global wrkflw_step
-    wrkflw_step = 1
     options = {}
     if isinstance(job_or_dict,frontend.Job):
         options = job_or_dict.options
@@ -340,7 +336,6 @@ def workflow_groups( ex, job_or_dict, mapseq_files, chromosomes, script_path='',
                 output_location = outdir )[0]
             peak_list[name] = gm_out
     if peak_deconvolution:
-        wrkflw_step += 1
         processed['deconv'] = {}
         merged_wig = {}
         if not('read_extensions' in options and int(options['read_extension'])>0):
@@ -363,10 +358,10 @@ def workflow_groups( ex, job_or_dict, mapseq_files, chromosomes, script_path='',
                 else:
                     wig.append(m['wig'])
             if len(wig) > 1:
-                merged_wig[group_name] = dict((s,
-                                               merge_sql(ex, [x[s] for x in wig],
-                                                         [m['libname'] for m in mapped.values()] ,
-                                                         description="sql:"+group_name+"_"+s+".sql", via='local'))
+                description = set_file_descr(group_name+"_"+s+".sql",type='sql',group=group_name,step='deconvolution')
+                merged_wig[group_name] = dict((s,merge_sql(ex, [x[s] for x in wig],
+                                                           [m['libname'] for m in mapped.values()] ,
+                                                           description=description,via='local'))
                                               for s in suffixes)
             else:
                 merged_wig[group_name] = wig[0]
@@ -378,12 +373,11 @@ def workflow_groups( ex, job_or_dict, mapseq_files, chromosomes, script_path='',
                                              for x in names['controls']],via=via)
             deconv = run_deconv( ex, merged_wig[name], macsbed, chromosomes,
                                  options['read_extension'], script_path, via=via )
-            [ex.add(v, description=set_file_descr(name+'_deconv.'+k,tag=k,type=k,step=wrkflw_step)) 
+            [ex.add(v, description=set_file_descr(name+'_deconv.'+k,type=k,step='deconvolution',group=name)) 
              for k,v in deconv.iteritems()]
             processed['deconv'][name] = deconv
             peak_list[name] = deconv['bed']
     if run_meme and not(genrep == None):
-        wrkflw_step += 1
         from .motif import parallel_meme
         processed['meme'] = parallel_meme( ex, genrep, chromosomes, 
                                            peak_list.values(), name=peak_list.keys(), 

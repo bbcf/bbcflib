@@ -50,8 +50,12 @@ def cat(files):
 ###############################################################################
 def set_file_descr(filename,**kwargs):
     """Implements file naming compatible with the 'get_files' function.
-    Example: set_file_descr("toto",**{'tag':'pdf','step':1,'type':'doc','comment':'ahaha'})
-    returns 'pdf:toto[step:1,type:doc] (ahaha)'
+    Examples: 
+    >>>> set_file_descr("toto",**{'tag':'pdf','step':1,'type':'doc','comment':'ahaha'})
+    'pdf:toto[step:1,type:doc] (ahaha)'
+    if 'tag' and/or comment are ommitted:
+    >>>> set_file_descr("toto",step=1,type='doc')
+    'toto[step:1,type:doc]'
     """
     file_descr = filename
     argskeys = kwargs.keys()

@@ -88,7 +88,6 @@ from scipy.misc import  factorial
 from bein       import  *
 from bein.util  import  *
 
-wrkflw_step=0
 ################################################################################
 # Preprocessing #
 @program
@@ -182,7 +181,7 @@ def remove_duplicate_reads( bamfile, chromosomes,
     pos_per_lib = {}
     for read in infile:
         nh = dict(read.tags).get('NH')
-        if nh == None:
+        if nh is None:
             nh = 1
         if nh < 1:
             continue
@@ -192,7 +191,7 @@ def remove_duplicate_reads( bamfile, chromosomes,
         if pos != pos_per_lib.get(lib):
             pos_per_lib[lib] = pos
             count_per_lib[lib] = 0
-        if (maxhits == None or nh <= maxhits) and count_per_lib[lib] < pilesize:
+        if (maxhits is None or nh <= maxhits) and count_per_lib[lib] < pilesize:
             outfile.write(read)
         count_per_lib[lib] += 1
     outfile.close()
@@ -219,7 +218,7 @@ def pprint_bamstats(sample_stats) :
 ############################################################
 
 def map_reads( ex, fastq_file, chromosomes, bowtie_index,
-               maxhits=5, antibody_enrichment=50, name='',
+               maxhits=5, antibody_enrichment=50, name=None,
                remove_pcr_duplicates=True, bwt_args=None, via='lsf' ):
     """Runs ``bowtie`` in parallel over lsf for the `fastq_file` input.
     Returns the full bamfile, its filtered version (see 'remove_duplicate_reads')
@@ -236,9 +235,18 @@ def map_reads( ex, fastq_file, chromosomes, bowtie_index,
     The mapping statistics dictionary is pickled and added to the execution's
     repository, as well as both the full and filtered bam files.
     """
-    global wrkflw_step
     if bwt_args is None:
         bwt_args = []
+    if name is None:
+        name = ''
+    if isinstance(name,tuple):
+        descr = {'step':'bowtie','groupId':name[0]}
+        name = name[1]
+    else:
+        descr = {'step':'bowtie','group':name}
+    bame_descr = py_descr = descr
+    bam_descr['type'] = 'bam'
+    py_descr.update({'type':'py','view':'admin'})
     bwtarg = ["-Sam", str(max(20,maxhits))]+bwt_args
     if not("--best" in bwtarg):     bwtarg += ["--best"]
     if not("--strata" in bwtarg):   bwtarg += ["--strata"]
@@ -251,25 +259,18 @@ def map_reads( ex, fastq_file, chromosomes, bowtie_index,
         future = bowtie.nonblocking( ex, bowtie_index, fastq_file, bwtarg, via=via )
         samfile = future.wait()
         bam = add_nh_flag( samfile )
-    bam_descr = {'tag':'bam','step': wrkflw_step, 'type':'bam'}
-    py_descr = {'tag':'py','step': wrkflw_step, 'type':'py','view':'admin'}
     sorted_bam = add_and_index_bam( ex, bam, set_file_descr(name+"complete.bam",**bam_descr) )
-#"bam:"+name+"complete.bam"
     full_stats = bamstats( ex, sorted_bam )
     add_pickle( ex, full_stats, set_file_descr(name+"full_bamstat",**py_descr) )
-#"py:"+name+"full_bamstat" 
     return_dict = {"fullbam": sorted_bam}
     if remove_pcr_duplicates:
         thresh = poisson_threshold( antibody_enrichment*full_stats["actual_coverage"] )
         add_pickle( ex, thresh, set_file_descr(name+"Poisson_threshold",**py_descr) )
-#"py:"+name+"Poisson_threshold" 
         bam2 = remove_duplicate_reads( sorted_bam, chromosomes,
                                        maxhits, thresh, convert=True )
         reduced_bam = add_and_index_bam( ex, bam2, set_file_descr(name+"filtered.bam",**bam_descr) )
-#"bam:"+name+"filtered.bam"
         filtered_stats = bamstats( ex, reduced_bam )
         add_pickle( ex, filtered_stats, set_file_descr(name+"filter_bamstat",**py_descr) )
-#"py:"+name+"filter_bamstat"
         return_dict['bam'] = reduced_bam
         return_dict['fullstats'] = full_stats
         return_dict['stats'] = filtered_stats
@@ -283,16 +284,15 @@ def map_reads( ex, fastq_file, chromosomes, bowtie_index,
         outfile = pysam.Samfile( bam2, "wb", header=header )
         for read in infile:
             nh = dict(read.tags).get('NH')
-            if nh == None:
+            if nh is None:
                 nh = 1
             if nh < 1:
                 continue
-            if maxhits == None or nh <= maxhits:
+            if maxhits is None or nh <= maxhits:
                 outfile.write(read)
         outfile.close()
         infile.close()
         reduced_bam = add_and_index_bam( ex, bam2, set_file_descr(name+"filtered.bam",**bam_descr) )
-#"bam:"+name+"filtered.bam"
         return_dict['bam'] = reduced_bam
         return_dict['stats'] = full_stats
     return return_dict
@@ -308,7 +308,7 @@ def get_fastq_files( job, fastq_root, dafl=None, set_seed_length=True ):
     of seed lengths is constructed with values corresponding to 70% of the
     read length.
     """
-    if  not(dafl == None or isinstance(dafl.values()[0],daflims.DAFLIMS)):
+    if  not(dafl is None or isinstance(dafl.values()[0],daflims.DAFLIMS)):
         raise ValueError("Need DAFLIMS objects in get_fastq_files.")
     for gid,group in job.groups.iteritems():
         job.groups[gid]['seed_lengths'] = {}
@@ -395,8 +395,6 @@ def map_groups( ex, job_or_dict, fastq_root, assembly_or_dict, map_args=None ):
     Returns a dictionary with keys *group_id* from the job object and values dictionaries
     mapping *run_id* to the corresponding return value of the 'map_reads' function.
     """
-    global wrkflw_step
-    wrkflw_step += 1
     processed = {}
     file_names = {}
     options = {}
@@ -450,13 +448,12 @@ def map_groups( ex, job_or_dict, fastq_root, assembly_or_dict, map_args=None ):
             if len(group['runs'])>1:
                 name += "_"
                 name += group['run_names'].get(rid) or str(rid)
-            m = map_reads( ex, fq_file, chromosomes, index_path, name=name+"_",
+            m = map_reads( ex, fq_file, chromosomes, index_path, name=(gid,name+"_"),
                            remove_pcr_duplicates=pcr_dupl, **map_args )
             file_names[gid][rid] = str(name)
             m.update({'libname': str(name)})
             processed[gid][rid] = m
-    add_pickle( ex, file_names, set_file_descr('file_names',tag='py',step=wrkflw_step,
-                                               type='py',view='admin') )
+    add_pickle( ex, file_names, set_file_descr('file_names',step='bowtie',type='py',view='admin') )
     return processed
 
 def add_pdf_stats( ex, processed, group_names, script_path,
@@ -471,9 +468,9 @@ def add_pdf_stats( ex, processed, group_names, script_path,
     Returns the name of the pdf file.
     """
     all_stats = {}
-    for gid, p in processed.iteritems():
-        for i,mapped in enumerate(p.values()):
-            name = group_names.get(gid)
+    for gid in group_names.keys():
+        for i,mapped in enumerate(processed[gid]):
+            name = group_names[gid]
             if 'libname' in mapped:
                 name = mapped['libname']
             if name in all_stats:
@@ -555,7 +552,7 @@ def bam_to_density( bamfile, output, chromosome_accession = None, chromosome_nam
     return {"arguments": ["bam2wig"]+b2w_args, "return_value": files}
 
 def _compact_chromosome_name(key):
-    if key == None or isinstance(key,str):
+    if key is None or isinstance(key,str):
         return key
     elif isinstance(key,tuple) and len(key)>2:
         return str(key[0])+"_"+str(key[1])+"."+str(key[2])
@@ -658,8 +655,6 @@ def densities_groups( ex, job_or_dict, file_dict, chromosomes, via='lsf' ):
 
     Returns a dictionary with keys *group_id* from the job object and values the files fo each group ('bam' and 'wig').
     """
-    global wrkflw_step
-    wrkflw_step += 1
     processed = {}
     options = {}
     if isinstance(job_or_dict,frontend.Job):
@@ -705,8 +700,8 @@ def densities_groups( ex, job_or_dict, file_dict, chromosomes, via='lsf' ):
                 if not('-q' in b2w_args):
                     b2w_args += ["-q",str(options['read_extension'])]
         wig = []
-        pars0 = {'tag':'none', 'group':gid, 'step': wrkflw_step, 'type':'none', 'view':'admin'}
-        pars1 = {'tag':'sql', 'group':gid, 'step': wrkflw_step, 'type':'sql'}
+        pars0 = {'groupId':gid, 'step':'density', 'type':'none', 'view':'admin'}
+        pars1 = {'groupId':gid, 'step':'density', 'type':'sql'}
         for m in mapped.values():
             output = parallel_density_sql( ex, m["bam"], chromosomes,
                                            nreads=m["stats"]["total"],
@@ -737,8 +732,7 @@ def densities_groups( ex, job_or_dict, file_dict, chromosomes, via='lsf' ):
                 with Track(merged_wig[s]) as t:
                     t.convert(out+s,"bigWig")
                 ex.add(out+s,
-                       description=set_file_descr(group_name+"_"+s+".bw",tag='bigwig',
-                                                  group=gid, step=wrkflw_step, type='bigwig'))
+                       description=set_file_descr(group_name+"_"+s+".bw",groupId=gid,step='density',type='bigwig'))
     processed.update({'read_extension': options.get('read_extension'),
                       'genome_size': mapped.values()[0]['stats']['genome_size']})
     return processed
@@ -915,10 +909,11 @@ def get_bam_wig_files( ex, job, minilims=None, hts_url=None, suffix=['fwd','rev'
             if not(isinstance(mapped_files[gid][rid]['stats'],dict)):
                 stats = mapped_files[gid][rid]['stats'].wait()
                 mapped_files[gid][rid]['stats'] = stats
+                grname = mapped_files[gid][rid]['libname']
                 pdf = add_pdf_stats( ex, {gid:{rid:{'stats':stats}}},
-                                     {gid: mapped_files[gid][rid]['libname']},
+                                     {gid: grname},
                                      script_path,
-                                     set_file_descr("mapping_report.pdf",tag="pdf",step=0,type='pdf') )
+                                     set_file_descr(grname+"_mapping_report.pdf",step='import_data',type='pdf',groupId=gid) )
                 mapped_files[gid][rid]['p_thresh'] = poisson_threshold( 50*stats["actual_coverage"] )
     return (mapped_files,job)
 
