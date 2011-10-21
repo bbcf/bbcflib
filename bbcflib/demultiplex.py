@@ -309,7 +309,6 @@ def getSeqToFilter(ex,primersFile):
 
 def filterSeq(ex,fastqFiles,seqToFilter,grp_name):
 #seqToFilter=`awk -v primer=${curPrimer} '{if($0 ~ /^>/){n=split($0,a,"|");curPrimer=a[1];gsub(">","",curPrimer); if(curPrimer == primer){seqToFilter="";for(i=5;i<n;i++){if(a[i] !~ /Exclude=/){seqToFilter=seqToFilter""a[i]","}} if(a[n] !~ /Exclude=/){seqToFilter=seqToFilter""a[n]}else{gsub(/,$/,"",seqToFilter)};print seqToFilter}}}' ${primersFile}`
-	filenames=fastqFiles
 	global grpId
 	global step 
 
@@ -317,7 +316,7 @@ def filterSeq(ex,fastqFiles,seqToFilter,grp_name):
 	indexSeqToFilter={}
 	
 	indexFiles={}	
-	for k,f in filenames.iteritems():
+	for k,f in seqToFilter.iteritems():
 		ex.add(f,description=set_file_descr(grp_name+"_"+k+"_seqToFilter.fa",tag="fa",group=grpId,step=step,type="fa",view="admin"))
 #               ex.add(f,description="fa:"+k+"_seqToFilter.fa [group:"+ str(grpId) + ",step:" + str(step) + ",type:fa,view:admin]")
 		#indexFiles[k]=add_bowtie_index(ex,f,description=k+'_bowtie index',stdout="../out")
@@ -329,14 +328,15 @@ def filterSeq(ex,fastqFiles,seqToFilter,grp_name):
 	alignedFiles={}
 	futures={}
 
-	for k,f in filenames.iteritems():	
-		#bowtie_index[k]=indexFiles[k]
-		bowtie_index[k]=indexFiles[k].wait()
-		unalignedFiles[k]=unique_filename_in()
-		#print("primer="+k+"=>index="+bowtie_index[k])
-		print "Will filter reads (call bowtie)\n"
-		bwtarg=["-a","-q","-n","2","-l","20","--un",unalignedFiles[k]]
-		futures[k]=bowtie.nonblocking( ex, bowtie_index[k], f,  
+	for k,f in seqToFilter.iteritems():
+		if k in fastqFiles:	
+			#bowtie_index[k]=indexFiles[k]
+			bowtie_index[k]=indexFiles[k].wait()
+			unalignedFiles[k]=unique_filename_in()
+			#print("primer="+k+"=>index="+bowtie_index[k])
+			print "Will filter reads (call bowtie)\n"
+			bwtarg=["-a","-q","-n","2","-l","20","--un",unalignedFiles[k]]
+			futures[k]=bowtie.nonblocking( ex, bowtie_index[k], fastqFiles[k],  
                                 bwtarg, via='lsf')
 
 	for k,f in filenames.iteritems():
