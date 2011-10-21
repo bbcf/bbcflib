@@ -53,15 +53,14 @@ def set_file_descr(filename,**kwargs):
     Example: set_file_descr("toto",**{'tag':'pdf','step':1,'type':'doc','comment':'ahaha'})
     returns 'pdf:toto[step:1,type:doc] (ahaha)'
     """
-    file_descr = ''
+    file_descr = filename
     argskeys = kwargs.keys()
     if 'tag' in kwargs:
-        file_descr = kwargs['tag']
+        file_descr = kwargs['tag']+":"+filename
         argskeys.remove('tag')
-    file_descr += ":"+filename
     comment = ''
     if 'comment' in argskeys:
-        comment =  " ("+str(kwargs['comment'])+")"
+        comment = " ("+str(kwargs['comment'])+")"
         argskeys.remove('comment')
     plst = (",").join([str(k)+":"+str(kwargs[k]) for k in argskeys])
     file_descr += "["+plst+"]"
@@ -99,7 +98,7 @@ def get_files_old( id_or_key, minilims ):
     return file_dict
 
 #-------------------------------------------------------------------------#
-def get_files( id_or_key, minilims, by_type=False ):
+def get_files( id_or_key, minilims, by_type=True ):
     """Retrieves a dictionary of files created by an htsstation job identified by its key
     or bein id in a MiniLIMS.
 
@@ -119,16 +118,17 @@ def get_files( id_or_key, minilims, by_type=False ):
     all = dict((y['repository_name'],y['description']) for y in
                [minilims.fetch_file(x) for x in minilims.search_files(source=('execution',exid))])
     for f,d in all.iteritems():
-	pars="group:0,step:0,type:none,view:admin"
-	if re.search(r'([^:]*):(\S+)\[',d):
-            tag,name,pars = re.search(r'([^:]*):(\S+)\[([^\]]+)\]\s*',d).groups()
-	else:
-            tag,name = re.search(r'([^:]*):(\S+)',d).groups()
+	pars = "group:0,step:0,type:none,view:admin"
+        tag_d = d.split(':')
+        if len(tag_d)>1 and not(re.search("\[",tag_d[0])):
+            tag = tag_d[0]
+            d = ":".join(tag_d[1:])
+        pars_patt = re.search(r'(\[.*\])',d)
+	if pars_patt:
+            pars = pars_patt.groups()[0]
+            d = re.sub(pars,'',d)
         par_dict = dict([x.split(":") for x in pars.split(",")])
-        if by_type:
-            cat = par_dict.get('type') or 'none'
-        else:
-            cat = tag or 'none'
+        cat = (by_type and par_dict.get('type')) or tag or 'none'
         if cat in file_dict:
             file_dict[cat].update({f: name})
         else:
