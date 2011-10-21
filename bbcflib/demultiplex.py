@@ -339,7 +339,7 @@ def filterSeq(ex,fastqFiles,seqToFilter,grp_name):
 			futures[k]=bowtie.nonblocking( ex, bowtie_index[k], fastqFiles[k],  
                                 bwtarg, via='lsf')
 
-	for k,f in filenames.iteritems():
+	for k,f in fastqFiles.iteritems():
 		alignedFiles[k]=futures[k].wait()
 
 	return unalignedFiles
