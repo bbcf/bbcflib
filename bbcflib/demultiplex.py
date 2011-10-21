@@ -272,7 +272,7 @@ def workflow_groups(ex, job, script_path):
 #		ex.add(reportFile,description="txt:"+group['name']+"report_demultiplexing.txt [group:" + str(grpId) + ",step:" + str(step) + ",type:txt,view:admin]" )
 		reportFile_pdf=unique_filename_in()
 		call_createReport(ex,reportFile,reportFile_pdf,script_path)
-		ex.add(reportFile_pdf,description=set_file_descr(group['name']+"report_demultiplexing.pdf",tag="pdf",group=grpId,step=step,type="pdf"))
+		ex.add(reportFile_pdf,description=set_file_descr(group['name']+"_report_demultiplexing.pdf",tag="pdf",group=grpId,step=step,type="pdf"))
 #		ex.add(reportFile_pdf,description="pdf:"+group['name']+"report_demultiplexing.pdf [group:" + str(grpId) + ",step:" + str(step) + ",type:pdf]" ) 
 
 	return resFiles 
@@ -307,7 +307,7 @@ def getSeqToFilter(ex,primersFile):
 
 def filterSeq(ex,fastqFiles,seqToFilter,grp_name):
 #seqToFilter=`awk -v primer=${curPrimer} '{if($0 ~ /^>/){n=split($0,a,"|");curPrimer=a[1];gsub(">","",curPrimer); if(curPrimer == primer){seqToFilter="";for(i=5;i<n;i++){if(a[i] !~ /Exclude=/){seqToFilter=seqToFilter""a[i]","}} if(a[n] !~ /Exclude=/){seqToFilter=seqToFilter""a[n]}else{gsub(/,$/,"",seqToFilter)};print seqToFilter}}}' ${primersFile}`
-	filenames={}
+	filenames=fastqFiles
 	global grpId
 	global step 
 
