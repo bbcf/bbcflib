@@ -1,5 +1,5 @@
-ChIP-seq Tutorial
-=================
+ChIP-seq
+========
 
 In this short tutorial we explain the ChIP-seq analysis workflow behind the interface `ChIP-seq <http://htsstation.vital-it.ch/chipseq/>`_ interface.
 

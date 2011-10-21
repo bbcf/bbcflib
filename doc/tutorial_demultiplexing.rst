@@ -1,5 +1,5 @@
-Demultiplexing Tutorial
-=======================
+Demultiplexing
+==============
 
 Here is a short tutorial showing how to demultiplex barcoded reads with the `demultiplexing interface <http://htsstation.vital-it.ch/demultiplexing/>`_ of `htsstation <http://htsstation.vital-it.ch/>`_.
 

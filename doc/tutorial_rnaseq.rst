@@ -1,5 +1,5 @@
-RNA-seq Tutorial
-================
+RNA-seq
+=======
 
 Here is a short tutorial showing how to launch a RNA-seq analysis from the interface http://htsstation.vital-it.ch/rnaseq/.
 

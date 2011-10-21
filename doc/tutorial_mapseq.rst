@@ -1,5 +1,5 @@
-Mapping Tutorial
-=================
+Mapping
+=======
 
 This is a short description of the options available in the `mapping interface <http://htsstation.vital-it.ch/mapseq/>`_ application, which is practically an interface to the `Bowtie <http://bowtie-bio.sourceforge.net/>`_ software with a few additional post-processing options as described in `Leleu M, Lefebvre G, Rougemont J, Brief Funct Genomics, 2010 <http://www.ncbi.nlm.nih.gov/pubmed/20861161>`_.
 

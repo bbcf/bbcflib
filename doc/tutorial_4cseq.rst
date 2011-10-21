@@ -1,5 +1,5 @@
-4C-seq Tutorial
-===============
+4C-seq
+======
 
 Here is a short tutorial showing how to launch a 4c-seq analysis from the interface http://htsstation.vital-it.ch/4cseq/.
 
