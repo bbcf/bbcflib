@@ -11,7 +11,7 @@ import re, os
 from operator import add
 
 # Internal modules #
-from . import track, 
+from . import track
 from .common import set_file_descr, compress
 
 # Other modules #
