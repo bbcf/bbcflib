@@ -304,7 +304,7 @@ def getSeqToFilter(ex,primersFile):
 	
 	for k,f in allSeqToFilter.iteritems():
 		f.close()
-	return allSeqToFilter
+	return filenames
 
 
 def filterSeq(ex,fastqFiles,seqToFilter,grp_name):
