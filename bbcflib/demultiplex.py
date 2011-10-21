@@ -302,6 +302,8 @@ def getSeqToFilter(ex,primersFile):
 					if not cmp(s_split[i],'.') == 0 or not re.search('Exclude',s_split[i]):
 						allSeqToFilter[key].write(">seq"+str(i)+"\n"+s_split[i]+"\n")
 	
+	for k,f in allSeqToFilter.iteritems():
+		f.close()
 	return allSeqToFilter
 
 
@@ -313,8 +315,6 @@ def filterSeq(ex,fastqFiles,seqToFilter,grp_name):
 
 	print "Will build bowtie indexes for seqToFilter\n" 
 	indexSeqToFilter={}
-	for k,f in seqToFilter.iteritems():
-		f.close()
 	
 	indexFiles={}	
 	for k,f in filenames.iteritems():
@@ -330,18 +330,14 @@ def filterSeq(ex,fastqFiles,seqToFilter,grp_name):
 	futures={}
 
 	for k,f in filenames.iteritems():	
-		if k in fastqFiles:	
-			#bowtie_index[k]=indexFiles[k]
-			bowtie_index[k]=indexFiles[k].wait()
-			unalignedFiles[k]=unique_filename_in()
-			#print("primer="+k+"=>index="+bowtie_index[k])
-			print "Will filter reads (call bowtie)\n"
-			bwtarg=["-a","-q","-n","2","-l","20","--un",unalignedFiles[k]]
-			futures[k]=bowtie.nonblocking( ex, bowtie_index[k], fastqFiles[k],  
-                                     bwtarg, via='lsf')
-		else:
-			print("key "+k+" is not defined in fastqFiles")
-			#print fastqFiles
+		#bowtie_index[k]=indexFiles[k]
+		bowtie_index[k]=indexFiles[k].wait()
+		unalignedFiles[k]=unique_filename_in()
+		#print("primer="+k+"=>index="+bowtie_index[k])
+		print "Will filter reads (call bowtie)\n"
+		bwtarg=["-a","-q","-n","2","-l","20","--un",unalignedFiles[k]]
+		futures[k]=bowtie.nonblocking( ex, bowtie_index[k], f,  
+                                bwtarg, via='lsf')
 
 	for k,f in filenames.iteritems():
 		alignedFiles[k]=futures[k].wait()
