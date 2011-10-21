@@ -1,7 +1,7 @@
 Mapping Tutorial
 =================
 
-This is a short description of the options available in the `mapping interface <http://htsstation.vital-it.ch/mapseq/>`_ application, which is practically an interface to the `Bowtie <http://bowtie-bio.sourceforge.net/>`_ software with a few additional post-processing options as described in `Leleu M, Lefebvre G, Rougemont J, Brief Funct Genomics, 2010<http://www.ncbi.nlm.nih.gov/pubmed/20861161>`_.
+This is a short description of the options available in the `mapping interface <http://htsstation.vital-it.ch/mapseq/>`_ application, which is practically an interface to the `Bowtie <http://bowtie-bio.sourceforge.net/>`_ software with a few additional post-processing options as described in `Leleu M, Lefebvre G, Rougemont J, Brief Funct Genomics, 2010 <http://www.ncbi.nlm.nih.gov/pubmed/20861161>`_.
 
 Provide Reads
 -------------
@@ -41,7 +41,14 @@ Bowtie options
 
 Default Bowtie options are 
  * --best --strata --chunkmbs 512 -Sam 20
-Output is converted to `BAM <http://samtools.sourceforge.net/>`_ (file `sampleName_complete.bam`) then filtered to retain only the mapped reads with at most **5** hits in the reference. If the `Discard PCR duplicates` option is given, only at most **n** reads per strand-specific genomic position will be kept, where **n** is computed as the 95% percentile of a Poisson distribution with the same mean as the expected genome coverage. These filtered hits will be provided as the `sampleName_filtered.bam`.
+Output is converted to `BAM <http://samtools.sourceforge.net/>`_ (file `sampleName_complete.bam`) then filtered to retain only the mapped reads with at most **5** hits in the reference. The number of hits for each reads is indicated in the BAM file with **NH** field (first read has 1 hit, second has 3)::
+
+ >samtools view sampleName_filtered.bam
+ R2D2_0060:5:76:1358:1657#0/1    0       chr1     3000122 255     37M     *       0       0       TGTCTTTACCTTATTTGTTCTAAATTTTTTGCAAACT   BCACCBCCCCCCBCCCBBBCCCC=CCCCBBBCCC?BC   XA:i:0  MD:Z:37 NM:i:0  NH:i:1
+ R2D2_0060:5:29:882:31#0/1       16      chr1     3000219 255     37M     *       0       0       GCATTGGTTAAATGGAAGGACCAGCTGACTAAGGAAT   7%5A8=A@@>@ABBA@A@B9;:'=ABB@>BBCBCBBB   XA:i:1  MD:Z:8A13T14    NM:i:2  NH:i:3
+
+
+If the `Discard PCR duplicates` option is given, only at most **n** reads per strand-specific genomic position will be kept, where **n** is computed as the 95% percentile of a Poisson distribution with the same mean as the expected genome coverage. These filtered hits will be provided as the `sampleName_filtered.bam`.
 
 Mapping report
 --------------

@@ -1,7 +1,9 @@
-How to use config files
-=======================
+Using scripts and configuration files
+=====================================
 
-Here is a typical workflow that uses both ``mapseq`` and ``chipseq``. First prepare a configuration file with the following sections: first a ``Global variables`` section that defines the local environment for the pipelines::
+Each of our pipieline can be run on the command-line using the scripts provided in our `repository <https://github.com/bbcf/bbcfutils/tree/master/Python>`_. Theses scripts use configuration files to set the various pipeline options.
+
+Here is a typical workflow that uses both ``mapseq`` and ``chipseq``. The configuration file will contain the following sections: first a ``Global variables`` section that defines the local environment for the pipelines::
 
     [Global variables]
     genrep_url='http://bbcftools.vital-it.ch/genrep/'
