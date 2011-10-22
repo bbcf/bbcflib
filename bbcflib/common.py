@@ -122,21 +122,24 @@ def get_files( id_or_key, minilims, by_type=True ):
     all = dict((y['repository_name'],y['description']) for y in
                [minilims.fetch_file(x) for x in minilims.search_files(source=('execution',exid))])
     for f,d in all.iteritems():
-	pars = "group:0,step:0,type:none,view:admin"
         tag_d = d.split(':')
         if len(tag_d)>1 and not(re.search("\[",tag_d[0])):
             tag = tag_d[0]
             d = ":".join(tag_d[1:])
         pars_patt = re.search(r'(\[.*\])',d)
-	if pars_patt:
+        if not(pars_patt):
+            pars = "group:0,step:0,type:none,view:admin"
+            re.sub(r'([^\s\[]*)',r'\1['+pars+']',x,1)
+        else:
             pars = pars_patt.groups()[0]
-            d = re.sub(pars,'',d)
         par_dict = dict([x.split(":") for x in pars.split(",")])
+	if re.search(r'\s+\(BAM INDEX\)',d):
+            d = re.sub('[','.bai[',d)
         cat = (by_type and par_dict.get('type')) or tag or 'none'
         if cat in file_dict:
-            file_dict[cat].update({f: name})
+            file_dict[cat].update({f: d})
         else:
-            file_dict[cat] = {f: name}
+            file_dict[cat] = {f: d}
     return file_dict
 
 #-------------------------------------------------------------------------#

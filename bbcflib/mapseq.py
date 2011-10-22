@@ -244,7 +244,7 @@ def map_reads( ex, fastq_file, chromosomes, bowtie_index,
         name = name[1]
     else:
         descr = {'step':'bowtie','group':name}
-    bame_descr = py_descr = descr
+    bam_descr = py_descr = descr
     bam_descr['type'] = 'bam'
     py_descr.update({'type':'py','view':'admin'})
     bwtarg = ["-Sam", str(max(20,maxhits))]+bwt_args
@@ -469,7 +469,7 @@ def add_pdf_stats( ex, processed, group_names, script_path,
     """
     all_stats = {}
     for gid in group_names.keys():
-        for i,mapped in enumerate(processed[gid]):
+        for i,mapped in enumerate(processed[gid].values()):
             name = group_names[gid]
             if 'libname' in mapped:
                 name = mapped['libname']
