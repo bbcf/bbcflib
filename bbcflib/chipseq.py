@@ -78,7 +78,7 @@ def add_macs_results( ex, read_length, genome_size, bamfile,
 
     ``macs`` options can be controlled with `macs_args`.
     If a dictionary of Poisson thresholds for each sample is given, then the enrichment bounds ('-m' option)
-    are computed from them otherwise the default is '-m 5,60'.
+    are computed from them otherwise the default is '-m 10,100'.
 
     Returns the set of file prefixes.
     """
@@ -95,10 +95,10 @@ def add_macs_results( ex, read_length, genome_size, bamfile,
     for i,bam in enumerate(bamfile):
         n = name['tests'][i]
         if poisson_threshold.get(n)>0:
-            low = poisson_threshold.get(n)
-            enrich_bounds = str(min(30,low+1))+","+str((low+1)*30)
+            low = (poisson_threshold.get(n)+1)*5
+            enrich_bounds = str(min(30,low))+","+str(10*low)
         else:
-            enrich_bounds = "5,60"
+            enrich_bounds = "10,100"
         if isinstance(read_length,list):
             rl = read_length[i]
         for j,cam in enumerate(ctrlbam):
@@ -226,13 +226,11 @@ def workflow_groups( ex, job_or_dict, mapseq_files, chromosomes, script_path='',
 
     Defaults ``macs`` parameters (overriden by job_or_dict['options']['macs_args']) are set as follows:
 
-    * ``'-p'``: .001 (p-value threshold)
-
     * ``'-bw'``: 200 ('bandwith')
 
-    * ``'-m'``: 5,60 ('minimum and maximum enrichments relative to background or control')
+    * ``'-m'``: 10,100 ('minimum and maximum enrichments relative to background or control')
 
-    The enrichment bounds will be computed from a Poisson threshold *T*, if available, as *(min(30,T+1),30(T+1))*.
+    The enrichment bounds will be computed from a Poisson threshold *T*, if available, as *(min(30,5*(T+1)),50*(T+1))*.
 
     Returns a tuple of a dictionary with keys *group_id* from the job groups, *macs* and *deconv* if applicable and values file description dictionaries and a dictionary of *group_ids* to *names* used in file descriptions.
 """
@@ -259,7 +257,7 @@ def workflow_groups( ex, job_or_dict, mapseq_files, chromosomes, script_path='',
     run_meme = options.get('run_meme') or False
     if isinstance(run_meme,str):
         run_meme = run_meme.lower() in ['1','true','t'] 
-    macs_args = options.get('macs_args') or ["--bw=200","-p",".001"]
+    macs_args = options.get('macs_args') or ["--bw=200"]
     b2w_args = options.get('b2w_args') or []
     if not(isinstance(mapseq_files,dict)):
         raise TypeError("Mapseq_files must be a dictionary.")
