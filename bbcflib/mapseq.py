@@ -244,9 +244,10 @@ def map_reads( ex, fastq_file, chromosomes, bowtie_index,
         name = name[1]
     else:
         descr = {'step':'bowtie','group':name}
-    bam_descr = py_descr = descr
-    bam_descr['type'] = 'bam'
-    py_descr.update({'type':'py','view':'admin'})
+    bam_descr = {'type': 'bam'}
+    py_descr = {'type':'py','view':'admin'}    
+    bam_descr.update(descr)
+    py_descr.update(descr)
     bwtarg = ["-Sam", str(max(20,maxhits))]+bwt_args
     if not("--best" in bwtarg):     bwtarg += ["--best"]
     if not("--strata" in bwtarg):   bwtarg += ["--strata"]
