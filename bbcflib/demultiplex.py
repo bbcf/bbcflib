@@ -259,6 +259,7 @@ def workflow_groups(ex, job, script_path):
 	        filteredFastq=filterSeq(ex,resExonerate,seqToFilter,group['name'])
 			
 	        for k,f in filteredFastq.iteritems():
+			print("Will add filtered file "+f+" with descr="+group['name']+"_"+k+"_filtered.fastq")
 			ex.add(f,description=set_file_descr(group['name']+"_"+k+"_filtered.fastq",tag="fastq",group=grpId,step=step,type="fastq"))
 #	                ex.add(f,description="fastq:"+k+"_filtered.fastq [group:" + str(grpId) + ",step:" + str(step) + ",type:fastq]")
 			counts_primers_filtered[k]=count_lines(ex,f)/4
