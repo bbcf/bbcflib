@@ -18,7 +18,7 @@ MACS peak calling
 -----------------
 
 The `MACS <http://liulab.dfci.harvard.edu/MACS/index.html>`_ v1.4.0 software is used on the BAM files to perform peak detection. Parameters are given as follows, for every pair `(sample.bam, control.bam)`:
- * -t sample.bam -c control.bam -f BAM -g genome_size -s read_length -m 5,60 --bw=200 -p .001
+ * -t sample.bam -c control.bam -f BAM -g genome_size -s read_length -m 10,100 --bw=200
 
 If no sample is tagged as a `control` the `-c` option is ommitted.
 Output files returned are 

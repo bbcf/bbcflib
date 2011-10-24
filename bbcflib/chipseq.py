@@ -48,7 +48,6 @@ from .common import merge_sql, merge_many_bed, join_pdf, cat, set_file_descr
 from bein import *
 from bein.util import *
 
-wrkflw_step=0
 ################################################################################
 # Peaks and annotation #
 
@@ -79,7 +78,7 @@ def add_macs_results( ex, read_length, genome_size, bamfile,
 
     ``macs`` options can be controlled with `macs_args`.
     If a dictionary of Poisson thresholds for each sample is given, then the enrichment bounds ('-m' option)
-    are computed from them otherwise the default is '-m 5,60'.
+    are computed from them otherwise the default is '-m 10,100'.
 
     Returns the set of file prefixes.
     """
@@ -96,10 +95,10 @@ def add_macs_results( ex, read_length, genome_size, bamfile,
     for i,bam in enumerate(bamfile):
         n = name['tests'][i]
         if poisson_threshold.get(n)>0:
-            low = poisson_threshold.get(n)
-            enrich_bounds = str(min(30,low+1))+","+str((low+1)*30)
+            low = (poisson_threshold.get(n)+1)*5
+            enrich_bounds = str(min(30,low))+","+str(10*low)
         else:
-            enrich_bounds = "5,60"
+            enrich_bounds = "10,100"
         if isinstance(read_length,list):
             rl = read_length[i]
         for j,cam in enumerate(ctrlbam):
@@ -112,11 +111,10 @@ def add_macs_results( ex, read_length, genome_size, bamfile,
                                             args=macs_args+["-m",enrich_bounds],
                                             via=via )
     prefixes = dict((n,f.wait()) for n,f in futures.iteritems())
-    global wrkflw_step
-    macs_descr0 = {'tag':'none','step':wrkflw_step,'type':'none','view':'admin'}
-    macs_descr1 = {'tag':'macs','step':wrkflw_step,'type':'xls'}
-    macs_descr2 = {'tag':'macs','step':wrkflw_step,'type':'bed'}
     for n,p in prefixes.iteritems():
+        macs_descr0 = {'step':'macs','type':'none','view':'admin'}
+        macs_descr1 = {'step':'macs','type':'xls','group':n[0]}
+        macs_descr2 = {'step':'macs','type':'bed','group':n[0]}
         filename = "_vs_".join(n)
         touch( ex, p )
         ex.add( p, description=set_file_descr(filename,**macs_descr0), alias=alias )
@@ -228,18 +226,14 @@ def workflow_groups( ex, job_or_dict, mapseq_files, chromosomes, script_path='',
 
     Defaults ``macs`` parameters (overriden by job_or_dict['options']['macs_args']) are set as follows:
 
-    * ``'-p'``: .001 (p-value threshold)
-
     * ``'-bw'``: 200 ('bandwith')
 
-    * ``'-m'``: 5,60 ('minimum and maximum enrichments relative to background or control')
+    * ``'-m'``: 10,100 ('minimum and maximum enrichments relative to background or control')
 
-    The enrichment bounds will be computed from a Poisson threshold *T*, if available, as *(min(30,T+1),30(T+1))*.
+    The enrichment bounds will be computed from a Poisson threshold *T*, if available, as *(min(30,5*(T+1)),50*(T+1))*.
 
     Returns a tuple of a dictionary with keys *group_id* from the job groups, *macs* and *deconv* if applicable and values file description dictionaries and a dictionary of *group_ids* to *names* used in file descriptions.
 """
-    global wrkflw_step
-    wrkflw_step = 1
     options = {}
     if isinstance(job_or_dict,frontend.Job):
         options = job_or_dict.options
@@ -263,7 +257,7 @@ def workflow_groups( ex, job_or_dict, mapseq_files, chromosomes, script_path='',
     run_meme = options.get('run_meme') or False
     if isinstance(run_meme,str):
         run_meme = run_meme.lower() in ['1','true','t'] 
-    macs_args = options.get('macs_args') or ["--bw=200","-p",".001"]
+    macs_args = options.get('macs_args') or ["--bw=200"]
     b2w_args = options.get('b2w_args') or []
     if not(isinstance(mapseq_files,dict)):
         raise TypeError("Mapseq_files must be a dictionary.")
@@ -340,7 +334,6 @@ def workflow_groups( ex, job_or_dict, mapseq_files, chromosomes, script_path='',
                 output_location = outdir )[0]
             peak_list[name] = gm_out
     if peak_deconvolution:
-        wrkflw_step += 1
         processed['deconv'] = {}
         merged_wig = {}
         if not('read_extensions' in options and int(options['read_extension'])>0):
@@ -363,10 +356,10 @@ def workflow_groups( ex, job_or_dict, mapseq_files, chromosomes, script_path='',
                 else:
                     wig.append(m['wig'])
             if len(wig) > 1:
-                merged_wig[group_name] = dict((s,
-                                               merge_sql(ex, [x[s] for x in wig],
-                                                         [m['libname'] for m in mapped.values()] ,
-                                                         description="sql:"+group_name+"_"+s+".sql", via='local'))
+                description = set_file_descr(group_name+"_"+s+".sql",type='sql',group=group_name,step='deconvolution')
+                merged_wig[group_name] = dict((s,merge_sql(ex, [x[s] for x in wig],
+                                                           [m['libname'] for m in mapped.values()] ,
+                                                           description=description,via='local'))
                                               for s in suffixes)
             else:
                 merged_wig[group_name] = wig[0]
@@ -378,12 +371,11 @@ def workflow_groups( ex, job_or_dict, mapseq_files, chromosomes, script_path='',
                                              for x in names['controls']],via=via)
             deconv = run_deconv( ex, merged_wig[name], macsbed, chromosomes,
                                  options['read_extension'], script_path, via=via )
-            [ex.add(v, description=set_file_descr(name+'_deconv.'+k,tag=k,type=k,step=wrkflw_step)) 
+            [ex.add(v, description=set_file_descr(name+'_deconv.'+k,type=k,step='deconvolution',group=name)) 
              for k,v in deconv.iteritems()]
             processed['deconv'][name] = deconv
             peak_list[name] = deconv['bed']
     if run_meme and not(genrep == None):
-        wrkflw_step += 1
         from .motif import parallel_meme
         processed['meme'] = parallel_meme( ex, genrep, chromosomes, 
                                            peak_list.values(), name=peak_list.keys(), 
