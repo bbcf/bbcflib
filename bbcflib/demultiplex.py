@@ -252,7 +252,7 @@ def workflow_groups(ex, job, script_path):
 		step += 1
 
 		logfile=unique_filename_in()
-		log=open(logfile,"w")
+		log=open(logfile,"w+")
 		log.write("Will get sequences to filter\n")
 		seqToFilter=getSeqToFilter(ex,primersFile)
 
@@ -262,11 +262,14 @@ def workflow_groups(ex, job, script_path):
 	        
 		log.write("After filterSeq, filteredFastq=\n")
 		log.write(str(filteredFastq))
+		log.close()
 
 		ex.add(logfile,description=set_file_descr("logfile_b4addfilteredFastq",group=grpId,step=step,type="txt",view="admin"))
 
 		for k,f in filteredFastq.iteritems():
+			log=open(logfile,"w+")
 			log.write("\nWill add filtered file "+f+" with descr="+group['name']+"_"+k+"_filtered.fastq\n")
+			log.close()
 			ex.add(logfile,description=set_file_descr("logfile",group=grpId,step=step,type="txt",view="admin"))
 			ex.add(f,description=set_file_descr(group['name']+"_"+k+"_filtered.fastq",group=grpId,step=step,type="fastq"))
 #	                ex.add(f,description="fastq:"+k+"_filtered.fastq [group:" + str(grpId) + ",step:" + str(step) + ",type:fastq]")
