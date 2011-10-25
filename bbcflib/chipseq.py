@@ -228,8 +228,8 @@ def filter_macs( bedfile, ntags=5 ):
     with open( bedfile, "r" ) as fin:
         with open( outname, "w" ) as fout:
             for row in fin:
-                rowntag = float(row.split("\t")[4])
-                if rowntag > ntags:
+                splitrow = row.split("\t")
+                if len(splitrow)>4 and float(splitrow[4])>ntags:
                     fout.write(row)
     return outname
 
@@ -339,6 +339,7 @@ def workflow_groups( ex, job_or_dict, mapseq_files, chromosomes, script_path='',
                 macsbed = processed['macs'][(name,)]+"_summits.bed"
             else:
                 macsbed = cat([processed['macs'][(name,x)]+"_summits.bed" for x in names['controls']])
+            macsbed = filter_macs(macsbed)
             outdir = unique_filename_in()
             os.mkdir(outdir)
             gm_out = gMiner.run(
@@ -358,7 +359,7 @@ def workflow_groups( ex, job_or_dict, mapseq_files, chromosomes, script_path='',
                 operation_type = 'genomic_manip',
                 manipulation = 'merge',
                 output_location = outdir )[0]
-            peak_list[name] = filter_macs(gm_out)
+            peak_list[name] = gm_out
     if peak_deconvolution:
         processed['deconv'] = {}
         merged_wig = {}
