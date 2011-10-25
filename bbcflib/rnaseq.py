@@ -121,8 +121,8 @@ def fetch_mappings(path_or_assembly_id):
     * [5] exons_in_trans is a dict ``{transcript ID: [IDs of the exons it contains]}``
 
     :param path_or_assembly_id: can be a numeric or nominal ID for GenRep
-    (e.g. 11, 76 or 'hg19' for H.Sapiens), or a path to a file containing a
-    pickle object which is read to get the mapping.
+    	(e.g. 11, 76 or 'hg19' for H.Sapiens), or a path to a file containing a
+    	pickle object which is read to get the mapping.
     """
     if os.path.exists(str(path_or_assembly_id)):
         with open(path_or_assembly_id, 'rb') as pickle_file:
