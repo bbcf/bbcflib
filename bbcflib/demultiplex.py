@@ -45,8 +45,12 @@ def split_exonerate(filename,n=1,x=22,l=30):
 					files[key]=open(filenames[key],"w")
 				k=int(s.split(' ')[3])-int(s.split(' ')[7])+correction[key]
 	#			print("key="+str(key)+";correction="+str(correction[key])+";k="+str(k))
-				seq=s.split(' ')[1].split('_')[1][k:l+k]
-				qual=s.split(' ')[1].split('_')[2][k:l+k]
+				info=s.split(' ')[1]
+				l_linename=len(info.split('_')[0])
+                                l_seq=len(info.split('_')[1])
+				full_qual=info[int(l_linename)+int(l_seq)+2:int(l_linename)+2*int(l_seq)+2]
+				seq=info.split('_')[1][k:l+k]
+				qual=full_qual[k:l+k]
 				files[key].write("@"+s.split(' ')[1].split('_')[0]+"_"+seq+"_"+qual+"\n"+seq+"\n+\n"+qual+"\n")
 	for f in files.itervalues():
 		f.close()
