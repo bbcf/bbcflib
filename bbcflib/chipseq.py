@@ -211,12 +211,25 @@ def filter_deconv( bedfile, pval=0.5 ):
     """Filters a bedfile created by deconvolution to select peaks with p-value smaller than 'pval'.
     Returns the filtered file name."""
     import re
-    outname = unique_filename_in()
+    outname = unique_filename_in()+".bed"
     with open( bedfile, "r" ) as fin:
         with open( outname, "w" ) as fout:
             for row in fin:
                 rowpval = float(re.search(r';FERR=([\d\.]+)\s',row).groups()[0])
                 if rowpval <= pval:
+                    fout.write(row)
+    return outname
+
+def filter_macs( bedfile, ntags=5 ):
+    """Filters MACS' summits file to select peaks with a number of tags greater than 'ntags'.
+    Returns the filtered file name."""
+    import re
+    outname = unique_filename_in()+".bed"
+    with open( bedfile, "r" ) as fin:
+        with open( outname, "w" ) as fout:
+            for row in fin:
+                rowntag = float(row.split("\t")[4])
+                if rowntag > ntags:
                     fout.write(row)
     return outname
 
@@ -345,7 +358,7 @@ def workflow_groups( ex, job_or_dict, mapseq_files, chromosomes, script_path='',
                 operation_type = 'genomic_manip',
                 manipulation = 'merge',
                 output_location = outdir )[0]
-            peak_list[name] = gm_out
+            peak_list[name] = filter_macs(gm_out)
     if peak_deconvolution:
         processed['deconv'] = {}
         merged_wig = {}
