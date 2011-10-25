@@ -345,7 +345,7 @@ def filterSeq(ex,fastqFiles,seqToFilter,grp_name):
 			#bowtie_index[k]=indexFiles[k]
 			bowtie_index[k]=indexFiles[k].wait()
 			unalignedFiles[k]=unique_filename_in()
-			touch(unalignedFiles[k])
+			touch(ex,unalignedFiles[k])
 			#print("primer="+k+"=>index="+bowtie_index[k])
 			print "Will filter reads (call bowtie)\n"
 			bwtarg=["-a","-q","-n","2","-l","20","--un",unalignedFiles[k]]
