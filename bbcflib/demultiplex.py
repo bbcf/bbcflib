@@ -267,7 +267,7 @@ def workflow_groups(ex, job, script_path):
 		ex.add(logfile,description=set_file_descr("logfile_b4addfilteredFastq",group=grpId,step=step,type="txt",view="admin"))
 
 		for k,f in filteredFastq.iteritems():
-			log=open(logfile,"w+")
+			log=open(logfile,"a")
 			log.write("\nWill add filtered file "+f+" with descr="+group['name']+"_"+k+"_filtered.fastq\n")
 			log.close()
 			ex.add(logfile,description=set_file_descr("logfile",group=grpId,step=step,type="txt",view="admin"))
@@ -311,8 +311,8 @@ def getSeqToFilter(ex,primersFile):
 				filenames[key]=unique_filename_in() 
 				allSeqToFilter[key]=open(filenames[key],"w")
 				for i in range(4,len(s_split)):
-					if not cmp(s_split[i],'.') == 0 or not re.search('Exclude',s_split[i]):
-						allSeqToFilter[key].write(">seq"+str(i)+"\n"+s_split[i]+"\n")
+					if not re.search('Exclude',s_split[i]):
+						allSeqToFilter[key].write(">seq"+str(i)+"\n"+s_split[i].replace(".","")+"\n")
 	
 	for k,f in allSeqToFilter.iteritems():
 		f.close()
@@ -353,6 +353,7 @@ def filterSeq(ex,fastqFiles,seqToFilter,grp_name):
 
 	for k,f in fastqFiles.iteritems():
 		alignedFiles[k]=futures[k].wait()
+		ex.add(unalignedFiles[k],description=set_file_descr(grp_name+"_"+k+"_filtered_inFunction.fastq",group=grpId,step=step,type="fastq"))
 
 	return unalignedFiles
 
