@@ -207,6 +207,32 @@ def run_deconv(ex, sql, peaks, chromosomes, read_extension, script_path, via = '
         outfiles['pdf'] = rdeconv_out.values()[0]['pdf']
     return outfiles
 
+def filter_deconv( bedfile, pval=0.5 ):
+    """Filters a bedfile created by deconvolution to select peaks with p-value smaller than 'pval'.
+    Returns the filtered file name."""
+    import re
+    outname = unique_filename_in()+".bed"
+    with open( bedfile, "r" ) as fin:
+        with open( outname, "w" ) as fout:
+            for row in fin:
+                rowpval = float(re.search(r';FERR=([\d\.]+)\s',row).groups()[0])
+                if rowpval <= pval:
+                    fout.write(row)
+    return outname
+
+def filter_macs( bedfile, ntags=5 ):
+    """Filters MACS' summits file to select peaks with a number of tags greater than 'ntags'.
+    Returns the filtered file name."""
+    import re
+    outname = unique_filename_in()+".bed"
+    with open( bedfile, "r" ) as fin:
+        with open( outname, "w" ) as fout:
+            for row in fin:
+                splitrow = row.split("\t")
+                if len(splitrow)>4 and float(splitrow[4])>ntags:
+                    fout.write(row)
+    return outname
+
 ################################################################################
 # Workflow #
 
@@ -313,6 +339,7 @@ def workflow_groups( ex, job_or_dict, mapseq_files, chromosomes, script_path='',
                 macsbed = processed['macs'][(name,)]+"_summits.bed"
             else:
                 macsbed = cat([processed['macs'][(name,x)]+"_summits.bed" for x in names['controls']])
+            macsbed = filter_macs(macsbed)
             outdir = unique_filename_in()
             os.mkdir(outdir)
             gm_out = gMiner.run(
@@ -374,7 +401,7 @@ def workflow_groups( ex, job_or_dict, mapseq_files, chromosomes, script_path='',
             [ex.add(v, description=set_file_descr(name+'_deconv.'+k,type=k,step='deconvolution',group=name)) 
              for k,v in deconv.iteritems()]
             processed['deconv'][name] = deconv
-            peak_list[name] = deconv['bed']
+            peak_list[name] = filter_deconv( deconv['bed'], pval=0.65 )
     if run_meme and not(genrep == None):
         from .motif import parallel_meme
         processed['meme'] = parallel_meme( ex, genrep, chromosomes, 

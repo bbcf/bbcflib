@@ -858,10 +858,11 @@ def get_bam_wig_files( ex, job, minilims=None, hts_url=None, suffix=['fwd','rev'
                 allfiles = {}
                 for fid in MMS.search_files(source=('execution',exid)):
                     tf = MMS.fetch_file(fid)
-                    filename = re.search(r':([^\s\[]+)', tf['description']).groups()[0]
+                    descr = re.sub(r'^[^\[]+:','',tf['description'],count=1)
+                    filename = re.search(r'^([^\s\[]+)',descr).groups()[0]
                     allfiles[filename] = fid
                     if not(run.get('run')) and str(run['url']) == str(tf['repository_name']):
-                        name = re.search(r':(.*)_[^_]*.bam', tf['description']).groups()[0]
+                        name = re.search(r'^(.*)_[^_]*.bam',descr).groups()[0]
                 stats_id = allfiles.get(name+"_filter_bamstat") or allfiles.get(name+"_full_bamstat")
                 with open(MMS.path_to_file(stats_id)) as q:
                     stats = pickle.load(q)

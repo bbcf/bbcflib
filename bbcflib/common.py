@@ -123,6 +123,7 @@ def get_files( id_or_key, minilims, by_type=True ):
                [minilims.fetch_file(x) for x in minilims.search_files(source=('execution',exid))])
     for f,d in all.iteritems():
         tag_d = d.split(':')
+        tag = None
         if len(tag_d)>1 and not(re.search("\[",tag_d[0])):
             tag = tag_d[0]
             d = ":".join(tag_d[1:])
