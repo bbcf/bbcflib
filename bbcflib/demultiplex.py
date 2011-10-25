@@ -261,7 +261,7 @@ def workflow_groups(ex, job, script_path):
 	        filteredFastq=filterSeq(ex,resExonerate,seqToFilter,group['name'])
 	        
 		log.write("After filterSeq, filteredFastq=\n")
-		log.write(filteredFastq)
+		log.write(str(filteredFastq))
 
 		ex.add(logfile,description=set_file_descr("logfile_b4addfilteredFastq",group=grpId,step=step,type="txt",view="admin"))
 
