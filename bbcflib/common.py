@@ -127,7 +127,7 @@ def get_files( id_or_key, minilims, by_type=True ):
         if len(tag_d)>1 and not(re.search("\[",tag_d[0])):
             tag = tag_d[0]
             d = ":".join(tag_d[1:])
-        pars_patt = re.search(r'(\[.*\])',d)
+        pars_patt = re.search(r'\[(.*)\]',d)
         if not(pars_patt):
             pars = "group:0,step:0,type:none,view:admin"
             re.sub(r'([^\s\[]*)',r'\1['+pars+']',x,1)
