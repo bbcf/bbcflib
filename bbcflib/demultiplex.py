@@ -201,6 +201,7 @@ def prepareReport(ex,name,tot_counts,counts_primers,counts_primers_filtered):
 
 def workflow_groups(ex, job, script_path):
 	processed = {}
+	file_names = {}
 	job_groups=job.groups
 	resFiles={}
 	global grpId
@@ -208,6 +209,7 @@ def workflow_groups(ex, job, script_path):
 	for gid, group in job_groups.iteritems():
 		grpId += 1
 		step = 0
+		file_names[gid] = {}
 		lib_dir="/scratch/cluster/monthly/htsstation/demultiplexing/" + str(job.id) + "/"
 		primersFilename = 'group_' + group['name'] + "_primer_file.fa"
 		primersFile = lib_dir + primersFilename
@@ -252,7 +254,8 @@ def workflow_groups(ex, job, script_path):
 			counts_primers[k]=count_lines(ex,f)/4
 			print("counts_primers["+k+"]="+str(counts_primers[k]))
 			counts_primers_filtered[k]=0
-			
+			file_names[gid][k]=group['name']+"_"+k		
+	
 		step += 1
 
 		logfile=unique_filename_in()
@@ -278,8 +281,9 @@ def workflow_groups(ex, job, script_path):
 			ex.add(f,description=set_file_descr(group['name']+"_"+k+"_filtered.fastq",group=grpId,step=step,type="fastq"))
 #	                ex.add(f,description="fastq:"+k+"_filtered.fastq [group:" + str(grpId) + ",step:" + str(step) + ",type:fastq]")
 			counts_primers_filtered[k]=count_lines(ex,f)/4
+			file_names[gid][k]=group['name']+"_"+k+"_filtered"
 		step += 1
-
+	
 		# Prepare report per group of runs
 		print("counts_primers=")
 		print(counts_primers)	
@@ -291,6 +295,8 @@ def workflow_groups(ex, job, script_path):
 		ex.add(reportFile_pdf,description=set_file_descr(group['name']+"_report_demultiplexing.pdf",group=grpId,step=step,type="pdf"))
 #		ex.add(reportFile_pdf,description="pdf:"+group['name']+"report_demultiplexing.pdf [group:" + str(grpId) + ",step:" + str(step) + ",type:pdf]" ) 
 
+
+	add_pickle( ex, file_names, set_file_descr('file_names',step=step,type='py',view='admin') )
 	return resFiles 
 
 
@@ -358,7 +364,6 @@ def filterSeq(ex,fastqFiles,seqToFilter,grp_name):
 
 	for k,f in fastqFiles.iteritems():
 		alignedFiles[k]=futures[k].wait()
-		ex.add(unalignedFiles[k],description=set_file_descr(grp_name+"_"+k+"_filtered_inFunction.fastq",group=grpId,step=step,type="fastq"))
 
 	return unalignedFiles
 
