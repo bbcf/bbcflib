@@ -16,7 +16,7 @@ import os, sys, cPickle, json, pysam, urllib, math, time, csv
 
 # Internal modules #
 from bbcflib.genrep import GenRep
-from bbcflib.common import timer, rstring, writecols
+from bbcflib.common import timer, rstring, writecols, set_file_descr
 
 # Other modules #
 import numpy
@@ -29,8 +29,8 @@ def lsqnonneg(C, d, x0=None, tol=None, itmax_factor=3):
     ``(x,resnorm,res) = lsqnonneg(C,d)`` returns
 
     * the vector *x* that minimizes norm(d-Cx) subject to x >= 0
-    * the norm of residuals *resnorm*
-    * the residuals *res*
+    * the norm of residuals *resnorm* = norm(d-cx)^2
+    * the residuals *res* = d-Cx
 
     :param x0: Initial point for x.
     :param tol: Tolerance to determine when the error is small enough.
@@ -190,7 +190,9 @@ def save_results(ex, cols, conditions, header=[], desc='features'):
     conditions = tuple(conditions)
     output = rstring()
     writecols(output,cols,header=header, sep="\t")
-    ex.add(output, description="csv:Expression level of "+desc+" in sample(s) "+conditions_s % conditions)
+    description="Expression level of "+desc+" in sample(s) "+conditions_s % conditions
+    description = set_file_descr(desc.lower()+"_expression.csv", step="pileup", type="txt", comment=description)
+    ex.add(output, description=description)
     print desc+": Done successfully."
 
 #@timer
@@ -208,9 +210,12 @@ def genes_expression(exons_data, exon_to_gene, ncond):
     zz = [numpy.zeros(ncond,dtype=numpy.float_)]*len(genes)
     gcounts = dict(zip(genes,z))
     grpkms = dict(zip(genes,zz))
+    array = numpy.array
+    import pdb
+    pdb.set_trace()
     for e,c in zip(exons_data[0],zip(*exons_data[2:ncond+ncond+2])):
-        gcounts[exon_to_gene[e]] += c[:ncond]
-        grpkms[exon_to_gene[e]] += c[ncond:]
+        gcounts[exon_to_gene[e]] += array(c[:ncond])
+        grpkms[exon_to_gene[e]] += array(c[ncond:])
     return gcounts,grpkms
 
 #@timer
@@ -233,7 +238,9 @@ def transcripts_expression(exons_data, trans_in_gene, exons_in_trans, ncond, met
     transcripts = list(set(transcripts))
     z = numpy.zeros((len(transcripts),ncond))
     tcounts = dict(zip(transcripts,z))
+    trpk = dict(zip(transcripts,z))
     exons_counts = dict(zip( exons_data[0], zip(*exons_data[2:ncond+2])) )
+    exons_rpk = dict(zip( exons_data[0], zip(*exons_data[ncond+2:2*ncond+2])) )
     totalerror = 0; totalcount = 0; unknown = 0
     pinv = numpy.linalg.pinv; norm = numpy.linalg.norm; zeros = numpy.zeros;
     identity = numpy.identity; sum = numpy.sum; dot = numpy.dot; shape = numpy.shape
@@ -248,8 +255,8 @@ def transcripts_expression(exons_data, trans_in_gene, exons_in_trans, ncond, met
                     eg = eg.union(set(exons_in_trans[t]))
             # Create the correspondance matrix
             M = zeros((len(eg),len(tg)))
-            ecnts = zeros((ncond,len(eg)))
-            tcnts = []
+            ec = zeros((ncond,len(eg))); er = zeros((ncond,len(eg)))
+            tc = []; tr = []
             for i,e in enumerate(eg):
                 for j,t in enumerate(tg):
                     if exons_in_trans.get(t) and e in exons_in_trans[t]:
@@ -257,39 +264,47 @@ def transcripts_expression(exons_data, trans_in_gene, exons_in_trans, ncond, met
                 # Retrieve exon counts
                 if exons_counts.get(e) is not None:
                     for c in range(ncond):
-                        ecnts[c][i] += exons_counts[e][c]
+                        ec[c][i] += exons_counts[e][c]
+                        er[c][i] += exons_rpk[e][c]
             # Compute transcript counts
+            method = "pinv"
             for c in range(ncond):
                 if method == "pinv":
                     #-----------------------#
                     # Pseudo-inverse method #
                     #-----------------------#
-                    x = dot(pinv(M),ecnts[c])
-                    tcnts.append(x)
-                    totalerror += norm(dot(M,pinv(M))-identity(shape(M)[0]) ,1) # norm 1
-                    totalcount += sum(ecnts[c])
+                    #x = dot(pinv(M),ec[c])
+                    #tc.append(x)
+                    y = dot(pinv(M),er[c])
+                    tr.append(y)
+                    totalerror = norm(er[c]-dot(M,y))**2
+                    #totalerror += norm(dot(pinv(M),M)-identity(shape(M)[1]) ,1) # norm 1
+                    #totalcount += sum(ec[c])
                 if method == "nnls":
                     #-----------------------------------#
                     # Non-negative least squares method #
                     #-----------------------------------#
-                    x, resnorm, res = lsqnonneg(M,ecnts[c],itmax_factor=5)
-                    tcnts.append(x)
+                    #x, resnorm, res = lsqnonneg(M,ec[c],itmax_factor=5)
+                    #tc.append(x)
+                    y, resnorm, res = lsqnonneg(M,er[c],itmax_factor=5)
+                    tr.append(y)
                     totalerror += resnorm
-                    totalcount += sum(ecnts[c])
+                    #totalcount += sum(ec[c])
             # Store results in a dict *tcounts*
             for k,t in enumerate(tg):
                 if tcounts.get(t) is not None:
                     for c in range(ncond):
-                        tcounts[t][c] = tcnts[c][k]
+                        #tcounts[t][c] = tc[c][k]
+                        trpk[t][c] = tr[c][k]
         else:
             unknown += 1
     print "Evaluation of error for transcript counts:"
     print "\tUnknown transcripts for %d of %d genes (%.2f %%)" \
                        % (unknown, len(genes), 100*float(unknown)/float(len(genes)) )
-    print "\tError in number of reads:",int(totalerror)
-    print "\tTotal number of reads:",int(totalcount)
-    print "\tRatio error/total:",float(totalerror)/totalcount
-    return tcounts, totalerror
+    print "\tError:",int(totalerror)
+    #print "\tTotal number of reads:",int(totalcount)
+    #print "\tRatio error/total:",float(totalerror)/totalcount
+    return trpk, totalerror
 
 #@timer
 def rnaseq_workflow(ex, job, assembly, bam_files, pileup_level=["genes"], via="lsf", output=None):
@@ -329,6 +344,7 @@ def rnaseq_workflow(ex, job, assembly, bam_files, pileup_level=["genes"], via="l
             exon_pileups[cond] = []
             conditions.append(cond)
         for rid,f in files.iteritems():
+            print "....Pileup", cond
             cond = group_names[gid]+'.'+str(rid)
             exon_pileup = pileup_file(f['bam'], exons)
             exon_pileups[cond] = exon_pileup # {cond1.run1: {pileup}, cond1.run2: {pileup}...}
@@ -363,7 +379,7 @@ def rnaseq_workflow(ex, job, assembly, bam_files, pileup_level=["genes"], via="l
     counts = numpy.asarray([exon_pileups[cond] for cond in conditions], dtype=numpy.float_)
     for i in range(len(counts.ravel())):
         if counts.flat[i]==0: counts.flat[i] += 1.0 # if zero counts, add 1 for further comparisons
-    rpkms = counts/(starts-ends)
+    rpkms = counts/(ends-starts)
 
     print "Get counts"
     exons_data = [exonsID,genesID]+list(counts)+list(rpkms)+[starts,ends,genesName]
@@ -384,10 +400,10 @@ def rnaseq_workflow(ex, job, assembly, bam_files, pileup_level=["genes"], via="l
     """ Get counts for the transcripts from exons, using pseudo-inverse """
     if "transcripts" in pileup_level:
         header = ["TranscriptID","GeneID"] + conditions #*2 + ["Start","End","GeneName"]
-        (tcounts, error) = transcripts_expression(exons_data,
+        (trpk, error) = transcripts_expression(exons_data,
                                  trans_in_gene,exons_in_trans,len(conditions))
-        tnames = tcounts.keys()
+        tnames = trpk.keys()
         gnames = [transcript_mapping[t] for t in tnames]
         (gnames, tnames) = zip(*sorted(zip(gnames,tnames))) # sort w.r.t. gene names
-        trans_data = [tnames,gnames]+list(zip(*tcounts.values()))
+        trans_data = [tnames,gnames]+list(zip(*trpk.values()))
         save_results(ex, trans_data, conditions, header=header, desc="TRANSCRIPTS")
