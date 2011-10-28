@@ -19,14 +19,13 @@ from bein import unique_filename_in, program
 
 ################################################################################
 @program
-def meme( fasta, maxsize=10000000, args=None ):
+def meme( fasta, outdir, maxsize=10000000, args=None ):
     """Binding for the ``meme`` motif finder.
     """
     if args is None:
         args = []
-    outname = unique_filename_in()
-    call = ["meme", fasta, "-o", outname, "-dna", "-maxsize", str(maxsize)]+args
-    return {"arguments": call, "return_value": outname}
+    call = ["meme", fasta, "-o", outdir, "-dna", "-maxsize", str(maxsize)]+args
+    return {"arguments": call, "return_value": None}
 
 def parse_meme_xml( ex, meme_file, chromosomes ):
     """ Parse meme xml file and convert to track """
@@ -87,10 +86,12 @@ def parallel_meme( ex, genrep, chromosomes, regions,
     for i,n in enumerate(name):
         (fasta, size) = genrep.fasta_from_regions( chromosomes, regions[i], out=unique_filename_in() )
         tmpfile = unique_filename_in()
-        futures[n] = meme.nonblocking( ex, fasta, maxsize=size*1.5, args=meme_args, via=via, stderr=tmpfile )
+        outdir = unique_filename_in()
+        futures[n] = (outdir, meme.nonblocking( ex, fasta, outdir, maxsize=size*1.5, args=meme_args, via=via, stderr=tmpfile ))
     all_res = {}
     for n,f in futures.iteritems():
-        meme_out = f.wait()
+        f[1].wait()
+        meme_out = f[0]
         archive = unirque_filename_in()
         with tarfile.open(archive, "w:gz"):
             tar.add( meme_out )
