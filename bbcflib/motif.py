@@ -7,12 +7,12 @@ No documentation
 """
 
 # Built-in modules #
-import re, os
+import re, os, tarfile
 from operator import add
 
 # Internal modules #
 from . import track
-from .common import set_file_descr, compress
+from .common import set_file_descr
 
 # Other modules #
 from bein import unique_filename_in, program
@@ -91,9 +91,10 @@ def parallel_meme( ex, genrep, chromosomes, regions,
     all_res = {}
     for n,f in futures.iteritems():
         meme_out = f.wait()
-        archive = compress( ex, meme_out, 'gz' )
-        meme_res = parse_meme_xml( ex, os.path.join(meme_out, "meme.xml"),
-                                   chromosomes )
+        archive = unirque_filename_in()
+        with tarfile.open(archive, "w:gz"):
+            tar.add( meme_out )
+        meme_res = parse_meme_xml( ex, os.path.join(meme_out, "meme.xml"), chromosomes )
         ex.add( os.path.join(meme_out, "meme.html"),
                 description=set_file_descr(n+"_meme.html",step='meme',type='html',group=n) )
         ex.add( meme_res['sql'], description=set_file_descr(n+"_meme_sites.sql",step='meme',type='sql',group=n) )
