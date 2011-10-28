@@ -302,7 +302,7 @@ def workflow_groups(ex, job, script_path):
 
 @program
 def call_createReport(numbersFile,reportFile,script_path='./'):
-	return{'arguments': ["R","--vanilla","--no-restore","slave","-f",script_path+"plotGraphsDemultiplexing.R","--args",numbersFile,reportFile],
+	return{'arguments': ["R","--vanilla","--no-restore","--slave","-f",script_path+"plotGraphsDemultiplexing.R","--args",numbersFile,reportFile],
         	'return_value':None}
 
 

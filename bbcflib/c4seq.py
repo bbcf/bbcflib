@@ -145,7 +145,7 @@ def density_to_countsPerFrag(ex,density_file,density_name,assembly_name,reffile,
 	print(gMiner_job)
 
 	# calculate mean score per segments (via gFeatMiner)
-	res = common.run_gMiner.nonblocking(ex,gMiner_job,via='local').wait()
+	res = common.run_gMiner.nonblocking(ex,gMiner_job,via=via).wait()
 #	resfilename = unique_filename_in()
 #	touch(ex,resfilename)
 #	print("res filename="+resfilename)
@@ -278,7 +278,27 @@ def workflow_groups(ex, job, primers_dict, g_rep, mapseq_files, mapseq_url, scri
 			print("Will process to the main part of 4cseq module: calculate normalised counts per fragments from density file:"+mapseq_files[gid][rid]['wig']['merged'])
 			resfiles=density_to_countsPerFrag(ex,mapseq_files[gid][rid]['wig']['merged'],mapseq_files[gid][rid]['libname'],assembly.name,reffile,regToExclude,ex.remote_working_directory+'/',script_path, via)
 			processed['4cseq']=resfiles
+			
+			print("Will proceed to profile correction of file "+str(resfiles[4]))
+			profileCorrectedFile=unique_filename_in()
+			reportFile_profileCorrection=unique_filename_in()
+			profileCorrection.non_blocking(ex,resfiles[4],primers_dict['baitcoord'],mapseq_files[gid][rid]['libname'],profileCorrectedFile,reportFile_profileCorrection,script_path,via=via).wait()
+		        ex.add(profileCorrectedFile,description=set_file_descr("res_segToFrag_"+mapseq_files[gid][rid]['libname']+"_profileCorrected.bedGraph",group=grpId,step=step,type="bedGraph",comment="profile corrected data;bedGraph sorted"))
+			ex.add(reportFile_profileCorrection,description=set_file_descr("report_profileCorrection_"+mapseq_files[gid][rid]['libname']+".pdf",group=grpId,step=step,type="pdf",comment="report profile correction"))
+			step += 1
 	
+			print("Will smooth data before and after profile correction")
+			#call_smoothData(resfiles[4],nFragsPerWin)
+        		nFragsPerWin=str(10)
+        		outputfile=unique_filename_in()
+		        smoothFragFile(ex,resfiles[4],nFragsPerWin,mapseq_files[gid][rid]['libname'],outputfile,primers_dict['regToExclude'],script_path)
+			ex.add(outputfile,description=set_file_descr("res_segToFrag_"+mapseq_files[gid][rid]['libname']+"_smoothed_"+nFragsPerWin+"FragsPerWin.bedGraph",group=grpId,step=step,type="bedGraph",comment="smoothed data, before profile correction"))
+			
+        		outputfile_afterProfileCorrection=unique_filename_in()
+		        smoothFragFile(ex,outputfile,nFragsPerWin,mapseq_files[gid][rid]['libname'],outputfile_afterProfileCorrection,primers_dict['regToExclude'],script_path)
+			ex.add(outputfile,description=set_file_descr("res_segToFrag_"+mapseq_files[gid][rid]['libname']+"_profileCorrected_smoothed_"+nFragsPerWin+"FragsPerWin.bedGraph",group=grpId,step=step,type="bedGraph",comment="smoothed data, after profile correction"))
+
+
 		grpId += 1
 		step=0
 	return processed
