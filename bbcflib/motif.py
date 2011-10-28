@@ -86,7 +86,8 @@ def parallel_meme( ex, genrep, chromosomes, regions,
     futures = {}
     for i,n in enumerate(name):
         (fasta, size) = genrep.fasta_from_regions( chromosomes, regions[i], out=unique_filename_in() )
-        futures[n] = meme.nonblocking( ex, fasta, maxsize=size*1.5, args=meme_args, via=via )
+        tmpfile = unique_filename_in()
+        futures[n] = meme.nonblocking( ex, fasta, maxsize=size*1.5, args=meme_args, via=via, stderr=tmpfile )
     all_res = {}
     for n,f in futures.iteritems():
         meme_out = f.wait()
