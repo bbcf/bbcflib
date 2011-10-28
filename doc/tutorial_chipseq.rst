@@ -38,7 +38,7 @@ MEME motif search
 -----------------
 
 Using the list of MACS peaks (or the refined list if deconvolution was run), the corresponding 
-genomic sequences are extracted and used as input to the `MEME <http://meme.nbcr.net/meme4_6_1/meme-intro.html>`_ software, using the following options:
- * -nmotifs 4 -revcomp -dna -maxsize 10000000
+genomic sequences are extracted and used as input to the `MEME <http://meme.nbcr.net/meme4_6_1/meme-intro.html>`_ software, using the following options (**S**=1.5*total_input_sequence_length):
+ * -nmotifs 4 -revcomp -dna -maxsize **S**
 
 The full results directory is provided as a tar archive, together with all motif logos and motif sites.

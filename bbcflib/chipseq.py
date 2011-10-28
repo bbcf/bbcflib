@@ -237,7 +237,7 @@ def filter_macs( bedfile, ntags=5 ):
 # Workflow #
 
 def workflow_groups( ex, job_or_dict, mapseq_files, chromosomes, script_path='',
-                     genrep=None, via='lsf' ):
+                     genrep=None, logfile=None, via='lsf' ):
     """Runs a chipseq workflow over bam files obtained by mapseq. Will optionally run ``macs`` and 'run_deconv'.
 
     Arguments are:
@@ -326,10 +326,14 @@ def workflow_groups( ex, job_or_dict, mapseq_files, chromosomes, script_path='',
     if len(controls)<1:
         controls = [None]
         names['controls'] = [None]
+    if logfile:
+        logfile.write("Starting MACS.\n");logfile.flush()
     processed = {'macs': add_macs_results( ex, read_length, genome_size,
                                            tests, ctrlbam=controls, name=names,
                                            poisson_threshold=p_thresh,
                                            macs_args=macs_args, via=via ) }
+    if logfile:
+        logfile.write("Done MACS.\n");logfile.flush()
     peak_list = {}
     if run_meme:
         import gMiner
@@ -391,6 +395,8 @@ def workflow_groups( ex, job_or_dict, mapseq_files, chromosomes, script_path='',
             else:
                 merged_wig[group_name] = wig[0]
         for name in names['tests']:
+            if logfile:
+                logfile.write(name+" deconvolution.\n");logfile.flush()
             if names['controls']==[None]:
                 macsbed = processed['macs'][(name,)]+"_peaks.bed"
             else:
@@ -404,6 +410,8 @@ def workflow_groups( ex, job_or_dict, mapseq_files, chromosomes, script_path='',
             peak_list[name] = filter_deconv( deconv['bed'], pval=0.65 )
     if run_meme and not(genrep == None):
         from .motif import parallel_meme
+        if logfile:
+            logfile.write("Starting MEME.\n");logfile.flush()
         processed['meme'] = parallel_meme( ex, genrep, chromosomes, 
                                            peak_list.values(), name=peak_list.keys(), 
                                            meme_args=['-nmotifs','4','-revcomp'], via=via )
