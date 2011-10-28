@@ -228,7 +228,6 @@ def transcripts_expression(exons_data, trans_in_gene, exons_in_trans, ncond, met
     :param ncond: number of samples.
     :param method: "nnls" or "pinv" - respectively non-negative least-squares and pseudoinverse.
     """
-    #print "Method:", method
     genes = list(set(exons_data[1]))
     transcripts = []
     for g in genes:
@@ -239,11 +238,10 @@ def transcripts_expression(exons_data, trans_in_gene, exons_in_trans, ncond, met
     trpk = dict(zip(transcripts,z))
     exons_counts = dict(zip( exons_data[0], zip(*exons_data[2:ncond+2])) )
     exons_rpk = dict(zip( exons_data[0], zip(*exons_data[ncond+2:2*ncond+2])) )
-    totalerror = 0; unknown = 0; negterms = 0; posterms = 0
-    pinv = numpy.linalg.pinv; norm = numpy.linalg.norm; zeros = numpy.zeros;
-    dot = numpy.dot
+    totalerror = 0; unknown = 0; negterms = 0; posterms = 0; allterms = 0
+    pinv = numpy.linalg.pinv; norm = numpy.linalg.norm; zeros = numpy.zeros; dot = numpy.dot
     for g in genes:
-        if trans_in_gene.get(g): # if the gene is still in the Ensembl database
+        if trans_in_gene.get(g): # if the gene is (still) in the Ensembl database
             # Get all transcripts in the gene
             tg = trans_in_gene[g]
             # Get all exons in the gene
@@ -265,7 +263,7 @@ def transcripts_expression(exons_data, trans_in_gene, exons_in_trans, ncond, met
                         ec[c][i] += exons_counts[e][c]
                         er[c][i] += exons_rpk[e][c]
             # Compute transcript counts
-            method = "pinv"
+            method = "nnls"
             for c in range(ncond):
                 if method == "pinv":
                     #-----------------------#
@@ -275,10 +273,11 @@ def transcripts_expression(exons_data, trans_in_gene, exons_in_trans, ncond, met
                     #tc.append(x)
                     y = dot(pinv(M),er[c])
                     tr.append(y)
-                    if numpy.any([numpy.isinf(i) for i in er[c]]): print er[c], "\n\n"
-                    totalerror += norm(er[c]-dot(M,y))**2
-                    negterms += sum([i for i in y if i<0])
-                    posterms += sum([i for i in y if i>=0])
+                    if not any([numpy.isinf(i) for i in er[c]]):
+                        totalerror += norm(er[c]-dot(M,y))**2
+                        negterms += sum([i for i in y if i<0 and not numpy.isnan(i)])
+                        posterms += sum([i for i in y if i>=0 and not numpy.isnan(i)])
+                        allterms += sum([abs(i) for i in y if not numpy.isnan(i)])
                 if method == "nnls":
                     #-----------------------------------#
                     # Non-negative least squares method #
@@ -290,18 +289,19 @@ def transcripts_expression(exons_data, trans_in_gene, exons_in_trans, ncond, met
                     totalerror += resnorm
             # Store results in a dict *tcounts*/*trpk*
             for k,t in enumerate(tg):
+                nexons = len(exons_in_trans[t])
                 if tcounts.get(t) is not None:
                     for c in range(ncond):
                         #tcounts[t][c] = tc[c][k]
-                        trpk[t][c] = tr[c][k]
+                        trpk[t][c] = tr[c][k] * nexons
         else:
             unknown += 1
-    print "Evaluation of error for transcript counts:"
+    print "Evaluation of error for transcripts:"
+    print "\t Method:", method
     print "\t Unknown transcripts for %d of %d genes (%.2f %%)" \
                        % (unknown, len(genes), 100*float(unknown)/float(len(genes)) )
-    print "\t negterms:", negterms
-    print "\t posterms", posterms
-    print "\t totalerror:", totalerror
+    if method=="pinv": print "\t Negative scores:",negterms,", Positive scores:",posterms,", Total score:",allterms
+    print "\t Total error (sum of resnorms):", totalerror
     return trpk, totalerror
 
 #@timer
