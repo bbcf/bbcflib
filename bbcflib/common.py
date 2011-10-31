@@ -51,7 +51,7 @@ def cat(files):
 ###############################################################################
 def set_file_descr(filename,**kwargs):
     """Implements file naming compatible with the 'get_files' function.
-    Examples: 
+    Examples:
     >>>> set_file_descr("toto",**{'tag':'pdf','step':1,'type':'doc','comment':'ahaha'})
     'pdf:toto[step:1,type:doc] (ahaha)'
     if 'tag' and/or comment are ommitted:
@@ -71,7 +71,7 @@ def set_file_descr(filename,**kwargs):
     file_descr += "["+plst+"]"
     file_descr += comment
     return file_descr
-#    tag:filename[group:grpId,step:stepId,type:fileType,view:admin] (comment) 
+#    tag:filename[group:grpId,step:stepId,type:fileType,view:admin] (comment)
 
 #-------------------------------------------------------------------------#
 def get_files_old( id_or_key, minilims ):
@@ -251,8 +251,6 @@ def isnum(s):
     except ValueError:
         return False
 
-#-------------------------------------------------------------------------#
-
 def unique(seq, idfun=None):
     """
     Return all unique elements in *seq*, preserving order - unlike list(set(seq)),
@@ -269,6 +267,11 @@ def unique(seq, idfun=None):
         result.append(item)
     return result
 
+def rstring(len=20):
+    """Generate a random string of length *len* (usually for filenames).
+    Equivalent to bein's unique_filename_in(), without requiring the import."""
+    import string, random
+    return "".join([random.choice(string.letters+string.digits) for x in range(len)])
 
 
 ###############################################################################

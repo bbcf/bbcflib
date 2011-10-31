@@ -240,6 +240,8 @@ def transcripts_expression(exons_data, trans_in_gene, exons_in_trans, ncond, met
     totalerror = 0; unknown = 0; negterms = 0; posterms = 0; allterms = 0
     pinv = numpy.linalg.pinv; norm = numpy.linalg.norm; zeros = numpy.zeros; dot = numpy.dot
     alltranscount=0; allexonscount=0;
+    g = open("error_stats.txt","wb")
+    g.write("gene \t nbExons \t nbTrans \t totExons \t totTrans \t ratio")
     for g in genes:
         if trans_in_gene.get(g): # if the gene is (still) in the Ensembl database
             # Get all transcripts in the gene
@@ -287,6 +289,7 @@ def transcripts_expression(exons_data, trans_in_gene, exons_in_trans, ncond, met
                     y, resnorm, res = lsqnonneg(M,er[c],tol=None, itmax_factor=5)
                     tr.append(y)
                     totalerror += resnorm
+                    g.write("gene \t nbExons \t nbTrans \t totExons \t totTrans \t ratio")
             # Store results in a dict *tcounts*/*trpk*
             for k,t in enumerate(tg):
                 nexons = len(exons_in_trans[t])
@@ -296,11 +299,12 @@ def transcripts_expression(exons_data, trans_in_gene, exons_in_trans, ncond, met
                         trans_rpk[t][c] = tr[c][k] * nexons
 
             # Testing
-            alltranscount += sum([norm(trans_rpk[t],1) for t in tg ]) or 0
+            alltranscount += sum(tr) or 0
             allexonscount += sum([sum(er[c]) for c in range(ncond)]) or 0
         else:
             unknown += 1
 
+    g.close()
     print "Evaluation of error for transcripts:"
     print "\t Method:", method
     print "\t Unknown transcripts for %d of %d genes (%.2f %%)" \
