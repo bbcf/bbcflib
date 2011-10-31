@@ -240,8 +240,8 @@ def transcripts_expression(exons_data, trans_in_gene, exons_in_trans, ncond, met
     totalerror = 0; unknown = 0; negterms = 0; posterms = 0; allterms = 0
     pinv = numpy.linalg.pinv; norm = numpy.linalg.norm; zeros = numpy.zeros; dot = numpy.dot
     alltranscount=0; allexonscount=0;
-    g = open("error_stats.txt","wb")
-    g.write("gene \t nbExons \t nbTrans \t totExons \t totTrans \t ratio")
+    filE = open("../error_stats.txt","wb")
+    filE.write("gene \t nbExons \t nbTrans \t totExons \t totTrans \t ratioTransExons \n")
     for g in genes:
         if trans_in_gene.get(g): # if the gene is (still) in the Ensembl database
             # Get all transcripts in the gene
@@ -289,7 +289,7 @@ def transcripts_expression(exons_data, trans_in_gene, exons_in_trans, ncond, met
                     y, resnorm, res = lsqnonneg(M,er[c],tol=None, itmax_factor=5)
                     tr.append(y)
                     totalerror += resnorm
-                    g.write("gene \t nbExons \t nbTrans \t totExons \t totTrans \t ratio")
+
             # Store results in a dict *tcounts*/*trpk*
             for k,t in enumerate(tg):
                 nexons = len(exons_in_trans[t])
@@ -299,20 +299,27 @@ def transcripts_expression(exons_data, trans_in_gene, exons_in_trans, ncond, met
                         trans_rpk[t][c] = tr[c][k] * nexons
 
             # Testing
-            alltranscount += sum(tr) or 0
-            allexonscount += sum([sum(er[c]) for c in range(ncond)]) or 0
+            total_trans = sum([trans_rpk[t][c] for t in tg for c in range(ncond)]) or 0
+            total_exons = sum([sum(er[c]) for c in range(ncond)]) or 0
+            alltranscount += total_trans
+            allexonscount += total_exons
+            if total_exons!=0:
+                filE.write(g+"\t"+str(len(eg))+"\t"+str(len(tg))+"\t" \
+                 +str(total_exons)+"\t"+str(total_trans)+"\t"+str(total_trans/total_exons)+"\n")
+            else: filE.write(g+"\t"+str(len(eg))+"\t"+str(len(tg))+"\t" \
+                 +str(total_exons)+"\t"+str(total_trans)+"\n")
         else:
             unknown += 1
 
-    g.close()
+    filE.close()
     print "Evaluation of error for transcripts:"
     print "\t Method:", method
     print "\t Unknown transcripts for %d of %d genes (%.2f %%)" \
                        % (unknown, len(genes), 100*float(unknown)/float(len(genes)) )
     if method=="pinv":
-        print "\t Negative scores:",negterms,", Positive scores:",posterms,", Total score:",allterms
+           print "\t Negative scores:",negterms,", Positive scores:",posterms,", Total score:",allterms
     print "\t Total transcript scores:",alltranscount, \
-               ", Total exon scores:",allexonscount,", Ratio:",alltranscount/allexonscount
+           ", Total exon scores:",allexonscount,", Ratio:",alltranscount/allexonscount
     print "\t Total error (sum of resnorms):", totalerror
     return trans_rpk, trans_counts, totalerror
 
@@ -391,7 +398,7 @@ def rnaseq_workflow(ex, job, assembly, bam_files, pileup_level=["genes"], via="l
     counts = numpy.asarray([exon_pileups[cond] for cond in conditions], dtype=numpy.float_)
     for i in range(len(counts.ravel())):
         if counts.flat[i]==0: counts.flat[i] += 1.0 # if zero counts, add 1 for further comparisons
-    rpkms = counts/(ends-starts)
+    rpkms = 1000*counts/(ends-starts)
 
     print "Get counts"
     exons_data = [exonsID,genesID]+list(counts)+list(rpkms)+[starts,ends,genesName]
