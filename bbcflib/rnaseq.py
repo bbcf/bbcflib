@@ -29,7 +29,7 @@ def lsqnonneg(C, d, x0=None, tol=None, itmax_factor=3):
     ``(x,resnorm,res) = lsqnonneg(C,d)`` returns
 
     * the vector *x* that minimizes norm(d-Cx) subject to x >= 0
-    * the norm of residuals *resnorm* = norm(d-cx)^2
+    * the norm of residuals *resnorm* = norm(d-Cx)^2
     * the residuals *res* = d-Cx
 
     :param x0: Initial point for x.
@@ -106,8 +106,7 @@ def lsqnonneg(C, d, x0=None, tol=None, itmax_factor=3):
         x = z
         resid = d - numpy.dot(C, x)
         w = numpy.dot(C.T, resid)
-    return (x, sum(resid*resid), resid) # norm2
-    #return (x, sum(numpy.absolute(resid)), resid) # norm1
+    return (x, sum(resid*resid), resid)
 
 def fetch_mappings(path_or_assembly_id):
     """Given an assembly ID, returns a tuple
@@ -209,12 +208,12 @@ def genes_expression(exons_data, exon_to_gene, ncond):
     z = [numpy.zeros(ncond,dtype=numpy.float_) for g in genes]
     zz = [numpy.zeros(ncond,dtype=numpy.float_) for g in genes]
     gcounts = dict(zip(genes,z))
-    grpkms = dict(zip(genes,zz))
+    grpk = dict(zip(genes,zz))
     for e,c in zip(exons_data[0],zip(*exons_data[2:ncond+ncond+2])):
         g = exon_to_gene[e]
         gcounts[g] += c[:ncond]
-        grpkms[g] += c[ncond:]
-    return gcounts,grpkms
+        grpk[g] += c[ncond:]
+    return gcounts,grpk
 
 #@timer
 def transcripts_expression(exons_data, trans_in_gene, exons_in_trans, ncond, method="nnls"):
@@ -234,12 +233,13 @@ def transcripts_expression(exons_data, trans_in_gene, exons_in_trans, ncond, met
         transcripts.extend(trans_in_gene.get(g,[]))
     transcripts = list(set(transcripts))
     z = numpy.zeros((len(transcripts),ncond))
-    tcounts = dict(zip(transcripts,z))
-    trpk = dict(zip(transcripts,z))
+    trans_counts = dict(zip(transcripts,z))
+    trans_rpk = dict(zip(transcripts,z))
     exons_counts = dict(zip( exons_data[0], zip(*exons_data[2:ncond+2])) )
     exons_rpk = dict(zip( exons_data[0], zip(*exons_data[ncond+2:2*ncond+2])) )
     totalerror = 0; unknown = 0; negterms = 0; posterms = 0; allterms = 0
     pinv = numpy.linalg.pinv; norm = numpy.linalg.norm; zeros = numpy.zeros; dot = numpy.dot
+    alltranscount=0; allexonscount=0;
     for g in genes:
         if trans_in_gene.get(g): # if the gene is (still) in the Ensembl database
             # Get all transcripts in the gene
@@ -263,7 +263,6 @@ def transcripts_expression(exons_data, trans_in_gene, exons_in_trans, ncond, met
                         ec[c][i] += exons_counts[e][c]
                         er[c][i] += exons_rpk[e][c]
             # Compute transcript counts
-            method = "nnls"
             for c in range(ncond):
                 if method == "pinv":
                     #-----------------------#
@@ -273,6 +272,7 @@ def transcripts_expression(exons_data, trans_in_gene, exons_in_trans, ncond, met
                     #tc.append(x)
                     y = dot(pinv(M),er[c])
                     tr.append(y)
+                    # Testing
                     if not any([numpy.isinf(i) for i in er[c]]):
                         totalerror += norm(er[c]-dot(M,y))**2
                         negterms += sum([i for i in y if i<0 and not numpy.isnan(i)])
@@ -284,25 +284,33 @@ def transcripts_expression(exons_data, trans_in_gene, exons_in_trans, ncond, met
                     #-----------------------------------#
                     #x, resnorm, res = lsqnonneg(M,ec[c],itmax_factor=5)
                     #tc.append(x)
-                    y, resnorm, res = lsqnonneg(M,er[c],itmax_factor=5)
+                    y, resnorm, res = lsqnonneg(M,er[c],tol=None, itmax_factor=5)
                     tr.append(y)
                     totalerror += resnorm
             # Store results in a dict *tcounts*/*trpk*
             for k,t in enumerate(tg):
                 nexons = len(exons_in_trans[t])
-                if tcounts.get(t) is not None:
+                if trans_rpk.get(t) is not None:
                     for c in range(ncond):
                         #tcounts[t][c] = tc[c][k]
-                        trpk[t][c] = tr[c][k] * nexons
+                        trans_rpk[t][c] = tr[c][k] * nexons
+
+            # Testing
+            alltranscount += sum([norm(trans_rpk[t],1) for t in tg ]) or 0
+            allexonscount += sum([sum(er[c]) for c in range(ncond)]) or 0
         else:
             unknown += 1
+
     print "Evaluation of error for transcripts:"
     print "\t Method:", method
     print "\t Unknown transcripts for %d of %d genes (%.2f %%)" \
                        % (unknown, len(genes), 100*float(unknown)/float(len(genes)) )
-    if method=="pinv": print "\t Negative scores:",negterms,", Positive scores:",posterms,", Total score:",allterms
+    if method=="pinv":
+        print "\t Negative scores:",negterms,", Positive scores:",posterms,", Total score:",allterms
+    print "\t Total transcript scores:",alltranscount, \
+               ", Total exon scores:",allexonscount,", Ratio:",alltranscount/allexonscount
     print "\t Total error (sum of resnorms):", totalerror
-    return trpk, totalerror
+    return trans_rpk, trans_counts, totalerror
 
 #@timer
 def rnaseq_workflow(ex, job, assembly, bam_files, pileup_level=["genes"], via="lsf", output=None):
@@ -362,6 +370,8 @@ def rnaseq_workflow(ex, job, assembly, bam_files, pileup_level=["genes"], via="l
     exonsID=[]; genesID=[]; genesName=[]; starts=[]; ends=[]; exon_lengths=[]; exon_to_gene={};
     for e in exons:
         (exon, gene, start, end, strand) = e[0].split('|')
+        start = int(start); end = int(end)
+        end = end-start and end or end+1
         starts.append(start)
         ends.append(end)
         exon_lengths.append(e[1])
@@ -398,8 +408,8 @@ def rnaseq_workflow(ex, job, assembly, bam_files, pileup_level=["genes"], via="l
     """ Get counts for the transcripts from exons, using pseudo-inverse """
     if "transcripts" in pileup_level:
         header = ["TranscriptID","GeneID"] + conditions #*2 + ["Start","End","GeneName"]
-        (trpk, error) = transcripts_expression(exons_data,
-                                 trans_in_gene,exons_in_trans,len(conditions))
+        (trpk, tcounts, error) = transcripts_expression(exons_data,
+                                 trans_in_gene,exons_in_trans,len(conditions),method="nnls")
         tnames = trpk.keys()
         gnames = [transcript_mapping[t] for t in tnames]
         (gnames, tnames) = zip(*sorted(zip(gnames,tnames))) # sort w.r.t. gene names
