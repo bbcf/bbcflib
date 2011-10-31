@@ -8,6 +8,7 @@ Utility functions common to several pipelines.
 
 # Built-in modules #
 import os, sys, time, json, csv
+from bein import *
 
 ###############################################################################
 def normalize_url(url):
@@ -34,7 +35,7 @@ def cat(files):
     """Concatenates files.
     """
     if len(files) > 1:
-        out = rstring()
+        out = unique_filename_in()
         with open(out,"w") as f1:
             for inf in files:
                 with open(inf,"r") as f2:
@@ -149,7 +150,7 @@ def merge_sql( ex, sqls, names, description="merged.sql", outdir=None, via='lsf'
     """
     import os
     if outdir == None:
-        outdir = rstring()
+        outdir = unique_filename_in()
     if not(os.path.exists(outdir)):
         os.mkdir(outdir)
     if not(isinstance(names,list)):
@@ -174,7 +175,7 @@ def merge_many_bed(ex,files,via='lsf'):
     """
     out = files[0]
     for f in files[1:]:
-        next = rstring()
+        next = unique_filename_in()
         _ = merge_two_bed.nonblocking( ex, out, f, via=via, stdout=next ).wait()
         out = next
     return out
@@ -190,26 +191,6 @@ def timer(function):
         return result
     return wrapper
 
-#-------------------------------------------------------------------------#
-def results_to_json(lims, exid):
-    """Create a JSON string describing the results of execution *exid*.
-
-    The execution is sought in *lims*, and all its output files and
-    their descriptions are written to the string.
-    """
-    produced_file_ids = lims.search_files(source=('execution',exid))
-    d = dict([(lims.fetch_file(i)['description'], lims.path_to_file(i))
-              for i in produced_file_ids])
-    j = json.dumps(d)
-    return j
-
-#-------------------------------------------------------------------------#
-def rstring(len=20):
-    """Generate a random string of length *len* (usually for filenames).
-    Equivalent to bein's unique_filename_in(), without requiring the import.
-    """
-    import string, random
-    return "".join([random.choice(string.letters+string.digits) for x in range(len)])
 
 #-------------------------------------------------------------------------#
 
@@ -295,82 +276,37 @@ def unique(seq, idfun=None):
 ##################### BIG TRY STATEMENT STARTING... ###########################
 ###############################################################################
 ###############################################################################
-try:
-    from bein import program
     #-------------------------------------------------------------------------#
-    @program
-    def join_pdf(files):
-        """Uses 'ghostscript' to join several pdf files into one.
-        """
-        out = rstring()
-        gs_args = ['gs','-dBATCH','-dNOPAUSE','-q','-sDEVICE=pdfwrite',
-                   '-sOutputFile=%s'%out]
-        gs_args += files
-        return {"arguments": gs_args, "return_value": out}
+@program
+def join_pdf(files):
+    """Uses 'ghostscript' to join several pdf files into one.
+    """
+    out = unique_filename_in()
+    gs_args = ['gs','-dBATCH','-dNOPAUSE','-q','-sDEVICE=pdfwrite',
+               '-sOutputFile=%s'%out]
+    gs_args += files
+    return {"arguments": gs_args, "return_value": out}
 
     #-------------------------------------------------------------------------#
-    @program
-    def compress(path, compression_type="lxzma"):
-        """
-        compression type allowed:
-        - gunzip, gz
-        - bzip2, bz
-        - lxzma, xz
-        """
-        archive = rstring()
-        call    = None
-        if compression_type == "lxzma" or compression_type == "xz":
-            call = ["tar", "cJf", archive, path]
-        elif compression_type == "bzip2" or compression_type == "bz2":
-            call = ["tar", "cjf", archive, path]
-        elif compression_type == "gunzip" or compression_type == "gz":
-            call = ["tar", "czf", archive, path]
-        else:
-            raise ValueError("Compression type: %s not yet supported!" %(compression_type))
-        return {"arguments": call, "return_value": archive}
+@program
+def merge_two_bed(file1,file2):
+    """Binds ``intersectBed`` from the 'BedTools' suite.
+    """
+    return {"arguments": ['intersectBed','-a',file1,'-b',file2], "return_value": None}
 
     #-------------------------------------------------------------------------#
-    @program
-    def uncompress(path):
-        """
-        uncompress tar archive
-        """
-        output = rstring()
-        call = ["tar", "xvf", path]
-        return {"arguments": call, "return_value": output}
-
-    #-------------------------------------------------------------------------#
-    @program
-    def scp(source, destination, args = None):
-        if args is None:
-            args = []
-        output = rstring()
-        call = ["scp"] + args + [ source, destination ]
-        return {"arguments": call, "return_value": output}
-
-    #-------------------------------------------------------------------------#
-    @program
-    def merge_two_bed(file1,file2):
-        """Binds ``intersectBed`` from the 'BedTools' suite.
-        """
-        return {"arguments": ['intersectBed','-a',file1,'-b',file2], "return_value": None}
-
-    #-------------------------------------------------------------------------#
-    @program
-    def run_gMiner( job ):
-        import pickle
-        job_file = rstring()
-        with open(job_file,'w') as f:
-            pickle.dump(job,f)
-        def get_output_files(p):
-            with open(job_file,'r') as f:
-                job = pickle.load(f)
-            return job['job_output']
-        return {"arguments": ["run_gminer.py",job_file],
-                "return_value": get_output_files}
-
-except:
-    print >>sys.stderr, "Bein not found.  Skipping some common functions."
+@program
+def run_gMiner( job ):
+    import pickle
+    job_file = unique_filename_in()
+    with open(job_file,'w') as f:
+        pickle.dump(job,f)
+    def get_output_files(p):
+        with open(job_file,'r') as f:
+            job = pickle.load(f)
+        return job['job_output']
+    return {"arguments": ["run_gminer.py",job_file],
+            "return_value": get_output_files}
 
 #-----------------------------------#
 # This code was written by the BBCF #
