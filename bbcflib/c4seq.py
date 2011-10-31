@@ -116,6 +116,16 @@ def loadPrimers(primersFile):
 	return primers
 
 
+@program
+def profileCorrection(inputFile,baitCoord,outputFile,reportFile,script_path='./'):
+	return{'arguments': ["R","--vanilla","--no-restore","--slave","-f",script_path+"profileCorrection.R","--args",inputFile,baitCoord,outputFile,reportFile],
+                'return_value':None}
+
+@program
+def smoothFragFile(inputFile,nFragsPerWin,curName,outputFile,regToExclude='',script_path='./'):
+	return{'arguments': ["R","--vanilla","--no-restore","--slave","-f",script_path+"smoothData.R","--args",inputFile,nFragsPerWin,curName,outputFile,regToExclude],
+        	'return_value':None}
+
 # *** main function to compute normalised counts per fragments from a density file
 # ex: resfiles=density_to_countsPerFrag(ex,mapped_files[gid][rid]['wig']['merged'],mapped_files[gid][rid]['libname'],assembly.name,reffile,regToExclude,working_dir, script_path, 'lsf')
 def density_to_countsPerFrag(ex,density_file,density_name,assembly_name,reffile,regToExclude,wd,script_path, via='lsf'):
