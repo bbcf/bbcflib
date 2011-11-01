@@ -46,7 +46,7 @@ from .common import merge_sql, merge_many_bed, join_pdf, cat, set_file_descr
 
 # Other modules #
 from bein import *
-from bein.util import *
+from bein.util import touch
 
 ################################################################################
 # Peaks and annotation #
@@ -387,10 +387,10 @@ def workflow_groups( ex, job_or_dict, mapseq_files, chromosomes, script_path='',
                 else:
                     wig.append(m['wig'])
             if len(wig) > 1:
-                description = set_file_descr(group_name+"_"+s+".sql",type='sql',group=group_name,step='deconvolution')
                 merged_wig[group_name] = dict((s,merge_sql(ex, [x[s] for x in wig],
-                                                           [m['libname'] for m in mapped.values()] ,
-                                                           description=description,via='local'))
+                                                           [m['libname'] for m in mapped.values()],
+                                                           description=set_file_descr(group_name+"_"+s+".sql",type='sql',group=group_name,step='deconvolution'),
+                                                           via='local'))
                                               for s in suffixes)
             else:
                 merged_wig[group_name] = wig[0]
