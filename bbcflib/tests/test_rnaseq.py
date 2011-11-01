@@ -1,7 +1,6 @@
 # coding: utf-8
 
 # Built-in modules #
-import datetime, ConfigParser, cStringIO
 
 # Internal modules #
 from bbcflib.rnaseq import *
@@ -10,11 +9,10 @@ from bein import execution
 # Unitesting modules #
 try: import unittest2 as unittest
 except ImportError: import unittest
-from numpy.testing import assert_almost_equal, assert_equal
+from numpy.testing import assert_almost_equal
 
 # Other modules #
 from numpy import array
-import tempfile
 
 # Nosetest flag #
 __test__ = True
