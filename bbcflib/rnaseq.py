@@ -16,12 +16,18 @@ import os, sys, cPickle, json, pysam, urllib, math, time, csv
 
 # Internal modules #
 from bbcflib.genrep import GenRep
-from bbcflib.common import timer, rstring, writecols, set_file_descr
+from bbcflib.common import timer, writecols, set_file_descr
 
 # Other modules #
 import numpy
 
 ################################################################################
+
+def rstring(len=20):
+    """Generate a random string of length *len* (usually for filenames).
+    Equivalent to bein's unique_filename_in(), without requiring the import."""
+    import string, random
+    return "".join([random.choice(string.letters+string.digits) for x in range(len)])
 
 def lsqnonneg(C, d, x0=None, tol=None, itmax_factor=3):
     """Linear least squares with nonnegativity constraints (NNLS), based on MATLAB's lsqnonneg function.

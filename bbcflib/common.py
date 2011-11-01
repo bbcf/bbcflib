@@ -267,12 +267,6 @@ def unique(seq, idfun=None):
         result.append(item)
     return result
 
-def rstring(len=20):
-    """Generate a random string of length *len* (usually for filenames).
-    Equivalent to bein's unique_filename_in(), without requiring the import."""
-    import string, random
-    return "".join([random.choice(string.letters+string.digits) for x in range(len)])
-
 
 ###############################################################################
 ###############################################################################
