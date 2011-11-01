@@ -29,8 +29,8 @@ class Test_Expressions(unittest.TestCase):
         self.M = numpy.matrix('1 1; 0 1')
         self.ncond = 2
         self.counts = numpy.array([[27,12],[3,3]]) # [[cond1],[cond2]]
-        self.rpkms = numpy.array([[27/9.,12/3.],[3/9.,3/3.]])
-        self.exons_data = [[e1,e2],[g1,g1]]+list(self.counts)+list(self.rpkms)+[[0,0+9],[9,9+3],["g1","g1"]]
+        self.rpkms = numpy.array([[27/3.,12/6.],[3/3.,3/6.]])
+        self.exons_data = [[e1,e2],[g1,g1]]+list(self.counts)+list(self.rpkms)+[[0.,3.],[3.,9.],["g1","g1"]]
         self.exon_to_gene = {e1:g1, e2:g1}
         self.trans_in_gene = {g1:[t1,t2]}
         self.exons_in_trans = {t1:[e1], t2:[e1,e2]}
@@ -44,10 +44,16 @@ class Test_Expressions(unittest.TestCase):
         |.e1.| |.e2.| |.e1.| |.e2.|
         """
     def test_transcripts_expression(self):
-        tcounts, err = transcripts_expression(self.exons_data, self.trans_in_gene,
-                                      self.exons_in_trans, self.ncond)
-        assert_almost_equal(tcounts["t1"], array([15., 0.]))
-        assert_almost_equal(tcounts["t2"], array([12., 3.]))
+        # Pseudo-inverse
+        trpk, tcounts, err = transcripts_expression(self.exons_data, self.trans_in_gene,
+                                      self.exons_in_trans, self.ncond, method="pinv")
+        assert_almost_equal(trpk["t1"], array([7., 0.5]))
+        assert_almost_equal(trpk["t2"], array([4., 1.]))
+        # NNLS
+        trpk, tcounts, err = transcripts_expression(self.exons_data, self.trans_in_gene,
+                                      self.exons_in_trans, self.ncond, method="nnls")
+        assert_almost_equal(trpk["t1"], array([7., 0.5]))
+        assert_almost_equal(trpk["t2"], array([4., 1.]))
 
     def test_genes_expression(self):
         gcounts, grpkms = genes_expression(self.exons_data, self.exon_to_gene, self.ncond)

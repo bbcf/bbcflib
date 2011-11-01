@@ -233,8 +233,9 @@ def transcripts_expression(exons_data, trans_in_gene, exons_in_trans, ncond, met
         transcripts.extend(trans_in_gene.get(g,[]))
     transcripts = list(set(transcripts))
     z = numpy.zeros((len(transcripts),ncond))
+    zz = numpy.zeros((len(transcripts),ncond))
     trans_counts = dict(zip(transcripts,z))
-    trans_rpk = dict(zip(transcripts,z))
+    trans_rpk = dict(zip(transcripts,zz))
     exons_counts = dict(zip( exons_data[0], zip(*exons_data[2:ncond+2])) )
     exons_rpk = dict(zip( exons_data[0], zip(*exons_data[ncond+2:2*ncond+2])) )
     totalerror = 0; unknown = 0; negterms = 0; posterms = 0; allterms = 0
@@ -273,14 +274,15 @@ def transcripts_expression(exons_data, trans_in_gene, exons_in_trans, ncond, met
                     #x = dot(pinv(M),ec[c])
                     #tc.append(x)
                     y = dot(pinv(M),er[c])
-                    resnorm = norm(er[c]-dot(M,y))**2
                     tr.append(y)
                     # Testing
                     if not any([numpy.isinf(i) for i in er[c]]):
+                        resnorm = norm(er[c]-dot(M,y))**2
                         totalerror += resnorm
                         negterms += sum([i for i in y if i<0 and not numpy.isnan(i)])
                         posterms += sum([i for i in y if i>=0 and not numpy.isnan(i)])
                         allterms += sum([abs(i) for i in y if not numpy.isnan(i)])
+                    print "y",y
                 if method == "nnls":
                     #-----------------------------------#
                     # Non-negative least squares method #
