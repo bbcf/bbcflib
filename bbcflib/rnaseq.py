@@ -240,8 +240,8 @@ def transcripts_expression(exons_data, trans_in_gene, exons_in_trans, ncond, met
     totalerror = 0; unknown = 0; negterms = 0; posterms = 0; allterms = 0
     pinv = numpy.linalg.pinv; norm = numpy.linalg.norm; zeros = numpy.zeros; dot = numpy.dot
     alltranscount=0; allexonscount=0;
-    filE = open("../error_stats.txt","wb")
-    filE.write("gene \t nbExons \t nbTrans \t totExons \t totTrans \t ratioTransExons \n")
+    filE = open("../error_stats.table","wb")
+    filE.write("gene \t nbExons \t nbTrans \t ratioNbExonsNbTrans \t totExons \t totTrans \t ratioExonsTrans \t lsqError \n")
     for g in genes:
         if trans_in_gene.get(g): # if the gene is (still) in the Ensembl database
             # Get all transcripts in the gene
@@ -273,10 +273,11 @@ def transcripts_expression(exons_data, trans_in_gene, exons_in_trans, ncond, met
                     #x = dot(pinv(M),ec[c])
                     #tc.append(x)
                     y = dot(pinv(M),er[c])
+                    resnorm = norm(er[c]-dot(M,y))**2
                     tr.append(y)
                     # Testing
                     if not any([numpy.isinf(i) for i in er[c]]):
-                        totalerror += norm(er[c]-dot(M,y))**2
+                        totalerror += resnorm
                         negterms += sum([i for i in y if i<0 and not numpy.isnan(i)])
                         posterms += sum([i for i in y if i>=0 and not numpy.isnan(i)])
                         allterms += sum([abs(i) for i in y if not numpy.isnan(i)])
@@ -303,11 +304,10 @@ def transcripts_expression(exons_data, trans_in_gene, exons_in_trans, ncond, met
             total_exons = sum([sum(er[c]) for c in range(ncond)]) or 0
             alltranscount += total_trans
             allexonscount += total_exons
-            if total_exons!=0:
-                filE.write(g+"\t"+str(len(eg))+"\t"+str(len(tg))+"\t" \
-                 +str(total_exons)+"\t"+str(total_trans)+"\t"+str(total_trans/total_exons)+"\n")
-            else: filE.write(g+"\t"+str(len(eg))+"\t"+str(len(tg))+"\t" \
-                 +str(total_exons)+"\t"+str(total_trans)+"\n")
+            try:
+                filE.write("%s \t %d \t %d \t %.1f \t %.1f \t %.1f \t %.1f \t %.1f \n" \
+                    % (g,len(eg),len(tg),1.*len(eg)/len(tg),total_exons,total_trans,total_exons/total_trans,resnorm))
+            except ZeroDivisionError: pass
         else:
             unknown += 1
 
@@ -315,7 +315,7 @@ def transcripts_expression(exons_data, trans_in_gene, exons_in_trans, ncond, met
     print "Evaluation of error for transcripts:"
     print "\t Method:", method
     print "\t Unknown transcripts for %d of %d genes (%.2f %%)" \
-                       % (unknown, len(genes), 100*float(unknown)/float(len(genes)) )
+           % (unknown, len(genes), 100*float(unknown)/float(len(genes)) )
     if method=="pinv":
            print "\t Negative scores:",negterms,", Positive scores:",posterms,", Total score:",allterms
     print "\t Total transcript scores:",alltranscount, \
