@@ -7,7 +7,7 @@ Module: bbcflib.demultiplex
 from bein import *
 from bein.util import *
 from common import set_file_descr 
-from mapseq import bowtie_build, bowtie
+from mapseq import bowtie_build, bowtie, add_bowtie_index
 import sys, getopt, os
 
 # call 

@@ -86,7 +86,7 @@ import pysam
 from numpy      import  cumsum, exp, array
 from scipy.misc import  factorial
 from bein       import  *
-from bein.util  import  *
+from bein.util  import  add_pickle, touch, split_file, count_lines
 
 ###############
 # BAM/SAM files
