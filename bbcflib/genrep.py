@@ -90,7 +90,7 @@ class GenRep(object):
         else:
             self.url = normalize_url(url)
             self.root = os.path.abspath(root)
-        self.intype = intype
+        self.intype = int(intype)
 
     def is_up(self):
         """ Check if genrep webservice is available """
