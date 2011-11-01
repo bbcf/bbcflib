@@ -312,7 +312,7 @@ def workflow_groups( ex, job_or_dict, mapseq_files, chromosomes, script_path='',
         for k in futures.keys():
             mapped[k]['stats'] = f.wait()
         if len(mapped)>1:
-            bamfile = merge_bam(ex, [m['bam'] for m in mapped.values()])
+            bamfile = mapseq.merge_bam(ex, [m['bam'] for m in mapped.values()])
         else:
             bamfile = mapped.values()[0]['bam']
         if groups[gid]['control']:

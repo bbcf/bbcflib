@@ -251,6 +251,8 @@ def isnum(s):
     except ValueError:
         return False
 
+#-------------------------------------------------------------------------#
+
 def unique(seq, idfun=None):
     """
     Return all unique elements in *seq*, preserving order - unlike list(set(seq)),
@@ -267,18 +269,18 @@ def unique(seq, idfun=None):
         result.append(item)
     return result
 
-def rstring(len=20):
-    """Generate a random string of length *len* (usually for filenames).
-    Equivalent to bein's unique_filename_in(), without requiring the import."""
-    import string, random
-    return "".join([random.choice(string.letters+string.digits) for x in range(len)])
+    #-------------------------------------------------------------------------#
+@program
+def gzipfile(files,args=None):
+    """Runs gzip on files."""
+    if not(isinstance(files,list)):
+        files=[files]
+    gzcall = ['gzip']
+    if args:
+        gzcall += args
+    gzcall += files
+    return {"arguments": gzcall, "return_value": None}
 
-
-###############################################################################
-###############################################################################
-##################### BIG TRY STATEMENT STARTING... ###########################
-###############################################################################
-###############################################################################
     #-------------------------------------------------------------------------#
 @program
 def join_pdf(files):
@@ -308,8 +310,7 @@ def run_gMiner( job ):
         with open(job_file,'r') as f:
             job = pickle.load(f)
         return job['job_output']
-    return {"arguments": ["run_gminer.py",job_file],
-            "return_value": get_output_files}
+    return {"arguments": ["run_gminer.py",job_file],"return_value": get_output_files}
 
 #-----------------------------------#
 # This code was written by the BBCF #
