@@ -41,6 +41,7 @@ class Test_Expressions(unittest.TestCase):
           27     12     3      3
         |.e1.| |.e2.| |.e1.| |.e2.|
         """
+
     def test_transcripts_expression(self):
         # Pseudo-inverse
         trpk, tcounts, err = transcripts_expression(self.exons_data, self.trans_in_gene,
@@ -66,20 +67,10 @@ class Test_Expressions(unittest.TestCase):
         assert_almost_equal(size_factors, array([2.5, 0.41666]), decimal=3)
         assert_almost_equal(res, array([[10.8, 4.8],[7.2, 7.2]]))
 
-    @unittest.skip("Modified.")
     def test_save_results(self):
         with execution(None) as ex:
-            save_results(ex,self.dexons,conditions=["c"])
-
-
-class Test_Translation(unittest.TestCase):
-    @unittest.skip("Not in use at the moment.")
-    def test_translate_gene_ids(self):
-        gene_id = "ENSG00000111640"
-        fc_ids = {gene_id:1}
-        gene_names = {"ENSG00000111640":"Gapdh"}
-        gene_name = translate_gene_ids(fc_ids,gene_names)
-        self.assertEqual(gene_name,{"Gapdh":1})
+            save_results(ex,cols=[[1,2,3],('a','b','c','d')],conditions=["num","char"],
+                         header=["num","char"], desc="test")
 
 
 class Test_NNLS(unittest.TestCase):

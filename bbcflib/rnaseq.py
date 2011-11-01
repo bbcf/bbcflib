@@ -288,7 +288,6 @@ def transcripts_expression(exons_data, trans_in_gene, exons_in_trans, ncond, met
                         negterms += sum([i for i in y if i<0 and not numpy.isnan(i)])
                         posterms += sum([i for i in y if i>=0 and not numpy.isnan(i)])
                         allterms += sum([abs(i) for i in y if not numpy.isnan(i)])
-                    print "y",y
                 if method == "nnls":
                     #-----------------------------------#
                     # Non-negative least squares method #
