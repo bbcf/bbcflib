@@ -420,7 +420,7 @@ def rnaseq_workflow(ex, job, assembly, bam_files, pileup_level=["genes"], via="l
     rpkm = 1000*(1e6*counts.T/total_count).T/(ends-starts)
 
     print "Get counts"
-    genesName = [gene_names.get(gene,gene) for g in genesID]
+    genesName = [gene_names.get(g,g) for g in genesID]
     exons_data = [exonsID,genesID]+list(counts)+list(rpkm)+[starts,ends,genesName]
 
     """ Print counts for exons """
@@ -430,9 +430,10 @@ def rnaseq_workflow(ex, job, assembly, bam_files, pileup_level=["genes"], via="l
 
     """ Get counts for genes from exons """
     if "genes" in pileup_level:
-        header = ["GeneID"] + conditions*2 #+ ["Start","End","GeneName"]
+        header = ["GeneID"] + conditions*2 + ["GeneName"]#+ ["Start","End","GeneName"]
         (gcounts, grpkms) = genes_expression(exons_data, exon_to_gene, len(conditions))
         genesID = gcounts.keys()
+        genesName = [gene_names.get(g,g) for g in genesID]
         genes_data = [genesID]+list(zip(*gcounts.values()))+list(zip(*grpkms.values()))
         save_results(ex, genes_data, conditions, header=header, desc="GENES")
 
@@ -443,7 +444,7 @@ def rnaseq_workflow(ex, job, assembly, bam_files, pileup_level=["genes"], via="l
                                  trans_in_gene,exons_in_trans,len(conditions),method="pinv")
         transID = trpk.keys()
         genesID = [transcript_mapping[t] for t in transID]
-        genesName = [gene_names.get(gene,gene) for g in genesID]
-        (genesID, tnames) = zip(*sorted(zip(genesID,transID))) # sort w.r.t. gene names
+        genesName = [gene_names.get(g,g) for g in genesID]
+        (genesID, transID, genesName) = zip(*sorted(zip(genesID,transID,genesName))) # sort w.r.t. gene IDs
         trans_data = [transID,genesID]+list(zip(*trpk.values()))+[genesName]
         save_results(ex, trans_data, conditions, header=header, desc="TRANSCRIPTS")
