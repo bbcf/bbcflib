@@ -9,8 +9,10 @@ Functions used for the creation of a library in a 4c-seq analysis.
 from bein import *
 from bein.util import *
 from bbcflib import genrep,frontend,common
+from bbcflib.track import Track, new
 import sys, getopt, os, json, re
 import tarfile
+
 
 def load_libraryParamsFile(paramsfile):
 	'''
