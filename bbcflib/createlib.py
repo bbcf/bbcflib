@@ -8,8 +8,8 @@ Functions used for the creation of a library in a 4c-seq analysis.
 
 from bein import *
 from bein.util import *
-from bbcflib import genrep,frontend,common
 from bbcflib.track import Track, new
+from bbcflib import genrep,frontend,common
 import sys, getopt, os, json, re
 import tarfile
 
