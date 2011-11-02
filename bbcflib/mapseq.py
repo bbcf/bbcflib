@@ -106,18 +106,17 @@ def sam_to_bam(sam_filename):
             "return_value": bam_filename}
 
 @program
-def bam_to_sam(bam_filename, no_header=None):
+def bam_to_sam(bam_filename, no_header=False):
     """Convert *bam_filename* to a SAM file.
     
     Equivalent: ``samtools view [-h] bam_filename ...``
     """
     sam_filename = unique_filename_in()
-    if no_header==None:
-        return {'arguments': ['samtools','view','-h','-o',sam_filename,bam_filename],
-                'return_value': sam_filename}
-    elif no_header==True :
-         return {'arguments': ['samtools','view','-o',sam_filename,bam_filename],
-                'return_value': sam_filename}
+    call = ['samtools','view']
+    if no_header: call += '-h'
+    call += ['-o',sam_filename,bam_filename]
+    return {'arguments': call, 'return_value': sam_filename}
+
 @program
 def replace_bam_header(header, bamfile):
     """Replace the header of *bamfile* with that in *header*
@@ -210,6 +209,13 @@ def merge_bam(files):
 
 try:
     import pysam
+
+    @program
+    def external_add_nh_flag(samfile):
+        outfile = unique_filename_in()
+        return {'arguments': ['add_nh_flag',samfile,outfile],'return_value': outfile}
+
+
     def add_nh_flag(samfile, out=None):
         """Adds NH (Number of Hits) flag to each read alignment in *samfile*.
         
@@ -658,6 +664,7 @@ def get_fastq_files( job, fastq_root, dafl=None, set_seed_length=True ):
                 job.groups[gid]['run_names'][rid] = "_".join(['',run['machine'],str(run['run']),
                                                               str(run['lane'])])
             elif isinstance(run,str):
+                run = re.search(r'^\s*([^;\s]+)',run).groups()[0]
                 fq_file = unique_filename_in(fastq_root)
                 target = os.path.join(fastq_root,fq_file)
                 runsplit = run.split(',')
@@ -1144,7 +1151,7 @@ def get_bam_wig_files( ex, job, minilims=None, hts_url=None, suffix=['fwd','rev'
             group_name = str(gid)
         job.groups[gid]['name'] = group_name
         for rid,run in group['runs'].iteritems():
-            file_loc = str(run['url'])
+            file_loc = re.search(r'^\s*([^;\s]+)',str(run['url'])).groups()[0]
             bamfile = unique_filename_in()
             wig = {}
             name = group_name
