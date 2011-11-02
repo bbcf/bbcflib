@@ -1,7 +1,6 @@
 # coding: utf-8
 
 # Built-in modules #
-import datetime, ConfigParser, cStringIO
 
 # Internal modules #
 from bbcflib.rnaseq import *
@@ -10,11 +9,10 @@ from bein import execution
 # Unitesting modules #
 try: import unittest2 as unittest
 except ImportError: import unittest
-from numpy.testing import assert_almost_equal, assert_equal
+from numpy.testing import assert_almost_equal
 
 # Other modules #
 from numpy import array
-import tempfile
 
 # Nosetest flag #
 __test__ = True
@@ -29,8 +27,8 @@ class Test_Expressions(unittest.TestCase):
         self.M = numpy.matrix('1 1; 0 1')
         self.ncond = 2
         self.counts = numpy.array([[27,12],[3,3]]) # [[cond1],[cond2]]
-        self.rpkms = numpy.array([[27/9.,12/3.],[3/9.,3/3.]])
-        self.exons_data = [[e1,e2],[g1,g1]]+list(self.counts)+list(self.rpkms)+[[0,0+9],[9,9+3],["g1","g1"]]
+        self.rpkms = numpy.array([[27/3.,12/6.],[3/3.,3/6.]])
+        self.exons_data = [[e1,e2],[g1,g1]]+list(self.counts)+list(self.rpkms)+[[0.,3.],[3.,9.],["g1","g1"]]
         self.exon_to_gene = {e1:g1, e2:g1}
         self.trans_in_gene = {g1:[t1,t2]}
         self.exons_in_trans = {t1:[e1], t2:[e1,e2]}
@@ -43,11 +41,18 @@ class Test_Expressions(unittest.TestCase):
           27     12     3      3
         |.e1.| |.e2.| |.e1.| |.e2.|
         """
+
     def test_transcripts_expression(self):
-        tcounts, err = transcripts_expression(self.exons_data, self.trans_in_gene,
-                                      self.exons_in_trans, self.ncond)
-        assert_almost_equal(tcounts["t1"], array([15., 0.]))
-        assert_almost_equal(tcounts["t2"], array([12., 3.]))
+        # Pseudo-inverse
+        trpk, tcounts, err = transcripts_expression(self.exons_data, self.trans_in_gene,
+                                      self.exons_in_trans, self.ncond, method="pinv")
+        assert_almost_equal(trpk["t1"], array([7., 0.5]))
+        assert_almost_equal(trpk["t2"], array([4., 1.]))
+        # NNLS
+        trpk, tcounts, err = transcripts_expression(self.exons_data, self.trans_in_gene,
+                                      self.exons_in_trans, self.ncond, method="nnls")
+        assert_almost_equal(trpk["t1"], array([7., 0.5]))
+        assert_almost_equal(trpk["t2"], array([4., 1.]))
 
     def test_genes_expression(self):
         gcounts, grpkms = genes_expression(self.exons_data, self.exon_to_gene, self.ncond)
@@ -62,20 +67,10 @@ class Test_Expressions(unittest.TestCase):
         assert_almost_equal(size_factors, array([2.5, 0.41666]), decimal=3)
         assert_almost_equal(res, array([[10.8, 4.8],[7.2, 7.2]]))
 
-    @unittest.skip("Modified.")
     def test_save_results(self):
         with execution(None) as ex:
-            save_results(ex,self.dexons,conditions=["c"])
-
-
-class Test_Translation(unittest.TestCase):
-    @unittest.skip("Not in use at the moment.")
-    def test_translate_gene_ids(self):
-        gene_id = "ENSG00000111640"
-        fc_ids = {gene_id:1}
-        gene_names = {"ENSG00000111640":"Gapdh"}
-        gene_name = translate_gene_ids(fc_ids,gene_names)
-        self.assertEqual(gene_name,{"Gapdh":1})
+            save_results(ex,cols=[[1,2,3],('a','b','c','d')],conditions=["num","char"],
+                         header=["num","char"], desc="test")
 
 
 class Test_NNLS(unittest.TestCase):

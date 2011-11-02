@@ -16,12 +16,18 @@ import os, sys, cPickle, json, pysam, urllib, math, time, csv
 
 # Internal modules #
 from bbcflib.genrep import GenRep
-from bbcflib.common import timer, rstring, writecols, set_file_descr
+from bbcflib.common import timer, writecols, set_file_descr
 
 # Other modules #
 import numpy
 
 ################################################################################
+
+def rstring(len=20):
+    """Generate a random string of length *len* (usually for filenames).
+    Equivalent to bein's unique_filename_in(), without requiring the import."""
+    import string, random
+    return "".join([random.choice(string.letters+string.digits) for x in range(len)])
 
 def lsqnonneg(C, d, x0=None, tol=None, itmax_factor=3):
     """Linear least squares with nonnegativity constraints (NNLS), based on MATLAB's lsqnonneg function.
@@ -233,8 +239,9 @@ def transcripts_expression(exons_data, trans_in_gene, exons_in_trans, ncond, met
         transcripts.extend(trans_in_gene.get(g,[]))
     transcripts = list(set(transcripts))
     z = numpy.zeros((len(transcripts),ncond))
+    zz = numpy.zeros((len(transcripts),ncond))
     trans_counts = dict(zip(transcripts,z))
-    trans_rpk = dict(zip(transcripts,z))
+    trans_rpk = dict(zip(transcripts,zz))
     exons_counts = dict(zip( exons_data[0], zip(*exons_data[2:ncond+2])) )
     exons_rpk = dict(zip( exons_data[0], zip(*exons_data[ncond+2:2*ncond+2])) )
     totalerror = 0; unknown = 0; negterms = 0; posterms = 0; allterms = 0
@@ -273,10 +280,10 @@ def transcripts_expression(exons_data, trans_in_gene, exons_in_trans, ncond, met
                     #x = dot(pinv(M),ec[c])
                     #tc.append(x)
                     y = dot(pinv(M),er[c])
-                    resnorm = norm(er[c]-dot(M,y))**2
                     tr.append(y)
                     # Testing
                     if not any([numpy.isinf(i) for i in er[c]]):
+                        resnorm = norm(er[c]-dot(M,y))**2
                         totalerror += resnorm
                         negterms += sum([i for i in y if i<0 and not numpy.isnan(i)])
                         posterms += sum([i for i in y if i>=0 and not numpy.isnan(i)])
