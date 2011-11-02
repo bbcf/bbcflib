@@ -47,7 +47,7 @@ random name in the current working irectory.
 """
 
 # Built-in modules #
-import os, re, tarfile, gzip, urllib2
+import os, re, tarfile, gzip, urllib2, StringIO
 from urlparse import urlparse
 
 # Other modules #
@@ -242,7 +242,7 @@ class DAFLIMS(object):
                         input_file = tar.extractfile(tar_filename)
                     else:
                         tar = None
-                        input_file = gzip.GzipFile(fileobj=url.read())
+                        input_file = gzip.GzipFile(fileobj=StringIO.StringIO(url.read()))
                     while True:
                         chunk = input_file.read(4096)
                         if chunk == '':

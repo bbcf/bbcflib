@@ -549,7 +549,7 @@ def map_reads( ex, fastq_file, chromosomes, bowtie_index,
     else:
         linecnt = count_lines( ex, fastq_file )
     if linecnt>10000000:
-        bam = parallel_bowtie( ex, bowtie_index, fastq_file, unmapped=unampped,
+        bam = parallel_bowtie( ex, bowtie_index, fastq_file, unmapped=unmapped,
                                n_lines=8000000, bowtie_args=bwtarg,
                                add_nh_flags=True, via=via )
     else:
