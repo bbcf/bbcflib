@@ -24,6 +24,8 @@ def meme( fasta, outdir, maxsize=10000000, args=None ):
     """
     if args is None:
         args = []
+    if not("minw" in args): args += ["-minw","6"]
+    if not("maxw" in args): args += ["-maxw","16"]
     call = ["meme", fasta, "-o", outdir, "-dna", "-maxsize", str(maxsize)]+args
     return {"arguments": call, "return_value": None}
 
