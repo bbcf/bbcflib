@@ -366,10 +366,10 @@ def parallel_bowtie(ex, index, reads, unmapped=None, n_lines=1000000, bowtie_arg
         futures = [sam_to_bam.nonblocking(ex, sf, via=via) for sf in samfiles]
     if unmapped:
         if isinstance(reads,tuple):
-            cat([unmapped+"_"+str(n)+"_1" for n in range(len(sf))],unmapped+"_1")
-            cat([unmapped+"_"+str(n)+"_2" for n in range(len(sf))],unmapped+"_2")
+            cat([unmapped+"_"+str(n)+"_1" for n in range(len(subfiles))],unmapped+"_1")
+            cat([unmapped+"_"+str(n)+"_2" for n in range(len(subfiles))],unmapped+"_2")
         else:
-            cat([unmapped+"_"+str(n) for n in range(len(sf))],unmapped)
+            cat([unmapped+"_"+str(n) for n in range(len(subfiles))],unmapped)
     bamfiles = [f.wait() for f in futures]
     return merge_bam.nonblocking(ex, bamfiles, via=via).wait()
 
