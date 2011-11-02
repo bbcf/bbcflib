@@ -20,6 +20,8 @@ from bbcflib.common import timer, writecols, set_file_descr
 
 # Other modules #
 import numpy
+from numpy import zeros, dot
+from numpy.linalg import pinv, norm
 
 ################################################################################
 
@@ -28,6 +30,12 @@ def rstring(len=20):
     Equivalent to bein's unique_filename_in(), without requiring the import."""
     import string, random
     return "".join([random.choice(string.letters+string.digits) for x in range(len)])
+
+def least_squares(C,d):
+    """Solves min||d-Cx|| for x using pseudo-inverse."""
+    x = dot(pinv(C),d)
+    resid = d-dot(C,x)
+    return x, sum(resid*resid), resid
 
 def lsqnonneg(C, d, x0=None, tol=None, itmax_factor=3):
     """Linear least squares with nonnegativity constraints (NNLS), based on MATLAB's lsqnonneg function.
@@ -95,8 +103,8 @@ def lsqnonneg(C, d, x0=None, tol=None, itmax_factor=3):
             it += 1
             if it > itmax:
                 max_error = z[PP-1].max()
-                raise Exception('Exiting: Iteration count (=%d) exceeded\n Try raising the \
-                                 tolerance tol. (max_error=%d)' % (it, max_error))
+                raise Exception('Exiting: Iteration count (=%d) exceeded\n \
+                      Try raising the tolerance tol. (max_error=%d)' % (it, max_error))
             QQ = numpy.where((z <= tol) & (P != 0))[0]
             alpha = min(x[QQ]/(x[QQ] - z[QQ]))
             x = x + alpha*(z-x)
@@ -154,11 +162,14 @@ def exons_labels(bamfile):
     return labels
 
 def pileup_file(bamfile, exons):
-    """Returns a dictionary ``{exon ID: count}``, the pileup of *exons* from *bamfile*.
+    """From a BAM file *bamfile*, returns a list containing for each exon in *exons*,
+    the number of reads that mapped to it, in the same order.
 
     :param bamfile: name of a BAM file.
-    :param exons: exons labels as returned by **exons_labels()**
+    :param exons: exons labels - as returned by **exons_labels()**
     :type bamfile: string
+    :type exons: list
+    :rtype: list
     """
     # exons = sam.references #tuple
     # put it together with exons_labels? It opens the file twice.
@@ -240,12 +251,11 @@ def transcripts_expression(exons_data, trans_in_gene, exons_in_trans, ncond, met
     transcripts = list(set(transcripts))
     z = numpy.zeros((len(transcripts),ncond))
     zz = numpy.zeros((len(transcripts),ncond))
-    trans_counts = dict(zip(transcripts,z))
+    trans_counts = dict(zip(transcripts,z));
     trans_rpk = dict(zip(transcripts,zz))
     exons_counts = dict(zip( exons_data[0], zip(*exons_data[2:ncond+2])) )
     exons_rpk = dict(zip( exons_data[0], zip(*exons_data[ncond+2:2*ncond+2])) )
     totalerror = 0; unknown = 0; negterms = 0; posterms = 0; allterms = 0
-    pinv = numpy.linalg.pinv; norm = numpy.linalg.norm; zeros = numpy.zeros; dot = numpy.dot
     alltranscount=0; allexonscount=0;
     filE = open("../error_stats.table","wb")
     filE.write("gene \t nbExons \t nbTrans \t ratioNbExonsNbTrans \t totExons \t totTrans \t ratioExonsTrans \t lsqError \n")
@@ -279,11 +289,10 @@ def transcripts_expression(exons_data, trans_in_gene, exons_in_trans, ncond, met
                     #-----------------------#
                     #x = dot(pinv(M),ec[c])
                     #tc.append(x)
-                    y = dot(pinv(M),er[c])
+                    y, resnorm, res = least_squares(M,er[c])
                     tr.append(y)
                     # Testing
                     if not any([numpy.isinf(i) for i in er[c]]):
-                        resnorm = norm(er[c]-dot(M,y))**2
                         totalerror += resnorm
                         negterms += sum([i for i in y if i<0 and not numpy.isnan(i)])
                         posterms += sum([i for i in y if i>=0 and not numpy.isnan(i)])
@@ -296,7 +305,7 @@ def transcripts_expression(exons_data, trans_in_gene, exons_in_trans, ncond, met
                     #tc.append(x)
                     y, resnorm, res = lsqnonneg(M,er[c],tol=None, itmax_factor=5)
                     tr.append(y)
-                    totalerror += resnorm
+                    totalerror += math.sqrt(resnorm)
 
             # Store results in a dict *tcounts*/*trpk*
             for k,t in enumerate(tg):
@@ -359,9 +368,24 @@ def rnaseq_workflow(ex, job, assembly, bam_files, pileup_level=["genes"], via="l
     # Format: ('exonID|geneID|start|end|strand', length)
     exons = exons_labels(bam_files[groups.keys()[0]][groups.values()[0]['runs'].keys()[0]]['bam'])
 
+    """ Extract information from bam headers """
+    exonsID=[]; genesID=[]; genesName=[]; starts=[]; ends=[]; exon_lengths=[]; exon_to_gene={}; badexons=[]
+    for e in exons:
+        (exon, gene, start, end, strand) = e[0].split('|')
+        start = int(start); end = int(end)
+        if start!=end:
+            starts.append(start)
+            ends.append(end)
+            exon_lengths.append(e[1])
+            exonsID.append(exon)
+            genesID.append(gene)
+            exon_to_gene[exon] = gene
+        else: badexons.append(e)
+    [exons.remove(e) for e in badexons]
+
     """ Build pileups from bam files """
     print "Build pileups"
-    exon_pileups = {}; conditions = []
+    exon_pileups = {}; total_count = {}; conditions = []
     for gid,files in bam_files.iteritems():
         for rid,f in files.iteritems():
             cond = group_names[gid]+'.'+str(rid)
@@ -371,7 +395,8 @@ def rnaseq_workflow(ex, job, assembly, bam_files, pileup_level=["genes"], via="l
             print "....Pileup", cond
             cond = group_names[gid]+'.'+str(rid)
             exon_pileup = pileup_file(f['bam'], exons)
-            exon_pileups[cond] = exon_pileup # {cond1.run1: {pileup}, cond1.run2: {pileup}...}
+            exon_pileups[cond] = exon_pileup # {cond1.run1: [pileup], cond1.run2: [pileup]...}
+            total_count[cond] = total_count.get(cond,0) + sum(exon_pileup) # total number of reads
 
     print "Load mappings"
     #assembly_id = "../temp/nice_features/nice_mappings" # testing code
@@ -384,31 +409,19 @@ def rnaseq_workflow(ex, job, assembly, bam_files, pileup_level=["genes"], via="l
         [5] exons_in_trans is a dict {transcript ID: [IDs of the exons it contains]} """
     (gene_ids, gene_names, transcript_mapping, exon_mapping, trans_in_gene, exons_in_trans) = mappings
 
-    """ Extract information from bam headers """
-    exonsID=[]; genesID=[]; genesName=[]; starts=[]; ends=[]; exon_lengths=[]; exon_to_gene={};
-    for e in exons:
-        (exon, gene, start, end, strand) = e[0].split('|')
-        start = int(start); end = int(end)
-        end = end-start and end or end+1
-        starts.append(start)
-        ends.append(end)
-        exon_lengths.append(e[1])
-        exonsID.append(exon)
-        genesID.append(gene)
-        exon_to_gene[exon] = gene
-        genesName.append(gene_names.get(gene,gene))
-
     """ Treat data """
     print "Process data"
     starts = numpy.asarray(starts, dtype=numpy.int_)
     ends = numpy.asarray(ends, dtype=numpy.int_)
     counts = numpy.asarray([exon_pileups[cond] for cond in conditions], dtype=numpy.float_)
+    total_count = numpy.asarray([total_count[cond] for cond in conditions], dtype=numpy.float_)
     for i in range(len(counts.ravel())):
         if counts.flat[i]==0: counts.flat[i] += 1.0 # if zero counts, add 1 for further comparisons
-    rpkms = 1000*counts/(ends-starts)
+    rpkm = 1000*(1e6*counts.T/total_count).T/(ends-starts)
 
     print "Get counts"
-    exons_data = [exonsID,genesID]+list(counts)+list(rpkms)+[starts,ends,genesName]
+    genesName = [gene_names.get(gene,gene) for g in genesID]
+    exons_data = [exonsID,genesID]+list(counts)+list(rpkm)+[starts,ends,genesName]
 
     """ Print counts for exons """
     if "exons" in pileup_level:
@@ -419,17 +432,18 @@ def rnaseq_workflow(ex, job, assembly, bam_files, pileup_level=["genes"], via="l
     if "genes" in pileup_level:
         header = ["GeneID"] + conditions*2 #+ ["Start","End","GeneName"]
         (gcounts, grpkms) = genes_expression(exons_data, exon_to_gene, len(conditions))
-        gnames = gcounts.keys()
-        genes_data = [gnames]+list(zip(*gcounts.values()))+list(zip(*grpkms.values()))
+        genesID = gcounts.keys()
+        genes_data = [genesID]+list(zip(*gcounts.values()))+list(zip(*grpkms.values()))
         save_results(ex, genes_data, conditions, header=header, desc="GENES")
 
     """ Get counts for the transcripts from exons, using pseudo-inverse """
     if "transcripts" in pileup_level:
-        header = ["TranscriptID","GeneID"] + conditions #*2 + ["Start","End","GeneName"]
+        header = ["TranscriptID","GeneID"] + conditions + ["GeneName"] #*2 + ["Start","End","GeneName"]
         (trpk, tcounts, error) = transcripts_expression(exons_data,
-                                 trans_in_gene,exons_in_trans,len(conditions),method="nnls")
-        tnames = trpk.keys()
-        gnames = [transcript_mapping[t] for t in tnames]
-        (gnames, tnames) = zip(*sorted(zip(gnames,tnames))) # sort w.r.t. gene names
-        trans_data = [tnames,gnames]+list(zip(*trpk.values()))
+                                 trans_in_gene,exons_in_trans,len(conditions),method="pinv")
+        transID = trpk.keys()
+        genesID = [transcript_mapping[t] for t in transID]
+        genesName = [gene_names.get(gene,gene) for g in genesID]
+        (genesID, tnames) = zip(*sorted(zip(genesID,transID))) # sort w.r.t. gene names
+        trans_data = [transID,genesID]+list(zip(*trpk.values()))+[genesName]
         save_results(ex, trans_data, conditions, header=header, desc="TRANSCRIPTS")
