@@ -566,7 +566,7 @@ def map_reads( ex, fastq_file, chromosomes, bowtie_index,
         gzipfile( ex, unmapped+"_1" )
         ex.add( unmapped+"_1.gz", description=set_file_descr(name+"unmapped_1.fastq.gz",**fq_descr), 
                 associate_to_filename=unmapped, template='%s_1.fastq.gz' )
-        gzipfile( ex, unmapped+"_1" )
+        gzipfile( ex, unmapped+"_2" )
         ex.add( unmapped+"_2.gz", description=set_file_descr(name+"unmapped_2.fastq.gz",**fq_descr), 
                 associate_to_filename=unmapped, template='%s_2.fastq.gz' )
     else:
