@@ -329,7 +329,7 @@ def bowtie_build(files, index=None):
             'return_value': index}
 
 
-def parallel_bowtie(ex, index, reads, n_lines=1000000, bowtie_args="-Sra", add_nh_flags=False, via='local'):
+def parallel_bowtie(ex, index, reads, unmapped=None, n_lines=1000000, bowtie_args="-Sra", add_nh_flags=False, via='local'):
     """Run bowtie in parallel on pieces of *reads*.
 
     Splits *reads* into chunks *n_lines* long, then runs bowtie with
@@ -352,15 +352,25 @@ def parallel_bowtie(ex, index, reads, n_lines=1000000, bowtie_args="-Sra", add_n
         subfiles = [(f,sf2[n]) for n,f in enumerate(sf1)]
     else:
         subfiles = split_file(ex, reads, n_lines = n_lines)
-    futures = [bowtie.nonblocking(ex, index, sf, args=bowtie_args, via=via)
-               for sf in subfiles]
+    if unmapped:
+        futures = [bowtie.nonblocking(ex, index, sf, args=bowtie_args+["--un",unmapped+"_"+str(n)], via=via)
+                   for n,sf in enumerate(subfiles)]
+    else:
+        futures = [bowtie.nonblocking(ex, index, sf, args=bowtie_args, via=via)
+                   for sf in subfiles]
     samfiles = [f.wait() for f in futures]
+    futures = []
     if add_nh_flags:
         futures = [external_add_nh_flag.nonblocking(ex, sf, via=via) for sf in samfiles]
-        bamfiles = [f.wait() for f in futures]
     else:
         futures = [sam_to_bam.nonblocking(ex, sf, via=via) for sf in samfiles]
-        bamfiles = [f.wait() for f in futures]
+    if unmapped:
+        if isinstance(reads,tuple):
+            cat([unmapped+"_"+str(n)+"_1" for n in range(len(sf))],unmapped+"_1")
+            cat([unmapped+"_"+str(n)+"_2" for n in range(len(sf))],unmapped+"_2")
+        else:
+            cat([unmapped+"_"+str(n) for n in range(len(sf))],unmapped)
+    bamfiles = [f.wait() for f in futures]
     return merge_bam.nonblocking(ex, bamfiles, via=via).wait()
 
 ################################################################################
@@ -533,17 +543,17 @@ def map_reads( ex, fastq_file, chromosomes, bowtie_index,
     if not("--strata" in bwtarg):   bwtarg += ["--strata"]
     if not("--chunkmbs" in bwtarg): bwtarg += ["--chunkmbs","512"]
     unmapped = unique_filename_in()
-    bwtarg += ["--un",unmapped]
     is_paired_end = isinstance(fastq_file,tuple)
     if is_paired_end:
         linecnt = count_lines( ex, fastq_file[0] )
     else:
         linecnt = count_lines( ex, fastq_file )
     if linecnt>10000000:
-        bam = parallel_bowtie( ex, bowtie_index, fastq_file,
+        bam = parallel_bowtie( ex, bowtie_index, fastq_file, unmapped=unampped,
                                n_lines=8000000, bowtie_args=bwtarg,
                                add_nh_flags=True, via=via )
     else:
+        bwtarg += ["--un",unmapped]
         future = bowtie.nonblocking( ex, bowtie_index, fastq_file, bwtarg, via=via )
         samfile = future.wait()
         bam = add_nh_flag( samfile )

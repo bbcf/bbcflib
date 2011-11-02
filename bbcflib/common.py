@@ -31,11 +31,11 @@ def normalize_url(url):
     return url
 
 ###############################################################################
-def cat(files):
+def cat(files,out=None):
     """Concatenates files.
     """
     if len(files) > 1:
-        out = unique_filename_in()
+        out = out or unique_filename_in()
         with open(out,"w") as f1:
             for inf in files:
                 with open(inf,"r") as f2:
