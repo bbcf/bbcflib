@@ -319,7 +319,6 @@ def transcripts_expression(exons_data, trans_in_gene, exons_in_trans, ncond, met
                         trans_rpk[t][c] = round(tr[c][k]*nexons ,2)
 
             # Testing
-            #if g=="ENSMUSG00000057666" or g=="ENSG00000111640": # Gapdh
             total_trans = sum([trans_rpk[t][c] for t in tg for c in range(ncond)]) or 0
             total_exons = sum([sum(er[c]) for c in range(ncond)]) or 0
             alltranscount += total_trans
@@ -403,7 +402,6 @@ def rnaseq_workflow(ex, job, assembly, bam_files, pileup_level=["genes"], via="l
             nreads[cond] = nreads.get(cond,0) + sum(exon_pileup) # total number of reads
 
     print "Load mappings"
-    #assembly_id = "../temp/nice_features/nice_mappings" # testing code
     mappings = fetch_mappings(assembly_id)
     """ [0] gene_ids is a list of gene ID's
         [1] gene_names is a dict {gene ID: gene name}
@@ -420,8 +418,10 @@ def rnaseq_workflow(ex, job, assembly, bam_files, pileup_level=["genes"], via="l
     nreads = asarray([nreads[cond] for cond in conditions], dtype=numpy.float_)
     counts = asarray([exon_pileups[cond] for cond in conditions], dtype=numpy.float_)
     rpkm = 1000*(1e6*counts.T/nreads).T/(ends-starts)
-    for i in range(len(counts.ravel())):
-        if counts.flat[i]==0: counts.flat[i] += 1.0 # if zero counts, add 1 for further comparisons
+    #for i in range(len(counts.ravel())):
+    #    if counts.flat[i]==0: counts.flat[i] += 1.0 # if zero counts, add 1 for further comparisons
+
+    # "ENSMUSG00000057666" "ENSG00000111640": Gapdh
 
     print "Get counts"
     genesName = [gene_names.get(g,g) for g in genesID]
@@ -435,10 +435,11 @@ def rnaseq_workflow(ex, job, assembly, bam_files, pileup_level=["genes"], via="l
     """ Get counts for genes from exons """
     if "genes" in pileup_level:
         header = ["GeneID"] + conditions*2 + ["GeneName"]#+ ["Start","End","GeneName"]
-        (gcounts, grpkms) = genes_expression(exons_data, exon_to_gene, len(conditions))
+        (gcounts, grpkm) = genes_expression(exons_data, exon_to_gene, len(conditions))
+        #print asarray(gcounts["ENSMUSG00000057666"]), asarray(grpkm["ENSMUSG00000057666"]) # TEST Gapdh
         genesID = gcounts.keys()
         genesName = [gene_names.get(g,g) for g in genesID]
-        genes_data = [genesID]+list(zip(*gcounts.values()))+list(zip(*grpkms.values()))
+        genes_data = [genesID]+list(zip(*gcounts.values()))+list(zip(*grpkm.values()))+[genesName]
         save_results(ex, genes_data, conditions, header=header, desc="GENES")
 
     """ Get counts for the transcripts from exons, using pseudo-inverse """
@@ -446,8 +447,7 @@ def rnaseq_workflow(ex, job, assembly, bam_files, pileup_level=["genes"], via="l
         header = ["TranscriptID","GeneID"] + conditions + ["GeneName"] #*2 + ["Start","End","GeneName"]
         (trpk, tcounts, error) = transcripts_expression(exons_data,
                                  trans_in_gene,exons_in_trans,len(conditions),method="nnls")
-        print trpk["ENSMUST00000073605"], trpk["ENSMUST00000117757"], trpk["ENSMUST00000118875"] #mouse Gapdh
-        print trpk["ENSMUST00000144588"], trpk["ENSMUST00000147954"], trpk["ENSMUST00000144205"] #mouse Gapdh
+        #a = [trpk[t][0] for t in trans_in_gene["ENSMUSG00000057666"]]; print asarray(a), sum(a) # TEST Gapdh
         transID = trpk.keys()
         genesID = [transcript_mapping[t] for t in transID]
         genesName = [gene_names.get(g,g) for g in genesID]
