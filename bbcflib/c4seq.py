@@ -117,12 +117,13 @@ def loadPrimers(primersFile):
 
 
 @program
-def profileCorrection(inputFile,baitCoord,outputFile,reportFile,script_path='./'):
-	return{'arguments': ["R","--vanilla","--no-restore","--slave","-f",script_path+"profileCorrection.R","--args",inputFile,baitCoord,outputFile,reportFile],
+def profileCorrection(inputFile,baitCoord,name,outputFile,reportFile,script_path='./'):
+	return{'arguments': ["R","--vanilla","--no-restore","--slave","-f",script_path+"profileCorrection.R","--args",inputFile,baitCoord,name,outputFile,reportFile],
                 'return_value':None}
 
 @program
-def smoothFragFile(inputFile,nFragsPerWin,curName,outputFile,regToExclude='',script_path='./'):
+def smoothFragFile(inputFile,nFragsPerWin,curName,outputFile,regToExclude=None,script_path='./'):
+        if not(regToExclude): regToExclude=''
 	return{'arguments': ["R","--vanilla","--no-restore","--slave","-f",script_path+"smoothData.R","--args",inputFile,nFragsPerWin,curName,outputFile,regToExclude],
         	'return_value':None}
 
@@ -261,7 +262,7 @@ def workflow_groups(ex, job, primers_dict, g_rep, mapseq_files, mapseq_url, scri
                                 regToExclude=primers_dict[mapseq_files[gid][rid]['libname']]['regToExclude']
 			else:
 			        regToExclude=None
-			print("regToExclude="); print(regToExclude)
+			print("regToExclude="+regToExclude)
                         if not job.options.get('compute_densities') or job.options.get('merge_strands') != 0:
 				print("will call parallel_density_sql with bam:"+mapseq_files[gid][rid]['bam']+"\n")
 				density_file=parallel_density_sql( ex, mapseq_files[gid][rid]['bam'],
@@ -312,11 +313,11 @@ def workflow_groups(ex, job, primers_dict, g_rep, mapseq_files, mapseq_url, scri
 			#call_smoothData(resfiles[4],nFragsPerWin)
         		nFragsPerWin=str(10)
         		outputfile=unique_filename_in()
-		        smoothFragFile(ex,resfiles[4],nFragsPerWin,mapseq_files[gid][rid]['libname'],outputfile,primers_dict[mapseq_files[gid][rid]['libname']]['regToExclude'],script_path)
+		        smoothFragFile(ex,resfiles[4],nFragsPerWin,mapseq_files[gid][rid]['libname'],outputfile,regToExclude,script_path)
 			ex.add(outputfile,description=set_file_descr("res_segToFrag_"+mapseq_files[gid][rid]['libname']+"_smoothed_"+nFragsPerWin+"FragsPerWin.bedGraph",group=grpId,step=step,type="bedGraph",comment="smoothed data, before profile correction"))
 			
         		outputfile_afterProfileCorrection=unique_filename_in()
-		        smoothFragFile(ex,outputfile,nFragsPerWin,mapseq_files[gid][rid]['libname'],outputfile_afterProfileCorrection,primers_dict[mapseq_files[gid][rid]['libname']]['regToExclude'],script_path)
+		        smoothFragFile(ex,outputfile,nFragsPerWin,mapseq_files[gid][rid]['libname'],outputfile_afterProfileCorrection,regToExclude,script_path)
 			ex.add(outputfile,description=set_file_descr("res_segToFrag_"+mapseq_files[gid][rid]['libname']+"_profileCorrected_smoothed_"+nFragsPerWin+"FragsPerWin.bedGraph",group=grpId,step=step,type="bedGraph",comment="smoothed data, after profile correction"))
 
 
