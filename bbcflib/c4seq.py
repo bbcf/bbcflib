@@ -262,7 +262,7 @@ def workflow_groups(ex, job, primers_dict, g_rep, mapseq_files, mapseq_url, scri
                                 regToExclude=primers_dict[mapseq_files[gid][rid]['libname']]['regToExclude']
 			else:
 			        regToExclude=None
-			print("regToExclude="+regToExclude)
+			print("regToExclude="+str(regToExclude))
                         if not job.options.get('compute_densities') or job.options.get('merge_strands') != 0:
 				print("will call parallel_density_sql with bam:"+mapseq_files[gid][rid]['bam']+"\n")
 				density_file=parallel_density_sql( ex, mapseq_files[gid][rid]['bam'],
