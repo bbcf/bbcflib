@@ -683,7 +683,7 @@ def get_fastq_files( job, fastq_root, dafl=None, set_seed_length=True ):
                     run = runsplit[0]
                     run_pe = runsplit[1]
                     target_pe = target+"_R2"
-                    fq_file = fq_file+"_R2"
+                    fq_file_pe = fq_file+"_R2"
                 if run.startswith("http://") or run.startswith("https://") or run.startswith("ftp://"):
                     urllib.urlretrieve( run, target )
                     if run_pe:
@@ -800,7 +800,7 @@ def add_pdf_stats( ex, processed, group_names, script_path,
     all_stats = {}
     for gid in group_names.keys():
         for i,mapped in enumerate(processed[gid].values()):
-            name = group_names[gid]
+            name = group_names[gid] or str(gid)
             if 'libname' in mapped:
                 name = mapped['libname']
             if name in all_stats:
