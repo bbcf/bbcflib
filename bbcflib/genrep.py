@@ -352,38 +352,7 @@ class GenRep(object):
                 if add: result.append(obj)
                         
         return result
-    
-    
-    
-    def get_chromosomes_from_nr_assembly_id(self, nr_assembly_id):
-        '''
-        Get the chromosomes related to the nr_assembly specified.
-        It return the chromosomes from the assembly ``BBCF_VALID``
-        :param: nr_assembly_id : the non-redundant assembly id
-        '''
-        # get the nr_assembly from its id
-        nr_assembly = self.get_genrep_objects('nr_assemblies', 'nr_assembly', 
-                                              {'id':nr_assembly_id})[0]
-        # get assembly bbcf valid with the same genome id
-        ass = self.get_genrep_objects('assemblies', 'assembly', 
-                                      {'genome_id':nr_assembly.genome_id, 
-                                       'bbcf_valid':True})[0]
-        if ass is not None:
-            # load the assembly
-            assembly_info = json.load(urllib2.urlopen("""%s/assemblies/%s.json""" % (self.url, ass.id)))
-            assembly = GenrepObject(assembly_info,'assembly')
-            chromosomes = []
-            # get the chromosomes
-            for chr in assembly.chromosomes:
-                chromosomes.append(GenrepObject(chr, 'chromosome'))
-            return chromosomes     
         
-    def is_available(self, assembly):
-        """
-        Legacy signature
-        """
-        return self.assemblies_available(assembly)
-
 ################################################################################
 class Assembly(object):
     def __init__(self, assembly_id, assembly_name, index_path,
