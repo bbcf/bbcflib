@@ -939,12 +939,12 @@ def parallel_density_sql( ex, bamfile, chromosomes,
             for row in infile:
                 r = row.split("\t")
                 if len(r)>5 and r[5][0] == strnd:
-                    yield((r[1],r[2],r[4]))
+                    yield((int(r[1]),int(r[2]),float(r[4])))
         with new(output+"rev.sql",datatype="quantitative",chrmeta=chrlist) as trev:
             with new(output+"fwd.sql",datatype="quantitative",chrmeta=chrlist) as tfwd:
                 for k,v in chromosomes.iteritems():
                     try:
-                        wig = futures[k].wait()
+                        wig = str(futures[k].wait())
                         with open(wig,"r") as f:
                             tfwd.write(v['name'],_wig(f,"+"))
                         with open(wig,"r") as f:
@@ -958,11 +958,11 @@ def parallel_density_sql( ex, bamfile, chromosomes,
                 if not row.startswith('track'): 
                     r = row.split("\t")
                     if len(r)>3:
-                        yield((r[1],r[2],r[3]))
+                        yield((int(r[1]),int(r[2]),float(r[3])))
         with new(output+"merged.sql",datatype="quantitative",chrmeta=chrlist) as tboth:
             for k,v in chromosomes.iteritems():
                 try:
-                    bedgr = futures[k].wait()
+                    bedgr = str(futures[k].wait())
                     with open(bedgr,"r") as f:
                         tboth.write(v['name'],_bedgr(f))
                 except (ProgramFailed, IOError):
