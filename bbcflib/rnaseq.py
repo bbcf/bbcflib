@@ -20,8 +20,10 @@ from bbcflib.common import timer, writecols, set_file_descr
 
 # Other modules #
 import numpy
-from numpy import zeros, dot
+from numpy import zeros, dot, array, asarray
 from numpy.linalg import pinv, norm
+
+numpy.set_printoptions(precision=1,suppress=True)
 
 ################################################################################
 
@@ -70,7 +72,8 @@ def lsqnonneg(C, d, x0=None, tol=None, itmax_factor=3):
         else: return s[dim]
 
     if tol is None: tol = 10*eps*norm1(C)*(max(C.shape)+1)
-    C = numpy.asarray(C)
+    #print "....Tolerance:",tol
+    C = asarray(C)
     (m,n) = C.shape
     P = numpy.zeros(n)
     Z = ZZ = numpy.arange(1, n+1)
@@ -230,7 +233,7 @@ def genes_expression(exons_data, exon_to_gene, ncond):
         g = exon_to_gene[e]
         gcounts[g] += c[:ncond]
         grpk[g] += c[ncond:]
-    return gcounts,grpk
+    return gcounts, grpk
 
 #@timer
 def transcripts_expression(exons_data, trans_in_gene, exons_in_trans, ncond, method="nnls"):
@@ -255,8 +258,7 @@ def transcripts_expression(exons_data, trans_in_gene, exons_in_trans, ncond, met
     trans_rpk = dict(zip(transcripts,zz))
     exons_counts = dict(zip( exons_data[0], zip(*exons_data[2:ncond+2])) )
     exons_rpk = dict(zip( exons_data[0], zip(*exons_data[ncond+2:2*ncond+2])) )
-    totalerror = 0; unknown = 0; negterms = 0; posterms = 0; allterms = 0
-    alltranscount=0; allexonscount=0;
+    totalerror = 0; unknown = 0; negterms = 0; allterms = 0; alltranscount=0; allexonscount=0;
     filE = open("../error_stats.table","wb")
     filE.write("gene \t nbExons \t nbTrans \t ratioNbExonsNbTrans \t totExons \t totTrans \t ratioExonsTrans \t lsqError \n")
     for g in genes:
@@ -293,9 +295,8 @@ def transcripts_expression(exons_data, trans_in_gene, exons_in_trans, ncond, met
                     tr.append(y)
                     # Testing
                     if not any([numpy.isinf(i) for i in er[c]]):
-                        totalerror += resnorm
+                        totalerror += math.sqrt(resnorm)
                         negterms += sum([i for i in y if i<0 and not numpy.isnan(i)])
-                        posterms += sum([i for i in y if i>=0 and not numpy.isnan(i)])
                         allterms += sum([abs(i) for i in y if not numpy.isnan(i)])
                 if method == "nnls":
                     #-----------------------------------#
@@ -303,7 +304,9 @@ def transcripts_expression(exons_data, trans_in_gene, exons_in_trans, ncond, met
                     #-----------------------------------#
                     #x, resnorm, res = lsqnonneg(M,ec[c],itmax_factor=5)
                     #tc.append(x)
-                    y, resnorm, res = lsqnonneg(M,er[c],tol=None, itmax_factor=5)
+                    tol = 10*2.22e-16*norm(M,1)*(max(M.shape)+1)
+                    try: y, resnorm, res = lsqnonneg(M,er[c],tol=100*tol)
+                    except: y = zeros(len(tg)) # Bad idea
                     tr.append(y)
                     totalerror += math.sqrt(resnorm)
 
@@ -313,15 +316,15 @@ def transcripts_expression(exons_data, trans_in_gene, exons_in_trans, ncond, met
                 if trans_rpk.get(t) is not None:
                     for c in range(ncond):
                         #tcounts[t][c] = tc[c][k]
-                        trans_rpk[t][c] = tr[c][k] * nexons
+                        trans_rpk[t][c] = round(tr[c][k]*nexons ,2)
 
             # Testing
+            #if g=="ENSMUSG00000057666" or g=="ENSG00000111640": # Gapdh
             total_trans = sum([trans_rpk[t][c] for t in tg for c in range(ncond)]) or 0
             total_exons = sum([sum(er[c]) for c in range(ncond)]) or 0
             alltranscount += total_trans
             allexonscount += total_exons
-            try:
-                filE.write("%s \t %d \t %d \t %.1f \t %.1f \t %.1f \t %.1f \t %.1f \n" \
+            try: filE.write("%s\t%d\t%d\t%.1f\t%.1f\t%.1f\t%.1f\t%.1f\n" \
                     % (g,len(eg),len(tg),1.*len(eg)/len(tg),total_exons,total_trans,total_exons/total_trans,resnorm))
             except ZeroDivisionError: pass
         else:
@@ -333,9 +336,10 @@ def transcripts_expression(exons_data, trans_in_gene, exons_in_trans, ncond, met
     print "\t Unknown transcripts for %d of %d genes (%.2f %%)" \
            % (unknown, len(genes), 100*float(unknown)/float(len(genes)) )
     if method=="pinv":
-           print "\t Negative scores:",negterms,", Positive scores:",posterms,", Total score:",allterms
-    print "\t Total transcript scores:",alltranscount, \
-           ", Total exon scores:",allexonscount,", Ratio:",alltranscount/allexonscount
+           print "\t Negative scores: %.2f, Total score: %.2f, Ratio: %.2f" \
+           % (negterms,allterms,float(negterms)/allterms)
+    print "\t Total transcript scores: %.2f, Total exon scores: %.2f, Ratio: %.2f" \
+           % (alltranscount,allexonscount,alltranscount/allexonscount)
     print "\t Total error (sum of resnorms):", totalerror
     return trans_rpk, trans_counts, totalerror
 
@@ -385,7 +389,7 @@ def rnaseq_workflow(ex, job, assembly, bam_files, pileup_level=["genes"], via="l
 
     """ Build pileups from bam files """
     print "Build pileups"
-    exon_pileups = {}; total_count = {}; conditions = []
+    exon_pileups = {}; nreads = {}; conditions = []
     for gid,files in bam_files.iteritems():
         for rid,f in files.iteritems():
             cond = group_names[gid]+'.'+str(rid)
@@ -396,7 +400,7 @@ def rnaseq_workflow(ex, job, assembly, bam_files, pileup_level=["genes"], via="l
             cond = group_names[gid]+'.'+str(rid)
             exon_pileup = pileup_file(f['bam'], exons)
             exon_pileups[cond] = exon_pileup # {cond1.run1: [pileup], cond1.run2: [pileup]...}
-            total_count[cond] = total_count.get(cond,0) + sum(exon_pileup) # total number of reads
+            nreads[cond] = nreads.get(cond,0) + sum(exon_pileup) # total number of reads
 
     print "Load mappings"
     #assembly_id = "../temp/nice_features/nice_mappings" # testing code
@@ -411,13 +415,13 @@ def rnaseq_workflow(ex, job, assembly, bam_files, pileup_level=["genes"], via="l
 
     """ Treat data """
     print "Process data"
-    starts = numpy.asarray(starts, dtype=numpy.int_)
-    ends = numpy.asarray(ends, dtype=numpy.int_)
-    counts = numpy.asarray([exon_pileups[cond] for cond in conditions], dtype=numpy.float_)
-    total_count = numpy.asarray([total_count[cond] for cond in conditions], dtype=numpy.float_)
+    starts = asarray(starts, dtype=numpy.float_)
+    ends = asarray(ends, dtype=numpy.float_)
+    nreads = asarray([nreads[cond] for cond in conditions], dtype=numpy.float_)
+    counts = asarray([exon_pileups[cond] for cond in conditions], dtype=numpy.float_)
+    rpkm = 1000*(1e6*counts.T/nreads).T/(ends-starts)
     for i in range(len(counts.ravel())):
         if counts.flat[i]==0: counts.flat[i] += 1.0 # if zero counts, add 1 for further comparisons
-    rpkm = 1000*(1e6*counts.T/total_count).T/(ends-starts)
 
     print "Get counts"
     genesName = [gene_names.get(g,g) for g in genesID]
@@ -441,10 +445,12 @@ def rnaseq_workflow(ex, job, assembly, bam_files, pileup_level=["genes"], via="l
     if "transcripts" in pileup_level:
         header = ["TranscriptID","GeneID"] + conditions + ["GeneName"] #*2 + ["Start","End","GeneName"]
         (trpk, tcounts, error) = transcripts_expression(exons_data,
-                                 trans_in_gene,exons_in_trans,len(conditions),method="pinv")
+                                 trans_in_gene,exons_in_trans,len(conditions),method="nnls")
+        print trpk["ENSMUST00000073605"], trpk["ENSMUST00000117757"], trpk["ENSMUST00000118875"] #mouse Gapdh
+        print trpk["ENSMUST00000144588"], trpk["ENSMUST00000147954"], trpk["ENSMUST00000144205"] #mouse Gapdh
         transID = trpk.keys()
         genesID = [transcript_mapping[t] for t in transID]
         genesName = [gene_names.get(g,g) for g in genesID]
         (genesID, transID, genesName) = zip(*sorted(zip(genesID,transID,genesName))) # sort w.r.t. gene IDs
-        trans_data = [transID,genesID]+list(zip(*trpk.values()))+[genesName]
+        trans_data = [transID,genesID]+list(zip(*[trpk[t] for t in transID]))+[genesName]
         save_results(ex, trans_data, conditions, header=header, desc="TRANSCRIPTS")
