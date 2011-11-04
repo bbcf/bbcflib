@@ -667,7 +667,7 @@ def get_fastq_files( job, fastq_root, dafl=None, set_seed_length=True ):
             if isinstance(run,dict) and all([x in run for x in ['facility','machine','run','lane']]):
                 dafl1 = dafl[run['facility']]
                 daf_data = dafl1.fetch_fastq( str(run['facility']), str(run['machine']),
-                                              run['run'], run['lane'], to=fastq_root, libname=group['name'] )
+                                              run['run'], run['lane'], to=fastq_root, libname=run['sequencing_library'] )
                 job.groups[gid]['runs'][rid] = daf_data['path']
                 if (set_seed_length):
                     job.groups[gid]['seed_lengths'][rid] = max(28,int(0.7*daf_data['cycle']))
