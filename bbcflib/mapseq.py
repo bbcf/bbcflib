@@ -77,7 +77,7 @@ import os, re, json, shutil, gzip, tarfile, pickle, urllib
 
 # Internal modules #
 from . import frontend, genrep, daflims
-from .common import get_files, cat, set_file_descr, merge_sql
+from .common import get_files, cat, set_file_descr, merge_sql, gzipfile
 from .track import Track, new
 
 
@@ -86,10 +86,296 @@ import pysam
 from numpy      import  cumsum, exp, array
 from scipy.misc import  factorial
 from bein       import  *
-from bein.util  import  *
+from bein.util  import  add_pickle, touch, split_file, count_lines
+
+###############
+# BAM/SAM files
+###############
+@program
+def sam_to_bam(sam_filename):
+    """Convert *sam_filename* to a BAM file.
+
+    *sam_filename* must obviously be the filename of a SAM file.
+    Returns the filename of the created BAM file.
+
+    Equivalent: ``samtools view -b -S -o ...``
+    """
+    bam_filename = unique_filename_in()
+    return {"arguments": ["samtools","view","-b","-S","-o",
+                          bam_filename,sam_filename],
+            "return_value": bam_filename}
+
+@program
+def bam_to_sam(bam_filename, no_header=False):
+    """Convert *bam_filename* to a SAM file.
+    
+    Equivalent: ``samtools view [-h] bam_filename ...``
+    """
+    sam_filename = unique_filename_in()
+    call = ['samtools','view']
+    if no_header: call += '-h'
+    call += ['-o',sam_filename,bam_filename]
+    return {'arguments': call, 'return_value': sam_filename}
+
+@program
+def replace_bam_header(header, bamfile):
+    """Replace the header of *bamfile* with that in *header*
+
+    The header in *header* should be that of a SAM file.
+    """
+    return {'arguments': ['samtools','reheader',header,bamfile],
+            'return_value': bamfile}
+
+@program
+def sort_bam(bamfile):
+    """Sort a BAM file *bamfile* by chromosome coordinates.
+
+    Returns the filename of the newly created, sorted BAM file.
+
+    Equivalent: ``samtools sort ...``
+    """
+    filename = unique_filename_in()
+    return {'arguments': ['samtools','sort',bamfile,filename],
+            'return_value': filename + '.bam'}
+
+@program
+def sort_bam_by_read(bamfile):
+    """Sort a BAM file *bamfile* by read names.
+
+    Returns the filename of the newly created, sorted BAM file.
+
+    Equivalent: ``samtools sort -n ...``
+    """
+    filename = unique_filename_in()
+    return {'arguments': ['samtools','sort','-n',bamfile,filename],
+            'return_value': filename + '.bam'}
+
+
+def read_sets(reads,keep_unmapped=False):
+    """Groups the alignments in a BAM file by read.
+
+    *reads* should be an iterator over reads, such as the object
+     returned by pysam.Samfile.  The SAM/BAM file must be sorted by
+     read.  ``read_sets`` removes all unmapped reads, and returns an
+     iterator over lists of all AlignedRead objects consisting of the
+     same read.
+    """
+    last_read = None
+    for r in reads:
+        if (not keep_unmapped) and (r.rname == -1 or r.is_unmapped):
+            pass
+        elif r.qname != last_read:
+            if last_read != None:
+                yield accum
+            accum = [r]
+            last_read = r.qname
+        else:
+            accum.append(r)
+    if last_read != None:
+        # We have to check, since if samfile
+        # has no alignments, accum is never defined.
+        yield accum    
+
+@program
+def index_bam(bamfile):
+    """Index a sorted BAM file.
+
+    Returns the filename in *bamfile* with ``.bai`` appended, that is,
+    the filename of the newly created index.  *bamfile* must be sorted
+    for this to work.
+
+    Equivalent: ``samtools index ...``
+    """
+    return {'arguments': ['samtools','index',bamfile],
+            'return_value': bamfile + '.bai'}
+
+
+@program
+def merge_bam(files):
+    """Merge a list of BAM files.
+
+    *files* should be a list of filenames of BAM files.  They are
+    merged into a single BAM file, and the filename of that new file
+    is returned.
+    """
+    if len(files) == 1:
+        return {'arguments': ['echo'],
+                'return_value': files[0]}
+    else:
+        filename = unique_filename_in()
+        return {'arguments': ['samtools','merge',filename] + files,
+                'return_value': filename}
+
+
+try:
+    import pysam
+
+    @program
+    def external_add_nh_flag(samfile):
+        outfile = unique_filename_in()
+        return {'arguments': ['add_nh_flag',samfile,outfile],'return_value': outfile}
+
+
+    def add_nh_flag(samfile, out=None):
+        """Adds NH (Number of Hits) flag to each read alignment in *samfile*.
+        
+        Scans a BAM file ordered by read name, counts the number of
+        alternative alignments reported and writes them to a BAM file
+        with the NH tag added.
+        
+        If *out* is ``None``, a random name is used.
+        """
+        infile = pysam.Samfile(samfile, "r")
+        if out == None:
+            outname = unique_filename_in()
+        else:
+            outname = out
+        outfile = pysam.Samfile(outname, "wb", template=infile)
+        for readset in read_sets(infile,keep_unmapped=True):
+            nh = len(readset)
+            for read in readset:
+                if (read.is_unmapped):
+                    nh = 0
+                read.tags = read.tags+[("NH",nh)]
+                outfile.write(read)
+        infile.close()
+        outfile.close()
+        return outname
+except:
+    print >>sys.stderr, "PySam not found.  Skipping add_nh_flag."
+
+def add_and_index_bam(ex, bamfile, description="", alias=None):
+    """Indexes *bamfile* and adds it to the repository.
+
+    The index created is properly associated to *bamfile* in the
+    repository, so when you use the BAM file later, the index will
+    also be copied into place with the correct name.
+    """
+    if isinstance(description,dict): description = str(description)
+    sort = sort_bam(ex, bamfile)
+    index = index_bam(ex, sort)
+    ex.add(sort, description=description, alias=alias)
+    ex.add(index, description=description + " (BAM index)",
+           associate_to_filename=sort, template='%s.bai')
+    return sort
+
+
+def add_bowtie_index(execution, files, description="", alias=None, index=None):
+    """Adds an index of a list of FASTA files to the repository.
+
+    *files* is a list of filenames of FASTA files.  The files are
+    indexed with bowtie-build, then a placeholder is written to the
+    repository, and the six files of the bowtie index are associated
+    to it.  Using the placeholder in an execution will properly set up
+    the whole index.
+
+    *alias* is an optional alias to give to the whole index so it may
+    be referred to by name in future.  *index* lets you set the actual
+    name of the index created.
+    """
+    if isinstance(description,dict): description = str(description)
+    index = bowtie_build(execution, files, index=index)
+    touch(execution, index)
+    execution.add(index, description=description, alias=alias)
+    execution.add(index + ".1.ebwt", associate_to_filename=index, template='%s.1.ebwt')
+    execution.add(index + ".2.ebwt", associate_to_filename=index, template='%s.2.ebwt')
+    execution.add(index + ".3.ebwt", associate_to_filename=index, template='%s.3.ebwt')
+    execution.add(index + ".4.ebwt", associate_to_filename=index, template='%s.4.ebwt')
+    execution.add(index + ".rev.1.ebwt", associate_to_filename=index, template='%s.rev.1.ebwt')
+    execution.add(index + ".rev.2.ebwt", associate_to_filename=index, template='%s.rev.2.ebwt')
+    return index
+
+########
+# Bowtie
+########
+
+@program
+def bowtie(index, reads, args="-Sra"):
+    """Run bowtie with *args* to map *reads* against *index*.
+
+    Returns the filename of bowtie's output file.  *args* gives the
+    command line arguments to bowtie, and may be either a string or a
+    list of strings.
+    """
+    sam_filename = unique_filename_in()
+    if isinstance(args, list):
+        options = args
+    elif isinstance(args, str):
+        options = [args]
+    else:
+        raise ValueError("bowtie's args keyword argument requires a string or a " + \
+                         "list of strings.  Received: " + str(args))
+    if isinstance(reads, list):
+        reads = ",".join(reads)
+    if isinstance(reads, tuple):
+        reads = "-1 "+reads[0]+" -2 "+reads[1]
+    return {"arguments": ["bowtie"] + options + [index, reads, sam_filename],
+            "return_value": sam_filename}
+
+
+@program
+def bowtie_build(files, index=None):
+    """Created a bowtie index from *files*.
+
+    *files* can be a string giving the name of a FASTA file, or a list
+    of strings giving the names of several FASTA files.  The prefix of
+    the resulting bowtie index is returned.
+    """
+    if index == None:
+        index = unique_filename_in()
+    if isinstance(files,list):
+        files = ",".join(files)
+    return {'arguments': ['bowtie-build', '-f', files, index],
+            'return_value': index}
+
+
+def parallel_bowtie(ex, index, reads, unmapped=None, n_lines=1000000, bowtie_args="-Sra", add_nh_flags=False, via='local'):
+    """Run bowtie in parallel on pieces of *reads*.
+
+    Splits *reads* into chunks *n_lines* long, then runs bowtie with
+    arguments *bowtie_args* to map each chunk against *index*.  One of
+    the arguments needs to be -S so the output takes the form of SAM
+    files, because the results are converted to BAM and merged.  The
+    filename of the single, merged BAM file is returned.
+
+    Bowtie does not set the NH flag on its SAM file output.  If the
+    *add_nh_flags* argument is ``True``, this function calculates
+    and adds the flag before merging the BAM files.
+
+    The *via* argument determines how the jobs will be run.  The
+    default, ``'local'``, runs them on the same machine in separate
+    threads.  ``'lsf'`` submits them via LSF.
+    """
+    if isinstance(reads,tuple):
+        sf1 = split_file(ex, reads[0], n_lines = n_lines)
+        sf2 = split_file(ex, reads[1], n_lines = n_lines)
+        subfiles = [(f,sf2[n]) for n,f in enumerate(sf1)]
+    else:
+        subfiles = split_file(ex, reads, n_lines = n_lines)
+    if unmapped:
+        futures = [bowtie.nonblocking(ex, index, sf, args=bowtie_args+["--un",unmapped+"_"+str(n)], via=via)
+                   for n,sf in enumerate(subfiles)]
+    else:
+        futures = [bowtie.nonblocking(ex, index, sf, args=bowtie_args, via=via)
+                   for sf in subfiles]
+    samfiles = [f.wait() for f in futures]
+    futures = []
+    if add_nh_flags:
+        futures = [external_add_nh_flag.nonblocking(ex, sf, via=via) for sf in samfiles]
+    else:
+        futures = [sam_to_bam.nonblocking(ex, sf, via=via) for sf in samfiles]
+    if unmapped:
+        if isinstance(reads,tuple):
+            cat([unmapped+"_"+str(n)+"_1" for n in range(len(subfiles))],unmapped+"_1")
+            cat([unmapped+"_"+str(n)+"_2" for n in range(len(subfiles))],unmapped+"_2")
+        else:
+            cat([unmapped+"_"+str(n) for n in range(len(subfiles))],unmapped)
+    bamfiles = [f.wait() for f in futures]
+    return merge_bam.nonblocking(ex, bamfiles, via=via).wait()
 
 ################################################################################
-# Preprocessing #
+# Postprocessing #
+
 @program
 def bamstats(bamfile):
     """Wrapper to the ``bamstat`` program.
@@ -245,25 +531,48 @@ def map_reads( ex, fastq_file, chromosomes, bowtie_index,
     else:
         descr = {'step':'bowtie','group':name}
     bam_descr = {'type': 'bam'}
-    py_descr = {'type':'py','view':'admin'}    
+    py_descr = {'type':'py','view':'admin'}
+    fq_descr = {'type': 'fastq'}
+    fqn_descr = {'type': 'none','view':'admin'}
     bam_descr.update(descr)
     py_descr.update(descr)
+    fq_descr.update(descr)
+    fqn_descr.update(descr)
     bwtarg = ["-Sam", str(max(20,maxhits))]+bwt_args
     if not("--best" in bwtarg):     bwtarg += ["--best"]
     if not("--strata" in bwtarg):   bwtarg += ["--strata"]
     if not("--chunkmbs" in bwtarg): bwtarg += ["--chunkmbs","512"]
-    if count_lines( ex, fastq_file )>10000000:
-        bam = parallel_bowtie( ex, bowtie_index, fastq_file,
+    unmapped = unique_filename_in()
+    is_paired_end = isinstance(fastq_file,tuple)
+    if is_paired_end:
+        linecnt = count_lines( ex, fastq_file[0] )
+    else:
+        linecnt = count_lines( ex, fastq_file )
+    if linecnt>10000000:
+        bam = parallel_bowtie( ex, bowtie_index, fastq_file, unmapped=unmapped,
                                n_lines=8000000, bowtie_args=bwtarg,
                                add_nh_flags=True, via=via )
     else:
+        bwtarg += ["--un",unmapped]
         future = bowtie.nonblocking( ex, bowtie_index, fastq_file, bwtarg, via=via )
         samfile = future.wait()
         bam = add_nh_flag( samfile )
     sorted_bam = add_and_index_bam( ex, bam, set_file_descr(name+"complete.bam",**bam_descr) )
     full_stats = bamstats( ex, sorted_bam )
     add_pickle( ex, full_stats, set_file_descr(name+"full_bamstat",**py_descr) )
-    return_dict = {"fullbam": sorted_bam}
+    if is_paired_end:
+        touch( ex, unmapped )
+        ex.add( unmapped, description=set_file_descr(name+"unmapped",**fqn_descr) )
+        gzipfile( ex, unmapped+"_1" )
+        ex.add( unmapped+"_1.gz", description=set_file_descr(name+"unmapped_1.fastq.gz",**fq_descr), 
+                associate_to_filename=unmapped, template='%s_1.fastq.gz' )
+        gzipfile( ex, unmapped+"_2" )
+        ex.add( unmapped+"_2.gz", description=set_file_descr(name+"unmapped_2.fastq.gz",**fq_descr), 
+                associate_to_filename=unmapped, template='%s_2.fastq.gz' )
+    else:
+        gzipfile( ex, unmapped )
+        ex.add( unmapped+".gz", set_file_descr(name+"unmapped.fastq.gz",**fq_descr) )
+    return_dict = {"fullbam": sorted_bam, "unmapped": unmapped}
     if remove_pcr_duplicates:
         thresh = poisson_threshold( antibody_enrichment*full_stats["actual_coverage"] )
         add_pickle( ex, thresh, set_file_descr(name+"Poisson_threshold",**py_descr) )
@@ -309,6 +618,44 @@ def get_fastq_files( job, fastq_root, dafl=None, set_seed_length=True ):
     of seed lengths is constructed with values corresponding to 70% of the
     read length.
     """
+    def _expand_fastq(run,fq_file,target):
+        is_gz = run.endswith(".gz") or run.endswith(".gzip")
+        run_strip = run
+        if is_gz: run_strip = re.sub('.gz[ip]*','',run)
+        is_tar = run_strip.endswith(".tar")
+        if is_tar:
+            mode = 'r'
+            if is_gz: mode += '|gz'
+            fq_file2 = unique_filename_in(fastq_root)
+            target2 = os.path.join(fastq_root,fq_file2)
+            with open(target,'rb') as tf:
+                tar = tarfile.open(fileobj=tf, mode=mode)
+                tar_filename = tar.next()
+                input_file = tar.extractfile(tar_filename)
+                with open(target2, 'w') as output_file:
+                    while True:
+                        chunk = input_file.read(4096)
+                        if chunk == '':
+                            break
+                        else:
+                            output_file.write(chunk)
+                tar.close()
+        elif is_gz:
+            fq_file2 = unique_filename_in(fastq_root)
+            target2 = os.path.join(fastq_root,fq_file2)
+            with open(target2,'w') as output_file:
+                input_file = gzip.open(target, 'rb')
+                while True:
+                    chunk = input_file.read(4096)
+                    if chunk == '':
+                        break
+                    else:
+                        output_file.write(chunk)
+                input_file.close()
+        else:
+            fq_file2 = fq_file
+        return fq_file2
+#########
     if  not(dafl is None or isinstance(dafl.values()[0],daflims.DAFLIMS)):
         raise ValueError("Need DAFLIMS objects in get_fastq_files.")
     for gid,group in job.groups.iteritems():
@@ -320,58 +667,37 @@ def get_fastq_files( job, fastq_root, dafl=None, set_seed_length=True ):
             if isinstance(run,dict) and all([x in run for x in ['facility','machine','run','lane']]):
                 dafl1 = dafl[run['facility']]
                 daf_data = dafl1.fetch_fastq( str(run['facility']), str(run['machine']),
-                                              run['run'], run['lane'], to=fastq_root )
+                                              run['run'], run['lane'], to=fastq_root, libname=run['sequencing_library'] )
                 job.groups[gid]['runs'][rid] = daf_data['path']
                 if (set_seed_length):
                     job.groups[gid]['seed_lengths'][rid] = max(28,int(0.7*daf_data['cycle']))
-                job.groups[gid]['run_names'][rid] = "_".join(['',run['machine'],str(run['run']),str(run['lane'])])
+                job.groups[gid]['run_names'][rid] = "_".join(['',run['machine'],str(run['run']),
+                                                              str(run['lane'])])
             elif isinstance(run,str):
+                run = re.search(r'^\s*([^;\s]+)',run).groups()[0]
                 fq_file = unique_filename_in(fastq_root)
                 target = os.path.join(fastq_root,fq_file)
+                runsplit = run.split(',')
+                run_pe = None
+                if len(runsplit) > 1:
+                    run = runsplit[0]
+                    run_pe = runsplit[1]
+                    target_pe = target+"_R2"
+                    fq_file_pe = fq_file+"_R2"
                 if run.startswith("http://") or run.startswith("https://") or run.startswith("ftp://"):
                     urllib.urlretrieve( run, target )
+                    if run_pe:
+                        urllib.urlretrieve( run_pe, target_pe )
                 else:
                     shutil.copy(run,target)
+                    if run_pe:
+                        shutil.copy(run_pe, target_pe)
 #                run = re.sub('.seq.gz','_seq.tar',run)
-                is_gz = run.endswith(".gz") or run.endswith(".gzip")
-                run_strip = run
-                if is_gz:
-                    run_strip = re.sub('.gz[ip]*','',run)
-                is_tar = run_strip.endswith(".tar")
-                if is_tar:
-                    mode = 'r'
-                    if is_gz:
-                        mode += '|gz'
-                    fq_file2 = unique_filename_in(fastq_root)
-                    target2 = os.path.join(fastq_root,fq_file2)
-                    with open(target,'rb') as tf:
-                        tar = tarfile.open(fileobj=tf, mode=mode)
-                        tar_filename = tar.next()
-                        input_file = tar.extractfile(tar_filename)
-                        with open(target2, 'w') as output_file:
-                            while True:
-                                chunk = input_file.read(4096)
-                                if chunk == '':
-                                    break
-                                else:
-                                    output_file.write(chunk)
-                        input_file.close()
-                        tar.close()
-                    fq_file = fq_file2
-                elif is_gz:
-                    fq_file2 = unique_filename_in(fastq_root)
-                    target2 = os.path.join(fastq_root,fq_file2)
-                    with open(target2,'w') as output_file:
-                        input_file = gzip.open(target, 'rb')
-                        while True:
-                            chunk = input_file.read(4096)
-                            if chunk == '':
-                                break
-                            else:
-                                output_file.write(chunk)
-                        input_file.close()
-                    fq_file = fq_file2
-                job.groups[gid]['runs'][rid] = fq_file
+                if run_pe:
+                    job.groups[gid]['runs'][rid] = (_expand_fastq(run,fq_file,target),
+                                                    _expand_fastq(run_pe,fq_file_pe,target_pe))
+                else:
+                    job.groups[gid]['runs'][rid] = _expand_fastq(run,fq_file,target)
                 job.groups[gid]['run_names'][rid] = os.path.splitext(run.split("/")[-1])[0]
     return job
 
@@ -435,7 +761,10 @@ def map_groups( ex, job_or_dict, fastq_root, assembly_or_dict, map_args=None ):
         if not 'runs' in group:
             group = {'runs': group}
         for rid,run in group['runs'].iteritems():
-            fq_file = os.path.join(fastq_root,run)
+            if isinstance(run,tuple):
+                fq_file = (os.path.join(fastq_root,run[0]),os.path.join(fastq_root,run[1]))
+            else:
+                fq_file = os.path.join(fastq_root,run)
             if 'seed_lengths' in group and group['seed_lengths'].get(rid) > 0:
                 seed_len = str(group['seed_lengths'][rid])
                 if 'bwt_args' in map_args:
@@ -471,7 +800,7 @@ def add_pdf_stats( ex, processed, group_names, script_path,
     all_stats = {}
     for gid in group_names.keys():
         for i,mapped in enumerate(processed[gid].values()):
-            name = group_names[gid]
+            name = group_names[gid] or str(gid)
             if 'libname' in mapped:
                 name = mapped['libname']
             if name in all_stats:
@@ -610,12 +939,12 @@ def parallel_density_sql( ex, bamfile, chromosomes,
             for row in infile:
                 r = row.split("\t")
                 if len(r)>5 and r[5][0] == strnd:
-                    yield((r[1],r[2],r[4]))
+                    yield((int(r[1]),int(r[2]),float(r[4])))
         with new(output+"rev.sql",datatype="quantitative",chrmeta=chrlist) as trev:
             with new(output+"fwd.sql",datatype="quantitative",chrmeta=chrlist) as tfwd:
                 for k,v in chromosomes.iteritems():
                     try:
-                        wig = futures[k].wait()
+                        wig = str(futures[k].wait())
                         with open(wig,"r") as f:
                             tfwd.write(v['name'],_wig(f,"+"))
                         with open(wig,"r") as f:
@@ -629,11 +958,11 @@ def parallel_density_sql( ex, bamfile, chromosomes,
                 if not row.startswith('track'): 
                     r = row.split("\t")
                     if len(r)>3:
-                        yield((r[1],r[2],r[3]))
+                        yield((int(r[1]),int(r[2]),float(r[3])))
         with new(output+"merged.sql",datatype="quantitative",chrmeta=chrlist) as tboth:
             for k,v in chromosomes.iteritems():
                 try:
-                    bedgr = futures[k].wait()
+                    bedgr = str(futures[k].wait())
                     with open(bedgr,"r") as f:
                         tboth.write(v['name'],_bedgr(f))
                 except (ProgramFailed, IOError):
@@ -832,7 +1161,7 @@ def get_bam_wig_files( ex, job, minilims=None, hts_url=None, suffix=['fwd','rev'
             group_name = str(gid)
         job.groups[gid]['name'] = group_name
         for rid,run in group['runs'].iteritems():
-            file_loc = str(run['url'])
+            file_loc = re.search(r'^\s*([^;\s]+)',str(run['url'])).groups()[0]
             bamfile = unique_filename_in()
             wig = {}
             name = group_name

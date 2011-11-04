@@ -47,7 +47,6 @@ import urllib2, json, os, re
 from datetime import datetime
 
 # Internal modules #
-
 from .common import normalize_url
 
 # Other modules #
@@ -90,7 +89,7 @@ class GenRep(object):
         else:
             self.url = normalize_url(url)
             self.root = os.path.abspath(root)
-        self.intype = intype
+        self.intype = int(intype)
 
     def is_up(self):
         """ Check if genrep webservice is available """
@@ -323,18 +322,18 @@ class GenRep(object):
     def get_genrep_objects(self, url_tag, info_tag, filters = None):
         """
         Get a list of GenRep objets
-        ... attribute url_tag : the GenrepObject type (plural)
-        ... attribute info_tag : the GenrepObject type (singular)
-        Optionals attributes :
-        ... attribute filters : a dict that is used to filter the response
+        ... attribute url_tag: the GenrepObject type (plural)
+        ... attribute info_tag: the GenrepObject type (singular)
+        Optionals attributes:
+        ... attribute filters: a dict that is used to filter the response
         from GenRep.
-        Example :
+        Example:
         To get the genomes related to 'Mycobacterium leprae' species.
-        First get the species with the right name :
+        First get the species with the right name:
         species = get_genrep_objects('organisms', 'organism', {'species':'Mycobacterium leprae'})[0]
         genomes = get_genrep_objects('genomes', 'genome', {'organism_id':species.id})
         """
-        if not self.is_up() : return []
+        if not self.is_up(): return []
         if filters is None:
             filters = {}
         url = """%s/%s.json""" % (self.url, url_tag)
@@ -343,50 +342,17 @@ class GenRep(object):
         # get objects
         for info in infos:
             obj = GenrepObject(info,info_tag)
-            if not filters :
+            if not filters:
                 result.append(obj)
-            else : # filter
+            else: # filter
                 add = True
                 for k,v in filters.items():
                     if not hasattr(obj,k) or not getattr(obj,k)== v:
                         add = False
-                if add : result.append(obj)
+                if add: result.append(obj)
                         
         return result
-    
-    
-    
-    def get_chromosomes_from_nr_assembly_id(self, nr_assembly_id):
-        '''
-        Get the chromosomes related to the nr_assembly specified.
-        It return the chromosomes from the assembly ``BBCF_VALID``
-        :param: nr_assembly_id : the non-redundant assembly id
-        '''
-        # get teh nr_assembly from it's id
-        nr_assembly = self.get_genrep_objects('nr_assemblies', 'nr_assembly', 
-                                              {'id':nr_assembly_id})[0]
-        # get assembly bbcf valid with the same genome id
-        ass = self.get_genrep_objects('assemblies', 'assembly', 
-                                             {'genome_id':nr_assembly.genome_id, 
-                                              'bbcf_valid':True})[0]
-        if ass is not None:
-            # load the assembly
-            assembly_info = json.load(urllib2.urlopen("""%s/assemblies/%s.json""" % (self.url, ass.id)))
-            assembly = GenrepObject(assembly_info,'assembly')
-            chromosomes = []
-            # get the chromosomes
-            for chr in assembly.chromosomes:
-                chromosomes.append(GenrepObject(chr, 'chromosome'))
-            return chromosomes     
         
-        
-        
-    def is_available(self, assembly):
-        """
-        Legacy signature
-        """
-        return self.assemblies_available(assembly)
-
 ################################################################################
 class Assembly(object):
     def __init__(self, assembly_id, assembly_name, index_path,

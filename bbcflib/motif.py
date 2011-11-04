@@ -24,6 +24,8 @@ def meme( fasta, outdir, maxsize=10000000, args=None ):
     """
     if args is None:
         args = []
+    if not("minw" in args): args += ["-minw","6"]
+    if not("maxw" in args): args += ["-maxw","16"]
     call = ["meme", fasta, "-o", outdir, "-dna", "-maxsize", str(maxsize)]+args
     return {"arguments": call, "return_value": None}
 
@@ -63,7 +65,7 @@ def parse_meme_xml( ex, meme_file, chromosomes ):
     outsql = unique_filename_in()
     chrlist = dict((v['name'], {'length': v['length']}) for v in chromosomes.values())
     with track.new(outsql, format='sql', chrmeta=chrlist, datatype='qualitative') as t:
-        track_result.attributes['source'] = 'Meme'
+        t.attributes['source'] = 'Meme'
         for chrom in chrlist.keys():
             t.write(chrom,_xmltree(chrom,tree),fields=['start','end','name','score','strand'])
     return {'sql':outsql,'matrices':allmatrices}
@@ -92,12 +94,14 @@ def parallel_meme( ex, genrep, chromosomes, regions,
     for n,f in futures.iteritems():
         f[1].wait()
         meme_out = f[0]
-        archive = unirque_filename_in()
-        with tarfile.open(archive, "w:gz"):
-            tar.add( meme_out )
+        archive = unique_filename_in()
+        tgz = tarfile.open(archive, "w:gz")
+        tgz.add( meme_out )
+        tgz.close()
         meme_res = parse_meme_xml( ex, os.path.join(meme_out, "meme.xml"), chromosomes )
-        ex.add( os.path.join(meme_out, "meme.html"),
-                description=set_file_descr(n+"_meme.html",step='meme',type='html',group=n) )
+        if os.path.exists(os.path.join(meme_out, "meme.html")):
+            ex.add( os.path.join(meme_out, "meme.html"),
+                    description=set_file_descr(n+"_meme.html",step='meme',type='html',group=n) )
         ex.add( meme_res['sql'], description=set_file_descr(n+"_meme_sites.sql",step='meme',type='sql',group=n) )
         ex.add( archive, description=set_file_descr(n+"_meme.tgz",step='meme',type='tar',group=n) )
         for i,motif in enumerate(meme_res['matrices'].keys()):
