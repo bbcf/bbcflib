@@ -54,56 +54,27 @@ class Frontend(object):
     def query_url(self, method, key):
         return """%s/%s.json?key=%s""" % (self.url, method, key)
 
+    def _fix_dict(a):
+        for k,v in a.iteritems():
+            if isinstance(v,unicode): a[k] = str(v)
+        if 'created_at' in a:
+            a['created_at'] = datetime.strptime(a['created_at'], '%Y-%m-%dT%H:%M:%SZ')
+        return a
+
     def _fetch_groups(self, key):
-        def _f(g):
-            a = g['group']
-            b = {'control': a['control'],
-                 'created_at': datetime.strptime(a['created_at'],
-                                                 '%Y-%m-%dT%H:%M:%SZ'),
-                 'id': a['id'],
-                 'name': str(a['name']),
-                 'job_id': a['job_id']}
-            if "library_file_type_id" in a:
-                b.update({"library_file_type_id": a["library_file_type_id"],
-                          "library_file_url": str(a.get("library_file_url") or ""),
-                          "library_id": a.get("library_id") or 0,
-                          "library_param_file": str(a.get("library_param_file") or "")})
-            for k,v in a.iteritems():
-                if not(k in b): 
-                    if isinstance(v,unicode):
-                        b[k] = str(v)
-                    else: 
-                        b[k] = v                    
-            return b
-        return [_f(g) for g in json.load(urllib2.urlopen(self.query_url('groups', key)))]
+        return [_fix_dict(g['group']) for g in json.load(urllib2.urlopen(self.query_url('groups', key)))]
 
     def _fetch_runs(self, key):
         def _f(r):
             a = r['run']
-            if not(a.get('url') == None):
-                a['url'] = str(a['url'])
-            else:
-                a['url'] = None
-            if not(a.get('key') == None):
-                a['key'] = str(a['key'])
-            else:
-                a['key'] = None
-            return {'facility_name': str(a['facility_name']),
-                    'id': a['id'],
-                    'group_id': a['group_id'],
-                    'machine_name': str(a['machine_name']),
-                    'machine_id': a['machine_id'],
-                    'lane': a['lane_nber'],
-                    'run': a['run_nber'],
-                    'facility_location': str(a['facility_location']),
-                    'url': a['url'],
-                    'key': a['key'],
-                    'created_at': datetime.strptime(a['created_at'],
-                                                    '%Y-%m-%dT%H:%M:%SZ')}
+            a['lane'] = a['lane_nber']; a.pop['lane_nber']
+            a['run'] = a['run_nber']; a.pop['run_nber']
+            return _fix_dict(a)
         return [_f(r) for r in json.load(urllib2.urlopen(self.query_url('runs', key)))]
 
     def _fetch_job(self, key):
         j = json.load(urllib2.urlopen("""%s/jobs/%s.json""" % (self.url, key)))['job']
+        j = _fix_dict(j)
         ret_val = {'id': j.pop('id'),
                    'created_at': datetime.strptime(j.pop('created_at'),
                                                    '%Y-%m-%dT%H:%M:%SZ'),
@@ -112,31 +83,16 @@ class Frontend(object):
                    'description': j.pop('description'),
                    'email': j.pop('email')}
         ret_val.update({'options': j})
-        for k,v in ret_val['options'].iteritems():
-            if isinstance(v,unicode): ret_val['options'][k]=str(v)
         return ret_val
 
     def job(self, key):
         """Fetch information about job *key* as a Job object."""
         x = self._fetch_job(key)
-        j = Job(id = x['id'],
-                created_at = x['created_at'],
-                key = key,
-                assembly_id = x['assembly_id'],
-                description = str(x['description']),
-                email = str(x['email']),
-                options = x['options'])
+        x = _fix_dict(x)
+        j = Job(**x)
         [j.add_group(id=g.pop('id'), name=g.pop('name'), group=g)
          for g in self._fetch_groups(key)]
-        [j.add_run(id=r['id'], group=r['group_id'],
-                   facility=r['facility_name'],
-                   facility_location=r['facility_location'],
-                   machine=r['machine_name'],
-                   machine_id=r['machine_id'],
-                   run=r['run'], lane=r['lane'],
-                   url=r['url'],
-                   key=r['key'])
-         for r in self._fetch_runs(key)]
+        [j.add_run(**r) for r in self._fetch_runs(key)]
         return j
 
 ################################################################################
@@ -175,20 +131,14 @@ class Job(object):
             self.groups[id] = {'name': name, 'runs': {}}
         self.groups[id].update(group)
 
-    def add_run(self, id, group, facility, facility_location, machine, machine_id, run, lane, url, key):
+    def add_run(self, **kwargs):
         try:
             runs = self.groups[group]['runs']
+            id = kwargs.pop('id')
             if runs.has_key(id):
                 raise ValueError("Group %d already has a run with ID %d" % (group, id))
             else:
-                runs[id] = {'facility': facility,
-                            'facility_location': facility_location,
-                            'machine': machine,
-                            'machine_id': machine_id,
-                            'run': run,
-                            'lane': lane,
-                            'url': url,
-                            'key': key}
+                runs[id] = kwargs
         except KeyError, k:
             raise KeyError("No such group with ID %d" % group)
 
@@ -228,6 +178,7 @@ def parseConfig( file ):
                     machine_id=int((run.get('machine_id') is None) and "0" or run.get('machine_id')),
                     run =int((run.get('run') is None) and "0" or run.get('run')),
                     lane=int((run.get('lane') is None) and "0" or run.get('lane')),
+                    sequencing_library=(run.get('sequencing_library') is None) and None or str(run.get('sequencing_library')),
                     url=run.get('url'),
                     key=run.get('key'))
     globals = config.get('Global variables') or {}
