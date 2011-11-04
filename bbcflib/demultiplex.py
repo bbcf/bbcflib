@@ -5,7 +5,7 @@ Module: bbcflib.demultiplex
 
 """
 from bein import *
-from bein.util import *
+from bein.util import touch, add_pickle
 from common import set_file_descr 
 from mapseq import bowtie_build, bowtie, add_bowtie_index
 import sys, getopt, os
