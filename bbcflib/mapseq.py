@@ -255,6 +255,7 @@ def add_and_index_bam(ex, bamfile, description="", alias=None):
     sort = sort_bam(ex, bamfile)
     index = index_bam(ex, sort)
     ex.add(sort, description=description, alias=alias)
+    description = re.sub(r'([^\[\s]+)',r'\1.bai',description,1)
     ex.add(index, description=description + " (BAM index)",
            associate_to_filename=sort, template='%s.bai')
     return sort
@@ -531,7 +532,7 @@ def map_reads( ex, fastq_file, chromosomes, bowtie_index,
     else:
         descr = {'step':'bowtie','group':name}
     bam_descr = {'type': 'bam'}
-    py_descr = {'type':'py','view':'admin'}
+    py_descr = {'type':'py','view':'admin','comment':'pickle file'}
     fq_descr = {'type': 'fastq'}
     fqn_descr = {'type': 'none','view':'admin'}
     bam_descr.update(descr)
@@ -783,7 +784,7 @@ def map_groups( ex, job_or_dict, fastq_root, assembly_or_dict, map_args=None ):
             file_names[gid][rid] = str(name)
             m.update({'libname': str(name)})
             processed[gid][rid] = m
-    add_pickle( ex, file_names, set_file_descr('file_names',step='bowtie',type='py',view='admin') )
+    add_pickle( ex, file_names, set_file_descr('file_names',step='bowtie',type='py',view='admin',comment='pickle file') )
     return processed
 
 def add_pdf_stats( ex, processed, group_names, script_path,
