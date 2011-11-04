@@ -12,7 +12,7 @@ import sys, getopt, os
 # call 
 #python demultiplex.py -i "/archive/epfl/bbcf/mleleu/pipeline_vMarion/pipeline_3Cseq/vWebServer_Bein/tests/export_part.fa" -p "/archive/epfl/bbcf/mleleu/pipeline_vMarion/pipeline_3Cseq/vWebServer_Bein/tests/primers.fa" -x 30 -n 1 -s 108 -l 50
 
-grpId=1
+grpId=0
 step=0
 
 @program
@@ -40,7 +40,7 @@ def split_exonerate(filename,n=1,x=22,l=30):
 			if re.search(r'vulgar',s):
 				key = s.split(' ')[5].split('|')[0]
 				if not key in correction:
-					correction[key]=len(s.split('|')[1])-len(s.split('|')[3])+1
+					correction[key]=len(s.split(' ')[5].split('|')[1])-len(s.split(' ')[5].split('|')[3])+1
 					filenames[key]=unique_filename_in()					
 					files[key]=open(filenames[key],"w")
 				k=int(s.split(' ')[3])-int(s.split(' ')[7])+correction[key]
