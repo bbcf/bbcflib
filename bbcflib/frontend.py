@@ -54,30 +54,31 @@ class Frontend(object):
     def query_url(self, method, key):
         return """%s/%s.json?key=%s""" % (self.url, method, key)
 
-    def _fix_dict(a):
+    def _fix_dict(self,a):
         for k,v in a.iteritems():
             if isinstance(v,unicode): a[k] = str(v)
-        if 'created_at' in a:
+            if isinstance(k,unicode): a[str(k)] = a.pop(k)
+        if isinstance(a.get('created_at'),str):
             a['created_at'] = datetime.strptime(a['created_at'], '%Y-%m-%dT%H:%M:%SZ')
         return a
 
     def _fetch_groups(self, key):
-        return [_fix_dict(g['group']) for g in json.load(urllib2.urlopen(self.query_url('groups', key)))]
+        return [self._fix_dict(g['group']) for g in json.load(urllib2.urlopen(self.query_url('groups', key)))]
 
     def _fetch_runs(self, key):
-        def _f(r):
-            a = r['run']
-            a['lane'] = a['lane_nber']; a.pop['lane_nber']
-            a['run'] = a['run_nber']; a.pop['run_nber']
-            return _fix_dict(a)
-        return [_f(r) for r in json.load(urllib2.urlopen(self.query_url('runs', key)))]
+        def _f(a):
+            a['lane'] = a.pop('lane_nber')
+            a['run'] = a.pop('run_nber')
+            a['facility'] = a.pop('facility_name')
+            a['machine']=a.pop('machine_name')
+            return self._fix_dict(a)
+        return [_f(r['run']) for r in json.load(urllib2.urlopen(self.query_url('runs', key)))]
 
     def _fetch_job(self, key):
         j = json.load(urllib2.urlopen("""%s/jobs/%s.json""" % (self.url, key)))['job']
-        j = _fix_dict(j)
+        j = self._fix_dict(j)
         ret_val = {'id': j.pop('id'),
-                   'created_at': datetime.strptime(j.pop('created_at'),
-                                                   '%Y-%m-%dT%H:%M:%SZ'),
+                   'created_at': j.pop('created_at'),
                    'key': j.pop('key'),
                    'assembly_id': j.pop('assembly_id'),
                    'description': j.pop('description'),
@@ -88,7 +89,7 @@ class Frontend(object):
     def job(self, key):
         """Fetch information about job *key* as a Job object."""
         x = self._fetch_job(key)
-        x = _fix_dict(x)
+        x = self._fix_dict(x)
         j = Job(**x)
         [j.add_group(id=g.pop('id'), name=g.pop('name'), group=g)
          for g in self._fetch_groups(key)]
@@ -132,9 +133,10 @@ class Job(object):
         self.groups[id].update(group)
 
     def add_run(self, **kwargs):
+        group = kwargs.pop('group_id')
         try:
-            runs = self.groups[group]['runs']
             id = kwargs.pop('id')
+            runs = self.groups[group]['runs']
             if runs.has_key(id):
                 raise ValueError("Group %d already has a run with ID %d" % (group, id))
             else:

@@ -150,7 +150,7 @@ class DAFLIMS(object):
             rtn = {}
             for resp in response[1:]:
                 q = resp.split('\t')
-                if not(libname and q[1] == libname): continue
+                if libname and not(q[1] == libname): continue
                 if not(int(q[0]) in rtn): rtn[int(q[0])] = {}
                 if len(q)<6 or q[5] == check_type[type]: 
                     rtn[int(q[0])][(int(q[3]),int(q[4]))] = q[2]
