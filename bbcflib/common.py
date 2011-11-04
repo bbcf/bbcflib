@@ -145,7 +145,7 @@ def get_files( id_or_key, minilims, by_type=True ):
     return file_dict
 
 #-------------------------------------------------------------------------#
-def merge_sql( ex, sqls, names, description="merged.sql", outdir=None, via='lsf' ):
+def merge_sql( ex, sqls, names, outdir=None, via='lsf' ):
     """Run ``gMiner``'s 'merge_score' function on a set of sql files
     """
     import os
@@ -166,7 +166,6 @@ def merge_sql( ex, sqls, names, description="merged.sql", outdir=None, via='lsf'
     gMiner_job['manipulation'] = 'merge_scores'
     gMiner_job['output_location'] = outdir
     files = run_gMiner.nonblocking(ex,gMiner_job,via=via).wait()
-    ex.add( files[0], description=description )
     return files[0]
 
 #-------------------------------------------------------------------------#

@@ -1047,10 +1047,9 @@ def densities_groups( ex, job_or_dict, file_dict, chromosomes, via='lsf' ):
             merged_bam = merge_bam(ex, [m['bam'] for m in mapped.values()])
             ids = [m['libname'] for m in mapped.values()]
             merged_wig = dict((s, 
-                               merge_sql(ex, [x+s+".sql" for x in wig], ids,
-                                         description=set_file_descr(group_name+"_"+s+".sql",**pars1),
-                                         via='local'))
+                               merge_sql(ex, [x+s+".sql" for x in wig], ids,via='local'))
                               for s in suffixes)
+            [ex.add( merged_wig[s], description=set_file_descr(group_name+"_"+s+".sql",**pars1) ) for s in suffixes]
         else:
             merged_bam = mapped.values()[0]['bam']
             merged_wig =  dict((s, wig[0]+s+".sql") for s in suffixes)
