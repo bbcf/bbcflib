@@ -80,7 +80,6 @@ from . import frontend, genrep, daflims
 from .common import get_files, cat, set_file_descr, merge_sql, gzipfile
 from .track import Track, new
 
-
 # Other modules #
 import pysam
 from numpy      import  cumsum, exp, array
@@ -207,42 +206,35 @@ def merge_bam(files):
                 'return_value': filename}
 
 
-try:
-    import pysam
-
-    @program
-    def external_add_nh_flag(samfile):
-        outfile = unique_filename_in()
-        return {'arguments': ['add_nh_flag',samfile,outfile],'return_value': outfile}
+@program
+def external_add_nh_flag(samfile):
+    outfile = unique_filename_in()
+    return {'arguments': ['add_nh_flag',samfile,outfile],'return_value': outfile}
 
 
-    def add_nh_flag(samfile, out=None):
-        """Adds NH (Number of Hits) flag to each read alignment in *samfile*.
-        
-        Scans a BAM file ordered by read name, counts the number of
-        alternative alignments reported and writes them to a BAM file
-        with the NH tag added.
-        
-        If *out* is ``None``, a random name is used.
-        """
-        infile = pysam.Samfile(samfile, "r")
-        if out == None:
-            outname = unique_filename_in()
-        else:
-            outname = out
-        outfile = pysam.Samfile(outname, "wb", template=infile)
-        for readset in read_sets(infile,keep_unmapped=True):
-            nh = len(readset)
-            for read in readset:
-                if (read.is_unmapped):
-                    nh = 0
-                read.tags = read.tags+[("NH",nh)]
-                outfile.write(read)
-        infile.close()
-        outfile.close()
-        return outname
-except:
-    print >>sys.stderr, "PySam not found.  Skipping add_nh_flag."
+def add_nh_flag(samfile, out=None):
+    """Adds NH (Number of Hits) flag to each read alignment in *samfile*.
+    
+    Scans a BAM file ordered by read name, counts the number of
+    alternative alignments reported and writes them to a BAM file
+    with the NH tag added.
+    
+    If *out* is ``None``, a random name is used.
+    """
+    if out == None:
+        out = unique_filename_in()
+    infile = pysam.Samfile(samfile, "r")
+    outfile = pysam.Samfile(out, "wb", template=infile)
+    for readset in read_sets(infile,keep_unmapped=True):
+        nh = len(readset)
+        for read in readset:
+            if (read.is_unmapped):
+                nh = 0
+            read.tags = read.tags+[("NH",nh)]
+            outfile.write(read)
+    infile.close()
+    outfile.close()
+    return out
 
 def add_and_index_bam(ex, bamfile, description="", alias=None):
     """Indexes *bamfile* and adds it to the repository.
@@ -561,6 +553,7 @@ def map_reads( ex, fastq_file, chromosomes, bowtie_index,
     sorted_bam = add_and_index_bam( ex, bam, set_file_descr(name+"complete.bam",**bam_descr) )
     full_stats = bamstats( ex, sorted_bam )
     add_pickle( ex, full_stats, set_file_descr(name+"full_bamstat",**py_descr) )
+    bam_descr['ucsc'] = '1'
     if is_paired_end:
         touch( ex, unmapped )
         ex.add( unmapped, description=set_file_descr(name+"unmapped",**fqn_descr) )
@@ -1062,7 +1055,7 @@ def densities_groups( ex, job_or_dict, file_dict, chromosomes, via='lsf' ):
                 with Track(merged_wig[s]) as t:
                     t.convert(out+s,"bigWig")
                 ex.add(out+s,
-                       description=set_file_descr(group_name+"_"+s+".bw",groupId=gid,step='density',type='bigwig'))
+                       description=set_file_descr(group_name+"_"+s+".bw",groupId=gid,step='density',type='bigWig',ucsc='1'))
     processed.update({'read_extension': options.get('read_extension'),
                       'genome_size': mapped.values()[0]['stats']['genome_size']})
     return processed

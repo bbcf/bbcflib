@@ -74,15 +74,20 @@ def set_file_descr(filename,**kwargs):
 #    tag:filename[group:grpId,step:stepId,type:fileType,view:admin] (comment)
 
 #-------------------------------------------------------------------------#
-def get_files_old( id_or_key, minilims ):
+def get_files( id_or_key, minilims, by_type=True, select_param=None ):
     """Retrieves a dictionary of files created by an htsstation job identified by its key
     or bein id in a MiniLIMS.
 
     The dictionary keys are the file types (e.g. 'pdf', 'bam', 'py' for python objects),
     the values are dictionaries with keys repository file names and values actual file
     descriptions (names to provide in the user interface).
+
+    'select_param' can be used to select a subset of files: if it is a string or a list of string, 
+    then only files containing thess parameters will be returned, 
+    and if it is a dictionary, only files with parameters matching the key/value pairs will be returned.
     """
     import re
+    if isinstance(select_param,str): select_param = [select_param]
     if isinstance(id_or_key, str):
         try:
             exid = max(minilims.search_executions(with_text=id_or_key))
@@ -91,38 +96,9 @@ def get_files_old( id_or_key, minilims ):
     else:
         exid = id_or_key
     file_dict = {}
-    all = dict((y['repository_name'],y['description']) for y in
-               [minilims.fetch_file(x) for x in minilims.search_files(source=('execution',exid))])
-    for f,d in all.iteritems():
-        cat,name = re.search(r'([^:]+):(.*)$',d).groups()
-        name = re.sub(r'\s+\(BAM INDEX\)','.bai',name)
-        if cat in file_dict:
-            file_dict[cat].update({f: name})
-        else:
-            file_dict[cat] = {f: name}
-    return file_dict
-
-#-------------------------------------------------------------------------#
-def get_files( id_or_key, minilims, by_type=True ):
-    """Retrieves a dictionary of files created by an htsstation job identified by its key
-    or bein id in a MiniLIMS.
-
-    The dictionary keys are the file types (e.g. 'pdf', 'bam', 'py' for python objects),
-    the values are dictionaries with keys repository file names and values actual file
-    descriptions (names to provide in the user interface).
-    """
-    import re
-    if isinstance(id_or_key, str):
-        try:
-            exid = max(minilims.search_executions(with_text=id_or_key))
-        except ValueError, v:
-            raise ValueError("No execution with key "+id_or_key)
-    else:
-        exid = id_or_key
-    file_dict = {}
-    all = dict((y['repository_name'],y['description']) for y in
-               [minilims.fetch_file(x) for x in minilims.search_files(source=('execution',exid))])
-    for f,d in all.iteritems():
+    allf = dict((y['repository_name'],y['description']) for y in
+                [minilims.fetch_file(x) for x in minilims.search_files(source=('execution',exid))])
+    for f,d in allf.iteritems():
         tag_d = d.split(':')
         tag = None
         if len(tag_d)>1 and not(re.search("\[",tag_d[0])):
@@ -134,15 +110,34 @@ def get_files( id_or_key, minilims, by_type=True ):
             re.sub(r'([^\s\[]*)',r'\1['+pars+']',x,1)
         else:
             pars = pars_patt.groups()[0]
-        par_dict = dict([x.split(":") for x in pars.split(",")])
-	if re.search(r'\s+\(BAM INDEX\)',d):
-            d = re.sub('[','.bai[',d)
+        par_dict = dict(x.split(":") for x in pars.split(","))
+        if select_param:
+            if isinstance(select_param,dict):
+                if not(all([k in par_dict and par_dict[k]==v for k,v in select_param.iteritems()])):
+                    continue
+            else:
+                if not(all([k in par_dict for k in select_param])):
+                    continue
         cat = (by_type and par_dict.get('type')) or tag or 'none'
         if cat in file_dict:
-            file_dict[cat].update({f: d})
+            file_dict[cat][f]=d
         else:
             file_dict[cat] = {f: d}
     return file_dict
+
+#-------------------------------------------------------------------------#
+def track_header( descr, ftype, url, ffile ):
+    header = "track type="+ftype+" name="+re.sub(r'\[.*','',descr)
+    url += ffile
+    header += " bigDataUrl="+url+" "
+    style = " visibility=2"
+    if ftype=="bigWig":
+        style += " windowingFunction=maximum"
+        if re.search(r'_rev.bw ',descr): style+= " color=0,10,200"
+        if re.search(r'_fwd.bw ',descr): style+= " color=200,10,0"
+    return header+style
+
+#"track type="+type+" name='"+fname+"' bigDataUrl="+htsurl+style+"\n"
 
 #-------------------------------------------------------------------------#
 def merge_sql( ex, sqls, names, outdir=None, via='lsf' ):
