@@ -47,7 +47,7 @@ random name in the current working irectory.
 """
 
 # Built-in modules #
-import os, re, tarfile, urllib2
+import os, re, tarfile, gzip, urllib2, StringIO
 from urlparse import urlparse
 
 # Other modules #
@@ -132,7 +132,7 @@ class DAFLIMS(object):
         if not(isinstance(lane, int)):
             raise ValueError("lane must be an integer, found %s" % str(lane))
 
-    def _symlinkname(self, facility, machine, run, lane, type='fastq'):
+    def _symlinkname(self, facility, machine, run, lane, type='fastq', libname=None):
         """Fetch the URLs to access data in the LIMS.
 
         Returns a dictionary with the keys ``'fastq'``, ``'export'``,
@@ -147,14 +147,16 @@ class DAFLIMS(object):
                               "machine='%s', run=%d, lane=%d): %s") % (facility, machine, run, lane,
                                                                      '\n'.join(response[1:])))
         else:
-            rtn = []
+            rtn = {}
             for resp in response[1:]:
                 q = resp.split('\t')
+                if not(libname and q[1] == libname): continue
+                if not(int(q[0]) in rtn): rtn[int(q[0])] = {}
                 if len(q)<6 or q[5] == check_type[type]: 
-                    rtn.append(q[2])
-            return rtn
+                    rtn[int(q[0])][(int(q[3]),int(q[4]))] = q[2]
+            return rtn[max(rtn.keys())]
 
-    def _lanedesc(self, facility, machine, run, lane):
+    def _lanedesc(self, facility, machine, run, lane, libname=None):
         """Fetch the metadata of particular data set in the LIMS.
 
         Returns a dictionary with the following keys (which refer to strings unless otherwise notes):
@@ -184,11 +186,15 @@ class DAFLIMS(object):
             raise ValueError(("lanedesc method failed on DAFLIMS (facility='%s', " + \
                               "machine='%s', run=%d, lane=%d): %s") % (facility, machine, run, lane,
                                                                      '\n'.join(response[1:])))
+        which = 1
         if len(response) > 2:
-            raise ValueError("lanedesc method returned multiple records: %s" % ('\n'.join(response[1:])))
+            if not(re.search(r'multiplex',response[1].split('\t')[13])):
+                raise ValueError("lanedesc method returned multiple records: %s" % ('\n'.join(response[1:])))
+            if libname:
+                which = 1+[x.split('\t')[4] for x in response[1:]].index(libname)
 
         # If the response is valid, parse the fields into a dictionary.
-        q = response[1].split('\t')
+        q = response[which].split('\t')
         return {'machine': q[0],
                 'run': int(q[1]),
                 'cycle': int(q[2]),
@@ -220,44 +226,53 @@ class DAFLIMS(object):
         ``_fetch_symlink`` returns the path to the output file,
         including its filename.
         """
-        if to == None:
-            target = os.path.join(os.getcwd(), unique_filename_in())
-        elif os.path.isdir(to):
-            target = os.path.join(to, unique_filename_in())
-        else:
-            target = to
-        
-        if not(isinstance(link_name,list)):
-            link_name = [link_name]
-        # *link_name* is a URL to a .tar.gz file in the LIMS
-        # containing exactly one file.  We stream from the HTTP
-        # connection to a local file in 4kb chunks.
-        with open(target, 'w') as output_file:
-            for link in link_name:
-                url = self._open_url(link)
-                tar = tarfile.open(fileobj=url, mode='r|gz')
-
+        def _concat_all(target,llist):
+            with open(target, 'w') as output_file:
+                for link in llist:
+                    url = self._open_url(link)
+                    if re.sub('.gz[ip]*','',link).endswith(".tar"):
+                        tar = tarfile.open(fileobj=url, mode='r|gz')
         # Since the tar file contains exactly one file, calling
         # ``next()`` on the tar gives us the file we want.  We cannot
         # use ``getnames()[0]`` or similar methods, since they scan
         # all the way through the file, and we cannot rewind on HTTP
         # responses.
-                tar_filename = tar.next()
-
+                        tar_filename = tar.next()
         # extractfile returns a file-like object we can stream from.
-                input_file = tar.extractfile(tar_filename)
-                while True:
-                    chunk = input_file.read(4096)
-                    if chunk == '':
-                        break
+                        input_file = tar.extractfile(tar_filename)
                     else:
-                        output_file.write(chunk)
-                input_file.close()
-                tar.close()
-        output_file.close()
+                        tar = None
+                        input_file = gzip.GzipFile(fileobj=StringIO.StringIO(url.read()))
+                    while True:
+                        chunk = input_file.read(4096)
+                        if chunk == '':
+                            break
+                        else:
+                            output_file.write(chunk)
+                    input_file.close()
+                    if tar: tar.close()
+
+        if to == None:
+            target = unique_filename_in()
+        elif os.path.isdir(to):
+            target = os.path.join(to, unique_filename_in(to))
+        else:
+            target = to
+        
+        if isinstance(link_name,dict):
+            linknext = ([],[])
+            for k in sorted(link_name.keys()):
+                linknext[k[0]-1].append(link_name[k])
+            link_name = linknext
+        if isinstance(link_name,str):  link_name = [link_name]
+        if isinstance(link_name,list): link_name = (link_name,[])
+        _concat_all(target,link_name[0])
+        if len(link_name[1])>0:
+            _concat_all(target+"_R2",link_name[1])
+            return (target,target+"_R2")
         return target
 
-    def _fetch_structured(self, type, facility, machine, run, lane, to=None):
+    def _fetch_structured(self, type, facility, machine, run, lane, to=None, libname=None):
         """Fetch a file from its description.
 
         The return value is a dictionary containing the following keys
@@ -284,13 +299,13 @@ class DAFLIMS(object):
         """
         if type != 'fastq' and type != 'export' and type != 'qc':
             raise ValueError("type must be one of 'fastq', 'export', or 'qc'; found %s" % str(type))
-        info = self._lanedesc(facility, machine, run, lane)
-        url = self._symlinkname(facility, machine, run, lane, type)
+        info = self._lanedesc(facility, machine, run, lane, libname)
+        url = self._symlinkname(facility, machine, run, lane, type, libname)
         filename = self._fetch_symlink(url, to)
         info['path'] = filename
         return info
 
-    def fetch_fastq(self, facility, machine, run, lane, to=None):
+    def fetch_fastq(self, facility, machine, run, lane, to=None, libname=None):
         """Fetch a file from the LIMS to *to*.
 
         If *to* is omitted, then the data is written to a
@@ -319,7 +334,7 @@ class DAFLIMS(object):
           * ``'organism'``
           * ``'NCBI ID'`` (the genome Eland aligns against)
         """
-        return self._fetch_structured('fastq', facility, machine, run, lane, to)
+        return self._fetch_structured('fastq', facility, machine, run, lane, to, libname)
 
     def fetch_export(self, facility, machine, run, lane, to=None):
         """Fetch a file from the LIMS to *to*.

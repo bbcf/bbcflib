@@ -31,11 +31,11 @@ def normalize_url(url):
     return url
 
 ###############################################################################
-def cat(files):
+def cat(files,out=None):
     """Concatenates files.
     """
     if len(files) > 1:
-        out = unique_filename_in()
+        out = out or unique_filename_in()
         with open(out,"w") as f1:
             for inf in files:
                 with open(inf,"r") as f2:
@@ -251,6 +251,8 @@ def isnum(s):
     except ValueError:
         return False
 
+#-------------------------------------------------------------------------#
+
 def unique(seq, idfun=None):
     """
     Return all unique elements in *seq*, preserving order - unlike list(set(seq)),
@@ -267,12 +269,18 @@ def unique(seq, idfun=None):
         result.append(item)
     return result
 
+    #-------------------------------------------------------------------------#
+@program
+def gzipfile(files,args=None):
+    """Runs gzip on files."""
+    if not(isinstance(files,list)):
+        files=[files]
+    gzcall = ['gzip']
+    if args:
+        gzcall += args
+    gzcall += files
+    return {"arguments": gzcall, "return_value": None}
 
-###############################################################################
-###############################################################################
-##################### BIG TRY STATEMENT STARTING... ###########################
-###############################################################################
-###############################################################################
     #-------------------------------------------------------------------------#
 @program
 def join_pdf(files):
@@ -302,8 +310,7 @@ def run_gMiner( job ):
         with open(job_file,'r') as f:
             job = pickle.load(f)
         return job['job_output']
-    return {"arguments": ["run_gminer.py",job_file],
-            "return_value": get_output_files}
+    return {"arguments": ["run_gminer.py",job_file],"return_value": get_output_files}
 
 #-----------------------------------#
 # This code was written by the BBCF #

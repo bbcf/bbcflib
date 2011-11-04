@@ -5,8 +5,9 @@ Module: bbcflib.demultiplex
 
 """
 from bein import *
-from bein.util import *
+from bein.util import touch, add_pickle
 from common import set_file_descr 
+from mapseq import bowtie_build, bowtie, add_bowtie_index
 import sys, getopt, os
 
 # call 
@@ -128,6 +129,7 @@ def demultiplex(ex,subFiles,dbFile,grp_name,minScore=77,n=1,x=22,l=30,via="local
 
 
 def getFileFromURL(file_loc,od="", suffix=None):
+	file_loc = re.search(r'^\s*([^;\s]+)',file_loc).groups()[0]
 	suffix = (suffix and ("." + suffix)) or ''
 	resfile=os.path.join(od,unique_filename_in()) + suffix
         if file_loc.startswith("http://") or file_loc.startswith("https://") or file_loc.startswith("ftp://"):
