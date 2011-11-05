@@ -130,6 +130,10 @@ class Job(object):
                 raise ValueError("A group with ID %d was already added." % id)
         else:
             self.groups[id] = {'name': name, 'runs': {}}
+        if "library_file_type_id" in group:
+            group.update({"library_file_url": a.get("library_file_url" or ""),
+                          "library_id": a.get("library_id") or 0,
+                          "library_param_file": a.get("library_param_file") or ""})
         self.groups[id].update(group)
 
     def add_run(self, **kwargs):
