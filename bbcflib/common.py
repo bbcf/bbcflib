@@ -82,8 +82,8 @@ def get_files( id_or_key, minilims, by_type=True, select_param=None ):
     the values are dictionaries with keys repository file names and values actual file
     descriptions (names to provide in the user interface).
 
-    'select_param' can be used to select a subset of files: if it is a string or a list of string, 
-    then only files containing thess parameters will be returned, 
+    'select_param' can be used to select a subset of files: if it is a string or a list of strings, 
+    then only files containing these parameters will be returned, 
     and if it is a dictionary, only files with parameters matching the key/value pairs will be returned.
     """
     import re
