@@ -127,7 +127,7 @@ class Job(object):
     def add_group(self, id, name, group = None):
         if self.groups.has_key(id):
             if group is None:
-                raise ValueError("A group with ID %d was already added." % id)
+                raise ValueError("A group with ID "+str(id)+" was already added.")
         else:
             self.groups[id] = {'name': name, 'runs': {}}
         if "library_file_type_id" in group:
@@ -142,11 +142,11 @@ class Job(object):
             id = kwargs.pop('id')
             runs = self.groups[group]['runs']
             if runs.has_key(id):
-                raise ValueError("Group %d already has a run with ID %d" % (group, id))
+                raise ValueError("Group "+str(group)+" already has a run with ID "+str(id))
             else:
                 runs[id] = kwargs
         except KeyError, k:
-            raise KeyError("No such group with ID %d" % group)
+            raise KeyError("No such group with ID "+str(group))
 
 
 def parseConfig( file ):
@@ -161,7 +161,7 @@ def parseConfig( file ):
     job = Job(
         id = int(config['Job'].get('id') or 0),
         created_at = int(time.time()),
-        key = config['Job'].get('key') or 'localconfig',
+        key = config['Job'].get('key') or 'userconfig',
         assembly_id = config['Job']['assembly_id'],
         description = str(config['Job'].get('description')),
         email = str(config['Job'].get('email')),
@@ -169,24 +169,17 @@ def parseConfig( file ):
     for gid, group in config['Groups'].iteritems():
         if not('name' in group):
             raise ValueError("Each entry in 'Groups' must have a 'name'")
-        job.add_group(id=int(gid),
-                      name=str(group['name']),
-                      group={'control': (group.get('control').lower() in ['1','true','t'])})
+        if isinstance(group.get('control'),str):
+            group['control'] = group['control'].lower() in ['1','true','t']
+        else:
+            group['control'] = False
+        job.add_group(id=int(gid),name=group.pop('name'),group=group)
 
     for rid, run in config['Runs'].iteritems():
         if not('group_id' in run):
             raise ValueError("Each entry in 'Runs' must have a 'group_id'")
-        job.add_run(id=int(rid),
-                    group=int(run['group_id']),
-                    facility=str(run.get('facility_name')),
-                    facility_location=str(run.get('facility_location')),
-                    machine=str(run.get('machine_name')),
-                    machine_id=int((run.get('machine_id') is None) and "0" or run.get('machine_id')),
-                    run =int((run.get('run') is None) and "0" or run.get('run')),
-                    lane=int((run.get('lane') is None) and "0" or run.get('lane')),
-                    sequencing_library=(run.get('sequencing_library') is None) and None or str(run.get('sequencing_library')),
-                    url=run.get('url'),
-                    key=run.get('key'))
+        run['group_id'] = int(run['group_id'])
+        job.add_run(id=int(rid),**run)
     globals = config.get('Global variables') or {}
     return (job,globals)
 
