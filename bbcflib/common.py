@@ -130,12 +130,12 @@ def track_header( descr, ftype, url, ffile ):
     header = "track type="+ftype+" name="+re.sub(r'\[.*','',descr)
     url += ffile
     header += " bigDataUrl="+url+" "
-    style = " visibility=2"
+    style = " visibility=4 "
     if ftype=="bigWig":
-        style += " windowingFunction=maximum"
+        style = " visibility=2 windowingFunction=maximum"
         if re.search(r'_rev.bw ',descr): style+= " color=0,10,200"
         if re.search(r'_fwd.bw ',descr): style+= " color=200,10,0"
-    return header+style
+    return header+style+"\n"
 
 #"track type="+type+" name='"+fname+"' bigDataUrl="+htsurl+style+"\n"
 
