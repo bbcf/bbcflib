@@ -269,10 +269,10 @@ def get_libForGrp(ex,group,fasta_or_assembly,new_libraries, job_id, g_rep):
 			new_libraries.append({'library':libfiles[3]})	
 		elif lib_id > 0 :
 			print("This library already exists (id="+str(lib_id)+")")
-			reffile=get_libfile(lib_id)
+			reffile=get_libfile(lib_id)+".sql"
 		else:
 			print("This library has just been created ("+ex_libfile+")")
-			reffile=ex_libfile
+			reffile=ex_libfile+".sql"
 	elif 'library_id' in group and group['library_id'] > 0:
 		reffile=get_libfile(group['library_id'])
 		if reffile==None:

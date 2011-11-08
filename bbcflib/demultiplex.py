@@ -6,7 +6,7 @@ Module: bbcflib.demultiplex
 """
 from bein import *
 from bein.util import touch, add_pickle, split_file, count_lines
-from common import set_file_descr 
+from common import set_file_descr, gzipfile 
 from mapseq import bowtie_build, bowtie, add_bowtie_index
 import sys, getopt, os
 
@@ -75,8 +75,8 @@ def exonerate(ex,subfiles, dbFile, grp_name, minScore=77,n=1,x=22,l=30,via="loca
 	futures=[fastqToFasta.nonblocking(ex,sf,n=n,x=x,via=via) for sf in subfiles]
         faSubFiles=[f.wait() for f in futures]
 
-	for f in faSubFiles[0:5]:
-		ex.add(f,description=set_file_descr(grp_name+"_input_part.fasta",group=grp_name,step=step,type="fa",view="admin",comment="part") )
+#	for f in faSubFiles[0:5]:
+	ex.add(faSubFiles[0],description=set_file_descr(grp_name+"_input_part.fasta",group=grp_name,step=step,type="fa",view="admin",comment="part") )
 	
 	print("Will call raw_exonerate for each fasta files")	
 	futures = []
@@ -87,9 +87,11 @@ def exonerate(ex,subfiles, dbFile, grp_name, minScore=77,n=1,x=22,l=30,via="loca
 		futures.append(raw_exonerate.nonblocking(ex,sf,dbFile,minScore=minScore,n=n,x=x,l=l,via=via,stdout=subResFile))
 		resExonerate.append(subResFile)
 	for f in futures: f.wait()
-	for f in resExonerate:
-		ex.add(f,description=set_file_descr(grp_name+"_exonerate_part.txt",group=grp_name,step=step,type="txt",view="admin",comment="part") )
-		res.append(split_exonerate(f,n=n,x=x,l=l))
+	#for f in resExonerate:
+	gzipfile(Exonerate[0]
+	ex.add(resExonerate[0],description=set_file_descr(grp_name+"_exonerate_part.txt",group=grp_name,step=step,type="txt",view="admin",comment="part") )
+
+	res.append(split_exonerate(resExonerate[0],n=n,x=x,l=l))
 	step += 1
  
 	return res
@@ -256,16 +258,15 @@ def workflow_groups(ex, job, script_path):
 		log.write(str(filteredFastq))
 		log.close()
 
-		ex.add(logfile,description=set_file_descr("logfile_b4addfilteredFastq",group=group['name'],step=step,type="txt",view="admin"))
-
 		for k,f in filteredFastq.iteritems():
 			log=open(logfile,"a")
 			log.write("\nWill add filtered file "+f+" with descr="+group['name']+"_"+k+"_filtered.fastq\n")
 			log.close()
-			ex.add(logfile,description=set_file_descr("logfile",group=group['name'],step=step,type="txt",view="admin"))
 			ex.add(f,description=set_file_descr(group['name']+"_"+k+"_filtered.fastq",group=group['name'],step=step,type="fastq"))
 			counts_primers_filtered[k]=count_lines(ex,f)/4
 			file_names[gid][k]=group['name']+"_"+k+"_filtered"
+
+		ex.add(logfile,description=set_file_descr("logfile",group=group['name'],step=step,type="txt",view="admin"))
 		step += 1
 	
 		# Prepare report per group of runs
