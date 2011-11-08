@@ -28,14 +28,6 @@ def segToFrag(in_countsPerFragFile,regToExclude=None, script_path='./'):
 		This function calls segToFrag.awk (which transforms the counts per segment to a normalised count per fragment) 
 		Gives the region to exclude if any 
 	'''
-	def parseStdout(p):
-		print('will parse the Stdout')
-		filename = unique_filename_in()
-		output=open(filename,'w')
-		s=''.join(p.stdout)
-     	        output.write(s)
-		return filename
-
 	if regToExclude == None:
 		print('will call: awk -f '+script_path+'segToFrag.awk '+in_countsPerFragFile)
 		return {'arguments': ["awk","-f",script_path+'segToFrag.awk',in_countsPerFragFile],
@@ -60,7 +52,7 @@ def parseSegToFrag(infile):
 	filename = unique_filename_in()
 	output = open(filename,'w')
 	with open(infile,"r") as f:
-		for s in f.readlines():
+		for s in f:
 			s=s.strip('\n')
 			if re.search(r'IsValid',s.split('\t')[2]) :
 				coord=((s.split('\t')[1]).split(':')[1]).split('-')
@@ -186,7 +178,7 @@ def density_to_countsPerFrag(ex,density_file,density_name,assembly_name,reffile,
 	step += 1
 
 	# calculate normalised score per fragments (segToFrag)
-	res=call_segToFrag(ex, countsPerFragFile, regToExclude, script_path, via=via)
+	res = call_segToFrag(ex, countsPerFragFile, regToExclude, script_path, via=via)
 	ex.add(res,description=set_file_descr("res_segToFrag_"+density_name+".bedGraph",groupId=grpId,step=step,type="bedGraph",view="admin",comment="rough"))
 #	ex.add(res,description="none:res_segToFrag_"+density_name+" (rough) [group:"+str(grpId)+",step:"+str(step)+",type:bedGraph,view:admin]")
 	[resBedGraph,resBedGraph_all]=parseSegToFrag(res)
@@ -318,7 +310,7 @@ def workflow_groups(ex, job, primers_dict, g_rep, mapseq_files, mapseq_url, scri
 			
         		outputfile_afterProfileCorrection=unique_filename_in()
 		        smoothFragFile(ex,profileCorrectedFile,nFragsPerWin,mapseq_files[gid][rid]['libname'],outputfile_afterProfileCorrection,regToExclude,script_path)
-			ex.add(outputfile,description=set_file_descr("res_segToFrag_"+mapseq_files[gid][rid]['libname']+"_profileCorrected_smoothed_"+nFragsPerWin+"FragsPerWin.bedGraph",group=grpId,step=step,type="bedGraph",comment="smoothed data, after profile correction"))
+			ex.add(outputfile_afterProfileCorrection,description=set_file_descr("res_segToFrag_"+mapseq_files[gid][rid]['libname']+"_profileCorrected_smoothed_"+nFragsPerWin+"FragsPerWin.bedGraph",group=grpId,step=step,type="bedGraph",comment="smoothed data, after profile correction"))
 		grpId += 1
 		step=0
 	return processed
