@@ -50,13 +50,15 @@ def cat(files,out=None):
 
 ###############################################################################
 def set_file_descr(filename,**kwargs):
-    """Implements file naming compatible with the 'get_files' function.
-    Examples:
-    >>>> set_file_descr("toto",**{'tag':'pdf','step':1,'type':'doc','comment':'ahaha'})
-    'pdf:toto[step:1,type:doc] (ahaha)'
-    if 'tag' and/or comment are ommitted:
-    >>>> set_file_descr("toto",step=1,type='doc')
-    'toto[step:1,type:doc]'
+    """Implements file naming compatible with the 'get_files' function::
+
+        >>> set_file_descr("toto",**{'tag':'pdf','step':1,'type':'doc','comment':'ahaha'})
+        'pdf:toto[step:1,type:doc] (ahaha)'
+
+    if 'tag' and/or comment are ommitted::
+
+        >>> set_file_descr("toto",step=1,type='doc')
+        'toto[step:1,type:doc]'
     """
     file_descr = filename
     argskeys = kwargs.keys()
@@ -82,8 +84,8 @@ def get_files( id_or_key, minilims, by_type=True, select_param=None ):
     the values are dictionaries with keys repository file names and values actual file
     descriptions (names to provide in the user interface).
 
-    'select_param' can be used to select a subset of files: if it is a string or a list of strings, 
-    then only files containing these parameters will be returned, 
+    'select_param' can be used to select a subset of files: if it is a string or a list of strings,
+    then only files containing these parameters will be returned,
     and if it is a dictionary, only files with parameters matching the key/value pairs will be returned.
     """
     import re
