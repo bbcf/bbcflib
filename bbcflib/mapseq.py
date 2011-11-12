@@ -384,7 +384,8 @@ def bamstats(bamfile):
             return (int(a),int(b))
         return dict([f(x) for x in m])
     def coverage_stats(p):
-        results = {}
+        infile = pysam.Samfile(bamfile, "rb")
+        results = {'cmd_line': "|".join(infile.header['PG'][0].values())}
         s=''.join(p.stdout)
         results["read_length"]=int(re.search(r'Read length (\d+)',s).groups()[0])
         results["genome_size"]=int(re.search(r'Genome size (\d+)',s).groups()[0])
@@ -464,7 +465,9 @@ def remove_duplicate_reads( bamfile, chromosomes,
             nh = 1
         if nh < 1:
             continue
-        lname = re.search(r'^(.*?:.*?):',read.qname).groups()[0]
+        lpatt = re.search(r'^(.*?:.*?):',read.qname)
+        if lpatt: lname = lpatt.groups()[0]
+        else: lname = 1
         lib = lname+":"+(read.is_reverse and '1' or '0')
         pos = "%s:%d" % (read.rname, read.pos)
         if pos != pos_per_lib.get(lib):
@@ -550,7 +553,8 @@ def map_reads( ex, fastq_file, chromosomes, bowtie_index,
         future = bowtie.nonblocking( ex, bowtie_index, fastq_file, bwtarg, via=via )
         samfile = future.wait()
         bam = add_nh_flag( samfile )
-    sorted_bam = add_and_index_bam( ex, bam, set_file_descr(name+"complete.bam",**bam_descr) )
+    sorted_bam = index_bam(ex, sort_bam(ex, bam))
+###    sorted_bam = add_and_index_bam( ex, bam, set_file_descr(name+"complete.bam",**bam_descr) )
     full_stats = bamstats( ex, sorted_bam )
     add_pickle( ex, full_stats, set_file_descr(name+"full_bamstat",**py_descr) )
     bam_descr['ucsc'] = '1'
