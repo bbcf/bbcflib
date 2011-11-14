@@ -19,13 +19,13 @@ from bbcflib.genrep import GenRep
 from bbcflib.common import timer, writecols, set_file_descr
 
 # Other modules #
+import sqlite3
 import numpy
 from numpy import zeros, dot, asarray
 from numpy.linalg import pinv, norm
 
 numpy.set_printoptions(precision=1,suppress=True)
 
-################################################################################
 
 def rstring(len=20):
     """Generate a random string of length *len* (usually for filenames).
@@ -137,9 +137,19 @@ def fetch_mappings(path_or_assembly_id):
     * [5] exons_in_trans is a dict ``{transcript ID: [IDs of the exons it contains]}``
 
     :param path_or_assembly_id: can be a numeric or nominal ID for GenRep
-    	(e.g. 11, 76 or 'hg19' for H.Sapiens), or a path to a file containing a
-    	pickle object which is read to get the mapping.
+    (e.g. 11, 76 or 'hg19' for H.Sapiens), or a path to a file containing a
+    pickle object which is read to get the mapping.
     """
+    ### GTF database:
+    # path = "/db/genrep/nr_assemblies/features_sqlite/"+md5+".sql"
+    # db = sqlite3.connect(path, check_same_thread=False)
+    # c = db.cursor()
+    # for chr in chromosomes:
+    #     genes = c.execute('''SELECT DISTINCT gene_id,gene_name FROM ? ''', (str(chr))).fetchall()
+    #     gene_ids = [g[0] for g in genes]
+    #     gene_names = dict(genes)
+    # return db
+
     if os.path.exists(str(path_or_assembly_id)):
         with open(path_or_assembly_id, 'rb') as pickle_file:
             mapping = cPickle.load(pickle_file)
@@ -358,8 +368,8 @@ def estimate_size_factors(counts):
     geo_means = numpy.exp(numpy.mean(numpy.log(counts), axis=0))
     mean = counts/geo_means
     size_factors = numpy.median(mean[:,geo_means>0], axis=1)
-    res = counts.transpose()/size_factors
-    res = res.transpose()
+    res = counts.T/size_factors
+    res = res.T
     print "Size factors:",size_factors
     return res, size_factors
 
@@ -447,18 +457,18 @@ def rnaseq_workflow(ex, job, assembly, bam_files, pileup_level=["genes"], via="l
     # "ENSMUSG00000057666" "ENSG00000111640": Gapdh
 
     print "Get counts"
+    hconds = ["counts."+c for c in conditions] + ["rpkm."+c for c in conditions]
     genesName = [gene_names.get(g,g) for g in genesID]
     exons_data = [exonsID,genesID]+list(counts)+list(rpkm)+[starts,ends,genesName]
 
     """ Print counts for exons """
     if "exons" in pileup_level:
-        header = ["ExonID","GeneID"] + conditions*2 + ["Start","End","GeneName"]
+        header = ["ExonID","GeneID"] + hconds + ["Start","End","GeneName"]
         save_results(ex, exons_data, conditions, header=header, desc="EXONS")
 
     """ Get counts for genes from exons """
     if "genes" in pileup_level:
-        header = ["GeneID"] + ["counts."+c for c in conditions] + ["rpkm."+c for c in conditions] \
-                  + ["GeneName"]#+ ["Start","End","GeneName"]
+        header = ["GeneID"] + hconds + ["GeneName"]#+ ["Start","End","GeneName"]
         (gcounts, grpkm) = genes_expression(exons_data, exon_to_gene, len(conditions))
         #print asarray(gcounts["ENSMUSG00000057666"]), asarray(grpkm["ENSMUSG00000057666"]) # TEST Gapdh
         genesID = gcounts.keys()
@@ -468,8 +478,7 @@ def rnaseq_workflow(ex, job, assembly, bam_files, pileup_level=["genes"], via="l
 
     """ Get counts for the transcripts from exons, using pseudo-inverse """
     if "transcripts" in pileup_level:
-        header = ["TranscriptID","GeneID"] + ["rpkm."+c for c in conditions] \
-                  + ["GeneName"] #*2 + ["Start","End","GeneName"]
+        header = ["TranscriptID","GeneID"] + hconds[len(conditions):] + ["GeneName"] # + ["Start","End","GeneName"]
         (trpk, tcounts, error) = transcripts_expression(exons_data,
                                  trans_in_gene,exons_in_trans,len(conditions),method="nnls")
         #a = [trpk[t][0] for t in trans_in_gene["ENSMUSG00000057666"]]; print asarray(a), sum(a) # TEST Gapdh
