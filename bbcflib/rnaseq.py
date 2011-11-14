@@ -20,7 +20,7 @@ from bbcflib.common import timer, writecols, set_file_descr
 
 # Other modules #
 import numpy
-from numpy import zeros, dot, array, asarray
+from numpy import zeros, dot, asarray
 from numpy.linalg import pinv, norm
 
 numpy.set_printoptions(precision=1,suppress=True)
@@ -342,6 +342,28 @@ def transcripts_expression(exons_data, trans_in_gene, exons_in_trans, ncond, met
     print "\t Total error (sum of resnorms):", totalerror
     return trans_rpk, trans_counts, totalerror
 
+def estimate_size_factors(counts):
+    """
+    The total number of reads may be different between conditions or replicates.
+    This treatment makes different count sets being comparable. If rows are features
+    and columns are different conditions/replicates, each column is divided by the
+    geometric mean of the rows.
+    The median of these ratios is used as the size factor for this column. Size
+    factors may be used for further variance sabilization.
+
+    :param counts: an array of counts, each line representing a transcript, each
+    column a different sample.
+    """
+    counts = numpy.array(counts)
+    geo_means = numpy.exp(numpy.mean(numpy.log(counts), axis=0))
+    mean = counts/geo_means
+    size_factors = numpy.median(mean[:,geo_means>0], axis=1)
+    res = counts.transpose()/size_factors
+    res = res.transpose()
+    print "Size factors:",size_factors
+    return res, size_factors
+
+
 #@timer
 def rnaseq_workflow(ex, job, assembly, bam_files, pileup_level=["genes"], via="lsf", output=None):
     """
@@ -417,6 +439,7 @@ def rnaseq_workflow(ex, job, assembly, bam_files, pileup_level=["genes"], via="l
     ends = asarray(ends, dtype=numpy.float_)
     nreads = asarray([nreads[cond] for cond in conditions], dtype=numpy.float_)
     counts = asarray([exon_pileups[cond] for cond in conditions], dtype=numpy.float_)
+    counts, sf = estimate_size_factors(counts)
     rpkm = 1000*(1e6*counts.T/nreads).T/(ends-starts)
     #for i in range(len(counts.ravel())):
     #    if counts.flat[i]==0: counts.flat[i] += 1.0 # if zero counts, add 1 for further comparisons
