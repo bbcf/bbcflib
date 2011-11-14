@@ -74,12 +74,13 @@ def call_getRestEnzymeOccAndSeq(assembly_or_fasta,prim_site,sec_site,l_seg,g_rep
 	outfiles=[segFile, fragFile, logFile,fasta_file]
 	print("outfiles will be:"+outfiles[0])
 #	script_path='/archive/epfl/bbcf/mleleu/pipeline_vMarion/pipeline_3Cseq/vWebServer_SAM/'
-	if cmp(l_type,'typeI') == 0:
+	if l_type=='typeI':
 		print('type:typeI')
 		return {'arguments': ["getRestEnzymeOccAndSeq.pl","-i",fasta_file,"-m",prim_site,"-s",sec_site,"-l",l_seg,"-o",segFile,"-f",fragFile,"-x",logFile],
                         'return_value':outfiles}
 	else:
-                return {'arguments': ["getRestEnzymeOccAndSeq_typeII.pl","-i",fasta_file,"-m",prim_site,"-s",sec_site,"-l",l_seg,"-o",segFile,"-f",fragFile,"-x",logFile],
+                print('type:typeII')
+		return {'arguments': ["getRestEnzymeOccAndSeq_typeII.pl","-i",fasta_file,"-m",prim_site,"-s",sec_site,"-l",l_seg,"-o",segFile,"-f",fragFile,"-x",logFile],
                         'return_value':outfiles}
 
 
