@@ -373,7 +373,39 @@ class GenRep(object):
                         add = False
                 if add: result.append(obj)
         return result
-
+    
+        
+    def get_chromosomes_from_nr_assembly_id(self, nr_assembly_id):
+        '''
+        Get the chromosomes related to the nr_assembly specified.
+        It return the chromosomes from the assembly ``BBCF_VALID``
+        :param: nr_assembly_id : the non-redundant assembly id
+        '''
+        # get the nr_assembly from its id
+        nr_assembly = self.get_genrep_objects('nr_assemblies', 'nr_assembly', 
+                                              {'id':nr_assembly_id})[0]
+        # get assembly bbcf valid with the same genome id
+        ass = self.get_genrep_objects('assemblies', 'assembly', 
+                                      {'genome_id':nr_assembly.genome_id, 
+                                       'bbcf_valid':True})[0]
+        if ass is not None:
+            # load the assembly
+            assembly_info = json.load(urllib2.urlopen("""%s/assemblies/%s.json""" % (self.url, ass.id)))
+            assembly = GenrepObject(assembly_info,'assembly')
+            chromosomes = []
+            # get the chromosomes
+            for chr in assembly.chromosomes:
+                chromosomes.append(GenrepObject(chr, 'chromosome'))
+            return chromosomes     
+        
+    def is_available(self, assembly):
+        """
+        Legacy signature
+        """
+        return self.assemblies_available(assembly)
+    
+    
+    
     def guess_chromosome_name(self, assembly_name, chromosome_name):
         """Searches the assembly for chromosome synonym names,
            and returns the canonical name of the chromosome.
@@ -388,35 +420,44 @@ class GenRep(object):
 
            ::
 
-               >>> import bbcflib.genrep
-               >>> genrep = bbcflib.genrep.GenRep()
+               >>> import bbcflib.genrep; genrep = bbcflib.genrep.GenRep()
                >>> genrep.guess_chromosome_name('sacCer2', '2520_NC_001224.1')
                'chrM'
 
         """
-        address = self.url + "/chromosomes.json?assembly_name=" + assembly_name + "&identifier=" + chromosome_name
-        info = json.loads(urllib2.urlopen(address).read())
-        if len(info) != 1: return None
-        canonical_name = info[0]['chromosome']['name']
-        other_names = [x['chr_name'] for x in info[0]['chromosome']['chr_names']]
         assembly_id = self.assembly(assembly_name).id
+        address = self.url + "/chromosomes.json?assembly_name=" + assembly_name + "&identifier=" + chromosome_name
+        data = json.loads(urllib2.urlopen(address).read())
+        if len(data) != 1: return None
+        canonical_name = data[0]['chromosome']['name']
+        other_names = [x['chr_name'] for x in data[0]['chromosome']['chr_names']]
         return [x['value'] for x in other_names if x['assembly_id']==assembly_id][0].encode('ascii')
 
     def get_chrmeta(self, assembly_name):
-        """Returns a dictionary of chromosome meta data looking something like::
-
-            {'chr1': {'length': 249250621},
-             'chr2': {'length': 135534747},
-             'chr3': {'length': 135006516}}
+        """Returns a dictionary of chromosome metadata looking something like::
 
            :param assembly_name: The name of the assembly.
            :type  assembly_name: string
 
            :returns: A dictionary.
+
+           ::
+
+               >>> import bbcflib.genrep; genrep = bbcflib.genrep.GenRep()
+               >>> print genrep.get_chrmeta('TAIR10')
+               {'c': {'length': 154478}, 'm': {'length': 366924}, '1': {'length': 30427671}, '3': {'length': 23459830}, '2': {'length': 19698289}, '5': {'length': 26975502}, '4': {'length': 18585056}}
+
         """
-        data = json.loads(urllib2.urlopen(self.url + "/chromosomes.json?assembly_name=" + assembly_name).read())
+        assembly_id = self.assembly(assembly_name).id
+        address = self.url + "/chromosomes.json?assembly_name=" + assembly_name
+        data = json.loads(urllib2.urlopen(address).read())
         chromosomes = [item['chromosome'] for item in data]
-        return dict([(chrom['name'].encode('ascii'), dict([('length', chrom['length'])])) for chrom in chromosomes])
+        def get_name(chrom):
+            other_names = [x['chr_name'] for x in chrom['chr_names']]
+            return [x['value'] for x in other_names if x['assembly_id']==assembly_id][0].encode('ascii')
+        def get_length(chrom):
+            return chrom['length']
+        return dict([(get_name(chrom), dict([('length', get_length(chrom))])) for chrom in chromosomes])
 
 ################################################################################
 class Assembly(object):
