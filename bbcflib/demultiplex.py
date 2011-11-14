@@ -6,7 +6,7 @@ Module: bbcflib.demultiplex
 """
 from bein import *
 from bein.util import touch, add_pickle, split_file, count_lines
-from common import set_file_descr 
+from common import set_file_descr, gzipfile 
 from mapseq import bowtie_build, bowtie, add_bowtie_index
 import sys, getopt, os
 
@@ -75,8 +75,8 @@ def exonerate(ex,subfiles, dbFile, grp_name, minScore=77,n=1,x=22,l=30,via="loca
 	futures=[fastqToFasta.nonblocking(ex,sf,n=n,x=x,via=via) for sf in subfiles]
         faSubFiles=[f.wait() for f in futures]
 
-	for f in faSubFiles[0:5]:
-		ex.add(f,description=set_file_descr(grp_name+"_input_part.fasta",group=grp_name,step=step,type="fa",view="admin",comment="part") )
+#	for f in faSubFiles[0:5]:
+	ex.add(faSubFiles[0],description=set_file_descr(grp_name+"_input_part.fasta",group=grp_name,step="init",type="fa",view="admin",comment="part") )
 	
 	print("Will call raw_exonerate for each fasta files")	
 	futures = []
@@ -87,9 +87,11 @@ def exonerate(ex,subfiles, dbFile, grp_name, minScore=77,n=1,x=22,l=30,via="loca
 		futures.append(raw_exonerate.nonblocking(ex,sf,dbFile,minScore=minScore,n=n,x=x,l=l,via=via,stdout=subResFile))
 		resExonerate.append(subResFile)
 	for f in futures: f.wait()
-	for f in resExonerate:
-		ex.add(f,description=set_file_descr(grp_name+"_exonerate_part.txt",group=grp_name,step=step,type="txt",view="admin",comment="part") )
-		res.append(split_exonerate(f,n=n,x=x,l=l))
+	#for f in resExonerate:
+	gzipfile(Exonerate[0])
+	ex.add(resExonerate[0],description=set_file_descr(grp_name+"_exonerate_part.txt",group=grp_name,step="exonerate",type="txt",view="admin",comment="part") )
+
+	res.append(split_exonerate(resExonerate[0],n=n,x=x,l=l))
 	step += 1
  
 	return res
@@ -201,11 +203,11 @@ def workflow_groups(ex, job, script_path):
 		lib_dir="/scratch/cluster/monthly/htsstation/demultiplexing/" + str(job.id) + "/"
 		primersFilename = 'group_' + group['name'] + "_primer_file.fa"
 		primersFile = lib_dir + primersFilename
-		ex.add(primersFile,description=set_file_descr(primersFilename,group=group['name'],step=step,type="fa"))
+		ex.add(primersFile,description=set_file_descr(primersFilename,group=group['name'],step="init",type="fa"))
 		
 		paramsFilename = 'group_' + group['name'] + "_param_file.txt"
 		paramsFile = lib_dir + paramsFilename
-		ex.add(paramsFile,description=set_file_descr(paramsFilename,group=group['name'],step=step,type="txt"))
+		ex.add(paramsFile,description=set_file_descr(paramsFilename,group=group['name'],step="init",type="txt"))
 		params=load_paramsFile(paramsFile)
 		print(params)
 		
@@ -235,7 +237,7 @@ def workflow_groups(ex, job, script_path):
 		counts_primers={}
 		counts_primers_filtered={}
         	for k,f in resExonerate.iteritems():
-			ex.add(f,description=set_file_descr(group['name']+"_"+k+".fastq",group=group['name'],step=step,type="fastq"))
+			ex.add(f,description=set_file_descr(group['name']+"_"+k+".fastq",group=group['name'],step="demultiplexing",type="fastq"))
 			counts_primers[k]=count_lines(ex,f)/4
 			print("counts_primers["+k+"]="+str(counts_primers[k]))
 			counts_primers_filtered[k]=0
@@ -256,29 +258,28 @@ def workflow_groups(ex, job, script_path):
 		log.write(str(filteredFastq))
 		log.close()
 
-		ex.add(logfile,description=set_file_descr("logfile_b4addfilteredFastq",group=group['name'],step=step,type="txt",view="admin"))
-
 		for k,f in filteredFastq.iteritems():
 			log=open(logfile,"a")
 			log.write("\nWill add filtered file "+f+" with descr="+group['name']+"_"+k+"_filtered.fastq\n")
 			log.close()
-			ex.add(logfile,description=set_file_descr("logfile",group=group['name'],step=step,type="txt",view="admin"))
-			ex.add(f,description=set_file_descr(group['name']+"_"+k+"_filtered.fastq",group=group['name'],step=step,type="fastq"))
+			ex.add(f,description=set_file_descr(group['name']+"_"+k+"_filtered.fastq",group=group['name'],step="filtering",type="fastq"))
 			counts_primers_filtered[k]=count_lines(ex,f)/4
 			file_names[gid][k]=group['name']+"_"+k+"_filtered"
+
+		ex.add(logfile,description=set_file_descr("logfile",group=group['name'],step="final",type="txt",view="admin"))
 		step += 1
 	
 		# Prepare report per group of runs
 		print("counts_primers=")
 		print(counts_primers)	
 		reportFile=prepareReport(ex,group['name'],tot_counts,counts_primers,counts_primers_filtered)
-		ex.add(reportFile,description=set_file_descr(group['name']+"_report_demultiplexing.txt",group=group['name'],step=step,type="txt",view="admin"))
+		ex.add(reportFile,description=set_file_descr(group['name']+"_report_demultiplexing.txt",group=group['name'],step="final",type="txt",view="admin"))
 		reportFile_pdf=unique_filename_in()
 		call_createReport(ex,reportFile,reportFile_pdf,script_path)
-		ex.add(reportFile_pdf,description=set_file_descr(group['name']+"_report_demultiplexing.pdf",group=group['name'],step=step,type="pdf"))
+		ex.add(reportFile_pdf,description=set_file_descr(group['name']+"_report_demultiplexing.pdf",group=group['name'],step="final",type="pdf"))
 
 
-	add_pickle( ex, file_names, set_file_descr('file_names',step=step,type='py',view='admin') )
+	add_pickle( ex, file_names, set_file_descr('file_names',step="final",type='py',view='admin') )
 	return resFiles 
 
 
@@ -321,7 +322,7 @@ def filterSeq(ex,fastqFiles,seqToFilter,grp_name):
 	
 	indexFiles={}	
 	for k,f in seqToFilter.iteritems():
-		ex.add(f,description=set_file_descr(grp_name+"_"+k+"_seqToFilter.fa",group=grp_name,step=step,type="fa",view="admin"))
+		ex.add(f,description=set_file_descr(grp_name+"_"+k+"_seqToFilter.fa",group=grp_name,step="filtering",type="fa",view="admin"))
 		indexFiles[k]=bowtie_build.nonblocking(ex,f,via='lsf')
 
 	print "Wait for index\n"
