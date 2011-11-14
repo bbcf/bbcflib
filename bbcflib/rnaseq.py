@@ -434,7 +434,8 @@ def rnaseq_workflow(ex, job, assembly, bam_files, pileup_level=["genes"], via="l
 
     """ Get counts for genes from exons """
     if "genes" in pileup_level:
-        header = ["GeneID"] + conditions*2 + ["GeneName"]#+ ["Start","End","GeneName"]
+        header = ["GeneID"] + ["counts."+c for c in conditions] + ["rpkm."+c for c in conditions] \
+                  + ["GeneName"]#+ ["Start","End","GeneName"]
         (gcounts, grpkm) = genes_expression(exons_data, exon_to_gene, len(conditions))
         #print asarray(gcounts["ENSMUSG00000057666"]), asarray(grpkm["ENSMUSG00000057666"]) # TEST Gapdh
         genesID = gcounts.keys()
@@ -444,7 +445,8 @@ def rnaseq_workflow(ex, job, assembly, bam_files, pileup_level=["genes"], via="l
 
     """ Get counts for the transcripts from exons, using pseudo-inverse """
     if "transcripts" in pileup_level:
-        header = ["TranscriptID","GeneID"] + conditions + ["GeneName"] #*2 + ["Start","End","GeneName"]
+        header = ["TranscriptID","GeneID"] + ["rpkm."+c for c in conditions] \
+                  + ["GeneName"] #*2 + ["Start","End","GeneName"]
         (trpk, tcounts, error) = transcripts_expression(exons_data,
                                  trans_in_gene,exons_in_trans,len(conditions),method="nnls")
         #a = [trpk[t][0] for t in trans_in_gene["ENSMUSG00000057666"]]; print asarray(a), sum(a) # TEST Gapdh
