@@ -373,8 +373,8 @@ class GenRep(object):
                         add = False
                 if add: result.append(obj)
         return result
-    
-        
+
+
     def get_chromosomes_from_nr_assembly_id(self, nr_assembly_id):
         '''
         Get the chromosomes related to the nr_assembly specified.
@@ -382,11 +382,11 @@ class GenRep(object):
         :param: nr_assembly_id : the non-redundant assembly id
         '''
         # get the nr_assembly from its id
-        nr_assembly = self.get_genrep_objects('nr_assemblies', 'nr_assembly', 
+        nr_assembly = self.get_genrep_objects('nr_assemblies', 'nr_assembly',
                                               {'id':nr_assembly_id})[0]
         # get assembly bbcf valid with the same genome id
-        ass = self.get_genrep_objects('assemblies', 'assembly', 
-                                      {'genome_id':nr_assembly.genome_id, 
+        ass = self.get_genrep_objects('assemblies', 'assembly',
+                                      {'genome_id':nr_assembly.genome_id,
                                        'bbcf_valid':True})[0]
         if ass is not None:
             # load the assembly
@@ -396,16 +396,16 @@ class GenRep(object):
             # get the chromosomes
             for chr in assembly.chromosomes:
                 chromosomes.append(GenrepObject(chr, 'chromosome'))
-            return chromosomes     
-        
+            return chromosomes
+
     def is_available(self, assembly):
         """
         Legacy signature
         """
         return self.assemblies_available(assembly)
-    
-    
-    
+
+
+
     def guess_chromosome_name(self, assembly_name, chromosome_name):
         """Searches the assembly for chromosome synonym names,
            and returns the canonical name of the chromosome.
@@ -529,6 +529,17 @@ class Assembly(object):
     def add_chromosome(self, chromosome_id, refseq_locus, refseq_version, name, length):
         self.chromosomes[(chromosome_id, refseq_locus, refseq_version)] = \
             {'name': name, 'length': length}
+
+    @property
+    def chrmeta(self):
+        """ Returns a dictionary of chromosome meta data looking something like:
+
+            {'chr1': {'length': 249250621},
+             'chr2': {'length': 135534747},
+             'chr3': {'length': 135006516},
+
+        """
+        return dict([(v['name'], dict([('length', v['length'])])) for v in self.chromosomes.values()])
 
 ################################################################################
 class GenrepObject(object):
