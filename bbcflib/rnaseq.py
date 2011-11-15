@@ -144,10 +144,11 @@ def fetch_mappings(path_or_assembly_id):
     # path = "/db/genrep/nr_assemblies/features_sqlite/"+md5+".sql"
     # db = sqlite3.connect(path, check_same_thread=False)
     # c = db.cursor()
+    # gene_ids=[]; gene_names={}
     # for chr in chromosomes:
     #     genes = c.execute('''SELECT DISTINCT gene_id,gene_name FROM ? ''', (str(chr))).fetchall()
-    #     gene_ids = [g[0] for g in genes]
-    #     gene_names = dict(genes)
+    #     gene_ids.extend([g[0] for g in genes])
+    #     gene_names.update(dict(genes))
     # return db
 
     if os.path.exists(str(path_or_assembly_id)):

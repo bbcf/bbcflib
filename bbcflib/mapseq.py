@@ -59,7 +59,7 @@ Below is the script used by the frontend::
         mapped_files = map_groups( ex, job, ex.working_directory, assembly )
         pdf = add_pdf_stats( ex, mapped_files,
                              dict((k,v['name']) for k,v in job.groups.iteritems()),
-                             gl['script_path'] ) 
+                             gl['script_path'] )
         density_files = densities_groups( ex, job, mapped_files, assembly.chromosomes )
         gdv_project = gdv.create_gdv_project( gl['gdv']['key'], gl['gdv']['email'],
                                               job.description, hts_key,
@@ -107,7 +107,7 @@ def sam_to_bam(sam_filename):
 @program
 def bam_to_sam(bam_filename, no_header=False):
     """Convert *bam_filename* to a SAM file.
-    
+
     Equivalent: ``samtools view [-h] bam_filename ...``
     """
     sam_filename = unique_filename_in()
@@ -173,7 +173,7 @@ def read_sets(reads,keep_unmapped=False):
     if last_read != None:
         # We have to check, since if samfile
         # has no alignments, accum is never defined.
-        yield accum    
+        yield accum
 
 @program
 def index_bam(bamfile):
@@ -214,11 +214,11 @@ def external_add_nh_flag(samfile):
 
 def add_nh_flag(samfile, out=None):
     """Adds NH (Number of Hits) flag to each read alignment in *samfile*.
-    
+
     Scans a BAM file ordered by read name, counts the number of
     alternative alignments reported and writes them to a BAM file
     with the NH tag added.
-    
+
     If *out* is ``None``, a random name is used.
     """
     if out == None:
@@ -568,10 +568,10 @@ def map_reads( ex, fastq_file, chromosomes, bowtie_index,
         touch( ex, unmapped )
         ex.add( unmapped, description=set_file_descr(name+"unmapped",**fqn_descr) )
         gzipfile( ex, unmapped+"_1" )
-        ex.add( unmapped+"_1.gz", description=set_file_descr(name+"unmapped_1.fastq.gz",**fq_descr), 
+        ex.add( unmapped+"_1.gz", description=set_file_descr(name+"unmapped_1.fastq.gz",**fq_descr),
                 associate_to_filename=unmapped, template='%s_1.fastq.gz' )
         gzipfile( ex, unmapped+"_2" )
-        ex.add( unmapped+"_2.gz", description=set_file_descr(name+"unmapped_2.fastq.gz",**fq_descr), 
+        ex.add( unmapped+"_2.gz", description=set_file_descr(name+"unmapped_2.fastq.gz",**fq_descr),
                 associate_to_filename=unmapped, template='%s_2.fastq.gz' )
     else:
         gzipfile( ex, unmapped )
@@ -959,7 +959,7 @@ def parallel_density_sql( ex, bamfile, chromosomes,
     else:
         def _bedgr(infile):
             for row in infile:
-                if not row.startswith('track'): 
+                if not row.startswith('track'):
                     r = row.split("\t")
                     if len(r)>3:
                         yield((int(r[1]),int(r[2]),float(r[3])))
@@ -1050,7 +1050,7 @@ def densities_groups( ex, job_or_dict, file_dict, chromosomes, via='lsf' ):
         if len(mapped)>1:
             merged_bam = merge_bam(ex, [m['bam'] for m in mapped.values()])
             ids = [m['libname'] for m in mapped.values()]
-            merged_wig = dict((s, 
+            merged_wig = dict((s,
                                merge_sql(ex, [x+s+".sql" for x in wig], ids,via='local'))
                               for s in suffixes)
             [ex.add( merged_wig[s], description=set_file_descr(group_name+"_"+s+".sql",**pars1) ) for s in suffixes]
@@ -1217,7 +1217,7 @@ def get_bam_wig_files( ex, job, minilims=None, hts_url=None, suffix=['fwd','rev'
                     ms_job = job
                 if ms_job.options.get('compute_densities'):
                     job.options['merge_strands'] = int(ms_job.options.get('merge_strands'))
-                    if ((ms_job.options.get('merge_strands')<0 and len(suffix)>1) or 
+                    if ((ms_job.options.get('merge_strands')<0 and len(suffix)>1) or
                         (ms_job.options.get('merge_strands')>-1 and len(suffix)==1)):
                         wigfile = unique_filename_in()
                         wig_ids = dict(((allfiles[name+'_'+s+'.sql'],s),
@@ -1225,7 +1225,7 @@ def get_bam_wig_files( ex, job, minilims=None, hts_url=None, suffix=['fwd','rev'
                         [MMS.export_file(x[0],s) for x,s in wig_ids.iteritems()]
                         wig = dict((x[1],s) for x,s in wig_ids.iteritems())
             else:
-                raise ValueError("Couldn't find this bam file anywhere: %s." %file_loc)
+                raise ValueError("Couldn't find this bam file anywhere: %s" %file_loc)
             mapped_files[gid][rid] = {'bam': bamfile,
                                       'stats': stats or bamstats.nonblocking( ex, bamfile, via=via ),
                                       'poisson_threshold': p_thresh,
