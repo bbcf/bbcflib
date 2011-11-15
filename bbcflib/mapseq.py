@@ -384,6 +384,7 @@ def bamstats(bamfile):
             return (int(a),int(b))
         return dict([f(x) for x in m])
     def coverage_stats(p):
+        results = {}
         try:
             infile = pysam.Samfile(bamfile, "rb")
             results = {'cmd_line': "|".join(infile.header['PG'][0].values())}
