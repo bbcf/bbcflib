@@ -140,8 +140,6 @@ def fetch_mappings(path_or_assembly_id):
     (e.g. 11, 76 or 'hg19' for H.Sapiens), or a path to a file containing a
     pickle object which is read to get the mapping.
     """
-    ### GTF database:
-
     if os.path.exists(str(path_or_assembly_id)):
         with open(path_or_assembly_id, 'rb') as pickle_file:
             mapping = cPickle.load(pickle_file)
@@ -158,12 +156,23 @@ def fetch_mappings(path_or_assembly_id):
 
     dbpath = "/db/genrep/nr_assemblies/features_sqlite/"+mdfive+".sql"
     db = sqlite3.connect(dbpath, check_same_thread=False)
+
+    #chr_address = "http://bbcftools.vital-it.ch/genrep/chromosomes.json?&assembly_id=7"
+    #chr = urllib.urlopen(chr_address)
+    #chromosomes = json.load(chr)
+    #chromosomes = [str(chr['chromosome']['name']) for chr in chromosomes]
+
     # c = db.cursor()
     # gene_ids=[]; gene_names={}
     # for chr in chromosomes:
     #     genes = c.execute('''SELECT DISTINCT gene_id,gene_name FROM ? ''', (str(chr))).fetchall()
     #     gene_ids.extend([g[0] for g in genes])
     #     gene_names.update(dict(genes))
+    #     transcript_mapping = c.execute('''SELECT DISINCT transcript_name,gene_name,transcript_id,gene_id
+    #         FROM "1" WHERE name LIKE 'exon';''')
+    #     exon_mapping = c.execute('''  ''')
+    #     trans_in_gene = c.execute('''  ''')
+    #     exons_in_trans = c.execute('''  ''')
     return mapping, db
 
 def exons_labels(bamfile):
@@ -234,14 +243,15 @@ def genes_expression(exons_data, db, exon_to_gene, ncond):
     :param exon_to_gene: dictionary ``{exon ID: gene ID}``.
     :param ncond: number of samples.
     """
+
+    #c = db.cursor()
+    #c.execute('''SELECT ''')
+
     genes = list(set(exons_data[1]))
     z = [numpy.zeros(ncond,dtype=numpy.float_) for g in genes]
     zz = [numpy.zeros(ncond,dtype=numpy.float_) for g in genes]
     gcounts = dict(zip(genes,z))
     grpk = dict(zip(genes,zz))
-
-    #c = db.cursor()
-    #c.execute('''SELECT ''')
 
     for e,c in zip(exons_data[0],zip(*exons_data[2:ncond+ncond+2])):
         g = exon_to_gene[e]
@@ -261,6 +271,13 @@ def transcripts_expression(exons_data, db, trans_in_gene, exons_in_trans, ncond,
     :param ncond: number of samples.
     :param method: "nnls" or "pinv" - respectively non-negative least-squares and pseudoinverse.
     """
+
+    #c = db.cursor
+    # coord = c.execute('''SELECT MIN(start),MAX(end)
+    #                FROM (SELECT DISTINCT transcript_id,transcript_name,start,end
+    #                    FROM ? WHERE (name LIKE 'exon') AND (transcript_id LIKE ?)); ''', (str(chr),t) )
+    # start, end = coord.fetchone()
+
     genes = list(set(exons_data[1]))
     transcripts = []
     for g in genes:
