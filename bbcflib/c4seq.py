@@ -84,7 +84,7 @@ def loadPrimers(primersFile):
 		Create a dictionary with infos for each primer (from file primers.fa) 
 	'''
 	primers={}
-	with open(primersFile,'r') as f:
+	with open(primersFile,'rb') as f:
 		for s in f.readlines():
 			s=s.strip('\n')
 			if re.search(r'^>',s):
