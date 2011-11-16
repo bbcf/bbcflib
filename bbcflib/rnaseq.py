@@ -141,21 +141,11 @@ def fetch_mappings(path_or_assembly_id):
     pickle object which is read to get the mapping.
     """
     ### GTF database:
-    # path = "/db/genrep/nr_assemblies/features_sqlite/"+md5+".sql"
-    # db = sqlite3.connect(path, check_same_thread=False)
-    # c = db.cursor()
-    # gene_ids=[]; gene_names={}
-    # for chr in chromosomes:
-    #     genes = c.execute('''SELECT DISTINCT gene_id,gene_name FROM ? ''', (str(chr))).fetchall()
-    #     gene_ids.extend([g[0] for g in genes])
-    #     gene_names.update(dict(genes))
-    # return db
 
     if os.path.exists(str(path_or_assembly_id)):
         with open(path_or_assembly_id, 'rb') as pickle_file:
             mapping = cPickle.load(pickle_file)
         print "Mapping found in", os.path.abspath(path_or_assembly_id)
-        return mapping
     else:
         grep_root = '/db/genrep'
         grep = GenRep(url='http://bbcftools.vital-it.ch/genrep/',root=grep_root)
@@ -165,7 +155,16 @@ def fetch_mappings(path_or_assembly_id):
         with open(mappings_path, 'rb') as pickle_file:
             mapping = cPickle.load(pickle_file)
         print "Mapping for assembly", mdfive, "found in /db/"
-        return mapping
+
+    dbpath = "/db/genrep/nr_assemblies/features_sqlite/"+mdfive+".sql"
+    db = sqlite3.connect(dbpath, check_same_thread=False)
+    # c = db.cursor()
+    # gene_ids=[]; gene_names={}
+    # for chr in chromosomes:
+    #     genes = c.execute('''SELECT DISTINCT gene_id,gene_name FROM ? ''', (str(chr))).fetchall()
+    #     gene_ids.extend([g[0] for g in genes])
+    #     gene_names.update(dict(genes))
+    return mapping, db
 
 def exons_labels(bamfile):
     """Returns a list of the exons labels in format ``(reference name, sequence length)`` in *bamfile*."""
@@ -226,7 +225,7 @@ def save_results(ex, cols, conditions, header=[], desc='features'):
     print desc+": Done successfully."
 
 #@timer
-def genes_expression(exons_data, exon_to_gene, ncond):
+def genes_expression(exons_data, db, exon_to_gene, ncond):
     """Get gene counts from exons counts.
 
     Returns two dictionaries, one for counts and one for rpkm, of the form ``{gene ID: float}``.
@@ -240,6 +239,10 @@ def genes_expression(exons_data, exon_to_gene, ncond):
     zz = [numpy.zeros(ncond,dtype=numpy.float_) for g in genes]
     gcounts = dict(zip(genes,z))
     grpk = dict(zip(genes,zz))
+
+    #c = db.cursor()
+    #c.execute('''SELECT ''')
+
     for e,c in zip(exons_data[0],zip(*exons_data[2:ncond+ncond+2])):
         g = exon_to_gene[e]
         gcounts[g] += c[:ncond]
@@ -247,7 +250,7 @@ def genes_expression(exons_data, exon_to_gene, ncond):
     return gcounts, grpk
 
 #@timer
-def transcripts_expression(exons_data, trans_in_gene, exons_in_trans, ncond, method="nnls"):
+def transcripts_expression(exons_data, db, trans_in_gene, exons_in_trans, ncond, method="nnls"):
     """Get transcript rpkms from exon rpkms.
 
     Returns a dictionary of the form ``{transcript ID: rpkm}``.
@@ -423,19 +426,23 @@ def rnaseq_workflow(ex, job, assembly, bam_files, pileup_level=["genes"], via="l
     print "Build pileups"
     exon_pileups = {}; nreads = {}; conditions = []
     for gid,files in bam_files.iteritems():
+        k = 0
         for rid,f in files.iteritems():
-            cond = group_names[gid]+'.'+str(rid)
+            k+=1
+            cond = group_names[gid]+'.'+str(k)
             exon_pileups[cond] = []
             conditions.append(cond)
+        k = 0
         for rid,f in files.iteritems():
+            k+=1
             print "....Pileup", cond
-            cond = group_names[gid]+'.'+str(rid)
+            cond = group_names[gid]+'.'+str(k)
             exon_pileup = pileup_file(f['bam'], exons)
             exon_pileups[cond] = exon_pileup # {cond1.run1: [pileup], cond1.run2: [pileup]...}
             nreads[cond] = nreads.get(cond,0) + sum(exon_pileup) # total number of reads
 
     print "Load mappings"
-    mappings = fetch_mappings(assembly_id)
+    mappings, db = fetch_mappings(assembly_id)
     """ [0] gene_ids is a list of gene ID's
         [1] gene_names is a dict {gene ID: gene name}
         [2] transcript_mapping is a dictionary {transcript ID: gene ID}
@@ -470,7 +477,7 @@ def rnaseq_workflow(ex, job, assembly, bam_files, pileup_level=["genes"], via="l
     """ Get counts for genes from exons """
     if "genes" in pileup_level:
         header = ["GeneID"] + hconds + ["GeneName"]#+ ["Start","End","GeneName"]
-        (gcounts, grpkm) = genes_expression(exons_data, exon_to_gene, len(conditions))
+        (gcounts, grpkm) = genes_expression(exons_data, db, exon_to_gene, len(conditions))
         #print asarray(gcounts["ENSMUSG00000057666"]), asarray(grpkm["ENSMUSG00000057666"]) # TEST Gapdh
         genesID = gcounts.keys()
         genesName = [gene_names.get(g,g) for g in genesID]
@@ -480,7 +487,7 @@ def rnaseq_workflow(ex, job, assembly, bam_files, pileup_level=["genes"], via="l
     """ Get counts for the transcripts from exons, using pseudo-inverse """
     if "transcripts" in pileup_level:
         header = ["TranscriptID","GeneID"] + hconds[len(conditions):] + ["GeneName"] # + ["Start","End","GeneName"]
-        (trpk, tcounts, error) = transcripts_expression(exons_data,
+        (trpk, tcounts, error) = transcripts_expression(exons_data, db,
                                  trans_in_gene,exons_in_trans,len(conditions),method="nnls")
         #a = [trpk[t][0] for t in trans_in_gene["ENSMUSG00000057666"]]; print asarray(a), sum(a) # TEST Gapdh
         transID = trpk.keys()

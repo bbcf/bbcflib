@@ -8,7 +8,7 @@ New Job
 -------
 A RNA-seq analysis works from aligned data, given as BAM file(s) through the BAM URL field (there is one BAM file per run).
 
-.. warning:: The alignment has to be performed on the EXONOME!
+.. warning:: The alignment has to be performed on the **exonome**.
 
 .. note::  If the alignment was performed on something else than the exonome, you can still retrieve the read counts on the features you aligned to in the output file that is supposed to contain the counts on exons. Make sure in this case to check only the Exons box of the Count level option (see below).
 
