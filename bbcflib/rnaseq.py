@@ -22,7 +22,6 @@ from bbcflib.common import timer, writecols, set_file_descr
 import sqlite3
 import numpy
 from numpy import zeros, dot, asarray
-from numpy.linalg import pinv, norm
 
 numpy.set_printoptions(precision=1,suppress=True)
 
@@ -32,12 +31,6 @@ def rstring(len=20):
     Equivalent to bein's unique_filename_in(), without requiring the import."""
     import string, random
     return "".join([random.choice(string.letters+string.digits) for x in range(len)])
-
-def least_squares(C,d):
-    """Solves min||d-Cx|| for x using pseudo-inverse."""
-    x = dot(pinv(C),d)
-    resid = d-dot(C,x)
-    return x, sum(resid*resid), resid
 
 def lsqnonneg(C, d, x0=None, tol=None, itmax_factor=3):
     """Linear least squares with nonnegativity constraints (NNLS), based on MATLAB's lsqnonneg function.
@@ -323,7 +316,7 @@ def transcripts_expression(exons_data, db, trans_in_gene, exons_in_trans, ncond)
                 #-----------------------------------#
                 #x, resnorm, res = lsqnonneg(M,ec[c],itmax_factor=5)
                 #tc.append(x)
-                tol = 10*2.22e-16*norm(M,1)*(max(M.shape)+1)
+                tol = 10*2.22e-16*numpy.linalg.norm(M,1)*(max(M.shape)+1)
                 try: y, resnorm, res = lsqnonneg(M,er[c],tol=100*tol)
                 except: y = zeros(len(tg)) # Bad idea
                 tr.append(y)
@@ -380,7 +373,7 @@ def estimate_size_factors(counts):
 
 
 #@timer
-def rnaseq_workflow(ex, job, assembly, bam_files, pileup_level=["genes"], via="lsf", output=None):
+def rnaseq_workflow(ex, job, assembly, bam_files, pileup_level=["exons","genes","transcripts"], via="lsf"):
     """
     Main function of the workflow.
 
@@ -393,7 +386,6 @@ def rnaseq_workflow(ex, job, assembly, bam_files, pileup_level=["genes"], via="l
     :param pileup_level: a string or array of strings indicating the features you want to compare.
                          Targets can be 'genes', 'transcripts', or 'exons'.
     :param via: 'local' or 'lsf'.
-    :param output: alternative name for output file. Otherwise it is random.
     """
     group_names={}
     assembly_id = job.assembly_id
@@ -463,37 +455,36 @@ def rnaseq_workflow(ex, job, assembly, bam_files, pileup_level=["genes"], via="l
     #for i in range(len(counts.ravel())):
     #    if counts.flat[i]==0: counts.flat[i] += 1.0 # if zero counts, add 1 for further comparisons
 
-    # "ENSMUSG00000057666" "ENSG00000111640": Gapdh
+    # "ENSMUSG00000057666" "ENSG00000111640": TEST Gapdh
 
     print "Get counts"
     hconds = ["counts."+c for c in conditions] + ["rpkm."+c for c in conditions]
     genesName = [gene_names.get(g,g) for g in genesID]
-    exons_data = [exonsID,genesID]+list(counts)+list(rpkm)+[starts,ends,genesName]
+    exons_data = [exonsID]+list(counts)+list(rpkm)+[starts,ends,genesID,genesName]
 
     """ Print counts for exons """
     if "exons" in pileup_level:
-        header = ["ExonID","GeneID"] + hconds + ["Start","End","GeneName"]
+        header = ["ExonID"] + hconds + ["Start","End","GeneID","GeneName"]
         save_results(ex, exons_data, conditions, header=header, desc="EXONS")
 
     """ Get counts for genes from exons """
     if "genes" in pileup_level:
-        header = ["GeneID"] + hconds + ["GeneName"]#+ ["Start","End","GeneName"]
+        header = ["GeneName"] + hconds + ["GeneID"]#+ ["Start","End","GeneName"]
         (gcounts, grpkm) = genes_expression(exons_data, db, exon_to_gene, len(conditions))
-        #print asarray(gcounts["ENSMUSG00000057666"]), asarray(grpkm["ENSMUSG00000057666"]) # TEST Gapdh
         genesID = gcounts.keys()
         genesName = [gene_names.get(g,g) for g in genesID]
-        genes_data = [genesID]+list(zip(*gcounts.values()))+list(zip(*grpkm.values()))+[genesName]
+        genes_data = [genesName]+list(zip(*gcounts.values()))+list(zip(*grpkm.values()))+[genesID]
         save_results(ex, genes_data, conditions, header=header, desc="GENES")
 
     """ Get counts for the transcripts from exons, using pseudo-inverse """
     if "transcripts" in pileup_level:
-        header = ["TranscriptID","GeneID"] + hconds[len(conditions):] + ["GeneName"] # + ["Start","End","GeneName"]
+        header = ["TranscriptID"] + hconds[len(conditions):] + ["GeneID","GeneName"]
+                   # + ["Start","End","GeneName","TranscriptName"]
         (trpk, tcounts, error) = transcripts_expression(exons_data, db,
                                  trans_in_gene,exons_in_trans,len(conditions))
-        #a = [trpk[t][0] for t in trans_in_gene["ENSMUSG00000057666"]]; print asarray(a), sum(a) # TEST Gapdh
         transID = trpk.keys()
         genesID = [transcript_mapping[t] for t in transID]
         genesName = [gene_names.get(g,g) for g in genesID]
         (genesID, transID, genesName) = zip(*sorted(zip(genesID,transID,genesName))) # sort w.r.t. gene IDs
-        trans_data = [transID,genesID]+list(zip(*[trpk[t] for t in transID]))+[genesName]
+        trans_data = [transID]+list(zip(*[trpk[t] for t in transID]))+[genesID,genesName]
         save_results(ex, trans_data, conditions, header=header, desc="TRANSCRIPTS")
