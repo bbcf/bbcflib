@@ -165,14 +165,17 @@ def fetch_mappings(path_or_assembly_id):
     # c = db.cursor()
     # gene_ids=[]; gene_names={}
     # for chr in chromosomes:
-    #     genes = c.execute('''SELECT DISTINCT gene_id,gene_name FROM ? ''', (str(chr))).fetchall()
+    #     genes = c.execute('''SELECT DISTINCT gene_id,gene_name FROM ? ''', (chr)).fetchall()
     #     gene_ids.extend([g[0] for g in genes])
     #     gene_names.update(dict(genes))
     #     transcript_mapping = c.execute('''SELECT DISINCT transcript_name,gene_name,transcript_id,gene_id
-    #         FROM "1" WHERE name LIKE 'exon';''')
+    #         FROM ? WHERE name LIKE 'exon'; ''', (chr))
     #     exon_mapping = c.execute('''  ''')
-    #     trans_in_gene = c.execute('''  ''')
-    #     exons_in_trans = c.execute('''  ''')
+    #     trans_in_gene = c.execute('''SELECT DISTINCT gene_id,transcript_id
+    #         FROM ? WHERE name LIKE 'exon'; ''', (chr))
+    #     exons_in_trans = c.execute('''SELECT DISTINCT gene_id,transcript_id
+    #         FROM ? WHERE name LIKE 'exon'; ''', (chr))    return mapping, db
+
     return mapping, db
 
 def exons_labels(bamfile):
