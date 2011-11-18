@@ -3,7 +3,7 @@
 Module: bbcflib.rnaseq
 ======================
 
-Methods of the bbcflib's RNA-seq worflow. The main function is **rnaseq_workflow()**.
+Methods of the bbcflib's RNA-seq worflow. The main function is ``rnaseq_workflow()``.
 
 From a BAM file produced by an alignement on the *exonome*, gets counts of reads
 on the exons, add them to get counts on genes, and uses least-squares to infer
@@ -21,7 +21,7 @@ from bbcflib.common import timer, writecols, set_file_descr
 # Other modules #
 import sqlite3
 import numpy
-from numpy import zeros, dot, asarray
+from numpy import zeros, asarray
 
 numpy.set_printoptions(precision=1,suppress=True)
 
@@ -65,46 +65,43 @@ def lsqnonneg(C, d, x0=None, tol=None, itmax_factor=3):
         else: return s[dim]
 
     if tol is None: tol = 10*eps*norm1(C)*(max(C.shape)+1)
-    #print "....Tolerance:",tol
     C = asarray(C)
     (m,n) = C.shape
     P = numpy.zeros(n)
     Z = ZZ = numpy.arange(1, n+1)
-    if x0 is None: x=P
-    else:
-        if any(x0 < 0): x=P
-        else: x=x0
+    if any(x0 < 0) or x0 is None: x=P
+    else: x=x0
     resid = d - numpy.dot(C, x)
-    w = numpy.dot(C.T, resid)
+    w = numpy.dot(C.T, resid) # gradient of (1/2)*||d-Cx||^2
     outeriter=0; it=0
     itmax=itmax_factor*n
 
     # outer loop to put variables into set to hold positive coefficients
-    while numpy.any(Z) and numpy.any(w[ZZ-1] > tol):
+    while numpy.any(Z) and numpy.any(w[ZZ-1] > tol): # if Z is empty or w_j<0 for all j, terminate.
         outeriter += 1
-        t = w[ZZ-1].argmax()
+        t = w[ZZ-1].argmax() # find an index t s.t. w_t = max(w)
         t = ZZ[t]
-        P[t-1]=t
+        P[t-1]=t # move the index t from set Z to set P
         Z[t-1]=0
-        PP = numpy.where(P != 0)[0]+1
-        ZZ = numpy.where(Z != 0)[0]+1
+        PP = numpy.where(P != 0)[0]+1 # set P of indices
+        ZZ = numpy.where(Z != 0)[0]+1 # set Z of indices
         CP = numpy.zeros(C.shape)
-        CP[:, PP-1] = C[:, PP-1]
+        CP[:, PP-1] = C[:, PP-1] # CP[:,j] is C[:,j] if j in P, or 0 if j in Z
         CP[:, ZZ-1] = numpy.zeros((m, msize(ZZ, 1)))
-        z=numpy.dot(numpy.linalg.pinv(CP), d)
+        z=numpy.dot(numpy.linalg.pinv(CP), d) # solution of least-squares min||d-CPx||
         z[ZZ-1] = numpy.zeros((msize(ZZ,1), msize(ZZ,0)))
 
         # inner loop to remove elements from the positve set which no longer belong
-        while numpy.any(z[PP-1] <= tol):
+        while numpy.any(z[PP-1] <= tol): # if z_j>0 for all j, set x=z and return to outer loop
             it += 1
             if it > itmax:
                 max_error = z[PP-1].max()
                 raise Exception('Exiting: Iteration count (=%d) exceeded\n \
                       Try raising the tolerance tol. (max_error=%d)' % (it, max_error))
-            QQ = numpy.where((z <= tol) & (P != 0))[0]
+            QQ = numpy.where((z <= tol) & (P != 0))[0] # find an index q in P s.t. x_q/(x_q-z_q) is min with negative z_q.
             alpha = min(x[QQ]/(x[QQ] - z[QQ]))
             x = x + alpha*(z-x)
-            ij = numpy.where((abs(x) < tol) & (P <> 0))[0]+1
+            ij = numpy.where((abs(x) < tol) & (P <> 0))[0]+1 # move from P to Z all indices j for which x_j=0
             Z[ij-1] = ij
             P[ij-1] = numpy.zeros(max(ij.shape))
             PP = numpy.where(P != 0)[0]+1
