@@ -42,7 +42,7 @@ def lsqnonneg(C, d, x0=None, tol=None, itmax_factor=3):
     * the residuals *res* = d-Cx
 
     :param x0: Initial point for x.
-    :param tol: Tolerance to determine when the error is small enough.
+    :param tol: Tolerance to determine what is considered as zero.
     :param itmax_factor: Maximum number of iterations.
 
     :type C: numpy 2-dimensional array or matrix
@@ -55,7 +55,7 @@ def lsqnonneg(C, d, x0=None, tol=None, itmax_factor=3):
     Reference: Lawson, C.L. and R.J. Hanson, Solving Least-Squares Problems, Prentice-Hall, Chapter 23, p. 161, 1974.
     http://diffusion-mri.googlecode.com/svn/trunk/Python/lsqnonneg.py
     """
-    eps = 2.22e-16    # from matlab
+    eps = 2.22e-16 # from Matlab
     def norm1(x):
         return abs(x).sum().max()
 
@@ -69,7 +69,7 @@ def lsqnonneg(C, d, x0=None, tol=None, itmax_factor=3):
     (m,n) = C.shape
     P = numpy.zeros(n)
     Z = ZZ = numpy.arange(1, n+1)
-    if any(x0 < 0) or x0 is None: x=P
+    if x0 is None or any(x0 < 0): x=P
     else: x=x0
     resid = d - numpy.dot(C, x)
     w = numpy.dot(C.T, resid) # gradient of (1/2)*||d-Cx||^2
