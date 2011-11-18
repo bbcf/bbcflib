@@ -118,17 +118,17 @@ def add_macs_results( ex, read_length, genome_size, bamfile,
         filename = "_vs_".join(n)
         touch( ex, p )
         ex.add( p, description=set_file_descr(filename,**macs_descr0), alias=alias )
-        ex.add( p+"_peaks.xls", 
+        ex.add( p+"_peaks.xls",
                 description=set_file_descr(filename+"_peaks.xls",**macs_descr1),
                 associate_to_filename=p, template='%s_peaks.xls' )
-        ex.add( p+"_peaks.bed", 
+        ex.add( p+"_peaks.bed",
                 description=set_file_descr(filename+"_peaks.bed",**macs_descr2),
                 associate_to_filename=p, template='%s_peaks.bed' )
         ex.add( p+"_summits.bed",
                 description=set_file_descr(filename+"_summits.bed",**macs_descr2),
                 associate_to_filename=p, template='%s_summits.bed' )
         if len(n)>1:
-            ex.add( p+"_negative_peaks.xls", 
+            ex.add( p+"_negative_peaks.xls",
                     description=set_file_descr(filename+"_negative_peaks.xls",**macs_descr1),
                     associate_to_filename=p, template='%s_negative_peaks.xls' )
     return prefixes
@@ -210,7 +210,6 @@ def run_deconv(ex, sql, peaks, chromosomes, read_extension, script_path, via = '
 def filter_deconv( bedfile, pval=0.5 ):
     """Filters a bedfile created by deconvolution to select peaks with p-value smaller than 'pval'.
     Returns the filtered file name."""
-    import re
     outname = unique_filename_in()+".bed"
     with open( bedfile, "r" ) as fin:
         with open( outname, "w" ) as fout:
@@ -223,7 +222,6 @@ def filter_deconv( bedfile, pval=0.5 ):
 def filter_macs( bedfile, ntags=5 ):
     """Filters MACS' summits file to select peaks with a number of tags greater than 'ntags'.
     Returns the filtered file name."""
-    import re
     outname = unique_filename_in()+".bed"
     with open( bedfile, "r" ) as fin:
         with open( outname, "w" ) as fout:
@@ -240,17 +238,15 @@ def workflow_groups( ex, job_or_dict, mapseq_files, chromosomes, script_path='',
                      genrep=None, logfile=None, via='lsf' ):
     """Runs a chipseq workflow over bam files obtained by mapseq. Will optionally run ``macs`` and 'run_deconv'.
 
-    Arguments are:
+    :param ex: a 'bein' execution environment to run jobs in,
 
-    * ``'ex'``: a 'bein' execution environment to run jobs in,
+    :param job_or_dict: a 'Frontend' 'job' object, or a dictionary with key 'groups' and 'options' if applicable,
 
-    * ``'job_or_dict'``: a 'Frontend' 'job' object, or a dictionary with key 'groups' and 'options' if applicable,
+    :param chromosomes: a dictionary with keys 'chromosome_id' and values a dictionary with chromosome names and lengths,
 
-    * ``'chromosomes'``: a dictionary with keys 'chromosome_id' and values a dictionary with chromosome names and lengths,
+    :param script_path: only needed if 'run_deconv' is in the job options, must point to the location of the R scripts.
 
-    * ``'script_path'``: only needed if 'run_deconv' is in the job options, must point to the location of the R scripts.
-
-    Defaults ``macs`` parameters (overriden by job_or_dict['options']['macs_args']) are set as follows:
+    Defaults ``macs`` parameters (overriden by ``job_or_dict['options']['macs_args']``) are set as follows:
 
     * ``'-bw'``: 200 ('bandwith')
 
@@ -279,10 +275,10 @@ def workflow_groups( ex, job_or_dict, mapseq_files, chromosomes, script_path='',
         merge_strands = int(options['merge_strands'])
     peak_deconvolution = options.get('peak_deconvolution') or False
     if isinstance(peak_deconvolution,str):
-        peak_deconvolution = peak_deconvolution.lower() in ['1','true','t'] 
+        peak_deconvolution = peak_deconvolution.lower() in ['1','true','t']
     run_meme = options.get('run_meme') or False
     if isinstance(run_meme,str):
-        run_meme = run_meme.lower() in ['1','true','t'] 
+        run_meme = run_meme.lower() in ['1','true','t']
     macs_args = options.get('macs_args') or ["--bw=200"]
     b2w_args = options.get('b2w_args') or []
     if not(isinstance(mapseq_files,dict)):
@@ -403,7 +399,7 @@ def workflow_groups( ex, job_or_dict, mapseq_files, chromosomes, script_path='',
                                              for x in names['controls']],via=via)
             deconv = run_deconv( ex, merged_wig[name], macsbed, chromosomes,
                                  options['read_extension'], script_path, via=via )
-            [ex.add(v, description=set_file_descr(name+'_deconv.'+k,type=k,step='deconvolution',group=name)) 
+            [ex.add(v, description=set_file_descr(name+'_deconv.'+k,type=k,step='deconvolution',group=name))
              for k,v in deconv.iteritems()]
             processed['deconv'][name] = deconv
             peak_list[name] = filter_deconv( deconv['bed'], pval=0.65 )
@@ -411,8 +407,8 @@ def workflow_groups( ex, job_or_dict, mapseq_files, chromosomes, script_path='',
         from .motif import parallel_meme
         if logfile:
             logfile.write("Starting MEME.\n");logfile.flush()
-        processed['meme'] = parallel_meme( ex, genrep, chromosomes, 
-                                           peak_list.values(), name=peak_list.keys(), 
+        processed['meme'] = parallel_meme( ex, genrep, chromosomes,
+                                           peak_list.values(), name=peak_list.keys(),
                                            meme_args=['-nmotifs','4','-revcomp'], via=via )
     return processed
 
