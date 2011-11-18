@@ -235,7 +235,7 @@ def genes_expression(exons_data, db, exon_to_gene, ncond):
 
     Returns two dictionaries, one for counts and one for rpkm, of the form ``{gene ID: float}``.
 
-    :param exons_data: list of lists ``[exonsID,genesID,counts_1,..,counts_n,rpkm_1,..,rpkm_n, (others)]``.
+    :param exons_data: list of lists ``[exonsID, counts, rpkm, start, end, geneID, geneName]``.
     :param exon_to_gene: dictionary ``{exon ID: gene ID}``.
     :param ncond: number of samples.
     """
@@ -243,13 +243,13 @@ def genes_expression(exons_data, db, exon_to_gene, ncond):
     #c = db.cursor()
     #c.execute('''SELECT ''')
 
-    genes = list(set(exons_data[1]))
+    genes = list(set(exons_data[-2]))
     z = [numpy.zeros(ncond,dtype=numpy.float_) for g in genes]
     zz = [numpy.zeros(ncond,dtype=numpy.float_) for g in genes]
     gcounts = dict(zip(genes,z))
     grpk = dict(zip(genes,zz))
 
-    for e,c in zip(exons_data[0],zip(*exons_data[2:ncond+ncond+2])):
+    for e,c in zip(exons_data[0],zip(*exons_data[1:ncond+ncond+1])):
         g = exon_to_gene[e]
         gcounts[g] += c[:ncond]
         grpk[g] += c[ncond:]
@@ -273,7 +273,7 @@ def transcripts_expression(exons_data, db, trans_in_gene, exons_in_trans, ncond)
     #                    FROM ? WHERE (name LIKE 'exon') AND (transcript_id LIKE ?)); ''', (str(chr),t) )
     # start, end = coord.fetchone()
 
-    genes = list(set(exons_data[1]))
+    genes = list(set(exons_data[-2]))
     transcripts = []
     for g in genes:
         transcripts.extend(trans_in_gene.get(g,[]))
@@ -282,8 +282,8 @@ def transcripts_expression(exons_data, db, trans_in_gene, exons_in_trans, ncond)
     zz = numpy.zeros((len(transcripts),ncond))
     trans_counts = dict(zip(transcripts,z));
     trans_rpk = dict(zip(transcripts,zz))
-    exons_counts = dict(zip( exons_data[0], zip(*exons_data[2:ncond+2])) )
-    exons_rpk = dict(zip( exons_data[0], zip(*exons_data[ncond+2:2*ncond+2])) )
+    exons_counts = dict(zip( exons_data[0], zip(*exons_data[1:ncond+1])) )
+    exons_rpk = dict(zip( exons_data[0], zip(*exons_data[ncond+1:2*ncond+1])) )
     totalerror = 0; unknown = 0; alltranscount=0; allexonscount=0;
     filE = open("../error_stats.table","wb")
     filE.write("gene \t nbExons \t nbTrans \t ratioNbExonsNbTrans \t totExons \t totTrans \t ratioExonsTrans \t lsqError \n")
