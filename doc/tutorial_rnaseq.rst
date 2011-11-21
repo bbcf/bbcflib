@@ -11,17 +11,17 @@ A RNA-seq analysis works from aligned data, given as BAM file(s) through the BAM
 
 .. warning:: Alignments have to be performed on the **exonome**.
 
-.. note::  If the alignment was performed on something else than the exonome, you can still retrieve the read counts on the features you aligned to in the output file that is supposed to contain the counts on exons. Make sure in this case to check only the Exons box of the Count level option (see below).
+.. note::  If the alignment was performed on something else than the exonome, you can still retrieve the read counts on the features you aligned to in the output file that is supposed to contain the counts on exons.
 
 
-The BAM URLs can be given directly as a http:// or ftp:// address accessible from outside. You can add manually as many groups and as many runs per group you want by using the links `Add group of runs` and `Add run in this group`. Each sample will then be labeled GroupName.RunId in the output files. Make sure to use short group names, without spaces (prefer "_" character to separate words) and without any special character in it (e.g. "%&?!" ).
+The BAM URLs can be given directly as an `http://` or `ftp://` address accessible from outside. You can add manually as many groups and as many runs per group you want by using the links `Add group of runs` and `Add run in this group`. Each sample will then be labeled *group_name.run_index* in the output files. Make sure to use short group names, without spaces (prefer "_" character to separate words) and without any special character in it (e.g. "%&?!" ).
 
 If you used the HTSstation `mapping module <http://htsstation.vital-it.ch/mapseq/>`_ to do the mapping, you can copy the 20-random characters keys obtained as a result into the `Mapping key` field, and validate using the link `Add data from Mapping`. In such case, all relevant fields will be automatically filled in (see tutorial of our `mapping module <http://htsstation.vital-it.ch/mapseq/>`_ for more details about those fields). To add several samples, successively enter the correponding keys and click on `Add data from Mapping`.
 
 .. image:: images/RNAseq_newjob.png
 
 
-Select an assembly from the list. Make sure you are selecting the one that was used for the mapping! If your assembly is not listed, please send us an `email <mailto:webmaster.bbcf@epfl.ch>`_.
+Then select an assembly from the list. Make sure you are selecting the one that was used for the mapping. If your assembly is not listed, please send us an `email <mailto:webmaster.bbcf@epfl.ch>`_.
 
 Name your analysis in the `Run description` field. Please, use short names, without spaces (prefer "_" character to separate words) and without any special characters (e.g., "%&?!" ... ).
 Submit your e-mail in order to receive an message upon completion of the pipeline.
