@@ -6,6 +6,13 @@ Submodule: bbcflib.track.track_parsing
 An optional test that is not run with the usual test suite. It evaluates the robustness of the text track parsers.
 """
 
+###########################################################################
+###########################################################################
+## WARNING: The bbcflib.track package is deprecated.                     ##
+##          A new project simply called 'track' replaces it.             ##
+###########################################################################
+###########################################################################
+
 # Built-in modules #
 import os, re
 

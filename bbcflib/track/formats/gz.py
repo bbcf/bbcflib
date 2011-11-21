@@ -6,6 +6,13 @@ Submodule: bbcflib.track.formats.sql
 Implementation of a compression layer GNU zip format.
 """
 
+###########################################################################
+###########################################################################
+## WARNING: The bbcflib.track package is deprecated.                     ##
+##          A new project simply called 'track' replaces it.             ##
+###########################################################################
+###########################################################################
+
 # Built-in modules #
 import os, gzip
 

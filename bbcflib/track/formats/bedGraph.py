@@ -6,6 +6,13 @@ Submodule: bbcflib.track.formats.bedgraph
 Implementation of the bedGraph format.
 """
 
+###########################################################################
+###########################################################################
+## WARNING: The bbcflib.track package is deprecated.                     ##
+##          A new project simply called 'track' replaces it.             ##
+###########################################################################
+###########################################################################
+
 # Internal modules #
 from bbcflib.track.track_proxy import TrackProxy
 from bbcflib.track.track_text import TrackText
