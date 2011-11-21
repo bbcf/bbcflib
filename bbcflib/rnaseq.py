@@ -45,9 +45,9 @@ def lsqnonneg(C, d, x0=None, tol=None, itmax_factor=3):
     :param tol: Tolerance to determine what is considered as zero.
     :param itmax_factor: Maximum number of iterations.
 
-    :type C: numpy 2-dimensional array or matrix
-    :type d: numpy array
-    :type x0: numpy array
+    :type C: nxm numpy array
+    :type d: nx1 numpy array
+    :type x0: mx1 numpy array
     :type tol: float
     :type itmax_factor: int
     :rtype: *x*: numpy array, *resnorm*: float, *res*: numpy array
@@ -264,11 +264,13 @@ def transcripts_expression(exons_data, db, trans_in_gene, exons_in_trans, ncond)
     :param ncond: number of samples.
     """
 
-    #c = db.cursor
-    # coord = c.execute('''SELECT MIN(start),MAX(end)
-    #                FROM (SELECT DISTINCT transcript_id,transcript_name,start,end
-    #                    FROM ? WHERE (name LIKE 'exon') AND (transcript_id LIKE ?)); ''', (str(chr),t) )
-    # start, end = coord.fetchone()
+    c = db.cursor()
+    chr = 1
+    t = "ENSMUST00000073605"
+    coord = c.execute('''SELECT MIN(start),MAX(end) FROM (SELECT DISTINCT start,end FROM ?
+                         WHERE (name LIKE 'exon') AND (transcript_id LIKE ?) );''', (str(chr),"'%"+t+"%'") )
+    start, end = coord.fetchone()
+    print start, end
 
     genes = list(set(exons_data[-2]))
     transcripts = []
