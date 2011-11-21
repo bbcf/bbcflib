@@ -12,7 +12,7 @@ Note that the resulting counts on transcripts are approximate.
 """
 
 # Built-in modules #
-import os, cPickle, pysam, urllib, math
+import os, cPickle, pysam, urllib, math, json, time
 
 # Internal modules #
 from bbcflib.genrep import GenRep
@@ -147,10 +147,10 @@ def fetch_mappings(path_or_assembly_id):
     dbpath = "/db/genrep/nr_assemblies/features_sqlite/"+mdfive+".sql"
     db = sqlite3.connect(dbpath, check_same_thread=False)
 
-    #chr_address = "http://bbcftools.vital-it.ch/genrep/chromosomes.json?&assembly_id=7"
-    #chr = urllib.urlopen(chr_address)
-    #chromosomes = json.load(chr)
-    #chromosomes = [str(chr['chromosome']['name']) for chr in chromosomes]
+    chr_address = "http://bbcftools.vital-it.ch/genrep/chromosomes.json?&assembly_id=7"
+    chr = urllib.urlopen(chr_address)
+    chromosomes = json.load(chr)
+    chromosomes = [str(chr['chromosome']['name']) for chr in chromosomes]
 
     # c = db.cursor()
     # gene_ids=[]; gene_names={}
@@ -166,7 +166,7 @@ def fetch_mappings(path_or_assembly_id):
     #     exons_in_trans = c.execute('''SELECT DISTINCT gene_id,transcript_id
     #         FROM ? WHERE name LIKE 'exon'; ''', (chr))    return mapping, db
 
-    return mapping, db
+    return mapping, db, chromosomes
 
 def exons_labels(bamfile):
     """Returns a list of the exons labels in format ``(reference name, sequence length)`` in *bamfile*."""
@@ -253,7 +253,7 @@ def genes_expression(exons_data, db, exon_to_gene, ncond):
     return gcounts, grpk
 
 #@timer
-def transcripts_expression(exons_data, db, trans_in_gene, exons_in_trans, ncond):
+def transcripts_expression(exons_data, db, chromosomes, trans_in_gene, exons_in_trans, ncond):
     """Get transcript rpkms from exon rpkms.
 
     Returns a dictionary of the form ``{transcript ID: rpkm}``.
@@ -264,13 +264,15 @@ def transcripts_expression(exons_data, db, trans_in_gene, exons_in_trans, ncond)
     :param ncond: number of samples.
     """
 
+    # Transcript lengths
     c = db.cursor()
-    chr = 1
-    t = "ENSMUST00000073605"
-    coord = c.execute('''SELECT MIN(start),MAX(end) FROM (SELECT DISTINCT start,end FROM ?
-                         WHERE (name LIKE 'exon') AND (transcript_id LIKE ?) );''', (str(chr),"'%"+t+"%'") )
-    start, end = coord.fetchone()
-    print start, end
+    lengths = {}
+    for chr in chromosomes:
+        sql = '''SELECT transcript_id,MAX(end)-MIN(start) FROM '%s'
+                 WHERE (name LIKE 'exon') GROUP BY transcript_id;''' % (str(chr),)
+        sql_result = c.execute(sql)
+        for trans_id,length in sql_result:
+            lengths[str(trans_id.strip(';'))] = length
 
     genes = list(set(exons_data[-2]))
     transcripts = []
@@ -434,7 +436,7 @@ def rnaseq_workflow(ex, job, assembly, bam_files, pileup_level=["exons","genes",
             nreads[cond] = nreads.get(cond,0) + sum(exon_pileup) # total number of reads
 
     print "Load mappings"
-    mappings, db = fetch_mappings(assembly_id)
+    mappings, db, chromosomes = fetch_mappings(assembly_id)
     """ [0] gene_ids is a list of gene ID's
         [1] gene_names is a dict {gene ID: gene name}
         [2] transcript_mapping is a dictionary {transcript ID: gene ID}
@@ -479,7 +481,7 @@ def rnaseq_workflow(ex, job, assembly, bam_files, pileup_level=["exons","genes",
     if "transcripts" in pileup_level:
         header = ["TranscriptID"] + hconds[len(conditions):] + ["GeneID","GeneName"]
                    # + ["Start","End","GeneName","TranscriptName"]
-        (trpk, tcounts, error) = transcripts_expression(exons_data, db,
+        (trpk, tcounts, error) = transcripts_expression(exons_data, db, chromosomes,
                                  trans_in_gene,exons_in_trans,len(conditions))
         transID = trpk.keys()
         genesID = [transcript_mapping[t] for t in transID]
