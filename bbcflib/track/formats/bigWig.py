@@ -8,8 +8,8 @@ Implementation of the bigWig format. Requires the command line utilities "bigWig
 
 ###########################################################################
 ###########################################################################
-## WARNING: The bbcflib.track package is depcrecated.                    ##
-##          A new projet simply called 'track' replaces it.              ##
+## WARNING: The bbcflib.track package is deprecated.                     ##
+##          A new project simply called 'track' replaces it.             ##
 ###########################################################################
 ###########################################################################
 

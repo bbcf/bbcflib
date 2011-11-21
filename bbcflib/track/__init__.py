@@ -71,14 +71,14 @@ It is important to note that the general numbering convention of features on a c
 
 ###########################################################################
 ###########################################################################
-## WARNING: The bbcflib.track package is depcrecated.                    ##
-##          A new projet simply called 'track' replaces it.              ##
+## WARNING: The bbcflib.track package is deprecated.                     ##
+##          A new project simply called 'track' replaces it.             ##
 ###########################################################################
 ###########################################################################
 
 import warnings
-warnings.warn("The bbcflib.track package is depcrecated."
-              "A new projet simply called 'track' replaces it.",
+warnings.warn("The bbcflib.track package is deprecated. "
+              "A new project simply called 'track' replaces it.",
               DeprecationWarning)
 
 # Special variable #

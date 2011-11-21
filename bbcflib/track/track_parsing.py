@@ -8,8 +8,8 @@ An optional test that is not run with the usual test suite. It evaluates the rob
 
 ###########################################################################
 ###########################################################################
-## WARNING: The bbcflib.track package is depcrecated.                    ##
-##          A new projet simply called 'track' replaces it.              ##
+## WARNING: The bbcflib.track package is deprecated.                     ##
+##          A new project simply called 'track' replaces it.             ##
 ###########################################################################
 ###########################################################################
 

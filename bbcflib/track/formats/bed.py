@@ -8,8 +8,8 @@ Implementation of the BED format.
 
 ###########################################################################
 ###########################################################################
-## WARNING: The bbcflib.track package is depcrecated.                    ##
-##          A new projet simply called 'track' replaces it.              ##
+## WARNING: The bbcflib.track package is deprecated.                     ##
+##          A new project simply called 'track' replaces it.             ##
 ###########################################################################
 ###########################################################################
 
