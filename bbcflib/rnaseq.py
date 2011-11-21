@@ -152,19 +152,46 @@ def fetch_mappings(path_or_assembly_id):
     chromosomes = json.load(chr)
     chromosomes = [str(chr['chromosome']['name']) for chr in chromosomes]
 
-    # c = db.cursor()
-    # gene_ids=[]; gene_names={}
-    # for chr in chromosomes:
-    #     genes = c.execute('''SELECT DISTINCT gene_id,gene_name FROM ? ''', (chr)).fetchall()
-    #     gene_ids.extend([g[0] for g in genes])
-    #     gene_names.update(dict(genes))
-    #     transcript_mapping = c.execute('''SELECT DISINCT transcript_name,gene_name,transcript_id,gene_id
-    #         FROM ? WHERE name LIKE 'exon'; ''', (chr))
-    #     exon_mapping = c.execute('''  ''')
-    #     trans_in_gene = c.execute('''SELECT DISTINCT gene_id,transcript_id
-    #         FROM ? WHERE name LIKE 'exon'; ''', (chr))
-    #     exons_in_trans = c.execute('''SELECT DISTINCT gene_id,transcript_id
-    #         FROM ? WHERE name LIKE 'exon'; ''', (chr))    return mapping, db
+    @timer
+    def get_gene_ids(db,chromosomes):
+        """Return a list of gene IDs"""
+        c = db.cursor()
+        gene_ids = []
+        for chr in chromosomes:
+            sql = '''SELECT DISTINCT gene_id FROM '%s'
+                     WHERE (NAME LIKE 'exon');''' % (str(chr),)
+            gene_ids.extend(c.execute(sql).fetchall())
+        return gene_ids
+
+    @timer
+    def get_exon_mapping(db,chromosomes):
+        """Return a dictionary ``{exon ID: ([transcript IDs], gene ID)}``"""
+        c = db.cursor()
+        exon_mapping = {}
+        for chr in chromosomes:
+            sql = '''SELECT DISTINCT exon_id,gene_id,transcript_id FROM '%s'
+                     WHERE (NAME LIKE 'exon');''' % (str(chr),)
+            sql_result = c.execute(sql)
+            for e,g,t in sql_result:
+                exon_mapping.setdefault(str(e.strip(';')),[]).append()
+        return exon_mapping
+
+    @timer
+    def get_transcript_mapping(db,chromosomes):
+        """Return a dictionary ``{transcript ID: gene ID}``"""
+        c = db.cursor()
+        transcript_mapping = {}
+        for chr in chromosomes:
+            sql = '''SELECT DISTINCT gene_id,transcript_id FROM '%s' WHERE (NAME LIKE 'exon');''' % (str(chr),)
+            sql_result = c.execute(sql)
+            for t,g in sql_result:
+                transcript_mapping[str(t.strip(';'))] = str(g.strip(';'))
+        return transcript_mapping
+
+    #gene_ids = get_gene_ids(db,chromosomes)
+    #exon_mapping = get_exon_mapping(db.chromosomes)
+    #transcript_mapping = get_transcript_mapping(db,chromosomes)
+    #mapping = gene_ids, exon_mapping, transcript_mapping
 
     return mapping, db, chromosomes
 
@@ -227,7 +254,7 @@ def save_results(ex, cols, conditions, header=[], desc='features'):
     print desc+": Done successfully."
 
 #@timer
-def genes_expression(exons_data, db, exon_to_gene, ncond):
+def genes_expression(exons_data, db, chromosomes, exon_to_gene, ncond):
     """Get gene counts from exons counts.
 
     Returns two dictionaries, one for counts and one for rpkm, of the form ``{gene ID: float}``.
@@ -237,8 +264,19 @@ def genes_expression(exons_data, db, exon_to_gene, ncond):
     :param ncond: number of samples.
     """
 
-    #c = db.cursor()
-    #c.execute('''SELECT ''')
+    @timer
+    def get_exon_to_gene(db,chromosomes):
+        c = db.cursor()
+        exon_to_gene = {}
+        for chr in chromosomes:
+            sql = '''SELECT DISTINCT exon_id,gene_id from '%s'
+                     WHERE (NAME LIKE 'exon');''' % (str(chr),)
+            sql_result = c.execute(sql)
+            for e,g in sql_result:
+                exon_to_gene[str(e.strip(';'))] = str(g.strip(';'))
+        return exon_to_gene
+
+    #exon_to_gene = get_exon_to_gene(db,chromosomes)
 
     genes = list(set(exons_data[-2]))
     z = [numpy.zeros(ncond,dtype=numpy.float_) for g in genes]
@@ -248,8 +286,8 @@ def genes_expression(exons_data, db, exon_to_gene, ncond):
 
     for e,c in zip(exons_data[0],zip(*exons_data[1:ncond+ncond+1])):
         g = exon_to_gene[e]
-        gcounts[g] += c[:ncond]
-        grpk[g] += c[ncond:]
+        gcounts[g] += numpy.round(c[:ncond],2)
+        grpk[g] += numpy.round(c[ncond:],2)
     return gcounts, grpk
 
 #@timer
@@ -258,21 +296,48 @@ def transcripts_expression(exons_data, db, chromosomes, trans_in_gene, exons_in_
 
     Returns a dictionary of the form ``{transcript ID: rpkm}``.
 
-    :param exons_data: list of lists ``[exonsID,genesID,counts_1,..,counts_n,rpkm_1,..,rpkm_n, (others)]``.
+    :param exons_data: list of lists ``[exonsID, counts, rpkm, start, end, geneID, geneName]``.
     :param trans_in_gene: dictionary ``{gene ID: [transcript IDs it contains]}``.
     :param exons_in_trans: dictionary ``{transcript ID: [exon IDs it contains]}``.
     :param ncond: number of samples.
     """
 
-    # Transcript lengths
-    c = db.cursor()
-    lengths = {}
-    for chr in chromosomes:
-        sql = '''SELECT transcript_id,MAX(end)-MIN(start) FROM '%s'
-                 WHERE (name LIKE 'exon') GROUP BY transcript_id;''' % (str(chr),)
-        sql_result = c.execute(sql)
-        for trans_id,length in sql_result:
-            lengths[str(trans_id.strip(';'))] = length
+    @timer
+    def get_transcript_lengths(db,chromosomes):
+        """Return a dictionary ``{transcript ID: transcript length}``"""
+        c = db.cursor()
+        lengths = {}
+        for chr in chromosomes:
+            sql = '''SELECT transcript_id,MAX(end)-MIN(start) FROM '%s'
+                     WHERE (name LIKE 'exon') GROUP BY transcript_id;''' % (str(chr),)
+            sql_result = c.execute(sql)
+            for t,l in sql_result:
+                lengths[str(t.strip(';'))] = l
+        return lengths
+
+    @timer
+    def get_trans_in_gene(db,chromosomes):
+        """Return a dictionary ``{gene ID: list of transcript IDs it contains}``"""
+        c = db.cursor()
+        trans_in_gene = {}
+        for chr in chromosomes:
+            sql = '''SELECT DISTINCT gene_id,transcript_id FROM '%s'
+                     WHERE (NAME LIKE 'exon');''' % (str(chr),)
+            sql_result = c.execute(sql)
+            for g,t in sql_result:
+                trans_in_gene.setdefault(str(g.strip(';')),[]).append(str(t.strip(';')))
+        return trans_in_gene
+
+    @timer
+    def get_exons_in_trans(db,chromosomes):
+        """Return a dictionary ``{transcript ID: list of exon IDs it contains}``"""
+        c = db.cursor()
+        exons_in_trans = {}
+        return exons_in_trans
+
+    #transcript_lengths = get_transcript_lengths(db,chromosomes)
+    #trans_in_gene = get_trans_in_gene(db,chromosomes)
+    #exons_in_trans = get_exons_in_trans(db,chromosomes)
 
     genes = list(set(exons_data[-2]))
     transcripts = []
@@ -471,7 +536,7 @@ def rnaseq_workflow(ex, job, assembly, bam_files, pileup_level=["exons","genes",
     """ Get counts for genes from exons """
     if "genes" in pileup_level:
         header = ["GeneName"] + hconds + ["GeneID"]#+ ["Start","End","GeneName"]
-        (gcounts, grpkm) = genes_expression(exons_data, db, exon_to_gene, len(conditions))
+        (gcounts, grpkm) = genes_expression(exons_data, db, chromosomes, exon_to_gene, len(conditions))
         genesID = gcounts.keys()
         genesName = [gene_names.get(g,g) for g in genesID]
         genes_data = [genesName]+list(zip(*gcounts.values()))+list(zip(*grpkm.values()))+[genesID]
@@ -481,8 +546,8 @@ def rnaseq_workflow(ex, job, assembly, bam_files, pileup_level=["exons","genes",
     if "transcripts" in pileup_level:
         header = ["TranscriptID"] + hconds[len(conditions):] + ["GeneID","GeneName"]
                    # + ["Start","End","GeneName","TranscriptName"]
-        (trpk, tcounts, error) = transcripts_expression(exons_data, db, chromosomes,
-                                 trans_in_gene,exons_in_trans,len(conditions))
+        (trpk, tcounts, error) = transcripts_expression(exons_data, db, chromosomes, trans_in_gene,
+                                 exons_in_trans,len(conditions))
         transID = trpk.keys()
         genesID = [transcript_mapping[t] for t in transID]
         genesName = [gene_names.get(g,g) for g in genesID]
