@@ -6,6 +6,13 @@ Submodule: bbcflib.track.track_util
 Useful stuff for the track package.
 """
 
+###########################################################################
+###########################################################################
+## WARNING: The bbcflib.track package is depcrecated.                    ##
+##          A new projet simply called 'track' replaces it.              ##
+###########################################################################
+###########################################################################
+
 # Built-in modules #
 import os, sys, shlex
 

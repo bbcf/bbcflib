@@ -6,6 +6,13 @@ Subpackage: bbcflib.track.track_bundle
 Provides the TrackBundle class that can be useful for grouping many Track objects together and represent them as one.
 """
 
+###########################################################################
+###########################################################################
+## WARNING: The bbcflib.track package is depcrecated.                    ##
+##          A new projet simply called 'track' replaces it.              ##
+###########################################################################
+###########################################################################
+
 #############################################################################################
 class TrackBundle(object):
     def __init__(self, tracks):

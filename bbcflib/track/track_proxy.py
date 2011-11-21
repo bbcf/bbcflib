@@ -7,6 +7,13 @@ Methods that create an SQL file upon opening in the temporary directory
 and reconverts everything to a text file file upon closing, all transparently.
 """
 
+###########################################################################
+###########################################################################
+## WARNING: The bbcflib.track package is depcrecated.                    ##
+##          A new projet simply called 'track' replaces it.              ##
+###########################################################################
+###########################################################################
+
 # Built-in modules #
 import os, shutil
 

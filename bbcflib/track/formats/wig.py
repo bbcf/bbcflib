@@ -6,6 +6,13 @@ Submodule: bbcflib.track.formats.wig
 Implementation of the WIG format.
 """
 
+###########################################################################
+###########################################################################
+## WARNING: The bbcflib.track package is depcrecated.                    ##
+##          A new projet simply called 'track' replaces it.              ##
+###########################################################################
+###########################################################################
+
 # Built-in modules #
 import sys, shlex
 

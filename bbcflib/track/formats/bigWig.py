@@ -6,6 +6,13 @@ Submodule: bbcflib.track.formats.bigWig
 Implementation of the bigWig format. Requires the command line utilities "bigWigToBedGraph" and "bedGraphToBigWig" to be installed and present in the $PATH environment variable.
 """
 
+###########################################################################
+###########################################################################
+## WARNING: The bbcflib.track package is depcrecated.                    ##
+##          A new projet simply called 'track' replaces it.              ##
+###########################################################################
+###########################################################################
+
 # Built-in modules #
 import os
 

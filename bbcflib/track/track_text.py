@@ -6,6 +6,13 @@ Submodule: bbcflib.track.track_text
 Methods common to the text formats.
 """
 
+###########################################################################
+###########################################################################
+## WARNING: The bbcflib.track package is depcrecated.                    ##
+##          A new projet simply called 'track' replaces it.              ##
+###########################################################################
+###########################################################################
+
 # Built-in modules #
 import shlex
 
