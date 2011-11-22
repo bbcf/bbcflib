@@ -252,6 +252,7 @@ def workflow_groups(ex, job, primers_dict, g_rep, mapseq_files, mapseq_url, scri
 		
 			if 'regToExclude' in primers_dict[mapseq_files[gid][rid]['libname']]:
                                 regToExclude=primers_dict[mapseq_files[gid][rid]['libname']]['regToExclude']
+				regToExclude=regToExclude=regToExclude.replace('\r','')
 			else:
 			        regToExclude=None
 			print("regToExclude="+str(regToExclude))
