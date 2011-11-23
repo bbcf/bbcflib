@@ -250,7 +250,7 @@ def createLibrary(ex,fasta_allchr,params, g_rep):
 	return([libfiles,bedfiles,resfile,infos_lib,resfile_sql])
 
 
-def get_libForGrp(ex,group,fasta_or_assembly,new_libraries, job_id, g_rep):
+def get_libForGrp(ex,group,fasta_or_assembly,new_libraries, job_id, g_rep, grpId):
 	#wd_archive="/archive/epfl/bbcf/mleleu/pipeline_vMarion/pipeline_3Cseq/vWebServer_Bein/" #temporary: will be /scratch/cluster/monthly/htsstation/4cseq/job.id
 	lib_dir = "/scratch/cluster/monthly/htsstation/4cseq/" + str(job_id) + "/"
 	print "Group:\n"
@@ -265,8 +265,8 @@ def get_libForGrp(ex,group,fasta_or_assembly,new_libraries, job_id, g_rep):
 			print("will call createlib.createLibrary with:"+str(fasta_or_assembly)+" and "+ library_filename)
 			libfiles=createLibrary(ex,fasta_or_assembly,paramslib, g_rep);
 			reffile=libfiles[4]
-			ex.add(libfiles[2],description=set_file_descr("new_library.bed",group=group['id'],step=0,type="bed"))
-			ex.add(reffile,description=set_file_descr("new_library.sql",group=group['id'],step=0,type="sql",view='admin'))
+			ex.add(libfiles[2],description=set_file_descr("new_library.bed",groupId=grpId,step=0,type="bed"))
+			ex.add(reffile,description=set_file_descr("new_library.sql",groupId=grpId,step=0,type="sql",view='admin'))
 			new_libraries.append({'library':libfiles[3]})	
 		elif lib_id > 0 :
 			print("This library already exists (id="+str(lib_id)+")")
