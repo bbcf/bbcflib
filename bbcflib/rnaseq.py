@@ -361,15 +361,20 @@ def transcripts_expression(exons_data, exon_lengths, transcript_lengths, trans_i
                 #-----------------------------------#
                 # Non-negative least-squares method #
                 #-----------------------------------#
+                x = numpy.hstack((ec[c],asarray(sum(ec[c]))))
+                y = numpy.hstack((er[c],asarray(sum(ec[c]))))
+                M = numpy.vstack((M,numpy.ones(M.shape[1])))
+                L = numpy.vstack((L,numpy.ones(M.shape[1])))
                 N = M*L
+                print g,"\n",M,"\n",N,"\n\n"
                 tol = 10*2.22e-16*numpy.linalg.norm(N,1)*(max(N.shape)+1)
-                try: x, resnormc, resc = lsqnonneg(N,ec[c],tol=100*tol) # counts
-                except: y = zeros(len(tg)) # Bad idea
-                tc.append(x)
+                try: Tc, resnormc, resc = lsqnonneg(N,x,tol=100*tol) # counts
+                except: Tc = zeros(len(tg)) # Bad idea
+                tc.append(Tc)
                 tol = 10*2.22e-16*numpy.linalg.norm(M,1)*(max(M.shape)+1)
-                try: y, resnormr, resr = lsqnonneg(M,er[c],tol=100*tol) # rpkm
-                except: y = zeros(len(tg)) # Bad idea
-                tr.append(y)
+                try: Tr, resnormr, resr = lsqnonneg(M,y,tol=100*tol) # rpkm
+                except: Tr = zeros(len(tg)) # Bad idea
+                tr.append(Tr)
                 totalerror += math.sqrt(resnormc)
 
             # Store results in a dict *tcounts*/*trpk*
