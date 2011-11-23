@@ -24,41 +24,48 @@ class Test_Expressions(unittest.TestCase):
         e1="e1"; e2="e2";
         t1="t1"; t2="t2";
         g1="g1";
+        self.chromosomes = ["1"]
         self.M = numpy.matrix('1 1; 0 1')
         self.ncond = 2
         self.counts = numpy.array([[27,12],[3,3]]) # [[cond1],[cond2]]
         self.rpkms = numpy.array([[27/3.,12/6.],[3/3.,3/6.]])
-        self.exons_data = [[e1,e2],[g1,g1]]+list(self.counts)+list(self.rpkms)+[[0.,3.],[3.,9.],["g1","g1"]]
+        self.exons_data = [[e1,e2]]+list(self.counts)+list(self.rpkms)+[[0.,3.],[3.,9.],["g1","g1"],["gg1","gg1"]]
+        self.transcript_lengths = {t1:3., t2:9.}
+        self.exon_lengths = {e1:3., e2:6.}
         self.exon_to_gene = {e1:g1, e2:g1}
         self.trans_in_gene = {g1:[t1,t2]}
         self.exons_in_trans = {t1:[e1], t2:[e1,e2]}
         """
-            Cond1         Cond2
-        |=====g1====| |=====g1====|
-        |-t1-|        |-t1-|
-        |-----t2----| |-----t2----|
-          v      v      v      v
-          27     12     3      3
-        |.e1.| |.e2.| |.e1.| |.e2.|
+           *Counts Cond1*             *Rpkm Cond1*
+        g1 |===.======|               |===.===|
+        t1 |---|         21           |---|      7
+        t2 |---.------|  6  +  12     |---.---| (2) 2
+             v     v                    v   v
+             27    12                   9   2
+           |.e1.||.e2.|               |e1| |e2|
+        """
+        """
+           *Counts Cond2*             *Rpkm Cond2*
+        g1 |===.======|               |===.===|
+        t1 |---|         1.5          |---|      0.5
+        t2 |---.------|  1.5 + 3      |---.---| (0.5) 0.5
+             v     v                    v   v
+             3     3                    1   0.5
+           |.e1.||.e2.|               |e1| |e2|
         """
 
     def test_transcripts_expression(self):
-        # Pseudo-inverse
-        trpk, tcounts, err = transcripts_expression(self.exons_data, self.trans_in_gene,
-                                      self.exons_in_trans, self.ncond, method="pinv")
+        trpk, tcounts, err = transcripts_expression(self.exons_data, self.exon_lengths, self.transcript_lengths,
+                 self.trans_in_gene, self.exons_in_trans, self.ncond)
         assert_almost_equal(trpk["t1"], array([7., 0.5]))
-        assert_almost_equal(trpk["t2"], array([4., 1.]))
-        # NNLS
-        trpk, tcounts, err = transcripts_expression(self.exons_data, self.trans_in_gene,
-                                      self.exons_in_trans, self.ncond, method="nnls")
-        assert_almost_equal(trpk["t1"], array([7., 0.5]))
-        assert_almost_equal(trpk["t2"], array([4., 1.]))
+        assert_almost_equal(trpk["t2"], array([2., 0.5]))
+        assert_almost_equal(tcounts["t1"], array([21., 1.5]))
+        assert_almost_equal(tcounts["t2"], array([18., 4.5]))
 
     def test_genes_expression(self):
         gcounts, grpkms = genes_expression(self.exons_data, self.exon_to_gene, self.ncond)
         assert_almost_equal(gcounts["g1"], array([39., 6.]))
 
-    @unittest.skip("Not in use at the moment.")
     def test_estimate_size_factors(self):
         res, size_factors = estimate_size_factors(self.counts)
         self.assertIsInstance(self.counts, numpy.ndarray)

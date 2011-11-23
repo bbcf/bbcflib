@@ -375,28 +375,7 @@ class GenRep(object):
         return result
 
 
-    def get_chromosomes_from_nr_assembly_id(self, nr_assembly_id):
-        '''
-        Get the chromosomes related to the nr_assembly specified.
-        It return the chromosomes from the assembly ``BBCF_VALID``
-        :param: nr_assembly_id : the non-redundant assembly id
-        '''
-        # get the nr_assembly from its id
-        nr_assembly = self.get_genrep_objects('nr_assemblies', 'nr_assembly',
-                                              {'id':nr_assembly_id})[0]
-        # get assembly bbcf valid with the same genome id
-        ass = self.get_genrep_objects('assemblies', 'assembly',
-                                      {'genome_id':nr_assembly.genome_id,
-                                       'bbcf_valid':True})[0]
-        if ass is not None:
-            # load the assembly
-            assembly_info = json.load(urllib2.urlopen("""%s/assemblies/%s.json""" % (self.url, ass.id)))
-            assembly = GenrepObject(assembly_info,'assembly')
-            chromosomes = []
-            # get the chromosomes
-            for chr in assembly.chromosomes:
-                chromosomes.append(GenrepObject(chr, 'chromosome'))
-            return chromosomes
+  
 
     def is_available(self, assembly):
         """
@@ -459,6 +438,14 @@ class GenRep(object):
             return chrom['length']
         return dict([(get_name(chrom), dict([('length', get_length(chrom))])) for chrom in chromosomes])
 
+    def get_sqlite_file(self, assembly):
+        '''
+        Get the url of the sqlite file containing genes for the assembly specified.
+        :param assembly  may be an integer giving the assembly ID, or a string giving the assembly name.
+        '''
+        ass = self.assembly(assembly)
+        return '%s/data/nr_assemblies/annot_tracks/%s.sql' % (self.url, ass.md5)
+    
 ################################################################################
 class Assembly(object):
     def __init__(self, assembly_id, assembly_name, index_path,
