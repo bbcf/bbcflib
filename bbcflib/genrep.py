@@ -438,6 +438,14 @@ class GenRep(object):
             return chrom['length']
         return dict([(get_name(chrom), dict([('length', get_length(chrom))])) for chrom in chromosomes])
 
+    def get_sqlite_file(self, assembly):
+        '''
+        Get the url of the sqlite file containing genes for the assembly specified.
+        :param assembly  may be an integer giving the assembly ID, or a string giving the assembly name.
+        '''
+        ass = self.assembly(assembly)
+        return '%s/data/nr_assemblies/annot_tracks/%s.sql' % (self.url, ass.md5)
+    
 ################################################################################
 class Assembly(object):
     def __init__(self, assembly_id, assembly_name, index_path,
