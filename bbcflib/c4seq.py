@@ -284,7 +284,7 @@ def workflow_groups(ex, job, primers_dict, g_rep, mapseq_files, mapseq_url, scri
 #			ex.add(mapseq_wig+".wig",description="wig:density_file_"+mapseq_files[gid][rid]['libname']+".wig [group:"+str(grpId)+",step:"+str(step)+",type:wig]")
 ##				associate_to_filename=mapseq_wig, template="%s"+".wig")
 
-			ex.add(mapseq_files[gid][rid]['wig']['merged'],description=set_file_descr("density_file_"+mapseq_files[gid][rid]['libname']+".sql",group=gid,step="density",type="sql",view='admin'))
+			ex.add(mapseq_files[gid][rid]['wig']['merged'],description=set_file_descr("density_file_"+mapseq_files[gid][rid]['libname']+".sql",groupId=gid,step="density",type="sql",view='admin'))
 #		        ex.add(mapseq_files[gid][rid]['wig']['merged'],description="sql:density_file_"+mapseq_files[gid][rid]['libname']+" [group:"+str(grpId)+",step:"+str(step)+",type:sql]"  )
  #                       #ex.add(mapseq_files[gid][rid]['wig']['merged'],description='none:density_file_'+mapseq_files[gid][rid]['libname']+'.sql (template)')
  #                       #ex.add(mapseq_files[gid][rid]['wig']['merged']+".sql",description='sql:density_file_'+mapseq_files[gid][rid]['libname']+'.sql (sql density file)', 
@@ -312,7 +312,7 @@ def workflow_groups(ex, job, primers_dict, g_rep, mapseq_files, mapseq_url, scri
 			
         		outputfile_afterProfileCorrection=unique_filename_in()
 		        smoothFragFile(ex,profileCorrectedFile,nFragsPerWin,mapseq_files[gid][rid]['libname'],outputfile_afterProfileCorrection,regToExclude,script_path)
-			ex.add(outputfile_afterProfileCorrection,description=set_file_descr("res_segToFrag_"+mapseq_files[gid][rid]['libname']+"_profileCorrected_smoothed_"+nFragsPerWin+"FragsPerWin.bedGraph",group=grpId,step="smoothing",type="bedGraph",comment="smoothed data, after profile correction",ucsc='1'))
+			ex.add(outputfile_afterProfileCorrection,description=set_file_descr("res_segToFrag_"+mapseq_files[gid][rid]['libname']+"_profileCorrected_smoothed_"+nFragsPerWin+"FragsPerWin.bedGraph",groupId=grpId,step="smoothing",type="bedGraph",comment="smoothed data, after profile correction",ucsc='1'))
 #		grpId += 1
 		step=0
 	return processed
