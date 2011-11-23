@@ -144,15 +144,16 @@ def fetch_mappings(path_or_assembly_id):
             mapping = cPickle.load(pickle_file)
         print "Mapping for assembly", mdfive, "found in /db/"
 
+    # Connect to GTF database
     dbpath = "/db/genrep/nr_assemblies/features_sqlite/"+mdfive+".sql"
     db = sqlite3.connect(dbpath, check_same_thread=False)
 
+    # Get chromosome names from GenRep
     chr_address = "http://bbcftools.vital-it.ch/genrep/chromosomes.json?&assembly_id=7"
     chr = urllib.urlopen(chr_address)
     chromosomes = json.load(chr)
     chromosomes = [str(chr['chromosome']['name']) for chr in chromosomes]
 
-    @timer
     def get_gene_ids(db,chromosomes):
         """Return a list of gene IDs"""
         c = db.cursor()
@@ -163,7 +164,6 @@ def fetch_mappings(path_or_assembly_id):
             gene_ids.extend(c.execute(sql).fetchall())
         return gene_ids
 
-    @timer
     def get_exon_mapping(db,chromosomes):
         """Return a dictionary ``{exon ID: ([transcript IDs], gene ID)}``"""
         c = db.cursor()
@@ -176,7 +176,6 @@ def fetch_mappings(path_or_assembly_id):
                 exon_mapping.setdefault(str(e.strip(';')),[]).append()
         return exon_mapping
 
-    @timer
     def get_transcript_mapping(db,chromosomes):
         """Return a dictionary ``{transcript ID: gene ID}``"""
         c = db.cursor()
@@ -188,12 +187,43 @@ def fetch_mappings(path_or_assembly_id):
                 transcript_mapping[str(t.strip(';'))] = str(g.strip(';'))
         return transcript_mapping
 
+    def get_trans_in_gene(db,chromosomes):
+        """Return a dictionary ``{gene ID: list of transcript IDs it contains}``"""
+        c = db.cursor()
+        trans_in_gene = {}
+        for chr in chromosomes:
+            sql = '''SELECT DISTINCT gene_id,transcript_id FROM '%s'
+                     WHERE (NAME LIKE 'exon');''' % (str(chr),)
+            sql_result = c.execute(sql)
+            for g,t in sql_result:
+                trans_in_gene.setdefault(str(g.strip(';')),[]).append(str(t.strip(';')))
+        return trans_in_gene
+
+    def get_exons_in_trans(db,chromosomes):
+        """Return a dictionary ``{transcript ID: list of exon IDs it contains}``"""
+        c = db.cursor()
+        exons_in_trans = {}
+        return exons_in_trans
+
+    def get_transcript_lengths(db,chromosomes):
+        """Return a dictionary ``{transcript ID: transcript length}``"""
+        c = db.cursor()
+        lengths = {}
+        for chr in chromosomes:
+            sql = '''SELECT transcript_id,MAX(end)-MIN(start) FROM '%s'
+                     WHERE (name LIKE 'exon') GROUP BY transcript_id;''' % (str(chr),)
+            sql_result = c.execute(sql)
+            for t,l in sql_result:
+                lengths[str(t.strip(';'))] = l
+        return lengths
+
+    transcript_lengths = get_transcript_lengths(db,chromosomes)
     #gene_ids = get_gene_ids(db,chromosomes)
     #exon_mapping = get_exon_mapping(db.chromosomes)
     #transcript_mapping = get_transcript_mapping(db,chromosomes)
     #mapping = gene_ids, exon_mapping, transcript_mapping
 
-    return mapping, db, chromosomes
+    return mapping, transcript_lengths
 
 def exons_labels(bamfile):
     """Returns a list of the exons labels in format ``(reference name, sequence length)`` in *bamfile*."""
@@ -254,7 +284,7 @@ def save_results(ex, cols, conditions, header=[], desc='features'):
     print desc+": Done successfully."
 
 #@timer
-def genes_expression(exons_data, db, chromosomes, exon_to_gene, ncond):
+def genes_expression(exons_data, exon_to_gene, ncond):
     """Get gene counts from exons counts.
 
     Returns two dictionaries, one for counts and one for rpkm, of the form ``{gene ID: float}``.
@@ -263,21 +293,6 @@ def genes_expression(exons_data, db, chromosomes, exon_to_gene, ncond):
     :param exon_to_gene: dictionary ``{exon ID: gene ID}``.
     :param ncond: number of samples.
     """
-
-    @timer
-    def get_exon_to_gene(db,chromosomes):
-        c = db.cursor()
-        exon_to_gene = {}
-        for chr in chromosomes:
-            sql = '''SELECT DISTINCT exon_id,gene_id from '%s'
-                     WHERE (NAME LIKE 'exon');''' % (str(chr),)
-            sql_result = c.execute(sql)
-            for e,g in sql_result:
-                exon_to_gene[str(e.strip(';'))] = str(g.strip(';'))
-        return exon_to_gene
-
-    #exon_to_gene = get_exon_to_gene(db,chromosomes)
-
     genes = list(set(exons_data[-2]))
     z = [numpy.zeros(ncond,dtype=numpy.float_) for g in genes]
     zz = [numpy.zeros(ncond,dtype=numpy.float_) for g in genes]
@@ -291,7 +306,7 @@ def genes_expression(exons_data, db, chromosomes, exon_to_gene, ncond):
     return gcounts, grpk
 
 #@timer
-def transcripts_expression(exons_data, db, chromosomes, exon_lengths, trans_in_gene, exons_in_trans, ncond):
+def transcripts_expression(exons_data, exon_lengths, transcript_lengths, trans_in_gene, exons_in_trans, ncond):
     """Get transcript rpkms from exon rpkms.
 
     Returns a dictionary of the form ``{transcript ID: rpkm}``.
@@ -302,44 +317,6 @@ def transcripts_expression(exons_data, db, chromosomes, exon_lengths, trans_in_g
     :param exons_in_trans: dictionary ``{transcript ID: [exon IDs it contains]}``.
     :param ncond: number of samples.
     """
-
-    @timer
-    def get_transcript_lengths(db,chromosomes):
-        """Return a dictionary ``{transcript ID: transcript length}``"""
-        c = db.cursor()
-        lengths = {}
-        for chr in chromosomes:
-            sql = '''SELECT transcript_id,MAX(end)-MIN(start) FROM '%s'
-                     WHERE (name LIKE 'exon') GROUP BY transcript_id;''' % (str(chr),)
-            sql_result = c.execute(sql)
-            for t,l in sql_result:
-                lengths[str(t.strip(';'))] = l
-        return lengths
-
-    @timer
-    def get_trans_in_gene(db,chromosomes):
-        """Return a dictionary ``{gene ID: list of transcript IDs it contains}``"""
-        c = db.cursor()
-        trans_in_gene = {}
-        for chr in chromosomes:
-            sql = '''SELECT DISTINCT gene_id,transcript_id FROM '%s'
-                     WHERE (NAME LIKE 'exon');''' % (str(chr),)
-            sql_result = c.execute(sql)
-            for g,t in sql_result:
-                trans_in_gene.setdefault(str(g.strip(';')),[]).append(str(t.strip(';')))
-        return trans_in_gene
-
-    @timer
-    def get_exons_in_trans(db,chromosomes):
-        """Return a dictionary ``{transcript ID: list of exon IDs it contains}``"""
-        c = db.cursor()
-        exons_in_trans = {}
-        return exons_in_trans
-
-    transcript_lengths = get_transcript_lengths(db,chromosomes)
-    #trans_in_gene = get_trans_in_gene(db,chromosomes)
-    #exons_in_trans = get_exons_in_trans(db,chromosomes)
-
     genes = list(set(exons_data[-2]))
     transcripts = []
     for g in genes:
@@ -397,11 +374,11 @@ def transcripts_expression(exons_data, db, chromosomes, exon_lengths, trans_in_g
 
             # Store results in a dict *tcounts*/*trpk*
             for k,t in enumerate(tg):
-                nexons = len(exons_in_trans[t])
+                #nexons = len(exons_in_trans[t])
                 if trans_rpk.get(t) is not None:
                     for c in range(ncond):
                         trans_counts[t][c] = round(tc[c][k], 2)
-                        trans_rpk[t][c] = round(tr[c][k]*nexons, 2)
+                        trans_rpk[t][c] = round(tr[c][k], 2)
 
             # Testing
             total_trans_r = sum([trans_rpk[t][c] for t in tg for c in range(ncond)]) or 0
@@ -415,12 +392,13 @@ def transcripts_expression(exons_data, db, chromosomes, exon_lengths, trans_in_g
             unknown += 1
 
     filE.close()
-    print "\t Evaluation of error for transcripts:"
-    print "\t Unknown transcripts for %d of %d genes (%.2f %%)" \
-           % (unknown, len(genes), 100*float(unknown)/float(len(genes)) )
-    print "\t Total transcript scores: %.2f, Total exon scores: %.2f, Ratio: %.2f" \
-           % (alltranscount,allexonscount,alltranscount/allexonscount)
-    print "\t Total error (sum of resnorms):", totalerror
+    #print "\t Evaluation of error for transcripts:"
+    #print "\t Unknown transcripts for %d of %d genes (%.2f %%)" \
+    #       % (unknown, len(genes), 100*float(unknown)/float(len(genes)) )
+    #try: print "\t Total transcript scores: %.2f, Total exon scores: %.2f, Ratio: %.2f" \
+    #       % (alltranscount,allexonscount,alltranscount/allexonscount)
+    #except ZeroDivisionError: pass
+    #print "\t Total error (sum of resnorms):", totalerror
     return trans_rpk, trans_counts, totalerror
 
 def estimate_size_factors(counts):
@@ -508,7 +486,7 @@ def rnaseq_workflow(ex, job, assembly, bam_files, pileup_level=["exons","genes",
             nreads[cond] = nreads.get(cond,0) + sum(exon_pileup) # total number of reads
 
     print "Load mappings"
-    mappings, db, chromosomes = fetch_mappings(assembly_id)
+    mappings, transcript_lengths = fetch_mappings(assembly_id)
     """ [0] gene_ids is a list of gene ID's
         [1] gene_names is a dict {gene ID: gene name}
         [2] transcript_mapping is a dictionary {transcript ID: gene ID}
@@ -543,7 +521,7 @@ def rnaseq_workflow(ex, job, assembly, bam_files, pileup_level=["exons","genes",
     """ Get counts for genes from exons """
     if "genes" in pileup_level:
         header = ["GeneName"] + hconds + ["GeneID"]#+ ["Start","End","GeneName"]
-        (gcounts, grpkm) = genes_expression(exons_data, db, chromosomes, exon_to_gene, len(conditions))
+        (gcounts, grpkm) = genes_expression(exons_data, exon_to_gene, len(conditions))
         genesID = gcounts.keys()
         genesName = [gene_names.get(g,g) for g in genesID]
         genes_data = [genesName]+list(zip(*gcounts.values()))+list(zip(*grpkm.values()))+[genesID]
@@ -553,8 +531,8 @@ def rnaseq_workflow(ex, job, assembly, bam_files, pileup_level=["exons","genes",
     if "transcripts" in pileup_level:
         header = ["TranscriptID"] + hconds + ["GeneID","GeneName"]
                    # + ["Start","End","GeneName","TranscriptName"]
-        (trpk, tcounts, error) = transcripts_expression(exons_data, db, chromosomes, exon_lengths, trans_in_gene,
-                                 exons_in_trans,len(conditions))
+        (trpk, tcounts, error) = transcripts_expression(exons_data, exon_lengths,
+                   transcript_lengths, trans_in_gene, exons_in_trans,len(conditions))
         transID = trpk.keys()
         genesID = [transcript_mapping[t] for t in transID]
         genesName = [gene_names.get(g,g) for g in genesID]
