@@ -329,7 +329,7 @@ def transcripts_expression(exons_data, exon_lengths, transcript_lengths, trans_i
     exons_counts = dict(zip( exons_data[0], zip(*exons_data[1:ncond+1])) )
     exons_rpk = dict(zip( exons_data[0], zip(*exons_data[ncond+1:2*ncond+1])) )
     totalerror = 0; unknown = 0; alltranscount=0; allexonscount=0;
-    filE = open("../error_stats.table","wb")
+    filE = open("../error_stats.numbers","wb")
     filE.write("gene \t nbExons \t nbTrans \t ratioNbExonsNbTrans \t totExons \t totTrans \t ratioExonsTrans \t lsqError \n")
     for g in genes:
         if trans_in_gene.get(g): # if the gene is (still) in the Ensembl database
@@ -359,7 +359,7 @@ def transcripts_expression(exons_data, exon_lengths, transcript_lengths, trans_i
             # Compute transcript counts
             for c in range(ncond):
                 #-----------------------------------#
-                # Non-negative least squares method #
+                # Non-negative least-squares method #
                 #-----------------------------------#
                 N = M*L
                 tol = 10*2.22e-16*numpy.linalg.norm(N,1)*(max(N.shape)+1)
@@ -370,7 +370,7 @@ def transcripts_expression(exons_data, exon_lengths, transcript_lengths, trans_i
                 try: y, resnormr, resr = lsqnonneg(M,er[c],tol=100*tol) # rpkm
                 except: y = zeros(len(tg)) # Bad idea
                 tr.append(y)
-                totalerror += math.sqrt(resnormr)
+                totalerror += math.sqrt(resnormc)
 
             # Store results in a dict *tcounts*/*trpk*
             for k,t in enumerate(tg):
@@ -381,24 +381,24 @@ def transcripts_expression(exons_data, exon_lengths, transcript_lengths, trans_i
                         trans_rpk[t][c] = round(tr[c][k], 2)
 
             # Testing
-            total_trans_r = sum([trans_rpk[t][c] for t in tg for c in range(ncond)]) or 0
-            total_exons_r = sum([sum(er[c]) for c in range(ncond)]) or 0
-            alltranscount += total_trans_r
-            allexonscount += total_exons_r
+            total_trans_c = sum([trans_counts[t][c] for t in tg for c in range(ncond)]) or 0
+            total_exons_c = sum([sum(ec[c]) for c in range(ncond)]) or 0
+            alltranscount += total_trans_c
+            allexonscount += total_exons_c
             try: filE.write("%s\t%d\t%d\t%.1f\t%.1f\t%.1f\t%.1f\t%.1f\n" \
-                    % (g,len(eg),len(tg),1.*len(eg)/len(tg),total_exons_r,total_trans_r,total_exons_r/total_trans_r,resnormr))
+                    % (g,len(eg),len(tg),1.*len(eg)/len(tg),total_exons_c,total_trans_c,total_exons_c/total_trans_c,resnormc))
             except ZeroDivisionError: pass
         else:
             unknown += 1
 
     filE.close()
-    #print "\t Evaluation of error for transcripts:"
-    #print "\t Unknown transcripts for %d of %d genes (%.2f %%)" \
-    #       % (unknown, len(genes), 100*float(unknown)/float(len(genes)) )
-    #try: print "\t Total transcript scores: %.2f, Total exon scores: %.2f, Ratio: %.2f" \
-    #       % (alltranscount,allexonscount,alltranscount/allexonscount)
-    #except ZeroDivisionError: pass
-    #print "\t Total error (sum of resnorms):", totalerror
+    print "\t Evaluation of error for transcripts:"
+    print "\t Unknown transcripts for %d of %d genes (%.2f %%)" \
+           % (unknown, len(genes), 100*float(unknown)/float(len(genes)) )
+    try: print "\t Total transcript scores: %.2f, Total exon scores: %.2f, Ratio: %.2f" \
+           % (alltranscount,allexonscount,alltranscount/allexonscount)
+    except ZeroDivisionError: pass
+    print "\t Total error (sum of resnorms):", totalerror
     return trans_rpk, trans_counts, totalerror
 
 def estimate_size_factors(counts):

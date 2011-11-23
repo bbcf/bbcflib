@@ -18,14 +18,10 @@ from numpy import array
 __test__ = True
 
 
-class Test_Expressions(unittest.TestCase):
+class Test_Expressions1(unittest.TestCase):
+    """Two conditions, different lengths, invertible"""
     def setUp(self):
-        # add some that are not in the mappings from Ensembl
-        e1="e1"; e2="e2";
-        t1="t1"; t2="t2";
-        g1="g1";
-        self.chromosomes = ["1"]
-        self.M = numpy.matrix('1 1; 0 1')
+        e1="e1"; e2="e2"; t1="t1"; t2="t2"; g1="g1";
         self.ncond = 2
         self.counts = numpy.array([[27,12],[3,3]]) # [[cond1],[cond2]]
         self.rpkms = numpy.array([[27/3.,12/6.],[3/3.,3/6.]])
@@ -40,7 +36,7 @@ class Test_Expressions(unittest.TestCase):
         g1 |===.======|               |===.===|
         t1 |---|         21           |---|      7
         t2 |---.------|  6  +  12     |---.---| (2) 2
-             v     v                    v   v
+
              27    12                   9   2
            |.e1.||.e2.|               |e1| |e2|
         """
@@ -49,11 +45,10 @@ class Test_Expressions(unittest.TestCase):
         g1 |===.======|               |===.===|
         t1 |---|         1.5          |---|      0.5
         t2 |---.------|  1.5 + 3      |---.---| (0.5) 0.5
-             v     v                    v   v
+
              3     3                    1   0.5
            |.e1.||.e2.|               |e1| |e2|
         """
-
     def test_transcripts_expression(self):
         trpk, tcounts, err = transcripts_expression(self.exons_data, self.exon_lengths, self.transcript_lengths,
                  self.trans_in_gene, self.exons_in_trans, self.ncond)
@@ -61,10 +56,144 @@ class Test_Expressions(unittest.TestCase):
         assert_almost_equal(trpk["t2"], array([2., 0.5]))
         assert_almost_equal(tcounts["t1"], array([21., 1.5]))
         assert_almost_equal(tcounts["t2"], array([18., 4.5]))
+        self.assertEqual(sum(sum(tcounts.values())), sum(sum(self.counts)))
 
     def test_genes_expression(self):
         gcounts, grpkms = genes_expression(self.exons_data, self.exon_to_gene, self.ncond)
         assert_almost_equal(gcounts["g1"], array([39., 6.]))
+
+
+class Test_Expressions2(unittest.TestCase):
+    """One condition, equal lengths, invertible"""
+    def setUp(self):
+        e1="e1"; e2="e2"; e3="e3"; t1="t1"; t2="t2"; t3="t3"; g1="g1";
+        self.ncond = 1
+        self.counts = numpy.array([[10,15,10]]) # [[cond1]]
+        self.rpkms = numpy.array([[10/5.,15/5.,10/5.]])
+        self.exons_data = [[e1,e2,e3]]+list(self.counts)+list(self.rpkms)+\
+               [[0.,5.,10],[5.,10.,15.],["g1","g1","g1"],["gg1","gg1","gg1"]]
+        self.transcript_lengths = {t1:10., t2:10., t3:15.}
+        self.exon_lengths = {e1:5., e2:5., e3:5.}
+        self.exon_to_gene = {e1:g1, e2:g1, e3:g1}
+        self.trans_in_gene = {g1:[t1,t2,t3]}
+        self.exons_in_trans = {t1:[e1,e2], t2:[e2,e3], t3:[e1,e2,e3]}
+        """
+           *Counts Cond1*
+        g1 |===.===.===|
+        t1 |-------|      5 + 5
+        t2     |-------|  5 +     5
+        t3 |-----------|  5 + 5 + 5
+
+            10  15   10
+           |e1||e2| |e3|
+        """
+    def test_transcripts_expression(self):
+        trpk, tcounts, err = transcripts_expression(self.exons_data, self.exon_lengths, self.transcript_lengths,
+                 self.trans_in_gene, self.exons_in_trans, self.ncond)
+        assert_almost_equal(tcounts["t1"], array([10.]))
+        assert_almost_equal(tcounts["t2"], array([10.]))
+        assert_almost_equal(tcounts["t3"], array([15.]))
+        self.assertEqual(sum(sum(tcounts.values())), sum(sum(self.counts)))
+
+
+class Test_Expressions3(unittest.TestCase):
+    """Overdetermined system"""
+    def setUp(self):
+        e1="e1"; e2="e2"; e3="e3"; t1="t1"; t2="t2"; t3="t3"; t4="t4"; g1="g1";
+        self.ncond = 1
+        self.counts = numpy.array([[10,15,10]]) # [[cond1]]
+        self.rpkms = numpy.array([[10/5.,15/5.,10/5.]])
+        self.exons_data = [[e1,e2,e3]]+list(self.counts)+list(self.rpkms)+\
+               [[0.,5.,10],[5.,10.,15.],["g1"]*3,["gg1"]*3]
+        self.transcript_lengths = {t1:10., t2:10., t3:15., t4:10.}
+        self.exon_lengths = {e1:5., e2:5., e3:5.}
+        self.exon_to_gene = {e1:g1, e2:g1, e3:g1}
+        self.trans_in_gene = {g1:[t1,t2,t3,t4]}
+        self.exons_in_trans = {t1:[e1,e2], t2:[e2,e3], t3:[e1,e2,e3], t4:[e1,e3]}
+        """
+           *Counts Cond1*
+        g1 |===.===.===|
+        t1 |-------|      7.5 + 7.5
+        t2     |-------|        7.5 + 7.5
+        t3 |-----------|  0     0     0
+        t4 |---|   |---|  2.5 +       2.5
+
+            10  15   10
+           |e1||e2| |e3|
+        """
+    def test_transcripts_expression(self):
+        trpk, tcounts, err = transcripts_expression(self.exons_data, self.exon_lengths, self.transcript_lengths,
+                 self.trans_in_gene, self.exons_in_trans, self.ncond)
+        self.assertEqual(sum(sum(tcounts.values())), sum(sum(self.counts)))
+
+
+@unittest.skip("fix")
+class Test_Expressions3(unittest.TestCase):
+    """Underdetermined system"""
+    def setUp(self):
+        e1="e1"; e2="e2"; e3="e3"; e4="e4"; t1="t1"; t2="t2"; t3="t3"; g1="g1";
+        self.ncond = 1
+        self.counts = numpy.array([[10.,10.,10.,10.]]) # [[cond1]]
+        self.rpkms = numpy.array([[10/5.,10/5.,10/5.,10/5.]])
+        self.exons_data = [[e1,e2,e3,e4]]+list(self.counts)+list(self.rpkms)+\
+               [[0,5,10,15],[5,10,15,20],["g1"]*4,["gg1"]*4]
+        self.transcript_lengths = {t1:10., t2:15., t3:10.}
+        self.exon_lengths = {e1:5., e2:5., e3:5., e4:5.}
+        self.exon_to_gene = {e1:g1, e2:g1, e3:g1, e4:g1}
+        self.trans_in_gene = {g1:[t1,t2,t3]}
+        self.exons_in_trans = {t1:[e1,e2], t2:[e2,e3,e4], t3:[e2,e4]}
+        """
+           *Counts Cond1*
+        g1 |===.===.===.===|
+        t1 |-------|          12 + 12
+        t2     |-----------|       4  + 4  + 4
+        t3     |---|   |---|  0    0    0    0
+
+            10  10  10   10
+           |e1||e2||e3| |e4|
+        """
+    def test_transcripts_expression(self):
+        trpk, tcounts, err = transcripts_expression(self.exons_data, self.exon_lengths, self.transcript_lengths,
+                 self.trans_in_gene, self.exons_in_trans, self.ncond)
+        print tcounts
+        self.assertEqual(sum(sum(tcounts.values())), sum(sum(self.counts)))
+
+
+@unittest.skip("fix")
+class Test_Expressions3(unittest.TestCase):
+    """Even more underdetermined system"""
+    def setUp(self):
+        e1="e1"; e2="e2"; e3="e3"; e4="e4"; e5="e5"; t1="t1"; t2="t2"; t3="t3"; g1="g1";
+        self.ncond = 1
+        self.counts = numpy.array([[10.,10.,10.,10.,10.]]) # [[cond1]]
+        self.rpkms = numpy.array([[10/5.,10/5.,10/5.,10/5.,10/5.]])
+        self.exons_data = [[e1,e2,e3,e4,e5]]+list(self.counts)+list(self.rpkms)+\
+               [[0,5,10,15,20],[5,10,15,20,25],["g1"]*5,["gg1"]*5]
+        self.transcript_lengths = {t1:10., t2:15., t3:10.}
+        self.exon_lengths = {e1:5., e2:5., e3:5., e4:5., e5:5.}
+        self.exon_to_gene = {e1:g1, e2:g1, e3:g1, e4:g1, e5:g1}
+        self.trans_in_gene = {g1:[t1,t2,t3]}
+        self.exons_in_trans = {t1:[e1,e2,e3], t2:[e3,e4,e5], t3:[e2,e4,e5]}
+        """
+           *Counts Cond1*
+        g1 |===.===.===.===.===|
+        t1 |-----------|          4.6 + 4.6 + 4.6
+        t2         |-----------|              4.6 + 4.6 + 4.6
+        t3     |---|   |-------|        3.0 +       3.0 + 3.0
+
+            10  10  10   10  10
+           |e1||e2||e3| |e4||e5|
+        """
+    def test_transcripts_expression(self):
+        trpk, tcounts, err = transcripts_expression(self.exons_data, self.exon_lengths, self.transcript_lengths,
+                 self.trans_in_gene, self.exons_in_trans, self.ncond)
+        print tcounts
+        self.assertEqual(sum(sum(tcounts.values())), sum(sum(self.counts)))
+
+
+class Test_others(unittest.TestCase):
+    def setUp(self):
+        self.counts = numpy.array([[27,12],[3,3]]) # [[cond1],[cond2]]
 
     def test_estimate_size_factors(self):
         res, size_factors = estimate_size_factors(self.counts)
