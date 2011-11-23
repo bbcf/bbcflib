@@ -154,7 +154,7 @@ def density_to_countsPerFrag(ex,density_file,density_name,assembly_name,reffile,
                                                         features.read(ch,fields=['start', 'end', 'name'])),
                                                   fields=['start', 'end', 'name', 'score'])
 
-        ex.add(output,description=set_file_descr("meanScorePerFeature_"+density_name+".sql",groupId=grpId,step="norm_counts_per_frag",type="sql",view="admin",ucsc='1'))
+        ex.add(output,description=set_file_descr("meanScorePerFeature_"+density_name+".sql",groupId=grpId,step="norm_counts_per_frag",type="sql",view="admin"))
      #  'output_location':wd,
 #	print(gMiner_job)
 
@@ -172,7 +172,7 @@ def density_to_countsPerFrag(ex,density_file,density_name,assembly_name,reffile,
 	with track.load(output,'sql') as t:
 		t.convert(countsPerFragFile,'bed')
 ##	ex.add(countsPerFragFile,description="none:bed:meanScorePerFeature_"+density_name+".bed (template) [group:"+str(grpId)+",step:"+str(step)+",type:template,view:admin]")
-	ex.add(countsPerFragFile,description=set_file_descr("meanScorePerFeature_"+density_name+".bed",groupId=grpId,step="density",type="bed"))
+	ex.add(countsPerFragFile,description=set_file_descr("meanScorePerFeature_"+density_name+".bed",groupId=grpId,step="density",type="bed",ucsc="1"))
 #	ex.add(countsPerFragFile+".bed",description="bed:meanScorePerFeature_"+density_name+".bed [group:"+str(grpId)+",step:"+str(step)+",type:bed]")
 ##			associate_to_filename=countsPerFragFile, template="%s"+".bed")
 	step += 1
