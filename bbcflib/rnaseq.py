@@ -545,3 +545,10 @@ def rnaseq_workflow(ex, job, assembly, bam_files, pileup_level=["exons","genes",
         trans_data = [transID]+list(zip(*[tcounts[t] for t in transID])) \
                               +list(zip(*[trpk[t] for t in transID]))+[genesID,genesName]
         save_results(ex, trans_data, conditions, header=header, desc="TRANSCRIPTS")
+
+
+#-----------------------------------#
+# This code was written by the BBCF #
+# http://bbcf.epfl.ch/              #
+# webmaster.bbcf@epfl.ch            #
+#-----------------------------------#

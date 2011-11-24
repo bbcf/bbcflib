@@ -268,36 +268,20 @@ class Test_Pileup(unittest.TestCase):
         self.end = 6647537
         self.exons = []
         self.counts = []
-        self.bam = "fakebam"
-        self.bamfile = open(self.bam,"wb")
-        fakesam_content = [
-            "@HD\tVN:1.0\tSO:unsorted\n",
-            "@SQ\tSN:ENSE00002188685|ENSG00000111640|6645660|6645759|1\tLN:100\n",
-            "@SQ\tSN:ENSE00001902446|ENSG00000111640|6647267|6647537|1\tLN:271\n",
-            "C3PO_0038:5:79:17771:14659#0/1\t16\tENSE00001902446|ENSG00000111640|6647267|6647537|1\t167\t255\t75M\t*\t0\t0\tAATCTCCCCTCCTCACAGTTGCCATGTAGACCCCTTGAAGAGGGGAGGGGCCTAGGGAGCCGCACCTTGTCATGT\t`]Z`V``bb\edagdedbdbbedbacdb]abbb_bQ]`ZZVcfcc]ffffggcdgggggggggeggggggggggg\tXA:i:0\tMD:Z:75\tNM:i:0\tNH:i:5\n",
-            "C3PO_0038:5:93:2476:20366#0/1\t16\tENSE00001902446|ENSG00000111640|6647267|6647537|1\t167\t255\t75M\t*\t0\t0\tAATCTCCCCTCCTCACAGTTGCCATGTAGACCCCTTGAAGAGGGGAGGGGCCTAGGGAGCCGCACCTTGTCATGT\tBBBBBBBBBB__\_V_^^_a\\\XR_aaaYabaaa_aa]_Xchhbaeffdgdfghhhhhghhhhhhhhhhhhhhh\tXA:i:0\tMD:Z:75\tNM:i:0\tNH:i:5\n",
-            "C3PO_0038:5:72:16306:11928#0/1\t16\tENSE00001902446|ENSG00000111640|6647267|6647537|1\t167\t255\t75M\t*\t0\t0\tAATCTCCCCTCCTCACAGTTGCCATGTAGACCCCTTGAAGAGGGGAGGGGCCTAGGGAGCCGCACCTTGTCATGT\t\[PZP\\`^\^^R^Uaacccccaac__b`Qbbb^b``b``]cffc]fffagddaggggggggggggggggggggg\tXA:i:0\tMD:Z:75\tNM:i:0\tNH:i:5\n",
-            "C3PO_0038:5:94:4758:4564#0/1\t0\tENSE00002188685|ENSG00000111640|6645660|6645759|1\t6\t255\t75M\t*\t0\t0\tGTCGTATTGGGCGCCTGGTCACCAGGGCTGCTTTTAACTCTGGTAAAGTGGATATTGTTGCCATCAATGACCCCT\thhhghhhhhhhhhhhhhhhhhhhghhhghhghghhgfhhhhhhfhhhhchhdegeggdgghhdghehffcdhffb\tXA:i:0\tMD:Z:75\tNM:i:0\tNH:i:3\n",
-            "C3PO_0038:5:94:14981:4668#0/1\t0\tENSE00002188685|ENSG00000111640|6645660|6645759|1\t6\t255\t75M\t*\t0\t0\tGTCGTATTGGGCGCCTGGTCACCAGGGCTGCTTTTAACTCTGGTAAAGTGGATATTGTTGCCATCAATGACCCCT\tghhhhhhhfgdhhhhgghfehhhcffhahfhchhhhfhhchchdhhhfahfdRffhabegacWaacc`cadcggd\tXA:i:0\tMD:Z:75\tNM:i:0\tNH:i:3\n" ]
-
-        self.bamfile.writelines(fakesam_content)
-        self.bamfile.close()
+        self.bam = "test_data/Gapdh.bam"
 
     def test_exon_labels(self):
         self.exons = exons_labels(self.bam)
-        exons = [("ENSE00002188685|ENSG00000111640|6645660|6645759|1",100),
-                 ("ENSE00001902446|ENSG00000111640|6647267|6647537|1",271)]
-        self.assertItemsEqual(self.exons,exons)
+        exons = [("ENSMUSE00000569415|ENSMUSG00000057666|125115289|125115329|-1", 41),
+                 ("ENSMUSE00000709315|ENSMUSG00000057666|125114615|125115329|-1", 715)]
+        self.assertIn(exons[0],self.exons); self.assertIn(exons[1],self.exons)
+        self.assertEqual(len(self.exons),19)
 
-    @unittest.skip("Callback is not yet implemented for fetching SAM files.")
     def test_pileup_file(self):
+        self.exons = exons_labels(self.bam)
         self.counts = pileup_file(self.bam, self.exons)
-        counts = [3,2]
+        counts = [0, 35, 0, 0, 0, 0, 0, 3679, 3707, 0, 0, 0, 149, 3, 0, 0, 55, 0, 161]
         self.assertItemsEqual(self.counts,counts)
-
-    def tearDown(self):
-        os.remove(self.bam)
-
 
 
 #-----------------------------------#
