@@ -129,20 +129,6 @@ def density_to_countsPerFrag(ex,density_file,density_name,assembly_name,reffile,
 	global step
 
 	print("will call mean_score_by_feature for t1="+density_file+"(name="+density_name+") and t2="+reffile)
-#	outdir=unique_filename_in()
-#	os.mkdir(outdir)
-#        touch(ex,wd+outdir)
-        #ok: res=gm.run(track1=density_file,track1_name=density_name,track2=reffile,track2_name='libFile',track2_chrfile=assembly.name,operation_type='genomic_manip',manipulation='mean_score_by_feature',output_location=wd,output_name=outdir)
-	
-#	gMiner_job = { 'track1': density_file,
-#                       'track1_name':density_name,
-#                       'track2':reffile,
-#                       'track2_name':'libFile',
-#                       'track2_chrfile':assembly_name,
-#                       'operation_type':'genomic_manip',
-#                       'manipulation':'mean_score_by_feature',
-#                       'output_location':outdir
-#                       }
         output = unique_filename_in()
         from gMiner.operations.genomic_manip.scores import mean_score_by_feature
         with track.Track(density_file) as scores:
@@ -155,57 +141,33 @@ def density_to_countsPerFrag(ex,density_file,density_name,assembly_name,reffile,
                                                   fields=['start', 'end', 'name', 'score'])
 
         ex.add(output,description=set_file_descr("meanScorePerFeature_"+density_name+".sql",groupId=grpId,step="norm_counts_per_frag",type="sql",view="admin"))
-     #  'output_location':wd,
-#	print(gMiner_job)
-
-	# calculate mean score per segments (via gFeatMiner)
-#	res = run_gMiner.nonblocking(ex,gMiner_job,via=via).wait()
-#	resfilename = unique_filename_in()
-#	touch(ex,resfilename)
-#	print("res filename="+resfilename)
-##	ex.add(resfilename, description="none:meanScorePerFeature_"+density_name+".sql (template) [group"+str(grpId)+",step:"+str(step)+",type:template,view:admin]")
-#	ex.add(res[0],description=set_file_descr("meanScorePerFeature_"+density_name+".sql",groupId=grpId,step=step,type="sql",view="admin"))
-#	ex.add(res[0],description="sql:meanScorePerFeature_"+density_name+".sql [group:"+str(grpId)+",step:"+str(step)+",type:sql,view:admin]")
- ##                       associate_to_filename=resfilename, template='%s'+'.sql')
 
 	countsPerFragFile=unique_filename_in()+".bed"
 	with track.load(output,'sql') as t:
 		t.convert(countsPerFragFile,'bed')
-##	ex.add(countsPerFragFile,description="none:bed:meanScorePerFeature_"+density_name+".bed (template) [group:"+str(grpId)+",step:"+str(step)+",type:template,view:admin]")
 	ex.add(countsPerFragFile,description=set_file_descr("meanScorePerFeature_"+density_name+".bed",groupId=grpId,step="density",type="bed",ucsc="1"))
-#	ex.add(countsPerFragFile+".bed",description="bed:meanScorePerFeature_"+density_name+".bed [group:"+str(grpId)+",step:"+str(step)+",type:bed]")
-##			associate_to_filename=countsPerFragFile, template="%s"+".bed")
 	step += 1
 
 	# calculate normalised score per fragments (segToFrag)
 	res = call_segToFrag(ex, countsPerFragFile, regToExclude, script_path, via=via)
 	ex.add(res,description=set_file_descr("res_segToFrag_"+density_name+".bedGraph",groupId=grpId,step="norm_counts_per_frag",type="bedGraph",view="admin",comment="rough"))
-#	ex.add(res,description="none:res_segToFrag_"+density_name+" (rough) [group:"+str(grpId)+",step:"+str(step)+",type:bedGraph,view:admin]")
 	[resBedGraph,resBedGraph_all]=parseSegToFrag(res)
 	ex.add(resBedGraph,description=set_file_descr("res_segToFrag_"+density_name+".bedGraph",groupId=grpId,step="norm_counts_per_frag",type="bedGraph",view="admin",comment="bedGraph non-sorted"))
 	ex.add(resBedGraph_all,description=set_file_descr("res_segToFrag_"+density_name+"_all_nonSorted.bedGraph",groupId=grpId,step="norm_counts_per_frag",type="bedGraph",view="admin",comment="all informative frags - null included - bedGraph non-sorted"))
 	resBedGraph_all=call_sortOnCoord(ex,resBedGraph_all,via=via)
 	ex.add(resBedGraph_all,description=set_file_descr("res_segToFrag_"+density_name+"_all.bedGraph",groupId=grpId,step="norm_counts_per_frag",type="bedGraph",view="admin",comment="all informative frags - null included -sorted bedGraph"))
-#	ex.add(resBedGraph,description="none:res_segToFrag_"+density_name+" (bedGraph non-sorted) [group:"+str(grpId)+",step:"+str(step)+"type:bedGraph,view:admin]")
 	resBedGraph=call_sortOnCoord(ex,resBedGraph,via=via)
 	headerFile=unique_filename_in();
 	hfile=open(headerFile,'w')
 	hfile.write('track type="bedGraph" name="'+density_name+' normalised counts per valid fragments" description="'+density_name+' normalised counts per valid fragments" visibility=full windowingFunction=maximum autoScale=off viewLimits=1:2000\n')
 	hfile.close()
 	sortedBedGraph=cat([headerFile,resBedGraph])
-##	ex.add(sortedBedGraph,description="none:res_segToFrag"+denstiy_name+" (template) [group:"+str(grpId)+",step:"+str(step)+",type:template,view:admin]")
 	ex.add(sortedBedGraph,description=set_file_descr("res_segToFrag_"+density_name+".bedGraph",groupId=grpId,step="norm_counts_per_frag",type="bedGraph",comment="bedGraph sorted",ucsc='1'))
-#	ex.add(sortedBedGraph+".bedGraph",description="bedgraph:res_segToFrag_"+density_name+" (bedGraph sorted) [group:"+str(grpId)+",step:"+str(step)+",type:bedGraph]")
-#			associate_to_filename=sortedBedGraph, template="%s"+".bedGraph")	
 	sortedBedGraph_sql=unique_filename_in()
 	touch(ex,sortedBedGraph_sql)
 	with track.load(sortedBedGraph,'bedGraph', chrmeta=assembly_name) as t:
                 t.convert(sortedBedGraph_sql+".sql",'sql')
-#	#ex.add(sortedBedGraph_sql,description="sql:res_segToFrag_"+density_name+" (bedGraph sorted)")
-##	ex.add(sortedBedGraph_sql,description="none:res_segToFrag_"+density_name+".sql (template) [group:"+str(grpId)+"step:"+str(step)+",type:template,view:admin]")
 	ex.add(sortedBedGraph_sql+".sql",description=set_file_descr("res_segToFrag_"+density_name+".sql",groupId=grpId,step="norm_counts_per_frag",type="sql",view="admin",comment="bedGraph sorted"))
-#	ex.add(sortedBedGraph_sql+".sql",description="sql:res_segToFrag_"+density_name+".sql (bedGraph sorted) [group:"+str(grpId)+"step:"+str(step)+",type:sql,view:admin]")
- ##                       associate_to_filename=sortedBedGraph_sql, template='%s'+'.sql')
 	step += 1
 	return [output,countsPerFragFile,res,resBedGraph,sortedBedGraph,sortedBedGraph_sql]
 
@@ -238,15 +200,12 @@ def workflow_groups(ex, job, primers_dict, g_rep, mapseq_files, mapseq_url, scri
 
 	new_libs=[]
         fasta_allchr=assembly
-        #fasta_allchr='/archive/epfl/bbcf/mleleu/pipeline_vMarion/pipeline_3Cseq/vWebServer_Bein/tests/test.minilims.files/8LkjoeWBoRw0mh1rLz8V' #for test: will be /scratch/cluster/monthly/htsstation/4cseq/job.id
-
+	
 	for gid, group in job_groups.iteritems():
                 grpId = gid
 		reffile=createlib.get_libForGrp(ex,group,fasta_allchr,new_libs, job.id, g_rep,gid)
 #		reffile='/archive/epfl/bbcf/data/DubouleDaan/library_Nla_30bps/library_Nla_30bps_segmentInfos.bed'
 		processed['lib'][gid]=reffile
-		#ex.add(reffile,description=set_file_descr("library.bed",group=group['name'],step=step,type="bed"))	
-#		ex.add(reffile,description="bed:library [group:"+str(grpId)+",step:"+str(step)+",type:bed]")
 
 		for rid,run in group['runs'].iteritems():
                         #job_mapseq=htss_mapseq.job(run['key'])
@@ -278,17 +237,10 @@ def workflow_groups(ex, job, primers_dict, g_rep, mapseq_files, mapseq_url, scri
 			touch(ex,mapseq_wig)
 			print("mapseq_wig filename will be:"+mapseq_wig)
 			with track.load(mapseq_files[gid][rid]['wig']['merged'],'sql') as t:
-                		t.convert(mapseq_wig+".wig",'wig')
-##			ex.add(mapseq_wig,description="none:density_file_"+mapseq_files[gid][rid]['libname']+".wig (template) [group:"+str(grpId)+",step:"+str(step)+",type:template,view:admin]")
-			ex.add(mapseq_wig+".wig",description=set_file_descr("density_file_"+mapseq_files[gid][rid]['libname']+".wig",groupId=gid,step="density",type="wig",ucsc='1'))	
-#			ex.add(mapseq_wig+".wig",description="wig:density_file_"+mapseq_files[gid][rid]['libname']+".wig [group:"+str(grpId)+",step:"+str(step)+",type:wig]")
-##				associate_to_filename=mapseq_wig, template="%s"+".wig")
+                		t.convert(mapseq_wig+".bw",'bigWig')
+			ex.add(mapseq_wig+".bw",description=set_file_descr("density_file_"+mapseq_files[gid][rid]['libname']+".bw",groupId=gid,step="density",type="bigWig",ucsc='1'))	
 
 			ex.add(mapseq_files[gid][rid]['wig']['merged'],description=set_file_descr("density_file_"+mapseq_files[gid][rid]['libname']+".sql",groupId=gid,step="density",type="sql",view='admin'))
-#		        ex.add(mapseq_files[gid][rid]['wig']['merged'],description="sql:density_file_"+mapseq_files[gid][rid]['libname']+" [group:"+str(grpId)+",step:"+str(step)+",type:sql]"  )
- #                       #ex.add(mapseq_files[gid][rid]['wig']['merged'],description='none:density_file_'+mapseq_files[gid][rid]['libname']+'.sql (template)')
- #                       #ex.add(mapseq_files[gid][rid]['wig']['merged']+".sql",description='sql:density_file_'+mapseq_files[gid][rid]['libname']+'.sql (sql density file)', 
- #                       #        associate_to_filename=mapseq_files[gid][rid]['wig']['merged'], template='%s'+'.sql')	
                         processed['density'][mapseq_files[gid][rid]['libname']]=mapseq_files[gid][rid]['wig']['merged']
 
 			print("Will process to the main part of 4cseq module: calculate normalised counts per fragments from density file:"+mapseq_files[gid][rid]['wig']['merged'])
@@ -304,7 +256,6 @@ def workflow_groups(ex, job, primers_dict, g_rep, mapseq_files, mapseq_url, scri
 			step += 1
 	
 			print("Will smooth data before and after profile correction")
-			#call_smoothData(resfiles[4],nFragsPerWin)
         		nFragsPerWin=str(10)
         		outputfile=unique_filename_in()
 		        smoothFragFile(ex,resfiles[4],nFragsPerWin,mapseq_files[gid][rid]['libname'],outputfile,regToExclude,script_path)
@@ -313,7 +264,6 @@ def workflow_groups(ex, job, primers_dict, g_rep, mapseq_files, mapseq_url, scri
         		outputfile_afterProfileCorrection=unique_filename_in()
 		        smoothFragFile(ex,profileCorrectedFile,nFragsPerWin,mapseq_files[gid][rid]['libname'],outputfile_afterProfileCorrection,regToExclude,script_path)
 			ex.add(outputfile_afterProfileCorrection,description=set_file_descr("res_segToFrag_"+mapseq_files[gid][rid]['libname']+"_profileCorrected_smoothed_"+nFragsPerWin+"FragsPerWin.bedGraph",groupId=grpId,step="smoothing",type="bedGraph",comment="smoothed data, after profile correction",ucsc='1'))
-#		grpId += 1
 		step=0
 	return processed
 

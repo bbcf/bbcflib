@@ -252,7 +252,8 @@ class GenRep(object):
                              c['chromosome']['refseq_locus'],
                              c['chromosome']['refseq_version'],
                              name_dictionary[a.id],
-                             c['chromosome']['length'])
+                             c['chromosome']['length'],
+                             c['chromosome']['num'])
         return a
 
     def assemblies_available(self, assembly=None):
@@ -513,9 +514,9 @@ class Assembly(object):
         self.source_id = source_id
         self.created_at = created_at
 
-    def add_chromosome(self, chromosome_id, refseq_locus, refseq_version, name, length):
+    def add_chromosome(self, chromosome_id, refseq_locus, refseq_version, name, length, num):
         self.chromosomes[(chromosome_id, refseq_locus, refseq_version)] = \
-            {'name': name, 'length': length}
+            {'name': name, 'length': length, 'num' : num}
 
     @property
     def chrmeta(self):
