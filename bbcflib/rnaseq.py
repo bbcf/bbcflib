@@ -23,7 +23,7 @@ import sqlite3
 import numpy
 from numpy import zeros, asarray
 
-numpy.set_printoptions(precision=1,suppress=True)
+numpy.set_printoptions(precision=3,suppress=True)
 
 
 def rstring(len=20):
@@ -214,7 +214,7 @@ def fetch_mappings(path_or_assembly_id):
                      WHERE (name LIKE 'exon') GROUP BY transcript_id;''' % (str(chr),)
             sql_result = c.execute(sql)
             for t,l in sql_result:
-                lengths[str(t.strip(';'))] = l
+                lengths[str(t.strip(';'))] = float(l)
         return lengths
 
     transcript_lengths = get_transcript_lengths(db,chromosomes)
@@ -350,31 +350,31 @@ def transcripts_expression(exons_data, exon_lengths, transcript_lengths, trans_i
                         M[i,j] = 1.
                         if exon_lengths.get(e) and transcript_lengths.get(t):
                             L[i,j] = exon_lengths[e]/transcript_lengths[t]
-                        else: L[i,j] = 1./len(eg)
+                        else:
+                            L[i,j] = 1./len(eg)
                 # Retrieve exon counts
                 if exons_counts.get(e) is not None:
                     for c in range(ncond):
                         ec[c][i] += exons_counts[e][c]
                         er[c][i] += exons_rpk[e][c]
             # Compute transcript counts
-            for c in range(ncond):
-                #-----------------------------------#
-                # Non-negative least-squares method #
-                #-----------------------------------#
-                x = numpy.hstack((ec[c],asarray(sum(ec[c]))))
-                y = numpy.hstack((er[c],asarray(sum(ec[c]))))
-                M = numpy.vstack((M,numpy.ones(M.shape[1])))
-                L = numpy.vstack((L,numpy.ones(M.shape[1])))
-                N = M*L
-                print g,"\n",M,"\n",N,"\n\n"
-                tol = 10*2.22e-16*numpy.linalg.norm(N,1)*(max(N.shape)+1)
-                try: Tc, resnormc, resc = lsqnonneg(N,x,tol=100*tol) # counts
-                except: Tc = zeros(len(tg)) # Bad idea
-                tc.append(Tc)
+            for c in range(ncond):  # - rpkm
+                Er = er[c]
                 tol = 10*2.22e-16*numpy.linalg.norm(M,1)*(max(M.shape)+1)
-                try: Tr, resnormr, resr = lsqnonneg(M,y,tol=100*tol) # rpkm
+                try: Tr, resnormr, resr = lsqnonneg(M,Er,tol=100*tol)
                 except: Tr = zeros(len(tg)) # Bad idea
                 tr.append(Tr)
+            N = M
+            M = numpy.vstack((M,numpy.ones(M.shape[1]))) # add constraint |E| = |T|
+            L = numpy.vstack((L,numpy.ones(M.shape[1])))
+            N = M*L
+            for c in range(ncond): # - counts
+                Ec = ec[c]
+                Ec = numpy.hstack((Ec,asarray(sum(Ec))))
+                tol = 10*2.22e-16*numpy.linalg.norm(N,1)*(max(N.shape)+1)
+                try: Tc, resnormc, resc = lsqnonneg(N,Ec,tol=100*tol)
+                except: Tc = zeros(len(tg)) # Bad idea
+                tc.append(Tc)
                 totalerror += math.sqrt(resnormc)
 
             # Store results in a dict *tcounts*/*trpk*
@@ -386,7 +386,7 @@ def transcripts_expression(exons_data, exon_lengths, transcript_lengths, trans_i
                         trans_rpk[t][c] = round(tr[c][k], 2)
 
             # Testing
-            total_trans_c = sum([trans_counts[t][c] for t in tg for c in range(ncond)]) or 0
+            total_trans_c = sum([sum(trans_counts[t]) for t in tg]) or 0
             total_exons_c = sum([sum(ec[c]) for c in range(ncond)]) or 0
             alltranscount += total_trans_c
             allexonscount += total_exons_c
@@ -400,7 +400,7 @@ def transcripts_expression(exons_data, exon_lengths, transcript_lengths, trans_i
     print "\t Evaluation of error for transcripts:"
     print "\t Unknown transcripts for %d of %d genes (%.2f %%)" \
            % (unknown, len(genes), 100*float(unknown)/float(len(genes)) )
-    try: print "\t Total transcript scores: %.2f, Total exon scores: %.2f, Ratio: %.2f" \
+    try: print "\t Total transcript counts: %.2f, Total exon counts: %.2f, Ratio: %.2f" \
            % (alltranscount,allexonscount,alltranscount/allexonscount)
     except ZeroDivisionError: pass
     print "\t Total error (sum of resnorms):", totalerror
@@ -464,7 +464,7 @@ def rnaseq_workflow(ex, job, assembly, bam_files, pileup_level=["exons","genes",
         if start!=end:
             starts.append(start)
             ends.append(end)
-            exon_lengths[e] = e[1]
+            exon_lengths[exon] = float(e[1])
             exonsID.append(exon)
             genesID.append(gene)
             exon_to_gene[exon] = gene
@@ -535,7 +535,7 @@ def rnaseq_workflow(ex, job, assembly, bam_files, pileup_level=["exons","genes",
     """ Get counts for the transcripts from exons, using pseudo-inverse """
     if "transcripts" in pileup_level:
         header = ["TranscriptID"] + hconds + ["GeneID","GeneName"]
-                   # + ["Start","End","GeneName","TranscriptName"]
+                   # + ["Start","End"]
         (trpk, tcounts, error) = transcripts_expression(exons_data, exon_lengths,
                    transcript_lengths, trans_in_gene, exons_in_trans,len(conditions))
         transID = trpk.keys()
