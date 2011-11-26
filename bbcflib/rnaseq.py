@@ -210,7 +210,7 @@ def fetch_mappings(path_or_assembly_id):
         c = db.cursor()
         lengths = {}
         for chr in chromosomes:
-            sql = '''SELECT transcript_id,MAX(end)-MIN(start) FROM '%s'
+            sql = '''SELECT transcript_id,sum(end-start) FROM '%s'
                      WHERE (name LIKE 'exon') GROUP BY transcript_id;''' % (str(chr),)
             sql_result = c.execute(sql)
             for t,l in sql_result:
@@ -536,16 +536,19 @@ def rnaseq_workflow(ex, job, assembly, bam_files, pileup_level=["exons","genes",
     if "transcripts" in pileup_level:
         header = ["TranscriptID"] + hconds + ["GeneID","GeneName"]
                    # + ["Start","End"]
-        (trpk, tcounts, error) = transcripts_expression(exons_data, exon_lengths,
+        (trpkm, tcounts, error) = transcripts_expression(exons_data, exon_lengths,
                    transcript_lengths, trans_in_gene, exons_in_trans,len(conditions))
-        transID = trpk.keys()
+        transID = trpkm.keys()
         genesID = [transcript_mapping[t] for t in transID]
         genesName = [gene_names.get(g,g) for g in genesID]
         (genesID, transID, genesName) = zip(*sorted(zip(genesID,transID,genesName))) # sort w.r.t. gene IDs
         trans_data = [transID]+list(zip(*[tcounts[t] for t in transID])) \
-                              +list(zip(*[trpk[t] for t in transID]))+[genesID,genesName]
+                              +list(zip(*[trpkm[t] for t in transID]))+[genesID,genesName]
         save_results(ex, trans_data, conditions, header=header, desc="TRANSCRIPTS")
 
+    # TEST
+    #for g in list(set(genesID)):
+    #   print sum(gcounts[g]), sum([sum(tcounts[t]) for t in trans_in_gene[g]])
 
 #-----------------------------------#
 # This code was written by the BBCF #

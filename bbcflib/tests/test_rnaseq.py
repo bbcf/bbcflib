@@ -62,6 +62,13 @@ class Test_Expressions1(unittest.TestCase):
         gcounts, grpkms = genes_expression(self.exons_data, self.exon_to_gene, self.ncond)
         assert_almost_equal(gcounts["g1"], array([39., 6.]))
 
+    def test_coherence(self):
+	# Test if sum of transcript counts equals gene counts
+	trpk, tcounts, err = transcripts_expression(self.exons_data, self.exon_lengths, self.transcript_lengths,
+                 self.trans_in_gene, self.exons_in_trans, self.ncond)
+	gcounts, grpkms = genes_expression(self.exons_data, self.exon_to_gene, self.ncond)
+	self.assertEqual(sum(gcounts["g1"]), sum([sum(tcounts[t]) for t in self.trans_in_gene["g1"]]))
+
 
 class Test_Expressions2(unittest.TestCase):
     """One condition, equal lengths, invertible"""
@@ -261,11 +268,8 @@ class Test_NNLS(unittest.TestCase):
 
 class Test_Pileup(unittest.TestCase):
     def setUp(self):
-        self.gene_name = "Gapdh" # Control gene - always highly expressed
+        self.gene_name = "Gapdh"
         self.gene_id = "ENSG00000111640"
-        self.chr = 12
-        self.start = 6643093
-        self.end = 6647537
         self.exons = []
         self.counts = []
         self.bam = "test_data/Gapdh.bam"
