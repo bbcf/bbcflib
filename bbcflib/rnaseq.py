@@ -12,7 +12,7 @@ Note that the resulting counts on transcripts are approximate.
 """
 
 # Built-in modules #
-import os, cPickle, pysam, urllib, math, json, time
+import os, cPickle, pysam, urllib, math, json
 
 # Internal modules #
 from bbcflib.genrep import GenRep
@@ -175,8 +175,16 @@ def fetch_mappings(path_or_assembly_id):
         sql = sql[:-7]+';'
         sql_result = c.execute(sql)
         for e,g,t in sql_result:
-            exon_mapping.setdefault(str(e.strip(';')),[]).append()
+            exon_mapping.setdefault(e,[]).append()
         return exon_mapping
+
+    def get_exons_in_trans(db,chromosomes):
+        """Return a dictionary ``{transcript ID: list of exon IDs it contains}``"""
+        c = db.cursor()
+        exons_in_trans = {}; sql=''
+        for chr in chromosomes:
+            sql += '''  '''
+        return exons_in_trans
 
     def get_transcript_mapping(db,chromosomes):
         """Return a dictionary ``{transcript ID: gene ID}``"""
@@ -188,7 +196,7 @@ def fetch_mappings(path_or_assembly_id):
         sql = sql[:-7]+';'
         sql_result = c.execute(sql)
         for t,g in sql_result:
-            transcript_mapping[str(t.strip(';'))] = str(g.strip(';'))
+            transcript_mapping[t] = g
         return transcript_mapping
 
     def get_trans_in_gene(db,chromosomes):
@@ -201,16 +209,8 @@ def fetch_mappings(path_or_assembly_id):
         sql = sql[:-7]+';'
         sql_result = c.execute(sql)
         for g,t in sql_result:
-            trans_in_gene.setdefault(str(g.strip(';')),[]).append(str(t.strip(';')))
+            trans_in_gene.setdefault(g,[]).append(t)
         return trans_in_gene
-
-    def get_exons_in_trans(db,chromosomes):
-        """Return a dictionary ``{transcript ID: list of exon IDs it contains}``"""
-        c = db.cursor()
-        exons_in_trans = {}; sql=''
-        for chr in chromosomes:
-            sql += '''  '''
-        return exons_in_trans
 
     def get_transcript_lengths(db,chromosomes):
         """Return a dictionary ``{transcript ID: transcript length}``"""
@@ -222,7 +222,7 @@ def fetch_mappings(path_or_assembly_id):
         sql = sql[:-7]+';'
         sql_result = c.execute(sql)
         for t,l in sql_result:
-            lengths[str(t.strip(';'))] = float(l)
+            lengths[t.strip(';')] = float(l)
         return lengths
 
     transcript_lengths = get_transcript_lengths(db,chromosomes)
