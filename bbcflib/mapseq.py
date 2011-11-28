@@ -667,7 +667,7 @@ def get_fastq_files( job, fastq_root, dafl=None, set_seed_length=True ):
         job.groups[gid]['run_names'] = {}
         for rid,run in group['runs'].iteritems():
             if len(run['url'])>0:
-                run = str(run['url'])
+                run = str(run['url']).strip()
             if isinstance(run,dict) and all([x in run for x in ['facility','machine','run','lane']]):
                 dafl1 = dafl[run['facility']]
                 daf_data = dafl1.fetch_fastq( str(run['facility']), str(run['machine']),
@@ -678,7 +678,7 @@ def get_fastq_files( job, fastq_root, dafl=None, set_seed_length=True ):
                 job.groups[gid]['run_names'][rid] = "_".join(['',run['machine'],str(run['run']),
                                                               str(run['lane'])])
             elif isinstance(run,str):
-                run = re.search(r'^\s*([^;\s]+)',run).groups()[0]
+                run = re.search(r'^[\"\']?([^\"\';]+)[\"\']?',run).groups()[0]
                 fq_file = unique_filename_in(fastq_root)
                 target = os.path.join(fastq_root,fq_file)
                 runsplit = run.split(',')
@@ -1164,7 +1164,7 @@ def get_bam_wig_files( ex, job, minilims=None, hts_url=None, suffix=['fwd','rev'
             group_name = str(gid)
         job.groups[gid]['name'] = group_name
         for rid,run in group['runs'].iteritems():
-            file_loc = re.search(r'^\s*([^;\s]+)',str(run['url'])).groups()[0]
+            file_loc = re.search(r'^[\"\']?([^\"\';]+)[\"\']?',str(run['url']).strip()).groups()[0]
             bamfile = unique_filename_in()
             wig = {}
             name = group_name
