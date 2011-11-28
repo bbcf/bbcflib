@@ -157,64 +157,72 @@ def fetch_mappings(path_or_assembly_id):
     def get_gene_ids(db,chromosomes):
         """Return a list of gene IDs"""
         c = db.cursor()
-        gene_ids = []
+        gene_ids = []; sql=''
         for chr in chromosomes:
-            sql = '''SELECT DISTINCT gene_id FROM '%s'
-                     WHERE (NAME LIKE 'exon');''' % (str(chr),)
-            gene_ids.extend(c.execute(sql).fetchall())
+            sql += '''SELECT DISTINCT gene_id FROM '%s'
+                     WHERE (NAME LIKE 'exon') UNION ''' % (str(chr),)
+        sql = sql[:-7]+';'
+        gene_ids = c.execute(sql).fetchall()
         return gene_ids
 
     def get_exon_mapping(db,chromosomes):
         """Return a dictionary ``{exon ID: ([transcript IDs], gene ID)}``"""
         c = db.cursor()
-        exon_mapping = {}
+        exon_mapping = {}; sql=''
         for chr in chromosomes:
-            sql = '''SELECT DISTINCT exon_id,gene_id,transcript_id FROM '%s'
-                     WHERE (NAME LIKE 'exon');''' % (str(chr),)
-            sql_result = c.execute(sql)
-            for e,g,t in sql_result:
-                exon_mapping.setdefault(str(e.strip(';')),[]).append()
+            sql += '''SELECT DISTINCT exon_id,gene_id,transcript_id FROM '%s'
+                      WHERE (NAME LIKE 'exon') UNION ''' % (str(chr),)
+        sql = sql[:-7]+';'
+        sql_result = c.execute(sql)
+        for e,g,t in sql_result:
+            exon_mapping.setdefault(str(e.strip(';')),[]).append()
         return exon_mapping
 
     def get_transcript_mapping(db,chromosomes):
         """Return a dictionary ``{transcript ID: gene ID}``"""
         c = db.cursor()
-        transcript_mapping = {}
+        transcript_mapping = {}; sql=''
         for chr in chromosomes:
-            sql = '''SELECT DISTINCT gene_id,transcript_id FROM '%s' WHERE (NAME LIKE 'exon');''' % (str(chr),)
-            sql_result = c.execute(sql)
-            for t,g in sql_result:
-                transcript_mapping[str(t.strip(';'))] = str(g.strip(';'))
+            sql += '''SELECT DISTINCT gene_id,transcript_id FROM '%s'
+                      WHERE (NAME LIKE 'exon') UNION ''' % (str(chr),)
+        sql = sql[:-7]+';'
+        sql_result = c.execute(sql)
+        for t,g in sql_result:
+            transcript_mapping[str(t.strip(';'))] = str(g.strip(';'))
         return transcript_mapping
 
     def get_trans_in_gene(db,chromosomes):
         """Return a dictionary ``{gene ID: list of transcript IDs it contains}``"""
         c = db.cursor()
-        trans_in_gene = {}
+        trans_in_gene = {}; sql=''
         for chr in chromosomes:
-            sql = '''SELECT DISTINCT gene_id,transcript_id FROM '%s'
-                     WHERE (NAME LIKE 'exon');''' % (str(chr),)
-            sql_result = c.execute(sql)
-            for g,t in sql_result:
-                trans_in_gene.setdefault(str(g.strip(';')),[]).append(str(t.strip(';')))
+            sql += '''SELECT DISTINCT gene_id,transcript_id FROM '%s'
+                      WHERE (NAME LIKE 'exon') UNION ''' % (str(chr),)
+        sql = sql[:-7]+';'
+        sql_result = c.execute(sql)
+        for g,t in sql_result:
+            trans_in_gene.setdefault(str(g.strip(';')),[]).append(str(t.strip(';')))
         return trans_in_gene
 
     def get_exons_in_trans(db,chromosomes):
         """Return a dictionary ``{transcript ID: list of exon IDs it contains}``"""
         c = db.cursor()
-        exons_in_trans = {}
+        exons_in_trans = {}; sql=''
+        for chr in chromosomes:
+            sql += '''  '''
         return exons_in_trans
 
     def get_transcript_lengths(db,chromosomes):
         """Return a dictionary ``{transcript ID: transcript length}``"""
         c = db.cursor()
-        lengths = {}
+        lengths = {}; sql=''
         for chr in chromosomes:
-            sql = '''SELECT transcript_id,sum(end-start) FROM '%s'
-                     WHERE (name LIKE 'exon') GROUP BY transcript_id;''' % (str(chr),)
-            sql_result = c.execute(sql)
-            for t,l in sql_result:
-                lengths[str(t.strip(';'))] = float(l)
+            sql += '''SELECT transcript_id,sum(end-start) FROM '%s'
+                      WHERE (name LIKE 'exon') GROUP BY transcript_id UNION ''' % (str(chr),)
+        sql = sql[:-7]+';'
+        sql_result = c.execute(sql)
+        for t,l in sql_result:
+            lengths[str(t.strip(';'))] = float(l)
         return lengths
 
     transcript_lengths = get_transcript_lengths(db,chromosomes)
