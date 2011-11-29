@@ -12,6 +12,9 @@ import json, urllib, urllib2
 # Internal modules #
 from .common import normalize_url
 
+
+import warnings
+
 ################################################################################
 # GDV requests #
 
@@ -36,6 +39,7 @@ def create_gdv_project( gdv_key, gdv_email,
                 "seq_id": str(nr_assembly_id),
                 "public": str(public).lower() }
     gdv_url = normalize_url(gdv_url)+"/post"
+    warnings.warn('This method is used by the old version of GDV', DeprecationWarning)
     return json.load(urllib2.urlopen( gdv_url, urllib.urlencode(request)))
 
 def get_project_id(json):
@@ -58,6 +62,7 @@ def add_gdv_track( gdv_key, gdv_email,
     :param url : the URL where to fetch the file
     :rtype: a json {job_id:<the job id>}
     '''
+    warnings.warn('This method is used by the old version of GDV', DeprecationWarning)
     request = { "id": "gdv_post",
                 "mail": gdv_email,
                 "key": gdv_key,
@@ -77,6 +82,7 @@ def add_gdv_sqlite( gdv_key, gdv_email,
     '''
     Deprecated :  use add_gdv_track instead
     '''
+    warnings.warn('This method is used by the old version of GDV', DeprecationWarning)
     return add_gdv_track(gdv_key,gdv_email,project_id,url,name,gdv_url)
 
 
@@ -88,6 +94,7 @@ def add_sql_files( gdv_key, gdv_email,
     '''
     Run `add_gdv_sqlite` on a list of files
     '''
+    warnings.warn('This method is used by the old version of GDV', DeprecationWarning)
     serv_url = normalize_url(serv_url)
     return [add_gdv_track( gdv_key, gdv_email, project_id,
                            serv_url+"/"+f, names[i],
@@ -106,6 +113,7 @@ def get_job_status(gdv_key, gdv_email, job_id, gdv_url):
                 "job_id":   job_id,
                 "gdv_url":  gdv_url}
     gdv_url = normalize_url(gdv_url)+"/post"
+    warnings.warn('This method is used by the old version of GDV', DeprecationWarning)
     return urllib2.urlopen( gdv_url, urllib.urlencode(request) ).read()
 
 
@@ -119,6 +127,7 @@ def get_assemblies(gdv_key, gdv_email, gdv_url):
                 "key": gdv_key,
                 "command":"assemblies" }
     gdv_url = normalize_url(gdv_url)+"/post"
+    warnings.warn('This method is used by the old version of GDV', DeprecationWarning)
     return urllib2.urlopen( gdv_url, urllib.urlencode(request) ).read()
 
 #-----------------------------------#
