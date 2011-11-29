@@ -17,6 +17,58 @@ import warnings
 
 ################################################################################
 # GDV requests #
+def new_project(mail, key, name, assembly_id, serv_url='http://gdv.epfl.ch/pygdv'):
+    '''
+    Create a new project on GDV.
+    :param mail : login in TEQUILA
+    :param key : an user-specific key (ask it to GDV admin)
+    :param name : name of the project
+    :param assembly_id : the assembly identifier in GenRep (must be BBCF_VALID)
+    :return a JSON
+    '''
+    url = normalize_url('%s/%s' % (serv_url, 'projects/create'))
+    request = {'mail':mail, 
+               'key':key,
+               'name':name,
+               'assembly':assembly_id
+               }
+    return send_it(url, request)
+
+def new_track(mail, key, assembly_id=None, project_id=None, urls=None, url=None, fsys=None, fsys_list=None, serv_url='http://gdv.epfl.ch/pygdv'):
+    '''
+    Create a new track on GDV.
+    :param mail : login in TEQUILA
+    :param key : an user-specific key (ask it to GDV admin)
+    :param name : name of the project
+    :param assembly_id : the assembly identifier in GenRep (must be BBCF_VALID). Could be optional if a project_id is specified.
+    :param project_id : the project identifier to add the track to.
+    :param url : an url pointing to a file.
+    :param urls : a list of urls separated by whitespace. 
+    :param fsys : if the file is on the same file system, a filesystem path
+    :param fsys_list :  a list of fsys separated by whitespace. 
+    :return a JSON
+    '''
+    url = normalize_url('%s/%s' % (serv_url, 'tracks/create'))
+    request = {'mail' : mail, 
+               'key' : key,
+               'assembly' : assembly_id,
+               'project' : project_id,
+               'urls' : urls,
+               'url' : url,
+               'fsys' : fsys,
+               'fsys_list' : fsys_list
+               }
+    return send_it(url, request)
+
+def send_it(url, request, return_type='json'):
+    '''
+    Send the request to GDV and return the result. As JSON or as a request.read().
+    '''
+    req = urllib2.urlopen(url, urllib.urlencode(request))
+    if return_type == 'json':
+        return json.load(req)
+    else :
+        return req.read()
 
 def create_gdv_project( gdv_key, gdv_email,
                         name, nr_assembly_id,
@@ -31,6 +83,7 @@ def create_gdv_project( gdv_key, gdv_email,
     :rtype: a json : {'project_id':<the id>,'public_url':<the public url>} or {'project_id':<the id>} if you didn't make the
     project public
     '''
+    warnings.simplefilter('always')
     request = { "id": "gdv_post",
                 "mail": gdv_email,
                 "key": gdv_key,
