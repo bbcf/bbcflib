@@ -26,13 +26,13 @@ def new_project(mail, key, name, assembly_id, serv_url='http://gdv.epfl.ch/pygdv
     :param assembly_id : the assembly identifier in GenRep (must be BBCF_VALID)
     :return a JSON
     '''
-    url = normalize_url('%s/%s' % (serv_url, 'projects/create'))
+    query_url = normalize_url('%s/%s' % (serv_url, 'projects/create'))
     request = {'mail':mail, 
                'key':key,
                'name':name,
                'assembly':assembly_id
                }
-    return send_it(url, request)
+    return send_it(query_url, request)
 
 def new_track(mail, key, assembly_id=None, project_id=None, urls=None, url=None, fsys=None, fsys_list=None, serv_url='http://gdv.epfl.ch/pygdv', file_names=None):
     '''
@@ -51,18 +51,24 @@ def new_track(mail, key, assembly_id=None, project_id=None, urls=None, url=None,
     then urls, url, fsys and finally fsys_list. The list is separated by whitespaces.
     :return a JSON
     '''
-    url = normalize_url('%s/%s' % (serv_url, 'tracks/create'))
+    query_url = normalize_url('%s/%s' % (serv_url, 'tracks/create'))
     request = {'mail' : mail, 
-               'key' : key,
-               'assembly' : assembly_id,
-               'project' : project_id,
-               'urls' : urls,
-               'url' : url,
-               'fsys' : fsys,
-               'fsys_list' : fsys_list,
-               'file_names' : file_names
-               }
-    return send_it(url, request)
+               'key' : key}
+    if assembly_id :
+        request['assembly'] = assembly_id
+    if project_id :
+        request['project_id'] = project_id
+    if urls :
+        request['urls'] = urls
+    if url :
+        request['url'] = url
+    if fsys :
+        request['fsys'] = fsys
+    if fsys_list :
+        request['fsys_list'] = fsys_list
+    if file_names :
+        request['file_names'] = file_names
+    return send_it(query_url, request)
 
 def send_it(url, request, return_type='json'):
     '''
@@ -119,8 +125,7 @@ def transfert(prefix, file_path, delimiter, mail, key, serv_url, datatype, nr_as
                 c.close()
                 conn.close()
                 # send the request
-                print 'new track ass id  : %s, path : %s, name = %s' % (assembly_id, os.path.join(prefix, sql_file), file_name)
-                new_track(mail, key, assembly_id, fsys=os.path.abspath(sql_file), serv_url=serv_url, file_names=file_name)
+                new_track(mail, key, assembly_id=assembly_id, fsys=os.path.join(prefix, sql_file), serv_url=serv_url, file_names=file_name)
 
 
 
