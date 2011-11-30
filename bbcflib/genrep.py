@@ -256,6 +256,7 @@ class GenRep(object):
                              c['chromosome']['num'])
         return a
 
+    
     def assemblies_available(self, assembly=None):
         """
         Returns a list of assemblies available on genrep

@@ -74,6 +74,67 @@ def send_it(url, request, return_type='json'):
     else :
         return req.read()
 
+
+
+def transfert(prefix, file_path, delimiter, mail, key, serv_url, datatype, nr_assemblies=False):
+    '''
+    Tranfert files from old GDV to new one. A file contains all information on the files to transfert.
+    The file is a simple tsv file with columns : (sql file name, track name, assembly identifier)
+    :param prefix : where old files are
+    :param file_path : file containing the list of files to transfert
+    :param delimiter : the delimiter in the file
+    :param mail : login in TEQUILA
+    :param key : an user-specific key (ask it to GDV admin)
+    :param serv_url : the server url of the new GDV
+    :param nr_assemblies : True if the list of ids is nr_assembly and not an assembly id.
+    '''
+    import csv, os, sqlite3
+    # read the .psv file
+    with open(file_path) as f:
+        sha1s = []
+        correspond = None
+        reader = csv.reader(f, delimiter=delimiter)
+        for row in reader:
+            sql_file = row[0].strip()
+            file_name = row[1].strip()
+            assembly_id = int(row[2])
+            
+            # change nr_assembly_id to an assembly id
+            if nr_assemblies:
+                if correspond is None:
+                    from . import genrep
+                    assemblies = genrep.GenRep().get_genrep_objects('assemblies', 'assembly')
+                    correspond = dict([ (ass.nr_assembly_id, ass.id) for ass in assemblies if ass.bbcf_valid])
+                assembly_id = correspond[assembly_id]
+            # look if it's not already done
+            if sql_file not in sha1s:
+                sha1s.append(sql_file)
+                # ensure that the datatype is set
+                conn = sqlite3.connect(str(os.path.join(prefix, sql_file)))
+                c = conn.cursor()
+                dt = c.execute('select value from attributes where key = "datatype" limit 1;').fetchone()[0]
+                if dt is None or dt != datatype:
+                    c.execute('insert into attributes values (?, ?)', ('datatype', datatype))
+                conn.commit()
+                c.close()
+                conn.close()
+                # send the request
+                print 'new track ass id  : %s, path : %s, name = %s' % (assembly_id, os.path.join(prefix, sql_file), file_name)
+                new_track(mail, key, assembly_id, fsys=os.path.abspath(sql_file), serv_url=serv_url, file_names=file_name)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 def create_gdv_project( gdv_key, gdv_email,
                         name, nr_assembly_id,
                         gdv_url="http://svitsrv25.epfl.ch/gdv", public=False ):
