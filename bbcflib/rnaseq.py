@@ -3,9 +3,12 @@
 Module: bbcflib.rnaseq
 ======================
 
-Methods of the bbcflib's RNA-seq worflow. The main function is ``rnaseq_workflow()``.
+Methods of the bbcflib's RNA-seq worflow. The main function is ``rnaseq_workflow()``,
+and is usually called by bbcfutils' ``run_rnaseq.py``, e.g. command-line:
 
-From a BAM file produced by an alignement on the *exonome*, gets counts of reads
+``python run_rnaseq.py -v lsf -c config_files/gapdh.txt -d rnaseq -p transcripts``
+
+From a BAM file produced by an alignement on the **exonome**, gets counts of reads
 on the exons, add them to get counts on genes, and uses least-squares to infer
 counts on transcripts, avoiding to map on either genome or transcriptome.
 Note that the resulting counts on transcripts are approximate.
@@ -365,8 +368,8 @@ def transcripts_expression(exons_data, exon_lengths, transcript_lengths, trans_i
     exons_counts = dict(zip( exons_data[0], zip(*exons_data[1:ncond+1])) )
     exons_rpk = dict(zip( exons_data[0], zip(*exons_data[ncond+1:2*ncond+1])) )
     totalerror = 0; unknown = 0; alltranscount=0; allexonscount=0;
-    filE = open("../error_stats.numbers","wb")
-    filE.write("gene \t nbExons \t nbTrans \t ratioNbExonsNbTrans \t totExons \t totTrans \t ratioExonsTrans \t lsqError \n")
+    #filE = open("../error_stats.numbers","wb")
+    #filE.write("gene \t nbExons \t nbTrans \t ratioNbExonsNbTrans \t totExons \t totTrans \t ratioExonsTrans \t lsqError \n")
     for g in genes:
         if trans_in_gene.get(g): # if the gene is (still) in the Ensembl database
             # Get all transcripts in the gene
@@ -426,13 +429,13 @@ def transcripts_expression(exons_data, exon_lengths, transcript_lengths, trans_i
             total_exons_c = sum([sum(ec[c]) for c in range(ncond)]) or 0
             alltranscount += total_trans_c
             allexonscount += total_exons_c
-            try: filE.write("%s\t%d\t%d\t%.1f\t%.1f\t%.1f\t%.1f\t%.1f\n" \
-                    % (g,len(eg),len(tg),1.*len(eg)/len(tg),total_exons_c,total_trans_c,total_exons_c/total_trans_c,resnormc))
-            except ZeroDivisionError: pass
+            #try: filE.write("%s\t%d\t%d\t%.1f\t%.1f\t%.1f\t%.1f\t%.1f\n" \
+            #        % (g,len(eg),len(tg),1.*len(eg)/len(tg),total_exons_c,total_trans_c,total_exons_c/total_trans_c,resnormc))
+            #except ZeroDivisionError: pass
         else:
             unknown += 1
 
-    filE.close()
+    #filE.close()
     print "\t Evaluation of error for transcripts:"
     print "\t Unknown transcripts for %d of %d genes (%.2f %%)" \
            % (unknown, len(genes), 100*float(unknown)/float(len(genes)) )
@@ -464,7 +467,7 @@ def estimate_size_factors(counts):
     return res, size_factors
 
 
-#@timer
+@timer
 def rnaseq_workflow(ex, job, assembly, bam_files, pileup_level=["exons","genes","transcripts"], via="lsf"):
     """
     Main function of the workflow.
@@ -542,7 +545,7 @@ def rnaseq_workflow(ex, job, assembly, bam_files, pileup_level=["exons","genes",
     ends = asarray(ends, dtype=numpy.float_)
     nreads = asarray([nreads[cond] for cond in conditions], dtype=numpy.float_)
     counts = asarray([exon_pileups[cond] for cond in conditions], dtype=numpy.float_)
-    counts, sf = estimate_size_factors(counts)
+    #counts, sf = estimate_size_factors(counts)
     rpkm = 1000*(1e6*counts.T/nreads).T/(ends-starts)
     #for i in range(len(counts.ravel())):
     #    if counts.flat[i]==0: counts.flat[i] += 1.0 # if zero counts, add 1 for further comparisons
@@ -551,7 +554,7 @@ def rnaseq_workflow(ex, job, assembly, bam_files, pileup_level=["exons","genes",
 
     print "Get counts"
     hconds = ["counts."+c for c in conditions] + ["rpkm."+c for c in conditions]
-    genesName = [gene_names.get(g,g) for g in genesID]
+    genesName = [gene_names.get(g,"NA") for g in genesID]
     exons_data = [exonsID]+list(counts)+list(rpkm)+[starts,ends,genesID,genesName]
 
     """ Print counts for exons """
@@ -561,11 +564,11 @@ def rnaseq_workflow(ex, job, assembly, bam_files, pileup_level=["exons","genes",
 
     """ Get counts for genes from exons """
     if "genes" in pileup_level:
-        header = ["GeneName"] + hconds + ["GeneID"]#+ ["Start","End","GeneName"]
+        header = ["GeneID"] + hconds + ["GeneName"]#+ ["Start","End"]
         (gcounts, grpkm) = genes_expression(exons_data, exon_to_gene, len(conditions))
         genesID = gcounts.keys()
-        genesName = [gene_names.get(g,g) for g in genesID]
-        genes_data = [genesName]+list(zip(*gcounts.values()))+list(zip(*grpkm.values()))+[genesID]
+        genesName = [gene_names.get(g,"NA") for g in genesID]
+        genes_data = [genesID]+list(zip(*gcounts.values()))+list(zip(*grpkm.values()))+[genesName]
         save_results(ex, genes_data, conditions, header=header, feature_type="GENES")
 
     """ Get counts for the transcripts from exons, using pseudo-inverse """
@@ -575,8 +578,8 @@ def rnaseq_workflow(ex, job, assembly, bam_files, pileup_level=["exons","genes",
                    transcript_lengths, trans_in_gene, exons_in_trans,len(conditions))
         transID = trpkm.keys()
         genesID = [transcript_mapping[t] for t in transID]
-        genesName = [gene_names.get(g,g) for g in genesID]
-        transLen = [transcript_lengths[t] for t in transID]
+        genesName = [gene_names.get(g,"NA") for g in genesID]
+        transLen = [transcript_lengths.get(t,"NA") for t in transID]
         (genesID, transID, genesName) = zip(*sorted(zip(genesID,transID,genesName))) # sort w.r.t. gene IDs
         trans_data = [transID]+list(zip(*[tcounts[t] for t in transID])) \
                               +list(zip(*[trpkm[t] for t in transID]))+[transLen,genesID,genesName]
