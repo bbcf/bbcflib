@@ -34,7 +34,7 @@ def new_project(mail, key, name, assembly_id, serv_url='http://gdv.epfl.ch/pygdv
                }
     return send_it(url, request)
 
-def new_track(mail, key, assembly_id=None, project_id=None, urls=None, url=None, fsys=None, fsys_list=None, serv_url='http://gdv.epfl.ch/pygdv'):
+def new_track(mail, key, assembly_id=None, project_id=None, urls=None, url=None, fsys=None, fsys_list=None, serv_url='http://gdv.epfl.ch/pygdv', file_names=None):
     '''
     Create a new track on GDV.
     :param mail : login in TEQUILA
@@ -43,9 +43,12 @@ def new_track(mail, key, assembly_id=None, project_id=None, urls=None, url=None,
     :param assembly_id : the assembly identifier in GenRep (must be BBCF_VALID). Could be optional if a project_id is specified.
     :param project_id : the project identifier to add the track to.
     :param url : an url pointing to a file.
-    :param urls : a list of urls separated by whitespace. 
+    :param urls : a list of urls separated by whitespaces. 
     :param fsys : if the file is on the same file system, a filesystem path
-    :param fsys_list :  a list of fsys separated by whitespace. 
+    :param fsys_list :  a list of fsys separated by whitespaces.
+    :param file_names : a list of file name, in the same order than the files uploaded.
+    If there is differents parameters given, the first file uploaded will be file_upload, 
+    then urls, url, fsys and finally fsys_list. The list is separated by whitespaces.
     :return a JSON
     '''
     url = normalize_url('%s/%s' % (serv_url, 'tracks/create'))
@@ -56,7 +59,8 @@ def new_track(mail, key, assembly_id=None, project_id=None, urls=None, url=None,
                'urls' : urls,
                'url' : url,
                'fsys' : fsys,
-               'fsys_list' : fsys_list
+               'fsys_list' : fsys_list,
+               'file_names' : file_names
                }
     return send_it(url, request)
 
