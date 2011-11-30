@@ -17,6 +17,7 @@ import os, cPickle, pysam, urllib, math, json
 # Internal modules #
 from bbcflib.genrep import GenRep
 from bbcflib.common import timer, writecols, set_file_descr
+import track
 
 # Other modules #
 import sqlite3
@@ -154,64 +155,77 @@ def fetch_mappings(path_or_assembly_id):
     chromosomes = json.load(chr)
     chromosomes = [str(chr['chromosome']['name']) for chr in chromosomes]
 
-    def get_gene_ids(db,chromosomes):
-        """Return a list of gene IDs"""
+    #ok
+    def get_gene_mapping(db,chromosomes):
+        """Return a dictionary {geneID: (geneName, start, end)}"""
         c = db.cursor()
-        gene_ids = []; sql=''
+        gene_mapping = {}; sql=''
         for chr in chromosomes:
-            sql += '''SELECT DISTINCT gene_id FROM '%s'
-                     WHERE (NAME LIKE 'exon') UNION ''' % (str(chr),)
+            sql += '''SELECT DISTINCT gene_id,gene_name,MIN(start),MAX(end) FROM '%s'
+                     WHERE (NAME LIKE 'exon') GROUP BY gene_id UNION ''' % (str(chr),)
         sql = sql[:-7]+';'
-        gene_ids = c.execute(sql).fetchall()
-        return gene_ids
+        sql_result = c.execute(sql)
+        for g,name,start,end in sql_result:
+            gene_mapping[g] = (name,start,end)
+        return gene_mapping
 
+    #rewrite
     def get_exon_mapping(db,chromosomes):
-        """Return a dictionary ``{exon ID: ([transcript IDs], gene ID)}``"""
+        """Return a dictionary ``{exon ID: ([transcript IDs],gene ID,start,end)}``"""
         c = db.cursor()
         exon_mapping = {}; sql=''
         for chr in chromosomes:
-            sql += '''SELECT DISTINCT exon_id,gene_id,transcript_id FROM '%s'
-                      WHERE (NAME LIKE 'exon') UNION ''' % (str(chr),)
+            sql += '''SELECT DISTINCT exon_id,gene_id,transcript_id,start,end FROM '%s'
+                      WHERE (name LIKE 'exon') UNION ''' % (str(chr),)
         sql = sql[:-7]+';'
         sql_result = c.execute(sql)
-        for e,g,t in sql_result:
-            exon_mapping.setdefault(e,[]).append()
+        for e,g,t,start,end in sql_result:
+            exon_mapping[e] = (T,g,start,end)
         return exon_mapping
 
+    #need exon IDs
     def get_exons_in_trans(db,chromosomes):
         """Return a dictionary ``{transcript ID: list of exon IDs it contains}``"""
         c = db.cursor()
         exons_in_trans = {}; sql=''
         for chr in chromosomes:
-            sql += '''  '''
+            sql += '''SELECT transcript_id,exon_id from '%s'
+                      WHERE (name LIKE 'exon') GROUP BY exon_number,transcript_id'''
+        sql = sql[:-7]+';'
+        sql_result = c.execute(sql)
+        for t,e in sql_result:
+            exons_in_trans.setdefault(t,[]).append(e)
         return exons_in_trans
 
+    #ok
     def get_transcript_mapping(db,chromosomes):
-        """Return a dictionary ``{transcript ID: gene ID}``"""
+        """Return a dictionary ``{transcript ID: (gene ID,start,end)}``"""
         c = db.cursor()
         transcript_mapping = {}; sql=''
         for chr in chromosomes:
-            sql += '''SELECT DISTINCT gene_id,transcript_id FROM '%s'
-                      WHERE (NAME LIKE 'exon') UNION ''' % (str(chr),)
+            sql += '''SELECT DISTINCT transcript_id,gene_id,MIN(start),MAX(end) FROM '%s'
+                      WHERE (name LIKE 'exon') GROUP BY transcript_id UNION ''' % (str(chr),)
         sql = sql[:-7]+';'
         sql_result = c.execute(sql)
-        for t,g in sql_result:
-            transcript_mapping[t] = g
+        for t,g,start,end in sql_result:
+            transcript_mapping[t] = (g,start,end)
         return transcript_mapping
 
+    #ok
     def get_trans_in_gene(db,chromosomes):
         """Return a dictionary ``{gene ID: list of transcript IDs it contains}``"""
         c = db.cursor()
         trans_in_gene = {}; sql=''
         for chr in chromosomes:
             sql += '''SELECT DISTINCT gene_id,transcript_id FROM '%s'
-                      WHERE (NAME LIKE 'exon') UNION ''' % (str(chr),)
+                      WHERE (name LIKE 'exon') UNION ''' % (str(chr),)
         sql = sql[:-7]+';'
         sql_result = c.execute(sql)
         for g,t in sql_result:
             trans_in_gene.setdefault(g,[]).append(t)
         return trans_in_gene
 
+    #ok, but redondant?
     def get_transcript_lengths(db,chromosomes):
         """Return a dictionary ``{transcript ID: transcript length}``"""
         c = db.cursor()
@@ -226,7 +240,7 @@ def fetch_mappings(path_or_assembly_id):
         return lengths
 
     transcript_lengths = get_transcript_lengths(db,chromosomes)
-    #gene_ids = get_gene_ids(db,chromosomes)
+    #gene_ids = get_gene_ids(db,chromosomes).keys()
     #exon_mapping = get_exon_mapping(db.chromosomes)
     #transcript_mapping = get_transcript_mapping(db,chromosomes)
     #mapping = gene_ids, exon_mapping, transcript_mapping
@@ -272,24 +286,38 @@ def pileup_file(bamfile, exons):
     sam.close()
     return counts
 
-def save_results(ex, cols, conditions, header=[], desc='features'):
+def save_results(ex, cols, conditions, header=[], feature_type='features'):
     """Save results in a tab-delimited file, one line per feature, one column per run.
 
     :param ex: bein's execution.
     :param cols: list of iterables, each element being a column to write in the output.
     :param conditions: list of strings corresponding to descriptions of the different samples.
     :param header: list of strings, the column headers of the output file.
-    :param desc: the kind of feature of which you measure the expression.
-    :type desc: string
+    :param feature_type: (str) the kind of feature of which you measure the expression.
     """
     conditions_s = '%s, '*(len(conditions)-1)+'%s.'
     conditions = tuple(conditions)
-    output = rstring()
-    writecols(output,cols,header=header, sep="\t")
-    description="Expression level of "+desc+" in sample(s) "+conditions_s % conditions
-    description = set_file_descr(desc.lower()+"_expression.tab", step="pileup", type="txt", comment=description)
-    ex.add(output, description=description)
-    print desc+": Done successfully."
+    ncond = len(conditions)
+    # Tab-del output with all information
+    output_tab = rstring()
+    writecols(output_tab,cols,header=header, sep="\t")
+    description = "Expression level of "+feature_type+" in sample(s) "+conditions_s % conditions
+    description = set_file_descr(feature_type.lower()+"_expression.tab", step="pileup", type="txt", comment=description)
+    ex.add(output_tab, description=description)
+    # SQL track output
+    if feature_type=="EXONS" and 0:
+        output_sql = rstring()
+        def to_bedgraph(cols,ncond,i):
+            cols = zip(*cols)
+            yield (cols[0],cols[2*ncond+1],cols[2*ncond+2],cols[i])
+        for i in range(ncond):
+            with track.new(output_sql, format='bedGraph') as t:
+                t.write(feature_type,to_bedgraph(cols,ncond,i),(feature_type[:-1]+"_id","start","end","score"))
+            c = conditions[i]
+            description = "SQL track of exons rpkm for sample %s" % c
+            description = set_file_descr("exons_"+c+".sql", step="pileup", type="sql", comment=description)
+            ex.add(output_sql, description=description)
+    print feature_type+": Done successfully."
 
 #@timer
 def genes_expression(exons_data, exon_to_gene, ncond):
@@ -529,7 +557,7 @@ def rnaseq_workflow(ex, job, assembly, bam_files, pileup_level=["exons","genes",
     """ Print counts for exons """
     if "exons" in pileup_level:
         header = ["ExonID"] + hconds + ["Start","End","GeneID","GeneName"]
-        save_results(ex, exons_data, conditions, header=header, desc="EXONS")
+        save_results(ex, exons_data, conditions, header=header, feature_type="EXONS")
 
     """ Get counts for genes from exons """
     if "genes" in pileup_level:
@@ -538,21 +566,21 @@ def rnaseq_workflow(ex, job, assembly, bam_files, pileup_level=["exons","genes",
         genesID = gcounts.keys()
         genesName = [gene_names.get(g,g) for g in genesID]
         genes_data = [genesName]+list(zip(*gcounts.values()))+list(zip(*grpkm.values()))+[genesID]
-        save_results(ex, genes_data, conditions, header=header, desc="GENES")
+        save_results(ex, genes_data, conditions, header=header, feature_type="GENES")
 
     """ Get counts for the transcripts from exons, using pseudo-inverse """
     if "transcripts" in pileup_level:
-        header = ["TranscriptID"] + hconds + ["GeneID","GeneName"]
-                   # + ["Start","End"]
+        header = ["TranscriptID"] + hconds + ["Length","GeneID","GeneName"] #+["Start","End"]
         (trpkm, tcounts, error) = transcripts_expression(exons_data, exon_lengths,
                    transcript_lengths, trans_in_gene, exons_in_trans,len(conditions))
         transID = trpkm.keys()
         genesID = [transcript_mapping[t] for t in transID]
         genesName = [gene_names.get(g,g) for g in genesID]
+        transLen = [transcript_lengths[t] for t in transID]
         (genesID, transID, genesName) = zip(*sorted(zip(genesID,transID,genesName))) # sort w.r.t. gene IDs
         trans_data = [transID]+list(zip(*[tcounts[t] for t in transID])) \
-                              +list(zip(*[trpkm[t] for t in transID]))+[genesID,genesName]
-        save_results(ex, trans_data, conditions, header=header, desc="TRANSCRIPTS")
+                              +list(zip(*[trpkm[t] for t in transID]))+[transLen,genesID,genesName]
+        save_results(ex, trans_data, conditions, header=header, feature_type="TRANSCRIPTS")
 
     # TEST
     #for g in list(set(genesID)):
