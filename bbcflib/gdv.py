@@ -53,15 +53,21 @@ def new_track(mail, key, assembly_id=None, project_id=None, urls=None, url=None,
     '''
     query_url = normalize_url('%s/%s' % (serv_url, 'tracks/create'))
     request = {'mail' : mail, 
-               'key' : key,
-               'assembly' : assembly_id,
-               'project' : project_id,
-               'urls' : urls,
-               'url' : url,
-               'fsys' : fsys,
-               'fsys_list' : fsys_list,
-               'file_names' : file_names
-               }
+               'key' : key}
+    if assembly_id :
+        request['assembly'] = assembly_id
+    if project_id :
+        request['project_id'] = project_id
+    if urls :
+        request['urls'] = urls
+    if url :
+        request['url'] = url
+    if fsys :
+        request['fsys'] = fsys
+    if fsys_list :
+        request['fsys_list'] = fsys_list
+    if file_names :
+        request['file_names'] = file_names
     return send_it(query_url, request)
 
 def send_it(url, request, return_type='json'):
