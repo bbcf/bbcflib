@@ -12,8 +12,67 @@ import json, urllib, urllib2
 # Internal modules #
 from .common import normalize_url
 
+
+import warnings
+
 ################################################################################
 # GDV requests #
+def new_project(mail, key, name, assembly_id, serv_url='http://gdv.epfl.ch/pygdv'):
+    '''
+    Create a new project on GDV.
+    :param mail : login in TEQUILA
+    :param key : an user-specific key (ask it to GDV admin)
+    :param name : name of the project
+    :param assembly_id : the assembly identifier in GenRep (must be BBCF_VALID)
+    :return a JSON
+    '''
+    url = normalize_url('%s/%s' % (serv_url, 'projects/create'))
+    request = {'mail':mail, 
+               'key':key,
+               'name':name,
+               'assembly':assembly_id
+               }
+    return send_it(url, request)
+
+def new_track(mail, key, assembly_id=None, project_id=None, urls=None, url=None, fsys=None, fsys_list=None, serv_url='http://gdv.epfl.ch/pygdv', file_names=None):
+    '''
+    Create a new track on GDV.
+    :param mail : login in TEQUILA
+    :param key : an user-specific key (ask it to GDV admin)
+    :param name : name of the project
+    :param assembly_id : the assembly identifier in GenRep (must be BBCF_VALID). Could be optional if a project_id is specified.
+    :param project_id : the project identifier to add the track to.
+    :param url : an url pointing to a file.
+    :param urls : a list of urls separated by whitespaces. 
+    :param fsys : if the file is on the same file system, a filesystem path
+    :param fsys_list :  a list of fsys separated by whitespaces.
+    :param file_names : a list of file name, in the same order than the files uploaded.
+    If there is differents parameters given, the first file uploaded will be file_upload, 
+    then urls, url, fsys and finally fsys_list. The list is separated by whitespaces.
+    :return a JSON
+    '''
+    url = normalize_url('%s/%s' % (serv_url, 'tracks/create'))
+    request = {'mail' : mail, 
+               'key' : key,
+               'assembly' : assembly_id,
+               'project' : project_id,
+               'urls' : urls,
+               'url' : url,
+               'fsys' : fsys,
+               'fsys_list' : fsys_list,
+               'file_names' : file_names
+               }
+    return send_it(url, request)
+
+def send_it(url, request, return_type='json'):
+    '''
+    Send the request to GDV and return the result. As JSON or as a request.read().
+    '''
+    req = urllib2.urlopen(url, urllib.urlencode(request))
+    if return_type == 'json':
+        return json.load(req)
+    else :
+        return req.read()
 
 def create_gdv_project( gdv_key, gdv_email,
                         name, nr_assembly_id,
@@ -28,6 +87,7 @@ def create_gdv_project( gdv_key, gdv_email,
     :rtype: a json : {'project_id':<the id>,'public_url':<the public url>} or {'project_id':<the id>} if you didn't make the
     project public
     '''
+    warnings.simplefilter('always')
     request = { "id": "gdv_post",
                 "mail": gdv_email,
                 "key": gdv_key,
@@ -36,6 +96,7 @@ def create_gdv_project( gdv_key, gdv_email,
                 "seq_id": str(nr_assembly_id),
                 "public": str(public).lower() }
     gdv_url = normalize_url(gdv_url)+"/post"
+    warnings.warn('This method is used by the old version of GDV', DeprecationWarning)
     return json.load(urllib2.urlopen( gdv_url, urllib.urlencode(request)))
 
 def get_project_id(json):
@@ -58,6 +119,7 @@ def add_gdv_track( gdv_key, gdv_email,
     :param url : the URL where to fetch the file
     :rtype: a json {job_id:<the job id>}
     '''
+    warnings.warn('This method is used by the old version of GDV', DeprecationWarning)
     request = { "id": "gdv_post",
                 "mail": gdv_email,
                 "key": gdv_key,
@@ -77,6 +139,7 @@ def add_gdv_sqlite( gdv_key, gdv_email,
     '''
     Deprecated :  use add_gdv_track instead
     '''
+    warnings.warn('This method is used by the old version of GDV', DeprecationWarning)
     return add_gdv_track(gdv_key,gdv_email,project_id,url,name,gdv_url)
 
 
@@ -88,6 +151,7 @@ def add_sql_files( gdv_key, gdv_email,
     '''
     Run `add_gdv_sqlite` on a list of files
     '''
+    warnings.warn('This method is used by the old version of GDV', DeprecationWarning)
     serv_url = normalize_url(serv_url)
     return [add_gdv_track( gdv_key, gdv_email, project_id,
                            serv_url+"/"+f, names[i],
@@ -106,6 +170,7 @@ def get_job_status(gdv_key, gdv_email, job_id, gdv_url):
                 "job_id":   job_id,
                 "gdv_url":  gdv_url}
     gdv_url = normalize_url(gdv_url)+"/post"
+    warnings.warn('This method is used by the old version of GDV', DeprecationWarning)
     return urllib2.urlopen( gdv_url, urllib.urlencode(request) ).read()
 
 
@@ -119,6 +184,7 @@ def get_assemblies(gdv_key, gdv_email, gdv_url):
                 "key": gdv_key,
                 "command":"assemblies" }
     gdv_url = normalize_url(gdv_url)+"/post"
+    warnings.warn('This method is used by the old version of GDV', DeprecationWarning)
     return urllib2.urlopen( gdv_url, urllib.urlencode(request) ).read()
 
 #-----------------------------------#
