@@ -119,8 +119,7 @@ def transfert(prefix, file_path, delimiter, mail, key, serv_url, datatype, nr_as
                 c.close()
                 conn.close()
                 # send the request
-                print 'new track ass id  : %s, path : %s, name = %s' % (assembly_id, os.path.join(prefix, sql_file), file_name)
-                new_track(mail, key, assembly_id, fsys=os.path.abspath(sql_file), serv_url=serv_url, file_names=file_name)
+                new_track(mail, key, assembly_id=assembly_id, fsys=os.path.join(prefix, sql_file), serv_url=serv_url, file_names=file_name)
 
 
 
