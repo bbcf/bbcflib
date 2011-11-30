@@ -26,13 +26,13 @@ def new_project(mail, key, name, assembly_id, serv_url='http://gdv.epfl.ch/pygdv
     :param assembly_id : the assembly identifier in GenRep (must be BBCF_VALID)
     :return a JSON
     '''
-    url = normalize_url('%s/%s' % (serv_url, 'projects/create'))
+    query_url = normalize_url('%s/%s' % (serv_url, 'projects/create'))
     request = {'mail':mail, 
                'key':key,
                'name':name,
                'assembly':assembly_id
                }
-    return send_it(url, request)
+    return send_it(query_url, request)
 
 def new_track(mail, key, assembly_id=None, project_id=None, urls=None, url=None, fsys=None, fsys_list=None, serv_url='http://gdv.epfl.ch/pygdv', file_names=None):
     '''
@@ -51,7 +51,7 @@ def new_track(mail, key, assembly_id=None, project_id=None, urls=None, url=None,
     then urls, url, fsys and finally fsys_list. The list is separated by whitespaces.
     :return a JSON
     '''
-    url = normalize_url('%s/%s' % (serv_url, 'tracks/create'))
+    query_url = normalize_url('%s/%s' % (serv_url, 'tracks/create'))
     request = {'mail' : mail, 
                'key' : key,
                'assembly' : assembly_id,
@@ -62,7 +62,7 @@ def new_track(mail, key, assembly_id=None, project_id=None, urls=None, url=None,
                'fsys_list' : fsys_list,
                'file_names' : file_names
                }
-    return send_it(url, request)
+    return send_it(query_url, request)
 
 def send_it(url, request, return_type='json'):
     '''
