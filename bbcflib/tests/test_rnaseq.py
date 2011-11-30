@@ -213,7 +213,7 @@ class Test_others(unittest.TestCase):
     def test_save_results(self):
         with execution(None) as ex:
             save_results(ex,cols=[[1,2,3],('a','b','c','d')],conditions=["num","char"],
-                         header=["num","char"], desc="test")
+                         header=["num","char"], feature_type="test")
 
 
 class Test_NNLS(unittest.TestCase):
