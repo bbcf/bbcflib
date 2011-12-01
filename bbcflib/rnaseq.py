@@ -545,7 +545,7 @@ def rnaseq_workflow(ex, job, assembly, bam_files, pileup_level=["exons","genes",
     ends = asarray(ends, dtype=numpy.float_)
     nreads = asarray([nreads[cond] for cond in conditions], dtype=numpy.float_)
     counts = asarray([exon_pileups[cond] for cond in conditions], dtype=numpy.float_)
-    #counts, sf = estimate_size_factors(counts)
+    counts, sf = estimate_size_factors(counts)
     rpkm = 1000*(1e6*counts.T/nreads).T/(ends-starts)
     #for i in range(len(counts.ravel())):
     #    if counts.flat[i]==0: counts.flat[i] += 1.0 # if zero counts, add 1 for further comparisons

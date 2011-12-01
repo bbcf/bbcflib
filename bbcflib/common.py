@@ -187,7 +187,6 @@ def timer(function):
         return result
     return wrapper
 
-
 #-------------------------------------------------------------------------#
 
 def writecols(file, cols, header=None, sep="\t"):
@@ -249,17 +248,17 @@ def isnum(s):
 
 #-------------------------------------------------------------------------#
 
-def unique(seq, idfun=None):
+def unique(seq, fun=None):
     """
     Return all unique elements in *seq*, preserving order - unlike list(set(seq)),
     and almost as fast. Permits this sort of filter: unique(seq, lambda x: x.lower())
     """
-    if idfun is None:
-        def idfun(x): return x
+    if fun is None:
+        def fun(x): return x
     seen = {}
     result = []
     for item in seq:
-        marker = idfun(item)
+        marker = fun(item)
         if marker in seen: continue
         seen[marker] = 1
         result.append(item)
