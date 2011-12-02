@@ -1,7 +1,6 @@
 """
 ======================
 Module: bbcflib.rnaseq
-======================
 
 Methods of the bbcflib's RNA-seq worflow. The main function is ``rnaseq_workflow()``,
 and is usually called by bbcfutils' ``run_rnaseq.py``, e.g. command-line:
@@ -149,14 +148,13 @@ def fetch_mappings(path_or_assembly_id):
         print "Mapping for assembly", mdfive, "found in /db/"
 
     # Connect to GTF database
-    dbpath = "/db/genrep/nr_assemblies/features_sqlite/"+mdfive+".sql"
+    dbpath = "/db/genrep/nr_assemblies/annot_tracks/"+mdfive+".sql"
     db = sqlite3.connect(dbpath, check_same_thread=False)
 
     # Get chromosome names from GenRep
-    chr_address = "http://bbcftools.vital-it.ch/genrep/chromosomes.json?&assembly_id=7"
-    chr = urllib.urlopen(chr_address)
-    chromosomes = json.load(chr)
-    chromosomes = [str(chr['chromosome']['name']) for chr in chromosomes]
+    c = db.cursor()
+    chromosomes = c.execute("""SELECT name FROM chrNames ORDER BY name;""").fetchall()
+    chromosomes = [c[0] for c in chromosomes]
 
     #ok
     def get_gene_mapping(db,chromosomes):
@@ -165,35 +163,43 @@ def fetch_mappings(path_or_assembly_id):
         gene_mapping = {}; sql=''
         for chr in chromosomes:
             sql += '''SELECT DISTINCT gene_id,gene_name,MIN(start),MAX(end) FROM '%s'
-                     WHERE (NAME LIKE 'exon') GROUP BY gene_id UNION ''' % (str(chr),)
+                     WHERE (type LIKE 'exon') GROUP BY gene_id UNION ''' % (str(chr),)
         sql = sql[:-7]+';'
         sql_result = c.execute(sql)
         for g,name,start,end in sql_result:
             gene_mapping[g] = (name,start,end)
         return gene_mapping
 
-    #rewrite
+    #ok?
     def get_exon_mapping(db,chromosomes):
         """Return a dictionary ``{exon ID: ([transcript IDs],gene ID,start,end)}``"""
         c = db.cursor()
-        exon_mapping = {}; sql=''
+        exon_mapping = {}; sql=''; T={}
         for chr in chromosomes:
-            sql += '''SELECT DISTINCT exon_id,gene_id,transcript_id,start,end FROM '%s'
-                      WHERE (name LIKE 'exon') UNION ''' % (str(chr),)
+            sql += '''SELECT DISTINCT exon_id,transcript_id from '%s'
+                      WHERE (type LIKE 'exon') UNION ''' % (str(chr),)
         sql = sql[:-7]+';'
         sql_result = c.execute(sql)
-        for e,g,t,start,end in sql_result:
-            exon_mapping[e] = (T,g,start,end)
+        for e,t in sql_result:
+            T.setdefault(e,[]).append(t)
+        sql = ''
+        for chr in chromosomes:
+            sql += '''SELECT DISTINCT exon_id,gene_id,start,end FROM '%s'
+                      WHERE (type LIKE 'exon') UNION ''' % (str(chr),)
+        sql = sql[:-7]+';'
+        sql_result = c.execute(sql)
+        for e,g,start,end in sql_result:
+            exon_mapping[e] = (T[e],g,start,end)
         return exon_mapping
 
-    #need exon IDs
+    #ok?
     def get_exons_in_trans(db,chromosomes):
         """Return a dictionary ``{transcript ID: list of exon IDs it contains}``"""
         c = db.cursor()
         exons_in_trans = {}; sql=''
         for chr in chromosomes:
-            sql += '''SELECT transcript_id,exon_id from '%s'
-                      WHERE (name LIKE 'exon') GROUP BY exon_number,transcript_id'''
+            sql += '''SELECT DISTINCT transcript_id,exon_id from '%s'
+                      WHERE (type LIKE 'exon') UNION ''' % (str(chr),)
         sql = sql[:-7]+';'
         sql_result = c.execute(sql)
         for t,e in sql_result:
@@ -207,7 +213,7 @@ def fetch_mappings(path_or_assembly_id):
         transcript_mapping = {}; sql=''
         for chr in chromosomes:
             sql += '''SELECT DISTINCT transcript_id,gene_id,MIN(start),MAX(end) FROM '%s'
-                      WHERE (name LIKE 'exon') GROUP BY transcript_id UNION ''' % (str(chr),)
+                      WHERE (type LIKE 'exon') GROUP BY transcript_id UNION ''' % (str(chr),)
         sql = sql[:-7]+';'
         sql_result = c.execute(sql)
         for t,g,start,end in sql_result:
@@ -221,7 +227,7 @@ def fetch_mappings(path_or_assembly_id):
         trans_in_gene = {}; sql=''
         for chr in chromosomes:
             sql += '''SELECT DISTINCT gene_id,transcript_id FROM '%s'
-                      WHERE (name LIKE 'exon') UNION ''' % (str(chr),)
+                      WHERE (type LIKE 'exon') UNION ''' % (str(chr),)
         sql = sql[:-7]+';'
         sql_result = c.execute(sql)
         for g,t in sql_result:
@@ -235,7 +241,7 @@ def fetch_mappings(path_or_assembly_id):
         lengths = {}; sql=''
         for chr in chromosomes:
             sql += '''SELECT transcript_id,sum(end-start) FROM '%s'
-                      WHERE (name LIKE 'exon') GROUP BY transcript_id UNION ''' % (str(chr),)
+                      WHERE (type LIKE 'exon') GROUP BY transcript_id UNION ''' % (str(chr),)
         sql = sql[:-7]+';'
         sql_result = c.execute(sql)
         for t,l in sql_result:
