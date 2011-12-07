@@ -123,10 +123,9 @@ def fetch_mappings(path_or_assembly_id):
     """Given an assembly ID, returns a tuple
     ``(gene_ids, gene_names, transcript_mapping, exon_mapping, trans_in_gene, exons_in_trans)``
 
-    * [0] gene_ids is a list of gene IDs
-    * [1] gene_names is a dict ``{gene ID: gene name}``
-    * [2] transcript_mapping is a dictionary ``{transcript ID: gene ID}``
-    * [3] exon_mapping is a dictionary ``{exon ID: ([transcript IDs], gene ID)}``
+    * [0] gene_mapping is a dict ``{gene ID: (gene name,start,end,chromosome)}``
+    * [1] transcript_mapping is a dictionary ``{transcript ID: (gene ID,start,end,length,chromosome)}``
+    * [3] exon_mapping is a dictionary ``{exon ID: ([trancript IDs],gene ID,start,end,chromosome)}``
     * [4] trans_in_gene is a dict ``{gene ID: [IDs of the transcripts it contains]}``
     * [5] exons_in_trans is a dict ``{transcript ID: [IDs of the exons it contains]}``
 
@@ -332,13 +331,13 @@ def genes_expression(exons_data, exon_to_gene, ncond):
     :param exon_to_gene: dictionary ``{exon ID: gene ID}``.
     :param ncond: number of samples.
     """
-    genes = list(set(exons_data[-2]))
+    genes = list(set(exons_data[-3]))
     z = [numpy.zeros(ncond,dtype=numpy.float_) for g in genes]
     zz = [numpy.zeros(ncond,dtype=numpy.float_) for g in genes]
     gcounts = dict(zip(genes,z))
     grpk = dict(zip(genes,zz))
 
-    for e,c in zip(exons_data[0],zip(*exons_data[1:ncond+ncond+1])):
+    for e,c in zip(exons_data[0],zip(*exons_data[1:2*ncond+1])):
         g = exon_to_gene[e]
         gcounts[g] += numpy.round(c[:ncond],2)
         grpk[g] += numpy.round(c[ncond:],2)
@@ -357,7 +356,7 @@ def transcripts_expression(exons_data, exon_lengths, transcript_mapping, trans_i
     :param exons_in_trans: dictionary ``{transcript ID: [exon IDs it contains]}``
     :param ncond: number of samples
     """
-    genes = list(set(exons_data[-2]))
+    genes = list(set(exons_data[-3]))
     transcripts = []
     for g in genes:
         transcripts.extend(trans_in_gene.get(g,[]))
@@ -532,12 +531,11 @@ def rnaseq_workflow(ex, job, assembly, bam_files, pileup_level=["exons","genes",
 
     print "Load mappings"
     mappings = fetch_mappings(assembly_id)
-    """ [0] gene_ids is a list of gene ID's
-        [1] gene_names is a dict {gene ID: gene name}
-        [2] transcript_mapping is a dictionary {transcript ID: gene ID}
-        [3] exon_mapping is a dictionary {exon ID: ([transcript IDs], gene ID)}
-        [4] trans_in_gene is a dict {gene ID: [IDs of the transcripts it contains]}
-        [5] exons_in_trans is a dict {transcript ID: [IDs of the exons it contains]} """
+    """ [0] gene_mapping is a dict ``{gene ID: (gene name,start,end,chromosome)}``
+        [1] transcript_mapping is a dictionary ``{transcript ID: (gene ID,start,end,length,chromosome)}``
+        [3] exon_mapping is a dictionary ``{exon ID: ([trancript IDs],gene ID,start,end,chromosome)}``
+        [4] trans_in_gene is a dict ``{gene ID: [IDs of the transcripts it contains]}``
+        [5] exons_in_trans is a dict ``{transcript ID: [IDs of the exons it contains]}`` """
     (gene_mapping, transcript_mapping, exon_mapping, trans_in_gene, exons_in_trans) = mappings
 
     """ Treat data """
@@ -546,6 +544,7 @@ def rnaseq_workflow(ex, job, assembly, bam_files, pileup_level=["exons","genes",
     ends = asarray(ends, dtype=numpy.float_)
     nreads = asarray([nreads[cond] for cond in conditions], dtype=numpy.float_)
     counts = asarray([exon_pileups[cond] for cond in conditions], dtype=numpy.float_)
+    numpy.seterr(divide='ignore')
     counts, sf = estimate_size_factors(counts)
     rpkm = 1000*(1e6*counts.T/nreads).T/(ends-starts)
     #for i in range(len(counts.ravel())):
@@ -555,37 +554,35 @@ def rnaseq_workflow(ex, job, assembly, bam_files, pileup_level=["exons","genes",
 
     print "Get counts"
     hconds = ["counts."+c for c in conditions] + ["rpkm."+c for c in conditions]
-    genesName = [gene_mapping.get(g,"NA")[0] for g in genesID]
-    exons_data = [exonsID]+list(counts)+list(rpkm)+[starts,ends,genesID,genesName]
+    genesName, echr = zip(*[(x[0],x[-1]) for x in [gene_mapping.get(g,"NA") for g in genesID]])
+    exons_data = [exonsID]+list(counts)+list(rpkm)+[starts,ends,genesID,genesName,echr]
 
     """ Print counts for exons """
     if "exons" in pileup_level:
-        header = ["ExonID"] + hconds + ["Start","End","GeneID","GeneName"]
+        header = ["ExonID"] + hconds + ["Start","End","GeneID","GeneName","Chromosome"]
         save_results(ex, exons_data, conditions, header=header, feature_type="EXONS")
 
     """ Get counts for genes from exons """
     if "genes" in pileup_level:
-        header = ["GeneID"] + hconds + ["GeneName","Start","End"]
+        header = ["GeneID"] + hconds + ["Start","End","GeneName","Chromosome"]
         (gcounts, grpkm) = genes_expression(exons_data, exon_to_gene, len(conditions))
         genesID = gcounts.keys()
-        #genesName = [gene_mapping.get(g,"NA")[0] for g in genesID]
-        (gname,gstart,gend,gchr) = zip(*[gene_mapping.get(g,("NA",)*4) for g in genesID])
-        genes_data = [genesID]+list(zip(*gcounts.values()))+list(zip(*grpkm.values()))+[gname,gstart,gend]
+        genes_data = [[g,gcounts[g],grpkm[g]]+list(gene_mapping.get(g,("NA",)*4,)) for g in genesID]
+        (genesID,gcounts,grpkm,gname,gstart,gend,gchr) = zip(*genes_data)
+        genes_data = [genesID]+list(zip(*gcounts))+list(zip(*grpkm))+[gstart,gend,gname,gchr]
         save_results(ex, genes_data, conditions, header=header, feature_type="GENES")
 
-    """ Get counts for the transcripts from exons, using pseudo-inverse """
+    """ Get counts for transcripts from exons, using non-negative least-squares """
     if "transcripts" in pileup_level:
-        header = ["TranscriptID"] + hconds + ["Length","GeneID","GeneName"] #+["Start","End"]
+        header = ["TranscriptID"] + hconds + ["Start","End","GeneID","GeneName","Chromosome"]
         (tcounts, trpkm, error) = transcripts_expression(exons_data, exon_lengths,
                    transcript_mapping, trans_in_gene, exons_in_trans,len(conditions))
         transID = tcounts.keys()
-        (tgene,tstart,tend,tlen,tchr) = zip(*[transcript_mapping.get(t,("NA")*5,) for t in transID])
-        genesID = [transcript_mapping[t][0] for t in transID]
-        genesName = [gene_mapping.get(g,"NA")[0] for g in genesID]
-        transLen = [transcript_mapping.get(t,"NA")[3] for t in transID]
-        (genesID, transID, genesName) = zip(*sorted(zip(genesID,transID,genesName))) # sort w.r.t. gene IDs
-        trans_data = [transID]+list(zip(*[tcounts[t] for t in transID])) \
-                              +list(zip(*[trpkm[t] for t in transID]))+[transLen,genesID,genesName]
+        trans_data = [[t,tcounts[t],trpkm[t]]+list(transcript_mapping.get(t,("NA",)*5,)) for t in transID]
+        trans_data = sorted(trans_data, key=lambda x: x[-5]) # sort w.r.t. gene IDs
+        (transID,tcounts,trpkm,genesID,tstart,tend,tlen,tchr) = zip(*trans_data)
+        genesName = [gene_mapping.get(g,("NA",)*4)[0] for g in genesID]
+        trans_data = [transID]+list(zip(*tcounts))+list(zip(*trpkm))+[tstart,tend,genesID,genesName,tchr]
         save_results(ex, trans_data, conditions, header=header, feature_type="TRANSCRIPTS")
 
     # TEST
