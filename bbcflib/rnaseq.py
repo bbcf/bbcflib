@@ -125,9 +125,9 @@ def fetch_mappings(path_or_assembly_id):
 
     * [0] gene_mapping is a dict ``{gene ID: (gene name,start,end,chromosome)}``
     * [1] transcript_mapping is a dictionary ``{transcript ID: (gene ID,start,end,length,chromosome)}``
-    * [3] exon_mapping is a dictionary ``{exon ID: ([trancript IDs],gene ID,start,end,chromosome)}``
-    * [4] trans_in_gene is a dict ``{gene ID: [IDs of the transcripts it contains]}``
-    * [5] exons_in_trans is a dict ``{transcript ID: [IDs of the exons it contains]}``
+    * [2] exon_mapping is a dictionary ``{exon ID: ([trancript IDs],gene ID,start,end,chromosome)}``
+    * [3] trans_in_gene is a dict ``{gene ID: [IDs of the transcripts it contains]}``
+    * [4] exons_in_trans is a dict ``{transcript ID: [IDs of the exons it contains]}``
 
     :param path_or_assembly_id: can be a numeric or nominal ID for GenRep
     (e.g. 11, 76 or 'hg19' for H.Sapiens), or a path to a file containing a
@@ -503,7 +503,7 @@ def rnaseq_workflow(ex, job, assembly, bam_files, pileup_level=["exons","genes",
         else: badexons.append(e)
     [exons.remove(e) for e in badexons]
 
-    """ Build pileups from bam files """
+    """ Build exon pileups from bam files """
     print "Build pileups"
     exon_pileups = {}; nreads = {}; conditions = []
     for gid,files in bam_files.iteritems():
@@ -526,9 +526,9 @@ def rnaseq_workflow(ex, job, assembly, bam_files, pileup_level=["exons","genes",
     mappings = fetch_mappings(assembly_id)
     """ [0] gene_mapping is a dict ``{gene ID: (gene name,start,end,chromosome)}``
         [1] transcript_mapping is a dictionary ``{transcript ID: (gene ID,start,end,length,chromosome)}``
-        [3] exon_mapping is a dictionary ``{exon ID: ([trancript IDs],gene ID,start,end,chromosome)}``
-        [4] trans_in_gene is a dict ``{gene ID: [IDs of the transcripts it contains]}``
-        [5] exons_in_trans is a dict ``{transcript ID: [IDs of the exons it contains]}`` """
+        [2] exon_mapping is a dictionary ``{exon ID: ([trancript IDs],gene ID,start,end,chromosome)}``
+        [3] trans_in_gene is a dict ``{gene ID: [IDs of the transcripts it contains]}``
+        [4] exons_in_trans is a dict ``{transcript ID: [IDs of the exons it contains]}`` """
     (gene_mapping, transcript_mapping, exon_mapping, trans_in_gene, exons_in_trans) = mappings
 
     """ Treat data """
@@ -543,8 +543,7 @@ def rnaseq_workflow(ex, job, assembly, bam_files, pileup_level=["exons","genes",
     #for i in range(len(counts.ravel())):
     #    if counts.flat[i]==0: counts.flat[i] += 1.0 # if zero counts, add 1 for further comparisons
 
-
-    print "Get counts"
+    print "Get scores of genes and transcripts"
     hconds = ["counts."+c for c in conditions] + ["rpkm."+c for c in conditions]
     genesName, echr = zip(*[(x[0],x[-1]) for x in [gene_mapping.get(g,"NA") for g in genesID]])
     exons_data = [exonsID]+list(counts)+list(rpkm)+[starts,ends,genesID,genesName,echr]
