@@ -14,7 +14,7 @@ Note that the resulting counts on transcripts are approximate.
 """
 
 # Built-in modules #
-import os, cPickle, pysam, urllib, math, json, cPickle
+import os, cPickle, pysam, math
 
 # Internal modules #
 from bbcflib.genrep import GenRep
@@ -30,8 +30,7 @@ numpy.set_printoptions(precision=3,suppress=True)
 
 
 def rstring(len=20):
-    """Generate a random string of length *len* (usually for filenames).
-    Equivalent to bein's unique_filename_in(), without requiring the import."""
+    """Generate a random string of length *len* (usually for filenames)."""
     import string, random
     return "".join([random.choice(string.letters+string.digits) for x in range(len)])
 
@@ -119,7 +118,7 @@ def lsqnonneg(C, d, x0=None, tol=None, itmax_factor=3):
     return (x, sum(resid*resid), resid)
 
 @timer
-def fetch_mappings(path_or_assembly_id):
+def fetch_mappings(assembly_id, path_to_map=None):
     """Given an assembly ID, returns a tuple
     ``(gene_ids, gene_names, transcript_mapping, exon_mapping, trans_in_gene, exons_in_trans)``
 
@@ -135,7 +134,7 @@ def fetch_mappings(path_or_assembly_id):
     """
     grep_root = '/db/genrep'
     grep = GenRep(url='http://bbcftools.vital-it.ch/genrep/',root=grep_root)
-    assembly = grep.assembly(path_or_assembly_id)
+    assembly = grep.assembly(assembly_id)
     mdfive = assembly.md5
 
     # Connect to GTF database
@@ -231,23 +230,26 @@ def fetch_mappings(path_or_assembly_id):
             trans_in_gene.setdefault(g,[]).append(t)
         return trans_in_gene
 
-    gene_mapping = get_gene_mapping(db,chromosomes)
-    transcript_mapping = get_transcript_mapping(db,chromosomes)
-    exon_mapping = get_exon_mapping(db,chromosomes)
-    exons_in_trans = get_exons_in_trans(db,chromosomes)
-    trans_in_gene = get_trans_in_gene(db,chromosomes)
-    mapping = (gene_mapping, transcript_mapping, exon_mapping, trans_in_gene, exons_in_trans)
-
-    #with open("/scratch/cluster/monthly/jdelafon/temp/mappings","wb") as f:
-    #    cPickle.dump(mapping,f)
-    #with open("/scratch/cluster/monthly/jdelafon/temp/mappings","rb") as f:
-    #    mapping = cPickle.load(f)
+    path_to_map = "/scratch/cluster/monthly/jdelafon/temp/mappings"
+    if os.path.exists(path_to_map):
+        with open(path_to_map,"rb") as f:
+            mapping = cPickle.load(f)
+    else:
+        gene_mapping = get_gene_mapping(db,chromosomes)
+        transcript_mapping = get_transcript_mapping(db,chromosomes)
+        exon_mapping = get_exon_mapping(db,chromosomes)
+        exons_in_trans = get_exons_in_trans(db,chromosomes)
+        trans_in_gene = get_trans_in_gene(db,chromosomes)
+        mapping = (gene_mapping, transcript_mapping, exon_mapping, trans_in_gene, exons_in_trans)
+        with open(path_to_map,"wb") as f:
+            cPickle.dump(mapping,f)
     return mapping
 
 def exons_labels(bamfile):
-    """Returns a list of the exons labels in format ``(reference name, sequence length)`` in *bamfile*."""
+    """Returns a list of the exons in format ``('exonID|geneID|start|end|strand', length)`` in *bamfile*."""
     try: sam = pysam.Samfile(bamfile, 'rb')
     except ValueError: sam = pysam.Samfile(bamfile,'r')
+    #labels = zip(sam.references,sam.lengths)
     labels = [(t['SN'],t['LN']) for t in sam.header['SQ']]
     sam.close()
     return labels
@@ -262,8 +264,6 @@ def pileup_file(bamfile, exons):
     :type exons: list
     :rtype: list
     """
-    # exons = sam.references #tuple
-    # put it together with exons_labels? It opens the file twice.
     counts = []
     try: sam = pysam.Samfile(bamfile, 'rb')
     except ValueError: sam = pysam.Samfile(bamfile,'r')
@@ -385,12 +385,12 @@ def transcripts_expression(exons_data, exon_lengths, transcript_mapping, trans_i
                             L[i,j] = exon_lengths[e]/transcript_mapping[t][3]
                         else:
                             L[i,j] = 1./len(eg)
-                # Retrieve exon counts
+                # Retrieve exon scores
                 if exons_counts.get(e) is not None:
                     for c in range(ncond):
                         ec[c][i] += exons_counts[e][c]
                         er[c][i] += exons_rpk[e][c]
-            # Compute transcript counts
+            # Compute transcript scores
             for c in range(ncond):  # - rpkm
                 Er = er[c]
                 tol = 10*2.22e-16*numpy.linalg.norm(M,1)*(max(M.shape)+1)
@@ -412,7 +412,6 @@ def transcripts_expression(exons_data, exon_lengths, transcript_mapping, trans_i
 
             # Store results in a dict *tcounts*/*trpk*
             for k,t in enumerate(tg):
-                #nexons = len(exons_in_trans[t])
                 if trans_rpk.get(t) is not None:
                     for c in range(ncond):
                         trans_counts[t][c] = round(tc[c][k], 2)
@@ -553,7 +552,7 @@ def rnaseq_workflow(ex, job, assembly, bam_files, pileup_level=["exons","genes",
         header = ["ExonID"] + hconds + ["Start","End","GeneID","GeneName","Chromosome"]
         save_results(ex, exons_data, conditions, header=header, feature_type="EXONS")
 
-    """ Get counts for genes from exons """
+    """ Get scores of genes from exons """
     if "genes" in pileup_level:
         header = ["GeneID"] + hconds + ["Start","End","GeneName","Chromosome"]
         (gcounts, grpkm) = genes_expression(exons_data, exon_to_gene, len(conditions))
@@ -563,7 +562,7 @@ def rnaseq_workflow(ex, job, assembly, bam_files, pileup_level=["exons","genes",
         genes_data = [genesID]+list(zip(*gcounts))+list(zip(*grpkm))+[gstart,gend,gname,gchr]
         save_results(ex, genes_data, conditions, header=header, feature_type="GENES")
 
-    """ Get counts for transcripts from exons, using non-negative least-squares """
+    """ Get scores of transcripts from exons, using non-negative least-squares """
     if "transcripts" in pileup_level:
         header = ["TranscriptID"] + hconds + ["Start","End","GeneID","GeneName","Chromosome"]
         (tcounts, trpkm, error) = transcripts_expression(exons_data, exon_lengths,
