@@ -149,7 +149,6 @@ def fetch_mappings(path_or_assembly_id):
     chromosomes = c.execute("""SELECT name FROM chrNames ORDER BY name;""").fetchall()
     chromosomes = [c[0] for c in chromosomes]
 
-    @timer
     def get_gene_mapping(db,chromosomes):
         """Return a dictionary {geneID: (geneName, start, end, chromosome)}"""
         c = db.cursor()
@@ -163,7 +162,6 @@ def fetch_mappings(path_or_assembly_id):
             gene_mapping[g] = (name,start,end,chr)
         return gene_mapping
 
-    @timer
     def get_transcript_mapping(db,chromosomes):
         """Return a dictionary ``{transcript ID: (gene ID,start,end,length)}``"""
         c = db.cursor()
@@ -186,7 +184,6 @@ def fetch_mappings(path_or_assembly_id):
             transcript_mapping[t] = (g,start,end,lengths[t],chr)
         return transcript_mapping
 
-    @timer
     def get_exon_mapping(db,chromosomes):
         """Return a dictionary ``{exon ID: ([transcript IDs],gene ID,start,end)}``"""
         c = db.cursor()
@@ -208,7 +205,6 @@ def fetch_mappings(path_or_assembly_id):
             exon_mapping[e] = (T[e],g,start,end,chr)
         return exon_mapping
 
-    @timer
     def get_exons_in_trans(db,chromosomes):
         """Return a dictionary ``{transcript ID: list of exon IDs it contains}``"""
         c = db.cursor()
@@ -222,7 +218,6 @@ def fetch_mappings(path_or_assembly_id):
             exons_in_trans.setdefault(t,[]).append(e)
         return exons_in_trans
 
-    @timer
     def get_trans_in_gene(db,chromosomes):
         """Return a dictionary ``{gene ID: list of transcript IDs it contains}``"""
         c = db.cursor()
@@ -343,7 +338,6 @@ def genes_expression(exons_data, exon_to_gene, ncond):
         grpk[g] += numpy.round(c[ncond:],2)
     return gcounts, grpk
 
-#@timer
 def transcripts_expression(exons_data, exon_lengths, transcript_mapping, trans_in_gene, exons_in_trans, ncond):
     """Get transcript rpkms from exon rpkms.
 
@@ -436,7 +430,6 @@ def transcripts_expression(exons_data, exon_lengths, transcript_mapping, trans_i
             unknown += 1
 
     #filE.close()
-    print "\t Evaluation of error for transcripts:"
     print "\t Unknown transcripts for %d of %d genes (%.2f %%)" \
            % (unknown, len(genes), 100*float(unknown)/float(len(genes)) )
     try: print "\t Total transcript counts: %.2f, Total exon counts: %.2f, Ratio: %.2f" \
@@ -550,7 +543,6 @@ def rnaseq_workflow(ex, job, assembly, bam_files, pileup_level=["exons","genes",
     #for i in range(len(counts.ravel())):
     #    if counts.flat[i]==0: counts.flat[i] += 1.0 # if zero counts, add 1 for further comparisons
 
-    # "ENSMUSG00000057666" "ENSG00000111640": TEST Gapdh
 
     print "Get counts"
     hconds = ["counts."+c for c in conditions] + ["rpkm."+c for c in conditions]
@@ -586,8 +578,9 @@ def rnaseq_workflow(ex, job, assembly, bam_files, pileup_level=["exons","genes",
         save_results(ex, trans_data, conditions, header=header, feature_type="TRANSCRIPTS")
 
     # TEST
-    #for g in list(set(genesID)):
-    #   print sum(gcounts[g]), sum([sum(tcounts[t]) for t in trans_in_gene[g]])
+    # "ENSMUSG00000057666" "ENSG00000111640": TEST Gapdh
+    # for g in list(set(genesID)):
+    #     print sum(gcounts[g]), sum([sum(tcounts[t]) for t in trans_in_gene[g]])
 
 #-----------------------------------#
 # This code was written by the BBCF #

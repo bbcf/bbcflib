@@ -24,7 +24,7 @@ class Test_Expressions1(unittest.TestCase):
         self.ncond = 2
         self.counts = numpy.array([[27,12],[3,3]]) # [[cond1],[cond2]]
         self.rpkms = numpy.array([[27/3.,12/6.],[3/3.,3/6.]])
-        self.exons_data = [[e1,e2]]+list(self.counts)+list(self.rpkms)+[[0.,3.],[3.,9.],["g1","g1"],["gg1","gg1"]]
+        self.exons_data = [[e1,e2]]+list(self.counts)+list(self.rpkms)+[[0.,3.],[3.,9.],["g1","g1"],["gg1","gg1"],["c","c"]]
         self.transcript_mapping = {t1:("g1",0,3,3.,"c"), t2:("g1",0,9,9.,"c")}
         self.exon_lengths = {e1:3., e2:6.}
         self.exon_to_gene = {e1:g1, e2:g1}
@@ -77,7 +77,7 @@ class Test_Expressions2(unittest.TestCase):
         self.counts = numpy.array([[10,15,10]]) # [[cond1]]
         self.rpkms = numpy.array([[10/5.,15/5.,10/5.]])
         self.exons_data = [[e1,e2,e3]]+list(self.counts)+list(self.rpkms)+\
-               [[0.,5.,10],[5.,10.,15.],["g1","g1","g1"],["gg1","gg1","gg1"]]
+               [[0.,5.,10],[5.,10.,15.],["g1"]*3,["gg1"]*3,["c"]*3]
         self.transcript_mapping = {t1:("g1",0,10,10.,"c"), t2:("g1",5,15,10.,"c"), t3:("g1",0,15,15.,"c")}
         self.exon_lengths = {e1:5., e2:5., e3:5.}
         self.exon_to_gene = {e1:g1, e2:g1, e3:g1}
@@ -110,7 +110,7 @@ class Test_Expressions3(unittest.TestCase):
         self.counts = numpy.array([[10,15,10]]) # [[cond1]]
         self.rpkms = numpy.array([[10/5.,15/5.,10/5.]])
         self.exons_data = [[e1,e2,e3]]+list(self.counts)+list(self.rpkms)+\
-               [[0.,5.,10],[5.,10.,15.],["g1"]*3,["gg1"]*3]
+               [[0.,5.,10],[5.,10.,15.],["g1"]*3,["gg1"]*3,["c"]*3]
         self.transcript_mapping = {t1:("g1",0,10,10.,"c"), t2:("g1",5,15,10.,"c"), \
                                    t3:("g1",0,15,15.,"c"), t4:("g1",0,15,10.,"c")}
         self.exon_lengths = {e1:5., e2:5., e3:5.}
@@ -143,7 +143,7 @@ class Test_Expressions4(unittest.TestCase):
         self.counts = numpy.array([[10.,10.,10.,10.]]) # [[cond1]]
         self.rpkms = numpy.array([[10/5.,10/5.,10/5.,10/5.]])
         self.exons_data = [[e1,e2,e3,e4]]+list(self.counts)+list(self.rpkms)+\
-               [[0,5,10,15],[5,10,15,20],["g1"]*4,["gg1"]*4]
+               [[0,5,10,15],[5,10,15,20],["g1"]*4,["gg1"]*4,["c"]*4]
         self.transcript_mapping = {t1:("g1",0,10,10.,"c"), t2:("g1",5,20,15.,"c"), t3:("g1",5,20,10.,"c")}
         self.exon_lengths = {e1:5., e2:5., e3:5., e4:5.}
         self.exon_to_gene = {e1:g1, e2:g1, e3:g1, e4:g1}
@@ -175,7 +175,7 @@ class Test_Expressions5(unittest.TestCase):
         self.counts = numpy.array([[10.,10.,10.,10.,10.]]) # [[cond1]]
         self.rpkms = numpy.array([[10/5.,10/5.,10/5.,10/5.,10/5.]])
         self.exons_data = [[e1,e2,e3,e4,e5]]+list(self.counts)+list(self.rpkms)+\
-               [[0,5,10,15,20],[5,10,15,20,25],["g1"]*5,["gg1"]*5]
+               [[0,5,10,15,20],[5,10,15,20,25],["g1"]*5,["gg1"]*5,["c"]*5]
         self.transcript_mapping = {t1:("g1",0,15,10.,"c"), t2:("g1",10,25,15.,"c"), t3:("g1",5,25,10.,"c")}
         self.exon_lengths = {e1:5., e2:5., e3:5., e4:5., e5:5.}
         self.exon_to_gene = {e1:g1, e2:g1, e3:g1, e4:g1, e5:g1}
