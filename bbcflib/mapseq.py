@@ -1255,6 +1255,41 @@ def get_bam_wig_files( ex, job, minilims=None, hts_url=None, suffix=['fwd','rev'
     return (mapped_files,job)
 
 
+def get_unmapped(ex, job, minilims, via='lsf'):
+    """
+    Retrieves the unmapped reads fastq file path in the given *minilims*,
+    and returns a dictionary {group ID: fastq file}
+
+    :param ex: bein execution
+    :param job: Job object, as returned by bbcflib.frontend
+    :param minilims: path to the MiniLIMS you search the unmapped reads file from
+    :param via: 'local' or 'lsf'
+    """
+    unmapped = {}
+    if os.path.exists(minilims):
+        MMS = MiniLIMS(minilims)
+        files = MMS.search_files(with_description="unmapped")
+        print files
+        for gid,group in job.groups.iteritems():
+            unmapped[gid] = {}
+            fastqfile = unique_filename_in()
+            for f in files:
+                f_info = MMS.fetch_file(f)
+                attr = f_info['description'].split("[")[1].strip("] ").split(",")
+                attr = dict([a.split(":") for a in attr])
+                if attr["groupId"]==gid:
+                    filename = f_info['repository_name']
+                    file_loc = os.path.join(minilims+".files",filename)
+                    if os.path.exists(file_loc):
+                        shutil.copy( file_loc, fastqfile )
+                    else:
+                        print "Couldn't find this file: %s." % file_loc
+                        fastqfile = None
+            unmapped[gid] = fastqfile
+    else:
+        raise ValueError("Could not find the MiniLIMS at: %s" % minilims)
+    return unmapped
+
 
 #-----------------------------------#
 # This code was written by the BBCF #

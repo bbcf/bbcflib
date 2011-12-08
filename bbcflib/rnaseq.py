@@ -586,3 +586,4 @@ def rnaseq_workflow(ex, job, assembly, bam_files, pileup_level=["exons","genes",
 # webmaster.bbcf@epfl.ch            #
 #-----------------------------------#
 
+
