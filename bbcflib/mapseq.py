@@ -227,8 +227,10 @@ def add_nh_flag(samfile, out=None):
     outfile = pysam.Samfile(out, "wb", template=infile)
     for readset in read_sets(infile,keep_unmapped=True):
         nh = len(readset)
+        if readset[0].is_paired:
+            nh /= 2
         for read in readset:
-            if (read.is_unmapped):
+            if read.is_unmapped:
                 nh = 0
             read.tags = read.tags+[("NH",nh)]
             outfile.write(read)
@@ -302,6 +304,7 @@ def bowtie(index, reads, args="-Sra"):
         reads = ",".join(reads)
     if isinstance(reads, tuple):
         reads = "-1 "+reads[0]+" -2 "+reads[1]
+        options += ["-X","800"]
     return {"arguments": ["bowtie"] + options + [index, reads, sam_filename],
             "return_value": sam_filename}
 
@@ -340,8 +343,8 @@ def parallel_bowtie(ex, index, reads, unmapped=None, n_lines=1000000, bowtie_arg
     threads.  ``'lsf'`` submits them via LSF.
     """
     if isinstance(reads,tuple):
-        sf1 = split_file(ex, reads[0], n_lines = n_lines)
-        sf2 = split_file(ex, reads[1], n_lines = n_lines)
+        sf1 = sorted(split_file(ex, reads[0], n_lines = n_lines))
+        sf2 = sorted(split_file(ex, reads[1], n_lines = n_lines))
         subfiles = [(f,sf2[n]) for n,f in enumerate(sf1)]
     else:
         subfiles = split_file(ex, reads, n_lines = n_lines)
