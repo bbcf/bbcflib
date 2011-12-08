@@ -1255,7 +1255,7 @@ def get_bam_wig_files( ex, job, minilims=None, hts_url=None, suffix=['fwd','rev'
     return (mapped_files,job)
 
 
-def get_unmapped(ex, job, minilims, via='lsf'):
+def get_unmapped(ex, job, minilims=None, via='lsf'):
     """
     Retrieves the unmapped reads fastq file path in the given *minilims*,
     and returns a dictionary {group ID: fastq file}
@@ -1268,23 +1268,17 @@ def get_unmapped(ex, job, minilims, via='lsf'):
     unmapped = {}
     if os.path.exists(minilims):
         MMS = MiniLIMS(minilims)
-        files = MMS.search_files(with_description="unmapped")
-        print files
+        files = MMS.search_files(with_text="unmapped")
         for gid,group in job.groups.iteritems():
             fastqfile = unique_filename_in()
             for f in files:
                 f_info = MMS.fetch_file(f)
                 attr = f_info['description'].split("[")[1].strip("] ").split(",")
                 attr = dict([a.split(":") for a in attr])
-                if attr["groupId"]==gid:
-                    filename = f_info['repository_name']
-                    file_loc = os.path.join(minilims+".files",filename)
-                    if os.path.exists(file_loc):
-                        shutil.copy( file_loc, fastqfile )
-                    else:
-                        print "Couldn't find this file: %s." % file_loc
-                        fastqfile = None
-            unmapped[gid] = fastqfile
+                if int(attr["groupId"])==gid:
+                    fastqfile = f_info['repository_name']
+                    shutil.copy(os.path.join(minilims+".files",fastqfile),ex.working_directory)
+                    unmapped[gid] = fastqfile
     else:
         raise ValueError("Could not find the MiniLIMS at: %s" % minilims)
     return unmapped

@@ -295,7 +295,7 @@ def save_results(ex, cols, conditions, header=[], feature_type='features'):
     conditions_s = '%s, '*(len(conditions)-1)+'%s.'
     conditions = tuple(conditions)
     ncond = len(conditions)
-    # Tab-del output with all information
+    # Tab-delimited output with all information
     output_tab = rstring()
     writecols(output_tab,cols,header=header, sep="\t")
     description = "Expression level of "+feature_type+" in sample(s) "+conditions_s % conditions
@@ -460,7 +460,8 @@ def estimate_size_factors(counts):
 
 
 @timer
-def rnaseq_workflow(ex, job, assembly, bam_files, pileup_level=["exons","genes","transcripts"], via="lsf"):
+def rnaseq_workflow(ex, job, assembly, bam_files, unmapped=None,
+                    pileup_level=["exons","genes","transcripts"], via="lsf"):
     """
     Main function of the workflow.
 
@@ -469,7 +470,8 @@ def rnaseq_workflow(ex, job, assembly, bam_files, pileup_level=["exons","genes",
     :param ex: the bein's execution Id.
     :param job: a Job object (or a dictionary of the same form) as returned from HTSStation's frontend.
     :param assembly: the assembly Id of the species, string or int (e.g. 'hg19' or 76).
-    :param bam_files: a complicated dictionary as returned by mapseq.get_bam_wig_files.
+    :param bam_files: a complicated dictionary such as returned by mapseq.get_bam_wig_files.
+    :param unmapped: the name or path to a fastq file containing the unmapped reads.
     :param pileup_level: a string or array of strings indicating the features you want to compare.
                          Targets can be 'genes', 'transcripts', or 'exons'.
     :param via: 'local' or 'lsf'.
@@ -481,10 +483,6 @@ def rnaseq_workflow(ex, job, assembly, bam_files, pileup_level=["exons","genes",
         group_names[gid] = str(group['name']) # group_names = {gid: name}
     if isinstance(pileup_level,str): pileup_level=[pileup_level]
 
-    # All the bam_files were created against the same index, so
-    # they all have the same header in the same order.  I can take
-    # the list of exons from just the first one and use it for all of them.
-    # Format: ('exonID|geneID|start|end|strand', length)
     exons = exons_labels(bam_files[groups.keys()[0]][groups.values()[0]['runs'].keys()[0]]['bam'])
 
     """ Extract information from bam headers """
