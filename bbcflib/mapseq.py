@@ -1271,7 +1271,6 @@ def get_unmapped(ex, job, minilims, via='lsf'):
         files = MMS.search_files(with_description="unmapped")
         print files
         for gid,group in job.groups.iteritems():
-            unmapped[gid] = {}
             fastqfile = unique_filename_in()
             for f in files:
                 f_info = MMS.fetch_file(f)
