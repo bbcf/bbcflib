@@ -1255,7 +1255,7 @@ def get_bam_wig_files( ex, job, minilims=None, hts_url=None, suffix=['fwd','rev'
     return (mapped_files,job)
 
 
-def get_unmapped(ex, job, minilims=None, via='lsf'):
+def get_unmapped(ex, job, minilims, via='lsf'):
     """
     Retrieves the unmapped reads fastq file path in the given *minilims*,
     and returns a dictionary {group ID: fastq file}
@@ -1265,23 +1265,44 @@ def get_unmapped(ex, job, minilims=None, via='lsf'):
     :param minilims: path to the MiniLIMS you search the unmapped reads file from
     :param via: 'local' or 'lsf'
     """
-    unmapped = {}
     if os.path.exists(minilims):
+        unmapped = {}
+        seed_lengths = {}
         MMS = MiniLIMS(minilims)
-        files = MMS.search_files(with_text="unmapped")
+        files = MMS.search_files(with_description="unmapped")
         for gid,group in job.groups.iteritems():
-            fastqfile = unique_filename_in()
-            for f in files:
-                f_info = MMS.fetch_file(f)
-                attr = f_info['description'].split("[")[1].strip("] ").split(",")
-                attr = dict([a.split(":") for a in attr])
-                if int(attr["groupId"])==gid:
-                    fastqfile = f_info['repository_name']
-                    shutil.copy(os.path.join(minilims+".files",fastqfile),ex.working_directory)
-                    unmapped[gid] = fastqfile
+            for rid,run in group['runs'].iteritems():
+                unmapped[rid] = {}
+                fastqfile = unique_filename_in()
+                for f in files:
+                    f_info = MMS.fetch_file(f)
+                    name = f_info['description'].split("[")[0]
+                    attr = f_info['description'].split("[")[1].strip("] ").split(",")
+                    attr = dict([a.split(":") for a in attr])
+                    if attr["groupId"]==gid:
+                        filename = f_info['repository_name']
+                        file_loc = os.path.join(minilims+".files",filename)
+                        shutil.copy( file_loc, fastqfile )
+                #fastqfile = ungz(fastqfile)
+                unmapped[rid] = fastqfile
+                #seed_lengths[rid] = job.groups[gid].get('seed_lengths').get(rid)
     else:
         raise ValueError("Could not find the MiniLIMS at: %s" % minilims)
     return unmapped
+
+def ungz(file): #@program common.ungzipfile?
+    unzipped_file = unique_filename_in()
+    with open(unzipped_file,'wb') as out:
+        temp = gzip.open(file, 'rb')
+        while True:
+            chunk = temp.read(4096)
+            if chunk == '':
+                break
+            else:
+                out.write(chunk)
+        temp.close()
+    os.remove(file)
+    return unzipped_file
 
 
 #-----------------------------------#
