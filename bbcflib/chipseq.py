@@ -41,11 +41,11 @@ Below is the script used by the frontend::
 import shutil, pickle, urllib, re, os
 
 # Internal modules #
-from . import frontend, mapseq
-from .common import merge_sql, merge_many_bed, join_pdf, cat, set_file_descr
+from bbcflib import frontend, mapseq
+from bbcflib.common import merge_sql, merge_many_bed, join_pdf, cat, set_file_descr, unique_filename_in
 
 # Other modules #
-from bein import *
+from bein import program
 from bein.util import touch
 
 ################################################################################
