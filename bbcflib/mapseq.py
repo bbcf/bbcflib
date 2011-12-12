@@ -784,7 +784,7 @@ def map_groups( ex, job_or_dict, fastq_root, assembly_or_dict, map_args=None ):
             name = group_name
             if len(group['runs'])>1:
                 name += "_"
-                name += group['run_names'].get(rid) or str(rid)
+                name += group['run_names'].get(rid,str(rid))
             m = map_reads( ex, fq_file, chromosomes, index_path, name=(gid,name+"_"),
                            remove_pcr_duplicates=pcr_dupl, **map_args )
             file_names[gid][rid] = str(name)
@@ -1073,86 +1073,8 @@ def densities_groups( ex, job_or_dict, file_dict, chromosomes, via='lsf' ):
                       'genome_size': mapped.values()[0]['stats']['genome_size']})
     return processed
 
-############################################################
-def import_mapseq_results( key_or_id, minilims, ex_root, url_or_dict ):
-    """Imports all files created by a previous 'mapseq' workflow into the current execution environement.
 
-    * ``'key_or_id'`` is the previous execution's description in the MiniLIMS or its id,
-
-    * ``'minilims'`` is the MiniLIMS where that execution was saved,
-
-    * ``'ex_root'`` is the current execution's directory (where files will be copied to),
-
-    * ``'url_or_dict'`` is either the 'Frontend' url to fetch the mapseq job's description, or a job description dictionary (see ``map_groups``)
-
-    Returns a tuple with a dictionary similar to the output of 'map_groups' and a 'job' object describing the mapseq runs.
-    """
-    processed = {}
-    merge = -1
-    if isinstance(url_or_dict, str):
-        htss = frontend.Frontend( url=url_or_dict )
-        job = htss.job( key_or_id )
-        job_groups = job.groups
-        if 'merge_strands' in job.options and int(job.options['merge_strands'])>=0:
-            merge = int(job.options['merge_strands'])
-    else:
-        job = url_or_dict
-        job_groups = job['groups']
-        if 'merge_strands' in job['options'] and int(job['options']['merge_strands'])>=0:
-            merge = int(job['options']['merge_strands'])
-    if merge<0:
-        suffix = ['fwd','rev']
-    else:
-        suffix = ['merged']
-    if isinstance(key_or_id, str):
-        try:
-            exid = max(minilims.search_executions(with_text = key_or_id))
-        except ValueError:
-            raise ValueError("No execution with key "+key_or_id)
-    else:
-        exid = key_or_id
-    allfiles = dict((minilims.fetch_file(x)['description'],x)
-                    for x in minilims.search_files(source=('execution',exid)))
-    if 'py:gdv_json' in allfiles:
-        with open(minilims.path_to_file(allfiles['py:gdv_json'])) as q:
-            gdv_json = pickle.load(q)
-        if isinstance(url_or_dict, str):
-            job.options['gdv_project'] = gdv_json
-        else:
-            job['options']['gdv_project'] = gdv_json
-    with open(minilims.path_to_file(allfiles['py:file_names'])) as q:
-        file_names = pickle.load(q)
-    for gid, group in job_groups.iteritems():
-        if not 'runs' in group:
-            group = {'runs': group}
-        processed[gid] = {}
-        for rid,run in group['runs'].iteritems():
-            bamfile = os.path.join(ex_root, unique_filename_in(ex_root))
-            name = file_names[gid][rid]
-            bam_id = allfiles['bam:'+name+'_filtered.bam']
-            bam_bai_id = allfiles['bam:'+name+'_filtered.bam (BAM index)']
-            minilims.export_file(bam_id,bamfile)
-            minilims.export_file(bam_bai_id,bamfile+".bai")
-            stats_id = allfiles.get("py:"+name+"_filter_bamstat") or allfiles.get("py:"+name+"_full_bamstat")
-            with open(minilims.path_to_file(stats_id)) as q:
-                stats = pickle.load(q)
-            pickle_thresh = allfiles["py:"+name+"_Poisson_threshold"]
-            with open(minilims.path_to_file(pickle_thresh)) as q:
-                p_thresh = pickle.load(q)
-            wigfile = os.path.join(ex_root, unique_filename_in(ex_root))
-            wig_ids = dict(((allfiles['sql:'+name+'_'+s+'.sql'],s),
-                            wigfile+'_'+s+'.sql') for s in suffix)
-            [minilims.export_file(x[0],s) for x,s in wig_ids.iteritems()]
-            processed[gid][rid] = {'bam': bamfile,
-                                   'stats': stats,
-                                   'poisson_threshold': p_thresh,
-                                   'libname': name,
-                                   'wig': dict((x[1],s)
-                                               for x,s in wig_ids.iteritems())}
-    return (processed,job)
-
-def get_bam_wig_files( ex, job, minilims=None, hts_url=None, suffix=['fwd','rev'],
-                       script_path = './', via='lsf' ):
+def get_bam_wig_files( ex, job, minilims=None, hts_url=None, suffix=['fwd','rev'], script_path = './', fetch_unmapped=False, via='lsf' ):
     """
     Will replace file references by actual file paths in the 'job' object.
     These references are either 'mapseq' keys or urls.
@@ -1202,6 +1124,29 @@ def get_bam_wig_files( ex, job, minilims=None, hts_url=None, suffix=['fwd','rev'
                 with open(MMS.path_to_file(stats_id)) as q:
                     stats = pickle.load(q)
                 p_thresh = -1
+                if fetch_unmapped:
+                    fastqfile = [unique_filename_in()]
+                    fastq_loc = []
+                    if name+"_unmapped.fastq.gz" in allfiles:
+                        fastq_loc = [MMS.path_to_file(allfiles[name+"_unmapped.fastq.gz"])]
+                        if name+"_unmapped_1.fastq.gz" in allfiles:
+                            fastq_loc = [MMS.path_to_file(allfiles[name+"_unmapped_1.fastq.gz"]),
+                                         MMS.path_to_file(allfiles[name+"_unmapped_2.fastq.gz"])]
+                        fastqfile = [fastqfile[0]+"_R1",fastqfile[0]+"_R2"]
+                    for nf,fqf in enumerate(fastq_loc):
+                        with open(fastqfile[nf],'w') as output_file:
+                            input_file = gzip.open(fqf, 'rb')
+                            while True:
+                                chunk = input_file.read(4096)
+                                if chunk == '':
+                                    break
+                                else:
+                                    output_file.write(chunk)
+                            input_file.close()
+                    if len(fastqfile) == 1:
+                        fastqfile = fastqfile[0]
+                    else:
+                        fastqfile = tuple(fastqfile)
                 if name+"_Poisson_threshold" in allfiles:
                     pickle_thresh = allfiles[name+"_Poisson_threshold"]
                     with open(MMS.path_to_file(pickle_thresh)) as q:
@@ -1234,6 +1179,7 @@ def get_bam_wig_files( ex, job, minilims=None, hts_url=None, suffix=['fwd','rev'
                                       'poisson_threshold': p_thresh,
                                       'libname': name,
                                       'wig': wig}
+            if fetch_unmapped: mapped_files[gid][rid].update({'unmapped_fastq':fastqfile})
     if len(read_exts)>0 and not('read_extension' in job.options):
         c = dict((x,0) for x in read_exts.values())
         for x in read_exts.values():
@@ -1254,55 +1200,6 @@ def get_bam_wig_files( ex, job, minilims=None, hts_url=None, suffix=['fwd','rev'
                 mapped_files[gid][rid]['p_thresh'] = poisson_threshold( 50*stats["actual_coverage"] )
     return (mapped_files,job)
 
-
-def get_unmapped(ex, job, minilims, via='lsf'):
-    """
-    Retrieves the unmapped reads fastq file path in the given *minilims*,
-    and returns a dictionary {group ID: fastq file}
-
-    :param ex: bein execution
-    :param job: Job object, as returned by bbcflib.frontend
-    :param minilims: path to the MiniLIMS you search the unmapped reads file from
-    :param via: 'local' or 'lsf'
-    """
-    if os.path.exists(minilims):
-        unmapped = {}
-        seed_lengths = {}
-        MMS = MiniLIMS(minilims)
-        files = MMS.search_files(with_description="unmapped")
-        for gid,group in job.groups.iteritems():
-            for rid,run in group['runs'].iteritems():
-                unmapped[rid] = {}
-                fastqfile = unique_filename_in()
-                for f in files:
-                    f_info = MMS.fetch_file(f)
-                    name = f_info['description'].split("[")[0]
-                    attr = f_info['description'].split("[")[1].strip("] ").split(",")
-                    attr = dict([a.split(":") for a in attr])
-                    if attr["groupId"]==gid:
-                        filename = f_info['repository_name']
-                        file_loc = os.path.join(minilims+".files",filename)
-                        shutil.copy( file_loc, fastqfile )
-                #fastqfile = ungz(fastqfile)
-                unmapped[rid] = fastqfile
-                #seed_lengths[rid] = job.groups[gid].get('seed_lengths').get(rid)
-    else:
-        raise ValueError("Could not find the MiniLIMS at: %s" % minilims)
-    return unmapped
-
-def ungz(file): #@program common.ungzipfile?
-    unzipped_file = unique_filename_in()
-    with open(unzipped_file,'wb') as out:
-        temp = gzip.open(file, 'rb')
-        while True:
-            chunk = temp.read(4096)
-            if chunk == '':
-                break
-            else:
-                out.write(chunk)
-        temp.close()
-    os.remove(file)
-    return unzipped_file
 
 
 #-----------------------------------#
