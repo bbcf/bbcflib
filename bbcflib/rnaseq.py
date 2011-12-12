@@ -117,6 +117,13 @@ def lsqnonneg(C, d, x0=None, tol=None, itmax_factor=3):
         w = numpy.dot(C.T, resid)
     return (x, sum(resid*resid), resid)
 
+def get_md5(assembly_id):
+    grep_root = '/db/genrep'
+    grep = GenRep(url='http://bbcftools.vital-it.ch/genrep/',root=grep_root)
+    assembly = grep.assembly(assembly_id)
+    mdfive = assembly.md5
+    return mdfive
+
 @timer
 def fetch_mappings(assembly_id, path_to_map=None):
     """Given an assembly ID, returns a tuple
@@ -132,10 +139,7 @@ def fetch_mappings(assembly_id, path_to_map=None):
     (e.g. 11, 76 or 'hg19' for H.Sapiens), or a path to a file containing a
     pickle object which is read to get the mapping.
     """
-    grep_root = '/db/genrep'
-    grep = GenRep(url='http://bbcftools.vital-it.ch/genrep/',root=grep_root)
-    assembly = grep.assembly(assembly_id)
-    mdfive = assembly.md5
+    mdfive = get_md5(assembly_id)
 
     # Connect to GTF database
     dbpath = "/db/genrep/nr_assemblies/annot_tracks/"+mdfive+".sql"
@@ -302,11 +306,12 @@ def save_results(ex, cols, conditions, header=[], feature_type='features'):
     description = set_file_descr(feature_type.lower()+"_expression.tab", step="pileup", type="txt", comment=description)
     ex.add(output_tab, description=description)
     # SQL track output
-    if feature_type=="EXONS" and 0:
+    if feature_type=="EXONS":
         output_sql = rstring()
         def to_bedgraph(cols,ncond,i):
-            cols = zip(*cols)
-            yield (cols[0],cols[2*ncond+1],cols[2*ncond+2],cols[i])
+            lines = zip(*cols)
+            print lines[0]
+            yield (lines[0],lines[2*ncond+1],lines[2*ncond+2],lines[i])
         for i in range(ncond):
             with track.new(output_sql, format='bedGraph') as t:
                 t.write(feature_type,to_bedgraph(cols,ncond,i),(feature_type[:-1]+"_id","start","end","score"))

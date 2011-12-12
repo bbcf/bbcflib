@@ -7,8 +7,24 @@ Utility functions common to several pipelines.
 """
 
 # Built-in modules #
-import os, sys, time, json, csv
-from bein import *
+import os, sys, time, csv, string, random, pickle, re
+
+
+def unique_filename_in(path=None):
+    """Return a random filename unique in the given path.
+
+    The filename returned is twenty alphanumeric characters which are
+    not already serving as a filename in *path*.  If *path* is
+    omitted, it defaults to the current working directory.
+    """
+    if path == None: path = os.getcwd()
+    def random_string():
+        return "".join([random.choice(string.letters + string.digits) for x in range(20)])
+    while True:
+        filename = random_string()
+        files = [f for f in os.listdir(path) if f.startswith(filename)]
+        if files == []: break
+    return filename
 
 ###############################################################################
 def normalize_url(url):
@@ -88,7 +104,6 @@ def get_files( id_or_key, minilims, by_type=True, select_param=None ):
     then only files containing these parameters will be returned,
     and if it is a dictionary, only files with parameters matching the key/value pairs will be returned.
     """
-    import re
     if isinstance(select_param,str): select_param = [select_param]
     if isinstance(id_or_key, str):
         try:
@@ -264,48 +279,57 @@ def unique(seq, fun=None):
         result.append(item)
     return result
 
-    #-------------------------------------------------------------------------#
-@program
-def gzipfile(files,args=None):
-    """Runs gzip on files."""
-    if not(isinstance(files,list)):
-        files=[files]
-    gzcall = ['gzip']
-    if args:
-        gzcall += args
-    gzcall += files
-    return {"arguments": gzcall, "return_value": None}
 
-    #-------------------------------------------------------------------------#
-@program
-def join_pdf(files):
-    """Uses 'ghostscript' to join several pdf files into one.
-    """
-    out = unique_filename_in()
-    gs_args = ['gs','-dBATCH','-dNOPAUSE','-q','-sDEVICE=pdfwrite',
-               '-sOutputFile=%s'%out]
-    gs_args += files
-    return {"arguments": gs_args, "return_value": out}
+##############################
+#-------- PROGRAMS --------###
+##############################
 
-    #-------------------------------------------------------------------------#
-@program
-def merge_two_bed(file1,file2):
-    """Binds ``intersectBed`` from the 'BedTools' suite.
-    """
-    return {"arguments": ['intersectBed','-a',file1,'-b',file2], "return_value": None}
 
-    #-------------------------------------------------------------------------#
-@program
-def run_gMiner( job ):
-    import pickle
-    job_file = unique_filename_in()
-    with open(job_file,'w') as f:
-        pickle.dump(job,f)
-    def get_output_files(p):
-        with open(job_file,'r') as f:
-            job = pickle.load(f)
-        return job['job_output']
-    return {"arguments": ["run_gminer.py",job_file],"return_value": get_output_files}
+try:
+    from bein import program
+
+    @program
+    def gzipfile(files,args=None):
+        """Runs gzip on files."""
+        if not(isinstance(files,list)):
+            files=[files]
+        gzcall = ['gzip']
+        if args:
+            gzcall += args
+        gzcall += files
+        return {"arguments": gzcall, "return_value": None}
+
+        #-------------------------------------------------------------------------#
+    @program
+    def join_pdf(files):
+        """Uses 'ghostscript' to join several pdf files into one.
+        """
+        out = unique_filename_in()
+        gs_args = ['gs','-dBATCH','-dNOPAUSE','-q','-sDEVICE=pdfwrite',
+                   '-sOutputFile=%s'%out]
+        gs_args += files
+        return {"arguments": gs_args, "return_value": out}
+
+        #-------------------------------------------------------------------------#
+    @program
+    def merge_two_bed(file1,file2):
+        """Binds ``intersectBed`` from the 'BedTools' suite.
+        """
+        return {"arguments": ['intersectBed','-a',file1,'-b',file2], "return_value": None}
+
+        #-------------------------------------------------------------------------#
+    @program
+    def run_gMiner( job ):
+        job_file = unique_filename_in()
+        with open(job_file,'w') as f:
+            pickle.dump(job,f)
+        def get_output_files(p):
+            with open(job_file,'r') as f:
+                job = pickle.load(f)
+            return job['job_output']
+        return {"arguments": ["run_gminer.py",job_file],"return_value": get_output_files}
+
+except ImportError: print "Warning: no module named 'bein'. @program imports skipped."
 
 #-----------------------------------#
 # This code was written by the BBCF #
