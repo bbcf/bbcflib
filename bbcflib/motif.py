@@ -12,10 +12,10 @@ from operator import add
 
 # Internal modules #
 from . import track
-from .common import set_file_descr
+from bbcflib.common import set_file_descr, unique_filename_in
 
 # Other modules #
-from bein import unique_filename_in, program
+from bein import program
 
 ################################################################################
 @program
@@ -69,9 +69,9 @@ def parse_meme_xml( ex, meme_file, chromosomes ):
         for chrom in chrlist.keys():
             t.write(chrom,_xmltree(chrom,tree),fields=['start','end','name','score','strand'])
     return {'sql':outsql,'matrices':allmatrices}
-                
 
-def parallel_meme( ex, genrep, chromosomes, regions, 
+
+def parallel_meme( ex, genrep, chromosomes, regions,
                    name=None, meme_args=None, via='lsf' ):
     """Fetches sequences, then calls ``meme``
     on them and finally saves the results in the repository.
@@ -120,9 +120,9 @@ def motif_scan( fasta, motif, background, threshold=0 ):
 def save_motif_profile( ex, motifs, background, genrep, chromosomes, regions,
                         keep_max_only=False, threshold=0, description='motif_scan.sql', via='lsf' ):
     """Scan a set of motifs on a set of regions and saves the results as an sql file.
-    The 'motifs' argument is a single PWM file or a dictionary with keys motif names and values PWM files 
+    The 'motifs' argument is a single PWM file or a dictionary with keys motif names and values PWM files
     with 'n' rows like:
-    "1 p(A) p(C) p(G) p(T)" 
+    "1 p(A) p(C) p(G) p(T)"
     where the sum of the 'p's is 1 and the first column allows to skip a position with a '0'.
     """
     fasta, size = genrep.fasta_from_regions( chromosomes, regions )
@@ -144,7 +144,7 @@ def save_motif_profile( ex, motifs, background, genrep, chromosomes, regions,
             for line in fin:
                 row = line.split("\t")
                 sname,seq_chr,start,end = re.search(r'(.*)\|(.+):(\d+)-(\d+)',row[0]).groups()
-                if seq_chr != _c: 
+                if seq_chr != _c:
                     continue
                 start = int(row[3])+int(start)-1
                 tag = row[1]
@@ -172,7 +172,7 @@ def save_motif_profile( ex, motifs, background, genrep, chromosomes, regions,
 
 def FDR_threshold( ex, motif, background, genrep, chromosomes, regions, alpha=.1, nb_samples=1, via='lsf' ):
     """
-    Computes a score threshold for 'motif' on 'regions' based on a false discovery rate < alpha and returns the 
+    Computes a score threshold for 'motif' on 'regions' based on a false discovery rate < alpha and returns the
     threshold or a dictionary with keys thresholds and values simulated FDRs when alpha < 0.
     """
     fasta, size = genrep.fasta_from_regions( chromosomes, regions )
@@ -191,9 +191,9 @@ def FDR_threshold( ex, motif, background, genrep, chromosomes, regions, alpha=.1
         for line in fin:
             row = line.split("\t")
             score = int(round(float(row[2])))
-            if score in TP_scores: 
+            if score in TP_scores:
                 TP_scores[score] += 1
-            else: 
+            else:
                 TP_scores[score] = 1
             ntp += 1
     scores = sorted(TP_scores.keys(),reverse=True)
@@ -231,7 +231,7 @@ def sqlite_to_false_discovery_rate( ex, motif, background, genrep, chromosomes, 
                                     alpha=0.05, nb_samples=1,
                                     description='', via='lsf' ):
     """
-    Computes a score threshold for 'motif' on 'regions' based on a false discovery rate < alpha and returns the 
+    Computes a score threshold for 'motif' on 'regions' based on a false discovery rate < alpha and returns the
     thresholded profile.
     """
     threshold = FDR_threshold( motif, background, genrep, chromosomes, regions, alpha=alpha, nb_samples=nb_samples, via=via )
@@ -243,14 +243,14 @@ def parse_meme_html_output(ex, meme_file, fasta, chromosomes):
     """Legacy signature"""
     meme_file = os.path.splitext(meme_file)[0]+".xml"
     return parse_meme_xml( ex, meme_file, chromosomes )
-    
+
 def add_meme_files( ex, genrep, chromosomes, description='',
                     bed=None, sql=None, meme_args=None, via='lsf' ):
     """Legacy signature"""
     regions = sql or bed
-    return parallel_meme( ex, genrep, chromosomes, regions=regions, 
+    return parallel_meme( ex, genrep, chromosomes, regions=regions,
                           name=description, meme_args=meme_args, via=via )
-    
+
 #-----------------------------------#
 # This code was written by the BBCF #
 # http://bbcf.epfl.ch/              #
