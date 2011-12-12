@@ -69,10 +69,9 @@ import urllib2, json, os, re
 from datetime import datetime
 
 # Internal modules #
-from .common import normalize_url
+from bbcflib.common import normalize_url, unique_filename_in
 
 # Other modules #
-from bein import unique_filename_in
 
 # Constants #
 default_url = 'http://bbcftools.vital-it.ch/genrep/'
@@ -256,7 +255,7 @@ class GenRep(object):
                              c['chromosome']['num'])
         return a
 
-    
+
     def assemblies_available(self, assembly=None):
         """
         Returns a list of assemblies available on genrep
@@ -377,7 +376,7 @@ class GenRep(object):
         return result
 
 
-  
+
 
     def is_available(self, assembly):
         """
@@ -447,7 +446,7 @@ class GenRep(object):
         '''
         ass = self.assembly(assembly)
         return '%s/data/nr_assemblies/annot_tracks/%s.sql' % (self.url, ass.md5)
-    
+
 ################################################################################
 class Assembly(object):
     def __init__(self, assembly_id, assembly_name, index_path,
