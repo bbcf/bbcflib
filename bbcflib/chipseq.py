@@ -38,7 +38,7 @@ Below is the script used by the frontend::
 """
 
 # Built-in modules #
-import shutil, pickle, urllib, re, os
+import re, os
 
 # Internal modules #
 from bbcflib import frontend, mapseq
@@ -114,7 +114,7 @@ def add_macs_results( ex, read_length, genome_size, bamfile,
     for n,p in prefixes.iteritems():
         macs_descr0 = {'step':'macs','type':'none','view':'admin'}
         macs_descr1 = {'step':'macs','type':'xls','group':n[0]}
-        macs_descr2 = {'step':'macs','type':'bed','group':n[0]}
+        macs_descr2 = {'step':'macs','type':'bed','group':n[0],'ucsc':'1'}
         filename = "_vs_".join(n)
         touch( ex, p )
         ex.add( p, description=set_file_descr(filename,**macs_descr0), alias=alias )
