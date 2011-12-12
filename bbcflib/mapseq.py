@@ -77,14 +77,14 @@ import os, re, json, shutil, gzip, tarfile, pickle, urllib
 
 # Internal modules #
 from . import frontend, genrep, daflims
-from .common import get_files, cat, set_file_descr, merge_sql, gzipfile
+from bbcflib.common import get_files, cat, set_file_descr, merge_sql, gzipfile, unique_filename_in
 from .track import Track, new
 
 # Other modules #
 import pysam
 from numpy      import  cumsum, exp, array
 from scipy.misc import  factorial
-from bein       import  *
+from bein       import  program, ProgramFailed, MiniLIMS
 from bein.util  import  add_pickle, touch, split_file, count_lines
 
 ###############
