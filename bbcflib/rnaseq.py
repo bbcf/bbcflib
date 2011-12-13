@@ -14,7 +14,7 @@ Note that the resulting counts on transcripts are approximate.
 """
 
 # Built-in modules #
-import os, cPickle, pysam, math
+import os, pysam, math
 
 # Internal modules #
 from bbcflib.genrep import GenRep
@@ -24,6 +24,7 @@ import track
 # Other modules #
 import sqlite3
 import numpy
+import cPickle
 from numpy import zeros, asarray
 
 numpy.set_printoptions(precision=3,suppress=True)
@@ -465,8 +466,7 @@ def estimate_size_factors(counts):
 
 
 @timer
-def rnaseq_workflow(ex, job, assembly, bam_files, unmapped=None,
-                    pileup_level=["exons","genes","transcripts"], via="lsf"):
+def rnaseq_workflow(ex, job, assembly, bam_files, pileup_level=["exons","genes","transcripts"], via="lsf"):
     """
     Main function of the workflow.
 
@@ -487,6 +487,16 @@ def rnaseq_workflow(ex, job, assembly, bam_files, unmapped=None,
     for gid,group in groups.iteritems():
         group_names[gid] = str(group['name']) # group_names = {gid: name}
     if isinstance(pileup_level,str): pileup_level=[pileup_level]
+
+    unmapped = []
+    for gid, group in job.groups.iteritems():
+        for rid, run in group['runs'].iteritems():
+            fastq = bam_files[gid][rid].get('unmapped_fastq') or ''
+            unmapped.append(fastq+str(rid))
+    print "UNMAPPED",unmapped
+    mdfive = get_md5(assembly_id)
+    refseq_path = os.path.join("/db/genrep/nr_assemblies/cdna_bowtie/", mdfive)
+    #unmapped_bam = mapseq.bowtie(refseq_path, unmapped_fastq, args="-Sra")
 
     exons = exons_labels(bam_files[groups.keys()[0]][groups.values()[0]['runs'].keys()[0]]['bam'])
 
@@ -545,7 +555,7 @@ def rnaseq_workflow(ex, job, assembly, bam_files, unmapped=None,
     #for i in range(len(counts.ravel())):
     #    if counts.flat[i]==0: counts.flat[i] += 1.0 # if zero counts, add 1 for further comparisons
 
-    print "Get scores of genes and transcripts"
+    print "Get scores"
     hconds = ["counts."+c for c in conditions] + ["rpkm."+c for c in conditions]
     genesName, echr = zip(*[(x[0],x[-1]) for x in [gene_mapping.get(g,"NA") for g in genesID]])
     exons_data = [exonsID]+list(counts)+list(rpkm)+[starts,ends,genesID,genesName,echr]

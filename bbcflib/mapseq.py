@@ -1103,7 +1103,7 @@ def get_bam_wig_files( ex, job, minilims=None, hts_url=None, suffix=['fwd','rev'
             if file_loc.startswith("http://") or file_loc.startswith("https://") or file_loc.startswith("ftp://"):
                 urllib.urlretrieve( file_loc, bamfile )
                 urllib.urlretrieve( file_loc+".bai", bamfile+".bai" )
-            elif os.path.exists(file_loc):
+            elif os.path.exists(file_loc) and 0:
                 shutil.copy( file_loc, bamfile )
                 shutil.copy( file_loc+".bai", bamfile+".bai" )
             elif os.path.exists(minilims) and os.path.exists(os.path.join(minilims+".files",file_loc)):
@@ -1124,29 +1124,27 @@ def get_bam_wig_files( ex, job, minilims=None, hts_url=None, suffix=['fwd','rev'
                 with open(MMS.path_to_file(stats_id)) as q:
                     stats = pickle.load(q)
                 p_thresh = -1
+
+                # Retrieve fastq files of unmapped reads
                 if fetch_unmapped:
-                    fastqfile = [unique_filename_in()]
-                    fastq_loc = []
                     if name+"_unmapped.fastq.gz" in allfiles:
-                        fastq_loc = [MMS.path_to_file(allfiles[name+"_unmapped.fastq.gz"])]
+                        fastqfiles = [unique_filename_in()]
                         if name+"_unmapped_1.fastq.gz" in allfiles:
                             fastq_loc = [MMS.path_to_file(allfiles[name+"_unmapped_1.fastq.gz"]),
                                          MMS.path_to_file(allfiles[name+"_unmapped_2.fastq.gz"])]
-                        fastqfile = [fastqfile[0]+"_R1",fastqfile[0]+"_R2"]
-                    for nf,fqf in enumerate(fastq_loc):
-                        with open(fastqfile[nf],'w') as output_file:
-                            input_file = gzip.open(fqf, 'rb')
+                            fastqfiles = [fastqfiles[0]+"_R1",fastqfiles[0]+"_R2"]
+                        else:
+                            fastq_loc = [MMS.path_to_file(allfiles[name+"_unmapped.fastq.gz"])]
+                    # Compress
+                    for i,fqf in enumerate(fastq_loc):
+                        with open(fastqfiles[i],'w') as f:
+                            temp = gzip.open(fqf, 'rb')
                             while True:
-                                chunk = input_file.read(4096)
-                                if chunk == '':
-                                    break
-                                else:
-                                    output_file.write(chunk)
-                            input_file.close()
-                    if len(fastqfile) == 1:
-                        fastqfile = fastqfile[0]
-                    else:
-                        fastqfile = tuple(fastqfile)
+                                chunk = temp.read(4096)
+                                if chunk == '': break
+                                else: f.write(chunk)
+                            temp.close()
+
                 if name+"_Poisson_threshold" in allfiles:
                     pickle_thresh = allfiles[name+"_Poisson_threshold"]
                     with open(MMS.path_to_file(pickle_thresh)) as q:
@@ -1179,7 +1177,7 @@ def get_bam_wig_files( ex, job, minilims=None, hts_url=None, suffix=['fwd','rev'
                                       'poisson_threshold': p_thresh,
                                       'libname': name,
                                       'wig': wig}
-            if fetch_unmapped: mapped_files[gid][rid].update({'unmapped_fastq':fastqfile})
+            if fetch_unmapped: mapped_files[gid][rid].update({'unmapped_fastq':fastqfiles})
     if len(read_exts)>0 and not('read_extension' in job.options):
         c = dict((x,0) for x in read_exts.values())
         for x in read_exts.values():
