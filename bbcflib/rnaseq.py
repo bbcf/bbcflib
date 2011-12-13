@@ -510,7 +510,7 @@ def rnaseq_workflow(ex, job, assembly, bam_files, pileup_level=["exons","genes",
     """ Get fastq of unmapped reads """
     print "Get unmapped reads"
     if unmapped:
-        junction_pileups={}; conditions=[]; unmapped_sam={}; unmapped_bam={}
+        junction_pileups={}; conditions=[]; unmapped_bam={}
         mdfive = get_md5(assembly_id)
         refseq_path = os.path.join("/db/genrep/nr_assemblies/cdna_bowtie/", mdfive)
         assert os.path.exists(refseq_path+".1.ebwt"), "Refseq index not found: %s" % refseq_path+".1.ebwt"
@@ -522,14 +522,12 @@ def rnaseq_workflow(ex, job, assembly, bam_files, pileup_level=["exons","genes",
                 conditions.append(cond)
                 unmapped = bam_files[gid][rid].get('unmapped_fastq') or {}
                 if isinstance(unmapped, str):
-                    unmapped_sam[cond] = [bowtie(ex, refseq_path, unmapped, args="-Sraq")]
+                    unmapped_sam = [bowtie(ex, refseq_path, unmapped, args="-Sraq")]
+                    unmapped_bam[cond] = sort_bam(ex,sam_to_bam(ex,unmapped_sam[0]))
+                    index_bam(ex,unmapped_bam[cond])
                 #elif isinstance(unmapped, tuple):
                 #    unmapped_sam[cond] = [ex, bowtie(ex, refseq_path, unmapped[0], args="-Sraq"),
                 #                          ex, bowtie(ex, refseq_path, unmapped[1], args="-Sraq")]
-        for c,b in unmapped_sam.iteritems():
-            unmapped_bam[c] = sam_to_bam(ex,b[0])
-            unmapped_bam[c] = sort_bam(ex,unmapped_bam[c])
-            index_bam(ex,unmapped_bam[c])
         junctions = fetch_labels(unmapped_bam[conditions[0]]) #list of (transcript ID, length)
         for cond in conditions:
             junction_pileup = build_pileup(unmapped_bam[cond], junctions)
