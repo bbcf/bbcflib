@@ -1126,19 +1126,18 @@ def get_bam_wig_files( ex, job, minilims=None, hts_url=None, suffix=['fwd','rev'
                 p_thresh = -1
                 # Retrieve fastq files of unmapped reads
                 if fetch_unmapped:
-                    fastqfiles = {}
                     fastqname = unique_filename_in()
                     if name+"_unmapped.fastq.gz" in allfiles:
                         if name+"_unmapped_1.fastq.gz" in allfiles:
                             fastq_loc = [MMS.path_to_file(allfiles[name+"_unmapped_1.fastq.gz"]),
                                          MMS.path_to_file(allfiles[name+"_unmapped_2.fastq.gz"])]
-                            fastqfiles[rid] = [fastqname+"_R1",fastqname+"_R2"]
+                            fastqfiles = [fastqname+"_R1",fastqname+"_R2"]
                         else:
                             fastq_loc = [MMS.path_to_file(allfiles[name+"_unmapped.fastq.gz"])]
-                            fastqfiles[rid] = [fastqname]
+                            fastqfiles = [fastqname]
                     # Compress
                     for i,fqf in enumerate(fastq_loc):
-                        with open(fastqfiles[rid][i],'w') as f:
+                        with open(fastqfiles[i],'w') as f:
                             temp = gzip.open(fqf, 'rb')
                             while True:
                                 chunk = temp.read(4096)

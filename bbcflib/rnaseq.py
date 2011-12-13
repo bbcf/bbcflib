@@ -19,6 +19,7 @@ import os, pysam, math
 # Internal modules #
 from bbcflib.genrep import GenRep
 from bbcflib.common import timer, writecols, set_file_descr
+from mapseq import bowtie
 import track
 
 # Other modules #
@@ -494,7 +495,8 @@ def rnaseq_workflow(ex, job, assembly, bam_files, pileup_level=["exons","genes",
     for gid, group in job.groups.iteritems():
         for rid, run in group['runs'].iteritems():
             unmapped = bam_files[gid][rid].get('unmapped_fastq') or {} #unmapped = {run_id: [fastq] or [fastq_R1,fastq_R2]}
-            unmapped_bam = mapseq.bowtie(refseq_path, unmapped, args="-Sra")
+            unmapped_bam = bowtie(ex, refseq_path, unmapped, args="-Sra")
+            print unmapped_bam
     print "UNMAPPED",unmapped
 
     exons = exons_labels(bam_files[groups.keys()[0]][groups.values()[0]['runs'].keys()[0]]['bam'])
