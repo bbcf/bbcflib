@@ -12,7 +12,7 @@ The whole workflow can be run via the function ``workflow_groups`` with appropri
 
 Below is the script used by the frontend::
 
-    from bbcflib import daflims, genrep, frontend, email, gdv, common
+    from bbcflib import daflims, genrep, frontend, email, common
     from bbcflib.mapseq import *
     from bbcflib.chipseq import *
     M = MiniLIMS( '/path/to/chipseq/minilims' )

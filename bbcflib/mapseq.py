@@ -61,11 +61,8 @@ Below is the script used by the frontend::
                              dict((k,v['name']) for k,v in job.groups.iteritems()),
                              gl['script_path'] )
         density_files = densities_groups( ex, job, mapped_files, assembly.chromosomes )
-        gdv_project = gdv.create_gdv_project( gl['gdv']['key'], gl['gdv']['email'],
-                                              job.description, hts_key,
-                                              assembly.nr_assembly_id,
-                                              gdv_url=gl['gdv']['url'],
-                                              public=True )
+        gdv_project = gdv.new_project( gl['gdv']['email'], gl['gdv']['key'], 
+                                       job.description, assembly.id, gl['gdv']['url'] )
         add_pickle( ex, gdv_project, description='py:gdv_json' )
     print ex.id
     allfiles = get_files( ex.id, M )
@@ -567,7 +564,7 @@ def map_reads( ex, fastq_file, chromosomes, bowtie_index,
     full_stats = bamstats( ex, sorted_bam )
     add_pickle( ex, full_stats, set_file_descr(name+"full_bamstat",**py_descr) )
     bam_descr['ucsc'] = '1'
-    if is_paired_end:
+    if is_paired_end and os.path.exists(unmapped+"_1"):
         touch( ex, unmapped )
         ex.add( unmapped, description=set_file_descr(name+"unmapped",**fqn_descr) )
         gzipfile( ex, unmapped+"_1" )
@@ -576,7 +573,7 @@ def map_reads( ex, fastq_file, chromosomes, bowtie_index,
         gzipfile( ex, unmapped+"_2" )
         ex.add( unmapped+"_2.gz", description=set_file_descr(name+"unmapped_2.fastq.gz",**fq_descr),
                 associate_to_filename=unmapped, template='%s_2.fastq.gz' )
-    else:
+    elif os.path.exists(unmapped):
         gzipfile( ex, unmapped )
         ex.add( unmapped+".gz", set_file_descr(name+"unmapped.fastq.gz",**fq_descr) )
     return_dict = {"fullbam": sorted_bam, "unmapped": unmapped}
