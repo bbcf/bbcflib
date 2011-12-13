@@ -488,15 +488,14 @@ def rnaseq_workflow(ex, job, assembly, bam_files, pileup_level=["exons","genes",
         group_names[gid] = str(group['name']) # group_names = {gid: name}
     if isinstance(pileup_level,str): pileup_level=[pileup_level]
 
-    unmapped = []
-    for gid, group in job.groups.iteritems():
-        for rid, run in group['runs'].iteritems():
-            fastq = bam_files[gid][rid].get('unmapped_fastq') or ''
-            unmapped.append(fastq+str(rid))
-    print "UNMAPPED",unmapped
+    # Get fastq of unmapped reads
     mdfive = get_md5(assembly_id)
     refseq_path = os.path.join("/db/genrep/nr_assemblies/cdna_bowtie/", mdfive)
-    #unmapped_bam = mapseq.bowtie(refseq_path, unmapped_fastq, args="-Sra")
+    for gid, group in job.groups.iteritems():
+        for rid, run in group['runs'].iteritems():
+            unmapped = bam_files[gid][rid].get('unmapped_fastq') or {} #unmapped = {run_id: [fastq] or [fastq_R1,fastq_R2]}
+            unmapped_bam = mapseq.bowtie(refseq_path, unmapped, args="-Sra")
+    print "UNMAPPED",unmapped
 
     exons = exons_labels(bam_files[groups.keys()[0]][groups.values()[0]['runs'].keys()[0]]['bam'])
 
