@@ -12,6 +12,7 @@ from bein import *
 from bein.util import touch
 from bbcflib import daflims, genrep, frontend, email, gdv, track, createlib
 from bbcflib.mapseq import *
+from bbcflib.common import unique_filename_in
 import sys, getopt, os, json, re
 import gMiner as gm
 
