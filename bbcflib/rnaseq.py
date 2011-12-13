@@ -14,12 +14,12 @@ Note that the resulting counts on transcripts are approximate.
 """
 
 # Built-in modules #
-import os, pysam, math
+import os, sys, pysam, math
 
 # Internal modules #
 from bbcflib.genrep import GenRep
 from bbcflib.common import timer, writecols, set_file_descr
-from mapseq import bowtie
+from mapseq import bowtie, sam_to_bam, sort_bam, index_bam
 import track
 
 # Other modules #
@@ -251,16 +251,16 @@ def fetch_mappings(assembly_id, path_to_map=None):
             cPickle.dump(mapping,f)
     return mapping
 
-def exons_labels(bamfile):
-    """Returns a list of the exons in format ``('exonID|geneID|start|end|strand', length)`` in *bamfile*."""
-    try: sam = pysam.Samfile(bamfile, 'rb')
-    except ValueError: sam = pysam.Samfile(bamfile,'r')
+def fetch_labels(bamfile):
+    """Returns a list of the exons/transcripts labels in the header of *bamfile*."""
+    try: sam = pysam.Samfile(bamfile, 'rb') #bam input
+    except ValueError: sam = pysam.Samfile(bamfile,'r') #sam input
     #labels = zip(sam.references,sam.lengths)
     labels = [(t['SN'],t['LN']) for t in sam.header['SQ']]
     sam.close()
     return labels
 
-def pileup_file(bamfile, exons):
+def build_pileup(bamfile, exons):
     """From a BAM file *bamfile*, returns a list containing for each exon in *exons*,
     the number of reads that mapped to it, in the same order.
 
@@ -467,7 +467,7 @@ def estimate_size_factors(counts):
 
 
 @timer
-def rnaseq_workflow(ex, job, assembly, bam_files, pileup_level=["exons","genes","transcripts"], via="lsf"):
+def rnaseq_workflow(ex, job, assembly, bam_files, pileup_level=["exons","genes","transcripts"], via="lsf", unmapped=False):
     """
     Main function of the workflow.
 
@@ -489,17 +489,8 @@ def rnaseq_workflow(ex, job, assembly, bam_files, pileup_level=["exons","genes",
         group_names[gid] = str(group['name']) # group_names = {gid: name}
     if isinstance(pileup_level,str): pileup_level=[pileup_level]
 
-    # Get fastq of unmapped reads
-    mdfive = get_md5(assembly_id)
-    refseq_path = os.path.join("/db/genrep/nr_assemblies/cdna_bowtie/", mdfive)
-    for gid, group in job.groups.iteritems():
-        for rid, run in group['runs'].iteritems():
-            unmapped = bam_files[gid][rid].get('unmapped_fastq') or {} #unmapped = {run_id: [fastq] or [fastq_R1,fastq_R2]}
-            unmapped_bam = bowtie(ex, refseq_path, unmapped, args="-Sra")
-            print unmapped_bam
-    print "UNMAPPED",unmapped
-
-    exons = exons_labels(bam_files[groups.keys()[0]][groups.values()[0]['runs'].keys()[0]]['bam'])
+    #Exon labels: ('exonID|geneID|start|end|strand', length)
+    exons = fetch_labels(bam_files[groups.keys()[0]][groups.values()[0]['runs'].keys()[0]]['bam'])
 
     """ Extract information from bam headers """
     exonsID=[]; genesID=[]; genesName=[]; starts=[]; ends=[]; exon_lengths={}; exon_to_gene={}; badexons=[]
@@ -516,6 +507,33 @@ def rnaseq_workflow(ex, job, assembly, bam_files, pileup_level=["exons","genes",
         else: badexons.append(e)
     [exons.remove(e) for e in badexons]
 
+    """ Get fastq of unmapped reads """
+    print "Get unmapped reads"
+    if unmapped:
+        junction_pileups={}; conditions=[]; unmapped_bam={}
+        mdfive = get_md5(assembly_id)
+        refseq_path = os.path.join("/db/genrep/nr_assemblies/cdna_bowtie/", mdfive)
+        assert os.path.exists(refseq_path+".1.ebwt"), "Refseq index not found: %s" % refseq_path+".1.ebwt"
+        for gid, group in job.groups.iteritems():
+            k = 0
+            for rid, run in group['runs'].iteritems():
+                k+=1
+                cond = group_names[gid]+'.'+str(k)
+                conditions.append(cond)
+                unmapped = bam_files[gid][rid].get('unmapped_fastq') or {}
+                if isinstance(unmapped, str):
+                    unmapped_sam = [bowtie(ex, refseq_path, unmapped, args="-Sraq")]
+                    unmapped_bam[cond] = sort_bam(ex,sam_to_bam(ex,unmapped_sam[0]))
+                    index_bam(ex,unmapped_bam[cond])
+                #elif isinstance(unmapped, tuple):
+                #    unmapped_sam[cond] = [ex, bowtie(ex, refseq_path, unmapped[0], args="-Sraq"),
+                #                          ex, bowtie(ex, refseq_path, unmapped[1], args="-Sraq")]
+        junctions = fetch_labels(unmapped_bam[conditions[0]]) #list of (transcript ID, length)
+        for cond in conditions:
+            junction_pileup = build_pileup(unmapped_bam[cond], junctions)
+            junction_pileups[cond] = junction_pileup
+        print unmapped_bam
+
     """ Build exon pileups from bam files """
     print "Build pileups"
     exon_pileups = {}; nreads = {}; conditions = []
@@ -524,16 +542,11 @@ def rnaseq_workflow(ex, job, assembly, bam_files, pileup_level=["exons","genes",
         for rid,f in files.iteritems():
             k+=1
             cond = group_names[gid]+'.'+str(k)
-            exon_pileups[cond] = []
             conditions.append(cond)
-        k = 0
-        for rid,f in files.iteritems():
-            k+=1
-            print "....Pileup", cond
-            cond = group_names[gid]+'.'+str(k)
-            exon_pileup = pileup_file(f['bam'], exons)
+            exon_pileup = build_pileup(f['bam'], exons)
             exon_pileups[cond] = exon_pileup # {cond1.run1: [pileup], cond1.run2: [pileup]...}
-            nreads[cond] = nreads.get(cond,0) + sum(exon_pileup) # total number of reads
+            nreads[cond] = nreads.get(cond,0) + sum(exon_pileup) # total number of reads    :w
+            print "....Pileup", cond, "done"
 
     print "Load mappings"
     mappings = fetch_mappings(assembly_id)

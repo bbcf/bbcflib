@@ -1139,8 +1139,8 @@ def get_bam_wig_files( ex, job, minilims=None, hts_url=None, suffix=['fwd','rev'
                                 if chunk == '': break
                                 else: f.write(chunk)
                             temp.close()
-                    if len(fastqfile) == 1:
-                        fastqfile = fastqfile[0]
+                    if len(fastqfiles) == 1:
+                        fastqfiles = fastqfiles[0]
                 if name+"_Poisson_threshold" in allfiles:
                     pickle_thresh = allfiles[name+"_Poisson_threshold"]
                     with open(MMS.path_to_file(pickle_thresh)) as q:
