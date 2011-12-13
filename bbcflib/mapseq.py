@@ -1124,7 +1124,6 @@ def get_bam_wig_files( ex, job, minilims=None, hts_url=None, suffix=['fwd','rev'
                 with open(MMS.path_to_file(stats_id)) as q:
                     stats = pickle.load(q)
                 p_thresh = -1
-
                 # Retrieve fastq files of unmapped reads
                 if fetch_unmapped:
                     if name+"_unmapped.fastq.gz" in allfiles:
@@ -1144,7 +1143,6 @@ def get_bam_wig_files( ex, job, minilims=None, hts_url=None, suffix=['fwd','rev'
                                 if chunk == '': break
                                 else: f.write(chunk)
                             temp.close()
-
                 if name+"_Poisson_threshold" in allfiles:
                     pickle_thresh = allfiles[name+"_Poisson_threshold"]
                     with open(MMS.path_to_file(pickle_thresh)) as q:
