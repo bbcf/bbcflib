@@ -61,7 +61,7 @@ Below is the script used by the frontend::
                              dict((k,v['name']) for k,v in job.groups.iteritems()),
                              gl['script_path'] )
         density_files = densities_groups( ex, job, mapped_files, assembly.chromosomes )
-        gdv_project = gdv.new_project( gl['gdv']['email'], gl['gdv']['key'],
+        gdv_project = gdv.new_project( gl['gdv']['email'], gl['gdv']['key'], 
                                        job.description, assembly.id, gl['gdv']['url'] )
         add_pickle( ex, gdv_project, description='py:gdv_json' )
     print ex.id
@@ -505,7 +505,7 @@ def pprint_bamstats(sample_stats) :
 ############################################################
 
 def map_reads( ex, fastq_file, chromosomes, bowtie_index,
-               maxhits=5, antibody_enrichment=50, name=None,
+               maxhits=5, antibody_enrichment=50,
                remove_pcr_duplicates=True, bwt_args=None, via='lsf' ):
     """Runs ``bowtie`` in parallel over lsf for the `fastq_file` input.
     Returns the full bamfile, its filtered version (see 'remove_duplicate_reads')
@@ -524,21 +524,6 @@ def map_reads( ex, fastq_file, chromosomes, bowtie_index,
     """
     if bwt_args is None:
         bwt_args = []
-    if name is None:
-        name = ''
-    if isinstance(name,tuple):
-        descr = {'step':'bowtie','groupId':name[0]}
-        name = name[1]
-    else:
-        descr = {'step':'bowtie','group':name}
-    bam_descr = {'type': 'bam'}
-    py_descr = {'type':'py','view':'admin','comment':'pickle file'}
-    fq_descr = {'type': 'fastq'}
-    fqn_descr = {'type': 'none','view':'admin'}
-    bam_descr.update(descr)
-    py_descr.update(descr)
-    fq_descr.update(descr)
-    fqn_descr.update(descr)
     bwtarg = ["-Sam", str(max(20,maxhits))]+bwt_args
     if not("--best" in bwtarg):     bwtarg += ["--best"]
     if not("--strata" in bwtarg):   bwtarg += ["--strata"]
@@ -562,29 +547,23 @@ def map_reads( ex, fastq_file, chromosomes, bowtie_index,
     sorted_bai = index_bam(ex, sorted_bam)
 ###    sorted_bam = add_and_index_bam( ex, bam, set_file_descr(name+"complete.bam",**bam_descr) )
     full_stats = bamstats( ex, sorted_bam )
-    add_pickle( ex, full_stats, set_file_descr(name+"full_bamstat",**py_descr) )
-    bam_descr['ucsc'] = '1'
+    return_dict = {"fullbam": sorted_bam}
     if is_paired_end and os.path.exists(unmapped+"_1"):
         touch( ex, unmapped )
-        ex.add( unmapped, description=set_file_descr(name+"unmapped",**fqn_descr) )
         gzipfile( ex, unmapped+"_1" )
-        ex.add( unmapped+"_1.gz", description=set_file_descr(name+"unmapped_1.fastq.gz",**fq_descr),
-                associate_to_filename=unmapped, template='%s_1.fastq.gz' )
         gzipfile( ex, unmapped+"_2" )
-        ex.add( unmapped+"_2.gz", description=set_file_descr(name+"unmapped_2.fastq.gz",**fq_descr),
-                associate_to_filename=unmapped, template='%s_2.fastq.gz' )
+        return_dict['unmapped'] = unmapped
     elif os.path.exists(unmapped):
         gzipfile( ex, unmapped )
-        ex.add( unmapped+".gz", set_file_descr(name+"unmapped.fastq.gz",**fq_descr) )
-    return_dict = {"fullbam": sorted_bam, "unmapped": unmapped}
+        return_dict['unmapped'] = unmapped
     if remove_pcr_duplicates:
         thresh = poisson_threshold( antibody_enrichment*full_stats["actual_coverage"] )
-        add_pickle( ex, thresh, set_file_descr(name+"Poisson_threshold",**py_descr) )
-        bam2 = remove_duplicate_reads( sorted_bam, chromosomes,
-                                       maxhits, thresh, convert=True )
-        reduced_bam = add_and_index_bam( ex, bam2, set_file_descr(name+"filtered.bam",**bam_descr) )
+        bam2 = remove_duplicate_reads( sorted_bam, chromosomes, maxhits, thresh, convert=True )
+        return_dict['poisson_threshold'] = thresh
+        reduced_bam = sort_bam(ex, bam2)
+        index2 = index_bam(ex, reduced_bam)
+#        reduced_bam = add_and_index_bam( ex, bam2, set_file_descr(name+"filtered.bam",**bam_descr) )
         filtered_stats = bamstats( ex, reduced_bam )
-        add_pickle( ex, filtered_stats, set_file_descr(name+"filter_bamstat",**py_descr) )
         return_dict['bam'] = reduced_bam
         return_dict['fullstats'] = full_stats
         return_dict['stats'] = filtered_stats
@@ -606,7 +585,9 @@ def map_reads( ex, fastq_file, chromosomes, bowtie_index,
                 outfile.write(read)
         outfile.close()
         infile.close()
-        reduced_bam = add_and_index_bam( ex, bam2, set_file_descr(name+"filtered.bam",**bam_descr) )
+        reduced_bam = sort_bam(ex, bam2)
+        index2 = index_bam(ex, reduced_bam)
+#        reduced_bam = add_and_index_bam( ex, bam2, set_file_descr(name+"filtered.bam",**bam_descr) )
         return_dict['bam'] = reduced_bam
         return_dict['stats'] = full_stats
     return return_dict
@@ -782,8 +763,36 @@ def map_groups( ex, job_or_dict, fastq_root, assembly_or_dict, map_args=None ):
             if len(group['runs'])>1:
                 name += "_"
                 name += group['run_names'].get(rid,str(rid))
-            m = map_reads( ex, fq_file, chromosomes, index_path, name=(gid,name+"_"),
-                           remove_pcr_duplicates=pcr_dupl, **map_args )
+            m = map_reads( ex, fq_file, chromosomes, index_path, remove_pcr_duplicates=pcr_dupl, **map_args )
+            descr = {'step':'bowtie','groupId':gid}
+            bam_descr = {'type': 'bam', 'ucsc': '1'}
+            py_descr = {'type':'py','view':'admin','comment':'pickle file'}
+            fq_descr = {'type': 'fastq'}
+            fqn_descr = {'type': 'none','view':'admin'}
+            bam_descr.update(descr)
+            py_descr.update(descr)
+            fq_descr.update(descr)
+            fqn_descr.update(descr)
+            if 'fullstats' in m:
+                add_pickle( ex, m['fullstats'], set_file_descr(name+"_full_bamstat",**py_descr) )
+            if 'stats' in m:
+                add_pickle( ex, m['stats'], set_file_descr(name+"_filter_bamstat",**py_descr) )
+            if 'unmapped' in m:
+                if isinstance(fq_file,tuple):
+                    ex.add( m['unmapped'], description=set_file_descr(name+"_unmapped",**fqn_descr) )
+                    ex.add( m['unmapped']+"_1.gz", description=set_file_descr(name+"_unmapped_1.fastq.gz",**fq_descr),
+                            associate_to_filename=unmapped, template='%s_1.fastq.gz' )
+                    ex.add( m['unmapped']+"_2.gz", description=set_file_descr(name+"_unmapped_2.fastq.gz",**fq_descr),
+                            associate_to_filename=unmapped, template='%s_2.fastq.gz' )
+                else:
+                    ex.add( m['unmapped']+".gz", set_file_descr(name+"_unmapped.fastq.gz",**fq_descr) )
+            if 'poisson_threshold' in m:
+                add_pickle( ex, m['poisson_threshold'], set_file_descr(name+"_Poisson_threshold",**py_descr) )
+            if 'bam' in m:
+                bdescr = set_file_descr(name+"_filtered.bam",**bam_descr)
+                ex.add(m['bam'], description=bdescr)
+                bdescr = re.sub(r'([^\[\s]+)',r'\1.bai',bdescr,1)
+                ex.add(m['bam']+".bai", description=bdescr+" (BAM index)", associate_to_filename=m['bam'], template='%s.bai')
             file_names[gid][rid] = str(name)
             m.update({'libname': str(name)})
             processed[gid][rid] = m
