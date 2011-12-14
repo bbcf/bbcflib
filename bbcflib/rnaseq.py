@@ -20,7 +20,8 @@ import os, sys, pysam, math
 # Internal modules #
 from bbcflib.genrep import GenRep
 from bbcflib.common import timer, writecols, set_file_descr
-from mapseq import bowtie, sam_to_bam, sort_bam, index_bam
+from bbcflib import mapseq
+#from mapseq import bowtie, sam_to_bam, sort_bam, index_bam
 import track
 
 # Other modules #
@@ -126,6 +127,13 @@ def get_md5(assembly_id):
     assembly = grep.assembly(assembly_id)
     mdfive = assembly.md5
     return mdfive
+
+def get_chromosomes(assembly_id):
+    grep_root = '/db/genrep'
+    grep = GenRep(url='http://bbcftools.vital-it.ch/genrep/',root=grep_root)
+    assembly = grep.assembly(assembly_id)
+    chromosomes = assembly.chromosomes
+    return chromosomes
 
 @timer
 def fetch_mappings(assembly_id, path_to_map=None):
@@ -261,12 +269,12 @@ def fetch_labels(bamfile):
     sam.close()
     return labels
 
-def build_pileup(bamfile, exons):
+def build_pileup(bamfile, labels):
     """From a BAM file *bamfile*, returns a list containing for each exon in *exons*,
     the number of reads that mapped to it, in the same order.
 
     :param bamfile: name of a BAM file.
-    :param exons: exons labels - as returned by **exons_labels()**
+    :param labels: index references - as returned by **fetch_labels()**
     :type bamfile: string
     :type exons: list
     :rtype: list
@@ -282,8 +290,8 @@ def build_pileup(bamfile, exons):
             self.n += 1
 
     c = Counter()
-    for exon in exons:
-        sam.fetch(exon[0], 0, exon[1], callback=c) #(exon_name,0,exon_length,Counter())
+    for l in labels:
+        sam.fetch(l[0], 0, l[1], callback=c) #(name,0,length,Counter())
         #The callback (c.n += 1) is executed for each alignment in a region
         counts.append(c.n)
         c.n = 0
@@ -515,6 +523,7 @@ def rnaseq_workflow(ex, job, assembly, bam_files, pileup_level=["exons","genes",
         print "Get unmapped reads"
         junction_pileups={}; conditions=[]; unmapped_bam={}
         mdfive = get_md5(assembly_id)
+        chromosomes = get_chromosomes(assembly_id)
         refseq_path = os.path.join("/db/genrep/nr_assemblies/cdna_bowtie/", mdfive)
         assert os.path.exists(refseq_path+".1.ebwt"), "Refseq index not found: %s" % refseq_path+".1.ebwt"
         for gid, group in job.groups.iteritems():
@@ -523,21 +532,23 @@ def rnaseq_workflow(ex, job, assembly, bam_files, pileup_level=["exons","genes",
                 k+=1
                 cond = group_names[gid]+'.'+str(k)
                 conditions.append(cond)
-                unmapped = bam_files[gid][rid].get('unmapped_fastq') or {}
-                if isinstance(unmapped, str):
-                    unmapped_sam = [bowtie(ex, refseq_path, unmapped, args="-Sraq")]
-                    unmapped_bam[cond] = sort_bam(ex,sam_to_bam(ex,unmapped_sam[0]))
-                    index_bam(ex,unmapped_bam[cond])
-                #elif isinstance(unmapped, tuple):
-                #    unmapped_sam[cond] = [ex, bowtie(ex, refseq_path, unmapped[0], args="-Sraq"),
-                #                          ex, bowtie(ex, refseq_path, unmapped[1], args="-Sraq")]
-                with open(unmapped_sam[0]) as f:
-                    print f.read()
-        junctions = fetch_labels(unmapped_bam[conditions[0]]) #list of (transcript ID, length)
-        for cond in conditions:
-            junction_pileup = build_pileup(unmapped_bam[cond], junctions)
-            print numpy.array(junction_pileup)[numpy.nonzero(numpy.array(junction_pileup))]
-            junction_pileups[cond] = junction_pileup
+                unmapped_fastq = bam_files[gid][rid].get('unmapped_fastq')
+                #unmapped_sam = [bowtie(ex, refseq_path, unmapped_fastq, args="-Sraq")]
+                #unmapped_bam[cond] = sort_bam(ex,sam_to_bam(ex,unmapped_sam[0]))
+                #index_bam(ex,unmapped_bam[cond])
+                unmapped_bam[cond] = mapseq.map_reads(ex, unmapped_fastq, chromosomes, refseq_path, \
+                                                      remove_pcr_duplicates=False)['bam']
+        print unmapped_bam
+        if unmapped_bam.get(conditions[0]):
+            junctions = fetch_labels(unmapped_bam[conditions[0]]) #list of (transcript ID, length)
+            for cond in conditions:
+                junction_pileup = build_pileup(unmapped_bam[cond], junctions)
+                junction_pileup = dict(zip([j[0] for j in junctions], junction_pileup)) # {transcript ID: count}
+                junction_pileups[cond] = junction_pileup
+
+#map_reads( ex, fastq_file, chromosomes, bowtie_index,
+#               maxhits=5, antibody_enrichment=50,
+#               remove_pcr_duplicates=True, bwt_args=None, via='lsf' )
 
     """ Build exon pileups from bam files """
     print "Build pileups"
@@ -598,7 +609,7 @@ def rnaseq_workflow(ex, job, assembly, bam_files, pileup_level=["exons","genes",
     if "transcripts" in pileup_level:
         header = ["TranscriptID"] + hconds + ["Start","End","GeneID","GeneName","Chromosome"]
         (tcounts, trpkm, error) = transcripts_expression(exons_data, exon_lengths,
-                   transcript_mapping, trans_in_gene, exons_in_trans,len(conditions))
+                   transcript_mapping, trans_in_gene, exons_in_trans,len(conditions),junction_pileups=None)
         transID = tcounts.keys()
         trans_data = [[t,tcounts[t],trpkm[t]]+list(transcript_mapping.get(t,("NA",)*5,)) for t in transID]
         trans_data = sorted(trans_data, key=lambda x: x[-5]) # sort w.r.t. gene IDs
