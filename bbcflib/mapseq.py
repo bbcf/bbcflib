@@ -61,7 +61,7 @@ Below is the script used by the frontend::
                              dict((k,v['name']) for k,v in job.groups.iteritems()),
                              gl['script_path'] )
         density_files = densities_groups( ex, job, mapped_files, assembly.chromosomes )
-        gdv_project = gdv.new_project( gl['gdv']['email'], gl['gdv']['key'], 
+        gdv_project = gdv.new_project( gl['gdv']['email'], gl['gdv']['key'],
                                        job.description, assembly.id, gl['gdv']['url'] )
         add_pickle( ex, gdv_project, description='py:gdv_json' )
     print ex.id
@@ -1100,7 +1100,7 @@ def get_bam_wig_files( ex, job, minilims=None, hts_url=None, suffix=['fwd','rev'
             if file_loc.startswith("http://") or file_loc.startswith("https://") or file_loc.startswith("ftp://"):
                 urllib.urlretrieve( file_loc, bamfile )
                 urllib.urlretrieve( file_loc+".bai", bamfile+".bai" )
-            elif os.path.exists(file_loc) and 0:
+            elif os.path.exists(file_loc):
                 shutil.copy( file_loc, bamfile )
                 shutil.copy( file_loc+".bai", bamfile+".bai" )
             elif os.path.exists(minilims) and os.path.exists(os.path.join(minilims+".files",file_loc)):

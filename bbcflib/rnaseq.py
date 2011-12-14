@@ -339,11 +339,12 @@ def genes_expression(exons_data, exon_to_gene, ncond):
     zz = [numpy.zeros(ncond,dtype=numpy.float_) for g in genes]
     gcounts = dict(zip(genes,z))
     grpk = dict(zip(genes,zz))
+    round = numpy.round
 
     for e,c in zip(exons_data[0],zip(*exons_data[1:2*ncond+1])):
         g = exon_to_gene[e]
-        gcounts[g] += numpy.round(c[:ncond],2)
-        grpk[g] += numpy.round(c[ncond:],2)
+        gcounts[g] += round(c[:ncond],2)
+        grpk[g] += round(c[ncond:],2)
     return gcounts, grpk
 
 @timer
@@ -530,11 +531,13 @@ def rnaseq_workflow(ex, job, assembly, bam_files, pileup_level=["exons","genes",
                 #elif isinstance(unmapped, tuple):
                 #    unmapped_sam[cond] = [ex, bowtie(ex, refseq_path, unmapped[0], args="-Sraq"),
                 #                          ex, bowtie(ex, refseq_path, unmapped[1], args="-Sraq")]
+                with open(unmapped_sam[0]) as f:
+                    print f.read()
         junctions = fetch_labels(unmapped_bam[conditions[0]]) #list of (transcript ID, length)
         for cond in conditions:
             junction_pileup = build_pileup(unmapped_bam[cond], junctions)
+            print numpy.array(junction_pileup)[numpy.nonzero(numpy.array(junction_pileup))]
             junction_pileups[cond] = junction_pileup
-        print unmapped_bam
 
     """ Build exon pileups from bam files """
     print "Build pileups"
