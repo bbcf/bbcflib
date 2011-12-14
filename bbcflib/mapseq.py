@@ -1122,6 +1122,7 @@ def get_bam_wig_files( ex, job, minilims=None, hts_url=None, suffix=['fwd','rev'
                     stats = pickle.load(q)
                 p_thresh = -1
                 if fetch_unmapped:
+                    fastqfiles = None
                     fastqname = unique_filename_in()
                     if name+"_unmapped.fastq.gz" in allfiles:
                         if name+"_unmapped_1.fastq.gz" in allfiles:
