@@ -546,10 +546,6 @@ def rnaseq_workflow(ex, job, assembly, bam_files, pileup_level=["exons","genes",
                 junction_pileup = dict(zip([j[0] for j in junctions], junction_pileup)) # {transcript ID: count}
                 junction_pileups[cond] = junction_pileup
 
-#map_reads( ex, fastq_file, chromosomes, bowtie_index,
-#               maxhits=5, antibody_enrichment=50,
-#               remove_pcr_duplicates=True, bwt_args=None, via='lsf' )
-
     """ Build exon pileups from bam files """
     print "Build pileups"
     exon_pileups = {}; nreads = {}; conditions = []
