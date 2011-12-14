@@ -6,6 +6,7 @@ Methods of the bbcflib's RNA-seq worflow. The main function is ``rnaseq_workflow
 and is usually called by bbcfutils' ``run_rnaseq.py``, e.g. command-line:
 
 ``python run_rnaseq.py -v lsf -c config_files/gapdh.txt -d rnaseq -p transcripts``
+``python run_rnaseq.py -v lsf -c config_files/rnaseq.txt -d rnaseq -p genes -u -m /scratch/cluster/monthly/jdelafon/mapseq``
 
 From a BAM file produced by an alignement on the **exonome**, gets counts of reads
 on the exons, add them to get counts on genes, and uses least-squares to infer
@@ -308,7 +309,7 @@ def save_results(ex, cols, conditions, header=[], feature_type='features'):
     description = set_file_descr(feature_type.lower()+"_expression.tab", step="pileup", type="txt", comment=description)
     ex.add(output_tab, description=description)
     # SQL track output
-    if feature_type=="EXONS":
+    if feature_type=="EXONS" and 0:
         output_sql = rstring()
         def to_bedgraph(cols,ncond,i):
             lines = zip(*cols)
@@ -323,7 +324,7 @@ def save_results(ex, cols, conditions, header=[], feature_type='features'):
             ex.add(output_sql, description=description)
     print feature_type+": Done successfully."
 
-#@timer
+@timer
 def genes_expression(exons_data, exon_to_gene, ncond):
     """Get gene counts from exons counts.
 
@@ -345,6 +346,7 @@ def genes_expression(exons_data, exon_to_gene, ncond):
         grpk[g] += numpy.round(c[ncond:],2)
     return gcounts, grpk
 
+@timer
 def transcripts_expression(exons_data, exon_lengths, transcript_mapping, trans_in_gene, exons_in_trans, ncond):
     """Get transcript rpkms from exon rpkms.
 
@@ -508,8 +510,8 @@ def rnaseq_workflow(ex, job, assembly, bam_files, pileup_level=["exons","genes",
     [exons.remove(e) for e in badexons]
 
     """ Get fastq of unmapped reads """
-    print "Get unmapped reads"
     if unmapped:
+        print "Get unmapped reads"
         junction_pileups={}; conditions=[]; unmapped_bam={}
         mdfive = get_md5(assembly_id)
         refseq_path = os.path.join("/db/genrep/nr_assemblies/cdna_bowtie/", mdfive)
