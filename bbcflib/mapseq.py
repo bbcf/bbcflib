@@ -1092,6 +1092,7 @@ def get_bam_wig_files( ex, job, minilims=None, hts_url=None, suffix=['fwd','rev'
             name = group_name
             stats = None
             p_thresh = None
+            fastqfiles = None
             if len(group['runs'])>1:
                 if all([run.get(x) for x in ['machine','run','lane']]):
                     name += "_".join(['',run['machine'],str(run['run']),str(run['lane'])])
@@ -1122,7 +1123,6 @@ def get_bam_wig_files( ex, job, minilims=None, hts_url=None, suffix=['fwd','rev'
                     stats = pickle.load(q)
                 p_thresh = -1
                 if fetch_unmapped:
-                    fastqfiles = None
                     fastqname = unique_filename_in()
                     if name+"_unmapped.fastq.gz" in allfiles:
                         if name+"_unmapped_1.fastq.gz" in allfiles:
