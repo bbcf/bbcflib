@@ -256,8 +256,6 @@ def fetch_mappings(assembly_id, path_to_map=None):
         exons_in_trans = get_exons_in_trans(db,chromosomes)
         trans_in_gene = get_trans_in_gene(db,chromosomes)
         mapping = (gene_mapping, transcript_mapping, exon_mapping, trans_in_gene, exons_in_trans)
-        with open(path_to_map,"wb") as f:
-            cPickle.dump(mapping,f)
     return mapping
 
 def fetch_labels(bamfile):
