@@ -346,7 +346,6 @@ def genes_expression(exons_data, exon_to_gene, ncond):
     gcounts = dict(zip(genes,z))
     grpk = dict(zip(genes,zz))
     round = numpy.round
-
     for e,c in zip(exons_data[0],zip(*exons_data[1:2*ncond+1])):
         g = exon_to_gene[e]
         gcounts[g] += round(c[:ncond],2)
@@ -389,10 +388,10 @@ def transcripts_expression(exons_data, exon_lengths, transcript_mapping, trans_i
             for t in tg:
                 if exons_in_trans.get(t):
                     eg = eg.union(set(exons_in_trans[t]))
+            print eg
             # Create the correspondance matrix
             M = zeros((len(eg),len(tg))); L = zeros((len(eg),len(tg)))
             ec = zeros((ncond,len(eg))); er = zeros((ncond,len(eg)))
-            tc = []; tr = []
             for i,e in enumerate(eg):
                 for j,t in enumerate(tg):
                     if exons_in_trans.get(t) and e in exons_in_trans[t]:
@@ -407,6 +406,8 @@ def transcripts_expression(exons_data, exon_lengths, transcript_mapping, trans_i
                         ec[c][i] += exons_counts[e][c]
                         er[c][i] += exons_rpk[e][c]
             # Compute transcript scores
+            tc = []; tr = []
+            print M
             for c in range(ncond):  # - rpkm
                 Er = er[c]
                 tol = 10*2.22e-16*numpy.linalg.norm(M,1)*(max(M.shape)+1)
@@ -465,6 +466,7 @@ def estimate_size_factors(counts):
     :param counts: an array of counts, each line representing a transcript, each
     column a different sample.
     """
+    numpy.seterr(divide='ignore')
     counts = numpy.array(counts)
     geo_means = numpy.exp(numpy.mean(numpy.log(counts), axis=0))
     mean = counts/geo_means
@@ -474,6 +476,9 @@ def estimate_size_factors(counts):
     print "Size factors:",size_factors
     return res, size_factors
 
+def to_rpkm(counts, starts, ends, nreads):
+    counts, starts, ends, nreads = [asarray(x,dtype=numpy.float_) for x in (counts,starts,ends,nreads)]
+    return 1000*(1e6*counts.T/nreads).T/(ends-starts)
 
 @timer
 def rnaseq_workflow(ex, job, assembly, bam_files, pileup_level=["exons","genes","transcripts"], via="lsf", unmapped=False):
@@ -516,12 +521,12 @@ def rnaseq_workflow(ex, job, assembly, bam_files, pileup_level=["exons","genes",
         else: badexons.append(e)
     [exons.remove(e) for e in badexons]
 
-    """ Get fastq of unmapped reads """
+    """ Map remaining reads to transcriptome """
+    junction_pileups={}
     if unmapped:
         print "Get unmapped reads"
-        junction_pileups={}; conditions=[]; unmapped_bam={}
+        conditions=[]; unmapped_bam={}
         mdfive = get_md5(assembly_id)
-        chromosomes = get_chromosomes(assembly_id)
         refseq_path = os.path.join("/db/genrep/nr_assemblies/cdna_bowtie/", mdfive)
         assert os.path.exists(refseq_path+".1.ebwt"), "Refseq index not found: %s" % refseq_path+".1.ebwt"
         for gid, group in job.groups.iteritems():
@@ -531,12 +536,8 @@ def rnaseq_workflow(ex, job, assembly, bam_files, pileup_level=["exons","genes",
                 cond = group_names[gid]+'.'+str(k)
                 conditions.append(cond)
                 unmapped_fastq = bam_files[gid][rid].get('unmapped_fastq')
-                #unmapped_sam = [bowtie(ex, refseq_path, unmapped_fastq, args="-Sraq")]
-                #unmapped_bam[cond] = sort_bam(ex,sam_to_bam(ex,unmapped_sam[0]))
-                #index_bam(ex,unmapped_bam[cond])
-                unmapped_bam[cond] = mapseq.map_reads(ex, unmapped_fastq, chromosomes, refseq_path, \
+                unmapped_bam[cond] = mapseq.map_reads(ex, unmapped_fastq, {}, refseq_path, \
                                                       remove_pcr_duplicates=False)['bam']
-        print unmapped_bam
         if unmapped_bam.get(conditions[0]):
             junctions = fetch_labels(unmapped_bam[conditions[0]]) #list of (transcript ID, length)
             for cond in conditions:
@@ -573,9 +574,8 @@ def rnaseq_workflow(ex, job, assembly, bam_files, pileup_level=["exons","genes",
     ends = asarray(ends, dtype=numpy.float_)
     nreads = asarray([nreads[cond] for cond in conditions], dtype=numpy.float_)
     counts = asarray([exon_pileups[cond] for cond in conditions], dtype=numpy.float_)
-    numpy.seterr(divide='ignore')
     counts, sf = estimate_size_factors(counts)
-    rpkm = 1000*(1e6*counts.T/nreads).T/(ends-starts)
+    rpkm = to_rpkm(counts, starts, ends, nreads)
     #for i in range(len(counts.ravel())):
     #    if counts.flat[i]==0: counts.flat[i] += 1.0 # if zero counts, add 1 for further comparisons
 
@@ -603,13 +603,21 @@ def rnaseq_workflow(ex, job, assembly, bam_files, pileup_level=["exons","genes",
     if "transcripts" in pileup_level:
         header = ["TranscriptID"] + hconds + ["Start","End","GeneID","GeneName","Chromosome"]
         (tcounts, trpkm, error) = transcripts_expression(exons_data, exon_lengths,
-                   transcript_mapping, trans_in_gene, exons_in_trans,len(conditions),junction_pileups=None)
+                   transcript_mapping, trans_in_gene, exons_in_trans,len(conditions))
         transID = tcounts.keys()
         trans_data = [[t,tcounts[t],trpkm[t]]+list(transcript_mapping.get(t,("NA",)*5,)) for t in transID]
         trans_data = sorted(trans_data, key=lambda x: x[-5]) # sort w.r.t. gene IDs
         (transID,tcounts,trpkm,genesID,tstart,tend,tlen,tchr) = zip(*trans_data)
         genesName = [gene_mapping.get(g,("NA",)*4)[0] for g in genesID]
         trans_data = [transID]+list(zip(*tcounts))+list(zip(*trpkm))+[tstart,tend,genesID,genesName,tchr]
+
+        a = trans_data
+        print a[1]
+        print to_rpkm(a[1],a[3],a[4],nreads[0])
+        print a[2]
+        # results should be the same for ENSMUST00000073605, ENSMUST00000117757, ENSMUST00000118875,
+        # which contain the same exons.
+
         save_results(ex, trans_data, conditions, header=header, feature_type="TRANSCRIPTS")
 
     # TEST
