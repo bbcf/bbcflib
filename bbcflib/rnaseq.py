@@ -356,17 +356,17 @@ def genes_expression(exons_data, exon_to_gene, ncond):
 def transcripts_expression(exons_data, exon_lengths, transcript_mapping, trans_in_gene, exons_in_trans, ncond):
     """Get transcript rpkms from exon rpkms.
 
-    Returns a dictionary of the form ``{transcript ID: rpkm}``.
+    Returns two dictionaries of the form ``{transcript ID: counts/rpkm}``.
 
-    :param exons_data: list of lists ``[exonsID, counts, rpkm, start, end, geneID, geneName]``
+    :param exons_data: list of lists ``[exonsID, counts, rpkm, start, end, geneID, geneName, chromosome]``
     :param exon_lengths: dictionary ``{exon ID: length}``
-    :param transcript_mapping: dictionary ``{transcript ID: (gene ID, start, end, length, chromosome)}``
+    :param transcript_mapping: dictionary ``{transcript ID: (gene ID, start, end, chromosome)}``
     :param trans_in_gene: dictionary ``{gene ID: [transcript IDs it contains]}``
     :param exons_in_trans: dictionary ``{transcript ID: [exon IDs it contains]}``
     :param ncond: number of samples
     """
     genes = list(set(exons_data[-3]))
-    transcripts = []
+    transcripts=[]
     for g in genes:
         transcripts.extend(trans_in_gene.get(g,[]))
     transcripts = list(set(transcripts))
@@ -424,14 +424,12 @@ def transcripts_expression(exons_data, exon_lengths, transcript_mapping, trans_i
                 except: Tc = zeros(len(tg)) # Bad idea
                 tc.append(Tc)
                 totalerror += math.sqrt(resnormc)
-
             # Store results in a dict *tcounts*/*trpk*
             for k,t in enumerate(tg):
                 if trans_rpk.get(t) is not None:
                     for c in range(ncond):
                         trans_counts[t][c] = round(tc[c][k], 2)
                         trans_rpk[t][c] = round(tr[c][k], 2)
-
             # Testing
             total_trans_c = sum([sum(trans_counts[t]) for t in tg]) or 0
             total_exons_c = sum([sum(ec[c]) for c in range(ncond)]) or 0
@@ -442,7 +440,6 @@ def transcripts_expression(exons_data, exon_lengths, transcript_mapping, trans_i
             #except ZeroDivisionError: pass
         else:
             unknown += 1
-
     #filE.close()
     print "\t Unknown transcripts for %d of %d genes (%.2f %%)" \
            % (unknown, len(genes), 100*float(unknown)/float(len(genes)) )
@@ -450,7 +447,7 @@ def transcripts_expression(exons_data, exon_lengths, transcript_mapping, trans_i
            % (alltranscount,allexonscount,alltranscount/allexonscount)
     except ZeroDivisionError: pass
     print "\t Total error (sum of resnorms):", totalerror
-    return trans_rpk, trans_counts, totalerror
+    return trans_rpk, trans_counts
 
 def estimate_size_factors(counts):
     """
@@ -474,12 +471,9 @@ def estimate_size_factors(counts):
     print "Size factors:",size_factors
     return res, size_factors
 
-def to_rpkm(counts, starts, ends, nreads):
-    counts, starts, ends, nreads = [asarray(x,dtype=numpy.float_) for x in (counts,starts,ends,nreads)]
-    return 1000*(1e6*counts.T/nreads).T/(ends-starts)
-
 @timer
-def rnaseq_workflow(ex, job, assembly, bam_files, pileup_level=["exons","genes","transcripts"], via="lsf", unmapped=False):
+def rnaseq_workflow(ex, job, assembly, bam_files, pileup_level=["exons","genes","transcripts"],
+                    via="lsf", unmapped=False):
     """
     Main function of the workflow.
 
@@ -506,7 +500,7 @@ def rnaseq_workflow(ex, job, assembly, bam_files, pileup_level=["exons","genes",
 
     """ Build exon pileups from bam files """
     print "Build pileups"
-    exon_pileups = {}; nreads = {}; conditions = []
+    exon_pileups={}; nreads={}; conditions=[]
     for gid,files in bam_files.iteritems():
         k = 0
         for rid,f in files.iteritems():
@@ -556,7 +550,7 @@ def rnaseq_workflow(ex, job, assembly, bam_files, pileup_level=["exons","genes",
     print "Load mappings"
     mappings = fetch_mappings(assembly_id)
     """ [0] gene_mapping is a dict ``{gene ID: (gene name,start,end,chromosome)}``
-        [1] transcript_mapping is a dictionary ``{transcript ID: (gene ID,start,end,length,chromosome)}``
+        [1] transcript_mapping is a dictionary ``{transcript ID: (gene ID,start,end,chromosome)}``
         [2] exon_mapping is a dictionary ``{exon ID: ([trancript IDs],gene ID,start,end,chromosome)}``
         [3] trans_in_gene is a dict ``{gene ID: [IDs of the transcripts it contains]}``
         [4] exons_in_trans is a dict ``{transcript ID: [IDs of the exons it contains]}`` """
@@ -569,7 +563,7 @@ def rnaseq_workflow(ex, job, assembly, bam_files, pileup_level=["exons","genes",
     nreads = asarray([nreads[cond] for cond in conditions], dtype=numpy.float_)
     counts = asarray([exon_pileups[cond] for cond in conditions], dtype=numpy.float_)
     counts, sf = estimate_size_factors(counts)
-    rpkm = to_rpkm(counts, starts, ends, nreads)
+    rpkm = 1000*(1e6*counts.T/nreads).T/(ends-starts)
     #for i in range(len(counts.ravel())):
     #    if counts.flat[i]==0: counts.flat[i] += 1.0 # if zero counts, add 1 for further comparisons
 
@@ -596,7 +590,7 @@ def rnaseq_workflow(ex, job, assembly, bam_files, pileup_level=["exons","genes",
     """ Get scores of transcripts from exons, using non-negative least-squares """
     if "transcripts" in pileup_level:
         header = ["TranscriptID"] + hconds + ["Start","End","GeneID","GeneName","Chromosome"]
-        (tcounts, trpkm, error) = transcripts_expression(exons_data, exon_lengths,
+        (tcounts, trpkm) = transcripts_expression(exons_data, exon_lengths,
                    transcript_mapping, trans_in_gene, exons_in_trans,len(conditions))
         # Add junction reads to transcript scores
         for c in conditions:
