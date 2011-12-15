@@ -88,10 +88,10 @@ def exonerate(ex,subfiles, dbFile, grp_name, minScore=77,n=1,x=22,l=30,via="loca
 		resExonerate.append(subResFile)
 	for f in futures: f.wait()
 	#for f in resExonerate:
-	gzipfile(resExonerate[0])
-	ex.add(resExonerate[0],description=set_file_descr(grp_name+"_exonerate_part.txt",group=grp_name,step="exonerate",type="txt",view="admin",comment="part") )
-
 	res.append(split_exonerate(resExonerate[0],n=n,x=x,l=l))
+	gzipfile(ex,resExonerate[0])
+	ex.add(resExonerate[0]+".gz",description=set_file_descr(grp_name+"_exonerate_part.txt",group=grp_name,step="exonerate",type="txt",view="admin",comment="part") )
+
 	step += 1
 
 	return res
