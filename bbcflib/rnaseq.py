@@ -21,6 +21,7 @@ import os, sys, pysam, math
 # Internal modules #
 from bbcflib.genrep import GenRep
 from bbcflib.common import timer, writecols, set_file_descr
+from bbcflib.common import unique_filename_in as rstring
 from bbcflib import mapseq
 #from mapseq import bowtie, sam_to_bam, sort_bam, index_bam
 import track
@@ -32,12 +33,8 @@ import cPickle
 from numpy import zeros, asarray
 
 numpy.set_printoptions(precision=3,suppress=True)
+numpy.seterr(divide='ignore')
 
-
-def rstring(len=20):
-    """Generate a random string of length *len* (usually for filenames)."""
-    import string, random
-    return "".join([random.choice(string.letters+string.digits) for x in range(len)])
 
 def lsqnonneg(C, d, x0=None, tol=None, itmax_factor=3):
     """Linear least squares with nonnegativity constraints (NNLS), based on MATLAB's lsqnonneg function.
@@ -437,7 +434,8 @@ def transcripts_expression(exons_data, exon_lengths, transcript_mapping, trans_i
             alltranscount += total_trans_c
             allexonscount += total_exons_c
             #try: filE.write("%s\t%d\t%d\t%.1f\t%.1f\t%.1f\t%.1f\t%.1f\n" \
-            #        % (g,len(eg),len(tg),1.*len(eg)/len(tg),total_exons_c,total_trans_c,total_exons_c/total_trans_c,resnormc))
+            #        % (g,len(eg),len(tg),1.*len(eg)/len(tg),total_exons_c,total_trans_c, \
+            #           total_exons_c/total_trans_c,resnormc))
             #except ZeroDivisionError: pass
         else:
             unknown += 1
