@@ -503,6 +503,14 @@ def rnaseq_workflow(ex, job, assembly, bam_files, pileup_level=["exons","genes",
         group_names[gid] = str(group['name']) # group_names = {gid: name}
     if isinstance(pileup_level,str): pileup_level=[pileup_level]
 
+    conditions = []
+    for gid, group in job.groups.iteritems():
+        k = 0
+        for rid, run in group['runs'].iteritems():
+            k+=1
+            cond = group_names[gid]+'.'+str(k)
+            conditions.append(cond)
+
     #Exon labels: ('exonID|geneID|start|end|strand', length)
     exons = fetch_labels(bam_files[groups.keys()[0]][groups.values()[0]['runs'].keys()[0]]['bam'])
 
@@ -522,19 +530,15 @@ def rnaseq_workflow(ex, job, assembly, bam_files, pileup_level=["exons","genes",
     [exons.remove(e) for e in badexons]
 
     """ Map remaining reads to transcriptome """
-    junction_pileups={}
+    junction_pileups = dict(zip(conditions,[{}]*len(conditions)))
     if unmapped:
         print "Get unmapped reads"
-        conditions=[]; unmapped_bam={}
+        unmapped_bam={}
         mdfive = get_md5(assembly_id)
         refseq_path = os.path.join("/db/genrep/nr_assemblies/cdna_bowtie/", mdfive)
         assert os.path.exists(refseq_path+".1.ebwt"), "Refseq index not found: %s" % refseq_path+".1.ebwt"
         for gid, group in job.groups.iteritems():
-            k = 0
             for rid, run in group['runs'].iteritems():
-                k+=1
-                cond = group_names[gid]+'.'+str(k)
-                conditions.append(cond)
                 unmapped_fastq = bam_files[gid][rid].get('unmapped_fastq')
                 unmapped_bam[cond] = mapseq.map_reads(ex, unmapped_fastq, {}, refseq_path, \
                                                       remove_pcr_duplicates=False)['bam']
@@ -544,19 +548,16 @@ def rnaseq_workflow(ex, job, assembly, bam_files, pileup_level=["exons","genes",
                 junction_pileup = build_pileup(unmapped_bam[cond], junctions)
                 junction_pileup = dict(zip([j[0] for j in junctions], junction_pileup)) # {transcript ID: count}
                 junction_pileups[cond] = junction_pileup
+    print junction_pileups
 
     """ Build exon pileups from bam files """
     print "Build pileups"
-    exon_pileups = {}; nreads = {}; conditions = []
+    exon_pileups = {}; nreads = {}
     for gid,files in bam_files.iteritems():
-        k = 0
         for rid,f in files.iteritems():
-            k+=1
-            cond = group_names[gid]+'.'+str(k)
-            conditions.append(cond)
             exon_pileup = build_pileup(f['bam'], exons)
             exon_pileups[cond] = exon_pileup # {cond1.run1: [pileup], cond1.run2: [pileup]...}
-            nreads[cond] = nreads.get(cond,0) + sum(exon_pileup) # total number of reads    :w
+            nreads[cond] = nreads.get(cond,0) + sum(exon_pileup) # total number of reads
             print "....Pileup", cond, "done"
 
     print "Load mappings"
@@ -604,6 +605,10 @@ def rnaseq_workflow(ex, job, assembly, bam_files, pileup_level=["exons","genes",
         header = ["TranscriptID"] + hconds + ["Start","End","GeneID","GeneName","Chromosome"]
         (tcounts, trpkm, error) = transcripts_expression(exons_data, exon_lengths,
                    transcript_mapping, trans_in_gene, exons_in_trans,len(conditions))
+        # Add junction reads to transcript scores
+        for c in conditions:
+            for t,add in junction_pileups[c].iteritems():
+                tcounts[t][conditions.index(c)] += add
         transID = tcounts.keys()
         trans_data = [[t,tcounts[t],trpkm[t]]+list(transcript_mapping.get(t,("NA",)*5,)) for t in transID]
         trans_data = sorted(trans_data, key=lambda x: x[-5]) # sort w.r.t. gene IDs
