@@ -12,6 +12,7 @@ From a BAM file produced by an alignement on the **exonome**, gets counts of rea
 on the exons, add them to get counts on genes, and uses least-squares to infer
 counts on transcripts, avoiding to map on either genome or transcriptome.
 Note that the resulting counts on transcripts are approximate.
+The annotation of the bowtie index has to be consistent to that of the database (same assembly version).
 """
 
 # Built-in modules #
@@ -498,20 +499,6 @@ def rnaseq_workflow(ex, job, assembly, bam_files, pileup_level=["exons","genes",
     #Exon labels: ('exonID|geneID|start|end|strand', length)
     exons = fetch_labels(bam_files[groups.keys()[0]][groups.values()[0]['runs'].keys()[0]]['bam'])
 
-    """ Build exon pileups from bam files """
-    print "Build pileups"
-    exon_pileups={}; nreads={}; conditions=[]
-    for gid,files in bam_files.iteritems():
-        k = 0
-        for rid,f in files.iteritems():
-            k+=1
-            cond = group_names[gid]+'.'+str(k)
-            conditions.append(cond)
-            exon_pileup = build_pileup(f['bam'], exons)
-            exon_pileups[cond] = exon_pileup # {cond1.run1: [pileup], cond1.run2: [pileup]...}
-            nreads[cond] = nreads.get(cond,0) + sum(exon_pileup) # total number of reads
-            print "....Pileup", cond, "done"
-
     """ Extract information from bam headers """
     exonsID=[]; genesID=[]; genesName=[]; starts=[]; ends=[]; exon_lengths={}; exon_to_gene={}; badexons=[]
     for e in exons:
@@ -526,6 +513,20 @@ def rnaseq_workflow(ex, job, assembly, bam_files, pileup_level=["exons","genes",
             exon_to_gene[exon] = gene
         else: badexons.append(e)
     [exons.remove(e) for e in badexons]
+
+    """ Build exon pileups from bam files """
+    print "Build pileups"
+    exon_pileups={}; nreads={}; conditions=[]
+    for gid,files in bam_files.iteritems():
+        k = 0
+        for rid,f in files.iteritems():
+            k+=1
+            cond = group_names[gid]+'.'+str(k)
+            conditions.append(cond)
+            exon_pileup = build_pileup(f['bam'], exons)
+            exon_pileups[cond] = exon_pileup # {cond1.run1: [pileup], cond1.run2: [pileup]...}
+            nreads[cond] = nreads.get(cond,0) + sum(exon_pileup) # total number of reads
+            print "....Pileup", cond, "done"
 
     """ Map remaining reads to transcriptome """
     junction_pileups = dict(zip(conditions,[{}]*len(conditions)))
@@ -563,13 +564,14 @@ def rnaseq_workflow(ex, job, assembly, bam_files, pileup_level=["exons","genes",
     nreads = asarray([nreads[cond] for cond in conditions], dtype=numpy.float_)
     counts = asarray([exon_pileups[cond] for cond in conditions], dtype=numpy.float_)
     counts, sf = estimate_size_factors(counts)
+    print counts.shape, nreads.shape, ends.shape, starts.shape
     rpkm = 1000*(1e6*counts.T/nreads).T/(ends-starts)
     #for i in range(len(counts.ravel())):
     #    if counts.flat[i]==0: counts.flat[i] += 1.0 # if zero counts, add 1 for further comparisons
 
     print "Get scores"
     hconds = ["counts."+c for c in conditions] + ["rpkm."+c for c in conditions]
-    genesName, echr = zip(*[(x[0],x[-1]) for x in [gene_mapping.get(g,"NA") for g in genesID]])
+    genesName, echr = zip(*[(x[0],x[-1]) for x in [gene_mapping.get(g,("NA",)*4) for g in genesID]])
     exons_data = [exonsID]+list(counts)+list(rpkm)+[starts,ends,genesID,genesName,echr]
 
     """ Print counts for exons """
@@ -582,7 +584,7 @@ def rnaseq_workflow(ex, job, assembly, bam_files, pileup_level=["exons","genes",
         header = ["GeneID"] + hconds + ["Start","End","GeneName","Chromosome"]
         (gcounts, grpkm) = genes_expression(exons_data, exon_to_gene, len(conditions))
         genesID = gcounts.keys()
-        genes_data = [[g,gcounts[g],grpkm[g]]+list(gene_mapping.get(g,("NA",)*4,)) for g in genesID]
+        genes_data = [[g,gcounts[g],grpkm[g]]+list(gene_mapping.get(g,("NA",)*4)) for g in genesID]
         (genesID,gcounts,grpkm,gname,gstart,gend,gchr) = zip(*genes_data)
         genes_data = [genesID]+list(zip(*gcounts))+list(zip(*grpkm))+[gstart,gend,gname,gchr]
         save_results(ex, genes_data, conditions, header=header, feature_type="GENES")
@@ -597,7 +599,7 @@ def rnaseq_workflow(ex, job, assembly, bam_files, pileup_level=["exons","genes",
             for t,add in junction_pileups[c].iteritems():
                 tcounts[t][conditions.index(c)] += add
         transID = tcounts.keys()
-        trans_data = [[t,tcounts[t],trpkm[t]]+list(transcript_mapping.get(t,("NA",)*5,)) for t in transID]
+        trans_data = [[t,tcounts[t],trpkm[t]]+list(transcript_mapping.get(t,("NA",)*5)) for t in transID]
         trans_data = sorted(trans_data, key=lambda x: x[-5]) # sort w.r.t. gene IDs
         (transID,tcounts,trpkm,genesID,tstart,tend,tlen,tchr) = zip(*trans_data)
         genesName = [gene_mapping.get(g,("NA",)*4)[0] for g in genesID]
