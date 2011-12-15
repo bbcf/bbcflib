@@ -388,7 +388,7 @@ def transcripts_expression(exons_data, exon_lengths, transcript_mapping, trans_i
             for t in tg:
                 if exons_in_trans.get(t):
                     eg = eg.union(set(exons_in_trans[t]))
-            print eg
+            #print eg
             # Create the correspondance matrix
             M = zeros((len(eg),len(tg))); L = zeros((len(eg),len(tg)))
             ec = zeros((ncond,len(eg))); er = zeros((ncond,len(eg)))
@@ -407,14 +407,14 @@ def transcripts_expression(exons_data, exon_lengths, transcript_mapping, trans_i
                         er[c][i] += exons_rpk[e][c]
             # Compute transcript scores
             tc = []; tr = []
-            print M
+            #print M
             for c in range(ncond):  # - rpkm
                 Er = er[c]
                 tol = 10*2.22e-16*numpy.linalg.norm(M,1)*(max(M.shape)+1)
                 try: Tr, resnormr, resr = lsqnonneg(M,Er,tol=100*tol)
                 except: Tr = zeros(len(tg)) # Bad idea
                 tr.append(Tr)
-            N = M
+            #N = M
             M = numpy.vstack((M,numpy.ones(M.shape[1]))) # add constraint |E| = |T|
             L = numpy.vstack((L,numpy.ones(M.shape[1])))
             N = M*L
@@ -611,10 +611,10 @@ def rnaseq_workflow(ex, job, assembly, bam_files, pileup_level=["exons","genes",
         genesName = [gene_mapping.get(g,("NA",)*4)[0] for g in genesID]
         trans_data = [transID]+list(zip(*tcounts))+list(zip(*trpkm))+[tstart,tend,genesID,genesName,tchr]
 
-        a = trans_data
-        print a[1]
-        print to_rpkm(a[1],a[3],a[4],nreads[0])
-        print a[2]
+        #a = trans_data
+        #print a[1]
+        #print to_rpkm(a[1],a[3],a[4],nreads[0])
+        #print a[2]
         # results should be the same for ENSMUST00000073605, ENSMUST00000117757, ENSMUST00000118875,
         # which contain the same exons.
 
