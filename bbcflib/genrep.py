@@ -482,7 +482,7 @@ class Assembly(object):
 
 ################################################################################
 class GenRep(object):
-    def __init__(self, url=default_url, root=default_root, config=None, section='genrep'):
+    def __init__(self, url=None, root=None, config=None, section='genrep'):
         """Create an object to query a GenRep repository.
 
         GenRep is the in-house repository for sequence assemblies for the
@@ -506,18 +506,15 @@ class GenRep(object):
             a = Assembly(assembly='mm9',genrep=g)
 
         """
-        if (url == None or root == None) and config == None:
-            raise TypeError("GenRep requires either a 'url' and 'root', or a 'config'")
-        elif config != None:
-            self.root = os.path.abspath(config.get(section, 'genrep_root'))
-            self.url = normalize_url(config.get(section, 'genrep_url'))
-            if url != None:
-                self.url = normalize_url(url)
-            if root != None:
-                self.root = os.path.abspath(root)
-        else:
-            self.url = normalize_url(url)
-            self.root = os.path.abspath(root)
+        if not(config is None):
+            if url is None:
+                url = config.get(section, 'genrep_url')
+            if root is None:
+                root = config.get(section, 'genrep_root')
+        if url is None: url = default_url
+        if root is None: root = default_root
+        self.url = normalize_url(url)
+        self.root = os.path.abspath(root)
 
     def assembly(self,assembly,intype=0):
         """ Backward compatibility """
@@ -533,7 +530,8 @@ class GenRep(object):
 
     def assemblies_available(self, assembly=None):
         """
-        Returns a list of assemblies available on genrep
+        Returns a list of assemblies available on genrep, or tells if an
+        assembly with name ``assembly`` is available.
         """
         request = urllib2.Request(self.url + "/assemblies.json")
         assembly_list = []
