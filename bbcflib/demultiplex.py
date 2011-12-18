@@ -115,7 +115,7 @@ def demultiplex(ex,subFiles,dbFile,grp_name,minScore=77,n=1,x=22,l=30,via="local
 	return resFiles
 
 
-def getFileFromURL(file_loc,od="", suffix=None):
+def getFileFromURL(file_loc, od="", suffix=None):
 	file_loc = re.search(r'^\s*([^;\s]+)',file_loc).groups()[0]
 	suffix = (suffix and ("." + suffix)) or ''
 	resfile=os.path.join(od,unique_filename_in()) + suffix
@@ -217,7 +217,7 @@ def workflow_groups(ex, job, script_path):
 			print(group); print(run)
 			suffix = run['url'].split('.')[-1]
 			print suffix
-			infile=getFileFromURL(run['url'],lib_dir, suffix)
+			infile=getFileFromURL(run['url'], '', suffix)
 			infiles.append(infile)
 			subfiles=split_file(ex,infile,n_lines=8000000)
 			for sf in subfiles:
