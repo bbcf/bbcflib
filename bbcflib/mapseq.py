@@ -49,7 +49,7 @@ Below is the script used by the frontend::
     htss = frontend.Frontend( url=gl['hts_mapseq']['url'] )
     job = htss.job( hts_key )
     g_rep = genrep.GenRep( gl['genrep_url'], gl['bwt_root'] )
-    assembly = g_rep.assembly( assembly_id )
+    assembly = genrep.Assembly( assembly=assembly_id, genrep=g_rep )
     daflims1 = dict((loc,daflims.DAFLIMS( username=gl['lims']['user'],
                                           password=gl['lims']['passwd'][loc] ))
                     for loc in gl['lims']['passwd'].keys())
@@ -444,7 +444,8 @@ def poisson_threshold(mu, cutoff=0.95, max_terms=100):
     else:
         return n
 
-def remove_duplicate_reads( bamfile, chromosomes, maxhits=None, pilesize=1, convert=False ):
+def remove_duplicate_reads( bamfile, chromosomes,
+                            maxhits=None, pilesize=1, convert=False ):
     """Filters a bam file for multi-hits above 'maxhits' and for duplicate reads beyond 'pilesize'.
 
     Reads with NH tag > maxhits are discarded, each genomic position
@@ -780,9 +781,9 @@ def map_groups( ex, job_or_dict, fastq_root, assembly_or_dict, map_args=None ):
                 if isinstance(fq_file,tuple):
                     ex.add( m['unmapped'], description=set_file_descr(name+"_unmapped",**fqn_descr) )
                     ex.add( m['unmapped']+"_1.gz", description=set_file_descr(name+"_unmapped_1.fastq.gz",**fq_descr),
-                            associate_to_filename=m['unmapped'], template='%s_1.fastq.gz' )
+                            associate_to_filename=unmapped, template='%s_1.fastq.gz' )
                     ex.add( m['unmapped']+"_2.gz", description=set_file_descr(name+"_unmapped_2.fastq.gz",**fq_descr),
-                            associate_to_filename=m['unmapped'], template='%s_2.fastq.gz' )
+                            associate_to_filename=unmapped, template='%s_2.fastq.gz' )
                 else:
                     ex.add( m['unmapped']+".gz", set_file_descr(name+"_unmapped.fastq.gz",**fq_descr) )
             if 'poisson_threshold' in m:
