@@ -127,28 +127,50 @@ class Assembly(object):
         self.index_path = os.path.join(root,self.md5)
         for c in chromosomes:
             chrom = dict((str(k),v) for k,v in c['chromosome'].iteritems())
-            chrom['name'] = (str(x['chr_name']['value']) for x in c['chromosome']['chr_names'] \
+            cnames = chrom.pop('chr_names')
+            chrom['name'] = (str(x['chr_name']['value']) for x in cnames \
                              if x['chr_name']['assembly_id'] == self.id).next()
             self._add_chromosome(**chrom)
         return None
 
     def _add_info(self, **kwargs):
-        self.id = kwargs['id']
-        self.name = kwargs['name']
-        self.bbcf_valid = kwargs['bbcf_valid']
-        self.updated_at = datetime.strptime(kwargs['updated_at'],'%Y-%m-%dT%H:%M:%SZ')
-        self.nr_assembly_id = kwargs['nr_assembly_id']
-        self.genome_id = kwargs['genome_id']
-        self.source_name = str(kwargs['source_name'])
-        self.md5 = str(kwargs['md5'])
-        self.source_id = kwargs['source_id']
-        self.created_at = datetime.strptime(kwargs['created_at'],'%Y-%m-%dT%H:%M:%SZ')
-        self.index_path = os.path.join(self.genrep.root,self.md5)
+        self.__dict__.update(kwargs)
+        self.created_at = datetime.strptime(self.created_at,'%Y-%m-%dT%H:%M:%SZ')
+        self.updated_at = datetime.strptime(self.updated_at,'%Y-%m-%dT%H:%M:%SZ')
+        self.source_name = str(self.source_name)
+        self.md5 = str(self.md5)
         self.chromosomes = {}
 
     def _add_chromosome(self, **kwargs):
-        key = tuple([kwargs[k] for k in ['id','refseq_locus','refseq_version']])
-        self.chromosomes[key] = dict((k,kwargs[k]) for k in ['name','length','num'])
+        chr_keys = ['id','refseq_locus','refseq_version']
+        key = tuple([kwargs[k] for k in chr_keys])
+        self.chromosomes[key] = dict((k,kwargs[k]) for k in kwargs.keys() if not(k in chr_keys))
+
+    def map_chromosome_names(self, names):
+        """
+        Finds keys in the `chromosomes` dictionary that corresponds to the names or ids given as `names`.
+        Returns a dictionary, such as::
+
+            assembly.map_chromosome_names([3,5,6,47])
+
+            {'3': (2701, u'NC_001135', 4),
+            '47': None,
+            '5': (2508, u'NC_001137', 2),
+            '6': (2580, u'NC_001138', 4)}
+
+        """
+        if not(isinstance(names,(list,tuple))):
+            names = [names]
+        url = "%s/chromosomes.json?assembly_name=%s&identifier=" %(self.genrep.url,self.name)
+        mapped = {}
+        chr_keys = ['id','refseq_locus','refseq_version']
+        for n in names:
+            chr_info = json.load(urllib2.urlopen(urllib2.Request(url+str(n))))
+            if len(chr_info):
+                mapped[str(n)] = tuple([chr_info[0]["chromosome"][k] for k in chr_keys])
+            else:
+                mapped[str(n)] = None
+        return mapped
 
     def get_links(self,params):
         """
@@ -166,7 +188,6 @@ class Assembly(object):
         url = urllib2.urlopen(urllib2.Request(
                 """%s/nr_assemblies/get_links/%s.json?%s""" %(self.genrep.url,self.nr_assembly_id,request)))
         return url.read()
-
 
     def fasta_from_regions(self, regions, out=None, chunk=50000, shuffled=False):
         """
@@ -472,7 +493,7 @@ class Assembly(object):
         """
         Returns a list of chromosome names
         """
-        namelist = [(k[0],v['name']) for k,v in self.chromosomes.iteritems()]
+        namelist = [(v['num'],v['name']) for v in self.chromosomes.values()]
         return [x[1] for x in sorted(namelist)]
 
 ################################################################################
