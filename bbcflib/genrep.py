@@ -163,7 +163,7 @@ class Assembly(object):
     def get_links(self,params):
         """
         Returns urls to features. Example::
-            
+
             assembly.get_links({'name':'ENSMUSG00000085692', 'type':'gene'})
 
         returns the dictionary
@@ -176,7 +176,7 @@ class Assembly(object):
         url = urllib2.urlopen(urllib2.Request(
                 """%s/nr_assemblies/get_links/%s.json?%s""" %(self.genrep.url,self.nr_assembly_id,request)))
         return url.read()
-                    
+
 
     def fasta_from_regions(self, regions, out=None, chunk=50000, shuffled=False):
         """
@@ -369,7 +369,7 @@ class Assembly(object):
         return gene_mapping
 
     def get_transcript_mapping(self):
-        """Return a dictionary ``{transcript ID: (gene ID,start,end,length)}``"""
+        """Return a dictionary ``{transcript ID: (gene ID,start,end,length,chromosome)}``"""
         transcript_mapping = {}
         dbpath = self.sqlite_path()
         if os.path.exists(dbpath):
@@ -395,7 +395,7 @@ class Assembly(object):
         return transcript_mapping
 
     def get_exon_mapping(self):
-        """Return a dictionary ``{exon ID: ([transcript IDs],gene ID,start,end)}``"""
+        """Return a dictionary ``{exon ID: ([transcript IDs],gene ID,start,end,chromosome)}``"""
         exon_mapping = {}
         dbpath = self.sqlite_path()
         if os.path.exists(dbpath):
@@ -444,7 +444,7 @@ class Assembly(object):
                     "&uniq&conditions=type:exon&chr_name="+chr
                 resp = json.load(urllib2.urlopen(request))
                 for k,v in resp.iteritems():
-                    exon_in_trans[str(k)] = [str(x[0]) for x in v]
+                    exons_in_trans[str(k)] = [str(x[0]) for x in v]
         return exons_in_trans
 
     def get_trans_in_gene(self):
@@ -507,7 +507,7 @@ class GenRep(object):
             b = g.assembly('mm9')
 
         You can also pass this to the Assembly call directly::
-     
+
             a = Assembly(assembly='mm9',genrep=g)
 
         """

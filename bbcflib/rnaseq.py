@@ -19,14 +19,13 @@ The annotation of the bowtie index has to be consistent to that of the database 
 import os, sys, pysam, math
 
 # Internal modules #
-from bbcflib.genrep import GenRep
+from bbcflib import genrep
 from bbcflib.common import timer, writecols, set_file_descr
 from bbcflib.common import unique_filename_in as rstring
 from bbcflib import mapseq
 import track
 
 # Other modules #
-import sqlite3
 import numpy
 import cPickle
 from numpy import zeros, asarray
