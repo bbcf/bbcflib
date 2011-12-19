@@ -88,7 +88,7 @@ def exonerate(ex,subfiles, dbFile, grp_name, minScore=77,n=1,x=22,l=30,via="loca
 		resExonerate.append(subResFile)
 	for f in futures: f.wait()
 	for f in resExonerate:
-		print("Will call split_exonerate with file "+f+"=>"+str(count_lines(ex,f)+" lines"))
+		print("Will call split_exonerate with file "+f+"=>"+str(count_lines(ex,f))+" lines")
 		resSplitExonerate=split_exonerate(f,n=n,x=x,l=l)
 		print("will add resSplitExonerate to res. resSplitExonerate contains:")
 		print(resSplitExonerate)	
