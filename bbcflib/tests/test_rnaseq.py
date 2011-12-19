@@ -49,7 +49,7 @@ class Test_Expressions1(unittest.TestCase):
            |.e1.||.e2.|               |e1| |e2|
         """
     def test_transcripts_expression(self):
-        trpk, tcounts, err = transcripts_expression(self.exons_data, self.exon_lengths, self.transcript_mapping,
+        trpk, tcounts = transcripts_expression(self.exons_data, self.exon_lengths, self.transcript_mapping,
                  self.trans_in_gene, self.exons_in_trans, self.ncond)
         assert_almost_equal(trpk["t1"], array([7., 0.5]))
         assert_almost_equal(trpk["t2"], array([2., 0.5]))
@@ -63,7 +63,7 @@ class Test_Expressions1(unittest.TestCase):
 
     def test_coherence(self):
         # Test if sum of transcript counts equals gene counts
-        trpk, tcounts, err = transcripts_expression(self.exons_data, self.exon_lengths, self.transcript_mapping,
+        trpk, tcounts = transcripts_expression(self.exons_data, self.exon_lengths, self.transcript_mapping,
                      self.trans_in_gene, self.exons_in_trans, self.ncond)
         gcounts, grpkms = genes_expression(self.exons_data, self.exon_to_gene, self.ncond)
         self.assertEqual(sum(gcounts["g1"]), sum([sum(tcounts[t]) for t in self.trans_in_gene["g1"]]))
@@ -94,7 +94,7 @@ class Test_Expressions2(unittest.TestCase):
            |e1||e2| |e3|
         """
     def test_transcripts_expression(self):
-        trpk, tcounts, err = transcripts_expression(self.exons_data, self.exon_lengths, self.transcript_mapping,
+        trpk, tcounts = transcripts_expression(self.exons_data, self.exon_lengths, self.transcript_mapping,
                  self.trans_in_gene, self.exons_in_trans, self.ncond)
         assert_almost_equal(tcounts["t1"], array([10.]))
         assert_almost_equal(tcounts["t2"], array([10.]))
@@ -129,7 +129,7 @@ class Test_Expressions3(unittest.TestCase):
            |e1||e2| |e3|
         """
     def test_transcripts_expression(self):
-        trpk, tcounts, err = transcripts_expression(self.exons_data, self.exon_lengths, self.transcript_mapping,
+        trpk, tcounts = transcripts_expression(self.exons_data, self.exon_lengths, self.transcript_mapping,
                  self.trans_in_gene, self.exons_in_trans, self.ncond)
         self.assertEqual(sum(sum(tcounts.values())), sum(sum(self.counts)))
 
@@ -160,7 +160,7 @@ class Test_Expressions4(unittest.TestCase):
            |e1||e2||e3| |e4|
         """
     def test_transcripts_expression(self):
-        trpk, tcounts, err = transcripts_expression(self.exons_data, self.exon_lengths, self.transcript_mapping,
+        trpk, tcounts = transcripts_expression(self.exons_data, self.exon_lengths, self.transcript_mapping,
                  self.trans_in_gene, self.exons_in_trans, self.ncond)
         print tcounts
         self.assertGreater(sum(sum(tcounts.values()))/sum(sum(self.counts)), 0.9)
@@ -192,7 +192,7 @@ class Test_Expressions5(unittest.TestCase):
            |e1||e2||e3| |e4||e5|
         """
     def test_transcripts_expression(self):
-        trpk, tcounts, err = transcripts_expression(self.exons_data, self.exon_lengths, self.transcript_mapping,
+        trpk, tcounts = transcripts_expression(self.exons_data, self.exon_lengths, self.transcript_mapping,
                  self.trans_in_gene, self.exons_in_trans, self.ncond)
         print tcounts
         self.assertGreater(sum(sum(tcounts.values()))/sum(sum(self.counts)), 0.9)
@@ -274,16 +274,16 @@ class Test_Pileup(unittest.TestCase):
         self.counts = []
         self.bam = "test_data/Gapdh.bam"
 
-    def test_exon_labels(self):
-        self.exons = exons_labels(self.bam)
+    def test_fetch_labels(self):
+        self.exons = fetch_labels(self.bam)
         exons = [("ENSMUSE00000569415|ENSMUSG00000057666|125115289|125115329|-1", 41),
                  ("ENSMUSE00000709315|ENSMUSG00000057666|125114615|125115329|-1", 715)]
         self.assertIn(exons[0],self.exons); self.assertIn(exons[1],self.exons)
         self.assertEqual(len(self.exons),19)
 
-    def test_pileup_file(self):
-        self.exons = exons_labels(self.bam)
-        self.counts = pileup_file(self.bam, self.exons)
+    def test_build_pileup(self):
+        self.exons = fetch_labels(self.bam)
+        self.counts = build_pileup(self.bam, self.exons)
         counts = [0, 35, 0, 0, 0, 0, 0, 3679, 3707, 0, 0, 0, 149, 3, 0, 0, 55, 0, 161]
         self.assertItemsEqual(self.counts,counts)
 

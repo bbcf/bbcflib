@@ -26,7 +26,6 @@ from bbcflib import mapseq, genrep
 import track
 
 # Other modules #
-import sqlite3
 import numpy
 import cPickle
 from numpy import zeros, asarray
@@ -358,6 +357,10 @@ def estimate_size_factors(counts):
     res = res.T
     print "Size factors:",size_factors
     return res, size_factors
+
+def to_rpkm(count, length, nreads):
+    """Convert count value to RPKM"""
+    return 1000*1e6*(count/nreads)/(length)
 
 @timer
 def rnaseq_workflow(ex, job, assembly, bam_files, pileup_level=["exons","genes","transcripts"],
