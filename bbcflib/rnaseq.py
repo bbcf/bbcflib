@@ -23,7 +23,6 @@ from bbcflib.genrep import GenRep
 from bbcflib.common import timer, writecols, set_file_descr
 from bbcflib.common import unique_filename_in as rstring
 from bbcflib import mapseq
-#from mapseq import bowtie, sam_to_bam, sort_bam, index_bam
 import track
 
 # Other modules #
@@ -469,6 +468,10 @@ def estimate_size_factors(counts):
     res = res.T
     print "Size factors:",size_factors
     return res, size_factors
+
+def to_rpkm(count, length, nreads):
+    """Convert count value to RPKM"""
+    return 1000*1e6*(count/nreads)/(length)
 
 @timer
 def rnaseq_workflow(ex, job, assembly, bam_files, pileup_level=["exons","genes","transcripts"],
