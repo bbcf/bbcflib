@@ -3,16 +3,10 @@
 Module: bbcflib.genrep
 ======================
 
-This module provides an interface to GenRep repositories.  It
-provides two classes. ``GenRep`` connects to a GenRep repository and
-handles all queries.  A query via the ``GenRep`` object returns an
-``Assembly``, giving the information on a particular entry in GenRep.
-
-The primary GenRep repository on VITAL-IT has URL
-``http://bbcftools.vital-it.ch/genrep/`` and root directory
-``/db/genrep``.  To connect to
-this GenRep repository and fetch an ``Assembly`` named ``ce6``, we
-would write::
+This module provides an interface to GenRep repositories.  
+It provides two classes: the ``Assembly`` class provides a representation of a particular entry in GenRep,
+the ``GenRep`` class allows to switch to any potential GenRep repository and 
+handles all queries. To retrieve an ``Assembly`` named ``ce6``, we write::
 
     from bbcflib import genrep
     a = genrep.Assembly( assembly='ce6' )
@@ -50,8 +44,8 @@ default_root = '/db/genrep'
 class Assembly(object):
     def __init__(self, assembly=None, genrep=None, intype=0):
         """A representation of a GenRep assembly.
-        To get an assembly from the repository, call the assembly
-        method with either the integer assembly ID or the string assembly
+        To get an assembly from the repository, call the Assembly
+        constructor with either the integer assembly ID or the string assembly
         name.  This returns an Assembly object::
 
             a = Assembly(3)
@@ -108,10 +102,6 @@ class Assembly(object):
         self.intype = int(intype)
         if not(assembly is None):
             self.set_assembly(assembly)
-
-    def is_available(self):
-        """Check if I exist"""
-        return self.genrep.assemblies_available(self.name)
 
     def set_assembly(self, assembly):
         """Reset the Assembly attributes to correspond to *assembly*.

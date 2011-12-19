@@ -19,10 +19,9 @@ The annotation of the bowtie index has to be consistent to that of the database 
 import os, sys, pysam, math
 
 # Internal modules #
-from bbcflib.genrep import GenRep
 from bbcflib.common import timer, writecols, set_file_descr
 from bbcflib.common import unique_filename_in as rstring
-from bbcflib import mapseq
+from bbcflib import mapseq, genrep
 #from mapseq import bowtie, sam_to_bam, sort_bam, index_bam
 import track
 
