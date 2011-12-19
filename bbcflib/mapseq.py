@@ -781,9 +781,9 @@ def map_groups( ex, job_or_dict, fastq_root, assembly_or_dict, map_args=None ):
                 if isinstance(fq_file,tuple):
                     ex.add( m['unmapped'], description=set_file_descr(name+"_unmapped",**fqn_descr) )
                     ex.add( m['unmapped']+"_1.gz", description=set_file_descr(name+"_unmapped_1.fastq.gz",**fq_descr),
-                            associate_to_filename=unmapped, template='%s_1.fastq.gz' )
+                            associate_to_filename=m['unmapped'], template='%s_1.fastq.gz' )
                     ex.add( m['unmapped']+"_2.gz", description=set_file_descr(name+"_unmapped_2.fastq.gz",**fq_descr),
-                            associate_to_filename=unmapped, template='%s_2.fastq.gz' )
+                            associate_to_filename=m['unmapped'], template='%s_2.fastq.gz' )
                 else:
                     ex.add( m['unmapped']+".gz", set_file_descr(name+"_unmapped.fastq.gz",**fq_descr) )
             if 'poisson_threshold' in m:
