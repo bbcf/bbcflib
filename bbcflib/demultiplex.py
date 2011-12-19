@@ -94,9 +94,9 @@ def exonerate(ex,subfiles, dbFile, grp_name, minScore=77,n=1,x=22,l=30,via="loca
 		print(resSplitExonerate)	
 		res.append(resSplitExonerate)
 
-	gzipfile(resExonerate[0])
-	ex.add(resExonerate[0],description=set_file_descr(grp_name+"_exonerate_part.txt",group=grp_name,step="exonerate",type="txt",view="admin",comment="part") )
-
+	gzipfile(ex,resExonerate[0])
+	ex.add(resExonerate[0],description=set_file_descr(grp_name+"_exonerate_part.txt.gz",group=grp_name,step="exonerate",type="txt",view="admin",comment="part") )
+	
 	step += 1
 
 	print("Will leave function exonerate. Output res contains:")
