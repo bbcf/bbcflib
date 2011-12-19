@@ -438,24 +438,26 @@ def rnaseq_workflow(ex, job, assembly, bam_files, pileup_level=["exons","genes",
                                                       remove_pcr_duplicates=False)['bam']
         if unmapped_bam.get(conditions[0]):
             junctions = fetch_labels(unmapped_bam[conditions[0]]) #list of (transcript ID, length)
+            additionals = {}
             for cond in conditions:
                 sam = pysam.Samfile(unmapped_bam[cond])
                 junction_pileup = build_pileup(unmapped_bam[cond], junctions)
                 junction_pileup = dict(zip([j[0] for j in junctions], junction_pileup)) # {transcript ID: count}
                 junction_pileups[cond] = junction_pileup
+                additional = {}
                 for t in junctions:
                     if exons_in_trans.get(t) and transcript_mapping.get(t):
                         E = exons_in_trans[t]
                         lag = transcript_mapping[t][1]
-                        additional = {}
                         c = Counter()
                         for e in E:
                             if exon_mapping.get(e):
                                 emap = exon_mapping[e]
                                 st,en = (emap[2],emap[3])
                                 sam.fetch(e,st-lag,en-lag,callback=c)
-                                additional[e] = c.n
+                                additional[e] = additional.get(e,0) + c.n
                                 c.n = 0
+                additionals[cond] = additional
                 sam.close()
 
     """ Treat data """
