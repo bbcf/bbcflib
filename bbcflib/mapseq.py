@@ -49,7 +49,7 @@ Below is the script used by the frontend::
     htss = frontend.Frontend( url=gl['hts_mapseq']['url'] )
     job = htss.job( hts_key )
     g_rep = genrep.GenRep( gl['genrep_url'], gl['bwt_root'] )
-    assembly = g_rep.assembly( assembly_id )
+    assembly = genrep.Assembly( assembly=assembly_id, genrep=g_rep )
     daflims1 = dict((loc,daflims.DAFLIMS( username=gl['lims']['user'],
                                           password=gl['lims']['passwd'][loc] ))
                     for loc in gl['lims']['passwd'].keys())
@@ -444,7 +444,8 @@ def poisson_threshold(mu, cutoff=0.95, max_terms=100):
     else:
         return n
 
-def remove_duplicate_reads( bamfile, chromosomes, maxhits=None, pilesize=1, convert=False ):
+def remove_duplicate_reads( bamfile, chromosomes,
+                            maxhits=None, pilesize=1, convert=False ):
     """Filters a bam file for multi-hits above 'maxhits' and for duplicate reads beyond 'pilesize'.
 
     Reads with NH tag > maxhits are discarded, each genomic position

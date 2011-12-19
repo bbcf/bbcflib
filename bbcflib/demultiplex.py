@@ -88,10 +88,10 @@ def exonerate(ex,subfiles, dbFile, grp_name, minScore=77,n=1,x=22,l=30,via="loca
 		resExonerate.append(subResFile)
 	for f in futures: f.wait()
 	#for f in resExonerate:
-	res.append(split_exonerate(resExonerate[0],n=n,x=x,l=l))
-	gzipfile(ex,resExonerate[0])
-	ex.add(resExonerate[0]+".gz",description=set_file_descr(grp_name+"_exonerate_part.txt",group=grp_name,step="exonerate",type="txt",view="admin",comment="part") )
+	gzipfile(resExonerate[0])
+	ex.add(resExonerate[0],description=set_file_descr(grp_name+"_exonerate_part.txt",group=grp_name,step="exonerate",type="txt",view="admin",comment="part") )
 
+	res.append(split_exonerate(resExonerate[0],n=n,x=x,l=l))
 	step += 1
 
 	return res
@@ -115,7 +115,7 @@ def demultiplex(ex,subFiles,dbFile,grp_name,minScore=77,n=1,x=22,l=30,via="local
 	return resFiles
 
 
-def getFileFromURL(file_loc, od="", suffix=None):
+def getFileFromURL(file_loc,od="", suffix=None):
 	file_loc = re.search(r'^\s*([^;\s]+)',file_loc).groups()[0]
 	suffix = (suffix and ("." + suffix)) or ''
 	resfile=os.path.join(od,unique_filename_in()) + suffix
@@ -217,7 +217,7 @@ def workflow_groups(ex, job, script_path):
 			print(group); print(run)
 			suffix = run['url'].split('.')[-1]
 			print suffix
-			infile=getFileFromURL(run['url'], '', suffix)
+			infile=getFileFromURL(run['url'],lib_dir, suffix)
 			infiles.append(infile)
 			subfiles=split_file(ex,infile,n_lines=8000000)
 			for sf in subfiles:

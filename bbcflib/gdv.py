@@ -98,21 +98,17 @@ def transfert(prefix, file_path, delimiter, mail, key, serv_url, datatype, nr_as
     # read the .psv file
     with open(file_path) as f:
         sha1s = []
-        correspond = None
+        if nr_assemblies:
+            from . import genrep
+            assemblies = [genrep.Assembly(a) for a in genrep.GenRep().assemblies_available()]
+            correspond = dict((ass.nr_assembly_id, ass.id) for ass in assemblies if ass.bbcf_valid)
         reader = csv.reader(f, delimiter=delimiter)
         for row in reader:
             sql_file = row[0].strip()
             file_name = row[1].strip()
             assembly_id = int(row[2])
-            
-            # change nr_assembly_id to an assembly id
             if nr_assemblies:
-                if correspond is None:
-                    from . import genrep
-                    assemblies = genrep.GenRep().get_genrep_objects('assemblies', 'assembly')
-                    correspond = dict([ (ass.nr_assembly_id, ass.id) for ass in assemblies if ass.bbcf_valid])
                 assembly_id = correspond[assembly_id]
-            # look if it's not already done
             if sql_file not in sha1s:
                 sha1s.append(sql_file)
                 # ensure that the datatype is set
@@ -126,18 +122,6 @@ def transfert(prefix, file_path, delimiter, mail, key, serv_url, datatype, nr_as
                 conn.close()
                 # send the request
                 new_track(mail, key, assembly_id=assembly_id, fsys=os.path.join(prefix, sql_file), serv_url=serv_url, file_names=file_name)
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 def create_gdv_project( gdv_key, gdv_email,

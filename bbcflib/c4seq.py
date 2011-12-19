@@ -121,8 +121,8 @@ def smoothFragFile(inputFile,nFragsPerWin,curName,outputFile,regToExclude=None,s
         	'return_value':None}
 
 # *** main function to compute normalised counts per fragments from a density file
-# ex: resfiles=density_to_countsPerFrag(ex,mapped_files[gid][rid]['wig']['merged'],mapped_files[gid][rid]['libname'],assembly.name,reffile,regToExclude,working_dir, script_path, 'lsf')
-def density_to_countsPerFrag(ex,density_file,density_name,assembly_name,reffile,regToExclude,wd,script_path, via='lsf'):
+# ex: resfiles=density_to_countsPerFrag(ex,mapped_files[gid][rid]['wig']['merged'],mapped_files[gid][rid]['libname'],assembly,reffile,regToExclude,working_dir, script_path, 'lsf')
+def density_to_countsPerFrag(ex,density_file,density_name,assembly,reffile,regToExclude,wd,script_path, via='lsf'):
 	'''
 		main function to compute normalised counts per fragments from a density file 
 	'''
@@ -134,7 +134,7 @@ def density_to_countsPerFrag(ex,density_file,density_name,assembly_name,reffile,
         from gMiner.operations.genomic_manip.scores import mean_score_by_feature
         with track.Track(density_file) as scores:
                 with track.Track(reffile) as features:
-                        with track.new(output,format='sql',chrmeta=assembly_name) as out:
+                        with track.new(output,format='sql',chrmeta=assembly.chrmeta) as out:
                                 for ch in scores:
                                         out.write(ch,mean_score_by_feature()(
                                                         scores.read(ch),
@@ -166,7 +166,7 @@ def density_to_countsPerFrag(ex,density_file,density_name,assembly_name,reffile,
 	ex.add(sortedBedGraph,description=set_file_descr("res_segToFrag_"+density_name+".bedGraph",groupId=grpId,step="norm_counts_per_frag",type="bedGraph",comment="bedGraph sorted",ucsc='1'))
 	sortedBedGraph_sql=unique_filename_in()
 	touch(ex,sortedBedGraph_sql)
-	with track.load(sortedBedGraph,'bedGraph', chrmeta=assembly_name) as t:
+	with track.load(sortedBedGraph,'bedGraph', chrmeta=assembly.chrmeta) as t:
                 t.convert(sortedBedGraph_sql+".sql",'sql')
 	ex.add(sortedBedGraph_sql+".sql",description=set_file_descr("res_segToFrag_"+density_name+".sql",groupId=grpId,step="norm_counts_per_frag",type="sql",view="admin",comment="bedGraph sorted"))
 	step += 1
@@ -178,7 +178,7 @@ def density_to_countsPerFrag(ex,density_file,density_name,assembly_name,reffile,
 # *** 0.get/create the library 
 # *** 1.when necessary, calculate the density file from the bam file (mapseq.parallel_density_sql)
 # ### 2.calculate the count per fragment for each denstiy file with gFeatMiner:mean_score_by_feature to calculate)
-def workflow_groups(ex, job, primers_dict, g_rep, mapseq_files, mapseq_url, script_path='', via='lsf' ):
+def workflow_groups(ex, job, primers_dict, assembly, mapseq_files, mapseq_url, script_path='', via='lsf' ):
 	'''
 		# Main 
 		#-------------------------------------------#
@@ -189,7 +189,6 @@ def workflow_groups(ex, job, primers_dict, g_rep, mapseq_files, mapseq_url, scri
 	'''
 	global grpId
 	global step
-	assembly = g_rep.assembly(job.assembly_id)
 	processed={
 		'lib' : {},
 		'density' : {},
@@ -200,11 +199,10 @@ def workflow_groups(ex, job, primers_dict, g_rep, mapseq_files, mapseq_url, scri
 	htss_mapseq = frontend.Frontend( url=mapseq_url )
 
 	new_libs=[]
-        fasta_allchr=assembly
 	
 	for gid, group in job_groups.iteritems():
                 grpId = gid
-		reffile=createlib.get_libForGrp(ex,group,fasta_allchr,new_libs, job.id, g_rep,gid)
+		reffile=createlib.get_libForGrp(ex,group,assembly,new_libs, job.id, g_rep,gid)
 #		reffile='/archive/epfl/bbcf/data/DubouleDaan/library_Nla_30bps/library_Nla_30bps_segmentInfos.bed'
 		processed['lib'][gid]=reffile
 
@@ -220,11 +218,11 @@ def workflow_groups(ex, job, primers_dict, g_rep, mapseq_files, mapseq_url, scri
                         if not job.options.get('compute_densities') or job.options.get('merge_strands') != 0:
 				print("will call parallel_density_sql with bam:"+mapseq_files[gid][rid]['bam']+"\n")
 				density_file=parallel_density_sql( ex, mapseq_files[gid][rid]['bam'],
-                        						assembly.chromosomes,
-                        			                        nreads=mapseq_files[gid][rid]['stats']["total"],
-                                                 			merge=0,
-                                                 			convert=False,
-                                                 			via=via )
+								   assembly.chromosomes,
+								   nreads=mapseq_files[gid][rid]['stats']["total"],
+								   merge=0,
+								   convert=False,
+								   via=via )
 				mapseq_files[gid][rid]['wig']['merged']=density_file+"merged.sql"
 				print("name of density_file after parallel_density_sql="+density_file)
 				print("density file:"+mapseq_files[gid][rid]['wig']['merged'])
@@ -245,7 +243,7 @@ def workflow_groups(ex, job, primers_dict, g_rep, mapseq_files, mapseq_url, scri
                         processed['density'][mapseq_files[gid][rid]['libname']]=mapseq_files[gid][rid]['wig']['merged']
 
 			print("Will process to the main part of 4cseq module: calculate normalised counts per fragments from density file:"+mapseq_files[gid][rid]['wig']['merged'])
-			resfiles=density_to_countsPerFrag(ex,mapseq_files[gid][rid]['wig']['merged'],mapseq_files[gid][rid]['libname'],assembly.name,reffile,regToExclude,ex.remote_working_directory+'/',script_path, via)
+			resfiles=density_to_countsPerFrag(ex,mapseq_files[gid][rid]['wig']['merged'],mapseq_files[gid][rid]['libname'],assembly,reffile,regToExclude,ex.remote_working_directory+'/',script_path, via)
 			processed['4cseq']=resfiles
 			
 			print("Will proceed to profile correction of file "+str(resfiles[4]))
