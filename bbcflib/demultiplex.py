@@ -87,12 +87,20 @@ def exonerate(ex,subfiles, dbFile, grp_name, minScore=77,n=1,x=22,l=30,via="loca
 		futures.append(raw_exonerate.nonblocking(ex,sf,dbFile,minScore=minScore,n=n,x=x,l=l,via=via,stdout=subResFile))
 		resExonerate.append(subResFile)
 	for f in futures: f.wait()
-	#for f in resExonerate:
+	for f in resExonerate:
+		print("Will call split_exonerate with file "+f+"=>"+str(count_lines(ex,f)+" lines"))
+		resSplitExonerate=split_exonerate(f,n=n,x=x,l=l)
+		print("will add resSplitExonerate to res. resSplitExonerate contains:")
+		print(resSplitExonerate)	
+		res.append(resSplitExonerate)
+
 	gzipfile(resExonerate[0])
 	ex.add(resExonerate[0],description=set_file_descr(grp_name+"_exonerate_part.txt",group=grp_name,step="exonerate",type="txt",view="admin",comment="part") )
 
-	res.append(split_exonerate(resExonerate[0],n=n,x=x,l=l))
 	step += 1
+
+	print("Will leave function exonerate. Output res contains:")
+        print(res)
 
 	return res
 
