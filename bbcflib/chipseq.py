@@ -25,10 +25,9 @@ Below is the script used by the frontend::
            'genrep_url': 'http://bbcftools.vital-it.ch/genrep/',
            'script_path': '/srv/chipseq/lib' }
     htss = frontend.Frontend( url=gl['hts_chipseq']['url'] )
-    g_rep = genrep.GenRep( gl['genrep_url'], "" )
     job = htss.job( hts_key )
     g_rep = genrep.GenRep( gl['genrep_url'], "" )
-    assembly = g_rep.assembly( assembly_id )
+    assembly = genrep.Assembly( assembly=assembly_id, genrep=g_rep )
     with execution( M, description=hts_key, remote_working_directory=working_dir ) as ex:
         (ms_files, job) = get_bam_wig_files( ex, job, ms_limspath, gl['hts_mapseq']['url'], gl['script_path'], via=via )
         files = workflow_groups( ex, job, ms_files, assembly.chromosomes, gl['script_path'] )

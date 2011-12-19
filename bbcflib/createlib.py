@@ -44,7 +44,7 @@ def load_libraryParamsFile(paramsfile):
 
 
 @program
-def call_getRestEnzymeOccAndSeq(assembly_or_fasta,prim_site,sec_site,l_seg,g_rep, remote_working_directory, l_type='typeI'):
+def call_getRestEnzymeOccAndSeq(assembly_or_fasta,prim_site,sec_site,l_seg, remote_working_directory, l_type='typeI'):
 	'''
 		Will create segments and fragments files of the new library from the genome sequence (via a call to getRestEnzymeOccAndSeq.pl)
 		The genome sequence (assembly_or_fasta) can be given either as a genrep assembly or as a fasta file.
@@ -55,7 +55,7 @@ def call_getRestEnzymeOccAndSeq(assembly_or_fasta,prim_site,sec_site,l_seg,g_rep
 		print(assembly_or_fasta)
 		print(isinstance(assembly_or_fasta,genrep.Assembly))
 		print("Will prepare fasta file")
-		fasta_path=g_rep.fasta_path(assembly_or_fasta)
+		fasta_path=assembly_or_fasta.fasta_path()
 		tar = tarfile.open(fasta_path)
 		tar.extractall(path=remote_working_directory)
 		allfiles=[]
@@ -224,7 +224,7 @@ def call_gunzip(path):
 	return {"arguments": call, "return_value": output}
 
 # *** main call to create the library
-def createLibrary(ex,fasta_allchr,params, g_rep):
+def createLibrary(ex,fasta_allchr,params):
 	'''
 		main call to create the library
 	'''
@@ -234,7 +234,7 @@ def createLibrary(ex,fasta_allchr,params, g_rep):
 		return [None,None,None,None]
 	print('Will call call_getRestEnzymeOccAndSeq')
 	print(fasta_allchr)
-	libfiles=call_getRestEnzymeOccAndSeq(ex,fasta_allchr,params['primary'],params['secondary'],params['length'],g_rep, ex.remote_working_directory + "/", params['type'])
+	libfiles=call_getRestEnzymeOccAndSeq(ex,fasta_allchr,params['primary'],params['secondary'],params['length'], ex.remote_working_directory + "/", params['type'])
 	print('parse fragment file to create segment info bed file and fragment bed file\n')
 	bedfiles=parse_fragFile(libfiles[1])
 	print('calculate coverage in repeats for segments')
@@ -250,7 +250,7 @@ def createLibrary(ex,fasta_allchr,params, g_rep):
 	return([libfiles,bedfiles,resfile,infos_lib,resfile_sql])
 
 
-def get_libForGrp(ex,group,fasta_or_assembly,new_libraries, job_id, g_rep, grpId):
+def get_libForGrp(ex,group,fasta_or_assembly,new_libraries, job_id, grpId):
 	#wd_archive="/archive/epfl/bbcf/mleleu/pipeline_vMarion/pipeline_3Cseq/vWebServer_Bein/" #temporary: will be /scratch/cluster/monthly/htsstation/4cseq/job.id
 	lib_dir = "/scratch/cluster/monthly/htsstation/4cseq/" + str(job_id) + "/"
 	print "Group:\n"
@@ -263,7 +263,7 @@ def get_libForGrp(ex,group,fasta_or_assembly,new_libraries, job_id, g_rep, grpId
 		print("lib_id="+str(lib_id))
 		if lib_id == 0 and ex_libfile == None :
 			print("will call createlib.createLibrary with:"+str(fasta_or_assembly)+" and "+ library_filename)
-			libfiles=createLibrary(ex,fasta_or_assembly,paramslib, g_rep);
+			libfiles=createLibrary(ex,fasta_or_assembly,paramslib);
 			reffile=libfiles[4]
 			ex.add(libfiles[2],description=set_file_descr("new_library.bed",groupId=grpId,step=0,type="bed"))
 			ex.add(reffile,description=set_file_descr("new_library.sql",groupId=grpId,step=0,type="sql",view='admin'))

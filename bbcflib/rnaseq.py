@@ -118,22 +118,8 @@ def lsqnonneg(C, d, x0=None, tol=None, itmax_factor=3):
         w = numpy.dot(C.T, resid)
     return (x, sum(resid*resid), resid)
 
-def get_md5(assembly_id):
-    grep_root = '/db/genrep'
-    grep = GenRep(url='http://bbcftools.vital-it.ch/genrep/',root=grep_root)
-    assembly = grep.assembly(assembly_id)
-    mdfive = assembly.md5
-    return mdfive
-
-def get_chromosomes(assembly_id):
-    grep_root = '/db/genrep'
-    grep = GenRep(url='http://bbcftools.vital-it.ch/genrep/',root=grep_root)
-    assembly = grep.assembly(assembly_id)
-    chromosomes = assembly.chromosomes
-    return chromosomes
-
 @timer
-def fetch_mappings(assembly_id, path_to_map=None):
+def fetch_mappings(assembly, path_to_map=None):
     """Given an assembly ID, returns a tuple
     ``(gene_ids, gene_names, transcript_mapping, exon_mapping, trans_in_gene, exons_in_trans)``
 
@@ -147,111 +133,15 @@ def fetch_mappings(assembly_id, path_to_map=None):
     (e.g. 11, 76 or 'hg19' for H.Sapiens), or a path to a file containing a
     pickle object which is read to get the mapping.
     """
-    mdfive = get_md5(assembly_id)
-
-    # Connect to GTF database
-    dbpath = "/db/genrep/nr_assemblies/annot_tracks/"+mdfive+".sql"
-    if os.path.exists(dbpath):
-        db = sqlite3.connect(dbpath, check_same_thread=False)
-    else: raise IOError("Database not found in %s" % dbpath)
-
-    # Get chromosome names from GenRep
-    c = db.cursor()
-    chromosomes = c.execute("""SELECT name FROM chrNames ORDER BY name;""").fetchall()
-    chromosomes = [c[0] for c in chromosomes]
-
-    def get_gene_mapping(db,chromosomes):
-        """Return a dictionary {geneID: (geneName, start, end, chromosome)}"""
-        c = db.cursor()
-        gene_mapping = {}; sql=''
-        for chr in chromosomes:
-            sql += '''SELECT DISTINCT '%s',gene_id,gene_name,MIN(start),MAX(end) FROM '%s'
-                     WHERE (type LIKE 'exon') GROUP BY gene_id UNION ''' % (chr,chr,)
-        sql = sql[:-7]+';'
-        sql_result = c.execute(sql)
-        for chr,g,name,start,end in sql_result:
-            gene_mapping[g] = (name,start,end,chr)
-        return gene_mapping
-
-    def get_transcript_mapping(db,chromosomes):
-        """Return a dictionary ``{transcript ID: (gene ID,start,end,length)}``"""
-        c = db.cursor()
-        transcript_mapping = {}; sql=''
-        lengths = {}; sql=''
-        for chr in chromosomes:
-            sql += '''SELECT transcript_id,sum(end-start) FROM '%s'
-                      WHERE (type LIKE 'exon') GROUP BY transcript_id UNION ''' % (chr,)
-        sql = sql[:-7]+';'
-        sql_result = c.execute(sql)
-        for t,l in sql_result:
-            lengths[t] = l
-        sql = ''
-        for chr in chromosomes:
-            sql += '''SELECT DISTINCT '%s',transcript_id,gene_id,MIN(start),MAX(end) FROM '%s'
-                      WHERE (type LIKE 'exon') GROUP BY transcript_id UNION ''' % (chr,chr,)
-        sql = sql[:-7]+';'
-        sql_result = c.execute(sql)
-        for chr,t,g,start,end in sql_result:
-            transcript_mapping[t] = (g,start,end,lengths[t],chr)
-        return transcript_mapping
-
-    def get_exon_mapping(db,chromosomes):
-        """Return a dictionary ``{exon ID: ([transcript IDs],gene ID,start,end)}``"""
-        c = db.cursor()
-        exon_mapping = {}; sql=''; T={}
-        for chr in chromosomes:
-            sql += '''SELECT DISTINCT exon_id,transcript_id from '%s'
-                      WHERE (type LIKE 'exon') UNION ''' % (chr,)
-        sql = sql[:-7]+';'
-        sql_result = c.execute(sql)
-        for e,t in sql_result:
-            T.setdefault(e,[]).append(t)
-        sql = ''
-        for chr in chromosomes:
-            sql += '''SELECT DISTINCT '%s',exon_id,gene_id,start,end FROM '%s'
-                      WHERE (type LIKE 'exon') UNION ''' % (chr,chr,)
-        sql = sql[:-7]+';'
-        sql_result = c.execute(sql)
-        for chr,e,g,start,end in sql_result:
-            exon_mapping[e] = (T[e],g,start,end,chr)
-        return exon_mapping
-
-    def get_exons_in_trans(db,chromosomes):
-        """Return a dictionary ``{transcript ID: list of exon IDs it contains}``"""
-        c = db.cursor()
-        exons_in_trans = {}; sql=''
-        for chr in chromosomes:
-            sql += '''SELECT DISTINCT transcript_id,exon_id from '%s'
-                      WHERE (type LIKE 'exon') UNION ''' % (chr,)
-        sql = sql[:-7]+';'
-        sql_result = c.execute(sql)
-        for t,e in sql_result:
-            exons_in_trans.setdefault(t,[]).append(e)
-        return exons_in_trans
-
-    def get_trans_in_gene(db,chromosomes):
-        """Return a dictionary ``{gene ID: list of transcript IDs it contains}``"""
-        c = db.cursor()
-        trans_in_gene = {}; sql=''
-        for chr in chromosomes:
-            sql += '''SELECT DISTINCT gene_id,transcript_id FROM '%s'
-                      WHERE (type LIKE 'exon') UNION ''' % (chr,)
-        sql = sql[:-7]+';'
-        sql_result = c.execute(sql)
-        for g,t in sql_result:
-            trans_in_gene.setdefault(g,[]).append(t)
-        return trans_in_gene
-
     path_to_map = "/scratch/cluster/monthly/jdelafon/temp/mappings"
     if os.path.exists(path_to_map):
-        with open(path_to_map,"rb") as f:
-            mapping = cPickle.load(f)
+        with open(path_to_map,"rb") as f: mapping = cPickle.load(f)
     else:
-        gene_mapping = get_gene_mapping(db,chromosomes)
-        transcript_mapping = get_transcript_mapping(db,chromosomes)
-        exon_mapping = get_exon_mapping(db,chromosomes)
-        exons_in_trans = get_exons_in_trans(db,chromosomes)
-        trans_in_gene = get_trans_in_gene(db,chromosomes)
+        gene_mapping = assembly.get_gene_mapping()
+        transcript_mapping = assembly.get_transcript_mapping()
+        exon_mapping = assembly.get_exon_mapping()
+        exons_in_trans = assembly.get_exons_in_trans()
+        trans_in_gene = assembly.get_trans_in_gene()
         mapping = (gene_mapping, transcript_mapping, exon_mapping, trans_in_gene, exons_in_trans)
     return mapping
 
@@ -491,7 +381,7 @@ def rnaseq_workflow(ex, job, assembly, bam_files, pileup_level=["exons","genes",
     :param via: 'local' or 'lsf'.
     """
     group_names={}
-    assembly_id = job.assembly_id
+    assembly = genrep.Assembly(assembly=job.assembly_id,intype=2)
     groups = job.groups
     for gid,group in groups.iteritems():
         group_names[gid] = str(group['name']) # group_names = {gid: name}
@@ -534,8 +424,7 @@ def rnaseq_workflow(ex, job, assembly, bam_files, pileup_level=["exons","genes",
     if unmapped:
         print "Get unmapped reads"
         unmapped_bam={}
-        mdfive = get_md5(assembly_id)
-        refseq_path = os.path.join("/db/genrep/nr_assemblies/cdna_bowtie/", mdfive)
+        refseq_path = assembly.index_path
         assert os.path.exists(refseq_path+".1.ebwt"), "Refseq index not found: %s" % refseq_path+".1.ebwt"
         for gid, group in job.groups.iteritems():
             for rid, run in group['runs'].iteritems():
@@ -550,13 +439,13 @@ def rnaseq_workflow(ex, job, assembly, bam_files, pileup_level=["exons","genes",
                 junction_pileups[cond] = junction_pileup
 
     print "Load mappings"
-    mappings = fetch_mappings(assembly_id)
     """ [0] gene_mapping is a dict ``{gene ID: (gene name,start,end,chromosome)}``
         [1] transcript_mapping is a dictionary ``{transcript ID: (gene ID,start,end,chromosome)}``
         [2] exon_mapping is a dictionary ``{exon ID: ([trancript IDs],gene ID,start,end,chromosome)}``
         [3] trans_in_gene is a dict ``{gene ID: [IDs of the transcripts it contains]}``
         [4] exons_in_trans is a dict ``{transcript ID: [IDs of the exons it contains]}`` """
-    (gene_mapping, transcript_mapping, exon_mapping, trans_in_gene, exons_in_trans) = mappings
+    (gene_mapping, transcript_mapping, exon_mapping, trans_in_gene, exons_in_trans) = fetch_mappings(assembly)
+
 
     """ Treat data """
     print "Process data"
