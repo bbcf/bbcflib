@@ -22,7 +22,6 @@ import os, sys, pysam, math
 from bbcflib.common import timer, writecols, set_file_descr
 from bbcflib.common import unique_filename_in as rstring
 from bbcflib import mapseq, genrep
-#from mapseq import bowtie, sam_to_bam, sort_bam, index_bam
 import track
 
 # Other modules #
@@ -153,6 +152,12 @@ def fetch_labels(bamfile):
     sam.close()
     return labels
 
+class Counter(object):
+    def __init__(self):
+        self.n = 0
+    def __call__(self, alignment):
+        self.n += 1
+
 def build_pileup(bamfile, labels):
     """From a BAM file *bamfile*, returns a list containing for each exon in *exons*,
     the number of reads that mapped to it, in the same order.
@@ -166,13 +171,6 @@ def build_pileup(bamfile, labels):
     counts = []
     try: sam = pysam.Samfile(bamfile, 'rb')
     except ValueError: sam = pysam.Samfile(bamfile,'r')
-
-    class Counter(object):
-        def __init__(self):
-            self.n = 0
-        def __call__(self, alignment):
-            self.n += 1
-
     c = Counter()
     for l in labels:
         sam.fetch(l[0], 0, l[1], callback=c) #(name,0,length,Counter())
@@ -418,6 +416,14 @@ def rnaseq_workflow(ex, job, assembly, bam_files, pileup_level=["exons","genes",
             nreads[cond] = nreads.get(cond,0) + sum(exon_pileup) # total number of reads
             print "....Pileup", cond, "done"
 
+    print "Load mappings"
+    """ [0] gene_mapping is a dict ``{gene ID: (gene name,start,end,chromosome)}``
+        [1] transcript_mapping is a dictionary ``{transcript ID: (gene ID,start,end,chromosome)}``
+        [2] exon_mapping is a dictionary ``{exon ID: ([trancript IDs],gene ID,start,end,chromosome)}``
+        [3] trans_in_gene is a dict ``{gene ID: [IDs of the transcripts it contains]}``
+        [4] exons_in_trans is a dict ``{transcript ID: [IDs of the exons it contains]}`` """
+    (gene_mapping, transcript_mapping, exon_mapping, trans_in_gene, exons_in_trans) = fetch_mappings(assembly)
+
     """ Map remaining reads to transcriptome """
     junction_pileups = dict(zip(conditions,[{}]*len(conditions)))
     if unmapped:
@@ -433,18 +439,24 @@ def rnaseq_workflow(ex, job, assembly, bam_files, pileup_level=["exons","genes",
         if unmapped_bam.get(conditions[0]):
             junctions = fetch_labels(unmapped_bam[conditions[0]]) #list of (transcript ID, length)
             for cond in conditions:
+                sam = pysam.Samfile(unmapped_bam[cond])
                 junction_pileup = build_pileup(unmapped_bam[cond], junctions)
                 junction_pileup = dict(zip([j[0] for j in junctions], junction_pileup)) # {transcript ID: count}
                 junction_pileups[cond] = junction_pileup
-
-    print "Load mappings"
-    """ [0] gene_mapping is a dict ``{gene ID: (gene name,start,end,chromosome)}``
-        [1] transcript_mapping is a dictionary ``{transcript ID: (gene ID,start,end,chromosome)}``
-        [2] exon_mapping is a dictionary ``{exon ID: ([trancript IDs],gene ID,start,end,chromosome)}``
-        [3] trans_in_gene is a dict ``{gene ID: [IDs of the transcripts it contains]}``
-        [4] exons_in_trans is a dict ``{transcript ID: [IDs of the exons it contains]}`` """
-    (gene_mapping, transcript_mapping, exon_mapping, trans_in_gene, exons_in_trans) = fetch_mappings(assembly)
-
+                for t in junctions:
+                    if exons_in_trans.get(t) and transcript_mapping.get(t):
+                        E = exons_in_trans[t]
+                        lag = transcript_mapping[t][1]
+                        additional = {}
+                        c = Counter()
+                        for e in E:
+                            if exon_mapping.get(e):
+                                emap = exon_mapping[e]
+                                st,en = (emap[2],emap[3])
+                                sam.fetch(e,st-lag,en-lag,callback=c)
+                                additional[e] = c.n
+                                c.n = 0
+                sam.close()
 
     """ Treat data """
     print "Process data"
