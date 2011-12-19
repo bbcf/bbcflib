@@ -350,13 +350,13 @@ class Assembly(object):
         if os.path.exists(dbpath):
             db = sqlite3.connect(dbpath)
             cursor = db.cursor()
-            for chr in [k['name'] for k in self.chromosomes.values()]:
+            for chr in self.chrnames:
                 sql = "SELECT DISTINCT gene_id,gene_name,MIN(start),MAX(end) FROM '%s' WHERE (type LIKE 'exon') GROUP BY gene_id" %chr
                 cursor.execute(sql)
                 for g,name,start,end in cursor:
                     gene_mapping[str(g)] = (str(name),start,end,chr)
         else:
-            for chr in [k['name'] for k in self.chromosomes.values()]:
+            for chr in self.chrnames:
                 request = self.genrep.url+"/nr_assemblies/get_dico?md5="+self.md5+\
                     "&keys=gene_id&values=gene_name,start,end&uniq"+\
                     "&conditions=type:exon&chr_name="+chr
@@ -375,13 +375,13 @@ class Assembly(object):
         if os.path.exists(dbpath):
             db = sqlite3.connect(dbpath)
             cursor = db.cursor()
-            for chr in [k['name'] for k in self.chromosomes.values()]:
+            for chr in self.chrnames:
                 sql = "SELECT DISTINCT transcript_id,gene_id,MIN(start),MAX(end),SUM(end-start) FROM '%s' WHERE (type LIKE 'exon') GROUP BY transcript_id" %chr
                 cursor.execute(sql)
                 for t,g,start,end,length in cursor:
                     transcript_mapping[str(t)] = (str(g),start,end,length,chr)
         else:
-            for chr in [k['name'] for k in self.chromosomes.values()]:
+            for chr in self.chrnames:
                 request = self.genrep.url+"/nr_assemblies/get_dico?md5="+self.md5+\
                     "&keys=transcript_id&values=gene_id,start,end&uniq"+\
                     "&conditions=type:exon&chr_name="+chr
@@ -401,7 +401,7 @@ class Assembly(object):
         if os.path.exists(dbpath):
             db = sqlite3.connect(dbpath)
             cursor = db.cursor()
-            for chr in [k['name'] for k in self.chromosomes.values()]:
+            for chr in self.chrnames:
                 sql = "SELECT DISTINCT exon_id,transcript_id from '%s' WHERE (type LIKE 'exon')" %chr
                 cursor.execute(sql)
                 T={}
@@ -412,7 +412,7 @@ class Assembly(object):
                 for e,g,start,end in cursor:
                     exon_mapping[str(e)] = (T[e],str(g),start,end,chr)
         else:
-            for chr in [k['name'] for k in self.chromosomes.values()]:
+            for chr in self.chrnames:
                 request = self.genrep.url+"/nr_assemblies/get_dico?md5="+self.md5+\
                     "&keys=exon_id&values=gene_id,transcript_id,start,end"+\
                     "&uniq&conditions=type:exon&chr_name="+chr
@@ -432,13 +432,13 @@ class Assembly(object):
         if os.path.exists(dbpath):
             db = sqlite3.connect(dbpath)
             cursor = db.cursor()
-            for chr in [k['name'] for k in self.chromosomes.values()]:
+            for chr in self.chrnames:
                 sql = "SELECT DISTINCT transcript_id,exon_id from '%s' WHERE (type LIKE 'exon')"%chr
                 cursor.execute(sql)
                 for t,e in cursor:
                     exons_in_trans.setdefault(str(t),[]).append(str(e))
         else:
-            for chr in [k['name'] for k in self.chromosomes.values()]:
+            for chr in self.chrnames:
                 request = self.genrep.url+"/nr_assemblies/get_dico?md5="+self.md5+\
                     "&keys=transcript_id&values=exon_id"+\
                     "&uniq&conditions=type:exon&chr_name="+chr
@@ -454,13 +454,13 @@ class Assembly(object):
         if os.path.exists(dbpath):
             db = sqlite3.connect(dbpath)
             cursor = db.cursor()
-            for chr in [k['name'] for k in self.chromosomes.values()]:
+            for chr in self.chrnames:
                 sql = "SELECT DISTINCT gene_id,transcript_id FROM '%s' WHERE (type LIKE 'exon')"%chr
                 cursor.execute(sql)
                 for g,t in cursor:
                     trans_in_gene.setdefault(str(g),[]).append(str(t))
         else:
-            for chr in [k['name'] for k in self.chromosomes.values()]:
+            for chr in self.chrnames:
                 request = self.genrep.url+"/nr_assemblies/get_dico?md5="+self.md5+\
                     "&keys=gene_id&values=transcript_id"+\
                     "&uniq&conditions=type:exon&chr_name="+chr
@@ -469,9 +469,6 @@ class Assembly(object):
                     trans_in_gene[str(k)] = [str(x[0]) for x in v]
         return trans_in_gene
 
-    def get_chrmeta(self):
-        return self.chrmeta
-
     @property
     def chrmeta(self):
         """
@@ -479,6 +476,14 @@ class Assembly(object):
         {'chr1': {'length': 249250621},'chr2': {'length': 135534747},'chr3': {'length': 135006516}}
         """
         return dict([(v['name'], dict([('length', v['length'])])) for v in self.chromosomes.values()])
+
+    @property
+    def chrnames(self):
+        """
+        Returns a list of chromosome names
+        """
+        namelist = [(k[0],v['name']) for k,v in self.chromosomes.iteritems()]
+        return [x[1] for x in sorted(namelist)]
 
 ################################################################################
 class GenRep(object):
