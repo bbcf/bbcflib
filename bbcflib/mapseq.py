@@ -61,7 +61,7 @@ Below is the script used by the frontend::
                              dict((k,v['name']) for k,v in job.groups.iteritems()),
                              gl['script_path'] )
         density_files = densities_groups( ex, job, mapped_files, assembly.chromosomes )
-        gdv_project = gdv.new_project( gl['gdv']['email'], gl['gdv']['key'], 
+        gdv_project = gdv.new_project( gl['gdv']['email'], gl['gdv']['key'],
                                        job.description, assembly.id, gl['gdv']['url'] )
         add_pickle( ex, gdv_project, description='py:gdv_json' )
     print ex.id

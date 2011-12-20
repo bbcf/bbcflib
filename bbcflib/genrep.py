@@ -3,9 +3,9 @@
 Module: bbcflib.genrep
 ======================
 
-This module provides an interface to GenRep repositories.  
+This module provides an interface to GenRep repositories.
 It provides two classes: the ``Assembly`` class provides a representation of a particular entry in GenRep,
-the ``GenRep`` class allows to switch to any potential GenRep repository and 
+the ``GenRep`` class allows to switch to any potential GenRep repository and
 handles all queries. To retrieve an ``Assembly`` named ``ce6``, we write::
 
     from bbcflib import genrep

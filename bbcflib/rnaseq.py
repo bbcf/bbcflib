@@ -6,7 +6,7 @@ Methods of the bbcflib's RNA-seq worflow. The main function is ``rnaseq_workflow
 and is usually called by bbcfutils' ``run_rnaseq.py``, e.g. command-line:
 
 ``python run_rnaseq.py -v lsf -c config_files/gapdh.txt -d rnaseq -p transcripts``
-``python run_rnaseq.py -v lsf -c config_files/rnaseq.txt -d rnaseq -p genes -u -m /scratch/cluster/monthly/jdelafon/mapseq``
+``python run_rnaseq.py -v lsf -c config_files/rnaseq.txt -d rnaseq -p transcripts -u -m ../mapseq``
 
 From a BAM file produced by an alignement on the **exonome**, gets counts of reads
 on the exons, add them to get counts on genes, and uses least-squares to infer
@@ -132,7 +132,7 @@ def fetch_mappings(assembly, path_to_map=None):
     pickle object which is read to get the mapping.
     """
     path_to_map = "/scratch/cluster/monthly/jdelafon/temp/mappings"
-    if os.path.exists(path_to_map):
+    if os.path.exists(str(path_to_map)):
         with open(path_to_map,"rb") as f: mapping = cPickle.load(f)
     else:
         gene_mapping = assembly.get_gene_mapping()
@@ -426,6 +426,7 @@ def rnaseq_workflow(ex, job, assembly, bam_files, pileup_level=["exons","genes",
 
     """ Map remaining reads to transcriptome """
     junction_pileups = dict(zip(conditions,[{}]*len(conditions)))
+    additionals = {}
     if unmapped:
         print "Get unmapped reads"
         unmapped_bam={}
@@ -438,7 +439,6 @@ def rnaseq_workflow(ex, job, assembly, bam_files, pileup_level=["exons","genes",
                                                       remove_pcr_duplicates=False)['bam']
         if unmapped_bam.get(conditions[0]):
             junctions = fetch_labels(unmapped_bam[conditions[0]]) #list of (transcript ID, length)
-            additionals = {}
             for cond in conditions:
                 sam = pysam.Samfile(unmapped_bam[cond])
                 junction_pileup = build_pileup(unmapped_bam[cond], junctions)
@@ -446,19 +446,26 @@ def rnaseq_workflow(ex, job, assembly, bam_files, pileup_level=["exons","genes",
                 junction_pileups[cond] = junction_pileup
                 additional = {}
                 for t in junctions:
-                    if exons_in_trans.get(t) and transcript_mapping.get(t):
+                    t = t[0]
+                    if transcript_mapping.get(t):
                         E = exons_in_trans[t]
                         lag = transcript_mapping[t][1]
                         c = Counter()
                         for e in E:
-                            if exon_mapping.get(e):
-                                emap = exon_mapping[e]
-                                st,en = (emap[2],emap[3])
-                                sam.fetch(e,st-lag,en-lag,callback=c)
-                                additional[e] = additional.get(e,0) + c.n
-                                c.n = 0
+                            st,en = (exon_mapping[e][2], exon_mapping[e][3])
+                            sam.fetch(t,st-lag,en-lag,callback=c)
+                            additional[e] = additional.get(e,0) + c.n
+                            c.n = 0
                 additionals[cond] = additional
+                import pdb
+                pdb.set_trace()
                 sam.close()
+#(Pdb) additionals['g.1']['ENSMUSE00000698771']
+#4
+#(Pdb) sum([additionals['g.1'][e] for e in exons_in_trans['ENSMUST00000033699']])
+#111
+#(Pdb) junction_pileups['g.1']['ENSMUST00000033699']
+#48
 
     """ Treat data """
     print "Process data"
@@ -496,10 +503,11 @@ def rnaseq_workflow(ex, job, assembly, bam_files, pileup_level=["exons","genes",
         header = ["TranscriptID"] + hconds + ["Start","End","GeneID","GeneName","Chromosome"]
         (tcounts, trpkm) = transcripts_expression(exons_data, exon_lengths,
                    transcript_mapping, trans_in_gene, exons_in_trans,len(conditions))
-        # Add junction reads to transcript scores
-        for c in conditions:
-            for t,add in junction_pileups[c].iteritems():
-                tcounts[t][conditions.index(c)] += add
+        # Add junction reads to transcript scores - temporary oversimplified version
+        #for c in conditions:
+        #    for t,add in junction_pileups[c].iteritems():
+        #        if tcounts.get(t):
+        #            tcounts[t][conditions.index(c)] += add
         transID = tcounts.keys()
         trans_data = [[t,tcounts[t],trpkm[t]]+list(transcript_mapping.get(t,("NA",)*5)) for t in transID]
         trans_data = sorted(trans_data, key=lambda x: x[-5]) # sort w.r.t. gene IDs
