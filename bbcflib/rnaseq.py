@@ -446,26 +446,31 @@ def rnaseq_workflow(ex, job, assembly, bam_files, pileup_level=["exons","genes",
                 junction_pileups[cond] = junction_pileup
                 additional = {}
                 for t in junctions:
-                    t = t[0]
-                    if transcript_mapping.get(t):
-                        E = exons_in_trans[t]
-                        lag = transcript_mapping[t][1]
+                    t_id, t_len = t
+                    if transcript_mapping.get(t_id):
+                        E = exons_in_trans[t_id]
+                        lag = 0 #transcript_mapping[tid][1]
                         c = Counter()
                         for e in E:
                             st,en = (exon_mapping[e][2], exon_mapping[e][3])
-                            sam.fetch(t,st-lag,en-lag,callback=c)
+                            e_len = en-st
+                            sam.fetch(t,lag,lag+e_len,callback=c)
                             additional[e] = additional.get(e,0) + c.n
                             c.n = 0
+                            lag += e_len
                 additionals[cond] = additional
-                import pdb
-                pdb.set_trace()
+                #import pdb
+                #pdb.set_trace()
                 sam.close()
 #(Pdb) additionals['g.1']['ENSMUSE00000698771']
 #4
-#(Pdb) sum([additionals['g.1'][e] for e in exons_in_trans['ENSMUST00000033699']])
+#(Pdb) sum([additionals['g.1'][e] for e in exons_in_trans['ENSMUST00000033699']]) # reverse strand
 #111
 #(Pdb) junction_pileups['g.1']['ENSMUST00000033699']
 #48
+#ENSMUSE00000336037     71,487,140      71,487,258      119
+#       GCATCGAGCCTACAGGCAATATGGTGAAGAAGAGAGCAGAATTCACTGTGGAGACCCGAA
+#       GTGCTGGACAGGGAGAAGTGCTTGTATATGTGGAGGACCCAGCTGGACACCAGGAAGAG
 
     """ Treat data """
     print "Process data"
@@ -504,10 +509,10 @@ def rnaseq_workflow(ex, job, assembly, bam_files, pileup_level=["exons","genes",
         (tcounts, trpkm) = transcripts_expression(exons_data, exon_lengths,
                    transcript_mapping, trans_in_gene, exons_in_trans,len(conditions))
         # Add junction reads to transcript scores - temporary oversimplified version
-        #for c in conditions:
-        #    for t,add in junction_pileups[c].iteritems():
-        #        if tcounts.get(t):
-        #            tcounts[t][conditions.index(c)] += add
+        for c in conditions:
+            for t,add in junction_pileups[c].iteritems():
+                if tcounts.get(t):
+                    tcounts[t][conditions.index(c)] += add
         transID = tcounts.keys()
         trans_data = [[t,tcounts[t],trpkm[t]]+list(transcript_mapping.get(t,("NA",)*5)) for t in transID]
         trans_data = sorted(trans_data, key=lambda x: x[-5]) # sort w.r.t. gene IDs
