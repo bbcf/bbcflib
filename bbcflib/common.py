@@ -124,7 +124,7 @@ def get_files( id_or_key, minilims, by_type=True, select_param=None ):
         pars_patt = re.search(r'\[(.*)\]',d)
         if not(pars_patt):
             pars = "group:0,step:0,type:none,view:admin"
-            re.sub(r'([^\s\[]*)',r'\1['+pars+']',x,1)
+            re.sub(r'([^\s\[]*)',r'\1['+pars+']',d,1)
         else:
             pars = pars_patt.groups()[0]
         par_dict = dict(x.split(":") for x in pars.split(","))
