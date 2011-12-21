@@ -7,7 +7,7 @@ Module: bbcflib.demultiplex
 from bein import program
 from bein.util import touch, add_pickle, split_file, count_lines
 from common import set_file_descr, gzipfile, unique_filename_in
-from mapseq import bowtie_build, bowtie#, add_bowtie_index
+from mapseq import bowtie_build, bowtie,get_fastq_files#, add_bowtie_index
 import os, urllib, shutil, re
 
 # call
@@ -198,7 +198,17 @@ def prepareReport(ex,name,tot_counts,counts_primers,counts_primers_filtered):
 	return dataReport
 
 
-def workflow_groups(ex, job, script_path):
+def workflow_groups(ex, job, gl):
+	script_path=gl['script_path']
+
+	if 'lims' in gl:
+		dafl = dict((loc,daflims.DAFLIMS( username=gl['lims']['user'], password=pwd ))
+				for loc,pwd in gl['lims']['passwd'].iteritems())
+	else:
+		dafl = None
+	
+	job=get_fastq_files(job,ex.working_directory, dafl)
+	
 	file_names = {}
 	job_groups=job.groups
 	resFiles={}
@@ -225,10 +235,10 @@ def workflow_groups(ex, job, script_path):
 		allSubFiles = []
 		for rid,run in group['runs'].iteritems():
 			print(group); print(run)
-			suffix = run['url'].split('.')[-1]
-			print suffix
-			infile=getFileFromURL(run['url'],lib_dir, suffix)
-			infiles.append(infile)
+			#suffix = run['url'].split('.')[-1]
+			#print suffix
+			#infile=getFileFromURL(run['url'],lib_dir, suffix)
+			infiles.append(run)
 			subfiles=split_file(ex,infile,n_lines=8000000)
 			for sf in subfiles:
 				allSubFiles.append(sf)
