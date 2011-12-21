@@ -43,7 +43,7 @@ def split_exonerate(filename,n=1,x=22,l=30):
 				if not key in correction:
 					if len(s.split(' ')[5].split('|')) > 3:
 						correction[key]=len(s.split(' ')[5].split('|')[1])-len(s.split(' ')[5].split('|')[3])+1
-					else
+					else:
 						correction[key]=len(s.split(' ')[5].split('|')[1])+1
 					filenames[key]=unique_filename_in()
 					files[key]=open(filenames[key],"w")
