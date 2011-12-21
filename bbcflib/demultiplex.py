@@ -7,6 +7,7 @@ Module: bbcflib.demultiplex
 from bein import program
 from bein.util import touch, add_pickle, split_file, count_lines
 from common import set_file_descr, gzipfile, unique_filename_in
+from bbcflib import daflims
 from mapseq import bowtie_build, bowtie,get_fastq_files#, add_bowtie_index
 import os, urllib, shutil, re
 
