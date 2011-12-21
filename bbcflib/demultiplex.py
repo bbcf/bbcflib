@@ -41,7 +41,10 @@ def split_exonerate(filename,n=1,x=22,l=30):
 			if re.search(r'vulgar',s):
 				key = s.split(' ')[5].split('|')[0]
 				if not key in correction:
-					correction[key]=len(s.split(' ')[5].split('|')[1])-len(s.split(' ')[5].split('|')[3])+1
+					if len(s.split(' ')[5].split('|')) > 3:
+						correction[key]=len(s.split(' ')[5].split('|')[1])-len(s.split(' ')[5].split('|')[3])+1
+					else
+						correction[key]=len(s.split(' ')[5].split('|')[1])+1
 					filenames[key]=unique_filename_in()
 					files[key]=open(filenames[key],"w")
 				k=int(s.split(' ')[3])-int(s.split(' ')[7])+correction[key]
