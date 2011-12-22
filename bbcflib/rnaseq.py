@@ -444,12 +444,12 @@ def rnaseq_workflow(ex, job, assembly, bam_files, pileup_level=["exons","genes",
                 #junction_pileup = build_pileup(unmapped_bam[cond], junctions)
                 #junction_pileup = dict(zip([j[0] for j in junctions], junction_pileup)) # {transcript ID: count}
                 #junction_pileups[cond] = junction_pileup
-                sam = pysam.Samfile(unmapped_bam[cond])
+                sam = pysam.Samfile(unmapped_bam[cond]) # TEST 204 reads mapped (from 1000)
                 additional = {}
+                k = 0
                 for read in sam:
                     t_id = sam.getrname(read.tid).split('|')[0]
-                    print t_id
-                    if transcript_mapping.get(t_id):
+                    if transcript_mapping.get(t_id): # 6 unknown
                         lag = transcript_mapping[t_id][1]
                         r_start = read.pos
                         r_end = r_start + read.rlen
@@ -459,12 +459,13 @@ def rnaseq_workflow(ex, job, assembly, bam_files, pileup_level=["exons","genes",
                             e_start = e_start - lag
                             e_end = e_end - lag
                             if e_start <= r_start <= e_end:
-                                additional[e] = additionals.get(e,0) + 0.5
+                                additional[e] = additional.get(e,0) + 0.5
                             elif e_start <= r_end <= e_end:
-                                additional[e] = additionals.get(e,0) + 0.5
+                                additional[e] = additional.get(e,0) + 0.5
                 additionals[cond] = additional
-                #import pdb
-                #pdb.set_trace()
+                print k
+                import pdb
+                pdb.set_trace()
                 sam.close()
 
 # TEST
