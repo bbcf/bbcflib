@@ -6,7 +6,7 @@ Methods of the bbcflib's RNA-seq worflow. The main function is ``rnaseq_workflow
 and is usually called by bbcfutils' ``run_rnaseq.py``, e.g. command-line:
 
 ``python run_rnaseq.py -v lsf -c config_files/gapdh.txt -d rnaseq -p transcripts``
-``python run_rnaseq.py -v lsf -c config_files/rnaseq.txt -d rnaseq -p transcripts -u -m ../mapseq``
+``python run_rnaseq.py -v lsf -c config_files/rnaseq2.txt -d rnaseq -p transcripts -u -m ../mapseq2``
 
 From a BAM file produced by an alignement on the **exonome**, gets counts of reads
 on the exons, add them to get counts on genes, and uses least-squares to infer
@@ -16,7 +16,8 @@ The annotation of the bowtie index has to be consistent to that of the database 
 """
 
 # Built-in modules #
-import os, sys, pysam, math
+import os, pysam, math, itertools
+import sys
 
 # Internal modules #
 from bbcflib.common import timer, writecols, set_file_descr
@@ -440,37 +441,68 @@ def rnaseq_workflow(ex, job, assembly, bam_files, pileup_level=["exons","genes",
         if unmapped_bam.get(conditions[0]):
             junctions = fetch_labels(unmapped_bam[conditions[0]]) #list of (transcript ID, length)
             for cond in conditions:
+                #junction_pileup = build_pileup(unmapped_bam[cond], junctions)
+                #junction_pileup = dict(zip([j[0] for j in junctions], junction_pileup)) # {transcript ID: count}
+                #junction_pileups[cond] = junction_pileup
                 sam = pysam.Samfile(unmapped_bam[cond])
-                junction_pileup = build_pileup(unmapped_bam[cond], junctions)
-                junction_pileup = dict(zip([j[0] for j in junctions], junction_pileup)) # {transcript ID: count}
-                junction_pileups[cond] = junction_pileup
                 additional = {}
                 for t in junctions:
                     t_id, t_len = t
                     if transcript_mapping.get(t_id):
+                        print t_id
                         E = exons_in_trans[t_id]
-                        lag = 0 #transcript_mapping[tid][1]
-                        c = Counter()
+                        lag = 0
+                        junc_map={}
+                        #c = Counter()
                         for e in E:
                             st,en = (exon_mapping[e][2], exon_mapping[e][3])
                             e_len = en-st
-                            sam.fetch(t,lag,lag+e_len,callback=c)
-                            additional[e] = additional.get(e,0) + c.n
-                            c.n = 0
+                            reads = sam.fetch(t_id,lag,lag+e_len)
+                            for r in reads:
+                                junc_map.setdefault(r,[]).append(e)
+
+                            #junc_set[e] = set([hash(r) for r in sam.fetch(t_id,lag,lag+e_len)])#,callback=c))
+                            #if junc_set[e]: print junc_set[e]
+                            #additional[e] = additional.get(e,0) + c.n
+                            #c.n = 0
                             lag += e_len
+                        for r,E in junc_map.iteritems():
+                            L = len(E)
+                            print E
+                            if L > 1 :
+                                for e in E:
+                                    additional[e] = additional.get(e,0) + 1./len(E)
+                        #junc_set_reverse = {}
+                        #for e in junc_set:
+                        #    reads = junc_set[e]
+                        #    for r in reads:
+                        #        junc_set_reverse.setdefault(r,[]).append(e)
+                        #for e1,e2 in itertools.combinations(E,2):
+                        #    common_reads = set(junc_set[e1]) & set(junc_set[e2])
+                        #    additional[e1] = additional.get(e1,0) + 0.5*len(common_reads)
+                        #    additional[e2] = additional.get(e2,0) + 0.5*len(common_reads)
+                        #    if common_reads:
+                        #        print common_reads
+                        #        print additional[e1], additional[e2]
+                        #    junc_set[e1] = common_reads
+                        #    junc_set[e2] = common_reads
+                        #print t, [(e,val) for e,val in additional.iteritems() if val>0]
                 additionals[cond] = additional
-                #import pdb
-                #pdb.set_trace()
+                import pdb
+                pdb.set_trace()
                 sam.close()
-#(Pdb) additionals['g.1']['ENSMUSE00000698771']
-#4
+#(Pdb) additionals['g.1']['ENSMUSE00000382300'] # in ENSMUST00000033699 Flna-003
+#12
 #(Pdb) sum([additionals['g.1'][e] for e in exons_in_trans['ENSMUST00000033699']]) # reverse strand
-#111
+#275
 #(Pdb) junction_pileups['g.1']['ENSMUST00000033699']
 #48
-#ENSMUSE00000336037     71,487,140      71,487,258      119
-#       GCATCGAGCCTACAGGCAATATGGTGAAGAAGAGAGCAGAATTCACTGTGGAGACCCGAA
-#       GTGCTGGACAGGGAGAAGTGCTTGTATATGTGGAGGACCCAGCTGGACACCAGGAAGAG
+#ENSMUSE00000382300     exon_nr:30     71,475,845       71,476,092     248
+#       GTGCTGGCATTGGCCCCACCATCCAGATTGGGGAGGAGACGGTGATTACTGTGGACACAA
+#       AAGCAGCAGGCAAAGGCAAAGTGACTTGTACTGTGTGCACACCTGATGGCTCAGAGGTAG
+#       ACGTGGACGTGGTGGAGAATGAGGATGGCACCTTTGACATCTTCTACACAGCTCCCCAAC
+#       CGGGCAAATATGTCATCTGTGTGCGCTTCGGTGGCGAGCATGTGCCCAACAGCCCCTTCC
+#       AAGTTACA
 
     """ Treat data """
     print "Process data"
