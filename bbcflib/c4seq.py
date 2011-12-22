@@ -202,7 +202,7 @@ def workflow_groups(ex, job, primers_dict, assembly, mapseq_files, mapseq_url, s
 	
 	for gid, group in job_groups.iteritems():
                 grpId = gid
-		reffile=createlib.get_libForGrp(ex,group,assembly,new_libs, job.id, g_rep,gid)
+		reffile=createlib.get_libForGrp(ex,group,assembly,new_libs, job.id, gid)
 #		reffile='/archive/epfl/bbcf/data/DubouleDaan/library_Nla_30bps/library_Nla_30bps_segmentInfos.bed'
 		processed['lib'][gid]=reffile
 

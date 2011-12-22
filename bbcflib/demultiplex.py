@@ -7,7 +7,8 @@ Module: bbcflib.demultiplex
 from bein import program
 from bein.util import touch, add_pickle, split_file, count_lines
 from common import set_file_descr, gzipfile, unique_filename_in
-from mapseq import bowtie_build, bowtie#, add_bowtie_index
+from bbcflib import daflims
+from mapseq import bowtie_build, bowtie,get_fastq_files#, add_bowtie_index
 import os, urllib, shutil, re
 
 # call
@@ -41,7 +42,10 @@ def split_exonerate(filename,n=1,x=22,l=30):
 			if re.search(r'vulgar',s):
 				key = s.split(' ')[5].split('|')[0]
 				if not key in correction:
-					correction[key]=len(s.split(' ')[5].split('|')[1])-len(s.split(' ')[5].split('|')[3])+1
+					if len(s.split(' ')[5].split('|')) > 3:
+						correction[key]=len(s.split(' ')[5].split('|')[1])-len(s.split(' ')[5].split('|')[3])+1
+					else:
+						correction[key]=len(s.split(' ')[5].split('|')[1])+1
 					filenames[key]=unique_filename_in()
 					files[key]=open(filenames[key],"w")
 				k=int(s.split(' ')[3])-int(s.split(' ')[7])+correction[key]
@@ -195,7 +199,17 @@ def prepareReport(ex,name,tot_counts,counts_primers,counts_primers_filtered):
 	return dataReport
 
 
-def workflow_groups(ex, job, script_path):
+def workflow_groups(ex, job, gl):
+	script_path=gl['script_path']
+
+	if 'lims' in gl:
+		dafl = dict((loc,daflims.DAFLIMS( username=gl['lims']['user'], password=pwd ))
+				for loc,pwd in gl['lims']['passwd'].iteritems())
+	else:
+		dafl = None
+	
+	job=get_fastq_files(job,ex.working_directory, dafl)
+	
 	file_names = {}
 	job_groups=job.groups
 	resFiles={}
@@ -222,11 +236,11 @@ def workflow_groups(ex, job, script_path):
 		allSubFiles = []
 		for rid,run in group['runs'].iteritems():
 			print(group); print(run)
-			suffix = run['url'].split('.')[-1]
-			print suffix
-			infile=getFileFromURL(run['url'],lib_dir, suffix)
-			infiles.append(infile)
-			subfiles=split_file(ex,infile,n_lines=8000000)
+			#suffix = run['url'].split('.')[-1]
+			#print suffix
+			#infile=getFileFromURL(run['url'],lib_dir, suffix)
+			infiles.append(run)
+			subfiles=split_file(ex,run,n_lines=8000000)
 			for sf in subfiles:
 				allSubFiles.append(sf)
 				n=count_lines(ex,sf)/4

@@ -22,15 +22,13 @@ Below is the script used by the frontend::
     assembly_id = 'mm9'
     gl = { 'hts_chipseq': {'url': 'http://htsstation.vital-it.ch/chipseq/'},
            'hts_mapseq': {'url': 'http://htsstation.vital-it.ch/mapseq/'},
-           'genrep_url': 'http://bbcftools.vital-it.ch/genrep/',
            'script_path': '/srv/chipseq/lib' }
     htss = frontend.Frontend( url=gl['hts_chipseq']['url'] )
     job = htss.job( hts_key )
-    g_rep = genrep.GenRep( gl['genrep_url'], "" )
-    assembly = genrep.Assembly( assembly=assembly_id, genrep=g_rep )
+    assembly = genrep.Assembly( assembly=assembly_id )
     with execution( M, description=hts_key, remote_working_directory=working_dir ) as ex:
         (ms_files, job) = get_bam_wig_files( ex, job, ms_limspath, gl['hts_mapseq']['url'], gl['script_path'], via=via )
-        files = workflow_groups( ex, job, ms_files, assembly.chromosomes, gl['script_path'] )
+        files = workflow_groups( ex, job, ms_files, assembly, gl['script_path'] )
     print ex.id
     allfiles = common.get_files( ex.id, M )
     print allfiles
@@ -233,15 +231,17 @@ def filter_macs( bedfile, ntags=5 ):
 ################################################################################
 # Workflow #
 
-def workflow_groups( ex, job_or_dict, mapseq_files, chromosomes, script_path='',
-                     genrep=None, logfile=None, via='lsf' ):
+def workflow_groups( ex, job_or_dict, mapseq_files, assembly, script_path='',
+                     logfile=None, via='lsf' ):
     """Runs a chipseq workflow over bam files obtained by mapseq. Will optionally run ``macs`` and 'run_deconv'.
 
     :param ex: a 'bein' execution environment to run jobs in,
 
     :param job_or_dict: a 'Frontend' 'job' object, or a dictionary with key 'groups' and 'options' if applicable,
 
-    :param chromosomes: a dictionary with keys 'chromosome_id' and values a dictionary with chromosome names and lengths,
+    :param mapseq_files: a dictionary of files fomr a 'mapseq' execution, imported via 'mapseq.get_bam_wig_files',
+
+    :param assembly: a genrep.Assembly object,
 
     :param script_path: only needed if 'run_deconv' is in the job options, must point to the location of the R scripts.
 
@@ -332,7 +332,7 @@ def workflow_groups( ex, job_or_dict, mapseq_files, chromosomes, script_path='',
     peak_list = {}
     if run_meme:
         import gMiner
-        chrlist = dict((v['name'], {'length': v['length']}) for v in chromosomes.values())
+        chrlist = assembly.chrmeta
         for i,name in enumerate(names['tests']):
             if names['controls']==[None]:
                 macsbed = processed['macs'][(name,)]+"_summits.bed"
@@ -373,7 +373,7 @@ def workflow_groups( ex, job_or_dict, mapseq_files, chromosomes, script_path='',
             wig = []
             for m in mapped.values():
                 if merge_strands >= 0 or not('wig' in m) or len(m['wig'])<2:
-                    output = mapseq.parallel_density_sql( ex, m["bam"], chromosomes,
+                    output = mapseq.parallel_density_sql( ex, m["bam"], assembly.chromosomes,
                                                           nreads=m["stats"]["total"],
                                                           merge=-1,
                                                           convert=False,
@@ -396,17 +396,17 @@ def workflow_groups( ex, job_or_dict, mapseq_files, chromosomes, script_path='',
             else:
                 macsbed = merge_many_bed(ex,[processed['macs'][(name,x)]+"_peaks.bed"
                                              for x in names['controls']],via=via)
-            deconv = run_deconv( ex, merged_wig[name], macsbed, chromosomes,
+            deconv = run_deconv( ex, merged_wig[name], macsbed, assembly.chromosomes,
                                  options['read_extension'], script_path, via=via )
             [ex.add(v, description=set_file_descr(name+'_deconv.'+k,type=k,step='deconvolution',group=name))
              for k,v in deconv.iteritems()]
             processed['deconv'][name] = deconv
             peak_list[name] = filter_deconv( deconv['bed'], pval=0.65 )
-    if run_meme and not(genrep == None):
+    if run_meme:
         from .motif import parallel_meme
         if logfile:
             logfile.write("Starting MEME.\n");logfile.flush()
-        processed['meme'] = parallel_meme( ex, genrep, chromosomes,
+        processed['meme'] = parallel_meme( ex, assembly,
                                            peak_list.values(), name=peak_list.keys(),
                                            meme_args=['-nmotifs','4','-revcomp'], via=via )
     return processed
