@@ -29,7 +29,7 @@ def meme( fasta, outdir, maxsize=10000000, args=None ):
     call = ["meme", fasta, "-o", outdir, "-dna", "-maxsize", str(maxsize)]+args
     return {"arguments": call, "return_value": None}
 
-def parse_meme_xml( ex, meme_file, chromosomes ):
+def parse_meme_xml( ex, meme_file, chrmeta ):
     """ Parse meme xml file and convert to track """
     from xml.etree import ElementTree as ET
     tree = ET.parse(meme_file)
@@ -63,10 +63,9 @@ def parse_meme_xml( ex, meme_file, chromosomes ):
                 score = it.attrib['pvalue']
                 yield (start,end,it.attrib['motif_id'],score,strnd)
     outsql = unique_filename_in()
-    chrlist = dict((v['name'], {'length': v['length']}) for v in chromosomes.values())
-    with track.new(outsql, format='sql', chrmeta=chrlist, datatype='qualitative') as t:
+    with track.new(outsql, format='sql', chrmeta=chrmeta, datatype='qualitative') as t:
         t.attributes['source'] = 'Meme'
-        for chrom in chrlist.keys():
+        for chrom in chrmeta.keys():
             t.write(chrom,_xmltree(chrom,tree),fields=['start','end','name','score','strand'])
     return {'sql':outsql,'matrices':allmatrices}
 
@@ -97,7 +96,8 @@ def parallel_meme( ex, assembly, regions, name=None, meme_args=None, via='lsf' )
         tgz = tarfile.open(archive, "w:gz")
         tgz.add( meme_out )
         tgz.close()
-        meme_res = parse_meme_xml( ex, os.path.join(meme_out, "meme.xml"), chromosomes )
+        meme_res = parse_meme_xml( ex, os.path.join(meme_out, "meme.xml"), 
+                                   assembly.chrmeta )
         if os.path.exists(os.path.join(meme_out, "meme.html")):
             ex.add( os.path.join(meme_out, "meme.html"),
                     description=set_file_descr(n+"_meme.html",step='meme',type='html',group=n) )
@@ -134,7 +134,6 @@ def save_motif_profile( ex, motifs, background, assembly, regions, keep_max_only
         output = unique_filename_in()
         futures[name] = ( output, motif_scan.nonblocking( ex, fasta, pwm, background,
                                                           threshold, stdout=output, via=via ) )
-    chrlist = dict((v['name'], {'length': v['length']}) for v in chromosomes.values())
 ##############
     def _parse_s1k(_f,_c,_n):
         if keep_max_only:
@@ -159,11 +158,11 @@ def save_motif_profile( ex, motifs, background, assembly, regions, keep_max_only
             for x in maxscore.values():
                 yield x
 ##############
-    with track.new( sqlout, format="sql", datatype="qualitative", chrmeta=chrlist ) as track_result:
+    with track.new( sqlout, format="sql", datatype="qualitative", chrmeta=assembly.chrmeta ) as track_result:
         track_result.attributes['source'] = 'S1K'
         for name, future in futures.iteritems():
             _ = future[1].wait()
-            for chrom in chrlist.keys():
+            for chrom in assembly.chrnames:
                 track_result.write( chrom, _parse_s1k(future[0],chrom,name),
                                     fields=['start','end','name','score','strand'] )
     ex.add( sqlout, description=description )
