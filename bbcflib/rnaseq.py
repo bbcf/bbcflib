@@ -463,8 +463,8 @@ def rnaseq_workflow(ex, job, assembly, bam_files, pileup_level=["exons","genes",
                             elif e_start <= r_end <= e_end:
                                 additional[e] = additionals.get(e,0) + 0.5
                 additionals[cond] = additional
-                import pdb
-                pdb.set_trace()
+                #import pdb
+                #pdb.set_trace()
                 sam.close()
 
 # TEST
