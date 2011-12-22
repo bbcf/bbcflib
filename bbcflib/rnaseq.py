@@ -444,11 +444,11 @@ def rnaseq_workflow(ex, job, assembly, bam_files, pileup_level=["exons","genes",
                 #junction_pileup = build_pileup(unmapped_bam[cond], junctions)
                 #junction_pileup = dict(zip([j[0] for j in junctions], junction_pileup)) # {transcript ID: count}
                 #junction_pileups[cond] = junction_pileup
-                sam = pysam.Samfile(unmapped_bam[cond]) # TEST 204 reads mapped (from 1000)
+                sam = pysam.Samfile(unmapped_bam[cond])
                 additional = {}
                 for read in sam:
                     t_id = sam.getrname(read.tid).split('|')[0]
-                    if transcript_mapping.get(t_id): # 6 unknown
+                    if transcript_mapping.get(t_id):
                         lag = 0
                         r_start = read.pos
                         r_end = r_start + read.rlen
@@ -501,10 +501,10 @@ def rnaseq_workflow(ex, job, assembly, bam_files, pileup_level=["exons","genes",
         (tcounts, trpkm) = transcripts_expression(exons_data, exon_lengths,
                    transcript_mapping, trans_in_gene, exons_in_trans,len(conditions))
         # Add junction reads to transcript scores - temporary oversimplified version
-        for c in conditions:
-            for t,add in junction_pileups[c].iteritems():
-                if tcounts.get(t):
-                    tcounts[t][conditions.index(c)] += add
+        #for c in conditions:
+        #    for t,add in junction_pileups[c].iteritems():
+        #        if tcounts.get(t):
+        #            tcounts[t][conditions.index(c)] += add
         transID = tcounts.keys()
         trans_data = [[t,tcounts[t],trpkm[t]]+list(transcript_mapping.get(t,("NA",)*5)) for t in transID]
         trans_data = sorted(trans_data, key=lambda x: x[-5]) # sort w.r.t. gene IDs
