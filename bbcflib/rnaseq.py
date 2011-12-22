@@ -446,41 +446,23 @@ def rnaseq_workflow(ex, job, assembly, bam_files, pileup_level=["exons","genes",
                 #junction_pileups[cond] = junction_pileup
                 sam = pysam.Samfile(unmapped_bam[cond]) # TEST 204 reads mapped (from 1000)
                 additional = {}
-                k = 0
                 for read in sam:
                     t_id = sam.getrname(read.tid).split('|')[0]
                     if transcript_mapping.get(t_id): # 6 unknown
-                        lag = transcript_mapping[t_id][1]
+                        lag = 0
                         r_start = read.pos
                         r_end = r_start + read.rlen
                         E = exons_in_trans[t_id]
                         for e in E:
                             e_start, e_end = exon_mapping[e][2:4]
-                            e_start = e_start - lag
-                            e_end = e_end - lag
-                            if e_start <= r_start <= e_end:
+                            e_len = e_end-e_start
+                            if lag <= r_start <= lag+e_len:
                                 additional[e] = additional.get(e,0) + 0.5
-                            elif e_start <= r_end <= e_end:
+                            if lag <= r_end <= lag+e_len:
                                 additional[e] = additional.get(e,0) + 0.5
+                            lag += e_len
                 additionals[cond] = additional
-                print k
-                import pdb
-                pdb.set_trace()
                 sam.close()
-
-# TEST
-#(Pdb) additionals['g.1']['ENSMUSE00000382300'] # in ENSMUST00000033699 Flna-003
-#12
-#(Pdb) sum([additionals['g.1'][e] for e in exons_in_trans['ENSMUST00000033699']]) # reverse strand
-#275
-#(Pdb) junction_pileups['g.1']['ENSMUST00000033699']
-#48
-#ENSMUSE00000382300     exon_nr:30     71,475,845       71,476,092     248
-#       GTGCTGGCATTGGCCCCACCATCCAGATTGGGGAGGAGACGGTGATTACTGTGGACACAA
-#       AAGCAGCAGGCAAAGGCAAAGTGACTTGTACTGTGTGCACACCTGATGGCTCAGAGGTAG
-#       ACGTGGACGTGGTGGAGAATGAGGATGGCACCTTTGACATCTTCTACACAGCTCCCCAAC
-#       CGGGCAAATATGTCATCTGTGTGCGCTTCGGTGGCGAGCATGTGCCCAACAGCCCCTTCC
-#       AAGTTACA
 
     """ Treat data """
     print "Process data"
