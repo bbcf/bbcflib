@@ -437,7 +437,7 @@ def rnaseq_workflow(ex, job, assembly, bam_files, pileup_level=["exons","genes",
             for rid, run in group['runs'].iteritems():
                 unmapped_fastq = bam_files[gid][rid].get('unmapped_fastq')
                 unmapped_bam[cond] = mapseq.map_reads(ex, unmapped_fastq, {}, refseq_path, \
-                                                      remove_pcr_duplicates=False)['bam']
+                      remove_pcr_duplicates=False, bwt_args=[])['bam']
         if unmapped_bam.get(conditions[0]):
             #junctions = fetch_labels(unmapped_bam[conditions[0]]) #list of (transcript ID, length)
             for cond in conditions:
@@ -462,36 +462,6 @@ def rnaseq_workflow(ex, job, assembly, bam_files, pileup_level=["exons","genes",
                                 additional[e] = additionals.get(e,0) + 0.5
                             elif e_start <= r_end <= e_end:
                                 additional[e] = additionals.get(e,0) + 0.5
-                        #exons_coord = dict(zip([exon_mapping[e][2:3] for e in E],E))
-                        #exons_range = [range(x[0],x[1]) for x in exons_coord]
-                        #exons_range = dict(zip(exons_range, E)) # {[start,start+1,...,end-1,end]: exon_id}
-                        #for coord in exons_coord:
-                        #    if rend < coord[0]
-                        #e1 = exon_starts[rstart]
-                        #e2 = exon_ends[rens]
-                        #additional[e1] += additional.get(e1,0) + 0.5
-                        #additional[e2] += additional.get(e1,0) + 0.5
-
-                #for t in junctions:
-                #    t_id, t_len = t
-                #    if transcript_mapping.get(t_id):
-                #        print t_id
-                #        E = exons_in_trans[t_id]
-                #        lag = 0
-                #        junc_map={}
-                #        for e in E:
-                #            st,en = (exon_mapping[e][2], exon_mapping[e][3])
-                #            e_len = en-st
-                #            reads = sam.fetch(t_id,lag,lag+e_len)
-                #            for r in reads:
-                #                junc_map.setdefault(r,[]).append(e)
-                #            lag += e_len
-                #        for r,E in junc_map.iteritems():
-                #            L = len(E)
-                #            print E
-                #            if L > 1 :
-                #                for e in E:
-                #                    additional[e] = additional.get(e,0) + 1./len(E)
                 additionals[cond] = additional
                 import pdb
                 pdb.set_trace()
