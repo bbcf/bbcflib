@@ -438,7 +438,7 @@ def rnaseq_workflow(ex, job, assembly, bam_files, pileup_level=["exons","genes",
                 unmapped_fastq = bam_files[gid][rid].get('unmapped_fastq')
                 unmapped_bam[cond] = mapseq.map_reads(ex, unmapped_fastq, {}, refseq_path, \
                                                       remove_pcr_duplicates=False)['bam']
-        if unmapped_bam.get(conditions[0]):
+        if False and unmapped_bam.get(conditions[0]):
             junctions = fetch_labels(unmapped_bam[conditions[0]]) #list of (transcript ID, length)
             for cond in conditions:
                 #junction_pileup = build_pileup(unmapped_bam[cond], junctions)
@@ -453,18 +453,12 @@ def rnaseq_workflow(ex, job, assembly, bam_files, pileup_level=["exons","genes",
                         E = exons_in_trans[t_id]
                         lag = 0
                         junc_map={}
-                        #c = Counter()
                         for e in E:
                             st,en = (exon_mapping[e][2], exon_mapping[e][3])
                             e_len = en-st
                             reads = sam.fetch(t_id,lag,lag+e_len)
                             for r in reads:
                                 junc_map.setdefault(r,[]).append(e)
-
-                            #junc_set[e] = set([hash(r) for r in sam.fetch(t_id,lag,lag+e_len)])#,callback=c))
-                            #if junc_set[e]: print junc_set[e]
-                            #additional[e] = additional.get(e,0) + c.n
-                            #c.n = 0
                             lag += e_len
                         for r,E in junc_map.iteritems():
                             L = len(E)
@@ -472,25 +466,12 @@ def rnaseq_workflow(ex, job, assembly, bam_files, pileup_level=["exons","genes",
                             if L > 1 :
                                 for e in E:
                                     additional[e] = additional.get(e,0) + 1./len(E)
-                        #junc_set_reverse = {}
-                        #for e in junc_set:
-                        #    reads = junc_set[e]
-                        #    for r in reads:
-                        #        junc_set_reverse.setdefault(r,[]).append(e)
-                        #for e1,e2 in itertools.combinations(E,2):
-                        #    common_reads = set(junc_set[e1]) & set(junc_set[e2])
-                        #    additional[e1] = additional.get(e1,0) + 0.5*len(common_reads)
-                        #    additional[e2] = additional.get(e2,0) + 0.5*len(common_reads)
-                        #    if common_reads:
-                        #        print common_reads
-                        #        print additional[e1], additional[e2]
-                        #    junc_set[e1] = common_reads
-                        #    junc_set[e2] = common_reads
-                        #print t, [(e,val) for e,val in additional.iteritems() if val>0]
                 additionals[cond] = additional
                 import pdb
                 pdb.set_trace()
                 sam.close()
+
+# TEST
 #(Pdb) additionals['g.1']['ENSMUSE00000382300'] # in ENSMUST00000033699 Flna-003
 #12
 #(Pdb) sum([additionals['g.1'][e] for e in exons_in_trans['ENSMUST00000033699']]) # reverse strand
