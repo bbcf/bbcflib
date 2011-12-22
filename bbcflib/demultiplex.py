@@ -240,7 +240,7 @@ def workflow_groups(ex, job, gl):
 			#print suffix
 			#infile=getFileFromURL(run['url'],lib_dir, suffix)
 			infiles.append(run)
-			subfiles=split_file(ex,infile,n_lines=8000000)
+			subfiles=split_file(ex,run,n_lines=8000000)
 			for sf in subfiles:
 				allSubFiles.append(sf)
 				n=count_lines(ex,sf)/4
