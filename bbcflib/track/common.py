@@ -49,7 +49,7 @@ def named_temporary_path(suffix=''):
     by the 'tempfile' module
     """
     import tempfile
-    file = tempfile.NamedTemporaryFile(suffix=suffix)
+    file = tempfile.NamedTemporaryFile(suffix=suffix,dir="./")
     path = file.name
     file.close()
     return path
