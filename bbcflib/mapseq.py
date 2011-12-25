@@ -84,6 +84,7 @@ from scipy.misc import  factorial
 from bein       import  program, ProgramFailed, MiniLIMS
 from bein.util  import  add_pickle, touch, split_file, count_lines
 
+demultiplex_path = "/data/htsstation/demultiplexing/demultiplexing_minilims.files/"
 ###############
 # BAM/SAM files
 ###############
@@ -674,6 +675,13 @@ def get_fastq_files( job, fastq_root, dafl=None, set_seed_length=True ):
                     if run_pe:
                         urllib.urlretrieve( run_pe, target_pe )
                 else:
+                    if not(os.path.exists(run)):
+                        demrun = os.path.join(demultiplex_path,run)
+                        if not(os.path.exists(demrun)):
+                            raise("Could not find fastq file %s"%run)
+                        run = demrun
+                        if run_pe:
+                            run_pe = os.path.join(demultiplex_path,run_pe)
                     shutil.copy(run,target)
                     if run_pe:
                         shutil.copy(run_pe, target_pe)
