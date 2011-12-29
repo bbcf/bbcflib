@@ -648,19 +648,24 @@ def get_fastq_files( job, fastq_root, dafl=None, set_seed_length=True ):
         job.groups[gid]['seed_lengths'] = {}
         job.groups[gid]['run_names'] = {}
         for rid,run in group['runs'].iteritems():
+            run_lib_name = None
+            if isinstance(run,dict):
+                if 'sequencing_library' in run:
+                    run_lib_name = str(run['sequencing_library'])
+                elif all([x in run for x in ['facility','machine','run','lane']]):
+                    run_lib_name = "_".join([run['machine'],str(run['run']),str(run['lane'])])
             if len(run['url'])>0:
                 run = str(run['url']).strip()
             if isinstance(run,dict) and all([x in run for x in ['facility','machine','run','lane']]):
                 dafl1 = dafl[run['facility']]
-                daf_data = dafl1.fetch_fastq( str(run['facility']), str(run['machine']),
-                                              run['run'], run['lane'], to=fastq_root, libname=run['sequencing_library'] )
+                daf_data = dafl1.fetch_fastq( str(run['facility']), str(run['machine']), run['run'], run['lane'], 
+                                              to=fastq_root, libname=run.get('sequencing_library') )
                 job.groups[gid]['runs'][rid] = daf_data['path']
                 if (set_seed_length):
                     job.groups[gid]['seed_lengths'][rid] = max(28,int(0.7*daf_data['cycle']))
-                job.groups[gid]['run_names'][rid] = "_".join(['',run['machine'],str(run['run']),
-                                                              str(run['lane'])])
             elif isinstance(run,str):
                 run = re.search(r'^[\"\']?([^\"\';]+)[\"\']?',run).groups()[0]
+                if run_lib_name is None: run_lib_name = os.path.splitext(run.split("/")[-1])[0]
                 fq_file = unique_filename_in(fastq_root)
                 target = os.path.join(fastq_root,fq_file)
                 runsplit = run.split(',')
@@ -691,7 +696,7 @@ def get_fastq_files( job, fastq_root, dafl=None, set_seed_length=True ):
                                                     _expand_fastq(run_pe,fq_file_pe,target_pe))
                 else:
                     job.groups[gid]['runs'][rid] = _expand_fastq(run,fq_file,target)
-                job.groups[gid]['run_names'][rid] = os.path.splitext(run.split("/")[-1])[0]
+            job.groups[gid]['run_names'][rid] = re.sub(r'\s+','_',run_lib_name)
     return job
 
 ############################################################
