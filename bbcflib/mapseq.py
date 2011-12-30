@@ -577,9 +577,7 @@ def map_reads( ex, fastq_file, chromosomes, bowtie_index,
                 h["SN"] = chromosomes[h["SN"]]["name"]
         outfile = pysam.Samfile( bam2, "wb", header=header )
         for read in infile:
-            nh = dict(read.tags).get('NH')
-            if nh is None:
-                nh = 1
+            nh = dict(read.tags).get('NH',1)
             if nh < 1:
                 continue
             if maxhits is None or nh <= maxhits:
@@ -650,11 +648,11 @@ def get_fastq_files( job, fastq_root, dafl=None, set_seed_length=True ):
         for rid,run in group['runs'].iteritems():
             run_lib_name = None
             if isinstance(run,dict):
-                if 'sequencing_library' in run:
+                if run.get('sequencing_library'):
                     run_lib_name = str(run['sequencing_library'])
-                elif all([x in run for x in ['facility','machine','run','lane']]):
+                elif all([run.get(x) for x in ['facility','machine','run','lane']]):
                     run_lib_name = "_".join([run['machine'],str(run['run']),str(run['lane'])])
-            if len(run['url'])>0:
+            if run.get('url'):
                 run = str(run['url']).strip()
             if isinstance(run,dict) and all([x in run for x in ['facility','machine','run','lane']]):
                 dafl1 = dafl[run['facility']]
