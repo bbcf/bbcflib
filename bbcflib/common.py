@@ -187,7 +187,7 @@ def merge_many_bed(ex,files,via='lsf'):
     out = files[0]
     for f in files[1:]:
         next = unique_filename_in()
-        _ = merge_two_bed.nonblocking( ex, out, f, via=via, stdout=next ).wait()
+        merge_two_bed.nonblocking( ex, out, f, via=via, stdout=next ).wait()
         out = next
     return out
 

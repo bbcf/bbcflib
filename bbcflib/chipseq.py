@@ -35,7 +35,7 @@ Below is the script used by the frontend::
 """
 
 # Built-in modules #
-import re, os
+import re, os, gzip
 
 # Internal modules #
 from bbcflib import frontend, mapseq
@@ -118,12 +118,22 @@ def add_macs_results( ex, read_length, genome_size, bamfile,
         ex.add( p+"_peaks.xls",
                 description=set_file_descr(filename+"_peaks.xls",**macs_descr1),
                 associate_to_filename=p, template='%s_peaks.xls' )
-        ex.add( p+"_peaks.bed",
+        bedzip = gzip.open(p+"_peaks.bed.gz",'wb')
+        bedzip.write("track name='"+filename+"_macs_peaks'\n")
+        with open(p+"_peaks.bed") as bedinf:
+            [bedzip.write(l) for l in bedinf]
+        bedzip.close()
+        ex.add( p+"_peaks.bed.gz",
                 description=set_file_descr(filename+"_peaks.bed",**macs_descr2),
-                associate_to_filename=p, template='%s_peaks.bed' )
-        ex.add( p+"_summits.bed",
+                associate_to_filename=p, template='%s_peaks.bed.gz' )
+        bedzip = gzip.open(p+"_summits.bed.gz",'wb')
+        bedzip.write("track name='"+filename+"_macs_summits'\n")
+        with open(p+"_summits.bed") as bedinf:
+            [bedzip.write(l) for l in bedinf]
+        bedzip.close()
+        ex.add( p+"_summits.bed.gz",
                 description=set_file_descr(filename+"_summits.bed",**macs_descr2),
-                associate_to_filename=p, template='%s_summits.bed' )
+                associate_to_filename=p, template='%s_summits.bed.gz' )
         if len(n)>1:
             ex.add( p+"_negative_peaks.xls",
                     description=set_file_descr(filename+"_negative_peaks.xls",**macs_descr1),
@@ -204,7 +214,7 @@ def run_deconv(ex, sql, peaks, chromosomes, read_extension, script_path, via = '
         outfiles['pdf'] = rdeconv_out.values()[0]['pdf']
     return outfiles
 
-def filter_deconv( bedfile, pval=0.5 ):
+def _filter_deconv( bedfile, pval=0.5 ):
     """Filters a bedfile created by deconvolution to select peaks with p-value smaller than 'pval'.
     Returns the filtered file name."""
     outname = unique_filename_in()+".bed"
@@ -216,7 +226,7 @@ def filter_deconv( bedfile, pval=0.5 ):
                     fout.write(row)
     return outname
 
-def filter_macs( bedfile, ntags=5 ):
+def _filter_macs( bedfile, ntags=5 ):
     """Filters MACS' summits file to select peaks with a number of tags greater than 'ntags'.
     Returns the filtered file name."""
     outname = unique_filename_in()+".bed"
@@ -338,7 +348,7 @@ def workflow_groups( ex, job_or_dict, mapseq_files, assembly, script_path='',
                 macsbed = processed['macs'][(name,)]+"_summits.bed"
             else:
                 macsbed = cat([processed['macs'][(name,x)]+"_summits.bed" for x in names['controls']])
-            macsbed = filter_macs(macsbed)
+            macsbed = _filter_macs(macsbed)
             outdir = unique_filename_in()
             os.mkdir(outdir)
             gm_out = gMiner.run(
@@ -394,14 +404,22 @@ def workflow_groups( ex, job_or_dict, mapseq_files, assembly, script_path='',
             if names['controls']==[None]:
                 macsbed = processed['macs'][(name,)]+"_peaks.bed"
             else:
-                macsbed = merge_many_bed(ex,[processed['macs'][(name,x)]+"_peaks.bed"
-                                             for x in names['controls']],via=via)
+                macsbed = merge_many_bed( ex,[processed['macs'][(name,x)]+"_peaks.bed"
+                                              for x in names['controls']],via=via )
             deconv = run_deconv( ex, merged_wig[name], macsbed, assembly.chromosomes,
                                  options['read_extension'], script_path, via=via )
+            peak_list[name] = _filter_deconv( deconv['bed'], pval=0.65 )
+            bedfile = deconv.pop('bed')
+            bedzip = gzip.open(bedfile+".gz",'wb')
+            bedzip.write("track name='"+name+"_deconvolution'\n")
+            with open(bedfile) as bedinf:
+                [bedzip.write(l) for l in bedinf]
+            bedzip.close()
+            ex.add(bedzip, description=set_file_descr(bedzip,type='bed',step='deconvolution',group=name,ucsc='1'))
             [ex.add(v, description=set_file_descr(name+'_deconv.'+k,type=k,step='deconvolution',group=name))
              for k,v in deconv.iteritems()]
+            deconv['bed'] = bedzip 
             processed['deconv'][name] = deconv
-            peak_list[name] = filter_deconv( deconv['bed'], pval=0.65 )
     if run_meme:
         from .motif import parallel_meme
         if logfile:
