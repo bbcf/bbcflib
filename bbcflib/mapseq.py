@@ -1120,7 +1120,10 @@ def get_bam_wig_files( ex, job, minilims=None, hts_url=None, suffix=['fwd','rev'
                     name += "_"+os.path.splitext(file_loc.split("/")[-1])[0]
             if file_loc.startswith("http://") or file_loc.startswith("https://") or file_loc.startswith("ftp://"):
                 urllib.urlretrieve( file_loc, bamfile )
-                urllib.urlretrieve( file_loc+".bai", bamfile+".bai" )
+                if urllib.urlopen( file_loc+".bai").getcode() == 200:
+                    urllib.urlretrieve( file_loc+".bai", bamfile+".bai" )
+                else:
+                    index_bam(ex, bamfile)
             elif os.path.exists(file_loc):
                 shutil.copy( file_loc, bamfile )
                 shutil.copy( file_loc+".bai", bamfile+".bai" )
