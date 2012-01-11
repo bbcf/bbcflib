@@ -169,14 +169,14 @@ def build_pileup(bamfile, labels):
     :type exons: list
     :rtype: list
     """
-    counts = []
+    counts = {}
     try: sam = pysam.Samfile(bamfile, 'rb')
     except ValueError: sam = pysam.Samfile(bamfile,'r')
     c = Counter()
     for l in labels:
         sam.fetch(l[0], 0, l[1], callback=c) #(name,0,length,Counter())
         #The callback (c.n += 1) is executed for each alignment in a region
-        counts.append(c.n)
+        counts[l[0].split('|')[0]] = c.n
         c.n = 0
     sam.close()
     return counts
@@ -378,12 +378,20 @@ def rnaseq_workflow(ex, job, assembly, bam_files, pileup_level=["exons","genes",
                          Targets can be 'genes', 'transcripts', or 'exons'.
     :param via: 'local' or 'lsf'.
     """
-    group_names={}
+    group_names={}; conditions=[]
     assembly = genrep.Assembly(assembly=job.assembly_id,intype=2)
     groups = job.groups
     for gid,group in groups.iteritems():
         group_names[gid] = str(group['name']) # group_names = {gid: name}
     if isinstance(pileup_level,str): pileup_level=[pileup_level]
+
+    """ Define conditions """
+    for gid,files in bam_files.iteritems():
+        k = 0
+        for rid,f in files.iteritems():
+            k+=1
+            cond = group_names[gid]+'.'+str(k)
+            conditions.append(cond)
 
     #Exon labels: ('exonID|geneID|start|end|strand', length)
     exons = fetch_labels(bam_files[groups.keys()[0]][groups.values()[0]['runs'].keys()[0]]['bam'])
@@ -403,20 +411,6 @@ def rnaseq_workflow(ex, job, assembly, bam_files, pileup_level=["exons","genes",
         else: badexons.append(e)
     [exons.remove(e) for e in badexons]
 
-    """ Build exon pileups from bam files """
-    print "Build pileups"
-    exon_pileups={}; nreads={}; conditions=[]
-    for gid,files in bam_files.iteritems():
-        k = 0
-        for rid,f in files.iteritems():
-            k+=1
-            cond = group_names[gid]+'.'+str(k)
-            conditions.append(cond)
-            exon_pileup = build_pileup(f['bam'], exons)
-            exon_pileups[cond] = exon_pileup # {cond1.run1: [pileup], cond1.run2: [pileup]...}
-            nreads[cond] = nreads.get(cond,0) + sum(exon_pileup) # total number of reads
-            print "....Pileup", cond, "done"
-
     print "Load mappings"
     """ [0] gene_mapping is a dict ``{gene ID: (gene name,start,end,chromosome)}``
         [1] transcript_mapping is a dictionary ``{transcript ID: (gene ID,start,end,chromosome)}``
@@ -426,7 +420,6 @@ def rnaseq_workflow(ex, job, assembly, bam_files, pileup_level=["exons","genes",
     (gene_mapping, transcript_mapping, exon_mapping, trans_in_gene, exons_in_trans) = fetch_mappings(assembly)
 
     """ Map remaining reads to transcriptome """
-    junction_pileups = dict(zip(conditions,[{}]*len(conditions)))
     additionals = {}
     if unmapped:
         print "Get unmapped reads"
@@ -434,16 +427,15 @@ def rnaseq_workflow(ex, job, assembly, bam_files, pileup_level=["exons","genes",
         refseq_path = assembly.index_path
         assert os.path.exists(refseq_path+".1.ebwt"), "Refseq index not found: %s" % refseq_path+".1.ebwt"
         for gid, group in job.groups.iteritems():
+            k = 0
             for rid, run in group['runs'].iteritems():
+                k +=1
+                cond = group_names[gid]+'.'+str(k)
                 unmapped_fastq = bam_files[gid][rid].get('unmapped_fastq')
                 unmapped_bam[cond] = mapseq.map_reads(ex, unmapped_fastq, {}, refseq_path, \
                       remove_pcr_duplicates=False, bwt_args=[])['bam']
         if unmapped_bam.get(conditions[0]):
-            #junctions = fetch_labels(unmapped_bam[conditions[0]]) #list of (transcript ID, length)
             for cond in conditions:
-                #junction_pileup = build_pileup(unmapped_bam[cond], junctions)
-                #junction_pileup = dict(zip([j[0] for j in junctions], junction_pileup)) # {transcript ID: count}
-                #junction_pileups[cond] = junction_pileup
                 sam = pysam.Samfile(unmapped_bam[cond])
                 additional = {}
                 for read in sam:
@@ -463,6 +455,21 @@ def rnaseq_workflow(ex, job, assembly, bam_files, pileup_level=["exons","genes",
                             lag += e_len
                 additionals[cond] = additional
                 sam.close()
+
+    """ Build exon pileups from bam files """
+    print "Build pileups"
+    exon_pileups={}; nreads={}
+    for gid,files in bam_files.iteritems():
+        k = 0
+        for rid,f in files.iteritems():
+            k+=1
+            cond = group_names[gid]+'.'+str(k)
+            exon_pileup = build_pileup(f['bam'], exons)
+            for a,x in additionals[cond].iteritems():
+                exon_pileup[a] += x
+            exon_pileups[cond] = [exon_pileup[e] for e in exonsID] # {cond1.run1: [pileup], cond1.run2: [pileup]...}
+            nreads[cond] = nreads.get(cond,0) + sum(exon_pileup.values()) # total number of reads
+            print "....Pileup", cond, "done"
 
     """ Treat data """
     print "Process data"
@@ -500,11 +507,6 @@ def rnaseq_workflow(ex, job, assembly, bam_files, pileup_level=["exons","genes",
         header = ["TranscriptID"] + hconds + ["Start","End","GeneID","GeneName","Chromosome"]
         (tcounts, trpkm) = transcripts_expression(exons_data, exon_lengths,
                    transcript_mapping, trans_in_gene, exons_in_trans,len(conditions))
-        # Add junction reads to transcript scores - temporary oversimplified version
-        #for c in conditions:
-        #    for t,add in junction_pileups[c].iteritems():
-        #        if tcounts.get(t):
-        #            tcounts[t][conditions.index(c)] += add
         transID = tcounts.keys()
         trans_data = [[t,tcounts[t],trpkm[t]]+list(transcript_mapping.get(t,("NA",)*5)) for t in transID]
         trans_data = sorted(trans_data, key=lambda x: x[-5]) # sort w.r.t. gene IDs

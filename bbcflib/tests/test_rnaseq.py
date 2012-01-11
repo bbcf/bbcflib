@@ -134,7 +134,6 @@ class Test_Expressions3(unittest.TestCase):
         self.assertEqual(sum(sum(tcounts.values())), sum(sum(self.counts)))
 
 
-#@unittest.skip("fix")
 class Test_Expressions4(unittest.TestCase):
     """Overdetermined system"""
     def setUp(self):
@@ -166,7 +165,6 @@ class Test_Expressions4(unittest.TestCase):
         self.assertGreater(sum(sum(tcounts.values()))/sum(sum(self.counts)), 0.9)
 
 
-#@unittest.skip("fix")
 class Test_Expressions5(unittest.TestCase):
     """Even more underdetermined system"""
     def setUp(self):
@@ -284,7 +282,9 @@ class Test_Pileup(unittest.TestCase):
     def test_build_pileup(self):
         self.exons = fetch_labels(self.bam)
         self.counts = build_pileup(self.bam, self.exons)
-        counts = [0, 35, 0, 0, 0, 0, 0, 3679, 3707, 0, 0, 0, 149, 3, 0, 0, 55, 0, 161]
+        self.assertEqual([self.counts[e[0].split('|')[0]] for e in self.exons],\
+                         [0, 35, 0, 0, 0, 0, 0, 3679, 3707, 0, 0, 0, 149, 3, 0, 0, 55, 0, 161])
+        counts = {'ENSMUSE00000745781': 3, 'ENSMUSE00000886744': 0, 'ENSMUSE00000719706': 0, 'ENSMUSE00000511617': 0, 'ENSMUSE00000873350': 0, 'ENSMUSE00000775454': 0, 'ENSMUSE00000709315': 35, 'ENSMUSE00000822668': 149, 'ENSMUSE00000472146': 0, 'ENSMUSE00000487077': 3679, 'ENSMUSE00000751942': 3707, 'ENSMUSE00000740765': 0, 'ENSMUSE00000512722': 0, 'ENSMUSE00000569415': 0, 'ENSMUSE00000879959': 0, 'ENSMUSE00000815727': 55, 'ENSMUSE00000491786': 0, 'ENSMUSE00000721118': 161, 'ENSMUSE00000881196': 0}
         self.assertItemsEqual(self.counts,counts)
 
 
