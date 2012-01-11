@@ -16,11 +16,10 @@ The annotation of the bowtie index has to be consistent to that of the database 
 """
 
 # Built-in modules #
-import os, pysam, math, itertools
-import sys
+import os, pysam, math
 
 # Internal modules #
-from bbcflib.common import timer, writecols, set_file_descr
+from bbcflib.common import writecols, set_file_descr
 from bbcflib.common import unique_filename_in as rstring
 from bbcflib import mapseq, genrep
 import track
@@ -117,7 +116,7 @@ def lsqnonneg(C, d, x0=None, tol=None, itmax_factor=3):
         w = numpy.dot(C.T, resid)
     return (x, sum(resid*resid), resid)
 
-@timer
+#@timer
 def fetch_mappings(assembly, path_to_map=None):
     """Given an assembly ID, returns a tuple
     ``(gene_ids, gene_names, transcript_mapping, exon_mapping, trans_in_gene, exons_in_trans)``
@@ -215,7 +214,7 @@ def save_results(ex, cols, conditions, header=[], feature_type='features'):
             ex.add(output_sql, description=description)
     print feature_type+": Done successfully."
 
-@timer
+#@timer
 def genes_expression(exons_data, exon_to_gene, ncond):
     """Get gene counts from exons counts.
 
@@ -226,8 +225,8 @@ def genes_expression(exons_data, exon_to_gene, ncond):
     :param ncond: number of samples.
     """
     genes = list(set(exons_data[-3]))
-    z = [numpy.zeros(ncond,dtype=numpy.float_) for g in genes]
-    zz = [numpy.zeros(ncond,dtype=numpy.float_) for g in genes]
+    z = numpy.zeros((len(genes),ncond))
+    zz = numpy.zeros((len(genes),ncond))
     gcounts = dict(zip(genes,z))
     grpk = dict(zip(genes,zz))
     round = numpy.round
@@ -237,7 +236,7 @@ def genes_expression(exons_data, exon_to_gene, ncond):
         grpk[g] += round(c[ncond:],2)
     return gcounts, grpk
 
-@timer
+#@timer
 def transcripts_expression(exons_data, exon_lengths, transcript_mapping, trans_in_gene, exons_in_trans, ncond):
     """Get transcript rpkms from exon rpkms.
 
@@ -327,12 +326,12 @@ def transcripts_expression(exons_data, exon_lengths, transcript_mapping, trans_i
         else:
             unknown += 1
     #filE.close()
-    print "\t Unknown transcripts for %d of %d genes (%.2f %%)" \
+    print "Unknown transcripts for %d of %d genes (%.2f %%)" \
            % (unknown, len(genes), 100*float(unknown)/float(len(genes)) )
-    try: print "\t Total transcript counts: %.2f, Total exon counts: %.2f, Ratio: %.2f" \
-           % (alltranscount,allexonscount,alltranscount/allexonscount)
-    except ZeroDivisionError: pass
-    print "\t Total error (sum of resnorms):", totalerror
+    #try: print "\t Total transcript counts: %.2f, Total exon counts: %.2f, Ratio: %.2f" \
+    #       % (alltranscount,allexonscount,alltranscount/allexonscount)
+    #except ZeroDivisionError: pass
+    #print "\t Total error (sum of resnorms):", totalerror
     return trans_rpk, trans_counts
 
 def estimate_size_factors(counts):
@@ -361,7 +360,7 @@ def to_rpkm(count, length, nreads):
     """Convert count value to RPKM"""
     return 1000*1e6*(count/nreads)/(length)
 
-@timer
+#@timer
 def rnaseq_workflow(ex, job, assembly, bam_files, pileup_level=["exons","genes","transcripts"],
                     via="lsf", unmapped=False):
     """
@@ -434,9 +433,9 @@ def rnaseq_workflow(ex, job, assembly, bam_files, pileup_level=["exons","genes",
                 unmapped_fastq = bam_files[gid][rid].get('unmapped_fastq')
                 unmapped_bam[cond] = mapseq.map_reads(ex, unmapped_fastq, {}, refseq_path, \
                       remove_pcr_duplicates=False, bwt_args=[])['bam']
-        if unmapped_bam.get(conditions[0]):
-            for cond in conditions:
-                sam = pysam.Samfile(unmapped_bam[cond])
+                if unmapped_bam[cond]:
+                    sam = pysam.Samfile(unmapped_bam[cond])
+                else: sam = []
                 additional = {}
                 for read in sam:
                     t_id = sam.getrname(read.tid).split('|')[0]
@@ -465,8 +464,9 @@ def rnaseq_workflow(ex, job, assembly, bam_files, pileup_level=["exons","genes",
             k+=1
             cond = group_names[gid]+'.'+str(k)
             exon_pileup = build_pileup(f['bam'], exons)
-            for a,x in additionals[cond].iteritems():
-                exon_pileup[a] += x
+            if unmapped:
+                for a,x in additionals[cond].iteritems():
+                    exon_pileup[a] += x
             exon_pileups[cond] = [exon_pileup[e] for e in exonsID] # {cond1.run1: [pileup], cond1.run2: [pileup]...}
             nreads[cond] = nreads.get(cond,0) + sum(exon_pileup.values()) # total number of reads
             print "....Pileup", cond, "done"
