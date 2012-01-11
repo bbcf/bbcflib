@@ -159,14 +159,13 @@ class Counter(object):
         self.n += 1
 
 def build_pileup(bamfile, labels):
-    """From a BAM file *bamfile*, returns a list containing for each exon in *exons*,
-    the number of reads that mapped to it, in the same order.
+    """From a BAM file, returns a dictionary of the form {feature ID: number of reads that mapped to it}.
 
     :param bamfile: name of a BAM file.
     :param labels: index references - as returned by **fetch_labels()**
     :type bamfile: string
     :type exons: list
-    :rtype: list
+    :rtype: dict
     """
     counts = {}
     try: sam = pysam.Samfile(bamfile, 'rb')
@@ -191,27 +190,27 @@ def save_results(ex, cols, conditions, header=[], feature_type='features'):
     """
     conditions_s = '%s, '*(len(conditions)-1)+'%s.'
     conditions = tuple(conditions)
-    ncond = len(conditions)
     # Tab-delimited output with all information
     output_tab = rstring()
     writecols(output_tab,cols,header=header, sep="\t")
     description = "Expression level of "+feature_type+" in sample(s) "+conditions_s % conditions
     description = set_file_descr(feature_type.lower()+"_expression.tab", step="pileup", type="txt", comment=description)
     ex.add(output_tab, description=description)
-    # SQL track output
-    if feature_type=="EXONS" and 0:
-        output_sql = rstring()
-        def to_bedgraph(cols,ncond,i):
-            lines = zip(*cols)
-            print lines[0]
-            yield (lines[0],lines[2*ncond+1],lines[2*ncond+2],lines[i])
-        for i in range(ncond):
-            with track.new(output_sql, format='bedGraph') as t:
-                t.write(feature_type,to_bedgraph(cols,ncond,i),(feature_type[:-1]+"_id","start","end","score"))
-            c = conditions[i]
-            description = "SQL track of exons rpkm for sample %s" % c
-            description = set_file_descr("exons_"+c+".sql", step="pileup", type="sql", comment=description)
-            ex.add(output_sql, description=description)
+    # SQL track output (fix Track, then finish it...)
+    #ncond = len(conditions)
+    #if feature_type=="EXONS":
+    #    output_sql = rstring()
+    #    def to_bedgraph(cols,ncond,i):
+    #        lines = zip(*cols)
+    #        print lines[0]
+    #        yield (lines[0],lines[2*ncond+1],lines[2*ncond+2],lines[i])
+    #    for i in range(ncond):
+    #        with track.new(output_sql, format='bedGraph') as t:
+    #            t.write(feature_type,to_bedgraph(cols,ncond,i),(feature_type[:-1]+"_id","start","end","score"))
+    #        c = conditions[i]
+    #        description = "SQL track of exons rpkm for sample %s" % c
+    #        description = set_file_descr("exons_"+c+".sql", step="pileup", type="sql", comment=description)
+    #        ex.add(output_sql, description=description)
     print feature_type+": Done successfully."
 
 #@timer
@@ -261,8 +260,6 @@ def transcripts_expression(exons_data, exon_lengths, transcript_mapping, trans_i
     exons_counts = dict(zip( exons_data[0], zip(*exons_data[1:ncond+1])) )
     exons_rpk = dict(zip( exons_data[0], zip(*exons_data[ncond+1:2*ncond+1])) )
     totalerror = 0; unknown = 0; alltranscount=0; allexonscount=0;
-    #filE = open("../error_stats.numbers","wb")
-    #filE.write("gene \t nbExons \t nbTrans \t ratioNbExonsNbTrans \t totExons \t totTrans \t ratioExonsTrans \t lsqError \n")
     for g in genes:
         if trans_in_gene.get(g): # if the gene is (still) in the Ensembl database
             # Get all transcripts in the gene
@@ -315,19 +312,15 @@ def transcripts_expression(exons_data, exon_lengths, transcript_mapping, trans_i
                         trans_counts[t][c] = round(tc[c][k], 2)
                         trans_rpk[t][c] = round(tr[c][k], 2)
             # Testing
-            total_trans_c = sum([sum(trans_counts[t]) for t in tg]) or 0
-            total_exons_c = sum([sum(ec[c]) for c in range(ncond)]) or 0
-            alltranscount += total_trans_c
-            allexonscount += total_exons_c
-            #try: filE.write("%s\t%d\t%d\t%.1f\t%.1f\t%.1f\t%.1f\t%.1f\n" \
-            #        % (g,len(eg),len(tg),1.*len(eg)/len(tg),total_exons_c,total_trans_c, \
-            #           total_exons_c/total_trans_c,resnormc))
-            #except ZeroDivisionError: pass
+            #total_trans_c = sum([sum(trans_counts[t]) for t in tg]) or 0
+            #total_exons_c = sum([sum(ec[c]) for c in range(ncond)]) or 0
+            #alltranscount += total_trans_c
+            #allexonscount += total_exons_c
         else:
             unknown += 1
-    #filE.close()
     print "Unknown transcripts for %d of %d genes (%.2f %%)" \
            % (unknown, len(genes), 100*float(unknown)/float(len(genes)) )
+    # Testing
     #try: print "\t Total transcript counts: %.2f, Total exon counts: %.2f, Ratio: %.2f" \
     #       % (alltranscount,allexonscount,alltranscount/allexonscount)
     #except ZeroDivisionError: pass
@@ -515,7 +508,7 @@ def rnaseq_workflow(ex, job, assembly, bam_files, pileup_level=["exons","genes",
         trans_data = [transID]+list(zip(*tcounts))+list(zip(*trpkm))+[tstart,tend,genesID,genesName,tchr]
         save_results(ex, trans_data, conditions, header=header, feature_type="TRANSCRIPTS")
 
-    # TEST
+    # Testing
     # "ENSMUSG00000057666" "ENSG00000111640": TEST Gapdh
     # for g in list(set(genesID)):
     #     print sum(gcounts[g]), sum([sum(tcounts[t]) for t in trans_in_gene[g]])
