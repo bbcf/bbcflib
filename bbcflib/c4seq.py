@@ -141,7 +141,7 @@ def density_to_countsPerFrag(ex,density_file,density_name,assembly,reffile,regTo
                                                         features.read(ch,fields=['start', 'end', 'name'])),
                                                   fields=['start', 'end', 'name', 'score'])
 
-        ex.add(output,description=set_file_descr("meanScorePerFeature_"+density_name+".sql",groupId=grpId,step="norm_counts_per_frag",type="sql",view="admin",gdv="1"))
+        ex.add(output,description=set_file_descr("meanScorePerFeature_"+density_name+".sql",groupId=grpId,step="norm_counts_per_frag",type="sql",view="admin"))
 
 	countsPerFragFile=unique_filename_in()+".bed"
 	with track.load(output,'sql') as t:
