@@ -197,20 +197,17 @@ def save_results(ex, cols, conditions, header=[], feature_type='features'):
     description = set_file_descr(feature_type.lower()+"_expression.tab", step="pileup", type="txt", comment=description)
     ex.add(output_tab, description=description)
     # SQL track output (fix Track, then finish it...)
-    #ncond = len(conditions)
-    #if feature_type=="EXONS":
-    #    output_sql = rstring()
-    #    def to_bedgraph(cols,ncond,i):
-    #        lines = zip(*cols)
-    #        print lines[0]
-    #        yield (lines[0],lines[2*ncond+1],lines[2*ncond+2],lines[i])
-    #    for i in range(ncond):
-    #        with track.new(output_sql, format='bedGraph') as t:
-    #            t.write(feature_type,to_bedgraph(cols,ncond,i),(feature_type[:-1]+"_id","start","end","score"))
-    #        c = conditions[i]
-    #        description = "SQL track of exons rpkm for sample %s" % c
-    #        description = set_file_descr("exons_"+c+".sql", step="pileup", type="sql", comment=description)
-    #        ex.add(output_sql, description=description)
+    ncond = len(conditions)
+    output_sql = rstring()
+    for i in range(ncond+1,2*ncond+1):
+        with track.new(output_sql, format='sql') as t:
+            t.datatype = 'quantitative' #'signal'?
+            lines = zip(*[cols[2*ncond+1],cols[2*ncond+2],cols[i]]) #[start,end,rpkm] - add cols[0] for ID in the future
+            t.write(feature_type,lines,fields=["start","end","score"]) #add feature_type[:-1].lower()+"_id" for ID in the future
+        c = conditions[i-ncond-1]
+        description = "SQL track of %s rpkm for sample %s" % (feature_type.lower(),c)
+        description = set_file_descr("exons_"+c+".sql", step="pileup", type="sql", comment=description)
+        ex.add(output_sql, description=description)
     print feature_type+": Done successfully."
 
 #@timer
