@@ -147,12 +147,6 @@ def fetch_labels(bamfile):
     sam.close()
     return labels
 
-class Counter(object):
-    def __init__(self):
-        self.n = 0
-    def __call__(self, alignment):
-        self.n += 1
-
 def build_pileup(bamfile, labels):
     """From a BAM file, returns a dictionary of the form {feature ID: number of reads that mapped to it}.
 
@@ -162,6 +156,12 @@ def build_pileup(bamfile, labels):
     :type exons: list
     :rtype: dict
     """
+    class Counter(object):
+        def __init__(self):
+            self.n = 0
+        def __call__(self, alignment):
+            self.n += 1
+
     counts = {}
     try: sam = pysam.Samfile(bamfile, 'rb')
     except ValueError: sam = pysam.Samfile(bamfile,'r')
@@ -205,9 +205,9 @@ def save_results(ex, cols, conditions, header=[], feature_type='features'):
         with track.new(filename, format='sql') as t:
             t.datatype = 'quantitative' #'signal'?
             lines = zip(*[start,end,rpkm[g]])
-            t.write(feature_type,lines,fields=["start","end","score"])
+            t.write(feature_type.lower(),lines,fields=["start","end","score"])
         description = "SQL track of %s' rpkm for group `%s'" % (feature_type,g)
-        description = set_file_descr("exons_"+g+".sql", step="pileup", type="sql", comment=description)
+        description = set_file_descr(feature_type.lower()+"_"+g+".sql", step="pileup", type="sql", comment=description)
         ex.add(filename, description=description)
     print feature_type+": Done successfully."
 
