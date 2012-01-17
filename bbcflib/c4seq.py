@@ -142,7 +142,7 @@ def density_to_countsPerFrag(ex,density_file,density_name,assembly,reffile,regTo
                                                         features.read(ch,fields=['start', 'end', 'name'])),
                                                   fields=['start', 'end', 'name', 'score'])
         connection = sqlite3.connect(output)
-        cursor = self.connection.cursor()
+        cursor = connection.cursor()
         cursor.execute("UPDATE 'attributes' SET 'value'='%s' WHERE 'key'='%s'"%('quantitative','datatype'))
         connection.commit()
         connection.close()
