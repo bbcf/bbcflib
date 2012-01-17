@@ -14,6 +14,7 @@ from bbcflib import daflims, genrep, frontend, email, gdv, track, createlib
 from bbcflib.mapseq import *
 from bbcflib.common import unique_filename_in
 import sys, getopt, os, json, re
+import sqlite3
 import gMiner as gm
 
 grpId=1
@@ -134,13 +135,17 @@ def density_to_countsPerFrag(ex,density_file,density_name,assembly,reffile,regTo
         from gMiner.operations.genomic_manip.scores import mean_score_by_feature
         with track.Track(density_file) as scores:
                 with track.Track(reffile) as features:
-                        with track.new(output,format='sql',chrmeta=assembly.chrmeta,datatype='quantitative') as out:
+                        with track.new(output,format='sql',chrmeta=assembly.chrmeta) as out:
                                 for ch in scores:
                                         out.write(ch,mean_score_by_feature()(
                                                         scores.read(ch),
                                                         features.read(ch,fields=['start', 'end', 'name'])),
                                                   fields=['start', 'end', 'name', 'score'])
-
+        connection = sqlite3.connect(output)
+        cursor = self.connection.cursor()
+        cursor.execute("UPDATE 'attributes' SET 'value'='%s' WHERE 'key'='%s'"%('quantitative','datatype'))
+        connection.commit()
+        connection.close()
         ex.add(output,description=set_file_descr("meanScorePerFeature_"+density_name+".sql",groupId=grpId,step="norm_counts_per_frag",type="sql",view="admin",gdv='1'))
 
 	countsPerFragFile=unique_filename_in()+".bed"
