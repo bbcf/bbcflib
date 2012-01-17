@@ -126,7 +126,7 @@ def transfert(prefix, file_path, delimiter, mail, key, serv_url, datatype, nr_as
 
 def create_gdv_project( gdv_key, gdv_email,
                         name, nr_assembly_id,
-                        gdv_url="http://svitsrv25.epfl.ch/gdv", public=False ):
+                        gdv_url="http://gdv.epfl.ch/gdv", public=False ):
     '''
     Create a new project on GDV interface
     :param gdv_email: your login in TEQUILA
@@ -159,7 +159,7 @@ def add_gdv_track( gdv_key, gdv_email,
                    project_id,
                    url,
                    name=None,
-                   gdv_url="http://svitsrv25.epfl.ch/gdv"):
+                   gdv_url="http://gdv.epfl.ch/gdv"):
     '''
     Add a new track on a project on GDV
     :param gdv_email: your login in TEQUILA
@@ -185,7 +185,7 @@ def add_gdv_sqlite( gdv_key, gdv_email,
                     project_id,
                     url,
                     name=None,
-                    gdv_url="http://svitsrv25.epfl.ch/gdv"):
+                    gdv_url="http://gdv.epfl.ch/gdv"):
     '''
     Deprecated :  use add_gdv_track instead
     '''
@@ -197,7 +197,7 @@ def add_sql_files( gdv_key, gdv_email,
                    project_id,
                    files, names,
                    serv_url="http://htsstation.vital-it.ch/lims/chipseq/chipseq_minilims.files",
-                   gdv_url="http://svitsrv25.epfl.ch/gdv"):
+                   gdv_url="http://gdv.epfl.ch/gdv"):
     '''
     Run `add_gdv_sqlite` on a list of files
     '''
