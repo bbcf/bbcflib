@@ -42,8 +42,7 @@ def normalize_url(url):
     # url = url.lower()
     if not(url.startswith(("http://","https://","ftp://"))):
         url = "http://" + url
-    url.strip("/")
-    return url
+    return url.strip("/")
 
 ###############################################################################
 def cat(files,out=None):
