@@ -192,7 +192,7 @@ def save_results(ex, cols, conditions, group_ids, header=[], feature_type='featu
     description = "Expression level of "+feature_type+" in sample(s) "+conditions_s % conditions
     description = set_file_descr(feature_type.lower()+"_expression.tab", step="pileup", type="txt", comment=description)
     ex.add(output_tab, description=description)
-    # SQL track output
+    # Create one track for each group
     ncond = len(conditions)
     groups = [c.split('.')[0] for c in conditions]
     start = cols[2*ncond+1]
@@ -205,14 +205,22 @@ def save_results(ex, cols, conditions, group_ids, header=[], feature_type='featu
         rpkm[g] = asarray(rpkm.get(g,zeros(len(start)))) + asarray(cols[i+ncond+1]) / nruns
         output_sql[g] = output_sql.get(g,unique_filename_in())
     for g,filename in output_sql.iteritems():
-        with track.new(filename, format='sql') as t:
+        # SQL track
+        with track.new(filename+'.sql', format='sql') as t:
             t.datatype = 'quantitative' #'signal'?
             lines = zip(*[start,end,rpkm[g]])
             t.write(feature_type.lower(),lines,fields=["start","end","score"])
         description = "SQL track of %s'rpkm for group `%s'" % (feature_type,g)
         description = set_file_descr(feature_type.lower()+"_"+g+".sql", step="pileup", type="sql", \
                                      groupId=group_ids[g], gdv='1', comment=description)
-        ex.add(filename, description=description)
+        ex.add(filename+'.sql', description=description)
+        # UCSC-BED track
+        with track.load(filename+'.sql','sql') as t:
+            t.convert(filename+'.bed','bed')
+        description = "UCSC-BED track of %s'rpkm for group `%s'" % (feature_type,g)
+        description = set_file_descr(feature_type.lower()+"_"+g+".bed", step="pileup", type="bed", \
+                                     groupId=group_ids[g], gdv='1', comment=description)
+        ex.add(filename+'.bed', description=description)
     print feature_type+": Done successfully."
 
 #@timer

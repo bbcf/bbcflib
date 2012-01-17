@@ -73,6 +73,7 @@ def set_file_descr(filename,**kwargs):
 
         >>> set_file_descr("toto",step=1,type='doc')
         'toto[step:1,type:doc]'
+
     """
     file_descr = filename
     argskeys = kwargs.keys()
