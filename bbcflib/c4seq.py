@@ -134,14 +134,14 @@ def density_to_countsPerFrag(ex,density_file,density_name,assembly,reffile,regTo
         from gMiner.operations.genomic_manip.scores import mean_score_by_feature
         with track.Track(density_file) as scores:
                 with track.Track(reffile) as features:
-                        with track.new(output,format='sql',chrmeta=assembly.chrmeta) as out:
+                        with track.new(output,format='sql',chrmeta=assembly.chrmeta,datatype='quantitative') as out:
                                 for ch in scores:
                                         out.write(ch,mean_score_by_feature()(
                                                         scores.read(ch),
                                                         features.read(ch,fields=['start', 'end', 'name'])),
                                                   fields=['start', 'end', 'name', 'score'])
 
-        ex.add(output,description=set_file_descr("meanScorePerFeature_"+density_name+".sql",groupId=grpId,step="norm_counts_per_frag",type="sql",view="admin"))
+        ex.add(output,description=set_file_descr("meanScorePerFeature_"+density_name+".sql",groupId=grpId,step="norm_counts_per_frag",type="sql",view="admin",gdv='1'))
 
 	countsPerFragFile=unique_filename_in()+".bed"
 	with track.load(output,'sql') as t:
@@ -250,8 +250,13 @@ def workflow_groups(ex, job, primers_dict, assembly, mapseq_files, mapseq_url, s
 			profileCorrectedFile=unique_filename_in()
 			reportFile_profileCorrection=unique_filename_in()
 			profileCorrection.nonblocking(ex,resfiles[4],primers_dict[mapseq_files[gid][rid]['libname']]['baitcoord'],mapseq_files[gid][rid]['libname'],profileCorrectedFile,reportFile_profileCorrection,script_path,via=via).wait()
-		        ex.add(profileCorrectedFile,description=set_file_descr("res_segToFrag_"+mapseq_files[gid][rid]['libname']+"_profileCorrected.bedGraph",groupId=gid,step="profile_correction",type="bedGraph",comment="profile corrected data;bedGraph sorted",ucsc='1',gdv="1"))
+		        ex.add(profileCorrectedFile,description=set_file_descr("res_segToFrag_"+mapseq_files[gid][rid]['libname']+"_profileCorrected.bedGraph",groupId=gid,step="profile_correction",type="bedGraph",comment="profile corrected data;bedGraph sorted",ucsc='1'))
 			ex.add(reportFile_profileCorrection,description=set_file_descr("report_profileCorrection_"+mapseq_files[gid][rid]['libname']+".pdf",groupId=gid,step="profile_correction",type="pdf",comment="report profile correction"))
+			profileCorrectedFile_sql=unique_filename_in()+".sql"
+			with track.load(profileCorrectedFile,'bedGraph') as t:
+				t.convert(profileCorrectedFile_sql,'sql')
+			ex.add(profileCorrectedFile_sql,description=set_file_descr("res_segToFrag_"+mapseq_files[gid][rid]['libname']+"_profileCorrected.sql",groupId=gid,step="profile_correction",type="sql",comment="profile corrected data;bedGraph sorted; sql format",gdv="1",view="admin"))
+
 			step += 1
 	
 			print("Will smooth data before and after profile correction")
@@ -259,11 +264,22 @@ def workflow_groups(ex, job, primers_dict, assembly, mapseq_files, mapseq_url, s
 			print("Window size="+nFragsPerWin)
         		outputfile=unique_filename_in()
 		        smoothFragFile(ex,resfiles[4],nFragsPerWin,mapseq_files[gid][rid]['libname'],outputfile,regToExclude,script_path)
-			ex.add(outputfile,description=set_file_descr("res_segToFrag_"+mapseq_files[gid][rid]['libname']+"_smoothed_"+nFragsPerWin+"FragsPerWin.bedGraph",groupId=gid,step="smoothing",type="bedGraph",comment="smoothed data, before profile correction",ucsc='1',gdv="1"))
-			
+			ex.add(outputfile,description=set_file_descr("res_segToFrag_"+mapseq_files[gid][rid]['libname']+"_smoothed_"+nFragsPerWin+"FragsPerWin.bedGraph",groupId=gid,step="smoothing",type="bedGraph",comment="smoothed data, before profile correction",ucsc='1'))
+
+			smoothedFile_sql=unique_filename_in()+".sql"
+			with track.load(outputfile,'bedGraph') as t:	
+				t.convert(smoothedFile_sql,'sql')
+			ex.add(smoothedFile_sql,description=set_file_descr("res_segToFrag_"+mapseq_files[gid][rid]['libname']+"_smoothed_"+nFragsPerWin+"FragsPerWin.sql",groupId=gid,step="smoothing",type="bedGraph",comment="smoothed data, before profile correction, sql format",gdv="1",view="admin"))		
+	
         		outputfile_afterProfileCorrection=unique_filename_in()
 		        smoothFragFile(ex,profileCorrectedFile,nFragsPerWin,mapseq_files[gid][rid]['libname']+"_[fromProfileCorrected]",outputfile_afterProfileCorrection,regToExclude,script_path)
-			ex.add(outputfile_afterProfileCorrection,description=set_file_descr("res_segToFrag_"+mapseq_files[gid][rid]['libname']+"_profileCorrected_smoothed_"+nFragsPerWin+"FragsPerWin.bedGraph",groupId=grpId,step="smoothing",type="bedGraph",comment="smoothed data, after profile correction",ucsc='1',gdv="1"))
+			ex.add(outputfile_afterProfileCorrection,description=set_file_descr("res_segToFrag_"+mapseq_files[gid][rid]['libname']+"_profileCorrected_smoothed_"+nFragsPerWin+"FragsPerWin.bedGraph",groupId=grpId,step="smoothing",type="bedGraph",comment="smoothed data, after profile correction",ucsc='1'))
+
+			smoothedFile_afterProfileCorrection_sql=unique_filename_in()+".sql"
+			with track.load(outputfile_afterProfileCorrection,'bedGraph') as t: 
+				t.convert(smoothedFile_afterProfileCorrection_sql,'sql')
+			ex.add(smoothedFile_afterProfileCorrection_sql,description=set_file_descr("res_segToFrag_"+mapseq_files[gid][rid]['libname']+"_profileCorrected_smoothed_"+nFragsPerWin+"FragsPerWin.sql",groupId=grpId,step="smoothing",type="sql",comment="smoothed data, after profile correction,sql format",gdv="1",view="admin"))
+
 		step=0
 	return processed
 
