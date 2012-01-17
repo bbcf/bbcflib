@@ -175,7 +175,7 @@ def build_pileup(bamfile, labels):
     sam.close()
     return counts
 
-def save_results(ex, cols, conditions, header=[], feature_type='features'):
+def save_results(ex, cols, conditions, group_ids, header=[], feature_type='features'):
     """Save results in a tab-delimited file, one line per feature, one column per run.
 
     :param ex: bein's execution.
@@ -209,8 +209,9 @@ def save_results(ex, cols, conditions, header=[], feature_type='features'):
             t.datatype = 'quantitative' #'signal'?
             lines = zip(*[start,end,rpkm[g]])
             t.write(feature_type.lower(),lines,fields=["start","end","score"])
-        description = "SQL track of %s' rpkm for group `%s'" % (feature_type,g)
-        description = set_file_descr(feature_type.lower()+"_"+g+".sql", step="pileup", type="sql", comment=description)
+        description = "SQL track of %s'rpkm for group `%s'" % (feature_type,g)
+        description = set_file_descr(feature_type.lower()+"_"+g+".sql", step="pileup", type="sql", \
+                                     groupId=group_ids[g], gdv='1', comment=description)
         ex.add(filename, description=description)
     print feature_type+": Done successfully."
 
@@ -367,11 +368,13 @@ def rnaseq_workflow(ex, job, assembly, bam_files, pileup_level=["exons","genes",
                          Targets can be 'genes', 'transcripts', or 'exons'.
     :param via: 'local' or 'lsf'.
     """
-    group_names={}; conditions=[]
+    group_names={}; group_ids={}; conditions=[]
     assembly = genrep.Assembly(assembly=job.assembly_id,intype=2)
     groups = job.groups
     for gid,group in groups.iteritems():
-        group_names[gid] = str(group['name'])
+        gname = str(group['name'])
+        group_names[gid] = gname
+        group_ids[gname] = gid
     if isinstance(pileup_level,str): pileup_level=[pileup_level]
 
     """ Define conditions """
@@ -480,7 +483,7 @@ def rnaseq_workflow(ex, job, assembly, bam_files, pileup_level=["exons","genes",
     """ Print counts for exons """
     if "exons" in pileup_level:
         header = ["ExonID"] + hconds + ["Start","End","GeneID","GeneName","Chromosome"]
-        save_results(ex, exons_data, conditions, header=header, feature_type="EXONS")
+        save_results(ex, exons_data, conditions, group_ids, header=header, feature_type="EXONS")
 
     """ Get scores of genes from exons """
     if "genes" in pileup_level:
@@ -490,7 +493,7 @@ def rnaseq_workflow(ex, job, assembly, bam_files, pileup_level=["exons","genes",
         genes_data = [[g,gcounts[g],grpkm[g]]+list(gene_mapping.get(g,("NA",)*4)) for g in genesID]
         (genesID,gcounts,grpkm,gname,gstart,gend,gchr) = zip(*genes_data)
         genes_data = [genesID]+list(zip(*gcounts))+list(zip(*grpkm))+[gstart,gend,gname,gchr]
-        save_results(ex, genes_data, conditions, header=header, feature_type="GENES")
+        save_results(ex, genes_data, conditions, group_ids, header=header, feature_type="GENES")
 
     """ Get scores of transcripts from exons, using non-negative least-squares """
     if "transcripts" in pileup_level:
@@ -503,7 +506,7 @@ def rnaseq_workflow(ex, job, assembly, bam_files, pileup_level=["exons","genes",
         (transID,tcounts,trpkm,genesID,tstart,tend,tlen,tchr) = zip(*trans_data)
         genesName = [gene_mapping.get(g,("NA",)*4)[0] for g in genesID]
         trans_data = [transID]+list(zip(*tcounts))+list(zip(*trpkm))+[tstart,tend,genesID,genesName,tchr]
-        save_results(ex, trans_data, conditions, header=header, feature_type="TRANSCRIPTS")
+        save_results(ex, trans_data, conditions, group_ids, header=header, feature_type="TRANSCRIPTS")
 
     # Testing
     # "ENSMUSG00000057666" "ENSG00000111640": TEST Gapdh
