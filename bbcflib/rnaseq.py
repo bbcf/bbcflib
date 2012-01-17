@@ -193,13 +193,15 @@ def save_results(ex, cols, conditions, header=[], feature_type='features'):
     ex.add(output_tab, description=description)
     # SQL track output
     ncond = len(conditions)
+    groups = [c.split('.')[0] for c in conditions]
     start = cols[2*ncond+1]
     end = cols[2*ncond+2]
     rpkm = {}
     output_sql = {}
     for i in range(ncond):
         g = conditions[i].split('.')[0]
-        rpkm[g] = asarray(rpkm.get(g,zeros(len(start)))) + asarray(cols[i+ncond+1])
+        nruns = groups.count(g)
+        rpkm[g] = asarray(rpkm.get(g,zeros(len(start)))) + asarray(cols[i+ncond+1]) / nruns
         output_sql[g] = output_sql.get(g,unique_filename_in())
     for g,filename in output_sql.iteritems():
         with track.new(filename, format='sql') as t:
