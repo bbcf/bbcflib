@@ -1,6 +1,7 @@
 """
 ======================
 Module: bbcflib.rnaseq
+======================
 
 Methods of the bbcflib's RNA-seq worflow. The main function is ``rnaseq_workflow()``,
 and is usually called by bbcfutils' ``run_rnaseq.py``, e.g. command-line:
