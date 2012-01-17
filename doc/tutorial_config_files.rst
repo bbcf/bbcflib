@@ -180,12 +180,12 @@ In the mapping module, the following options are valid, with the following defau
 
     [Options]
     input_type=0# type of mapping: 0=genome, 1=exonome, 2=transcriptome
-    compute_densities=True#Run bam2wig after bowtie
-    ucsc_bigwig=False# Create bigwig to upload to UCSC genome browser
+    compute_densities=True# run bam2wig after bowtie
+    ucsc_bigwig=False# create bigwig to upload to UCSC genome browser
     create_gdv_project=False# create a new project on GDV and upload tracks at the end
     discard_pcr_duplicates=True# apply PCR artifact filter
     merge_strand=-1# shift value for merging the two strand-specific densities, -1 means no merging
-    read_extension=-1# Value of the read extension, the -q parameter of bam2wig (-1 means read length)
+    read_extension=-1# value of the read extension, the -q parameter of bam2wig (-1 means read length)
     map_args={}# a dictionary of arguments passed to map_reads
     b2w_args=[]# list of options to the bam2wig program
 
