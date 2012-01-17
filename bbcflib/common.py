@@ -40,11 +40,9 @@ def normalize_url(url):
     'http://bbcf.epfl.ch'
     """
     # url = url.lower()
-    if not(url.startswith("http://")):
+    if not(url.startswith(("http://","https://","ftp://"))):
         url = "http://" + url
-    if url.endswith("/"):
-        url = url[:-1]
-    return url
+    return url.strip("/")
 
 ###############################################################################
 def cat(files,out=None):

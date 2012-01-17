@@ -466,9 +466,7 @@ def remove_duplicate_reads( bamfile, chromosomes,
     count_per_lib = {}
     pos_per_lib = {}
     for read in infile:
-        nh = dict(read.tags).get('NH')
-        if nh is None:
-            nh = 1
+        nh = dict(read.tags).get('NH',1)
         if nh < 1:
             continue
         lpatt = re.search(r'^(.*?:.*?):',read.qname)
@@ -673,7 +671,7 @@ def get_fastq_files( job, fastq_root, dafl=None, set_seed_length=True ):
                     run_pe = runsplit[1]
                     target_pe = target+"_R2"
                     fq_file_pe = fq_file+"_R2"
-                if run.startswith("http://") or run.startswith("https://") or run.startswith("ftp://"):
+                if run.startswith(("http://","https://","ftp://")):
                     urllib.urlretrieve( run, target )
                     if run_pe:
                         urllib.urlretrieve( run_pe, target_pe )
@@ -1118,7 +1116,7 @@ def get_bam_wig_files( ex, job, minilims=None, hts_url=None, suffix=['fwd','rev'
                     name += "_".join(['',run['machine'],str(run['run']),str(run['lane'])])
                 else:
                     name += "_"+os.path.splitext(file_loc.split("/")[-1])[0]
-            if file_loc.startswith("http://") or file_loc.startswith("https://") or file_loc.startswith("ftp://"):
+            if file_loc.startswith(("http://","https://","ftp://")):
                 urllib.urlretrieve( file_loc, bamfile )
                 if urllib.urlopen( file_loc+".bai").getcode() == 200:
                     urllib.urlretrieve( file_loc+".bai", bamfile+".bai" )
