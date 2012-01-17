@@ -288,8 +288,8 @@ def workflow_groups( ex, job_or_dict, mapseq_files, assembly, script_path='',
     run_meme = options.get('run_meme') or False
     if isinstance(run_meme,str):
         run_meme = run_meme.lower() in ['1','true','t']
-    macs_args = options.get('macs_args') or ["--bw=200"]
-    b2w_args = options.get('b2w_args') or []
+    macs_args = options.get('macs_args',["--bw=200"])
+    b2w_args = options.get('b2w_args',[])
     if not(isinstance(mapseq_files,dict)):
         raise TypeError("Mapseq_files must be a dictionary.")
     tests = []

@@ -484,10 +484,10 @@ def remove_duplicate_reads( bamfile, chromosomes,
     infile.close()
     return outname
 
-def pprint_bamstats(sample_stats) :
+def pprint_bamstats(sample_stats, textfile=None) :
     """Pretty stdout-print for sample_stats.
 
-    The input is the dictionary return by the ``bamstats`` call.
+    The input is the dictionary returned by the ``bamstats`` call. If ``textfile`` is defined, output is printed as textfile as well
     """
     span = 5
     width_left = max([len(x) for x in sample_stats.keys()]) + span
@@ -497,9 +497,13 @@ def pprint_bamstats(sample_stats) :
     for k, v in sample_stats.iteritems() :
         print "* {0:{lwh}} | {1:>{rwh}} *".format(k,v, lwh=width_left,rwh=width_right)
     print "{0:->{twh}}".format("", twh=width_table)
-    return(0)
 
-
+    if textfile != None :
+        print(textfile)
+        file = open(textfile, "w")
+        for k, v in sample_stats.iteritems() :
+            file.writelines(str(k)+"\t"+str(v)+"\n")
+        file.close()
 
 ############################################################
 
@@ -654,7 +658,7 @@ def get_fastq_files( job, fastq_root, dafl=None, set_seed_length=True ):
                 run = str(run['url']).strip()
             if isinstance(run,dict) and all([x in run for x in ['facility','machine','run','lane']]):
                 dafl1 = dafl[run['facility']]
-                daf_data = dafl1.fetch_fastq( str(run['facility']), str(run['machine']), run['run'], run['lane'], 
+                daf_data = dafl1.fetch_fastq( str(run['facility']), str(run['machine']), run['run'], run['lane'],
                                               to=fastq_root, libname=run.get('sequencing_library') )
                 job.groups[gid]['runs'][rid] = daf_data['path']
                 if (set_seed_length):

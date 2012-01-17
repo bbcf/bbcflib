@@ -159,13 +159,13 @@ def parseConfig( file ):
     if not('Job' in config and 'Groups' in config and 'Runs' in config):
         raise ValueError("Need 'Job', 'Groups' and 'Runs' sections in the configuration, only had: "+", ".join(config.keys()))
     job = Job(
-        id = int(config['Job'].get('id') or 0),
+        id = int(config['Job'].get('id',0)),
         created_at = int(time.time()),
-        key = config['Job'].get('key') or 'userconfig',
+        key = config['Job'].get('key','userconfig'),
         assembly_id = config['Job']['assembly_id'],
         description = str(config['Job'].get('description')),
         email = str(config['Job'].get('email')),
-        options = config.get('Options') or {})
+        options = config.get('Options',{}))
     for gid, group in config['Groups'].iteritems():
         if not('name' in group):
             raise ValueError("Each entry in 'Groups' must have a 'name'")
@@ -180,7 +180,7 @@ def parseConfig( file ):
             raise ValueError("Each entry in 'Runs' must have a 'group_id'")
         run['group_id'] = int(run['group_id'])
         job.add_run(id=int(rid),**run)
-    globals = config.get('Global variables') or {}
+    globals = config.get('Global variables',{})
     return (job,globals)
 
 #-----------------------------------#
