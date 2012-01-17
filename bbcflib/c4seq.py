@@ -8,7 +8,7 @@ a reference genome.
 
 """
 
-from bein qlimport *
+from bein import *
 from bein.util import touch
 from bbcflib import daflims, genrep, frontend, email, gdv, track, createlib
 from bbcflib.mapseq import *
