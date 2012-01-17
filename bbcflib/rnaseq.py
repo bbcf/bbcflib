@@ -119,10 +119,10 @@ def lsqnonneg(C, d, x0=None, tol=None, itmax_factor=3):
 #@timer
 def fetch_mappings(assembly, path_to_map=None):
     """Given an assembly ID, returns a tuple
-    ``(gene_ids, gene_names, transcript_mapping, exon_mapping, trans_in_gene, exons_in_trans)``
+    ``(gene_mapping, transcript_mapping, exon_mapping, trans_in_gene, exons_in_trans)``
 
     * [0] gene_mapping is a dict ``{gene ID: (gene name,start,end,chromosome)}``
-    * [1] transcript_mapping is a dictionary ``{transcript ID: (gene ID,start,end,length,chromosome)}``
+    * [1] transcript_mapping is a dictionary ``{transcript ID: (gene ID,start,end,chromosome)}``
     * [2] exon_mapping is a dictionary ``{exon ID: ([trancript IDs],gene ID,start,end,chromosome)}``
     * [3] trans_in_gene is a dict ``{gene ID: [IDs of the transcripts it contains]}``
     * [4] exons_in_trans is a dict ``{transcript ID: [IDs of the exons it contains]}``
@@ -155,7 +155,6 @@ def build_pileup(bamfile, labels):
     :param labels: index references - as returned by **fetch_labels()**
     :type bamfile: string
     :type exons: list
-    :rtype: dict
     """
     class Counter(object):
         def __init__(self):
@@ -217,7 +216,7 @@ def save_results(ex, cols, conditions, group_ids, header=[], feature_type='featu
         # UCSC-BED track
         with track.load(filename+'.sql','sql') as t:
             t.convert(filename+'.bed','bed')
-        description = "UCSC-BED track of %s'rpkm for group `%s'" % (feature_type,g)
+        description = "UCSC-BED track of %s' rpkm for group `%s'" % (feature_type,g)
         description = set_file_descr(feature_type.lower()+"_"+g+".bed", step="pileup", type="bed", \
                                      groupId=group_ids[g], gdv='1', comment=description)
         ex.add(filename+'.bed', description=description)
@@ -227,7 +226,7 @@ def save_results(ex, cols, conditions, group_ids, header=[], feature_type='featu
 def genes_expression(exons_data, exon_to_gene, ncond):
     """Get gene counts from exons counts.
 
-    Returns two dictionaries, one for counts and one for rpkm, of the form ``{gene ID: float}``.
+    Returns two dictionaries, one for counts and one for rpkm, of the form ``{gene ID: score}``.
 
     :param exons_data: list of lists ``[exonsID, counts, rpkm, start, end, geneID, geneName]``.
     :param exon_to_gene: dictionary ``{exon ID: gene ID}``.
@@ -249,7 +248,7 @@ def genes_expression(exons_data, exon_to_gene, ncond):
 def transcripts_expression(exons_data, exon_lengths, transcript_mapping, trans_in_gene, exons_in_trans, ncond):
     """Get transcript rpkms from exon rpkms.
 
-    Returns two dictionaries of the form ``{transcript ID: counts/rpkm}``.
+    Returns two dictionaries, one for counts and one for rpkm, of the form ``{transcript ID: score}``.
 
     :param exons_data: list of lists ``[exonsID, counts, rpkm, start, end, geneID, geneName, chromosome]``
     :param exon_lengths: dictionary ``{exon ID: length}``
@@ -347,7 +346,7 @@ def estimate_size_factors(counts):
     factors may be used for further variance sabilization.
 
     :param counts: an array of counts, each line representing a transcript, each
-    column a different sample.
+                   column a different sample.
     """
     numpy.seterr(divide='ignore')
     counts = numpy.array(counts)
