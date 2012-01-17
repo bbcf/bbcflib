@@ -20,13 +20,12 @@ import os, pysam, math
 
 # Internal modules #
 from bbcflib.common import writecols, set_file_descr
-from bbcflib.common import unique_filename_in as rstring
+from bbcflib.common import unique_filename_in
 from bbcflib import mapseq, genrep
 import track
 
 # Other modules #
 import numpy
-import cPickle
 from numpy import zeros, asarray
 
 numpy.set_printoptions(precision=3,suppress=True)
@@ -43,7 +42,7 @@ def lsqnonneg(C, d, x0=None, tol=None, itmax_factor=3):
     * the residuals *res* = d-Cx
 
     :param x0: Initial point for x.
-    :param tol: Tolerance to determine what is considered as zero.
+    :param tol: Tolerance to determine what is considered as close enough to zero.
     :param itmax_factor: Maximum number of iterations.
 
     :type C: nxm numpy array
@@ -131,16 +130,12 @@ def fetch_mappings(assembly, path_to_map=None):
     (e.g. 11, 76 or 'hg19' for H.Sapiens), or a path to a file containing a
     pickle object which is read to get the mapping.
     """
-    path_to_map = "/scratch/cluster/monthly/jdelafon/temp/mappings"
-    if os.path.exists(str(path_to_map)):
-        with open(path_to_map,"rb") as f: mapping = cPickle.load(f)
-    else:
-        gene_mapping = assembly.get_gene_mapping()
-        transcript_mapping = assembly.get_transcript_mapping()
-        exon_mapping = assembly.get_exon_mapping()
-        exons_in_trans = assembly.get_exons_in_trans()
-        trans_in_gene = assembly.get_trans_in_gene()
-        mapping = (gene_mapping, transcript_mapping, exon_mapping, trans_in_gene, exons_in_trans)
+    gene_mapping = assembly.get_gene_mapping()
+    transcript_mapping = assembly.get_transcript_mapping()
+    exon_mapping = assembly.get_exon_mapping()
+    exons_in_trans = assembly.get_exons_in_trans()
+    trans_in_gene = assembly.get_trans_in_gene()
+    mapping = (gene_mapping, transcript_mapping, exon_mapping, trans_in_gene, exons_in_trans)
     return mapping
 
 def fetch_labels(bamfile):
@@ -152,12 +147,6 @@ def fetch_labels(bamfile):
     sam.close()
     return labels
 
-class Counter(object):
-    def __init__(self):
-        self.n = 0
-    def __call__(self, alignment):
-        self.n += 1
-
 def build_pileup(bamfile, labels):
     """From a BAM file, returns a dictionary of the form {feature ID: number of reads that mapped to it}.
 
@@ -167,6 +156,12 @@ def build_pileup(bamfile, labels):
     :type exons: list
     :rtype: dict
     """
+    class Counter(object):
+        def __init__(self):
+            self.n = 0
+        def __call__(self, alignment):
+            self.n += 1
+
     counts = {}
     try: sam = pysam.Samfile(bamfile, 'rb')
     except ValueError: sam = pysam.Samfile(bamfile,'r')
@@ -191,23 +186,31 @@ def save_results(ex, cols, conditions, header=[], feature_type='features'):
     conditions_s = '%s, '*(len(conditions)-1)+'%s.'
     conditions = tuple(conditions)
     # Tab-delimited output with all information
-    output_tab = rstring()
+    output_tab = unique_filename_in()
     writecols(output_tab,cols,header=header, sep="\t")
     description = "Expression level of "+feature_type+" in sample(s) "+conditions_s % conditions
     description = set_file_descr(feature_type.lower()+"_expression.tab", step="pileup", type="txt", comment=description)
     ex.add(output_tab, description=description)
-    # SQL track output (fix Track, then finish it...)
+    # SQL track output
     ncond = len(conditions)
-    output_sql = rstring()
-    for i in range(ncond+1,2*ncond+1):
-        with track.new(output_sql, format='sql') as t:
+    groups = [c.split('.')[0] for c in conditions]
+    start = cols[2*ncond+1]
+    end = cols[2*ncond+2]
+    rpkm = {}
+    output_sql = {}
+    for i in range(ncond):
+        g = conditions[i].split('.')[0]
+        nruns = groups.count(g)
+        rpkm[g] = asarray(rpkm.get(g,zeros(len(start)))) + asarray(cols[i+ncond+1]) / nruns
+        output_sql[g] = output_sql.get(g,unique_filename_in())
+    for g,filename in output_sql.iteritems():
+        with track.new(filename, format='sql') as t:
             t.datatype = 'quantitative' #'signal'?
-            lines = zip(*[cols[2*ncond+1],cols[2*ncond+2],cols[i]]) #[start,end,rpkm] - add cols[0] for ID in the future
-            t.write(feature_type,lines,fields=["start","end","score"]) #add feature_type[:-1].lower()+"_id" for ID in the future
-        c = conditions[i-ncond-1]
-        description = "SQL track of %s rpkm for sample %s" % (feature_type.lower(),c)
-        description = set_file_descr("exons_"+c+".sql", step="pileup", type="sql", comment=description)
-        ex.add(output_sql, description=description)
+            lines = zip(*[start,end,rpkm[g]])
+            t.write(feature_type.lower(),lines,fields=["start","end","score"])
+        description = "SQL track of %s' rpkm for group `%s'" % (feature_type,g)
+        description = set_file_descr(feature_type.lower()+"_"+g+".sql", step="pileup", type="sql", comment=description)
+        ex.add(filename, description=description)
     print feature_type+": Done successfully."
 
 #@timer
@@ -256,7 +259,7 @@ def transcripts_expression(exons_data, exon_lengths, transcript_mapping, trans_i
     trans_rpk = dict(zip(transcripts,zz))
     exons_counts = dict(zip( exons_data[0], zip(*exons_data[1:ncond+1])) )
     exons_rpk = dict(zip( exons_data[0], zip(*exons_data[ncond+1:2*ncond+1])) )
-    totalerror = 0; unknown = 0; alltranscount=0; allexonscount=0;
+    totalerror = 0; unknown = 0; #alltranscount=0; allexonscount=0;
     for g in genes:
         if trans_in_gene.get(g): # if the gene is (still) in the Ensembl database
             # Get all transcripts in the gene
@@ -322,7 +325,7 @@ def transcripts_expression(exons_data, exon_lengths, transcript_mapping, trans_i
     #       % (alltranscount,allexonscount,alltranscount/allexonscount)
     #except ZeroDivisionError: pass
     #print "\t Total error (sum of resnorms):", totalerror
-    return trans_rpk, trans_counts
+    return trans_counts, trans_rpk
 
 def estimate_size_factors(counts):
     """
@@ -346,10 +349,6 @@ def estimate_size_factors(counts):
     print "Size factors:",size_factors
     return res, size_factors
 
-def to_rpkm(count, length, nreads):
-    """Convert count value to RPKM"""
-    return 1000*1e6*(count/nreads)/(length)
-
 #@timer
 def rnaseq_workflow(ex, job, assembly, bam_files, pileup_level=["exons","genes","transcripts"],
                     via="lsf", unmapped=False):
@@ -371,7 +370,7 @@ def rnaseq_workflow(ex, job, assembly, bam_files, pileup_level=["exons","genes",
     assembly = genrep.Assembly(assembly=job.assembly_id,intype=2)
     groups = job.groups
     for gid,group in groups.iteritems():
-        group_names[gid] = str(group['name']) # group_names = {gid: name}
+        group_names[gid] = str(group['name'])
     if isinstance(pileup_level,str): pileup_level=[pileup_level]
 
     """ Define conditions """
@@ -515,6 +514,3 @@ def rnaseq_workflow(ex, job, assembly, bam_files, pileup_level=["exons","genes",
 # http://bbcf.epfl.ch/              #
 # webmaster.bbcf@epfl.ch            #
 #-----------------------------------#
-
-
-
