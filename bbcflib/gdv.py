@@ -196,7 +196,7 @@ def add_gdv_sqlite( gdv_key, gdv_email,
 def add_sql_files( gdv_key, gdv_email,
                    project_id,
                    files, names,
-                   serv_url="http://htsstation.vital-it.ch/lims/chipseq/chipseq_minilims.files",
+                   serv_url,
                    gdv_url="http://gdv.epfl.ch/gdv"):
     '''
     Run `add_gdv_sqlite` on a list of files
