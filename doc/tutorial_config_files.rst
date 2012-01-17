@@ -146,22 +146,63 @@ The following sections will be needed in all modules::
 
     [Global variables]
     genrep_url='http://bbcftools.vital-it.ch/genrep/'
-    bwt_root='/db/genrep'
-    fastq_root='/scratch/cluster/daily/htsstation/mapseq/'
     script_path='/archive/epfl/bbcf/share'
-    [[hts_chipseq]]
-    url='http://htsstation.vital-it.ch/chipseq/'
-    download='http://htsstation.vital-it.ch/lims/chipseq/chipseq_minilims.files/'
-    [[hts_mapseq]]
-    url='http://htsstation.vital-it.ch/mapseq/'
-    download='http://htsstation.vital-it.ch/lims/mapseq/mapseq_minilims.files/'
-    [[gdv]] 
-    url='http://gdv.epfl.ch/pygdv'
-    email='your.email@yourplace.org'
-    key='pErS0na1&keY%0Ng2V'
 
+    [Job]
+    description='config test'
+    assembly_id=mm9
+
+
+In addition, a set of numbered `groups` (experimental conditions) and for each of them a set of replicates (`runs`)::
+
+    [Groups]
+    [[1]]
+    control=True
+    name=unstimulated
+    [[2]]
+    name=stimulated
+    
+    [Runs]
+    [[1]]
+    url=http://some.place.edu/my_control.fastq
+    group_id=1
+    [[2]]
+    url=http://some.place.edu/my_test1.fastq
+    group_id=2
+    [[3]]
+    url=http://some.place.edu/my_test2.fastq
+    group_id=2
 
 Mapping parameters
 ''''''''''''''''''
+
+In the mapping module, the following options are valid, with the following defaults::
+
+    [Options]
+    input_type=0# type of mapping: 0=genome, 1=exonome, 2=transcriptome
+    compute_densities=True#Run bam2wig after bowtie
+    ucsc_bigwig=False# Create bigwig to upload to UCSC genome browser
+    create_gdv_project=False# create a new project on GDV and upload tracks at the end
+    discard_pcr_duplicates=True# apply PCR artifact filter
+    merge_strand=-1# shift value for merging the two strand-specific densities, -1 means no merging
+    read_extension=-1# Value of the read extension, the -q parameter of bam2wig (-1 means read length)
+    map_args={}# a dictionary of arguments passed to map_reads
+    b2w_args=[]# list of options to the bam2wig program
+
+
+ChIP-seq parameters
+'''''''''''''''''''
+
+In the ChIP-seq module, the following options are valid, with the following defaults::
+
+    [Options]
+    ucsc_bigwig=False
+    create_gdv_project=False
+    merge_strand=-1
+    read_extension=-1
+    b2w_args=[]
+    peak_deconvolution=False# run the deconvolution algorithm
+    run_meme=False# run Meme motif search on peaks
+    macs_args=["--bw=200"]# list of MACS command-line arguments
 
 
