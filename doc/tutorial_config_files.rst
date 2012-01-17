@@ -17,7 +17,7 @@ Here is a typical workflow that uses both ``mapseq`` and ``chipseq``. The config
     url='http://htsstation.vital-it.ch/mapseq/'
     download='http://htsstation.vital-it.ch/lims/mapseq/mapseq_minilims.files/'
     [[gdv]] 
-    url='http://svitsrv25.epfl.ch/gdv'
+    url='http://gdv.epfl.ch/pygdv'
     email='your.email@yourplace.org'
     key='pErS0na1&keY%0Ng2V'
 
@@ -137,5 +137,31 @@ If you then want to continue with a ChIP-seq analysis, you can start a new execu
     with execution( M, description='test_chipseq' ) as ex:
         (mapped_files, job) = get_bam_wig_files( ex, job, 'test_lims', gl['hts_mapseq']['url'], gl['script_path'], via=via )
         chipseq_files = workflow_groups( ex, job, mapped_files, assembly.chromosomes, gl['script_path'] )
+
+
+Parameters common to all modules
+''''''''''''''''''''''''''''''''
+
+The following sections will be needed in all modules::
+
+    [Global variables]
+    genrep_url='http://bbcftools.vital-it.ch/genrep/'
+    bwt_root='/db/genrep'
+    fastq_root='/scratch/cluster/daily/htsstation/mapseq/'
+    script_path='/archive/epfl/bbcf/share'
+    [[hts_chipseq]]
+    url='http://htsstation.vital-it.ch/chipseq/'
+    download='http://htsstation.vital-it.ch/lims/chipseq/chipseq_minilims.files/'
+    [[hts_mapseq]]
+    url='http://htsstation.vital-it.ch/mapseq/'
+    download='http://htsstation.vital-it.ch/lims/mapseq/mapseq_minilims.files/'
+    [[gdv]] 
+    url='http://gdv.epfl.ch/pygdv'
+    email='your.email@yourplace.org'
+    key='pErS0na1&keY%0Ng2V'
+
+
+Mapping parameters
+''''''''''''''''''
 
 
