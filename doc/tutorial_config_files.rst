@@ -186,7 +186,7 @@ In the mapping module, the following options are valid, with the following defau
     discard_pcr_duplicates=True# apply PCR artifact filter
     merge_strand=-1# shift value for merging the two strand-specific densities, -1 means no merging
     read_extension=-1# value of the read extension, the -q parameter of bam2wig (-1 means read length)
-    map_args={}# a dictionary of arguments passed to map_reads
+    map_args={}# a dictionary of arguments passed to :py:func:`bbcflib.mapseq.map_reads`
     b2w_args=[]# list of options to the bam2wig program
 
 
