@@ -527,6 +527,8 @@ def map_reads( ex, fastq_file, chromosomes, bowtie_index,
     """
     if bwt_args is None:
         bwt_args = []
+    maxhits = int(maxhits)
+    antibody_enrichment=int(antibody_enrichment)
     bwtarg = ["-Sam", str(max(20,maxhits))]+bwt_args
     if not("--best" in bwtarg):     bwtarg += ["--best"]
     if not("--strata" in bwtarg):   bwtarg += ["--strata"]
@@ -725,6 +727,9 @@ def map_groups( ex, job_or_dict, fastq_root, assembly_or_dict, map_args=None ):
     options = {}
     if map_args is None:
         map_args = {}
+    if 'bwt_args' in map_args:
+        if isinstance(map_args['bwt_args'],basestring):
+            map_args['bwt_args'] = str(map_args['bwt_args']).split()
     if isinstance(job_or_dict, frontend.Job):
         options = job_or_dict.options
         groups = job_or_dict.groups
@@ -1033,6 +1038,8 @@ def densities_groups( ex, job_or_dict, file_dict, chromosomes, via='lsf' ):
     b2w_args = []
     if 'b2w_args' in options:
         b2w_args = options['b2w_args']
+        if isinstance(b2w_args,basestring):
+            b2w_args = str(b2w_args).split()
     if 'read_extension' in options and int(options['read_extension'])>0 and not('-q' in b2w_args):
         b2w_args += ["-q",str(options['read_extension'])]
     processed = {}

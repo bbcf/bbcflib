@@ -155,7 +155,7 @@ def parseConfig( file ):
     from configobj import ConfigObj
     import time
 
-    config = ConfigObj( file )
+    config = ConfigObj( file, unrepr=True )
     if not('Job' in config and 'Groups' in config and 'Runs' in config):
         raise ValueError("Need 'Job', 'Groups' and 'Runs' sections in the configuration, only had: "+", ".join(config.keys()))
     job = Job(
