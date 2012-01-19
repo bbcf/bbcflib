@@ -278,15 +278,13 @@ def workflow_groups( ex, job_or_dict, mapseq_files, assembly, script_path='',
                 groups[gid]['name'] = gid
     else:
         raise TypeError("job_or_dict must be a frontend.Job object or a dictionary with key 'groups'.")
-    merge_strands = -1
+    merge_strands = int(options.get('merge_strands',-1))
     suffixes = ["fwd","rev"]
-    if options.get('merge_strands') and int(options['merge_strands'])>=0:
-        merge_strands = int(options['merge_strands'])
-    peak_deconvolution = options.get('peak_deconvolution') or False
-    if isinstance(peak_deconvolution,str):
+    peak_deconvolution = options.get('peak_deconvolution',False)
+    if isinstance(peak_deconvolution,basestring):
         peak_deconvolution = peak_deconvolution.lower() in ['1','true','t']
-    run_meme = options.get('run_meme') or False
-    if isinstance(run_meme,str):
+    run_meme = options.get('run_meme',False)
+    if isinstance(run_meme,basestring):
         run_meme = run_meme.lower() in ['1','true','t']
     macs_args = options.get('macs_args',["--bw=200"])
     b2w_args = options.get('b2w_args',[])
@@ -372,7 +370,7 @@ def workflow_groups( ex, job_or_dict, mapseq_files, assembly, script_path='',
     if peak_deconvolution:
         processed['deconv'] = {}
         merged_wig = {}
-        if not('read_extensions' in options and int(options['read_extension'])>0):
+        if int(options.get('read_extension',-1))<=0:
             options['read_extension'] = read_length[0]
         if not('-q' in b2w_args):
             b2w_args += ["-q",str(options['read_extension'])]

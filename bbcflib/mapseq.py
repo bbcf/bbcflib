@@ -53,7 +53,6 @@ Below is the script used by the frontend::
     daflims1 = dict((loc,daflims.DAFLIMS( username=gl['lims']['user'],
                                           password=gl['lims']['passwd'][loc] ))
                     for loc in gl['lims']['passwd'].keys())
-    job.options['ucsc_bigwig'] = True
     with execution( M, description=hts_key, remote_working_directory=working_dir ) as ex:
         job = get_fastq_files( job, ex.working_directory, daflims1 )
         mapped_files = map_groups( ex, job, ex.working_directory, assembly )
@@ -730,6 +729,8 @@ def map_groups( ex, job_or_dict, fastq_root, assembly_or_dict, map_args=None ):
     if 'bwt_args' in map_args:
         if isinstance(map_args['bwt_args'],basestring):
             map_args['bwt_args'] = str(map_args['bwt_args']).split()
+    else: 
+        map_args['bwt_args'] = []
     if isinstance(job_or_dict, frontend.Job):
         options = job_or_dict.options
         groups = job_or_dict.groups
@@ -739,11 +740,9 @@ def map_groups( ex, job_or_dict, fastq_root, assembly_or_dict, map_args=None ):
         groups = job_or_dict['groups']
     else:
         raise TypeError("job_or_dict must be a frontend.Job object or a dictionary with keys 'groups'.")
-    pcr_dupl = True
-    if 'discard_pcr_duplicates' in options:
-        pcr_dupl = options['discard_pcr_duplicates']
-        if isinstance(pcr_dupl,str):
-            pcr_dupl = pcr_dupl.lower() in ['1','true','t']
+    pcr_dupl = options.get('discard_pcr_duplicates',True)
+    if isinstance(pcr_dupl,basestring):
+        pcr_dupl = pcr_dupl.lower() in ['1','true','t']
     if isinstance(assembly_or_dict,genrep.Assembly):
         chromosomes = dict([(str(k[0])+"_"+k[1]+"."+str(k[2]),v)
                             for k,v in assembly_or_dict.chromosomes.iteritems()])
@@ -1027,20 +1026,12 @@ def densities_groups( ex, job_or_dict, file_dict, chromosomes, via='lsf' ):
         groups = job_or_dict['groups']
     else:
         raise TypeError("job_or_dict must be a frontend.Job object or a dictionary with keys 'groups'.")
-    merge_strands = -1
+    merge_strands = int(options.get('merge_strands',-1))
     suffixes = ["fwd","rev"]
-    if 'merge_strands' in options and int(options['merge_strands'])>=0:
-        merge_strands = int(options['merge_strands'])
-        suffixes = ["merged"]
-    ucsc_bigwig = False
-    if 'ucsc_bigwig' in options:
-        ucsc_bigwig = options['ucsc_bigwig']
-    b2w_args = []
-    if 'b2w_args' in options:
-        b2w_args = options['b2w_args']
-        if isinstance(b2w_args,basestring):
-            b2w_args = str(b2w_args).split()
-    if 'read_extension' in options and int(options['read_extension'])>0 and not('-q' in b2w_args):
+    if merge_strands >= 0: suffixes = ["merged"]
+    ucsc_bigwig = options.get('ucsc_bigwig',False)
+    b2w_args = options.get('b2w_args',[])
+    if int(options.get('read_extension',-1))>0 and not('-q' in b2w_args):
         b2w_args += ["-q",str(options['read_extension'])]
     processed = {}
     for gid,group in groups.iteritems():
@@ -1058,7 +1049,7 @@ def densities_groups( ex, job_or_dict, file_dict, chromosomes, via='lsf' ):
                 mapped[k]['libname'] = group_name+"_"+str(k)
             if not 'stats' in mapped[k]:
                 mapped[k]['stats'] = bamstats( ex, mapped[k]["bam"] )
-            if not('read_extension' in options and int(options['read_extension'])>0):
+            if int(options.get('read_extension',-1))<=0:
                 options['read_extension'] = mapped[k]['stats']['read_length']
                 if not('-q' in b2w_args):
                     b2w_args += ["-q",str(options['read_extension'])]
@@ -1095,7 +1086,7 @@ def densities_groups( ex, job_or_dict, file_dict, chromosomes, via='lsf' ):
                     t.convert(out+s,"bigWig")
                 ex.add(out+s,
                        description=set_file_descr(group_name+"_"+s+".bw",groupId=gid,step='density',type='bigWig',ucsc='1'))
-    processed.update({'read_extension': options.get('read_extension'),
+    processed.update({'read_extension': options.get('read_extension',-1),
                       'genome_size': mapped.values()[0]['stats']['genome_size']})
     return processed
 
@@ -1184,14 +1175,14 @@ def get_bam_wig_files( ex, job, minilims=None, hts_url=None, suffix=['fwd','rev'
                 if hts_url != None:
                     htss = frontend.Frontend( url=hts_url )
                     ms_job = htss.job( run['key'] )
-                    if int(ms_job.options.get('read_extension'))>0 and int(ms_job.options.get('read_extension'))<80:
+                    if int(ms_job.options.get('read_extension',-1))>0 and int(ms_job.options.get('read_extension'))<80:
                         read_exts[rid] = int(ms_job.options['read_extension'])
                     else:
                         read_exts[rid] = stats['read_length']
                 else:
                     ms_job = job
                 if ms_job.options.get('compute_densities'):
-                    job.options['merge_strands'] = int(ms_job.options.get('merge_strands'))
+                    job.options['merge_strands'] = int(ms_job.options.get('merge_strands',-1))
                     if ((ms_job.options.get('merge_strands')<0 and len(suffix)>1) or
                         (ms_job.options.get('merge_strands')>-1 and len(suffix)==1)):
                         wigfile = unique_filename_in()
