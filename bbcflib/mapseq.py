@@ -483,26 +483,26 @@ def remove_duplicate_reads( bamfile, chromosomes,
     infile.close()
     return outname
 
-def pprint_bamstats(sample_stats, textfile=None) :
+def pprint_bamstats(sample_stats, textfile=None):
     """Pretty stdout-print for sample_stats.
 
-    The input is the dictionary returned by the ``bamstats`` call. If ``textfile`` is defined, output is printed as textfile as well
+    :param sample_stats: The input is the dictionary returned by the ``bamstats`` call.
+    :type sample_stats: dict
+    :param textfile: If defined, output is printed as textfile instead.
+    :type textfile: string
     """
-    span = 5
-    width_left = max([len(x) for x in sample_stats.keys()]) + span
-    width_right = max([len(str(x)) for x in sample_stats.values()]) + span
-    width_table = width_left + width_right +7
-    print "{0:->{twh}}".format("", twh=width_table)
-    for k, v in sample_stats.iteritems() :
-        print "* {0:{lwh}} | {1:>{rwh}} *".format(k,v, lwh=width_left,rwh=width_right)
-    print "{0:->{twh}}".format("", twh=width_table)
-
-    if textfile != None :
-        print(textfile)
-        file = open(textfile, "w")
-        for k, v in sample_stats.iteritems() :
-            file.writelines(str(k)+"\t"+str(v)+"\n")
-        file.close()
+    if textfile:
+        with open(textfile, 'w') as f:
+            for k, v in sample_stats.iteritems():
+                f.writelines(str(k) + "\t" + str(v) + "\n")
+    else:
+        width_left = max([len(x) for x in sample_stats.keys()]) + 5
+        width_right = max([len(str(x)) for x in sample_stats.values()]) + 5
+        width_table = width_left + width_right + 7
+        print "-" * width_table
+        for k, v in sample_stats.iteritems():
+            print "* {0:{lwh}} | {1:>{rwh}} *".format(k,v, lwh=width_left,rwh=width_right)
+        print "-" * width_table
 
 ############################################################
 
@@ -729,7 +729,7 @@ def map_groups( ex, job_or_dict, fastq_root, assembly_or_dict, map_args=None ):
     if 'bwt_args' in map_args:
         if isinstance(map_args['bwt_args'],basestring):
             map_args['bwt_args'] = str(map_args['bwt_args']).split()
-    else: 
+    else:
         map_args['bwt_args'] = []
     if isinstance(job_or_dict, frontend.Job):
         options = job_or_dict.options
@@ -1225,3 +1225,4 @@ def get_bam_wig_files( ex, job, minilims=None, hts_url=None, suffix=['fwd','rev'
 # http://bbcf.epfl.ch/              #
 # webmaster.bbcf@epfl.ch            #
 #-----------------------------------#
+
