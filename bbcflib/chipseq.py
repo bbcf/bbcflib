@@ -413,10 +413,10 @@ def workflow_groups( ex, job_or_dict, mapseq_files, assembly, script_path='',
             with open(bedfile) as bedinf:
                 [bedzip.write(l) for l in bedinf]
             bedzip.close()
-            ex.add(bedzip, description=set_file_descr(bedzip,type='bed',step='deconvolution',group=name,ucsc='1'))
+            ex.add(bedfile+".gz", description=set_file_descr(name+'_deconv.bed.gz',type='bed',step='deconvolution',group=name,ucsc='1'))
             [ex.add(v, description=set_file_descr(name+'_deconv.'+k,type=k,step='deconvolution',group=name))
              for k,v in deconv.iteritems()]
-            deconv['bed'] = bedzip 
+            deconv['bed'] = bedfile+".gz"
             processed['deconv'][name] = deconv
     if run_meme:
         from .motif import parallel_meme
