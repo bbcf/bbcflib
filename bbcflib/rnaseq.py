@@ -210,7 +210,6 @@ def save_results(ex, cols, conditions, group_ids, assembly, header=[], feature_t
             t.assembly = assembly.id
             lines = zip(*[chr,start,end,rpkm[g]])
             for x in lines:
-                print x
                 t.write(x[0],[(x[1],x[2],x[3])],fields=["start","end","score"])
         description = "SQL track of %s'rpkm for group `%s'" % (feature_type,g)
         description = set_file_descr(feature_type.lower()+"_"+g+".sql", step="pileup", type="sql", \
