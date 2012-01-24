@@ -6,7 +6,7 @@ Module: bbcflib.rnaseq
 Methods of the bbcflib's RNA-seq worflow. The main function is ``rnaseq_workflow()``,
 and is usually called by bbcfutils' ``run_rnaseq.py``, e.g. command-line:
 
-``python run_rnaseq.py -v lsf -c config_files/gapdh.txt -d rnaseq -p transcripts``
+``python run_rnaseq.py -v lsf -c config_files/gapdh.txt -d rnaseq -p genes``
 ``python run_rnaseq.py -v lsf -c config_files/rnaseq2.txt -d rnaseq -p transcripts -u -m ../mapseq2``
 
 From a BAM file produced by an alignement on the **exonome**, gets counts of reads
@@ -174,7 +174,7 @@ def build_pileup(bamfile, labels):
     sam.close()
     return counts
 
-def save_results(ex, cols, conditions, group_ids, header=[], feature_type='features'):
+def save_results(ex, cols, conditions, group_ids, assembly, header=[], feature_type='features'):
     """Save results in a tab-delimited file, one line per feature, one column per run.
 
     :param ex: bein's execution.
@@ -196,8 +196,8 @@ def save_results(ex, cols, conditions, group_ids, header=[], feature_type='featu
     groups = [c.split('.')[0] for c in conditions]
     start = cols[2*ncond+1]
     end = cols[2*ncond+2]
-    rpkm = {}
-    output_sql = {}
+    chr = cols[-1]
+    rpkm = {}; output_sql = {}
     for i in range(ncond):
         g = conditions[i].split('.')[0]
         nruns = groups.count(g)
@@ -205,16 +205,19 @@ def save_results(ex, cols, conditions, group_ids, header=[], feature_type='featu
         output_sql[g] = output_sql.get(g,unique_filename_in())
     for g,filename in output_sql.iteritems():
         # SQL track
-        with track.new(filename+'.sql', format='sql') as t:
-            t.datatype = 'quantitative' #'signal'?
-            lines = zip(*[start,end,rpkm[g]])
-            t.write(feature_type.lower(),lines,fields=["start","end","score"])
+        with track.new(filename+'.sql') as t:
+            t.datatype = 'quantitative'
+            t.assembly = assembly.id
+            lines = zip(*[chr,start,end,rpkm[g]])
+            for x in lines:
+                print x
+                t.write(x[0],[(x[1],x[2],x[3])],fields=["start","end","score"])
         description = "SQL track of %s'rpkm for group `%s'" % (feature_type,g)
         description = set_file_descr(feature_type.lower()+"_"+g+".sql", step="pileup", type="sql", \
                                      groupId=group_ids[g], gdv='1', comment=description)
         ex.add(filename+'.sql', description=description)
         # UCSC-BED track
-        with track.load(filename+'.sql','sql') as t:
+        with track.load(filename+'.sql') as t:
             t.convert(filename+'.bed','bed')
         description = "UCSC-BED track of %s' rpkm for group `%s'" % (feature_type,g)
         description = set_file_descr(feature_type.lower()+"_"+g+".bed", step="pileup", type="bed", \
@@ -490,7 +493,7 @@ def rnaseq_workflow(ex, job, assembly, bam_files, pileup_level=["exons","genes",
     """ Print counts for exons """
     if "exons" in pileup_level:
         header = ["ExonID"] + hconds + ["Start","End","GeneID","GeneName","Chromosome"]
-        save_results(ex, exons_data, conditions, group_ids, header=header, feature_type="EXONS")
+        save_results(ex, exons_data, conditions, group_ids, assembly, header=header, feature_type="EXONS")
 
     """ Get scores of genes from exons """
     if "genes" in pileup_level:
@@ -500,7 +503,7 @@ def rnaseq_workflow(ex, job, assembly, bam_files, pileup_level=["exons","genes",
         genes_data = [[g,gcounts[g],grpkm[g]]+list(gene_mapping.get(g,("NA",)*4)) for g in genesID]
         (genesID,gcounts,grpkm,gname,gstart,gend,gchr) = zip(*genes_data)
         genes_data = [genesID]+list(zip(*gcounts))+list(zip(*grpkm))+[gstart,gend,gname,gchr]
-        save_results(ex, genes_data, conditions, group_ids, header=header, feature_type="GENES")
+        save_results(ex, genes_data, conditions, group_ids, assembly, header=header, feature_type="GENES")
 
     """ Get scores of transcripts from exons, using non-negative least-squares """
     if "transcripts" in pileup_level:
@@ -513,7 +516,7 @@ def rnaseq_workflow(ex, job, assembly, bam_files, pileup_level=["exons","genes",
         (transID,tcounts,trpkm,genesID,tstart,tend,tlen,tchr) = zip(*trans_data)
         genesName = [gene_mapping.get(g,("NA",)*4)[0] for g in genesID]
         trans_data = [transID]+list(zip(*tcounts))+list(zip(*trpkm))+[tstart,tend,genesID,genesName,tchr]
-        save_results(ex, trans_data, conditions, group_ids, header=header, feature_type="TRANSCRIPTS")
+        save_results(ex, trans_data, conditions, group_ids, assembly, header=header, feature_type="TRANSCRIPTS")
 
     # Testing
     # "ENSMUSG00000057666" "ENSG00000111640": TEST Gapdh
