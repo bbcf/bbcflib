@@ -207,7 +207,7 @@ def save_results(ex, cols, conditions, group_ids, assembly, header=[], feature_t
         # SQL track
         with track.new(filename+'.sql') as t:
             t.datatype = 'quantitative'
-            t.assembly = assembly.id
+            t.chrmeta = assembly.chrmeta
             lines = zip(*[chr,start,end,rpkm[g]])
             for x in lines:
                 t.write(x[0],[(x[1],x[2],x[3])],fields=["start","end","score"])
