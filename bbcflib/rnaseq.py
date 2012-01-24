@@ -23,7 +23,7 @@ import os, pysam, math
 from bbcflib.common import writecols, set_file_descr
 from bbcflib.common import unique_filename_in
 from bbcflib import mapseq, genrep
-import track
+import track, gMiner
 
 # Other modules #
 import numpy
@@ -180,6 +180,8 @@ def save_results(ex, cols, conditions, group_ids, assembly, header=[], feature_t
     :param ex: bein's execution.
     :param cols: list of iterables, each element being a column to write in the output.
     :param conditions: list of strings corresponding to descriptions of the different samples.
+    :param group_ids: dictionary {group name: group ID}.
+    :param assembly: a GenRep Assembly object.
     :param header: list of strings, the column headers of the output file.
     :param feature_type: (str) the kind of feature of which you measure the expression.
     """
@@ -212,6 +214,7 @@ def save_results(ex, cols, conditions, group_ids, assembly, header=[], feature_t
             for x in lines:
                 if x[0] in t.chrmeta:
                     t.write(x[0],[(x[1],x[2],x[3])],fields=["start","end","score"])
+                    gMiner.manipulate.fusion(t)
         description = "SQL track of %s'rpkm for group `%s'" % (feature_type,g)
         description = set_file_descr(feature_type.lower()+"_"+g+".sql", step="pileup", type="sql", \
                                      groupId=group_ids[g], gdv='1', comment=description)
