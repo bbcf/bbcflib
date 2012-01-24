@@ -180,6 +180,8 @@ def save_results(ex, cols, conditions, group_ids, assembly, header=[], feature_t
     :param ex: bein's execution.
     :param cols: list of iterables, each element being a column to write in the output.
     :param conditions: list of strings corresponding to descriptions of the different samples.
+    :param group_ids: dictionary {group name: group ID}.
+    :param assembly: a GenRep Assembly object.
     :param header: list of strings, the column headers of the output file.
     :param feature_type: (str) the kind of feature of which you measure the expression.
     """
