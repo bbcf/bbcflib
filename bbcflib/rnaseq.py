@@ -6,7 +6,7 @@ Module: bbcflib.rnaseq
 Methods of the bbcflib's RNA-seq worflow. The main function is ``rnaseq_workflow()``,
 and is usually called by bbcfutils' ``run_rnaseq.py``, e.g. command-line:
 
-``python run_rnaseq.py -v lsf -c config_files/gapdh.txt -d rnaseq -p genes``
+``python run_rnaseq.py -v lsf -c config_files/gapdh.txt -d rnaseq -p transcripts``
 ``python run_rnaseq.py -v lsf -c config_files/rnaseq2.txt -d rnaseq -p transcripts -u -m ../mapseq2``
 
 From a BAM file produced by an alignement on the **exonome**, gets counts of reads
@@ -174,6 +174,9 @@ def build_pileup(bamfile, labels):
     sam.close()
     return counts
 
+def fusion(track):
+    pass
+
 def save_results(ex, cols, conditions, group_ids, assembly, header=[], feature_type='features'):
     """Save results in a tab-delimited file, one line per feature, one column per run.
 
@@ -211,9 +214,12 @@ def save_results(ex, cols, conditions, group_ids, assembly, header=[], feature_t
             t.datatype = 'quantitative'
             t.chrmeta = assembly.chrmeta
             lines = zip(*[chr,start,end,rpkm[g]])
+            lines = [l for l in lines if l[3]!=0.0]
+            lines.sort(key=lambda x: x[1]) # sort w.r.t start
             for x in lines:
                 t.write(x[0],[(x[1],x[2],x[3])],fields=["start","end","score"])
-            gMiner.manipulate.fusion(t)
+            fusion(t)
+            #gMiner.manipulate.fusion(t)
         description = "SQL track of %s'rpkm for group `%s'" % (feature_type,g)
         description = set_file_descr(feature_type.lower()+"_"+g+".sql", step="pileup", type="sql", \
                                      groupId=group_ids[g], gdv='1', comment=description)
