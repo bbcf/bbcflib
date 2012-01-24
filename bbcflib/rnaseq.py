@@ -214,7 +214,7 @@ def save_results(ex, cols, conditions, group_ids, assembly, header=[], feature_t
             t.datatype = 'quantitative'
             t.chrmeta = assembly.chrmeta
             lines = zip(*[chr,start,end,rpkm[g]])
-            lines = [l for l in lines if l[3]!=0.0]
+            lines = [l for l in lines if (l[3]!=0.0 and l[0] in t.chrmeta)]
             lines.sort(key=lambda x: x[1]) # sort w.r.t start
             for x in lines:
                 t.write(x[0],[(x[1],x[2],x[3])],fields=["start","end","score"])
