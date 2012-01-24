@@ -210,7 +210,8 @@ def save_results(ex, cols, conditions, group_ids, assembly, header=[], feature_t
             t.chrmeta = assembly.chrmeta
             lines = zip(*[chr,start,end,rpkm[g]])
             for x in lines:
-                t.write(x[0],[(x[1],x[2],x[3])],fields=["start","end","score"])
+                if x[0] in t.chrmeta:
+                    t.write(x[0],[(x[1],x[2],x[3])],fields=["start","end","score"])
         description = "SQL track of %s'rpkm for group `%s'" % (feature_type,g)
         description = set_file_descr(feature_type.lower()+"_"+g+".sql", step="pileup", type="sql", \
                                      groupId=group_ids[g], gdv='1', comment=description)
