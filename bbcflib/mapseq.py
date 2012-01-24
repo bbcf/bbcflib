@@ -684,7 +684,7 @@ def get_fastq_files( job, fastq_root, dafl=None, set_seed_length=True ):
                     if not(os.path.exists(run)):
                         demrun = os.path.join(demultiplex_path,run)
                         if not(os.path.exists(demrun)):
-                            raise("Could not find fastq file %s"%run)
+                            raise ValueError("Could not find fastq file %s"%run)
                         run = demrun
                         if run_pe:
                             run_pe = os.path.join(demultiplex_path,run_pe)
@@ -1126,7 +1126,10 @@ def get_bam_wig_files( ex, job, minilims=None, hts_url=None, suffix=['fwd','rev'
                     index_bam(ex, bamfile)
             elif os.path.exists(file_loc):
                 shutil.copy( file_loc, bamfile )
-                shutil.copy( file_loc+".bai", bamfile+".bai" )
+                if os.path.exists(file_loc+".bai"):
+                    shutil.copy( file_loc+".bai", bamfile+".bai" )
+                else:
+                    index_bam(ex, bamfile)
             elif os.path.exists(minilims) and os.path.exists(os.path.join(minilims+".files",file_loc)):
                 MMS = MiniLIMS(minilims)
                 file_loc = os.path.join(minilims+".files",file_loc)

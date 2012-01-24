@@ -150,7 +150,7 @@ The following sections will be needed in all modules::
 
     [Job]
     description='config test'
-    assembly_id=mm9
+    assembly_id='mm9'
 
 
 In addition, a set of numbered `groups` (experimental conditions) and for each of them a set of replicates (`runs`)::
@@ -158,19 +158,19 @@ In addition, a set of numbered `groups` (experimental conditions) and for each o
     [Groups]
     [[1]]
     control=True
-    name=unstimulated
+    name='unstimulated'
     [[2]]
-    name=stimulated
+    name='stimulated'
     
     [Runs]
     [[1]]
-    url=http://some.place.edu/my_control.fastq
+    url='http://some.place.edu/my_control.fastq'
     group_id=1
     [[2]]
-    url=http://some.place.edu/my_test1.fastq
+    url='http://some.place.edu/my_test1.fastq'
     group_id=2
     [[3]]
-    url=http://some.place.edu/my_test2.fastq
+    url='http://some.place.edu/my_test2.fastq'
     group_id=2
 
 Mapping parameters
@@ -190,6 +190,7 @@ In the mapping module, the following options are valid, with the following defau
     b2w_args=[]# list of options to the bam2wig program
 
 See :py:func:`bbcflib.mapseq.map_reads` for the arguments that can be passed via `map_args`, for example::
+
     map_args={"maxhits":1,"antibody_enrichment":100,"bwt_args":["-m","0","-n","1"]}
 
 ChIP-seq parameters
