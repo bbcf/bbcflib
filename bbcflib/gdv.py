@@ -34,7 +34,7 @@ def new_project(mail, key, name, assembly_id, serv_url='http://gdv.epfl.ch/pygdv
                }
     return send_it(query_url, request)
 
-def new_track(mail, key, assembly_id=None, project_id=None, urls=None, url=None, fsys=None, fsys_list=None, serv_url='http://gdv.epfl.ch/pygdv', file_names=None):
+def new_track(mail, key, assembly_id=None, project_id=None, urls=None, url=None, fsys=None, fsys_list=None, serv_url='http://gdv.epfl.ch/pygdv', file_names=None, force=False):
     '''
     Create a new track on GDV.
     :param mail : login in TEQUILA
@@ -49,6 +49,7 @@ def new_track(mail, key, assembly_id=None, project_id=None, urls=None, url=None,
     :param file_names : a list of file name, in the same order than the files uploaded.
     If there is differents parameters given, the first file uploaded will be file_upload, 
     then urls, url, fsys and finally fsys_list. The list is separated by whitespaces.
+    :param force : A boolean. Force the file to be recomputed. 
     :return a JSON
     '''
     query_url = '%s/%s' % (normalize_url(serv_url), 'tracks/create')
@@ -68,6 +69,8 @@ def new_track(mail, key, assembly_id=None, project_id=None, urls=None, url=None,
         request['fsys_list'] = fsys_list
     if file_names :
         request['file_names'] = file_names
+    if force :
+        request['force'] = force
     return send_it(query_url, request)
 
 def send_it(url, request, return_type='json'):
