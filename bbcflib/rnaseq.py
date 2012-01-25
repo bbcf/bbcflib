@@ -23,7 +23,7 @@ import os, pysam, math
 from bbcflib.common import writecols, set_file_descr
 from bbcflib.common import unique_filename_in
 from bbcflib import mapseq, genrep
-import track, gMiner
+import track
 
 # Other modules #
 import numpy
@@ -174,8 +174,41 @@ def build_pileup(bamfile, labels):
     sam.close()
     return counts
 
-def fusion(track):
-    pass
+def fusion(X):
+    """ Takes a track-like generator with items of the form (chromosome,start,end,score)
+    and returns a merged track-like generator with no features overlap, with summed scores.
+    """
+    for x in X: break # moves forward 1 step
+    lastend = x[1]
+    is_alone = True
+    for y in X:
+        if y[1] <= x[2]: # if start_y < end_x
+            is_alone = False
+            z = list(x)
+            # First piece (x_0,y_1)
+            z[1] = lastend
+            z[2] = y[1]
+            yield tuple(z)
+            # Intersection (y_0,y_1) or (y_0,x_1)
+            z[1] = y[1]
+            z[3] = x[3] + y[3]  # add scores
+            if x[2] > y[2]:     # y is embedded in x
+                z[2] = y[2]
+                yield tuple(z)
+            else:               # y exceeds x
+                z[2] = x[2]
+                yield tuple(z)
+                # Last piece, if y finishes out of x
+                z = list(y)
+                z[1] = x[2]
+                yield tuple(z)
+            lastend = z[2]
+        else:
+            if is_alone:
+                yield x
+            x = y
+            is_alone = True
+    yield x
 
 def save_results(ex, cols, conditions, group_ids, assembly, header=[], feature_type='features'):
     """Save results in a tab-delimited file, one line per feature, one column per run.
@@ -214,12 +247,11 @@ def save_results(ex, cols, conditions, group_ids, assembly, header=[], feature_t
             t.datatype = 'quantitative'
             t.chrmeta = assembly.chrmeta
             lines = zip(*[chr,start,end,rpkm[g]])
-            lines = [l for l in lines if (l[3]!=0.0 and l[0] in t.chrmeta)]
+            lines = [l for l in lines if (l[-1]!=0.0 and l[0] in t.chrmeta)]
             lines.sort(key=lambda x: x[1]) # sort w.r.t start
+            lines = fusion(iter(lines))
             for x in lines:
                 t.write(x[0],[(x[1],x[2],x[3])],fields=["start","end","score"])
-            fusion(t)
-            #gMiner.manipulate.fusion(t)
         description = "SQL track of %s'rpkm for group `%s'" % (feature_type,g)
         description = set_file_descr(feature_type.lower()+"_"+g+".sql", step="pileup", type="sql", \
                                      groupId=group_ids[g], gdv='1', comment=description)

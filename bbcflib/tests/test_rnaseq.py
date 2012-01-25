@@ -4,6 +4,7 @@
 # Internal modules #
 from bbcflib.rnaseq import *
 from bein import execution
+import track
 
 # Unitesting modules #
 try: import unittest2 as unittest
@@ -20,6 +21,37 @@ __test__ = True
 class Assem(object):
     def __init__(self):
         self.chrmeta = None
+
+
+class Test_Fusion(unittest.TestCase):
+    def setUp(self):
+        #X = [(0,30,'X',5.,-1),(5,10,'Y1',4.,1),(15,20,'Y2',3.,1),(25,35,'Y3',8.,1),(50,60,'Z',1.,-1)]
+        #self.track_name = 'test.sql'
+        #if os.path.exists(self.track_name):
+        #    os.remove(self.track_name)
+        #with track.new(self.track_name) as q1:
+        #    q1.datatype = "signal"
+        #    q1.write('chr1', X)
+        self.X = [('c',0,30,5.),('c',5,10,4.),('c',15,20,3.),('c',25,35,8.),('c',50,60,1.)]
+
+    def test_fusion(self):
+        #with track.load(self.track_name) as t:
+        #    table = t.read('chr1')
+        #    L = iter([d.data for d in table])
+        #T = fusion(L)
+        #T = [s for s in T]
+        #print T
+        #expected = [(0,5,'X',5.,-1),(5,10,'X+Y1',9.,0),(10,15,'X',5.,-1),(15,20,'X+Y2',8.,0),
+        #            (20,25,'X',5.,-1),(25,30,'X+Y3',13.,0),(30,35,'Y3',8.,1),(50,60,'Z',1,-1)]
+        T = fusion(iter(self.X))
+        T = [s for s in T]
+        expected = [('c',0,5,5.),('c',5,10,9.),('c',10,15,5.),('c',15,20,8.),
+                    ('c',20,25,5.),('c',25,30,13.),('c',30,35,8.),('c',50,60,1.)]
+        self.assertEqual(T,expected)
+
+    #def tearDown(self):
+    #    os.remove(self.track_name)
+
 
 class Test_Expressions1(unittest.TestCase):
     """Two conditions, different lengths, invertible"""
