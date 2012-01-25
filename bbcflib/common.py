@@ -334,16 +334,32 @@ try:
 	""" wrapper of fastq-dump script to convert sra (short reads archive) to fastq format 
 	""" 
         return{'arguments': ["/archive/epfl/bbcf/bin/bin.x86_64/fastq-dump","--gzip",rsafile],
-            'return_value':None }
+                 'return_value':None }
 
     def call_rsaToFastq(*args, **kwargs):
-	""" caller to the corresponding wrapper 
-	""" returns the name of the resulting fastq file
-        filename = unique_filename_in()
-        kwargs["stdout"] = filename
+	""" caller to the corresponding wrapper. Returns the name of the resulting fastq file
+	"""
         future=rsaToFastq.nonblocking(*args, **kwargs)
         future.wait()
         return os.path.basename(args[1]).replace('.lite', '').replace('.sra','.fastq.gz')
+
+        #-------------------------------------------------------------------------#
+    @program
+    def generateQC(fastqfile,outpath="."):
+	""" wrapper of the fastqc function (http://www.bioinformatics.bbsrc.ac.uk/) which generates a QC report of short reads present into the fastq file
+	"""
+        return{'arguments': ["/scratch/cluster/monthly/mleleu/FastQC/fastqc","--noextract",fastqfile,"--outdir",outpath],
+                 'return_value':None }
+
+    def call_generateQC(*args, **kwargs):
+	""" caller to the corresponding wrapper. Returns the names of the log file and the resulting zip file 
+	"""
+        filename = unique_filename_in()
+        kwargs["stdout"] = filename
+        future=generateQC.nonblocking(*args, **kwargs)
+        future.wait()
+        return (filename,os.path.basename(args[1]).replace('.fastq', '_fastqc.zip'))
+
 
 
 except ImportError: print "Warning: no module named 'bein'. @program imports skipped."
