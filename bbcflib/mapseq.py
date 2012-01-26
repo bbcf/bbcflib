@@ -175,7 +175,7 @@ def get_fastq_files( ex, job, dafl=None, set_seed_length=True):
                         output_file.write(chunk)
                 input_file.close()
         elif run.endswith(".sra"):
-            target2 = fastq_dump(ex,run)
+            target2 = fastq_dump(ex,target)
         else:
             target2 = target
         return target2
@@ -228,10 +228,10 @@ def get_fastq_files( ex, job, dafl=None, set_seed_length=True):
                         shutil.copy(run_pe, target_pe)
 #                run = re.sub('.seq.gz','_seq.tar',run)
                 if run_pe:
-                    job.groups[gid]['runs'][rid] = (_expand_fastq(run,target),
-                                                    _expand_fastq(run_pe,target_pe))
+                    job.groups[gid]['runs'][rid] = (_expand_fastq(ex,run,target),
+                                                    _expand_fastq(ex,run_pe,target_pe))
                 else:
-                    job.groups[gid]['runs'][rid] = _expand_fastq(run,target)
+                    job.groups[gid]['runs'][rid] = _expand_fastq(ex,run,target)
             job.groups[gid]['run_names'][rid] = re.sub(r'\s+','_',run_lib_name)
     return job
 
