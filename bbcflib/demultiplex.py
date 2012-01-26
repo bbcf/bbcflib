@@ -208,7 +208,7 @@ def workflow_groups(ex, job, gl):
 	else:
 		dafl = None
 	
-	job=get_fastq_files(job,ex.working_directory, dafl)
+	job=get_fastq_files(ex, job, dafl)
 	
 	file_names = {}
 	job_groups=job.groups
