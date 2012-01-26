@@ -128,14 +128,16 @@ def run_fastqc( ex, job, via='lsf' ):
     for gid,group in job.groups.iteritems():
         descr['groupId'] = gid
         for rid,run in group['runs'].iteritems():
-            qcreport = futures[gid][rid].wait()
             rname = group['name']+"_"+group['run_names'].get(rid,str(rid))
-            if isinstance(qcreport,tuple):
-                ex.add( qcreport[0], 
+            if isinstance(run,tuple):
+                qcreport = futures[gid][rid][0].wait()
+                ex.add( qcreport, 
                         description=set_file_descr(rname+"_R1_fastqc.zip",**descr) )
-                ex.add( qcreport[1], 
+                qcreport = futures[gid][rid][1].wait()
+                ex.add( qcreport, 
                         description=set_file_descr(rname+"_R2_fastqc.zip",**descr) )
             else:
+                qcreport = futures[gid][rid].wait()
                 ex.add( qcreport, 
                         description=set_file_descr(rname+"_fastqc.zip",**descr) )
     return None
