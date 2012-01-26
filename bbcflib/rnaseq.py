@@ -477,7 +477,7 @@ def rnaseq_workflow(ex, job, assembly, bam_files, pileup_level=["exons","genes",
                 cond = group_names[gid]+'.'+str(k)
                 unmapped_fastq = bam_files[gid][rid].get('unmapped_fastq')
                 unmapped_bam[cond] = mapseq.map_reads(ex, unmapped_fastq, {}, refseq_path, \
-                      remove_pcr_duplicates=False, bwt_args=[])['bam']
+                      remove_pcr_duplicates=False, bwt_args=[], via=via)['bam']
                 if unmapped_bam[cond]:
                     sam = pysam.Samfile(unmapped_bam[cond])
                 else: sam = []

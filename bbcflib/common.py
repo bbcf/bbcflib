@@ -329,21 +329,6 @@ try:
         return {"arguments": ["run_gminer.py",job_file],"return_value": get_output_files}
 
         #-------------------------------------------------------------------------#
-    @program
-    def rsaToFastq(rsafile):
-	""" wrapper of fastq-dump script to convert sra (short reads archive) to fastq format 
-	""" 
-        return{'arguments': ["/archive/epfl/bbcf/bin/bin.x86_64/fastq-dump","--gzip",rsafile],
-            'return_value':None }
-
-    def call_rsaToFastq(*args, **kwargs):
-	""" caller to the corresponding wrapper 
-	""" returns the name of the resulting fastq file
-        filename = unique_filename_in()
-        kwargs["stdout"] = filename
-        future=rsaToFastq.nonblocking(*args, **kwargs)
-        future.wait()
-        return os.path.basename(args[1]).replace('.lite', '').replace('.sra','.fastq.gz')
 
 
 except ImportError: print "Warning: no module named 'bein'. @program imports skipped."

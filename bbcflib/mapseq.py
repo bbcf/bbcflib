@@ -54,8 +54,9 @@ Below is the script used by the frontend::
                                           password=gl['lims']['passwd'][loc] ))
                     for loc in gl['lims']['passwd'].keys())
     with execution( M, description=hts_key, remote_working_directory=working_dir ) as ex:
-        job = get_fastq_files( job, ex.working_directory, daflims1 )
-        mapped_files = map_groups( ex, job, ex.working_directory, assembly )
+        job = get_fastq_files( ex, job, daflims1 )
+        run_fastqc( ex, job, via=via )
+        mapped_files = map_groups( ex, job, assembly )
         pdf = add_pdf_stats( ex, mapped_files,
                              dict((k,v['name']) for k,v in job.groups.iteritems()),
                              gl['script_path'] )
@@ -84,6 +85,156 @@ from bein       import  program, ProgramFailed, MiniLIMS
 from bein.util  import  add_pickle, touch, split_file, count_lines
 
 demultiplex_path = "/data/htsstation/demultiplexing/demultiplexing_minilims.files/"
+
+###############
+# Fastq files
+###############
+@program
+def fastq_dump(filename, options=None):
+    """ Binds ``fastq-dump`` to convert *sra* (short reads archive) to *fastq* format. 
+    """ 
+    if not(isinstance(options,list)): options = []
+    suffix = '.fastq'
+    if "--gzip" in options: suffix += '.gz'
+    fastq = re.sub(".lite","",re.sub(".sra","",os.path.basename(filename)))
+    fastq += suffix
+    return {'arguments': ["fastq-dump"]+options+[filename],'return_value': fastq }
+
+@program
+def fastqc(fastqfiles,outdir=None,options=None):
+    """Binds ``fastqc`` (http://www.bioinformatics.bbsrc.ac.uk/) which generates a QC report of short reads present into the fastq file.
+    """
+    outfile = re.sub(".fastq","",os.path.basename(fastqfile))+'_fastqc.zip'
+    if not(isinstance(options,list)): options = []
+    if outdir and os.path.isdir(outdir): 
+        outfile = os.path.join(outdir,outfile)
+        options += ["--outdir",outdir]
+    if isinstance(fastqfiles,list): fastqfiles = ",".join(fastqfiles)
+    return {'arguments': ["fastqc","--noextract"]+options+[fastqfiles],'return_value': outfile}
+
+def run_fastqc( ex, job, via='lsf' ):
+    """
+    Returns the name of the report file.
+    """
+    futures = {}
+    descr = {'step':'qc','groupId':0,'type':'zip'}
+    for gid,group in jobs.groups.iteritems():
+        files = []
+        for rid,run in group['runs'].iteritems():
+            if isinstance(run,tuple):
+                files.append(list(run))
+            else:
+                files.append(run)
+        futures[gid] = fastqc.nonblocking(ex,files,via=via)
+    for gid,group in jobs.groups.iteritems():
+        qcreport = futures[gid].wait()
+        descr['groupId'] = gid
+        ex.add( qcreport, description=set_file_descr(group['name']+"_fastqc.zip",**descr) )
+    return None
+
+
+def get_fastq_files( ex, job, dafl=None, set_seed_length=True):
+    """
+    Will replace file references by actual file paths in the 'job' object.
+    These references are either 'dafl' run descriptions or urls.
+    Argument 'dafl' is a dictionary of 'Daflims' objects (keys are the facility names).
+    If 'set_seed_length' is true, a dictionary job.groups[gid]['seed_lengths']
+    of seed lengths is constructed with values corresponding to 70% of the
+    read length.
+    """
+    def _expand_fastq(ex,run,target):
+        is_gz = run.endswith(".gz") or run.endswith(".gzip")
+        run_strip = run
+        if is_gz: run_strip = re.sub('.gz[ip]*','',run)
+        is_tar = run_strip.endswith(".tar")
+        if is_tar:
+            mode = 'r'
+            if is_gz: mode += '|gz'
+            target2 = unique_filename_in()
+            with open(target,'rb') as tf:
+                tar = tarfile.open(fileobj=tf, mode=mode)
+                tar_filename = tar.next()
+                input_file = tar.extractfile(tar_filename)
+                with open(target2, 'w') as output_file:
+                    while True:
+                        chunk = input_file.read(4096)
+                        if chunk == '':
+                            break
+                        else:
+                            output_file.write(chunk)
+                tar.close()
+        elif is_gz:
+            target2 = unique_filename_in()
+            with open(target2,'w') as output_file:
+                input_file = gzip.open(target, 'rb')
+                while True:
+                    chunk = input_file.read(4096)
+                    if chunk == '':
+                        break
+                    else:
+                        output_file.write(chunk)
+                input_file.close()
+        elif run.endswith(".sra"):
+            target2 = fastq_dump(ex,target)
+        else:
+            target2 = target
+        return target2
+#########
+    if  not(dafl is None or isinstance(dafl.values()[0],daflims.DAFLIMS)):
+        raise ValueError("Need DAFLIMS objects in get_fastq_files.")
+    for gid,group in job.groups.iteritems():
+        job.groups[gid]['seed_lengths'] = {}
+        job.groups[gid]['run_names'] = {}
+        for rid,run in group['runs'].iteritems():
+            run_lib_name = None
+            if isinstance(run,dict):
+                if run.get('sequencing_library'):
+                    run_lib_name = str(run['sequencing_library'])
+                elif all([run.get(x) for x in ['facility','machine','run','lane']]):
+                    run_lib_name = "_".join([run['machine'],str(run['run']),str(run['lane'])])
+            if run.get('url'):
+                run = str(run['url']).strip()
+            if isinstance(run,dict) and all([x in run for x in ['facility','machine','run','lane']]):
+                dafl1 = dafl[run['facility']]
+                daf_data = dafl1.fetch_fastq( str(run['facility']), str(run['machine']), run['run'], run['lane'],
+                                              libname=run.get('sequencing_library') )
+                job.groups[gid]['runs'][rid] = daf_data['path']
+                if (set_seed_length):
+                    job.groups[gid]['seed_lengths'][rid] = max(28,int(0.7*daf_data['cycle']))
+            elif isinstance(run,str):
+                run = re.search(r'^[\"\']?([^\"\';]+)[\"\']?',run).groups()[0]
+                if run_lib_name is None: run_lib_name = os.path.splitext(run.split("/")[-1])[0]
+                target = unique_filename_in()
+                runsplit = run.split(',')
+                run_pe = None
+                if len(runsplit) > 1:
+                    run = runsplit[0]
+                    run_pe = runsplit[1]
+                    target_pe = target+"_R2"
+                if run.startswith(("http://","https://","ftp://")):
+                    urllib.urlretrieve( run, target )
+                    if run_pe:
+                        urllib.urlretrieve( run_pe, target_pe )
+                else:
+                    if not(os.path.exists(run)):
+                        demrun = os.path.join(demultiplex_path,run)
+                        if not(os.path.exists(demrun)):
+                            raise ValueError("Could not find fastq file %s"%run)
+                        run = demrun
+                        if run_pe:
+                            run_pe = os.path.join(demultiplex_path,run_pe)
+                    shutil.copy(run,target)
+                    if run_pe:
+                        shutil.copy(run_pe, target_pe)
+#                run = re.sub('.seq.gz','_seq.tar',run)
+                if run_pe:
+                    job.groups[gid]['runs'][rid] = (_expand_fastq(ex,run,target),
+                                                    _expand_fastq(ex,run_pe,target_pe))
+                else:
+                    job.groups[gid]['runs'][rid] = _expand_fastq(ex,run,target)
+            job.groups[gid]['run_names'][rid] = re.sub(r'\s+','_',run_lib_name)
+    return job
+
 ###############
 # BAM/SAM files
 ###############
@@ -252,6 +403,64 @@ def add_and_index_bam(ex, bamfile, description="", alias=None):
     return sort
 
 
+
+def poisson_threshold(mu, cutoff=0.95, max_terms=100):
+    """Calculate confidence threshold for Poisson distributions.
+
+    Returns the largest integer *k* such that, for a Poisson
+    distribution random value X with mean 'mu', P(X <= k) <= 'cutoff'.
+    It will calculate no farther than k = 'max_terms'.  If it reaches
+    that point, it raises an exception.
+    """
+    p = cumsum( exp(-mu) * array([mu**k / float(factorial(k)) for k in range(0,max_terms)] ))
+    n = len(p[p <= cutoff])
+    if n == max_terms:
+        raise ValueError("In poisson_threshold, reached max_terms. Try raising max_terms.")
+    else:
+        return n
+
+def remove_duplicate_reads( bamfile, chromosomes,
+                            maxhits=None, pilesize=1, convert=False ):
+    """Filters a bam file for multi-hits above 'maxhits' and for duplicate reads beyond 'pilesize'.
+
+    Reads with NH tag > maxhits are discarded, each genomic position
+    will have at most 'pilesize' reads per library and per strand.
+    If the 'convert' flag is True, the reference sequence ids are replaced by
+    their names as provided in 'chromosomes'.
+    """
+    infile = pysam.Samfile( bamfile, "rb" )
+    outname = unique_filename_in()
+    header = infile.header
+    pilesize = max(1,pilesize)
+    if convert:
+        for h in header["SQ"]:
+            if h["SN"] in chromosomes:
+                h["SN"] = chromosomes[h["SN"]]["name"]
+    outfile = pysam.Samfile( outname, "wb", header=header )
+    count_per_lib = {}
+    pos_per_lib = {}
+    for read in infile:
+        nh = dict(read.tags).get('NH',1)
+        if nh < 1:
+            continue
+        lpatt = re.search(r'^(.*?:.*?):',read.qname)
+        if lpatt: lname = lpatt.groups()[0]
+        else: lname = '1'
+        lib = lname+":"+(read.is_reverse and '1' or '0')
+        pos = "%s:%d" % (read.rname, read.pos)
+        if pos != pos_per_lib.get(lib):
+            pos_per_lib[lib] = pos
+            count_per_lib[lib] = 0
+        if (maxhits is None or nh <= maxhits) and count_per_lib[lib] < pilesize:
+            outfile.write(read)
+        count_per_lib[lib] += 1
+    outfile.close()
+    infile.close()
+    return outname
+
+########
+# Bowtie
+########
 def add_bowtie_index(execution, files, description="", alias=None, index=None):
     """Adds an index of a list of FASTA files to the repository.
 
@@ -276,10 +485,6 @@ def add_bowtie_index(execution, files, description="", alias=None, index=None):
     execution.add(index + ".rev.1.ebwt", associate_to_filename=index, template='%s.rev.1.ebwt')
     execution.add(index + ".rev.2.ebwt", associate_to_filename=index, template='%s.rev.2.ebwt')
     return index
-
-########
-# Bowtie
-########
 
 @program
 def bowtie(index, reads, args="-Sra"):
@@ -368,7 +573,7 @@ def parallel_bowtie(ex, index, reads, unmapped=None, n_lines=1000000, bowtie_arg
 
 ################################################################################
 # Postprocessing #
-
+################################################################################
 @program
 def bamstats(bamfile):
     """Wrapper to the ``bamstat`` program.
@@ -429,59 +634,33 @@ def plot_stats(sample_stats,script_path="./"):
                           "--args"] + [stats_file,pdf_file],
             'return_value': pdf_file}
 
-def poisson_threshold(mu, cutoff=0.95, max_terms=100):
-    """Calculate confidence threshold for Poisson distributions.
+def add_pdf_stats( ex, processed, group_names, script_path,
+                   description="mapping_report.pdf" ):
+    """Runs the 'plot_stats' function and adds its pdf output to the execution's repository.
 
-    Returns the largest integer *k* such that, for a Poisson
-    distribution random value X with mean 'mu', P(X <= k) <= 'cutoff'.
-    It will calculate no farther than k = 'max_terms'.  If it reaches
-    that point, it raises an exception.
+    Arguments are the output of 'map_groups' ('processed'),
+    a dictionary of group_id to names used in the display,
+    the path to the script used by 'plot_stats',
+    and the 'description' to use in the repository.
+
+    Returns the name of the pdf file.
     """
-    p = cumsum( exp(-mu) * array([mu**k / float(factorial(k)) for k in range(0,max_terms)] ))
-    n = len(p[p <= cutoff])
-    if n == max_terms:
-        raise ValueError("In poisson_threshold, reached max_terms. Try raising max_terms.")
-    else:
-        return n
-
-def remove_duplicate_reads( bamfile, chromosomes,
-                            maxhits=None, pilesize=1, convert=False ):
-    """Filters a bam file for multi-hits above 'maxhits' and for duplicate reads beyond 'pilesize'.
-
-    Reads with NH tag > maxhits are discarded, each genomic position
-    will have at most 'pilesize' reads per library and per strand.
-    If the 'convert' flag is True, the reference sequence ids are replaced by
-    their names as provided in 'chromosomes'.
-    """
-    infile = pysam.Samfile( bamfile, "rb" )
-    outname = unique_filename_in()
-    header = infile.header
-    pilesize = max(1,pilesize)
-    if convert:
-        for h in header["SQ"]:
-            if h["SN"] in chromosomes:
-                h["SN"] = chromosomes[h["SN"]]["name"]
-    outfile = pysam.Samfile( outname, "wb", header=header )
-    count_per_lib = {}
-    pos_per_lib = {}
-    for read in infile:
-        nh = dict(read.tags).get('NH',1)
-        if nh < 1:
-            continue
-        lpatt = re.search(r'^(.*?:.*?):',read.qname)
-        if lpatt: lname = lpatt.groups()[0]
-        else: lname = '1'
-        lib = lname+":"+(read.is_reverse and '1' or '0')
-        pos = "%s:%d" % (read.rname, read.pos)
-        if pos != pos_per_lib.get(lib):
-            pos_per_lib[lib] = pos
-            count_per_lib[lib] = 0
-        if (maxhits is None or nh <= maxhits) and count_per_lib[lib] < pilesize:
-            outfile.write(read)
-        count_per_lib[lib] += 1
-    outfile.close()
-    infile.close()
-    return outname
+    all_stats = {}
+    for gid in group_names.keys():
+        for i,mapped in enumerate(processed[gid].values()):
+            name = group_names[gid] or str(gid)
+            if 'libname' in mapped:
+                name = mapped['libname']
+            if name in all_stats:
+                name += ":"+str(i+1)
+            if 'fullstats' in mapped:
+                all_stats[name+":full"] = mapped['fullstats']
+                all_stats[name+":filter"] = mapped['stats']
+            else:
+                all_stats[name] = mapped['stats']
+    pdf = plot_stats(ex, all_stats, script_path=script_path)
+    ex.add(pdf,description)
+    return pdf
 
 def pprint_bamstats(sample_stats, textfile=None):
     """Pretty stdout-print for sample_stats.
@@ -596,113 +775,7 @@ def map_reads( ex, fastq_file, chromosomes, bowtie_index,
 
 ############################################################
 
-def get_fastq_files( job, fastq_root, dafl=None, set_seed_length=True ):
-    """
-    Will replace file references by actual file paths in the 'job' object.
-    These references are either 'dafl' run descriptions or urls.
-    Argument 'dafl' is a dictionary of 'Daflims' objects (keys are the facility names).
-    If 'set_seed_length' is true, a dictionary job.groups[gid]['seed_lengths']
-    of seed lengths is constructed with values corresponding to 70% of the
-    read length.
-    """
-    def _expand_fastq(run,fq_file,target):
-        is_gz = run.endswith(".gz") or run.endswith(".gzip")
-        run_strip = run
-        if is_gz: run_strip = re.sub('.gz[ip]*','',run)
-        is_tar = run_strip.endswith(".tar")
-        if is_tar:
-            mode = 'r'
-            if is_gz: mode += '|gz'
-            fq_file2 = unique_filename_in(fastq_root)
-            target2 = os.path.join(fastq_root,fq_file2)
-            with open(target,'rb') as tf:
-                tar = tarfile.open(fileobj=tf, mode=mode)
-                tar_filename = tar.next()
-                input_file = tar.extractfile(tar_filename)
-                with open(target2, 'w') as output_file:
-                    while True:
-                        chunk = input_file.read(4096)
-                        if chunk == '':
-                            break
-                        else:
-                            output_file.write(chunk)
-                tar.close()
-        elif is_gz:
-            fq_file2 = unique_filename_in(fastq_root)
-            target2 = os.path.join(fastq_root,fq_file2)
-            with open(target2,'w') as output_file:
-                input_file = gzip.open(target, 'rb')
-                while True:
-                    chunk = input_file.read(4096)
-                    if chunk == '':
-                        break
-                    else:
-                        output_file.write(chunk)
-                input_file.close()
-        else:
-            fq_file2 = fq_file
-        return fq_file2
-#########
-    if  not(dafl is None or isinstance(dafl.values()[0],daflims.DAFLIMS)):
-        raise ValueError("Need DAFLIMS objects in get_fastq_files.")
-    for gid,group in job.groups.iteritems():
-        job.groups[gid]['seed_lengths'] = {}
-        job.groups[gid]['run_names'] = {}
-        for rid,run in group['runs'].iteritems():
-            run_lib_name = None
-            if isinstance(run,dict):
-                if run.get('sequencing_library'):
-                    run_lib_name = str(run['sequencing_library'])
-                elif all([run.get(x) for x in ['facility','machine','run','lane']]):
-                    run_lib_name = "_".join([run['machine'],str(run['run']),str(run['lane'])])
-            if run.get('url'):
-                run = str(run['url']).strip()
-            if isinstance(run,dict) and all([x in run for x in ['facility','machine','run','lane']]):
-                dafl1 = dafl[run['facility']]
-                daf_data = dafl1.fetch_fastq( str(run['facility']), str(run['machine']), run['run'], run['lane'],
-                                              to=fastq_root, libname=run.get('sequencing_library') )
-                job.groups[gid]['runs'][rid] = daf_data['path']
-                if (set_seed_length):
-                    job.groups[gid]['seed_lengths'][rid] = max(28,int(0.7*daf_data['cycle']))
-            elif isinstance(run,str):
-                run = re.search(r'^[\"\']?([^\"\';]+)[\"\']?',run).groups()[0]
-                if run_lib_name is None: run_lib_name = os.path.splitext(run.split("/")[-1])[0]
-                fq_file = unique_filename_in(fastq_root)
-                target = os.path.join(fastq_root,fq_file)
-                runsplit = run.split(',')
-                run_pe = None
-                if len(runsplit) > 1:
-                    run = runsplit[0]
-                    run_pe = runsplit[1]
-                    target_pe = target+"_R2"
-                    fq_file_pe = fq_file+"_R2"
-                if run.startswith(("http://","https://","ftp://")):
-                    urllib.urlretrieve( run, target )
-                    if run_pe:
-                        urllib.urlretrieve( run_pe, target_pe )
-                else:
-                    if not(os.path.exists(run)):
-                        demrun = os.path.join(demultiplex_path,run)
-                        if not(os.path.exists(demrun)):
-                            raise ValueError("Could not find fastq file %s"%run)
-                        run = demrun
-                        if run_pe:
-                            run_pe = os.path.join(demultiplex_path,run_pe)
-                    shutil.copy(run,target)
-                    if run_pe:
-                        shutil.copy(run_pe, target_pe)
-#                run = re.sub('.seq.gz','_seq.tar',run)
-                if run_pe:
-                    job.groups[gid]['runs'][rid] = (_expand_fastq(run,fq_file,target),
-                                                    _expand_fastq(run_pe,fq_file_pe,target_pe))
-                else:
-                    job.groups[gid]['runs'][rid] = _expand_fastq(run,fq_file,target)
-            job.groups[gid]['run_names'][rid] = re.sub(r'\s+','_',run_lib_name)
-    return job
-
-############################################################
-
-def map_groups( ex, job_or_dict, fastq_root, assembly_or_dict, map_args=None ):
+def map_groups( ex, job_or_dict, assembly_or_dict, map_args=None ):
     """Fetches fastq files and bowtie indexes, and runs the 'map_reads' function for
     a collection of samples described in a 'Frontend' 'job'.
 
@@ -711,8 +784,6 @@ def map_groups( ex, job_or_dict, fastq_root, assembly_or_dict, map_args=None ):
     * ``'ex'``: a 'bein' execution environment to run jobs in,
 
     * ``'job_or_dict'``: a 'Frontend' 'job' object, or a dictionary with keys 'groups',
-
-    * ``'fastq_root'``: path to raw fastq files,
 
     * ``'assembly_or_dict'``: an 'Assembly' object, or a dictionary of 'chromosomes' and 'index_path'.
 
@@ -763,10 +834,6 @@ def map_groups( ex, job_or_dict, fastq_root, assembly_or_dict, map_args=None ):
         if not 'runs' in group:
             group = {'runs': group}
         for rid,run in group['runs'].iteritems():
-            if isinstance(run,tuple):
-                fq_file = (os.path.join(fastq_root,run[0]),os.path.join(fastq_root,run[1]))
-            else:
-                fq_file = os.path.join(fastq_root,run)
             if 'seed_lengths' in group and group['seed_lengths'].get(rid) > 0:
                 seed_len = str(group['seed_lengths'][rid])
                 if 'bwt_args' in map_args:
@@ -780,7 +847,7 @@ def map_groups( ex, job_or_dict, fastq_root, assembly_or_dict, map_args=None ):
             if len(group['runs'])>1:
                 name += "_"
                 name += group['run_names'].get(rid,str(rid))
-            m = map_reads( ex, fq_file, chromosomes, index_path, remove_pcr_duplicates=pcr_dupl, **map_args )
+            m = map_reads( ex, run, chromosomes, index_path, remove_pcr_duplicates=pcr_dupl, **map_args )
             descr = {'step':'bowtie','groupId':gid}
             bam_descr = {'type': 'bam', 'ucsc': '1'}
             py_descr = {'type':'py','view':'admin','comment':'pickle file'}
@@ -795,7 +862,7 @@ def map_groups( ex, job_or_dict, fastq_root, assembly_or_dict, map_args=None ):
             if 'stats' in m:
                 add_pickle( ex, m['stats'], set_file_descr(name+"_filter_bamstat",**py_descr) )
             if 'unmapped' in m:
-                if isinstance(fq_file,tuple):
+                if isinstance(run,tuple):
                     ex.add( m['unmapped'], description=set_file_descr(name+"_unmapped",**fqn_descr) )
                     ex.add( m['unmapped']+"_1.gz", description=set_file_descr(name+"_unmapped_1.fastq.gz",**fq_descr),
                             associate_to_filename=m['unmapped'], template='%s_1.fastq.gz' )
@@ -815,34 +882,6 @@ def map_groups( ex, job_or_dict, fastq_root, assembly_or_dict, map_args=None ):
             processed[gid][rid] = m
     add_pickle( ex, file_names, set_file_descr('file_names',step='bowtie',type='py',view='admin',comment='pickle file') )
     return processed
-
-def add_pdf_stats( ex, processed, group_names, script_path,
-                   description="mapping_report.pdf" ):
-    """Runs the 'plot_stats' function and adds its pdf output to the execution's repository.
-
-    Arguments are the output of 'map_groups' ('processed'),
-    a dictionary of group_id to names used in the display,
-    the path to the script used by 'plot_stats',
-    and the 'description' to use in the repository.
-
-    Returns the name of the pdf file.
-    """
-    all_stats = {}
-    for gid in group_names.keys():
-        for i,mapped in enumerate(processed[gid].values()):
-            name = group_names[gid] or str(gid)
-            if 'libname' in mapped:
-                name = mapped['libname']
-            if name in all_stats:
-                name += ":"+str(i+1)
-            if 'fullstats' in mapped:
-                all_stats[name+":full"] = mapped['fullstats']
-                all_stats[name+":filter"] = mapped['stats']
-            else:
-                all_stats[name] = mapped['stats']
-    pdf = plot_stats(ex, all_stats, script_path=script_path)
-    ex.add(pdf,description)
-    return pdf
 
 ############################################################
 #@program
