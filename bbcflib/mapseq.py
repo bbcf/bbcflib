@@ -118,7 +118,7 @@ def run_fastqc( ex, job, via='lsf' ):
     """
     futures = {}
     descr = {'step':'qc','groupId':0,'type':'zip'}
-    for gid,group in jobs.groups.iteritems():
+    for gid,group in job.groups.iteritems():
         files = []
         for rid,run in group['runs'].iteritems():
             if isinstance(run,tuple):
@@ -126,7 +126,7 @@ def run_fastqc( ex, job, via='lsf' ):
             else:
                 files.append(run)
         futures[gid] = fastqc.nonblocking(ex,files,via=via)
-    for gid,group in jobs.groups.iteritems():
+    for gid,group in job.groups.iteritems():
         qcreport = futures[gid].wait()
         descr['groupId'] = gid
         ex.add( qcreport, description=set_file_descr(group['name']+"_fastqc.zip",**descr) )
