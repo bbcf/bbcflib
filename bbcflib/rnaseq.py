@@ -195,10 +195,13 @@ def fusion(X):
                 last = x[2]
                 x = y
             last_was_alone = False
-        else:
-            if last_was_alone: yield x
-            else: yield (c,last,x[2],x[3])
+        else:                   # y is outside of x
+            if last_was_alone:
+                yield x
+            else:
+                yield (c,last,x[2],x[3])
             x = y
+            last = x[1]
             last_was_alone = True
     if last_was_alone:
         yield x
