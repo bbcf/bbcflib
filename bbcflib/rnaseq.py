@@ -176,7 +176,9 @@ def build_pileup(bamfile, labels):
 
 def fusion(X):
     """ Takes a track-like generator with items of the form (chromosome,start,end,score)
-    and returns a merged track-like generator with no features overlap, with summed scores.
+    and returns a merged track-like generator with summed scores.
+    This is to avoid having overlapping coordinates of features from both DNA strands,
+    which some genome browsers cannot handle for quantitative tracks.
     """
     for x in X: break # moves forward 1 step
     lastend = x[1]
