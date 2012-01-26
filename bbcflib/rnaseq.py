@@ -511,7 +511,7 @@ def rnaseq_workflow(ex, job, assembly, bam_files, pileup_level=["exons","genes",
             exon_pileup = build_pileup(f['bam'], exons)
             if unmapped:
                 for a,x in additionals[cond].iteritems():
-                    exon_pileup[a] += x
+                    exon_pileup[a] = exon_pileup.get(a,0) + x
             exon_pileups[cond] = [exon_pileup[e] for e in exonsID] # {cond1.run1: [pileup], cond1.run2: [pileup]...}
             nreads[cond] = nreads.get(cond,0) + sum(exon_pileup.values()) # total number of reads
             print "....Pileup", cond, "done"
