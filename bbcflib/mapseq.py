@@ -101,7 +101,7 @@ def fastq_dump(filename, options=None):
     return {'arguments': ["fastq-dump"]+options+[filename],'return_value': fastq }
 
 @program
-def fastqc(fastqfiles,outdir=None,options=None):
+def fastqc(fastqfile,outdir=None,options=None):
     """Binds ``fastqc`` (http://www.bioinformatics.bbsrc.ac.uk/) which generates a QC report of short reads present into the fastq file.
     """
     outfile = re.sub(".fastq","",os.path.basename(fastqfile))+'_fastqc.zip'
@@ -109,8 +109,7 @@ def fastqc(fastqfiles,outdir=None,options=None):
     if outdir and os.path.isdir(outdir): 
         outfile = os.path.join(outdir,outfile)
         options += ["--outdir",outdir]
-    if isinstance(fastqfiles,list): fastqfiles = ",".join(fastqfiles)
-    return {'arguments': ["fastqc","--noextract"]+options+[fastqfiles],'return_value': outfile}
+    return {'arguments': ["fastqc","--noextract"]+options+[fastqfile],'return_value': outfile}
 
 def run_fastqc( ex, job, via='lsf' ):
     """
@@ -119,17 +118,26 @@ def run_fastqc( ex, job, via='lsf' ):
     futures = {}
     descr = {'step':'qc','groupId':0,'type':'zip'}
     for gid,group in job.groups.iteritems():
-        files = []
+        futures[gid] = {}
         for rid,run in group['runs'].iteritems():
             if isinstance(run,tuple):
-                files.append(list(run))
+                futures[gid][rid] = (fastqc.nonblocking(ex,run[0],via=via),
+                                     fastqc.nonblocking(ex,run[1],via=via))
             else:
-                files.append(run)
-        futures[gid] = fastqc.nonblocking(ex,files,via=via)
+                futures[gid][rid] = fastqc.nonblocking(ex,run,via=via)
     for gid,group in job.groups.iteritems():
-        qcreport = futures[gid].wait()
         descr['groupId'] = gid
-        ex.add( qcreport, description=set_file_descr(group['name']+"_fastqc.zip",**descr) )
+        for rid,run in group['runs'].iteritems():
+            qcreport = futures[gid][rid].wait()
+            rname = group['name']+"_"+group['run_names'].get(rid,str(rid))
+            if isinstance(qcreport,tuple):
+                ex.add( qcreport[0], 
+                        description=set_file_descr(rname+"_R1_fastqc.zip",**descr) )
+                ex.add( qcreport[1], 
+                        description=set_file_descr(rname+"_R2_fastqc.zip",**descr) )
+            else:
+                ex.add( qcreport, 
+                        description=set_file_descr(rname+"_fastqc.zip",**descr) )
     return None
 
 
