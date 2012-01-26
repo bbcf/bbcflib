@@ -232,39 +232,40 @@ def save_results(ex, cols, conditions, group_ids, assembly, header=[], feature_t
     description = set_file_descr(feature_type.lower()+"_expression.tab", step="pileup", type="txt", comment=description)
     ex.add(output_tab, description=description)
     # Create one track for each group
-    ncond = len(conditions)
-    groups = [c.split('.')[0] for c in conditions]
-    start = cols[2*ncond+1]
-    end = cols[2*ncond+2]
-    chr = cols[-1]
-    rpkm = {}; output_sql = {}
-    for i in range(ncond):
-        g = conditions[i].split('.')[0]
-        nruns = groups.count(g)
-        rpkm[g] = asarray(rpkm.get(g,zeros(len(start)))) + asarray(cols[i+ncond+1]) / nruns
-        output_sql[g] = output_sql.get(g,unique_filename_in())
-    for g,filename in output_sql.iteritems():
-        # SQL track
-        with track.new(filename+'.sql') as t:
-            t.datatype = 'quantitative'
-            t.chrmeta = assembly.chrmeta
+    if feature_type in ['GENES','EXONS']:
+        ncond = len(conditions)
+        groups = [c.split('.')[0] for c in conditions]
+        start = cols[2*ncond+1]
+        end = cols[2*ncond+2]
+        chr = cols[-1]
+        rpkm = {}; output_sql = {}
+        for i in range(ncond):
+            g = conditions[i].split('.')[0]
+            nruns = groups.count(g)
+            rpkm[g] = asarray(rpkm.get(g,zeros(len(start)))) + asarray(cols[i+ncond+1]) / nruns
+            output_sql[g] = output_sql.get(g,unique_filename_in())
+        for g,filename in output_sql.iteritems():
             lines = zip(*[chr,start,end,rpkm[g]])
-            lines = [l for l in lines if (l[-1]!=0.0 and l[0] in t.chrmeta)]
-            lines.sort(key=lambda x: x[1]) # sort w.r.t start
-            lines = fusion(iter(lines))
-            for x in lines:
-                t.write(x[0],[(x[1],x[2],x[3])],fields=["start","end","score"])
-        description = "SQL track of %s'rpkm for group `%s'" % (feature_type,g)
-        description = set_file_descr(feature_type.lower()+"_"+g+".sql", step="pileup", type="sql", \
-                                     groupId=group_ids[g], gdv='1', comment=description)
-        ex.add(filename+'.sql', description=description)
-        # UCSC-BED track
-        with track.load(filename+'.sql') as t:
-            t.convert(filename+'.bed','bed')
-        description = "UCSC-BED track of %s' rpkm for group `%s'" % (feature_type,g)
-        description = set_file_descr(feature_type.lower()+"_"+g+".bed", step="pileup", type="bed", \
-                                     groupId=group_ids[g], gdv='1', comment=description)
-        ex.add(filename+'.bed', description=description)
+            # SQL track
+            with track.new(filename+'.sql') as t:
+                t.datatype = 'quantitative'
+                t.chrmeta = assembly.chrmeta
+                lines = [l for l in lines if (l[-1]!=0.0 and l[0] in t.chrmeta)]
+                lines.sort(key=lambda x: x[1]) # sort w.r.t start
+                lines = fusion(iter(lines))
+                for x in lines:
+                    t.write(x[0],[(x[1],x[2],x[3])],fields=["start","end","score"])
+            description = "SQL track of %s'rpkm for group `%s'" % (feature_type,g)
+            description = set_file_descr(feature_type.lower()+"_"+g+".sql", step="pileup", type="sql", \
+                                         groupId=group_ids[g], gdv='1', comment=description)
+            ex.add(filename+'.sql', description=description)
+            # UCSC-BED track
+            with track.load(filename+'.sql') as t:
+                t.convert(filename+'.bed','bed')
+            description = "UCSC-BED track of %s' rpkm for group `%s'" % (feature_type,g)
+            description = set_file_descr(feature_type.lower()+"_"+g+".bed", step="pileup", type="bed", \
+                                         groupId=group_ids[g], gdv='1', comment=description)
+            ex.add(filename+'.bed', description=description)
     print feature_type+": Done successfully."
 
 #@timer
