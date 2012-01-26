@@ -180,37 +180,30 @@ def fusion(X):
     This is to avoid having overlapping coordinates of features from both DNA strands,
     which some genome browsers cannot handle for quantitative tracks.
     """
-    for x in X: break # moves forward 1 step
-    lastend = x[1]
-    is_alone = True
+    for x in X: break # take first available element
+    c = x[0]
+    last = x[1]
+    last_was_alone = True
     for y in X:
-        if y[1] <= x[2]: # if start_y < end_x
-            is_alone = False
-            z = list(x)
-            # First piece (x_0,y_1)
-            z[1] = lastend
-            z[2] = y[1]
-            yield tuple(z)
-            # Intersection (y_0,y_1) or (y_0,x_1)
-            z[1] = y[1]
-            z[3] = x[3] + y[3]  # add scores
-            if x[2] > y[2]:     # y is embedded in x
-                z[2] = y[2]
-                yield tuple(z)
+        if y[1] <= x[2]:
+            yield (c,last,y[1],x[3])
+            if y[2] < x[2]:     # y is embedded in x
+                yield (c,y[1],y[2],x[3]+y[3])
+                last = y[2]
             else:               # y exceeds x
-                z[2] = x[2]
-                yield tuple(z)
-                # Last piece, if y finishes out of x
-                z = list(y)
-                z[1] = x[2]
-                yield tuple(z)
-            lastend = z[2]
+                yield (c,y[1],x[2],x[3]+y[3])
+                last = x[2]
+                x = y
+            last_was_alone = False
         else:
-            if is_alone:
-                yield x
+            if last_was_alone: yield x
+            else: yield (c,last,x[2],x[3])
             x = y
-            is_alone = True
-    yield x
+            last_was_alone = True
+    if last_was_alone:
+        yield x
+    else:
+        yield (c,last,x[2],x[3])
 
 def save_results(ex, cols, conditions, group_ids, assembly, header=[], feature_type='features'):
     """Save results in a tab-delimited file, one line per feature, one column per run.

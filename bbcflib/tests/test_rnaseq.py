@@ -24,33 +24,103 @@ class Assem(object):
 
 
 class Test_Fusion(unittest.TestCase):
-    def setUp(self):
-        #X = [(0,30,'X',5.,-1),(5,10,'Y1',4.,1),(15,20,'Y2',3.,1),(25,35,'Y3',8.,1),(50,60,'Z',1.,-1)]
-        #self.track_name = 'test.sql'
-        #if os.path.exists(self.track_name):
-        #    os.remove(self.track_name)
-        #with track.new(self.track_name) as q1:
-        #    q1.datatype = "signal"
-        #    q1.write('chr1', X)
-        self.X = [('c',0,30,5.),('c',5,10,4.),('c',15,20,3.),('c',25,35,8.),('c',50,60,1.)]
+    """
+     0  5  10 15 20 25 30    40    50    60    70    80    90
+     .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .
+    |******************---------------******---*********---***|
+    |---***---***---******---------******---------***---------|
+    """
+    #def setUp(self):
+    #    self.X = [('c',0,30,5.),('c',5,10,4.),('c',15,20,3.),('c',25,35,8.),('c',50,60,1.),
+    #              ('c',55,65,3.),('c',70,85,8.),('c',75,80,3.),('c',90,95,2.)]
+
+    #def test_fusion(self):
+    #    T = fusion(iter(self.X))
+    #    T = [s for s in T]
+    #    print T
+    #    expected = [('c',0,5,5.),('c',5,10,9.),('c',10,15,5.),('c',15,20,8.),
+    #                ('c',20,25,5.),('c',25,30,13.),('c',30,35,8.),('c',50,55,1.),
+    #                ('c',55,60,4.),('c',70,75,8.),('c',75,80,11.),('c',80,85,8.),('c',90,95,2.)]
+    #    self.assertEqual(T,expected)
 
     def test_fusion(self):
-        #with track.load(self.track_name) as t:
-        #    table = t.read('chr1')
-        #    L = iter([d.data for d in table])
-        #T = fusion(L)
-        #T = [s for s in T]
-        #print T
-        #expected = [(0,5,'X',5.,-1),(5,10,'X+Y1',9.,0),(10,15,'X',5.,-1),(15,20,'X+Y2',8.,0),
-        #            (20,25,'X',5.,-1),(25,30,'X+Y3',13.,0),(30,35,'Y3',8.,1),(50,60,'Z',1,-1)]
-        T = fusion(iter(self.X))
-        T = [s for s in T]
-        expected = [('c',0,5,5.),('c',5,10,9.),('c',10,15,5.),('c',15,20,8.),
-                    ('c',20,25,5.),('c',25,30,13.),('c',30,35,8.),('c',50,60,1.)]
-        self.assertEqual(T,expected)
-
-    #def tearDown(self):
-    #    os.remove(self.track_name)
+        c = 'c'
+        print "test1"
+        """
+        |***---***---***|
+        """
+        X = [(c,0,5,5.),(c,10,15,4.),(c,20,25,2.)]
+        R = [(c,0,5,5.),(c,10,15,4.),(c,20,25,2.)]
+        T = [s for s in fusion(iter(X))]
+        self.assertEqual(T, R)
+        print "test2"
+        """
+        |*********|
+        |---***---|
+        """
+        X = [(c,0,15,5.),(c,5,10,4.)]
+        R = [(c,0,5,5.),(c,5,10,9.),(c,10,15,5.)]
+        T = [s for s in fusion(iter(X))]
+        self.assertEqual(T, R)
+        print "test3"
+        """
+        |***************|
+        |---***---***---|
+        """
+        X = [(c,0,25,5.),(c,5,10,4.),(c,15,20,2.)]
+        R = [(c,0,5,5.),(c,5,10,9.),(c,10,15,5.),(c,15,20,7.),(c,20,25,5.)]
+        T = [s for s in fusion(iter(X))]
+        self.assertEqual(T, R)
+        print "test4"
+        """
+        |*********---***|
+        |---***---------|
+        """
+        X = [(c,0,15,5.),(c,5,10,4.),(c,20,25,2.)]
+        R = [(c,0,5,5.),(c,5,10,9.),(c,10,15,5.),(c,20,25,2.)]
+        T = [s for s in fusion(iter(X))]
+        self.assertEqual(T, R)
+        print "test5"
+        """
+         .  .  .  .  .  .  .  .
+        |***************---***|
+        |---***---***---------|
+        """
+        X = [(c,0,25,5.),(c,5,10,4.),(c,15,20,2.),(c,30,35,1.)]
+        R = [(c,0,5,5.),(c,5,10,9.),(c,10,15,5.),(c,15,20,7.),(c,20,25,5.),(c,30,35,1.)]
+        T = [s for s in fusion(iter(X))]
+        self.assertEqual(T, R)
+        print "test6"
+        """
+        |******---|
+        |---******|
+        """
+        X = [(c,0,10,5.),(c,5,15,4.)]
+        R = [(c,0,5,5.),(c,5,10,9.),(c,10,15,4.)]
+        T = [s for s in fusion(iter(X))]
+        self.assertEqual(T, R)
+        print "test7"
+        """
+         .  .  .  .  .  .
+        |******------***|
+        |---******------|
+        """
+        X = [(c,0,10,5.),(c,5,15,4.),(c,20,25,2.)]
+        R = [(c,0,5,5.),(c,5,10,9.),(c,10,15,4.),(c,20,25,2.)]
+        T = [s for s in fusion(iter(X))]
+        self.assertEqual(T, R)
+        """
+         .  .  .  .  .  .
+        |******---******|
+        |---*********---|
+        """
+        print "test8"
+        X = [(c,0,10,5.),(c,5,20,4.),(c,15,25,2.)]
+        R = [(c,0,5,5.),(c,5,10,9.),(c,10,15,4.),(c,15,20,6.),(c,20,25,2.)]
+        T = [s for s in fusion(iter(X))]
+        print T
+        print R
+        self.assertEqual(T, R)
 
 
 class Test_Expressions1(unittest.TestCase):
