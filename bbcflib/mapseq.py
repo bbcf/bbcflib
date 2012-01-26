@@ -128,7 +128,10 @@ def run_fastqc( ex, job, via='lsf' ):
     for gid,group in job.groups.iteritems():
         descr['groupId'] = gid
         for rid,run in group['runs'].iteritems():
-            rname = group['name']+"_"+group['run_names'].get(rid,str(rid))
+            rname = group['name']
+            if len(group['runs'])>1:
+                rname += "_"
+                rname += group['run_names'].get(rid,str(rid))
             if isinstance(run,tuple):
                 qcreport = futures[gid][rid][0].wait()
                 ex.add( qcreport, 

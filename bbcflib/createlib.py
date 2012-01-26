@@ -44,7 +44,7 @@ def load_libraryParamsFile(paramsfile):
 
 
 @program
-def call_getRestEnzymeOccAndSeq(assembly_or_fasta,prim_site,sec_site,l_seg, remote_working_directory, l_type='typeI'):
+def call_getRestEnzymeOccAndSeq(assembly_or_fasta,prim_site,sec_site,l_seg, l_type='typeI'):
 	'''
 		Will create segments and fragments files of the new library from the genome sequence (via a call to getRestEnzymeOccAndSeq.pl)
 		The genome sequence (assembly_or_fasta) can be given either as a genrep assembly or as a fasta file.
@@ -57,11 +57,11 @@ def call_getRestEnzymeOccAndSeq(assembly_or_fasta,prim_site,sec_site,l_seg, remo
 		print("Will prepare fasta file")
 		fasta_path=assembly_or_fasta.fasta_path()
 		tar = tarfile.open(fasta_path)
-		tar.extractall(path=remote_working_directory)
+		tar.extractall()
 		allfiles=[]
 		for finfo in tar.getmembers():
         		if not finfo.isdir():
-                		allfiles.append(remote_working_directory+finfo.name)
+                		allfiles.append(finfo.name)
 		fasta_file=cat(allfiles)
 		tar.close()
 	else:
@@ -211,22 +211,13 @@ def get_libfile(id_lib):
 	#id_lib=13
 	for lib in libs_dict:
 		if lib['library']['id']==int(id_lib):
-			 return lib['library']['filename']
+                        return lib['library']['filename']
 	return None
-
-@program
-def call_gunzip(path):
-	"""
-	unzip gzip file
-	"""
-	output=unique_filename_in()
-	call = ["gunzip",path]
-	return {"arguments": call, "return_value": output}
 
 # *** main call to create the library
 def createLibrary(ex,fasta_allchr,params):
 	'''
-		main call to create the library
+        Main call to create the library
 	'''
 	if len(params['primary'])<2 or len(params['secondary'])<2:
 		print('Some parameters are missing, cannot create the library')
@@ -234,7 +225,7 @@ def createLibrary(ex,fasta_allchr,params):
 		return [None,None,None,None]
 	print('Will call call_getRestEnzymeOccAndSeq')
 	print(fasta_allchr)
-	libfiles=call_getRestEnzymeOccAndSeq(ex,fasta_allchr,params['primary'],params['secondary'],params['length'], ex.remote_working_directory + "/", params['type'])
+	libfiles=call_getRestEnzymeOccAndSeq(ex,fasta_allchr,params['primary'],params['secondary'],params['length'], params['type'])
 	print('parse fragment file to create segment info bed file and fragment bed file\n')
 	bedfiles=parse_fragFile(libfiles[1])
 	print('calculate coverage in repeats for segments')
