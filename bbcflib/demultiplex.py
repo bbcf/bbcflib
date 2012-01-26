@@ -221,7 +221,7 @@ def workflow_groups(ex, job, gl):
 		file_names[gid] = {}
 
 		lib_dir="/scratch/cluster/monthly/htsstation/demultiplexing/" + str(job.id) + "/"
-		primersFilename = 'group_' + group['name'] + "_primer_file.fa"
+		primersFilename = 'group_' + group['name'] + "_barcode_file.fa"
 		primersFile = lib_dir + primersFilename
 		ex.add(primersFile,description=set_file_descr(primersFilename,group=group['name'],step="init",type="fa"))
 
