@@ -176,7 +176,7 @@ def density_to_countsPerFrag(ex,density_file,density_name,assembly,reffile,regTo
                 t.convert(sortedBedGraph_sql+".sql",'sql')
 	ex.add(sortedBedGraph_sql+".sql",description=set_file_descr("res_segToFrag_"+density_name+".sql",groupId=grpId,step="norm_counts_per_frag",type="sql",view="admin",gdv="1",comment="bedGraph sorted"))
 	step += 1
-	return [output,countsPerFragFile,res,resBedGraph,sortedBedGraph,sortedBedGraph_sql]
+	return [output,countsPerFragFile,res,resBedGraph,resBedGraph_all,sortedBedGraph,sortedBedGraph_sql]
 
 # Main 
 #-------------------------------------------#
@@ -252,10 +252,10 @@ def workflow_groups(ex, job, primers_dict, assembly, mapseq_files, mapseq_url, s
 			resfiles=density_to_countsPerFrag(ex,mapseq_files[gid][rid]['wig']['merged'],mapseq_files[gid][rid]['libname'],assembly,reffile,regToExclude,ex.remote_working_directory+'/',script_path, via)
 			processed['4cseq']=resfiles
 			
-			print("Will proceed to profile correction of file "+str(resfiles[4]))
+			print("Will proceed to profile correction of file "+str(resfiles[5]))
 			profileCorrectedFile=unique_filename_in()
 			reportFile_profileCorrection=unique_filename_in()
-			profileCorrection.nonblocking(ex,resfiles[4],primers_dict[mapseq_files[gid][rid]['libname']]['baitcoord'],mapseq_files[gid][rid]['libname'],profileCorrectedFile,reportFile_profileCorrection,script_path,via=via).wait()
+			profileCorrection.nonblocking(ex,resfiles[5],primers_dict[mapseq_files[gid][rid]['libname']]['baitcoord'],mapseq_files[gid][rid]['libname'],profileCorrectedFile,reportFile_profileCorrection,script_path,via=via).wait()
 		        ex.add(profileCorrectedFile,description=set_file_descr("res_segToFrag_"+mapseq_files[gid][rid]['libname']+"_profileCorrected.bedGraph",groupId=gid,step="profile_correction",type="bedGraph",comment="profile corrected data;bedGraph sorted",ucsc='1'))
 			ex.add(reportFile_profileCorrection,description=set_file_descr("report_profileCorrection_"+mapseq_files[gid][rid]['libname']+".pdf",groupId=gid,step="profile_correction",type="pdf",comment="report profile correction"))
 			profileCorrectedFile_sql=unique_filename_in()+".sql"
@@ -269,7 +269,7 @@ def workflow_groups(ex, job, primers_dict, assembly, mapseq_files, mapseq_url, s
         		nFragsPerWin=str(group['window_size'])
 			print("Window size="+nFragsPerWin)
         		outputfile=unique_filename_in()
-		        smoothFragFile(ex,resfiles[4],nFragsPerWin,mapseq_files[gid][rid]['libname'],outputfile,regToExclude,script_path)
+		        smoothFragFile(ex,resfiles[5],nFragsPerWin,mapseq_files[gid][rid]['libname'],outputfile,regToExclude,script_path)
 			ex.add(outputfile,description=set_file_descr("res_segToFrag_"+mapseq_files[gid][rid]['libname']+"_smoothed_"+nFragsPerWin+"FragsPerWin.bedGraph",groupId=gid,step="smoothing",type="bedGraph",comment="smoothed data, before profile correction",ucsc='1'))
 
 			smoothedFile_sql=unique_filename_in()+".sql"
