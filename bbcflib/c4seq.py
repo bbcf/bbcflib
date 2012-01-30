@@ -132,27 +132,31 @@ def density_to_countsPerFrag(ex,density_file,density_name,assembly,reffile,regTo
 
 	print("will call mean_score_by_feature for t1="+density_file+"(name="+density_name+") and t2="+reffile)
         output = unique_filename_in()
+        chlist = []
         from gMiner.operations.genomic_manip.scores import mean_score_by_feature
         with track.Track(density_file) as scores:
                 with track.Track(reffile) as features:
                         with track.new(output,format='sql',chrmeta=assembly.chrmeta) as out:
                                 for ch in scores:
+                                        chlist.append(ch)
                                         out.write(ch,mean_score_by_feature()(
                                                         scores.read(ch),
                                                         features.read(ch,fields=['start', 'end', 'name'])),
                                                   fields=['start', 'end', 'name', 'score'])
+	countsPerFragFile=unique_filename_in()+".bed"
+	with track.load(output,'sql') as t:
+		t.convert(countsPerFragFile,'bed')
+
+	ex.add(countsPerFragFile,description=set_file_descr("meanScorePerFeature_"+density_name+".bed",groupId=grpId,step="density",type="bed",ucsc="1"))
         connection = sqlite3.connect(output)
         cursor = connection.cursor()
 	cursor.execute("UPDATE 'attributes' SET value='%s' WHERE key='%s'"%('quantitative','datatype'))        
+	[cursor.execute("UPDATE '%s' SET name=''" %ch) for ch in chlist]
 	connection.commit()
 	cursor.close()
         connection.close()
         ex.add(output,description=set_file_descr("meanScorePerFeature_"+density_name+".sql",groupId=grpId,step="norm_counts_per_frag",type="sql",view="admin",gdv='1'))
 
-	countsPerFragFile=unique_filename_in()+".bed"
-	with track.load(output,'sql') as t:
-		t.convert(countsPerFragFile,'bed')
-	ex.add(countsPerFragFile,description=set_file_descr("meanScorePerFeature_"+density_name+".bed",groupId=grpId,step="density",type="bed",ucsc="1"))
 	step += 1
 
 	# calculate normalised score per fragments (segToFrag)
