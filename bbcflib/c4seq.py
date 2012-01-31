@@ -56,7 +56,7 @@ def parseSegToFrag(infile):
 	with open(infile,"r") as f:
 		for s in f:
 			s=s.strip('\n')
-			if re.search(r'IsValid',s.split('\t')[2]) :
+			if re.search(r'IsValid',s.split('\t')[2]) and not re.search(r'_and_',s.split('\t')[8]) and not re.search(r'BothRepeats',s.split('\t')[8]) and not re.search(r'notValid',s.split('\t')[8]):
 				coord=((s.split('\t')[1]).split(':')[1]).split('-')
 				out_all.write((s.split('\t')[1]).split(':')[0]+'\t'+str(int(coord[0])-1)+'\t'+coord[1]+'\t'+s.split('\t')[11]+'\n')
 				if float(s.split('\t')[11])>0.0:
