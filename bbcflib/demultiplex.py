@@ -220,13 +220,13 @@ def workflow_groups(ex, job, gl):
 		step = 0
 		file_names[gid] = {}
 
-		lib_dir="/scratch/cluster/monthly/htsstation/demultiplexing/" + str(job.id) + "/"
+                lib_dir = os.path.split(ex.remote_working_directory)[0]
 		primersFilename = 'group_' + group['name'] + "_barcode_file.fa"
-		primersFile = lib_dir + primersFilename
+		primersFile = os.path.join(lib_dir,primersFilename)
 		ex.add(primersFile,description=set_file_descr(primersFilename,group=group['name'],step="init",type="fa"))
 
 		paramsFilename = 'group_' + group['name'] + "_param_file.txt"
-		paramsFile = lib_dir + paramsFilename
+		paramsFile = os.path.join(lib_dir,paramsFilename)
 		ex.add(paramsFile,description=set_file_descr(paramsFilename,group=group['name'],step="init",type="txt"))
 		params=load_paramsFile(paramsFile)
 		print(params)
