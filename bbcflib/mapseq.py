@@ -79,8 +79,6 @@ from .track import Track, new
 
 # Other modules #
 import pysam
-from numpy      import  cumsum, exp, array
-from scipy.misc import  factorial
 from bein       import  program, ProgramFailed, MiniLIMS
 from bein.util  import  add_pickle, touch, split_file, count_lines
 
@@ -425,6 +423,8 @@ def poisson_threshold(mu, cutoff=0.95, max_terms=100):
     It will calculate no farther than k = 'max_terms'.  If it reaches
     that point, it raises an exception.
     """
+    from scipy.misc import  factorial
+    from numpy      import  cumsum, exp, array
     p = cumsum( exp(-mu) * array([mu**k / float(factorial(k)) for k in range(0,max_terms)] ))
     n = len(p[p <= cutoff])
     if n == max_terms:
