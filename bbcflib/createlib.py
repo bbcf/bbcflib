@@ -21,7 +21,7 @@ def load_libraryParamsFile(paramsfile):
 	paramslib={}
 	with open(paramsfile) as f:
 		for s in f.readlines():
-			s=s.strip('\n')
+			s=s.strip()
 			if re.search('Library name',s.split('=')[0]):
 				paramslib['name']=s.split('=')[1]
 			elif re.search('Genome name',s.split('=')[0]):
@@ -243,11 +243,11 @@ def createLibrary(ex,fasta_allchr,params):
 
 def get_libForGrp(ex,group,fasta_or_assembly,new_libraries, job_id, grpId):
 	#wd_archive="/archive/epfl/bbcf/mleleu/pipeline_vMarion/pipeline_3Cseq/vWebServer_Bein/" #temporary: will be /scratch/cluster/monthly/htsstation/4cseq/job.id
-	lib_dir = "/scratch/cluster/monthly/htsstation/4cseq/" + str(job_id) + "/"
+	lib_dir = os.path.split(ex.remote_working_directory)[0]
 	print "Group:\n"
 	print group
 	if 'library_param_file' in group and group['library_param_file'] != "" :
-		library_filename = lib_dir + 'group_' + group['name'] + "_paramsFileLibrary.txt"
+		library_filename = os.path.join(lib_dir,'group_' + group['name'] + "_paramsFileLibrary.txt")
 		paramslib=load_libraryParamsFile(library_filename);
 		lib_id=lib_exists(paramslib)
 		ex_libfile=lib_exists(paramslib,new_libraries,returnType="filename")
