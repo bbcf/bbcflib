@@ -470,6 +470,26 @@ def remove_duplicate_reads( bamfile, chromosomes,
     return outname
 
 ########
+# BWA
+########
+@program
+def bwa_sw(reads_path, reference_path, sam_path, z=7):
+    """Calls the BWA-SW aligner.
+    http://bio-bwa.sourceforge.net/
+
+    :param reads_path: The path to the short reads.
+    :type reads_path: str
+    :param reference_path: The path to the reference to map to.
+    :type reference_path: str
+    :param sam_path: The place were the SAM file will be created.
+    :type sam_path: str
+    :param z: A balance between quality and speed. Small z is speed.
+    :type z: int
+    """
+    return {'arguments': ["bwa", "bwasw", "-z", str(z), "-f", sam_path, reference_path, reads_path],
+            'return_value': sam_path}
+
+########
 # Bowtie
 ########
 def add_bowtie_index(execution, files, description="", alias=None, index=None):
