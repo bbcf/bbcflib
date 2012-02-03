@@ -308,7 +308,7 @@ def workflow_groups( ex, job_or_dict, mapseq_files, assembly, script_path='',
                 mapped[k]['libname'] = group_name+"_"+str(k)
             if not 'stats' in mapped[k]:
                 futures[k] = mapseq.bamstats.nonblocking( ex, mapped[k]["bam"], via=via )
-            if mapped[k].get('poisson_threshold')>0:
+            if mapped[k].get('poisson_threshold',-1)>0:
                 ptruns.append(mapped[k]['poisson_threshold'])
         if len(ptruns)>0:
             p_thresh['group_name'] = sum(ptruns)/len(ptruns)
