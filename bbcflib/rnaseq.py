@@ -236,12 +236,12 @@ def save_results(ex, cols, conditions, group_ids, assembly, header=[], feature_t
         chr = cols[-1]
         rpkm = {}; output_sql = {}
         for i in range(ncond):
-            g = conditions[i].split('.')[0]
-            nruns = groups.count(g)
-            rpkm[g] = asarray(rpkm.get(g,zeros(len(start)))) + asarray(cols[i+ncond+1]) / nruns
-            output_sql[g] = output_sql.get(g,unique_filename_in())
-        for g,filename in output_sql.iteritems():
-            lines = zip(*[chr,start,end,rpkm[g]])
+            group = conditions[i].split('.')[0]
+            nruns = groups.count(group)
+            rpkm[group] = asarray(rpkm.get(group,zeros(len(start)))) + asarray(cols[i+ncond+1]) / nruns
+            output_sql[group] = output_sql.get(group,unique_filename_in())
+        for group,filename in output_sql.iteritems():
+            lines = zip(*[chr,start,end,rpkm[group]])
             # SQL track
             with track.new(filename+'.sql') as t:
                 t.datatype = 'quantitative'
@@ -251,16 +251,16 @@ def save_results(ex, cols, conditions, group_ids, assembly, header=[], feature_t
                 lines = fusion(iter(lines))
                 for x in lines:
                     t.write(x[0],[(x[1],x[2],x[3])],fields=["start","end","score"])
-            description = "SQL track of %s'rpkm for group `%s'" % (feature_type,g)
-            description = set_file_descr(feature_type.lower()+"_"+g+".sql", step="pileup", type="sql", \
-                                         groupId=group_ids[g], gdv='1', comment=description)
+            description = "SQL track of %s'rpkm for group `%s'" % (feature_type,group)
+            description = set_file_descr(feature_type.lower()+"_"+group+".sql", step="pileup", type="sql", \
+                                         groupId=group_ids[group], gdv='1', comment=description)
             ex.add(filename+'.sql', description=description)
             # UCSC-BED track
             with track.load(filename+'.sql') as t:
                 t.convert(filename+'.bed','bed')
-            description = "UCSC-BED track of %s' rpkm for group `%s'" % (feature_type,g)
-            description = set_file_descr(feature_type.lower()+"_"+g+".bed", step="pileup", type="bed", \
-                                         groupId=group_ids[g], gdv='1', comment=description)
+            description = "UCSC-BED track of %s' rpkm for group `%s'" % (feature_type,group)
+            description = set_file_descr(feature_type.lower()+"_"+group+".bed", step="pileup", type="bed", \
+                                         groupId=group_ids[group], gdv='1', comment=description)
             ex.add(filename+'.bed', description=description)
     print feature_type+": Done successfully."
 
@@ -402,7 +402,7 @@ def estimate_size_factors(counts):
 
 #@timer
 def rnaseq_workflow(ex, job, assembly, bam_files, pileup_level=["exons","genes","transcripts"],
-                    via="lsf", unmapped=False):
+                    via="lsf", unmapped=True):
     """
     Main function of the workflow.
 
@@ -462,7 +462,7 @@ def rnaseq_workflow(ex, job, assembly, bam_files, pileup_level=["exons","genes",
 
     """ Map remaining reads to transcriptome """
     additionals = {}
-    if unmapped:
+    if unmapped and bam_files[gid][rid].get('unmapped_fastq'):
         print "Get unmapped reads"
         unmapped_bam={}
         refseq_path = assembly.index_path
@@ -472,7 +472,7 @@ def rnaseq_workflow(ex, job, assembly, bam_files, pileup_level=["exons","genes",
             for rid, run in group['runs'].iteritems():
                 k +=1
                 cond = group_names[gid]+'.'+str(k)
-                unmapped_fastq = bam_files[gid][rid].get('unmapped_fastq')
+                unmapped_fastq = bam_files[gid][rid]['unmapped_fastq']
                 unmapped_bam[cond] = mapseq.map_reads(ex, unmapped_fastq, {}, refseq_path, \
                       remove_pcr_duplicates=False, bwt_args=[], via=via)['bam']
                 if unmapped_bam[cond]:
