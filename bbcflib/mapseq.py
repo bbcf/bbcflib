@@ -74,7 +74,7 @@ import os, re, json, shutil, gzip, tarfile, pickle, urllib
 
 # Internal modules #
 from . import frontend, genrep, daflims
-from bbcflib.common import get_files, cat, set_file_descr, merge_sql, gzipfile, unique_filename_in
+from bbcflib.common import cat, set_file_descr, merge_sql, gzipfile, unique_filename_in
 from .track import Track, new
 
 # Other modules #
@@ -89,8 +89,8 @@ demultiplex_path = "/data/htsstation/demultiplexing/demultiplexing_minilims.file
 ###############
 @program
 def fastq_dump(filename, options=None):
-    """ Binds ``fastq-dump`` to convert *sra* (short reads archive) to *fastq* format. 
-    """ 
+    """ Binds ``fastq-dump`` to convert *sra* (short reads archive) to *fastq* format.
+    """
     if not(isinstance(options,list)): options = []
     suffix = '.fastq'
     if "--gzip" in options: suffix += '.gz'
@@ -104,7 +104,7 @@ def fastqc(fastqfile,outdir=None,options=None):
     """
     outfile = re.sub(".fastq","",os.path.basename(fastqfile))+'_fastqc.zip'
     if not(isinstance(options,list)): options = []
-    if outdir and os.path.isdir(outdir): 
+    if outdir and os.path.isdir(outdir):
         outfile = os.path.join(outdir,outfile)
         options += ["--outdir",outdir]
     return {'arguments': ["fastqc","--noextract"]+options+[fastqfile],'return_value': outfile}
@@ -132,14 +132,14 @@ def run_fastqc( ex, job, via='lsf' ):
                 rname += group['run_names'].get(rid,str(rid))
             if isinstance(run,tuple):
                 qcreport = futures[gid][rid][0].wait()
-                ex.add( qcreport, 
+                ex.add( qcreport,
                         description=set_file_descr(rname+"_R1_fastqc.zip",**descr) )
                 qcreport = futures[gid][rid][1].wait()
-                ex.add( qcreport, 
+                ex.add( qcreport,
                         description=set_file_descr(rname+"_R2_fastqc.zip",**descr) )
             else:
                 qcreport = futures[gid][rid].wait()
-                ex.add( qcreport, 
+                ex.add( qcreport,
                         description=set_file_descr(rname+"_fastqc.zip",**descr) )
     return None
 
@@ -250,7 +250,7 @@ def get_fastq_files( ex, job, dafl=None, set_seed_length=True):
 # BAM/SAM files
 ###############
 @program
-def sam_to_bam(sam_filename):
+def sam_to_bam(sam_filename, bam_filename=unique_filename_in()):
     """Convert *sam_filename* to a BAM file.
 
     *sam_filename* must obviously be the filename of a SAM file.
@@ -258,9 +258,7 @@ def sam_to_bam(sam_filename):
 
     Equivalent: ``samtools view -b -S -o ...``
     """
-    bam_filename = unique_filename_in()
-    return {"arguments": ["samtools","view","-b","-S","-o",
-                          bam_filename,sam_filename],
+    return {"arguments": ["samtools","view","-b","-S","-o",bam_filename,sam_filename],
             "return_value": bam_filename}
 
 @program
@@ -1273,11 +1271,8 @@ def get_bam_wig_files( ex, job, minilims=None, hts_url=None, suffix=['fwd','rev'
 #                mapped_files[gid][rid]['poisson_threshold'] = poisson_threshold( 50*stats["actual_coverage"] )
     return (mapped_files,job)
 
-
-
 #-----------------------------------#
 # This code was written by the BBCF #
 # http://bbcf.epfl.ch/              #
 # webmaster.bbcf@epfl.ch            #
 #-----------------------------------#
-
