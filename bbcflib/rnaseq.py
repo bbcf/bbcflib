@@ -188,7 +188,7 @@ def fusion(X):
     last_was_alone = True
     for y in X:
         if y[1] <= x[2]:
-            if y[1]>last: # needed in case 3 features overlap, thanks to the annotation...
+            if y[1]>last: # cheating, needed in case 3 features overlap, thanks to the annotation...
                 yield (c,last,y[1],x[3])
                 if y[2] < x[2]:     # y is embedded in x
                     yield (c,y[1],y[2],x[3]+y[3])
@@ -198,7 +198,7 @@ def fusion(X):
                     last = x[2]
                     x = y
             last_was_alone = False
-        else:                   # y is outside of x
+        else:                       # y is outside of x
             if last_was_alone:
                 yield x
             else:
@@ -250,7 +250,7 @@ def save_results(ex, cols, conditions, group_ids, assembly, header=[], feature_t
                 t.datatype = 'quantitative'
                 t.chrmeta = assembly.chrmeta
                 for chr in t.chrmeta:
-                    goodlines = [l for l in lines if (l[-1]!=0.0 and l[0]==chr and l[1]<l[2])] # "if start<end" should not be...
+                    goodlines = [l for l in lines if (l[-1]!=0.0 and l[0]==chr)]
                     #print "goodlines",goodlines
                     if goodlines:
                         goodlines.sort(key=lambda x: x[1]) # sort w.r.t start
