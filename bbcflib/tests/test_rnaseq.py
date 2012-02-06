@@ -100,7 +100,7 @@ class Test_Fusion(unittest.TestCase):
         R = [(c,0,5,5.),(c,5,10,9.),(c,10,15,4.),(c,15,20,6.),(c,20,25,2.)]
         T = [s for s in fusion(iter(X))]
         self.assertEqual(T, R)
-        print "Ultimate test"
+        print "test9"
         """
          0  5  10 15 20 25 30    40    50    60    70    80    90    100   110   120   130   140
          .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .
@@ -118,6 +118,30 @@ class Test_Fusion(unittest.TestCase):
              (c,110,115,3.),(c,115,120,5.),(c,120,125,2.),(c,125,130,8.),
              (c,130,135,2.),(c,140,145,9.)]
         self.assertEqual(T,R)
+        print "test10"
+        """
+         .  .  .  .  .  .
+        |***************|
+        |---*********---| -> |***.*********.***|
+        |------***------| -> |------(xxx)------|
+        """
+        X = [(c,0,25,5.),(c,5,20,4.),(c,10,15,2.)]
+        #R = [(c,0,5,5.),(c,5,10,9.),(c,10,15,11.),(c,15,20,6.),(c,20,25,2.)] # what it should be
+        R = [(c,0,5,5.),(c,5,20,9.),(c,20,25,5.)] # special treatment
+        T = [s for s in fusion(iter(X))]
+        self.assertEqual(T, R)
+        print "test11"
+        """
+         .  .  .  .  .  .
+        |************---|
+        |---************|
+        |------***------
+        """
+        X = [(c,0,20,5.),(c,5,25,4.),(c,10,15,2.)]
+        #R = [(c,0,5,5.),(c,5,10,9.),(c,10,15,11.),(c,15,20,6.),(c,20,25,4.)] # what it should be
+        R = [(c,0,5,5.),(c,5,20,9.),(c,20,25,4.)] # special treatment
+        T = [s for s in fusion(iter(X))]
+        self.assertEqual(T, R)
 
 
 class Test_Expressions1(unittest.TestCase):
