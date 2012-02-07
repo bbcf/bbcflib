@@ -1288,7 +1288,7 @@ def get_bam_wig_files( ex, job, minilims=None, hts_url=None, suffix=['fwd','rev'
                                      {gid: grname},
                                      script_path,
                                      set_file_descr(grname+"_mapping_report.pdf",step='import_data',type='pdf',groupId=gid) )
-#                mapped_files[gid][rid]['poisson_threshold'] = poisson_threshold( 50*stats["actual_coverage"] )
+                mapped_files[gid][rid]['poisson_threshold'] = poisson_threshold( 50*stats["actual_coverage"] )
     return (mapped_files,job)
 
 #-----------------------------------#

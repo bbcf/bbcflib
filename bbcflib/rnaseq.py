@@ -407,7 +407,7 @@ def estimate_size_factors(counts):
     return res, size_factors
 
 #@timer
-def rnaseq_workflow(ex, job, assembly, bam_files, pileup_level=["exons","genes","transcripts"],
+def rnaseq_workflow(ex, job, bam_files, pileup_level=["exons","genes","transcripts"],
                     via="lsf", unmapped=True):
     """
     Main function of the workflow.
@@ -416,7 +416,6 @@ def rnaseq_workflow(ex, job, assembly, bam_files, pileup_level=["exons","genes",
 
     :param ex: the bein's execution Id.
     :param job: a Job object (or a dictionary of the same form) as returned from HTSStation's frontend.
-    :param assembly: the assembly Id of the species, string or int (e.g. 'hg19' or 76).
     :param bam_files: a complicated dictionary such as returned by mapseq.get_bam_wig_files.
     :param unmapped: the name or path to a fastq file containing the unmapped reads.
     :param pileup_level: a string or array of strings indicating the features you want to compare.
@@ -512,7 +511,7 @@ def rnaseq_workflow(ex, job, assembly, bam_files, pileup_level=["exons","genes",
             k+=1
             cond = group_names[gid]+'.'+str(k)
             exon_pileup = build_pileup(f['bam'], exons)
-            if unmapped:
+            if unmapped and cond in additionals:
                 for a,x in additionals[cond].iteritems():
                     exon_pileup[a] = exon_pileup.get(a,0) + x
             exon_pileups[cond] = [exon_pileup[e] for e in exonsID] # {cond1.run1: [pileup], cond1.run2: [pileup]...}
