@@ -34,7 +34,7 @@ def new_project(mail, key, name, assembly_id, serv_url='http://gdv.epfl.ch/pygdv
                }
     return send_it(query_url, request)
 
-def new_track(mail, key, assembly_id=None, project_id=None, urls=None, url=None, fsys=None, fsys_list=None, serv_url='http://gdv.epfl.ch/pygdv', file_names=None, force=False):
+def new_track(mail, key, assembly_id=None, project_id=None, urls=None, url=None, fsys=None, fsys_list=None, serv_url='http://gdv.epfl.ch/pygdv', file_names=None, force=False, extension=None, extensions=None):
     '''
     Create a new track on GDV.
     :param mail : login in TEQUILA
@@ -43,6 +43,8 @@ def new_track(mail, key, assembly_id=None, project_id=None, urls=None, url=None,
     :param assembly_id : the assembly identifier in GenRep (must be BBCF_VALID). Could be optional if a project_id is specified.
     :param project_id : the project identifier to add the track to.
     :param url : an url pointing to a file.
+    :param extension : extension of the file provided.
+    :param extensions : a list of extensions, separated by whitespace.
     :param urls : a list of urls separated by whitespaces. 
     :param fsys : if the file is on the same file system, a filesystem path
     :param fsys_list :  a list of fsys separated by whitespaces.
@@ -71,6 +73,11 @@ def new_track(mail, key, assembly_id=None, project_id=None, urls=None, url=None,
         request['file_names'] = file_names
     if force :
         request['force'] = force
+    if extension :
+        request['extension'] = extension
+    if extensions :
+        request['extensions'] = extensions 
+        
     return send_it(query_url, request)
 
 def send_it(url, request, return_type='json'):
