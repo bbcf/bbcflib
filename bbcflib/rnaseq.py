@@ -234,8 +234,8 @@ def save_results(ex, cols, conditions, group_ids, assembly, header=[], feature_t
     if feature_type in ['GENES','EXONS']:
         ncond = len(conditions)
         groups = [c.split('.')[0] for c in conditions]
-        start = int(cols[2*ncond+1])
-        end = int(cols[2*ncond+2])
+        start = cols[2*ncond+1]
+        end = cols[2*ncond+2]
         chr = cols[-1]
         rpkm = {}; output_sql = {}
         for i in range(ncond):
