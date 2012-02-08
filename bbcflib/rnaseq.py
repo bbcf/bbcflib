@@ -556,7 +556,7 @@ def rnaseq_workflow(ex, job, bam_files, pileup_level=["exons","genes","transcrip
 
     """ Get scores of transcripts from exons, using non-negative least-squares """
     if "transcripts" in pileup_level:
-        header = ["TranscriptID"] + hconds + ["Start","End","GeneID","GeneName","Chromosome"]
+        header = ["TranscriptID"] + hconds + ["GeneID","Start","End","GeneName","Chromosome"]
         (tcounts, trpkm) = transcripts_expression(exons_data, exon_lengths,
                    transcript_mapping, trans_in_gene, exons_in_trans,len(conditions))
         transID = tcounts.keys()
