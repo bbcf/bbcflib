@@ -545,11 +545,11 @@ def rnaseq_workflow(ex, job, bam_files, pileup_level=["exons","genes","transcrip
 
     """ Get scores of genes from exons """
     if "genes" in pileup_level:
-        header = ["GeneID"] + hconds + ["Start","End","GeneName","Chromosome"]
+        header = ["GeneID"] + hconds + ["GeneName","Start","End","Chromosome"]
         (gcounts, grpkm) = genes_expression(exons_data, exon_to_gene, len(conditions))
         genesID = gcounts.keys()
-        genes_data = [[g]+list(gcounts[g])+list(grpkm[g])+list(gene_mapping.get(g,("NA",)*4)) for g in genesID]
-        genes_data = sorted(genes_data, key=itemgetter(nc+4,nc)) # sort w.r.t. chromosome, then start
+        genes_data = [[g,gcounts[g],grpkm[g]]+list(gene_mapping.get(g,("NA",)*4)) for g in genesID]
+        genes_data = sorted(genes_data, key=itemgetter(6,4)) # sort w.r.t. chromosome, then start
         (genesID,gcounts,grpkm,gname,gstart,gend,gchr) = zip(*genes_data)
         genes_data = [genesID]+list(zip(*gcounts))+list(zip(*grpkm))+[gstart,gend,gname,gchr]
         save_results(ex, genes_data, conditions, group_ids, assembly, header=header, feature_type="GENES")
