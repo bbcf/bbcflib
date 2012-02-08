@@ -234,8 +234,8 @@ def save_results(ex, cols, conditions, group_ids, assembly, header=[], feature_t
     if feature_type in ['GENES','EXONS']:
         ncond = len(conditions)
         groups = [c.split('.')[0] for c in conditions]
-        start = cols[2*ncond+1]
-        end = cols[2*ncond+2]
+        start = int(cols[2*ncond+1])
+        end = int(cols[2*ncond+2])
         chr = cols[-1]
         rpkm = {}; output_sql = {}
         for i in range(ncond):
@@ -537,26 +537,25 @@ def rnaseq_workflow(ex, job, bam_files, pileup_level=["exons","genes","transcrip
 
     """ Print counts for exons """
     if "exons" in pileup_level:
-        header = ["ExonID"] + hconds + ["Start","End","GeneID","GeneName","Chromosome"]
         exons_data = zip(*exons_data)
         exons_data = sorted(exons_data, key=itemgetter(nc+5,nc+1)) # sort w.r.t. chromosome, then start
+        header = ["ExonID"] + hconds + ["Start","End","GeneID","GeneName","Chromosome"]
         exons_data = zip(*exons_data)
         save_results(ex, exons_data, conditions, group_ids, assembly, header=header, feature_type="EXONS")
 
     """ Get scores of genes from exons """
     if "genes" in pileup_level:
-        header = ["GeneID"] + hconds + ["GeneName","Start","End","Chromosome"]
         (gcounts, grpkm) = genes_expression(exons_data, exon_to_gene, len(conditions))
         genesID = gcounts.keys()
         genes_data = [[g,gcounts[g],grpkm[g]]+list(gene_mapping.get(g,("NA",)*4)) for g in genesID]
         genes_data = sorted(genes_data, key=itemgetter(6,4)) # sort w.r.t. chromosome, then start
         (genesID,gcounts,grpkm,gname,gstart,gend,gchr) = zip(*genes_data)
+        header = ["GeneID"] + hconds + ["Start","End","GeneName","Chromosome"]
         genes_data = [genesID]+list(zip(*gcounts))+list(zip(*grpkm))+[gstart,gend,gname,gchr]
         save_results(ex, genes_data, conditions, group_ids, assembly, header=header, feature_type="GENES")
 
     """ Get scores of transcripts from exons, using non-negative least-squares """
     if "transcripts" in pileup_level:
-        header = ["TranscriptID"] + hconds + ["GeneID","Start","End","GeneName","Chromosome"]
         (tcounts, trpkm) = transcripts_expression(exons_data, exon_lengths,
                    transcript_mapping, trans_in_gene, exons_in_trans,len(conditions))
         transID = tcounts.keys()
@@ -564,6 +563,7 @@ def rnaseq_workflow(ex, job, bam_files, pileup_level=["exons","genes","transcrip
         trans_data = sorted(trans_data, key=itemgetter(7,4)) # sort w.r.t. chromosome, then start
         (transID,tcounts,trpkm,genesID,tstart,tend,tlen,tchr) = zip(*trans_data)
         genesName = [gene_mapping.get(g,("NA",)*4)[0] for g in genesID]
+        header = ["TranscriptID"] + hconds + ["Start","End","GeneID","GeneName","Chromosome"]
         trans_data = [transID]+list(zip(*tcounts))+list(zip(*trpkm))+[tstart,tend,genesID,genesName,tchr]
         save_results(ex, trans_data, conditions, group_ids, assembly, header=header, feature_type="TRANSCRIPTS")
 
