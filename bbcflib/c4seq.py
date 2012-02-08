@@ -12,7 +12,7 @@ from bein import *
 from bein.util import touch
 from bbcflib import daflims, genrep, frontend, email, gdv, track, createlib
 from bbcflib.mapseq import *
-from bbcflib.common import unique_filename_in
+from bbcflib.common import unique_filename_in, gzipfile
 import sys, getopt, os, json, re
 import sqlite3
 import gMiner as gm
@@ -147,7 +147,8 @@ def density_to_countsPerFrag(ex,density_file,density_name,assembly,reffile,regTo
 	with track.load(output,'sql') as t:
 		t.convert(countsPerFragFile,'bed')
 
-	ex.add(countsPerFragFile,description=set_file_descr("meanScorePerFeature_"+density_name+".bed",groupId=grpId,step="density",type="bed",ucsc="1"))
+#	gzipfile(ex,countsPerFragFile)
+#	ex.add(countsPerFragFile+".gz",description=set_file_descr("meanScorePerFeature_"+density_name+".bed.gz",groupId=grpId,step="density",type="bed",view="admin"))
         connection = sqlite3.connect(output)
         cursor = connection.cursor()
 	cursor.execute("UPDATE 'attributes' SET value='%s' WHERE key='%s'"%('quantitative','datatype'))        
@@ -161,12 +162,18 @@ def density_to_countsPerFrag(ex,density_file,density_name,assembly,reffile,regTo
 
 	# calculate normalised score per fragments (segToFrag)
 	res = call_segToFrag(ex, countsPerFragFile, regToExclude, script_path, via=via)
-	ex.add(res,description=set_file_descr("res_segToFrag_"+density_name+".bedGraph",groupId=grpId,step="norm_counts_per_frag",type="bedGraph",view="admin",comment="rough"))
 	[resBedGraph,resBedGraph_all]=parseSegToFrag(res)
-	ex.add(resBedGraph,description=set_file_descr("res_segToFrag_"+density_name+".bedGraph",groupId=grpId,step="norm_counts_per_frag",type="bedGraph",view="admin",comment="bedGraph non-sorted"))
-	ex.add(resBedGraph_all,description=set_file_descr("res_segToFrag_"+density_name+"_all_nonSorted.bedGraph",groupId=grpId,step="norm_counts_per_frag",type="bedGraph",view="admin",comment="all informative frags - null included - bedGraph non-sorted"))
+
+	gzipfile(ex,countsPerFragFile)
+	ex.add(countsPerFragFile+".gz",description=set_file_descr("meanScorePerFeature_"+density_name+".bed.gz",groupId=grpId,step="density",type="bed",view="admin"))
+	gzipfile(ex,res)
+	ex.add(res,description=set_file_descr("res_segToFrag_"+density_name+".bedGraph.gz",groupId=grpId,step="norm_counts_per_frag",type="bedGraph",view="admin",comment="rough"))
+#	ex.add(resBedGraph,description=set_file_descr("res_segToFrag_"+density_name+".bedGraph",groupId=grpId,step="norm_counts_per_frag",type="bedGraph",view="admin",comment="bedGraph non-sorted"))
+#	ex.add(resBedGraph_all,description=set_file_descr("res_segToFrag_"+density_name+"_all_nonSorted.bedGraph",groupId=grpId,step="norm_counts_per_frag",type="bedGraph",view="admin",comment="all informative frags - null included - bedGraph non-sorted"))
 	resBedGraph_all=call_sortOnCoord(ex,resBedGraph_all,via=via)
-	ex.add(resBedGraph_all,description=set_file_descr("res_segToFrag_"+density_name+"_all.bedGraph",groupId=grpId,step="norm_counts_per_frag",type="bedGraph",view="admin",comment="all informative frags - null included -sorted bedGraph"))
+	gzipfile(ex,resBedGraph_all,args=["-c"],stdout=resBedGraph_all+".gz")
+	ex.add(resBedGraph_all+".gz",description=set_file_descr("res_segToFrag_"+density_name+"_all.bedGraph.gz",groupId=grpId,step="norm_counts_per_frag",type="bedGraph",view="admin",comment="all informative frags - null included -sorted bedGraph"))
+	
 	resBedGraph=call_sortOnCoord(ex,resBedGraph,via=via)
 	headerFile=unique_filename_in();
 	hfile=open(headerFile,'w')
@@ -180,7 +187,7 @@ def density_to_countsPerFrag(ex,density_file,density_name,assembly,reffile,regTo
                 t.convert(sortedBedGraph_sql+".sql",'sql')
 	ex.add(sortedBedGraph_sql+".sql",description=set_file_descr("res_segToFrag_"+density_name+".sql",groupId=grpId,step="norm_counts_per_frag",type="sql",view="admin",gdv="1",comment="bedGraph sorted"))
 	step += 1
-	return [output,countsPerFragFile,res,resBedGraph,sortedBedGraph,sortedBedGraph_sql,resBedGraph_all]
+	return [output,countsPerFragFile+".gz",res+".gz",resBedGraph,sortedBedGraph,sortedBedGraph_sql,resBedGraph_all]
 
 # Main 
 #-------------------------------------------#
