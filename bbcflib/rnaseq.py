@@ -561,7 +561,7 @@ def rnaseq_workflow(ex, job, bam_files, pileup_level=["exons","genes","transcrip
                    transcript_mapping, trans_in_gene, exons_in_trans,len(conditions))
         transID = tcounts.keys()
         trans_data = [[t,tcounts[t],trpkm[t]]+list(transcript_mapping.get(t,("NA",)*5)) for t in transID]
-        trans_data = sorted(trans_data, key=itemgetter(nc+5,nc+1)) # sort w.r.t. chromosome, then start
+        trans_data = sorted(trans_data, key=itemgetter(7,4)) # sort w.r.t. chromosome, then start
         (transID,tcounts,trpkm,genesID,tstart,tend,tlen,tchr) = zip(*trans_data)
         genesName = [gene_mapping.get(g,("NA",)*4)[0] for g in genesID]
         trans_data = [transID]+list(zip(*tcounts))+list(zip(*trpkm))+[tstart,tend,genesID,genesName,tchr]
