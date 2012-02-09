@@ -628,6 +628,9 @@ def bamstats(bamfile):
         except:
             pass
         s=''.join(p.stdout)
+        if not(re.search(r'Total (\d+)',s): 
+               time.sleep(60)
+               s=''.join(p.stdout)
         results["read_length"]=int(re.search(r'Read length (\d+)',s).groups()[0])
         results["genome_size"]=int(re.search(r'Genome size (\d+)',s).groups()[0])
         results["nb_positions"]=int(re.search(r'Nb positions (\d+)',s).groups()[0])
