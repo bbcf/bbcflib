@@ -83,7 +83,7 @@ def call_sortOnCoord(*args, **kwargs):
 # ex: primers_dict=loadPrimers('/archive/epfl/bbcf/data/DubouleDaan/finalAnalysis/XmNGdlXjqoj6BN8Rj2Tl/primers.fa')
 def loadPrimers(primersFile):
 	'''
-		Create a dictionary with infos for each primer (from file primers.fa) 
+	Create a dictionary with infos for each primer (from file primers.fa) 
 	'''
 	primers={}
 	with open(primersFile,'rb') as f:
@@ -226,8 +226,8 @@ def workflow_groups(ex, job, primers_dict, assembly, mapseq_files, mapseq_url, s
 		for rid,run in group['runs'].iteritems():
                         #job_mapseq=htss_mapseq.job(run['key'])
 		
-			if 'regToExclude' in primers_dict[mapseq_files[gid][rid]['libname']]:
-                                regToExclude=primers_dict[mapseq_files[gid][rid]['libname']]['regToExclude']
+			if 'regToExclude' in primers_dict.get(group['name'],{}):
+                                regToExclude=primers_dict[group['name']]['regToExclude']
 				regToExclude=regToExclude=regToExclude.replace('\r','')
 			else:
 			        regToExclude=None
@@ -266,7 +266,8 @@ def workflow_groups(ex, job, primers_dict, assembly, mapseq_files, mapseq_url, s
 			print("Will proceed to profile correction of file "+str(resfiles[6]))
 			profileCorrectedFile=unique_filename_in()
 			reportFile_profileCorrection=unique_filename_in()
-			profileCorrection.nonblocking(ex,resfiles[6],primers_dict[mapseq_files[gid][rid]['libname']]['baitcoord'],mapseq_files[gid][rid]['libname'],profileCorrectedFile,reportFile_profileCorrection,script_path,via=via).wait()
+			profileCorrection.nonblocking(ex,resfiles[6],primers_dict[group['name']]['baitcoord'],mapseq_files[gid][rid]['libname'],
+                                                      profileCorrectedFile,reportFile_profileCorrection,script_path,via=via).wait()
 		        ex.add(profileCorrectedFile,description=set_file_descr("res_segToFrag_"+mapseq_files[gid][rid]['libname']+"_profileCorrected.bedGraph",groupId=gid,step="profile_correction",type="bedGraph",comment="profile corrected data;bedGraph sorted",ucsc='1',gdv='1'))
 			ex.add(reportFile_profileCorrection,description=set_file_descr("report_profileCorrection_"+mapseq_files[gid][rid]['libname']+".pdf",groupId=gid,step="profile_correction",type="pdf",comment="report profile correction"))
 #			profileCorrectedFile_sql=unique_filename_in()+".sql"
