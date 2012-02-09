@@ -130,7 +130,7 @@ def density_to_countsPerFrag(ex,density_file,density_name,assembly,reffile,regTo
 	global grpId
 	global step
 
-	print("will call mean_score_by_feature for t1="+density_file+"(name="+density_name+") and t2="+reffile)
+	print("will call mean_score_by_feature for t1=%s (name=%s) and t2=%s" %(density_file,density_name,reffile))
         output = unique_filename_in()
         chlist = []
         from gMiner.operations.genomic_manip.scores import mean_score_by_feature
@@ -167,7 +167,7 @@ def density_to_countsPerFrag(ex,density_file,density_name,assembly,reffile,regTo
 	gzipfile(ex,countsPerFragFile)
 	ex.add(countsPerFragFile+".gz",description=set_file_descr("meanScorePerFeature_"+density_name+".bed.gz",groupId=grpId,step="density",type="bed",view="admin"))
 	gzipfile(ex,res)
-	ex.add(res,description=set_file_descr("res_segToFrag_"+density_name+".bedGraph.gz",groupId=grpId,step="norm_counts_per_frag",type="bedGraph",view="admin",comment="rough"))
+	ex.add(res+".gz",description=set_file_descr("res_segToFrag_"+density_name+".bedGraph.gz",groupId=grpId,step="norm_counts_per_frag",type="bedGraph",view="admin",comment="rough"))
 #	ex.add(resBedGraph,description=set_file_descr("res_segToFrag_"+density_name+".bedGraph",groupId=grpId,step="norm_counts_per_frag",type="bedGraph",view="admin",comment="bedGraph non-sorted"))
 #	ex.add(resBedGraph_all,description=set_file_descr("res_segToFrag_"+density_name+"_all_nonSorted.bedGraph",groupId=grpId,step="norm_counts_per_frag",type="bedGraph",view="admin",comment="all informative frags - null included - bedGraph non-sorted"))
 	resBedGraph_all=call_sortOnCoord(ex,resBedGraph_all,via=via)
