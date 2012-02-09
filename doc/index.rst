@@ -20,6 +20,17 @@ Tutorials
    tutorial_rnaseq
    tutorial_config_files
 
+Methods description
+'''''''''''''''''''
+.. toctree::
+   :maxdepth: 1
+
+   methods_demultiplexing
+   methods_mapping
+   methods_chipseq
+   methods_4cseq
+   methods_rnaseq
+
 Library guide
 '''''''''''''
 .. specification

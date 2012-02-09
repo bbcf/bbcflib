@@ -7,8 +7,24 @@ Utility functions common to several pipelines.
 """
 
 # Built-in modules #
-import os, sys, time, json, csv
-from bein import *
+import os, sys, time, csv, string, random, pickle, re
+
+
+def unique_filename_in(path=None):
+    """Return a random filename unique in the given path.
+
+    The filename returned is twenty alphanumeric characters which are
+    not already serving as a filename in *path*.  If *path* is
+    omitted, it defaults to the current working directory.
+    """
+    if path == None: path = os.getcwd()
+    def random_string():
+        return "".join([random.choice(string.letters + string.digits) for x in range(20)])
+    while True:
+        filename = random_string()
+        files = [f for f in os.listdir(path) if f.startswith(filename)]
+        if files == []: break
+    return filename
 
 ###############################################################################
 def normalize_url(url):
@@ -24,11 +40,9 @@ def normalize_url(url):
     'http://bbcf.epfl.ch'
     """
     # url = url.lower()
-    if not(url.startswith("http://")):
+    if not(url.startswith(("http://","https://","ftp://"))):
         url = "http://" + url
-    if url.endswith("/"):
-        url = url[:-1]
-    return url
+    return url.strip("/")
 
 ###############################################################################
 def cat(files,out=None):
@@ -59,6 +73,7 @@ def set_file_descr(filename,**kwargs):
 
         >>> set_file_descr("toto",step=1,type='doc')
         'toto[step:1,type:doc]'
+
     """
     file_descr = filename
     argskeys = kwargs.keys()
@@ -88,7 +103,6 @@ def get_files( id_or_key, minilims, by_type=True, select_param=None ):
     then only files containing these parameters will be returned,
     and if it is a dictionary, only files with parameters matching the key/value pairs will be returned.
     """
-    import re
     if isinstance(select_param,str): select_param = [select_param]
     if isinstance(id_or_key, str):
         try:
@@ -109,7 +123,7 @@ def get_files( id_or_key, minilims, by_type=True, select_param=None ):
         pars_patt = re.search(r'\[(.*)\]',d)
         if not(pars_patt):
             pars = "group:0,step:0,type:none,view:admin"
-            re.sub(r'([^\s\[]*)',r'\1['+pars+']',x,1)
+            re.sub(r'([^\s\[]*)',r'\1['+pars+']',d,1)
         else:
             pars = pars_patt.groups()[0]
         par_dict = dict(x.split(":") for x in pars.split(","))
@@ -172,7 +186,7 @@ def merge_many_bed(ex,files,via='lsf'):
     out = files[0]
     for f in files[1:]:
         next = unique_filename_in()
-        _ = merge_two_bed.nonblocking( ex, out, f, via=via, stdout=next ).wait()
+        merge_two_bed.nonblocking( ex, out, f, via=via, stdout=next ).wait()
         out = next
     return out
 
@@ -186,7 +200,6 @@ def timer(function):
         print "Execution time of function", function.__name__, ":", str(t2-t1), "s."
         return result
     return wrapper
-
 
 #-------------------------------------------------------------------------#
 
@@ -249,64 +262,76 @@ def isnum(s):
 
 #-------------------------------------------------------------------------#
 
-def unique(seq, idfun=None):
+def unique(seq, fun=None):
     """
     Return all unique elements in *seq*, preserving order - unlike list(set(seq)),
     and almost as fast. Permits this sort of filter: unique(seq, lambda x: x.lower())
     """
-    if idfun is None:
-        def idfun(x): return x
+    if fun is None:
+        def fun(x): return x
     seen = {}
     result = []
     for item in seq:
-        marker = idfun(item)
+        marker = fun(item)
         if marker in seen: continue
         seen[marker] = 1
         result.append(item)
     return result
 
-    #-------------------------------------------------------------------------#
-@program
-def gzipfile(files,args=None):
-    """Runs gzip on files."""
-    if not(isinstance(files,list)):
-        files=[files]
-    gzcall = ['gzip']
-    if args:
-        gzcall += args
-    gzcall += files
-    return {"arguments": gzcall, "return_value": None}
 
-    #-------------------------------------------------------------------------#
-@program
-def join_pdf(files):
-    """Uses 'ghostscript' to join several pdf files into one.
-    """
-    out = unique_filename_in()
-    gs_args = ['gs','-dBATCH','-dNOPAUSE','-q','-sDEVICE=pdfwrite',
-               '-sOutputFile=%s'%out]
-    gs_args += files
-    return {"arguments": gs_args, "return_value": out}
+##############################
+#-------- PROGRAMS --------###
+##############################
 
-    #-------------------------------------------------------------------------#
-@program
-def merge_two_bed(file1,file2):
-    """Binds ``intersectBed`` from the 'BedTools' suite.
-    """
-    return {"arguments": ['intersectBed','-a',file1,'-b',file2], "return_value": None}
 
-    #-------------------------------------------------------------------------#
-@program
-def run_gMiner( job ):
-    import pickle
-    job_file = unique_filename_in()
-    with open(job_file,'w') as f:
-        pickle.dump(job,f)
-    def get_output_files(p):
-        with open(job_file,'r') as f:
-            job = pickle.load(f)
-        return job['job_output']
-    return {"arguments": ["run_gminer.py",job_file],"return_value": get_output_files}
+try:
+    from bein import program
+
+    @program
+    def gzipfile(files,args=None):
+        """Runs gzip on files."""
+        if not(isinstance(files,list)):
+            files=[files]
+        gzcall = ['gzip']
+        if args:
+            gzcall += args
+        gzcall += files
+        return {"arguments": gzcall, "return_value": None}
+
+        #-------------------------------------------------------------------------#
+    @program
+    def join_pdf(files):
+        """Uses 'ghostscript' to join several pdf files into one.
+        """
+        out = unique_filename_in()
+        gs_args = ['gs','-dBATCH','-dNOPAUSE','-q','-sDEVICE=pdfwrite',
+                   '-sOutputFile=%s'%out]
+        gs_args += files
+        return {"arguments": gs_args, "return_value": out}
+
+        #-------------------------------------------------------------------------#
+    @program
+    def merge_two_bed(file1,file2):
+        """Binds ``intersectBed`` from the 'BedTools' suite.
+        """
+        return {"arguments": ['intersectBed','-a',file1,'-b',file2], "return_value": None}
+
+        #-------------------------------------------------------------------------#
+    @program
+    def run_gMiner( job ):
+        job_file = unique_filename_in()
+        with open(job_file,'w') as f:
+            pickle.dump(job,f)
+        def get_output_files(p):
+            with open(job_file,'r') as f:
+                job = pickle.load(f)
+            return job['job_output']
+        return {"arguments": ["run_gminer.py",job_file],"return_value": get_output_files}
+
+        #-------------------------------------------------------------------------#
+
+
+except ImportError: print "Warning: no module named 'bein'. @program imports skipped."
 
 #-----------------------------------#
 # This code was written by the BBCF #

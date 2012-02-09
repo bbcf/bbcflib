@@ -12,7 +12,7 @@ The whole workflow can be run via the function ``workflow_groups`` with appropri
 
 Below is the script used by the frontend::
 
-    from bbcflib import daflims, genrep, frontend, email, gdv, common
+    from bbcflib import daflims, genrep, frontend, email, common
     from bbcflib.mapseq import *
     from bbcflib.chipseq import *
     M = MiniLIMS( '/path/to/chipseq/minilims' )
@@ -22,30 +22,27 @@ Below is the script used by the frontend::
     assembly_id = 'mm9'
     gl = { 'hts_chipseq': {'url': 'http://htsstation.vital-it.ch/chipseq/'},
            'hts_mapseq': {'url': 'http://htsstation.vital-it.ch/mapseq/'},
-           'genrep_url': 'http://bbcftools.vital-it.ch/genrep/',
            'script_path': '/srv/chipseq/lib' }
     htss = frontend.Frontend( url=gl['hts_chipseq']['url'] )
-    g_rep = genrep.GenRep( gl['genrep_url'], "" )
     job = htss.job( hts_key )
-    g_rep = genrep.GenRep( gl['genrep_url'], "" )
-    assembly = g_rep.assembly( assembly_id )
+    assembly = genrep.Assembly( assembly=assembly_id )
     with execution( M, description=hts_key, remote_working_directory=working_dir ) as ex:
         (ms_files, job) = get_bam_wig_files( ex, job, ms_limspath, gl['hts_mapseq']['url'], gl['script_path'], via=via )
-        files = workflow_groups( ex, job, ms_files, assembly.chromosomes, gl['script_path'] )
+        files = workflow_groups( ex, job, ms_files, assembly, gl['script_path'] )
     print ex.id
     allfiles = common.get_files( ex.id, M )
     print allfiles
 """
 
 # Built-in modules #
-import shutil, pickle, urllib, re, os
+import re, os, gzip
 
 # Internal modules #
-from . import frontend, mapseq
-from .common import merge_sql, merge_many_bed, join_pdf, cat, set_file_descr
+from bbcflib import frontend, mapseq
+from bbcflib.common import merge_sql, merge_many_bed, join_pdf, cat, set_file_descr, unique_filename_in
 
 # Other modules #
-from bein import *
+from bein import program
 from bein.util import touch
 
 ################################################################################
@@ -114,19 +111,29 @@ def add_macs_results( ex, read_length, genome_size, bamfile,
     for n,p in prefixes.iteritems():
         macs_descr0 = {'step':'macs','type':'none','view':'admin'}
         macs_descr1 = {'step':'macs','type':'xls','group':n[0]}
-        macs_descr2 = {'step':'macs','type':'bed','group':n[0]}
+        macs_descr2 = {'step':'macs','type':'bed','group':n[0],'ucsc':'1'}
         filename = "_vs_".join(n)
         touch( ex, p )
         ex.add( p, description=set_file_descr(filename,**macs_descr0), alias=alias )
         ex.add( p+"_peaks.xls",
                 description=set_file_descr(filename+"_peaks.xls",**macs_descr1),
                 associate_to_filename=p, template='%s_peaks.xls' )
-        ex.add( p+"_peaks.bed",
+        bedzip = gzip.open(p+"_peaks.bed.gz",'wb')
+        bedzip.write("track name='"+filename+"_macs_peaks'\n")
+        with open(p+"_peaks.bed") as bedinf:
+            [bedzip.write(l) for l in bedinf]
+        bedzip.close()
+        ex.add( p+"_peaks.bed.gz",
                 description=set_file_descr(filename+"_peaks.bed",**macs_descr2),
-                associate_to_filename=p, template='%s_peaks.bed' )
-        ex.add( p+"_summits.bed",
+                associate_to_filename=p, template='%s_peaks.bed.gz' )
+        bedzip = gzip.open(p+"_summits.bed.gz",'wb')
+        bedzip.write("track name='"+filename+"_macs_summits'\n")
+        with open(p+"_summits.bed") as bedinf:
+            [bedzip.write(l) for l in bedinf]
+        bedzip.close()
+        ex.add( p+"_summits.bed.gz",
                 description=set_file_descr(filename+"_summits.bed",**macs_descr2),
-                associate_to_filename=p, template='%s_summits.bed' )
+                associate_to_filename=p, template='%s_summits.bed.gz' )
         if len(n)>1:
             ex.add( p+"_negative_peaks.xls",
                     description=set_file_descr(filename+"_negative_peaks.xls",**macs_descr1),
@@ -207,7 +214,7 @@ def run_deconv(ex, sql, peaks, chromosomes, read_extension, script_path, via = '
         outfiles['pdf'] = rdeconv_out.values()[0]['pdf']
     return outfiles
 
-def filter_deconv( bedfile, pval=0.5 ):
+def _filter_deconv( bedfile, pval=0.5 ):
     """Filters a bedfile created by deconvolution to select peaks with p-value smaller than 'pval'.
     Returns the filtered file name."""
     outname = unique_filename_in()+".bed"
@@ -219,7 +226,7 @@ def filter_deconv( bedfile, pval=0.5 ):
                     fout.write(row)
     return outname
 
-def filter_macs( bedfile, ntags=5 ):
+def _filter_macs( bedfile, ntags=5 ):
     """Filters MACS' summits file to select peaks with a number of tags greater than 'ntags'.
     Returns the filtered file name."""
     outname = unique_filename_in()+".bed"
@@ -234,15 +241,17 @@ def filter_macs( bedfile, ntags=5 ):
 ################################################################################
 # Workflow #
 
-def workflow_groups( ex, job_or_dict, mapseq_files, chromosomes, script_path='',
-                     genrep=None, logfile=None, via='lsf' ):
+def workflow_groups( ex, job_or_dict, mapseq_files, assembly, script_path='',
+                     logfile=None, via='lsf' ):
     """Runs a chipseq workflow over bam files obtained by mapseq. Will optionally run ``macs`` and 'run_deconv'.
 
     :param ex: a 'bein' execution environment to run jobs in,
 
     :param job_or_dict: a 'Frontend' 'job' object, or a dictionary with key 'groups' and 'options' if applicable,
 
-    :param chromosomes: a dictionary with keys 'chromosome_id' and values a dictionary with chromosome names and lengths,
+    :param mapseq_files: a dictionary of files fomr a 'mapseq' execution, imported via 'mapseq.get_bam_wig_files',
+
+    :param assembly: a genrep.Assembly object,
 
     :param script_path: only needed if 'run_deconv' is in the job options, must point to the location of the R scripts.
 
@@ -269,18 +278,16 @@ def workflow_groups( ex, job_or_dict, mapseq_files, chromosomes, script_path='',
                 groups[gid]['name'] = gid
     else:
         raise TypeError("job_or_dict must be a frontend.Job object or a dictionary with key 'groups'.")
-    merge_strands = -1
+    merge_strands = int(options.get('merge_strands',-1))
     suffixes = ["fwd","rev"]
-    if options.get('merge_strands') and int(options['merge_strands'])>=0:
-        merge_strands = int(options['merge_strands'])
-    peak_deconvolution = options.get('peak_deconvolution') or False
-    if isinstance(peak_deconvolution,str):
+    peak_deconvolution = options.get('peak_deconvolution',False)
+    if isinstance(peak_deconvolution,basestring):
         peak_deconvolution = peak_deconvolution.lower() in ['1','true','t']
-    run_meme = options.get('run_meme') or False
-    if isinstance(run_meme,str):
+    run_meme = options.get('run_meme',False)
+    if isinstance(run_meme,basestring):
         run_meme = run_meme.lower() in ['1','true','t']
-    macs_args = options.get('macs_args') or ["--bw=200"]
-    b2w_args = options.get('b2w_args') or []
+    macs_args = options.get('macs_args',["--bw=200"])
+    b2w_args = options.get('b2w_args',[])
     if not(isinstance(mapseq_files,dict)):
         raise TypeError("Mapseq_files must be a dictionary.")
     tests = []
@@ -301,7 +308,7 @@ def workflow_groups( ex, job_or_dict, mapseq_files, chromosomes, script_path='',
                 mapped[k]['libname'] = group_name+"_"+str(k)
             if not 'stats' in mapped[k]:
                 futures[k] = mapseq.bamstats.nonblocking( ex, mapped[k]["bam"], via=via )
-            if mapped[k].get('poisson_threshold')>0:
+            if mapped[k].get('poisson_threshold',-1)>0:
                 ptruns.append(mapped[k]['poisson_threshold'])
         if len(ptruns)>0:
             p_thresh['group_name'] = sum(ptruns)/len(ptruns)
@@ -333,13 +340,13 @@ def workflow_groups( ex, job_or_dict, mapseq_files, chromosomes, script_path='',
     peak_list = {}
     if run_meme:
         import gMiner
-        chrlist = dict((v['name'], {'length': v['length']}) for v in chromosomes.values())
+        chrlist = assembly.chrmeta
         for i,name in enumerate(names['tests']):
             if names['controls']==[None]:
                 macsbed = processed['macs'][(name,)]+"_summits.bed"
             else:
                 macsbed = cat([processed['macs'][(name,x)]+"_summits.bed" for x in names['controls']])
-            macsbed = filter_macs(macsbed)
+            macsbed = _filter_macs(macsbed)
             outdir = unique_filename_in()
             os.mkdir(outdir)
             gm_out = gMiner.run(
@@ -363,7 +370,7 @@ def workflow_groups( ex, job_or_dict, mapseq_files, chromosomes, script_path='',
     if peak_deconvolution:
         processed['deconv'] = {}
         merged_wig = {}
-        if not('read_extensions' in options and int(options['read_extension'])>0):
+        if int(options.get('read_extension',-1))<=0:
             options['read_extension'] = read_length[0]
         if not('-q' in b2w_args):
             b2w_args += ["-q",str(options['read_extension'])]
@@ -374,7 +381,7 @@ def workflow_groups( ex, job_or_dict, mapseq_files, chromosomes, script_path='',
             wig = []
             for m in mapped.values():
                 if merge_strands >= 0 or not('wig' in m) or len(m['wig'])<2:
-                    output = mapseq.parallel_density_sql( ex, m["bam"], chromosomes,
+                    output = mapseq.parallel_density_sql( ex, m["bam"], assembly.chromosomes,
                                                           nreads=m["stats"]["total"],
                                                           merge=-1,
                                                           convert=False,
@@ -395,19 +402,27 @@ def workflow_groups( ex, job_or_dict, mapseq_files, chromosomes, script_path='',
             if names['controls']==[None]:
                 macsbed = processed['macs'][(name,)]+"_peaks.bed"
             else:
-                macsbed = merge_many_bed(ex,[processed['macs'][(name,x)]+"_peaks.bed"
-                                             for x in names['controls']],via=via)
-            deconv = run_deconv( ex, merged_wig[name], macsbed, chromosomes,
+                macsbed = merge_many_bed( ex,[processed['macs'][(name,x)]+"_peaks.bed"
+                                              for x in names['controls']],via=via )
+            deconv = run_deconv( ex, merged_wig[name], macsbed, assembly.chromosomes,
                                  options['read_extension'], script_path, via=via )
+            peak_list[name] = _filter_deconv( deconv['bed'], pval=0.65 )
+            bedfile = deconv.pop('bed')
+            bedzip = gzip.open(bedfile+".gz",'wb')
+            bedzip.write("track name='"+name+"_deconvolution'\n")
+            with open(bedfile) as bedinf:
+                [bedzip.write(l) for l in bedinf]
+            bedzip.close()
+            ex.add(bedfile+".gz", description=set_file_descr(name+'_deconv.bed.gz',type='bed',step='deconvolution',group=name,ucsc='1'))
             [ex.add(v, description=set_file_descr(name+'_deconv.'+k,type=k,step='deconvolution',group=name))
              for k,v in deconv.iteritems()]
+            deconv['bed'] = bedfile+".gz"
             processed['deconv'][name] = deconv
-            peak_list[name] = filter_deconv( deconv['bed'], pval=0.65 )
-    if run_meme and not(genrep == None):
+    if run_meme:
         from .motif import parallel_meme
         if logfile:
             logfile.write("Starting MEME.\n");logfile.flush()
-        processed['meme'] = parallel_meme( ex, genrep, chromosomes,
+        processed['meme'] = parallel_meme( ex, assembly,
                                            peak_list.values(), name=peak_list.keys(),
                                            meme_args=['-nmotifs','4','-revcomp'], via=via )
     return processed

@@ -7,6 +7,13 @@ Submodule: bbcflib.track.formats.rand
 Implementation of a random track generator.
 """
 
+###########################################################################
+###########################################################################
+## WARNING: The bbcflib.track package is deprecated.                     ##
+##          A new project simply called 'track' replaces it.             ##
+###########################################################################
+###########################################################################
+
 # Built-in modules #
 import sys, random, tempfile
 

@@ -51,7 +51,7 @@ import os, re, tarfile, gzip, urllib2, StringIO
 from urlparse import urlparse
 
 # Other modules #
-from bein import unique_filename_in
+from bbcflib.common import unique_filename_in
 
 ################################################################################
 class DAFLIMS(object):
@@ -139,7 +139,7 @@ class DAFLIMS(object):
         and ``'qc'``, each referring to a URL in the LIMS where that
         file is stored.
         """
-        check_type = {'fastq': 'fastq_gz', 'export': 'gerald_gz', 'qc': None}
+        check_type = {'fastq': ['fastq_gz','fastq_tgz'], 'export': ['gerald_gz'], 'qc': [None]}
         self._check_description(facility, machine, run, lane)
         response = self._run_method(type, facility, machine, run, lane).splitlines()
         if re.search('==DATA', response[0]) == None or len(response)<2:
@@ -152,7 +152,7 @@ class DAFLIMS(object):
                 q = resp.split('\t')
                 if libname and not(q[1] == libname): continue
                 if not(int(q[0]) in rtn): rtn[int(q[0])] = {}
-                if len(q)<6 or q[5] == check_type[type]: 
+                if len(q)<6 or q[5] in check_type[type]:
                     rtn[int(q[0])][(int(q[3]),int(q[4]))] = q[2]
             return rtn[max(rtn.keys())]
 
@@ -258,7 +258,7 @@ class DAFLIMS(object):
             target = os.path.join(to, unique_filename_in(to))
         else:
             target = to
-        
+
         if isinstance(link_name,dict):
             linknext = ([],[])
             for k in sorted(link_name.keys()):

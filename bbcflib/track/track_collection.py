@@ -7,6 +7,13 @@ Creates a large dictionary of different tracks found in the "extras" directory (
 This is then used by the unittests.
 """
 
+###########################################################################
+###########################################################################
+## WARNING: The bbcflib.track package is deprecated.                     ##
+##          A new project simply called 'track' replaces it.             ##
+###########################################################################
+###########################################################################
+
 # Built-in modules #
 import os
 

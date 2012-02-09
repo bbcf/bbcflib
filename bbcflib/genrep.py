@@ -3,65 +3,27 @@
 Module: bbcflib.genrep
 ======================
 
-This module provides an interface to GenRep repositories.  It
-provides two classes. ``GenRep`` connects to a GenRep repository and
-handles all queries.  A query via the ``GenRep`` object returns an
-``Assembly``, giving the information on a particular entry in GenRep.
+This module provides an interface to GenRep repositories.
+It provides two classes: the ``Assembly`` class provides a representation of a particular entry in GenRep,
+the ``GenRep`` class allows to switch to any potential GenRep repository and
+handles all queries. To retrieve an ``Assembly`` named ``ce6``, we write::
 
-The primary GenRep repository on VITAL-IT has URL
-``http://bbcftools.vital-it.ch/genrep/`` and root directory
-``/db/genrep``.  To connect to
-this GenRep repository and fetch an ``Assembly`` named ``ce6``, we
-would write::
+    from bbcflib import genrep
+    a = genrep.Assembly( assembly='ce6' )
 
-    g = GenRep(url='http://bbcftools.vital-it.ch/genrep/',root='/db/genrep')
-    g.assembly('ce6')
+To switch to another instance of genrep::
+
+    g = genrep.GenRep( url=my_url, root=my_path )
+    if g.assemblies_available( 'ce6' ):
+        a = genrep.Assembly( assembly='ce6', genrep=g )
 
 Assemblies in GenRep are also assigned unique integer IDs.  The unique
 integer ID for assembly ``ce6`` is 14.  We can use these IDs anywhere
 we would use the name, so the third line in the prevous code could
 equally well be written::
 
-    g.assembly(14)
+    a = genrep.Assembly(14)
 
-``GenRep`` objects can also be created from ``ConfigParser`` objects.
-Instead of a URL and root directory, we pass keyword arguments
-``config`` with the ``ConfigParser`` and optionally ``section`` to
-choose what section of the configuration file to use.  If no
-``section`` is specified, it defaults to "genrep".  The two fields
-read from that section are
-
-  * genrep_url
-  * genrep_root
-
-With a ``ConfigParser``, the previous code would look like::
-
-    c = ConfigParser(...)
-    ... fill the ConfigParser
-    g = GenRep(config=c) # or GenRep(config=c,section='genrep')
-    g.assembly('ce6')
-
-An other possibility is to access the resources provided by GenRep
-directly through the module's attributes.
-You can now use the library like this::
-
-    from bbcflib import genrep
-    print genrep.assemblies
-    >> [{u'source_name': u'UCSC', u'name': u'ce6', u'created_at': u'2010-12-19T20:52:31Z', u'updated_at': u'2011-01-05T14:58:43Z', u'bbcf_valid': True, u'nr_assembly_id': 106, u'source_id': 4, u'genome_id': 8, u'id': 14, u'md5': u'fd56 ......
-
-    print genrep.assemblies.by('name')
-    >> ['ce6', 'danRer7', 'dm3', 'GRCh37', 'hg19', 'MLeprae_TN', ......
-
-    print genrep.assemblies.get('hg19')
-    >> {u'bbcf_valid': True, u'created_at': u'2010-12-16T16:08:13Z', u'genome_id': 5, u'id': 11, ......
-
-    print genrep.assemblies.filter('genome_id', 5)
-    >> [{u'bbcf_valid': False, u'created_at': u'2011-03-25T01:56:41Z', u'genome_id': 5, u'id': 22, ......
-
-    print genrep.assemblies.hg19.id
-    >> 11
-
-Same goes for organisms, genomes, chromosomes etc.
 """
 
 # Built-in modules #
@@ -69,405 +31,25 @@ import urllib2, json, os, re
 from datetime import datetime
 
 # Internal modules #
-from .common import normalize_url
+from bbcflib.common import normalize_url, unique_filename_in
 
 # Other modules #
-from bein import unique_filename_in
+import sqlite3
 
 # Constants #
 default_url = 'http://bbcftools.vital-it.ch/genrep/'
-
-################################################################################
-class GenRep(object):
-    def __init__(self, url=default_url, root='/db/genrep', intype=0, config=None, section='genrep'):
-        """Create an object to query a GenRep repository.
-
-        GenRep is the in-house repository for sequence assemblies for the
-        BBCF in Lausanne.  This is an object that wraps its use in Python
-        in an idiomatic way.
-
-        Create a GenRep object with the base URL to the GenRep system, and
-        the root path of GenRep's files.  For instance::
-
-            g = GenRep('genrep.epfl.ch', '/path/to/genrep/indices')
-
-        To get an assembly from the repository, call the assembly
-        method with either the integer assembly ID or the string assembly
-        name.  This returns an Assembly object::
-
-            a = g.assembly(3)
-            b = g.assembly('mus')
-
-        """
-        if (url == None or root == None) and config == None:
-            raise TypeError("GenRep requires either a 'url' and 'root', or a 'config'")
-        elif config != None:
-            self.root = os.path.abspath(config.get(section, 'genrep_root'))
-            self.url = normalize_url(config.get(section, 'genrep_url'))
-            if url != None:
-                self.url = normalize_url(url)
-            if root != None:
-                self.root = os.path.abspath(root)
-        else:
-            self.url = normalize_url(url)
-            self.root = os.path.abspath(root)
-        self.intype = int(intype)
-
-    def is_up(self):
-        """ Check if genrep webservice is available """
-        try:
-            urllib2.urlopen(self.url + "/nr_assemblies.json", timeout=2)
-        except urllib2.URLError:
-            return False
-        return True
-
-    def get_sequence(self, chr_id, coord_list):
-        """Parses a slice request to the repository."""
-        if len(coord_list) == 0:
-            return []
-        slices  = ",".join([",".join([str(y) for y in x]) for x in coord_list])
-        url     = """%s/chromosomes/%i/get_sequence_part?slices=%s""" % (self.url, chr_id, slices)
-        request = urllib2.Request(url)
-        return urllib2.urlopen(request).read().split(',')
-
-    def fasta_from_regions(self, chromosomes, regions, out=None, chunk=50000, shuffled=False):
-        """
-        Get a fasta file with sequences corresponding to the features in the
-        bed or sqlite file.
-
-        Returns the name of the file and the total sequence size.
-
-        If 'out' is a (possibly empty) dictionary, will return the filled dictionary,
-        if 'regions' is a dictionary {'chr' [[start1,end1],[start2,end2]]}
-        or a list [['chr',start1,end1],['chr',start2,end2]],
-        will simply iterate through its items instead of loading a track from file.
-        """
-        from .track import load
-        from .track.extras.sql import TrackExtras
-        if out == None:
-            out = unique_filename_in()
-        def _push_slices(slices,start,end,name,cur_chunk):
-            if end>start:
-                slices['coord'].append([start,end])
-                slices['names'].append(name)
-                cur_chunk += end-start
-            return slices,cur_chunk
-        def _flush_slices(slices,chrid,chrn,out):
-            names = slices['names']
-            coord = slices['coord']
-            if isinstance(out,str):
-                with open(out,"a") as f:
-                    for i,s in enumerate(self.get_sequence(chrid,coord)):
-                        f.write(">"+names[i]+"|"+chrn+":"+str(coord[i][0])+"-"+str(coord[i][1])+"\n"+s+"\n")
-            else:
-                out[chrn].extend([s for s in self.get_sequence(chrid,coord)])
-            return {'coord':[],'names':[]}
-        slices = {'coord':[],'names':[]}
-        chrlist = dict((v['name'], {'length': v['length']}) for v in chromosomes.values())
-        size = 0
-        if isinstance(regions,list):
-            reg_dict = {}
-            for reg in regions:
-                chrom = reg[0]
-                if not(chrom in reg_dict):
-                    reg_dict[chrom] = []
-                reg_dict[chrom].append(reg[1:])
-            regions = reg_dict
-        if isinstance(regions,dict):
-            cur_chunk = 0
-            for cid,chrom in chromosomes.iteritems():
-                if not(chrom['name'] in regions): continue
-                if isinstance(out,dict): out[chrom['name']] = []
-                for row in regions[chrom['name']]:
-                    s = max(row[0],0)
-                    e = min(row[1],chrom['length'])
-                    slices,cur_chunk = _push_slices(slices,s,e,'',cur_chunk)
-                    if cur_chunk > chunk:
-                        size += cur_chunk
-                        slices = _flush_slices(slices,cid[0],chrom['name'],out)
-                        cur_chunk = 0
-                size += cur_chunk
-                slices = _flush_slices(slices,cid[0],chrom['name'],out)
-        else:
-            with load(regions, chrmeta=chrlist) as t:
-                cur_chunk = 0
-                for cid,chrom in chromosomes.iteritems():
-                    if shuffled:
-                        features = t.read_shuffled(chrom['name'], repeat_number=1, fields=["start","end","name"])
-                    else:
-                        features = t.read(chrom['name'], fields=["start","end","name"])
-                    for row in features:
-                        s = max(row[0],0)
-                        e = min(row[1],chrom['length'])
-                        name = re.sub('\s+','_',row[2])
-                        slices,cur_chunk = _push_slices(slices,s,e,name,cur_chunk)
-                        if cur_chunk > chunk:
-                            size += cur_chunk
-                            slices = _flush_slices(slices,cid[0],chrom['name'],out)
-                            cur_chunk = 0
-                    size += cur_chunk
-                    slices = _flush_slices(slices,cid[0],chrom['name'],out)
-        return (out,size)
-
-    def assembly(self, assembly):
-        """Get an Assembly object corresponding to *assembly*.
-
-        *assembly* may be an integer giving the assembly ID, or a string giving the assembly name.
-        """
-        try:
-            assembly = int(assembly)
-            assembly_info = json.load(urllib2.urlopen(urllib2.Request(
-                            """%s/assemblies/%d.json""" % (self.url, assembly))))
-            chromosomes = json.load(urllib2.urlopen(urllib2.Request(
-                            """%s/chromosomes.json?assembly_id=%d""" % (self.url, assembly))))
-        except:
-            assembly_info = json.load(urllib2.urlopen(urllib2.Request(
-                            """%s/assemblies.json?assembly_name=%s""" % (self.url, assembly))))[0]
-            chromosomes = json.load(urllib2.urlopen(urllib2.Request(
-                            """%s/chromosomes.json?assembly_name=%s""" % (self.url, assembly))))
-
-        root = os.path.join(self.root,"nr_assemblies/bowtie")
-        if self.intype == 1:
-            root = os.path.join(self.root,"nr_assemblies/exons_bowtie")
-        elif self.intype == 2:
-            root = os.path.join(self.root,"nr_assemblies/cdna_bowtie")
-        a = Assembly(assembly_id = int(assembly_info['assembly']['id']),
-                     assembly_name = assembly_info['assembly']['name'],
-                     index_path = os.path.join(root,str(assembly_info['assembly']['md5'])),
-                     bbcf_valid = assembly_info['assembly']['bbcf_valid'],
-                     updated_at = datetime.strptime(assembly_info['assembly']['updated_at'],
-                                                    '%Y-%m-%dT%H:%M:%SZ'),
-                     nr_assembly_id = int(assembly_info['assembly']['nr_assembly_id']),
-                     genome_id = int(assembly_info['assembly']['genome_id']),
-                     source_name = assembly_info['assembly']['source_name'],
-                     md5 = assembly_info['assembly']['md5'],
-                     source_id = int(assembly_info['assembly']['source_id']),
-                     created_at = datetime.strptime(assembly_info['assembly']['created_at'],
-                                                    '%Y-%m-%dT%H:%M:%SZ'))
-        for c in chromosomes:
-            name_dictionary = dict([ (x['chr_name']['assembly_id'],
-                                      x['chr_name']['value'])
-                                     for x in c['chromosome']['chr_names']])
-            a.add_chromosome(c['chromosome']['id'],
-                             c['chromosome']['refseq_locus'],
-                             c['chromosome']['refseq_version'],
-                             name_dictionary[a.id],
-                             c['chromosome']['length'])
-        return a
-
-    def assemblies_available(self, assembly=None):
-        """
-        Returns a list of assemblies available on genrep
-        """
-        request = urllib2.Request(self.url + "/assemblies.json")
-        assembly_list = []
-        for a in json.load(urllib2.urlopen(request)):
-            name = a['assembly'].get('name')
-            if name == None: continue
-            if name == assembly: return True
-            assembly_list.append(name)
-        if assembly == None: return assembly_list
-
-    def statistics(self, assembly, output=None, frequency=False, matrix_format=False):
-        """
-        Return (di-)nucleotide counts or frequencies for an assembly, writes in file ``output`` if provided.
-        Example of result:
-        {
-            "TT": 13574667
-            "GG": 3344762
-            "CC": 3365555
-            "AA": 13571722
-            "A": 32370285
-            "TA": 6362526
-            "GT": 4841536
-            "AC": 4846697
-            "N": 0
-            "C": 17781115
-            "TC": 6228639
-            "GA": 6231575
-            "CG": 3131283
-            "GC: 3340219
-            "CT": 5079814
-            "AG": 5075950
-            "G": 17758095
-            "TG": 6206098
-            "CA": 6204462
-            "AT": 8875914
-            "T": 32371931
-        }
-        Total = A + T + G + C
-
-        if matrix_format is True output is for example:
-         >Assembly: sacCer2
-        1   0.309798640038793   0.308714120881750   0.190593944221299   0.190893294858157
-        """
-        request = urllib2.Request("%s/nr_assemblies/%d.json?data_type=counts" % (self.url, assembly.nr_assembly_id))
-        stat    = json.load(urllib2.urlopen(request))
-        total   = float(stat["A"] + stat["T"] + stat["G"] + stat["C"])
-        if frequency:
-            stat = dict((k,x/total) for k,x in stat.iteritems())
-        else:
-            stat.update
-        if output == None:
-            return stat
-        else:
-            with open(output, "w") as f:
-                if matrix_format:
-                    f.write(">Assembly: %s\n" % assembly.name)
-                    f.write("%s\t%s\t%s\t%s" %(stat["A"],stat["C"],stat["G"],stat["T"]))
-                    f.write("\n")
-                else:
-                    f.write("#Assembly: %s\n" % assembly.name)
-                    [f.write("%s\t%s\n" % (x,stat[x])) for x in ["A","C","G","T"]]
-                    f.write("#\n")
-                    [[f.write("%s\t%s\n" % (x+y,stat[x+y])) for y in ["A","C","G","T"]] for x in ["A","C","G","T"]]
-            return output
-
-    def fasta_path(self, assembly, chromosome=None):
-        """
-        Returns the path to the compressed fasta file, for the whole assembly or for a single chromosome.
-        """
-        root = os.path.join(self.root,"nr_assemblies/fasta")
-        path = os.path.join(root,assembly.md5+".tar.gz")
-        if chromosome != None:
-            chr_id = str(chromosome[0])+"_"+str(chromosome[1])+"."+str(chromosome[2])
-            root = os.path.join(self.root,"chromosomes/fasta")
-            path = os.path.join(root,chr_id+".fa.gz")
-        elif self.intype == 1:
-            root = os.path.join(self.root,"nr_assemblies/exons_fasta")
-            path = os.path.join(root,assembly.md5+".fa.gz")
-        elif self.intype == 2:
-            root = os.path.join(self.root,"nr_assemblies/cdna")
-            path = os.path.join(root,assembly.md5+".fa.gz")
-        return path
-
-    def get_genrep_objects(self, url_tag, info_tag, filters = None):
-        """
-        Get a list of GenRep objets
-        ... attribute url_tag: the GenrepObject type (plural)
-        ... attribute info_tag: the GenrepObject type (singular)
-        Optionals attributes:
-        ... attribute filters: a dict that is used to filter the response
-        from GenRep.
-        Example:
-        To get the genomes related to 'Mycobacterium leprae' species.
-        First get the species with the right name:
-        species = get_genrep_objects('organisms', 'organism', {'species':'Mycobacterium leprae'})[0]
-        genomes = get_genrep_objects('genomes', 'genome', {'organism_id':species.id})
-        """
-        if not self.is_up(): return []
-        if filters is None:
-            filters = {}
-        url = """%s/%s.json""" % (self.url, url_tag)
-        infos = json.load(urllib2.urlopen(url))
-        result = []
-        # get objects
-        for info in infos:
-            obj = GenrepObject(info,info_tag)
-            if not filters:
-                result.append(obj)
-            else: # filter
-                add = True
-                for k,v in filters.items():
-                    if not hasattr(obj,k) or not getattr(obj,k)== v:
-                        add = False
-                if add: result.append(obj)
-        return result
-
-
-    def get_chromosomes_from_nr_assembly_id(self, nr_assembly_id):
-        '''
-        Get the chromosomes related to the nr_assembly specified.
-        It return the chromosomes from the assembly ``BBCF_VALID``
-        :param: nr_assembly_id : the non-redundant assembly id
-        '''
-        # get the nr_assembly from its id
-        nr_assembly = self.get_genrep_objects('nr_assemblies', 'nr_assembly',
-                                              {'id':nr_assembly_id})[0]
-        # get assembly bbcf valid with the same genome id
-        ass = self.get_genrep_objects('assemblies', 'assembly',
-                                      {'genome_id':nr_assembly.genome_id,
-                                       'bbcf_valid':True})[0]
-        if ass is not None:
-            # load the assembly
-            assembly_info = json.load(urllib2.urlopen("""%s/assemblies/%s.json""" % (self.url, ass.id)))
-            assembly = GenrepObject(assembly_info,'assembly')
-            chromosomes = []
-            # get the chromosomes
-            for chr in assembly.chromosomes:
-                chromosomes.append(GenrepObject(chr, 'chromosome'))
-            return chromosomes
-
-    def is_available(self, assembly):
-        """
-        Legacy signature
-        """
-        return self.assemblies_available(assembly)
-
-
-
-    def guess_chromosome_name(self, assembly_name, chromosome_name):
-        """Searches the assembly for chromosome synonym names,
-           and returns the canonical name of the chromosome.
-           Returns None if the chromosome is not known about.
-
-           :param assembly_name: The name of the assembly.
-           :type  assembly_name: string
-           :param chromosome_name: Any given name for a chromosome in that assembly.
-           :type  chromosome_name: string
-
-           :returns: The same or an other name for the chromosome.
-
-           ::
-
-               >>> import bbcflib.genrep; genrep = bbcflib.genrep.GenRep()
-               >>> genrep.guess_chromosome_name('sacCer2', '2520_NC_001224.1')
-               'chrM'
-
-        """
-        assembly_id = self.assembly(assembly_name).id
-        address = self.url + "/chromosomes.json?assembly_name=" + assembly_name + "&identifier=" + chromosome_name
-        data = json.loads(urllib2.urlopen(address).read())
-        if len(data) != 1: return None
-        canonical_name = data[0]['chromosome']['name']
-        other_names = [x['chr_name'] for x in data[0]['chromosome']['chr_names']]
-        return [x['value'] for x in other_names if x['assembly_id']==assembly_id][0].encode('ascii')
-
-    def get_chrmeta(self, assembly_name):
-        """Returns a dictionary of chromosome metadata looking something like::
-
-           :param assembly_name: The name of the assembly.
-           :type  assembly_name: string
-
-           :returns: A dictionary.
-
-           ::
-
-               >>> import bbcflib.genrep; genrep = bbcflib.genrep.GenRep()
-               >>> print genrep.get_chrmeta('TAIR10')
-               {'c': {'length': 154478}, 'm': {'length': 366924}, '1': {'length': 30427671}, '3': {'length': 23459830}, '2': {'length': 19698289}, '5': {'length': 26975502}, '4': {'length': 18585056}}
-
-        """
-        assembly_id = self.assembly(assembly_name).id
-        address = self.url + "/chromosomes.json?assembly_name=" + assembly_name
-        data = json.loads(urllib2.urlopen(address).read())
-        chromosomes = [item['chromosome'] for item in data]
-        def get_name(chrom):
-            other_names = [x['chr_name'] for x in chrom['chr_names']]
-            return [x['value'] for x in other_names if x['assembly_id']==assembly_id][0].encode('ascii')
-        def get_length(chrom):
-            return chrom['length']
-        return dict([(get_name(chrom), dict([('length', get_length(chrom))])) for chrom in chromosomes])
+default_root = '/db/genrep'
 
 ################################################################################
 class Assembly(object):
-    def __init__(self, assembly_id, assembly_name, index_path,
-                 bbcf_valid, updated_at, nr_assembly_id, genome_id,
-                 source_name, md5, source_id, created_at):
+    def __init__(self, assembly=None, genrep=None, intype=0):
         """A representation of a GenRep assembly.
+        To get an assembly from the repository, call the Assembly
+        constructor with either the integer assembly ID or the string assembly
+        name.  This returns an Assembly object::
 
-        In general, Assembly objects should always be created by calls to
-        a GenRep object.
+            a = Assembly(3)
+            b = Assembly('mm9')
 
         An Assembly has the following fields:
 
@@ -506,40 +88,513 @@ class Assembly(object):
 
         .. attribute:: source_id
 
-        All integers.
+        .. attribute:: intype
+
+        All integers. ``intype`` is '0' for genomic data, '1' for exons and '2' for transcripts.
 
         .. attribute:: source_name
 
         .. attribute:: md5
 
         """
-        self.id = int(assembly_id)
-        self.name = assembly_name
-        self.chromosomes = {}
-        self.index_path = os.path.abspath(index_path)
-        self.bbcf_valid = bbcf_valid
-        self.updated_at = updated_at
-        self.nr_assembly_id = nr_assembly_id
-        self.genome_id = genome_id
-        self.source_name = source_name
-        self.md5 = md5
-        self.source_id = source_id
-        self.created_at = created_at
+        if genrep is None: genrep = GenRep()
+        self.genrep = genrep
+        self.intype = int(intype)
+        if not(assembly is None):
+            self.set_assembly(assembly)
 
-    def add_chromosome(self, chromosome_id, refseq_locus, refseq_version, name, length):
-        self.chromosomes[(chromosome_id, refseq_locus, refseq_version)] = \
-            {'name': name, 'length': length}
+    def set_assembly(self, assembly):
+        """Reset the Assembly attributes to correspond to *assembly*.
+        *assembly* may be an integer giving the assembly ID, or a string giving the assembly name.
+        """
+        try:
+            assembly = int(assembly)
+            assembly_info = json.load(urllib2.urlopen(urllib2.Request(
+                            """%s/assemblies/%d.json""" % (self.genrep.url, assembly))))
+            chromosomes = json.load(urllib2.urlopen(urllib2.Request(
+                            """%s/chromosomes.json?assembly_id=%d""" %(self.genrep.url, assembly))))
+        except:
+            assembly_info = json.load(urllib2.urlopen(urllib2.Request(
+                            """%s/assemblies.json?assembly_name=%s""" %(self.genrep.url, assembly))))[0]
+            chromosomes = json.load(urllib2.urlopen(urllib2.Request(
+                            """%s/chromosomes.json?assembly_name=%s""" %(self.genrep.url, assembly))))
+        self._add_info(**dict((str(k),v) for k,v in assembly_info['assembly'].iteritems()))
+        root = os.path.join(self.genrep.root,"nr_assemblies/bowtie")
+        if self.intype == 1:
+            root = os.path.join(self.genrep.root,"nr_assemblies/exons_bowtie")
+        elif self.intype == 2:
+            root = os.path.join(self.genrep.root,"nr_assemblies/cdna_bowtie")
+        self.index_path = os.path.join(root,self.md5)
+        for c in chromosomes:
+            chrom = dict((str(k),v) for k,v in c['chromosome'].iteritems())
+            cnames = chrom.pop('chr_names')
+            chrom['name'] = (str(x['chr_name']['value']) for x in cnames \
+                             if x['chr_name']['assembly_id'] == self.id).next()
+            self._add_chromosome(**chrom)
+        return None
+
+    def _add_info(self, **kwargs):
+        self.__dict__.update(kwargs)
+        self.created_at = datetime.strptime(self.created_at,'%Y-%m-%dT%H:%M:%SZ')
+        self.updated_at = datetime.strptime(self.updated_at,'%Y-%m-%dT%H:%M:%SZ')
+        self.source_name = str(self.source_name)
+        self.md5 = str(self.md5)
+        self.chromosomes = {}
+
+    def _add_chromosome(self, **kwargs):
+        chr_keys = ['id','refseq_locus','refseq_version']
+        key = tuple([kwargs[k] for k in chr_keys])
+        self.chromosomes[key] = dict((k,kwargs[k]) for k in kwargs.keys() if not(k in chr_keys))
+
+    def map_chromosome_names(self, names):
+        """
+        Finds keys in the `chromosomes` dictionary that corresponds to the names or ids given as `names`.
+        Returns a dictionary, such as::
+
+            assembly.map_chromosome_names([3,5,6,47])
+
+            {'3': (2701, u'NC_001135', 4),
+            '47': None,
+            '5': (2508, u'NC_001137', 2),
+            '6': (2580, u'NC_001138', 4)}
+
+        """
+        if not(isinstance(names,(list,tuple))):
+            names = [names]
+        url = "%s/chromosomes.json?assembly_name=%s&identifier=" %(self.genrep.url,self.name)
+        mapped = {}
+        chr_keys = ['id','refseq_locus','refseq_version']
+        for n in names:
+            chr_info = json.load(urllib2.urlopen(urllib2.Request(url+str(n))))
+            if len(chr_info):
+                mapped[str(n)] = tuple([chr_info[0]["chromosome"][k] for k in chr_keys])
+            else:
+                mapped[str(n)] = None
+        return mapped
+
+    def get_links(self,params):
+        """
+        Returns urls to features. Example::
+
+            assembly.get_links({'name':'ENSMUSG00000085692', 'type':'gene'})
+
+        returns the dictionary
+        ``{"Ensembl":"http://ensembl.org/Mus_musculus/Gene/Summary?g=ENSMUSG00000085692"}`
+        If ``params`` is a string, then it is assumed to be the ``name`` parameter with ``type=gene``.
+        """
+        if isinstance(params,basestring):
+            params = {'name':str(params),'type':'gene'}
+        request = "&".join(["md5=%s"%self.md5]+[k+"="+v for k,v in params.iteritems()])
+        url = urllib2.urlopen(urllib2.Request(
+                """%s/nr_assemblies/get_links/%s.json?%s""" %(self.genrep.url,self.nr_assembly_id,request)))
+        return url.read()
+
+    def fasta_from_regions(self, regions, out=None, chunk=50000, shuffled=False):
+        """
+        Get a fasta file with sequences corresponding to the features in the
+        bed or sqlite file.
+
+        Returns the name of the file and the total sequence size.
+
+        If 'out' is a (possibly empty) dictionary, will return the filled dictionary,
+        if 'regions' is a dictionary {'chr' [[start1,end1],[start2,end2]]}
+        or a list [['chr',start1,end1],['chr',start2,end2]],
+        will simply iterate through its items instead of loading a track from file.
+        """
+        from .track import load
+        from .track.extras.sql import TrackExtras
+        if out == None:
+            out = unique_filename_in()
+        def _push_slices(slices,start,end,name,cur_chunk):
+            if end>start:
+                slices['coord'].append([start,end])
+                slices['names'].append(name)
+                cur_chunk += end-start
+            return slices,cur_chunk
+        def _flush_slices(slices,chrid,chrn,out):
+            names = slices['names']
+            coord = slices['coord']
+            if isinstance(out,str):
+                with open(out,"a") as f:
+                    for i,s in enumerate(self.genrep.get_sequence(chrid,coord)):
+                        f.write(">"+names[i]+"|"+chrn+":"+str(coord[i][0])+"-"+str(coord[i][1])+"\n"+s+"\n")
+            else:
+                out[chrn].extend([s for s in self.genrep.get_sequence(chrid,coord)])
+            return {'coord':[],'names':[]}
+        slices = {'coord':[],'names':[]}
+        chrlist = dict((v['name'], {'length': v['length']}) for v in self.chromosomes.values())
+        size = 0
+        if isinstance(regions,list):
+            reg_dict = {}
+            for reg in regions:
+                chrom = reg[0]
+                if not(chrom in reg_dict):
+                    reg_dict[chrom] = []
+                reg_dict[chrom].append(reg[1:])
+            regions = reg_dict
+        if isinstance(regions,dict):
+            cur_chunk = 0
+            for cid,chrom in self.chromosomes.iteritems():
+                if not(chrom['name'] in regions): continue
+                if isinstance(out,dict): out[chrom['name']] = []
+                for row in regions[chrom['name']]:
+                    s = max(row[0],0)
+                    e = min(row[1],chrom['length'])
+                    slices,cur_chunk = _push_slices(slices,s,e,'',cur_chunk)
+                    if cur_chunk > chunk:
+                        size += cur_chunk
+                        slices = _flush_slices(slices,cid[0],chrom['name'],out)
+                        cur_chunk = 0
+                size += cur_chunk
+                slices = _flush_slices(slices,cid[0],chrom['name'],out)
+        else:
+            with load(regions, chrmeta=chrlist) as t:
+                cur_chunk = 0
+                for cid,chrom in self.chromosomes.iteritems():
+                    if shuffled:
+                        features = t.read_shuffled(chrom['name'], repeat_number=1, fields=["start","end","name"])
+                    else:
+                        features = t.read(chrom['name'], fields=["start","end","name"])
+                    for row in features:
+                        s = max(row[0],0)
+                        e = min(row[1],chrom['length'])
+                        name = re.sub('\s+','_',row[2])
+                        slices,cur_chunk = _push_slices(slices,s,e,name,cur_chunk)
+                        if cur_chunk > chunk:
+                            size += cur_chunk
+                            slices = _flush_slices(slices,cid[0],chrom['name'],out)
+                            cur_chunk = 0
+                    size += cur_chunk
+                    slices = _flush_slices(slices,cid[0],chrom['name'],out)
+        return (out,size)
+
+    def statistics(self, output=None, frequency=False, matrix_format=False):
+        """
+        Return (di-)nucleotide counts or frequencies for an assembly, writes in file ``output`` if provided.
+        Example of result:
+        {
+            "TT": 13574667
+            "GG": 3344762
+            "CC": 3365555
+            "AA": 13571722
+            "A": 32370285
+            "TA": 6362526
+            "GT": 4841536
+            "AC": 4846697
+            "N": 0
+            "C": 17781115
+            "TC": 6228639
+            "GA": 6231575
+            "CG": 3131283
+            "GC: 3340219
+            "CT": 5079814
+            "AG": 5075950
+            "G": 17758095
+            "TG": 6206098
+            "CA": 6204462
+            "AT": 8875914
+            "T": 32371931
+        }
+        Total = A + T + G + C
+
+        if matrix_format is True output is like:
+         >Assembly: sacCer2
+        1   0.309798640038793   0.308714120881750   0.190593944221299   0.190893294858157
+        """
+        request = urllib2.Request("%s/nr_assemblies/%d.json?data_type=counts" % (self.genrep.url, self.nr_assembly_id))
+        stat    = json.load(urllib2.urlopen(request))
+        total   = float(stat["A"]+stat["T"]+stat["G"]+stat["C"])
+        if frequency:
+            stat = dict((k,x/total) for k,x in stat.iteritems())
+        else:
+            stat.update
+        if output == None:
+            return stat
+        else:
+            with open(output, "w") as f:
+                if matrix_format:
+                    f.write(">Assembly: %s\n" % self.name)
+                    f.write("%s\t%s\t%s\t%s" %(stat["A"],stat["C"],stat["G"],stat["T"]))
+                    f.write("\n")
+                else:
+                    f.write("#Assembly: %s\n" % self.name)
+                    [f.write("%s\t%s\n" % (x,stat[x])) for x in ["A","C","G","T"]]
+                    f.write("#\n")
+                    [[f.write("%s\t%s\n" % (x+y,stat[x+y])) for y in ["A","C","G","T"]] for x in ["A","C","G","T"]]
+            return output
+
+    def fasta_path(self, chromosome=None):
+        """
+        Returns the path to the compressed fasta file, for the whole assembly or for a single chromosome.
+        """
+        root = os.path.join(self.genrep.root,"nr_assemblies/fasta")
+        path = os.path.join(root,self.md5+".tar.gz")
+        if chromosome != None:
+            chr_id = str(chromosome[0])+"_"+str(chromosome[1])+"."+str(chromosome[2])
+            root = os.path.join(self.genrep.root,"chromosomes/fasta")
+            path = os.path.join(root,chr_id+".fa.gz")
+        elif self.intype == 1:
+            root = os.path.join(self.genrep.root,"nr_assemblies/exons_fasta")
+            path = os.path.join(root,self.md5+".fa.gz")
+        elif self.intype == 2:
+            root = os.path.join(self.genrep.root,"nr_assemblies/cdna")
+            path = os.path.join(root,self.md5+".fa.gz")
+        return path
+
+    def get_sqlite_url(self):
+        '''
+        Returns the url of the sqlite file containing gene annotations.
+        '''
+        return '%s/data/nr_assemblies/annot_tracks/%s.sql' %(self.genrep.url, self.md5)
+
+    def sqlite_path(self):
+        '''
+        Returns the path to the sqlite file containing genes annotations.
+        '''
+        root = os.path.join(self.genrep.root,"nr_assemblies/annot_tracks")
+        return os.path.join(root,self.md5+".sql")
+
+    def get_gene_mapping(self):
+        """Return a dictionary {geneID: (geneName, start, end, chromosome)}"""
+        gene_mapping = {}
+        dbpath = self.sqlite_path()
+        if os.path.exists(dbpath):
+            db = sqlite3.connect(dbpath)
+            cursor = db.cursor()
+            for chr in self.chrnames:
+                sql = "SELECT DISTINCT gene_id,gene_name,MIN(start),MAX(end) FROM '%s' WHERE (type LIKE 'exon') GROUP BY gene_id" %chr
+                cursor.execute(sql)
+                for g,name,start,end in cursor:
+                    gene_mapping[str(g)] = (str(name),start,end,chr)
+        else:
+            for chr in self.chrnames:
+                request = self.genrep.url+"/nr_assemblies/get_dico?md5="+self.md5+\
+                    "&keys=gene_id&values=gene_name,start,end&uniq"+\
+                    "&conditions=type:exon&chr_name="+chr
+                resp = json.load(urllib2.urlopen(request))
+                for k,v in resp.iteritems():
+                    start = min([x[1] for x in v])
+                    end = max([x[2] for x in v])
+                    name = str(v[0][0])
+                    gene_mapping[str(k)] = (name,start,end,chr)
+        return gene_mapping
+
+    def get_transcript_mapping(self):
+        """Return a dictionary ``{transcript ID: (gene ID,start,end,length,chromosome)}``"""
+        transcript_mapping = {}
+        dbpath = self.sqlite_path()
+        if os.path.exists(dbpath):
+            db = sqlite3.connect(dbpath)
+            cursor = db.cursor()
+            for chr in self.chrnames:
+                sql = "SELECT DISTINCT transcript_id,gene_id,MIN(start),MAX(end),SUM(end-start) FROM '%s' WHERE (type LIKE 'exon') GROUP BY transcript_id" %chr
+                cursor.execute(sql)
+                for t,g,start,end,length in cursor:
+                    transcript_mapping[str(t)] = (str(g),start,end,length,chr)
+        else:
+            for chr in self.chrnames:
+                request = self.genrep.url+"/nr_assemblies/get_dico?md5="+self.md5+\
+                    "&keys=transcript_id&values=gene_id,start,end&uniq"+\
+                    "&conditions=type:exon&chr_name="+chr
+                resp = json.load(urllib2.urlopen(request))
+                for k,v in resp.iteritems():
+                    start = min([x[1] for x in v])
+                    end = max([x[2] for x in v])
+                    length = sum([x[2]-x[1] for x in v])
+                    gid = str(v[0][0])
+                    transcript_mapping[str(k)] = (gid,start,end,length,chr)
+        return transcript_mapping
+
+    def get_exon_mapping(self):
+        """Return a dictionary ``{exon ID: ([transcript IDs],gene ID,start,end,chromosome)}``"""
+        exon_mapping = {}
+        dbpath = self.sqlite_path()
+        if os.path.exists(dbpath):
+            db = sqlite3.connect(dbpath)
+            cursor = db.cursor()
+            for chr in self.chrnames:
+                sql = "SELECT DISTINCT exon_id,transcript_id from '%s' WHERE (type LIKE 'exon')" %chr
+                cursor.execute(sql)
+                T={}
+                for e,t in cursor:
+                    T.setdefault(e,[]).append(str(t))
+                sql = "SELECT DISTINCT exon_id,gene_id,start,end FROM '%s' WHERE (type LIKE 'exon')" %chr
+                cursor.execute(sql)
+                for e,g,start,end in cursor:
+                    exon_mapping[str(e)] = (T[e],str(g),start,end,chr)
+        else:
+            for chr in self.chrnames:
+                request = self.genrep.url+"/nr_assemblies/get_dico?md5="+self.md5+\
+                    "&keys=exon_id&values=gene_id,transcript_id,start,end"+\
+                    "&uniq&conditions=type:exon&chr_name="+chr
+                resp = json.load(urllib2.urlopen(request))
+                for k,v in resp.iteritems():
+                    start = v[0][2]
+                    end = v[0][3]
+                    tid = [str(x[1]) for x in v]
+                    gid = str(v[0][0])
+                    exon_mapping[str(k)] = (tid,gid,start,end,chr)
+        return exon_mapping
+
+    def get_exons_in_trans(self):
+        """Return a dictionary ``{transcript ID: list of exon IDs it contains}``"""
+        exons_in_trans = {}
+        dbpath = self.sqlite_path()
+        if os.path.exists(dbpath):
+            db = sqlite3.connect(dbpath)
+            cursor = db.cursor()
+            for chr in self.chrnames:
+                sql = "SELECT DISTINCT transcript_id,exon_id from '%s' WHERE (type LIKE 'exon')"%chr
+                cursor.execute(sql)
+                for t,e in cursor:
+                    exons_in_trans.setdefault(str(t),[]).append(str(e))
+        else:
+            for chr in self.chrnames:
+                request = self.genrep.url+"/nr_assemblies/get_dico?md5="+self.md5+\
+                    "&keys=transcript_id&values=exon_id"+\
+                    "&uniq&conditions=type:exon&chr_name="+chr
+                resp = json.load(urllib2.urlopen(request))
+                for k,v in resp.iteritems():
+                    exons_in_trans[str(k)] = [str(x[0]) for x in v]
+        return exons_in_trans
+
+    def get_trans_in_gene(self):
+        """Return a dictionary ``{gene ID: list of transcript IDs it contains}``"""
+        trans_in_gene = {}
+        dbpath = self.sqlite_path()
+        if os.path.exists(dbpath):
+            db = sqlite3.connect(dbpath)
+            cursor = db.cursor()
+            for chr in self.chrnames:
+                sql = "SELECT DISTINCT gene_id,transcript_id FROM '%s' WHERE (type LIKE 'exon')"%chr
+                cursor.execute(sql)
+                for g,t in cursor:
+                    trans_in_gene.setdefault(str(g),[]).append(str(t))
+        else:
+            for chr in self.chrnames:
+                request = self.genrep.url+"/nr_assemblies/get_dico?md5="+self.md5+\
+                    "&keys=gene_id&values=transcript_id"+\
+                    "&uniq&conditions=type:exon&chr_name="+chr
+                resp = json.load(urllib2.urlopen(request))
+                for k,v in resp.iteritems():
+                    trans_in_gene[str(k)] = [str(x[0]) for x in v]
+        return trans_in_gene
 
     @property
     def chrmeta(self):
-        """ Returns a dictionary of chromosome meta data looking something like:
-
-            {'chr1': {'length': 249250621},
-             'chr2': {'length': 135534747},
-             'chr3': {'length': 135006516},
-
+        """
+        Returns a dictionary of chromosome meta data looking something like:
+        {'chr1': {'length': 249250621},'chr2': {'length': 135534747},'chr3': {'length': 135006516}}
         """
         return dict([(v['name'], dict([('length', v['length'])])) for v in self.chromosomes.values()])
+
+    @property
+    def chrnames(self):
+        """
+        Returns a list of chromosome names
+        """
+        namelist = [(v['num'],v['name']) for v in self.chromosomes.values()]
+        return [x[1] for x in sorted(namelist)]
+
+################################################################################
+class GenRep(object):
+    def __init__(self, url=None, root=None, config=None, section='genrep'):
+        """Create an object to query a GenRep repository.
+
+        GenRep is the in-house repository for sequence assemblies for the
+        BBCF in Lausanne.  This is an object that wraps its use in Python
+        in an idiomatic way.
+
+        Create a GenRep object with the base URL to the GenRep system, and
+        the root path of GenRep's files.  For instance::
+
+            g = GenRep('genrep.epfl.ch', '/path/to/genrep/indices')
+
+        To get an assembly from the repository, call the assembly
+        method with either the integer assembly ID or the string assembly
+        name.  This returns an Assembly object::
+
+            a = g.assembly(3)
+            b = g.assembly('mm9')
+
+        You can also pass this to the Assembly call directly::
+
+            a = Assembly(assembly='mm9',genrep=g)
+
+        """
+        if not(config is None):
+            if url is None:
+                url = config.get(section, 'genrep_url')
+            if root is None:
+                root = config.get(section, 'genrep_root')
+        if url is None: url = default_url
+        if root is None: root = default_root
+        self.url = normalize_url(url)
+        self.root = os.path.abspath(root)
+
+    def assembly(self,assembly,intype=0):
+        """ Backward compatibility """
+        return Assembly( assembly=assembly, genrep=self, intype=intype )
+
+    def is_up(self):
+        """ Check if genrep webservice is available """
+        try:
+            urllib2.urlopen(self.url + "/nr_assemblies.json", timeout=2)
+        except urllib2.URLError:
+            return False
+        return True
+
+    def assemblies_available(self, assembly=None):
+        """
+        Returns a list of assemblies available on genrep, or tells if an
+        assembly with name ``assembly`` is available.
+        """
+        request = urllib2.Request(self.url + "/assemblies.json")
+        assembly_list = []
+        for a in json.load(urllib2.urlopen(request)):
+            name = a['assembly'].get('name')
+            if name == None: continue
+            if name == assembly: return True
+            assembly_list.append(name)
+        if assembly == None: return assembly_list
+
+    def get_sequence(self, chr_id, coord_list):
+        """Parses a slice request to the repository."""
+        if len(coord_list) == 0:
+            return []
+        slices  = ",".join([",".join([str(y) for y in x]) for x in coord_list])
+        url     = """%s/chromosomes/%i/get_sequence_part?slices=%s""" % (self.url, chr_id, slices)
+        request = urllib2.Request(url)
+        return urllib2.urlopen(request).read().split(',')
+
+    def get_genrep_objects(self, url_tag, info_tag, filters = None):
+        """
+        Get a list of GenRep objets
+        ... attribute url_tag: the GenrepObject type (plural)
+        ... attribute info_tag: the GenrepObject type (singular)
+        Optionals attributes:
+        ... attribute filters: a dict that is used to filter the response
+        from GenRep.
+        Example:
+        To get the genomes related to 'Mycobacterium leprae' species.
+        First get the species with the right name:
+        species = get_genrep_objects('organisms', 'organism', {'species':'Mycobacterium leprae'})[0]
+        genomes = get_genrep_objects('genomes', 'genome', {'organism_id':species.id})
+        """
+        if not self.is_up(): return []
+        if filters is None: filters = {}
+        infos = json.load(urllib2.urlopen("""%s/%s.json""" % (self.url, url_tag)))
+        result = []
+        for info in infos:
+            obj = GenrepObject(info,info_tag)
+            if not filters:
+                result.append(obj)
+            else:
+                for k,v in filters.items():
+                    if hasattr(obj,k) and getattr(obj,k) == v:
+                        result.append(obj)
+                        break
+        return result
 
 ################################################################################
 class GenrepObject(object):
@@ -552,118 +607,6 @@ class GenrepObject(object):
         self.__dict__.update(info[key])
 
 ################################################################################
-class JsonJit(object):
-    """
-    JsonJit is a class for Just In Time instantiation of JSON resources.
-    The __lazy__ method downloads the JSON resource from the server.
-    But the __lazy__ method is called only when the first attribute is either get or set.
-    You can use it like this:
-
-        assemblies = JsonJit('http://bbcftools.vital-it.ch/genrep/assemblies.json', 'assembly')
-
-    :param url: Location of the JSON to load
-    :param list_key: Optional dictionary key to unpack the elements of JSON with
-    """
-
-    def __init__(self, url, list_key=None):
-        """Save the passed parameters"""
-        self.__dict__['url'] = url
-        self.__dict__['list_key'] = list_key
-        self.__dict__['obj'] = None
-
-    def __lazy__(self):
-        """Fetch resource and instantiate object."""
-        import json, urllib2
-        try:
-            content = urllib2.urlopen(self.url).read()
-            # Create the child object #
-            self.__dict__['obj'] = json.loads(content)
-        except urllib2.URLError as err:
-            self.__dict__['obj'] = err
-        # Unpack the child object #
-        if self.list_key:
-            for num, item in enumerate(self.obj):
-                self.obj[num] = item[self.list_key]
-
-    def get(self, value):
-        """Retrieve an item from the JSON
-           by searching all attributes of all items
-           for *name*"""
-        if not self.obj: self.__lazy__()
-        for x in self.obj:
-            if [k for k,v in x.items() if v == value]: return x
-
-    def filter(self, key, value):
-        """Retrieve an item from the JSON
-           by search a key that is equal to value in
-           all elements"""
-        if not self.obj: self.__lazy__()
-        return [x for x in self.obj for k,v in x.items() if v == value and k == key]
-
-    def by(self, name):
-        """Return a list of attributes present
-           in every element of the JSON"""
-        if not self.obj: self.__lazy__()
-        return [x or x.encode('ascii') and isinstance(x, basestring) for x in [x.get(name) for x in self.obj]]
-
-    def make(self, name):
-        """Return an object whoes attributes are the
-           keys of the element's dictionary"""
-        if not self.obj: self.__lazy__()
-        class JsonObject(object): pass
-        obj = JsonObject()
-        obj.__dict__.update(self.get(name))
-        return obj
-
-    def __getattr__(self, name):
-        """Method called when an attribute is
-           not found in __dict__."""
-        if not self.obj: self.__lazy__()
-        # Search in the child object #
-        try: return getattr(self.obj, name)
-        except AttributeError:
-            # Search in the parent object #
-            if name in self.__dict__: return self.__dict__[name]
-            else: return self.make(name)
-
-    def __setattr__(self, name, value):
-        """Method called when an attribute is
-           assigned to."""
-        if not self.obj: self.__lazy__()
-        try: setattr(self.obj, name, value)
-        except AttributeError: self.__dict__[name] = value
-
-    def __len__(self):
-        if not self.obj: self.__lazy__()
-        return self.obj.__len__()
-
-    def __iter__(self):
-        if not self.obj: self.__lazy__()
-        return self.obj.__iter__()
-
-    def __repr__(self):
-        if not self.obj: self.__lazy__()
-        return self.obj.__repr__()
-
-    def __getitem__(self, key):
-        if not self.obj: self.__lazy__()
-        return self.obj[key]
-
-    def __setitem__(self, key, item):
-        if not self.obj: self.__lazy__()
-        self.obj[key] = item
-
-    def __delitem__(self, key):
-        if not self.obj: self.__lazy__()
-        del self.obj[key]
-
-# Expose base resources #
-organisms     = JsonJit(default_url + "organisms.json",     'organism')
-genomes       = JsonJit(default_url + "genomes.json",       'genome')
-nr_assemblies = JsonJit(default_url + "nr_assemblies.json", 'nr_assembly')
-assemblies    = JsonJit(default_url + "assemblies.json",    'assembly')
-sources       = JsonJit(default_url + "sources.json",       'source')
-chromosomes   = JsonJit(default_url + "chromosomes.json",   'chromosome')
 
 #-----------------------------------#
 # This code was written by the BBCF #

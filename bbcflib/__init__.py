@@ -15,6 +15,7 @@ It provides modules for BBCF's
 * *mapseq* to map reads to reference genomes
 * *chipseq* to run ChIP-seq analyses
 * *rnaseq* to map reads to reference transcriptomes and compute statistics of differential expression
+* *snp* to search for SNP with respect to a reference genome
 
 All the functionality can be imported with::
 
@@ -30,6 +31,7 @@ where module is one of:
 * ``chipseq`` from :doc:`bbcflib_chipseq`
 * ``rnaseq`` from :doc:`bbcflib_rnaseq`
 * ``gdv`` from :doc:`bbcflib_gdv`
+* ``snp`` from :doc:`bbcflib_snp`
 
 ============
 Installation
@@ -41,6 +43,7 @@ bbcflib requires:
 * mailer >=0.6 (http://pypi.python.org/pypi/mailer)
 * bein (http://bbcf.epfl.ch/bein/)
 * numpy (http://numpy.scipy.org/)
+* pysam (http://code.google.com/p/pysam/)
 
 bbcflib doesn't have regular releases, since it is an internally used
 library. You should download the latest source code from GitHub,

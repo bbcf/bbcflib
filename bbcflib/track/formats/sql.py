@@ -6,6 +6,13 @@ Submodule: bbcflib.track.formats.sql
 Implementation of the SQL format.
 """
 
+###########################################################################
+###########################################################################
+## WARNING: The bbcflib.track package is deprecated.                     ##
+##          A new project simply called 'track' replaces it.             ##
+###########################################################################
+###########################################################################
+
 # Built-in modules #
 import re, sqlite3
 

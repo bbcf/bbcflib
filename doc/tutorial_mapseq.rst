@@ -59,7 +59,7 @@ Densities output
 ----------------
 
 For reads mapped to the genome, a read density file can be generated. This will provide genomic position-specific reads counts normalized by total number of reads (in units of 10 millions), where each multiple mapping read is counted as **1/total count**. 
-Reads are extended to a specified length (by the default the read length of the sequencing run). If `merge strands` is specified as **NA**, two strand-specific densities are produced, if a number **S** is given as `merge strands` value, then a single density is calculated as the sum of the two strands after shifting each by **S** bases in downstream direction. **S**  should therefore correspond to half the average sequencing fragment length.
+Reads are extended to a specified length (by the default the read length of the sequencing run). If `merge strands` is specified as **NA**, two strand-specific densities are produced, if a number **S** is given as `merge strands` value, then a single density is calculated as the average of the two strands after shifting each by **S** bases in downstream direction. **S**  should therefore correspond to half the difference between average sequencing fragment length et read extension.
 
 These densities are available in the results page as `sqlite <http://bbcf.epfl.ch/twiki/bin/view/BBCF/SqLite>`_ and `bigwig <http://genome.ucsc.edu/goldenPath/help/bigWig.html>`_ formats. If `Create GDV project` is specified, the files will be uploaded in a new project on `GDV <http://svitsrv25.epfl.ch/gdv/>`_.
 

@@ -6,6 +6,13 @@ Subpackage: bbcflib.track.track_chrmeta
 Takes care of managing chromosome meta data.
 """
 
+###########################################################################
+###########################################################################
+## WARNING: The bbcflib.track package is deprecated.                     ##
+##          A new project simply called 'track' replaces it.             ##
+###########################################################################
+###########################################################################
+
 # Built-in modules #
 import os
 

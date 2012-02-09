@@ -12,10 +12,10 @@ from operator import add
 
 # Internal modules #
 from . import track
-from .common import set_file_descr
+from bbcflib.common import set_file_descr, unique_filename_in
 
 # Other modules #
-from bein import unique_filename_in, program
+from bein import program
 
 ################################################################################
 @program
@@ -29,7 +29,7 @@ def meme( fasta, outdir, maxsize=10000000, args=None ):
     call = ["meme", fasta, "-o", outdir, "-dna", "-maxsize", str(maxsize)]+args
     return {"arguments": call, "return_value": None}
 
-def parse_meme_xml( ex, meme_file, chromosomes ):
+def parse_meme_xml( ex, meme_file, chrmeta ):
     """ Parse meme xml file and convert to track """
     from xml.etree import ElementTree as ET
     tree = ET.parse(meme_file)
@@ -63,16 +63,14 @@ def parse_meme_xml( ex, meme_file, chromosomes ):
                 score = it.attrib['pvalue']
                 yield (start,end,it.attrib['motif_id'],score,strnd)
     outsql = unique_filename_in()
-    chrlist = dict((v['name'], {'length': v['length']}) for v in chromosomes.values())
-    with track.new(outsql, format='sql', chrmeta=chrlist, datatype='qualitative') as t:
+    with track.new(outsql, format='sql', chrmeta=chrmeta, datatype='qualitative') as t:
         t.attributes['source'] = 'Meme'
-        for chrom in chrlist.keys():
+        for chrom in chrmeta.keys():
             t.write(chrom,_xmltree(chrom,tree),fields=['start','end','name','score','strand'])
     return {'sql':outsql,'matrices':allmatrices}
-                
 
-def parallel_meme( ex, genrep, chromosomes, regions, 
-                   name=None, meme_args=None, via='lsf' ):
+
+def parallel_meme( ex, assembly, regions, name=None, meme_args=None, via='lsf' ):
     """Fetches sequences, then calls ``meme``
     on them and finally saves the results in the repository.
     """
@@ -86,7 +84,7 @@ def parallel_meme( ex, genrep, chromosomes, regions,
         name = [name]
     futures = {}
     for i,n in enumerate(name):
-        (fasta, size) = genrep.fasta_from_regions( chromosomes, regions[i], out=unique_filename_in() )
+        (fasta, size) = assembly.fasta_from_regions( regions[i], out=unique_filename_in() )
         tmpfile = unique_filename_in()
         outdir = unique_filename_in()
         futures[n] = (outdir, meme.nonblocking( ex, fasta, outdir, maxsize=size*1.5, args=meme_args, via=via, stderr=tmpfile ))
@@ -98,7 +96,8 @@ def parallel_meme( ex, genrep, chromosomes, regions,
         tgz = tarfile.open(archive, "w:gz")
         tgz.add( meme_out )
         tgz.close()
-        meme_res = parse_meme_xml( ex, os.path.join(meme_out, "meme.xml"), chromosomes )
+        meme_res = parse_meme_xml( ex, os.path.join(meme_out, "meme.xml"), 
+                                   assembly.chrmeta )
         if os.path.exists(os.path.join(meme_out, "meme.html")):
             ex.add( os.path.join(meme_out, "meme.html"),
                     description=set_file_descr(n+"_meme.html",step='meme',type='html',group=n) )
@@ -117,15 +116,15 @@ def motif_scan( fasta, motif, background, threshold=0 ):
     call = ["S1K", motif, background, str(threshold), fasta]
     return {"arguments": call, "return_value": None}
 
-def save_motif_profile( ex, motifs, background, genrep, chromosomes, regions,
-                        keep_max_only=False, threshold=0, description='motif_scan.sql', via='lsf' ):
+def save_motif_profile( ex, motifs, background, assembly, regions, keep_max_only=False, 
+                        threshold=0, description='motif_scan.sql', via='lsf' ):
     """Scan a set of motifs on a set of regions and saves the results as an sql file.
-    The 'motifs' argument is a single PWM file or a dictionary with keys motif names and values PWM files 
+    The 'motifs' argument is a single PWM file or a dictionary with keys motif names and values PWM files
     with 'n' rows like:
-    "1 p(A) p(C) p(G) p(T)" 
+    "1 p(A) p(C) p(G) p(T)"
     where the sum of the 'p's is 1 and the first column allows to skip a position with a '0'.
     """
-    fasta, size = genrep.fasta_from_regions( chromosomes, regions )
+    fasta, size = assembly.fasta_from_regions( regions )
     sqlout = unique_filename_in()
     if not(isinstance(motifs, dict)):
         motifs = {"_": motifs}
@@ -135,7 +134,6 @@ def save_motif_profile( ex, motifs, background, genrep, chromosomes, regions,
         output = unique_filename_in()
         futures[name] = ( output, motif_scan.nonblocking( ex, fasta, pwm, background,
                                                           threshold, stdout=output, via=via ) )
-    chrlist = dict((v['name'], {'length': v['length']}) for v in chromosomes.values())
 ##############
     def _parse_s1k(_f,_c,_n):
         if keep_max_only:
@@ -144,7 +142,7 @@ def save_motif_profile( ex, motifs, background, genrep, chromosomes, regions,
             for line in fin:
                 row = line.split("\t")
                 sname,seq_chr,start,end = re.search(r'(.*)\|(.+):(\d+)-(\d+)',row[0]).groups()
-                if seq_chr != _c: 
+                if seq_chr != _c:
                     continue
                 start = int(row[3])+int(start)-1
                 tag = row[1]
@@ -160,23 +158,23 @@ def save_motif_profile( ex, motifs, background, genrep, chromosomes, regions,
             for x in maxscore.values():
                 yield x
 ##############
-    with track.new( sqlout, format="sql", datatype="qualitative", chrmeta=chrlist ) as track_result:
+    with track.new( sqlout, format="sql", datatype="qualitative", chrmeta=assembly.chrmeta ) as track_result:
         track_result.attributes['source'] = 'S1K'
         for name, future in futures.iteritems():
             _ = future[1].wait()
-            for chrom in chrlist.keys():
+            for chrom in assembly.chrnames:
                 track_result.write( chrom, _parse_s1k(future[0],chrom,name),
                                     fields=['start','end','name','score','strand'] )
     ex.add( sqlout, description=description )
     return sqlout
 
-def FDR_threshold( ex, motif, background, genrep, chromosomes, regions, alpha=.1, nb_samples=1, via='lsf' ):
+def FDR_threshold( ex, motif, background, assembly, regions, alpha=.1, nb_samples=1, via='lsf' ):
     """
-    Computes a score threshold for 'motif' on 'regions' based on a false discovery rate < alpha and returns the 
+    Computes a score threshold for 'motif' on 'regions' based on a false discovery rate < alpha and returns the
     threshold or a dictionary with keys thresholds and values simulated FDRs when alpha < 0.
     """
-    fasta, size = genrep.fasta_from_regions( chromosomes, regions )
-    shuf_fasta, shuf_size = genrep.fasta_from_regions( chromosomes, regions, shuffled=True )
+    fasta, size = assembly.fasta_from_regions( regions )
+    shuf_fasta, shuf_size = assembly.fasta_from_regions( regions, shuffled=True )
     output = unique_filename_in()
 #### Threshold at -100 to get all scores!
     future = motif_scan.nonblocking( ex, fasta, motif, background, -100, stdout=output, via=via )
@@ -191,9 +189,9 @@ def FDR_threshold( ex, motif, background, genrep, chromosomes, regions, alpha=.1
         for line in fin:
             row = line.split("\t")
             score = int(round(float(row[2])))
-            if score in TP_scores: 
+            if score in TP_scores:
                 TP_scores[score] += 1
-            else: 
+            else:
                 TP_scores[score] = 1
             ntp += 1
     scores = sorted(TP_scores.keys(),reverse=True)
@@ -227,30 +225,17 @@ def FDR_threshold( ex, motif, background, genrep, chromosomes, regions, alpha=.1
     if alpha < 0: return FP_scores
     return threshold
 
-def sqlite_to_false_discovery_rate( ex, motif, background, genrep, chromosomes, regions,
-                                    alpha=0.05, nb_samples=1,
+def sqlite_to_false_discovery_rate( ex, motif, background, assembly, regions, alpha=0.05, nb_samples=1,
                                     description='', via='lsf' ):
     """
-    Computes a score threshold for 'motif' on 'regions' based on a false discovery rate < alpha and returns the 
+    Computes a score threshold for 'motif' on 'regions' based on a false discovery rate < alpha and returns the
     thresholded profile.
     """
-    threshold = FDR_threshold( motif, background, genrep, chromosomes, regions, alpha=alpha, nb_samples=nb_samples, via=via )
-    track = save_motif_profile( ex, motif, background, genrep, chromosomes, regions,
+    threshold = FDR_threshold( motif, background, assembly, regions, alpha=alpha, nb_samples=nb_samples, via=via )
+    track = save_motif_profile( ex, motif, background, assembly, regions,
                                 threshold=threshold, description=description, via=via )
     return track, threshold
 
-def parse_meme_html_output(ex, meme_file, fasta, chromosomes):
-    """Legacy signature"""
-    meme_file = os.path.splitext(meme_file)[0]+".xml"
-    return parse_meme_xml( ex, meme_file, chromosomes )
-    
-def add_meme_files( ex, genrep, chromosomes, description='',
-                    bed=None, sql=None, meme_args=None, via='lsf' ):
-    """Legacy signature"""
-    regions = sql or bed
-    return parallel_meme( ex, genrep, chromosomes, regions=regions, 
-                          name=description, meme_args=meme_args, via=via )
-    
 #-----------------------------------#
 # This code was written by the BBCF #
 # http://bbcf.epfl.ch/              #

@@ -6,6 +6,13 @@ Submodule: bbcflib.track.formats.bed
 Implementation of the BED format.
 """
 
+###########################################################################
+###########################################################################
+## WARNING: The bbcflib.track package is deprecated.                     ##
+##          A new project simply called 'track' replaces it.             ##
+###########################################################################
+###########################################################################
+
 # Internal modules #
 from bbcflib.track.track_proxy import TrackProxy
 from bbcflib.track.track_text import TrackText, strand_to_int, int_to_strand

@@ -7,6 +7,13 @@ Methods that create a text file upon opening a binary file in the temporary dire
 and reconverts everything to a binary file file upon closing, all transparently.
 """
 
+###########################################################################
+###########################################################################
+## WARNING: The bbcflib.track package is deprecated.                     ##
+##          A new project simply called 'track' replaces it.             ##
+###########################################################################
+###########################################################################
+
 # Built-in modules #
 import os, shutil, subprocess
 

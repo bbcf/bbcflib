@@ -1,10 +1,10 @@
-# coding: utf-8
 
 # Built-in modules #
 
 # Internal modules #
 from bbcflib.rnaseq import *
 from bein import execution
+import track
 
 # Unitesting modules #
 try: import unittest2 as unittest
@@ -18,47 +18,314 @@ from numpy import array
 __test__ = True
 
 
-class Test_Expressions(unittest.TestCase):
+class Assem(object):
+    def __init__(self):
+        self.chrmeta = None
+
+
+class Test_Fusion(unittest.TestCase):
+    def test_fusion(self):
+        c = 'c'
+        print "test1"
+        """
+        |***---***---***|
+        """
+        X = [(c,0,5,5.),(c,10,15,4.),(c,20,25,2.)]
+        R = [(c,0,5,5.),(c,10,15,4.),(c,20,25,2.)]
+        T = [s for s in fusion(iter(X))]
+        self.assertEqual(T, R)
+        print "test2"
+        """
+        |*********|
+        |---***---|
+        """
+        X = [(c,0,15,5.),(c,5,10,4.)]
+        R = [(c,0,5,5.),(c,5,10,9.),(c,10,15,5.)]
+        T = [s for s in fusion(iter(X))]
+        self.assertEqual(T, R)
+        print "test3"
+        """
+        |***************|
+        |---***---***---|
+        """
+        X = [(c,0,25,5.),(c,5,10,4.),(c,15,20,2.)]
+        R = [(c,0,5,5.),(c,5,10,9.),(c,10,15,5.),(c,15,20,7.),(c,20,25,5.)]
+        T = [s for s in fusion(iter(X))]
+        self.assertEqual(T, R)
+        print "test4"
+        """
+        |*********---***|
+        |---***---------|
+        """
+        X = [(c,0,15,5.),(c,5,10,4.),(c,20,25,2.)]
+        R = [(c,0,5,5.),(c,5,10,9.),(c,10,15,5.),(c,20,25,2.)]
+        T = [s for s in fusion(iter(X))]
+        self.assertEqual(T, R)
+        print "test5"
+        """
+         .  .  .  .  .  .  .  .
+        |***************---***|
+        |---***---***---------|
+        """
+        X = [(c,0,25,5.),(c,5,10,4.),(c,15,20,2.),(c,30,35,1.)]
+        R = [(c,0,5,5.),(c,5,10,9.),(c,10,15,5.),(c,15,20,7.),(c,20,25,5.),(c,30,35,1.)]
+        T = [s for s in fusion(iter(X))]
+        self.assertEqual(T, R)
+        print "test6"
+        """
+        |******---|
+        |---******|
+        """
+        X = [(c,0,10,5.),(c,5,15,4.)]
+        R = [(c,0,5,5.),(c,5,10,9.),(c,10,15,4.)]
+        T = [s for s in fusion(iter(X))]
+        self.assertEqual(T, R)
+        print "test7"
+        """
+         .  .  .  .  .  .
+        |******------***|
+        |---******------|
+        """
+        X = [(c,0,10,5.),(c,5,15,4.),(c,20,25,2.)]
+        R = [(c,0,5,5.),(c,5,10,9.),(c,10,15,4.),(c,20,25,2.)]
+        T = [s for s in fusion(iter(X))]
+        self.assertEqual(T, R)
+        print "test8"
+        """
+         .  .  .  .  .  .
+        |******---******|
+        |---*********---|
+        """
+        X = [(c,0,10,5.),(c,5,20,4.),(c,15,25,2.)]
+        R = [(c,0,5,5.),(c,5,10,9.),(c,10,15,4.),(c,15,20,6.),(c,20,25,2.)]
+        T = [s for s in fusion(iter(X))]
+        self.assertEqual(T, R)
+        print "test9"
+        """
+         0  5  10 15 20 25 30    40    50    60    70    80    90    100   110   120   130   140
+         .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .
+        |******************---------------******---*********---***---******---************---***|
+        |---***---***---******---------******---------***---------------*********---***---------|
+        """
+        X = [(c,0,30,5.),(c,5,10,4.),(c,15,20,3.),(c,25,35,8.),(c,50,60,1.),
+             (c,55,65,3.),(c,70,85,8.),(c,75,80,3.),(c,90,95,2.),(c,100,110,4.),
+             (c,105,120,3.),(c,115,135,2.),(c,125,130,6.),(c,140,145,9.)]
+        T = [s for s in fusion(iter(X))]
+        R = [(c,0,5,5.),(c,5,10,9.),(c,10,15,5.),(c,15,20,8.),
+             (c,20,25,5.),(c,25,30,13.),(c,30,35,8.),(c,50,55,1.),
+             (c,55,60,4.),(c,60,65,3.),(c,70,75,8.),(c,75,80,11.),
+             (c,80,85,8.),(c,90,95,2.),(c,100,105,4.),(c,105,110,7.),
+             (c,110,115,3.),(c,115,120,5.),(c,120,125,2.),(c,125,130,8.),
+             (c,130,135,2.),(c,140,145,9.)]
+        self.assertEqual(T,R)
+        print "test10"
+        """
+         .  .  .  .  .  .
+        |***************|
+        |---*********---| -> |***.*********.***|
+        |------***------| -> |------(xxx)------|
+        """
+        X = [(c,0,25,5.),(c,5,20,4.),(c,10,15,2.)]
+        #R = [(c,0,5,5.),(c,5,10,9.),(c,10,15,11.),(c,15,20,6.),(c,20,25,2.)] # what it should be
+        R = [(c,0,5,5.),(c,5,20,9.),(c,20,25,5.)] # special treatment
+        T = [s for s in fusion(iter(X))]
+        self.assertEqual(T, R)
+        print "test11"
+        """
+         .  .  .  .  .  .
+        |************---|
+        |---************|
+        |------***------
+        """
+        X = [(c,0,20,5.),(c,5,25,4.),(c,10,15,2.)]
+        #R = [(c,0,5,5.),(c,5,10,9.),(c,10,15,11.),(c,15,20,6.),(c,20,25,4.)] # what it should be
+        R = [(c,0,5,5.),(c,5,20,9.),(c,20,25,4.)] # special treatment
+        T = [s for s in fusion(iter(X))]
+        self.assertEqual(T, R)
+
+
+class Test_Expressions1(unittest.TestCase):
+    """Two conditions, different lengths, invertible"""
     def setUp(self):
-        # add some that are not in the mappings from Ensembl
-        e1="e1"; e2="e2";
-        t1="t1"; t2="t2";
-        g1="g1";
-        self.M = numpy.matrix('1 1; 0 1')
+        e1="e1"; e2="e2"; t1="t1"; t2="t2"; g1="g1";
         self.ncond = 2
         self.counts = numpy.array([[27,12],[3,3]]) # [[cond1],[cond2]]
         self.rpkms = numpy.array([[27/3.,12/6.],[3/3.,3/6.]])
-        self.exons_data = [[e1,e2],[g1,g1]]+list(self.counts)+list(self.rpkms)+[[0.,3.],[3.,9.],["g1","g1"]]
+        self.exons_data = [[e1,e2]]+list(self.counts)+list(self.rpkms)+[[0.,3.],[3.,9.],["g1","g1"],["gg1","gg1"],["c","c"]]
+        self.transcript_mapping = {t1:("g1",0,3,3.,"c"), t2:("g1",0,9,9.,"c")}
+        self.exon_lengths = {e1:3., e2:6.}
         self.exon_to_gene = {e1:g1, e2:g1}
         self.trans_in_gene = {g1:[t1,t2]}
         self.exons_in_trans = {t1:[e1], t2:[e1,e2]}
         """
-            Cond1         Cond2
-        |=====g1====| |=====g1====|
-        |-t1-|        |-t1-|
-        |-----t2----| |-----t2----|
-          v      v      v      v
-          27     12     3      3
-        |.e1.| |.e2.| |.e1.| |.e2.|
-        """
+           *Counts Cond1*             *Rpkm Cond1*
+        g1 |===.======|               |===.===|
+        t1 |---|         21           |---|      7
+        t2 |---.------|  6  +  12     |---.---| (2) 2
 
+             27    12                   9   2
+           |.e1.||.e2.|               |e1| |e2|
+        """
+        """
+           *Counts Cond2*             *Rpkm Cond2*
+        g1 |===.======|               |===.===|
+        t1 |---|         1.5          |---|      0.5
+        t2 |---.------|  1.5 + 3      |---.---| (0.5) 0.5
+
+             3     3                    1   0.5
+           |.e1.||.e2.|               |e1| |e2|
+        """
     def test_transcripts_expression(self):
-        # Pseudo-inverse
-        trpk, tcounts, err = transcripts_expression(self.exons_data, self.trans_in_gene,
-                                      self.exons_in_trans, self.ncond, method="pinv")
+        tcounts, trpk = transcripts_expression(self.exons_data, self.exon_lengths, self.transcript_mapping,
+                 self.trans_in_gene, self.exons_in_trans, self.ncond)
         assert_almost_equal(trpk["t1"], array([7., 0.5]))
-        assert_almost_equal(trpk["t2"], array([4., 1.]))
-        # NNLS
-        trpk, tcounts, err = transcripts_expression(self.exons_data, self.trans_in_gene,
-                                      self.exons_in_trans, self.ncond, method="nnls")
-        assert_almost_equal(trpk["t1"], array([7., 0.5]))
-        assert_almost_equal(trpk["t2"], array([4., 1.]))
+        assert_almost_equal(trpk["t2"], array([2., 0.5]))
+        assert_almost_equal(tcounts["t1"], array([21., 1.5]))
+        assert_almost_equal(tcounts["t2"], array([18., 4.5]))
+        self.assertEqual(sum(sum(tcounts.values())), sum(sum(self.counts)))
 
     def test_genes_expression(self):
         gcounts, grpkms = genes_expression(self.exons_data, self.exon_to_gene, self.ncond)
         assert_almost_equal(gcounts["g1"], array([39., 6.]))
 
-    @unittest.skip("Not in use at the moment.")
+    def test_coherence(self):
+        # Test if sum of transcript counts equals gene counts
+        tcounts, trpk = transcripts_expression(self.exons_data, self.exon_lengths, self.transcript_mapping,
+                     self.trans_in_gene, self.exons_in_trans, self.ncond)
+        gcounts, grpkms = genes_expression(self.exons_data, self.exon_to_gene, self.ncond)
+        self.assertEqual(sum(gcounts["g1"]), sum([sum(tcounts[t]) for t in self.trans_in_gene["g1"]]))
+
+
+class Test_Expressions2(unittest.TestCase):
+    """One condition, equal lengths, invertible"""
+    def setUp(self):
+        e1="e1"; e2="e2"; e3="e3"; t1="t1"; t2="t2"; t3="t3"; g1="g1";
+        self.ncond = 1
+        self.counts = numpy.array([[10,15,10]]) # [[cond1]]
+        self.rpkms = numpy.array([[10/5.,15/5.,10/5.]])
+        self.exons_data = [[e1,e2,e3]]+list(self.counts)+list(self.rpkms)+\
+               [[0.,5.,10],[5.,10.,15.],["g1"]*3,["gg1"]*3,["c"]*3]
+        self.transcript_mapping = {t1:("g1",0,10,10.,"c"), t2:("g1",5,15,10.,"c"), t3:("g1",0,15,15.,"c")}
+        self.exon_lengths = {e1:5., e2:5., e3:5.}
+        self.exon_to_gene = {e1:g1, e2:g1, e3:g1}
+        self.trans_in_gene = {g1:[t1,t2,t3]}
+        self.exons_in_trans = {t1:[e1,e2], t2:[e2,e3], t3:[e1,e2,e3]}
+        """
+           *Counts Cond1*
+        g1 |===.===.===|
+        t1 |-------|      5 + 5
+        t2     |-------|  5 +     5
+        t3 |-----------|  5 + 5 + 5
+
+            10  15   10
+           |e1||e2| |e3|
+        """
+    def test_transcripts_expression(self):
+        tcounts, trpk = transcripts_expression(self.exons_data, self.exon_lengths, self.transcript_mapping,
+                 self.trans_in_gene, self.exons_in_trans, self.ncond)
+        assert_almost_equal(tcounts["t1"], array([10.]))
+        assert_almost_equal(tcounts["t2"], array([10.]))
+        assert_almost_equal(tcounts["t3"], array([15.]))
+        self.assertEqual(sum(sum(tcounts.values())), sum(sum(self.counts)))
+
+
+class Test_Expressions3(unittest.TestCase):
+    """Underdetermined system"""
+    def setUp(self):
+        e1="e1"; e2="e2"; e3="e3"; t1="t1"; t2="t2"; t3="t3"; t4="t4"; g1="g1";
+        self.ncond = 1
+        self.counts = numpy.array([[10,15,10]]) # [[cond1]]
+        self.rpkms = numpy.array([[10/5.,15/5.,10/5.]])
+        self.exons_data = [[e1,e2,e3]]+list(self.counts)+list(self.rpkms)+\
+               [[0.,5.,10],[5.,10.,15.],["g1"]*3,["gg1"]*3,["c"]*3]
+        self.transcript_mapping = {t1:("g1",0,10,10.,"c"), t2:("g1",5,15,10.,"c"), \
+                                   t3:("g1",0,15,15.,"c"), t4:("g1",0,15,10.,"c")}
+        self.exon_lengths = {e1:5., e2:5., e3:5.}
+        self.exon_to_gene = {e1:g1, e2:g1, e3:g1}
+        self.trans_in_gene = {g1:[t1,t2,t3,t4]}
+        self.exons_in_trans = {t1:[e1,e2], t2:[e2,e3], t3:[e1,e2,e3], t4:[e1,e3]}
+        """
+           *Counts Cond1*
+        g1 |===.===.===|
+        t1 |-------|      7.5 + 7.5
+        t2     |-------|        7.5 + 7.5
+        t3 |-----------|  0     0     0
+        t4 |---|   |---|  2.5 +       2.5
+
+            10  15   10
+           |e1||e2| |e3|
+        """
+    def test_transcripts_expression(self):
+        tcounts, trpk = transcripts_expression(self.exons_data, self.exon_lengths, self.transcript_mapping,
+                 self.trans_in_gene, self.exons_in_trans, self.ncond)
+        self.assertEqual(sum(sum(tcounts.values())), sum(sum(self.counts)))
+
+
+class Test_Expressions4(unittest.TestCase):
+    """Overdetermined system"""
+    def setUp(self):
+        e1="e1"; e2="e2"; e3="e3"; e4="e4"; t1="t1"; t2="t2"; t3="t3"; g1="g1";
+        self.ncond = 1
+        self.counts = numpy.array([[10.,10.,10.,10.]]) # [[cond1]]
+        self.rpkms = numpy.array([[10/5.,10/5.,10/5.,10/5.]])
+        self.exons_data = [[e1,e2,e3,e4]]+list(self.counts)+list(self.rpkms)+\
+               [[0,5,10,15],[5,10,15,20],["g1"]*4,["gg1"]*4,["c"]*4]
+        self.transcript_mapping = {t1:("g1",0,10,10.,"c"), t2:("g1",5,20,15.,"c"), t3:("g1",5,20,10.,"c")}
+        self.exon_lengths = {e1:5., e2:5., e3:5., e4:5.}
+        self.exon_to_gene = {e1:g1, e2:g1, e3:g1, e4:g1}
+        self.trans_in_gene = {g1:[t1,t2,t3]}
+        self.exons_in_trans = {t1:[e1,e2], t2:[e2,e3,e4], t3:[e2,e4]}
+        """
+           *Counts Cond1*
+        g1 |===.===.===.===|
+        t1 |-------|          12 + 12
+        t2     |-----------|       4  + 4  + 4
+        t3     |---|   |---|  0    0    0    0
+
+            10  10  10   10
+           |e1||e2||e3| |e4|
+        """
+    def test_transcripts_expression(self):
+        tcounts, trpk = transcripts_expression(self.exons_data, self.exon_lengths, self.transcript_mapping,
+                 self.trans_in_gene, self.exons_in_trans, self.ncond)
+        self.assertGreater(sum(sum(tcounts.values()))/sum(sum(self.counts)), 0.9)
+
+
+class Test_Expressions5(unittest.TestCase):
+    """Even more underdetermined system"""
+    def setUp(self):
+        e1="e1"; e2="e2"; e3="e3"; e4="e4"; e5="e5"; t1="t1"; t2="t2"; t3="t3"; g1="g1";
+        self.ncond = 1
+        self.counts = numpy.array([[10.,10.,10.,10.,10.]]) # [[cond1]]
+        self.rpkms = numpy.array([[10/5.,10/5.,10/5.,10/5.,10/5.]])
+        self.exons_data = [[e1,e2,e3,e4,e5]]+list(self.counts)+list(self.rpkms)+\
+               [[0,5,10,15,20],[5,10,15,20,25],["g1"]*5,["gg1"]*5,["c"]*5]
+        self.transcript_mapping = {t1:("g1",0,15,10.,"c"), t2:("g1",10,25,15.,"c"), t3:("g1",5,25,10.,"c")}
+        self.exon_lengths = {e1:5., e2:5., e3:5., e4:5., e5:5.}
+        self.exon_to_gene = {e1:g1, e2:g1, e3:g1, e4:g1, e5:g1}
+        self.trans_in_gene = {g1:[t1,t2,t3]}
+        self.exons_in_trans = {t1:[e1,e2,e3], t2:[e3,e4,e5], t3:[e2,e4,e5]}
+        """
+           *Counts Cond1*
+        g1 |===.===.===.===.===|
+        t1 |-----------|          4.6 + 4.6 + 4.6
+        t2         |-----------|              4.6 + 4.6 + 4.6
+        t3     |---|   |-------|        3.0 +       3.0 + 3.0
+
+            10  10  10   10  10
+           |e1||e2||e3| |e4||e5|
+        """
+    def test_transcripts_expression(self):
+        tcounts, trpk = transcripts_expression(self.exons_data, self.exon_lengths, self.transcript_mapping,
+                 self.trans_in_gene, self.exons_in_trans, self.ncond)
+        self.assertGreater(sum(sum(tcounts.values()))/sum(sum(self.counts)), 0.9)
+
+
+class Test_others(unittest.TestCase):
+    def setUp(self):
+        self.counts = numpy.array([[27,12],[3,3]]) # [[cond1],[cond2]]
+        self.assembly = Assem()
+
     def test_estimate_size_factors(self):
         res, size_factors = estimate_size_factors(self.counts)
         self.assertIsInstance(self.counts, numpy.ndarray)
@@ -67,10 +334,13 @@ class Test_Expressions(unittest.TestCase):
         assert_almost_equal(size_factors, array([2.5, 0.41666]), decimal=3)
         assert_almost_equal(res, array([[10.8, 4.8],[7.2, 7.2]]))
 
+    @unittest.skip("")
     def test_save_results(self):
         with execution(None) as ex:
-            save_results(ex,cols=[[1,2,3],('a','b','c','d')],conditions=["num","char"],
-                         header=["num","char"], desc="test")
+            save_results(ex,cols=[[1,2,3],('a','b','c','d'),[],[],[],[],[]],
+                     conditions=["num.1","char.1"],
+                     group_ids={'num':1,'char':2}, assembly=self.assembly,
+                     header=["num","char","e","e","e","e","e"], feature_type="test")
 
 
 class Test_NNLS(unittest.TestCase):
@@ -125,45 +395,26 @@ class Test_NNLS(unittest.TestCase):
 
 class Test_Pileup(unittest.TestCase):
     def setUp(self):
-        #self.bamfile = tempfile.NamedTemporaryFile()
-        #self.bam = self.bamfile.name
-        self.gene_name = "Gapdh" # Control gene - always highly expressed
+        self.gene_name = "Gapdh"
         self.gene_id = "ENSG00000111640"
-        self.chr = 12
-        self.start = 6643093
-        self.end = 6647537
         self.exons = []
         self.counts = []
-        self.bam = "fakebam"
-        self.bamfile = open(self.bam,"wb")
-        fakesam_content = [
-            "@HD\tVN:1.0\tSO:unsorted\n",
-            "@SQ\tSN:ENSE00002188685|ENSG00000111640|6645660|6645759|1\tLN:100\n",
-            "@SQ\tSN:ENSE00001902446|ENSG00000111640|6647267|6647537|1\tLN:271\n",
-            "C3PO_0038:5:79:17771:14659#0/1\t16\tENSE00001902446|ENSG00000111640|6647267|6647537|1\t167\t255\t75M\t*\t0\t0\tAATCTCCCCTCCTCACAGTTGCCATGTAGACCCCTTGAAGAGGGGAGGGGCCTAGGGAGCCGCACCTTGTCATGT\t`]Z`V``bb\edagdedbdbbedbacdb]abbb_bQ]`ZZVcfcc]ffffggcdgggggggggeggggggggggg\tXA:i:0\tMD:Z:75\tNM:i:0\tNH:i:5\n",
-            "C3PO_0038:5:93:2476:20366#0/1\t16\tENSE00001902446|ENSG00000111640|6647267|6647537|1\t167\t255\t75M\t*\t0\t0\tAATCTCCCCTCCTCACAGTTGCCATGTAGACCCCTTGAAGAGGGGAGGGGCCTAGGGAGCCGCACCTTGTCATGT\tBBBBBBBBBB__\_V_^^_a\\\XR_aaaYabaaa_aa]_Xchhbaeffdgdfghhhhhghhhhhhhhhhhhhhh\tXA:i:0\tMD:Z:75\tNM:i:0\tNH:i:5\n",
-            "C3PO_0038:5:72:16306:11928#0/1\t16\tENSE00001902446|ENSG00000111640|6647267|6647537|1\t167\t255\t75M\t*\t0\t0\tAATCTCCCCTCCTCACAGTTGCCATGTAGACCCCTTGAAGAGGGGAGGGGCCTAGGGAGCCGCACCTTGTCATGT	\[PZP\\`^\^^R^Uaacccccaac__b`Qbbb^b``b``]cffc]fffagddaggggggggggggggggggggg\tXA:i:0\tMD:Z:75\tNM:i:0\tNH:i:5\n",
-            "C3PO_0038:5:94:4758:4564#0/1\t0\tENSE00002188685|ENSG00000111640|6645660|6645759|1\t6\t255\t75M\t*\t0\t0\tGTCGTATTGGGCGCCTGGTCACCAGGGCTGCTTTTAACTCTGGTAAAGTGGATATTGTTGCCATCAATGACCCCT\thhhghhhhhhhhhhhhhhhhhhhghhhghhghghhgfhhhhhhfhhhhchhdegeggdgghhdghehffcdhffb\tXA:i:0\tMD:Z:75\tNM:i:0\tNH:i:3\n",
-            "C3PO_0038:5:94:14981:4668#0/1\t0\tENSE00002188685|ENSG00000111640|6645660|6645759|1\t6\t255\t75M\t*\t0\t0\tGTCGTATTGGGCGCCTGGTCACCAGGGCTGCTTTTAACTCTGGTAAAGTGGATATTGTTGCCATCAATGACCCCT\tghhhhhhhfgdhhhhgghfehhhcffhahfhchhhhfhhchchdhhhfahfdRffhabegacWaacc`cadcggd\tXA:i:0\tMD:Z:75\tNM:i:0\tNH:i:3\n" ]
+        self.bam = "test_data/Gapdh.bam"
 
-        self.bamfile.writelines(fakesam_content)
-        self.bamfile.close()
+    def test_fetch_labels(self):
+        self.exons = fetch_labels(self.bam)
+        exons = [("ENSMUSE00000569415|ENSMUSG00000057666|125115289|125115329|-1", 41),
+                 ("ENSMUSE00000709315|ENSMUSG00000057666|125114615|125115329|-1", 715)]
+        self.assertIn(exons[0],self.exons); self.assertIn(exons[1],self.exons)
+        self.assertEqual(len(self.exons),19)
 
-    def test_exon_labels(self):
-        self.exons = exons_labels(self.bam)
-        exons = [("ENSE00002188685|ENSG00000111640|6645660|6645759|1",100),
-                 ("ENSE00001902446|ENSG00000111640|6647267|6647537|1",271)]
-        self.assertItemsEqual(self.exons,exons)
-
-    @unittest.skip("Callback is not yet implemented for fetching SAM files.")
-    def test_pileup_file(self):
-        self.counts = pileup_file(self.bam, self.exons)
-        counts = [3,2]
+    def test_build_pileup(self):
+        self.exons = fetch_labels(self.bam)
+        self.counts = build_pileup(self.bam, self.exons)
+        self.assertEqual([self.counts[e[0].split('|')[0]] for e in self.exons],\
+                         [0, 35, 0, 0, 0, 0, 0, 3679, 3707, 0, 0, 0, 149, 3, 0, 0, 55, 0, 161])
+        counts = {'ENSMUSE00000745781': 3, 'ENSMUSE00000886744': 0, 'ENSMUSE00000719706': 0, 'ENSMUSE00000511617': 0, 'ENSMUSE00000873350': 0, 'ENSMUSE00000775454': 0, 'ENSMUSE00000709315': 35, 'ENSMUSE00000822668': 149, 'ENSMUSE00000472146': 0, 'ENSMUSE00000487077': 3679, 'ENSMUSE00000751942': 3707, 'ENSMUSE00000740765': 0, 'ENSMUSE00000512722': 0, 'ENSMUSE00000569415': 0, 'ENSMUSE00000879959': 0, 'ENSMUSE00000815727': 55, 'ENSMUSE00000491786': 0, 'ENSMUSE00000721118': 161, 'ENSMUSE00000881196': 0}
         self.assertItemsEqual(self.counts,counts)
-
-    def tearDown(self):
-        os.remove(self.bam)
-
 
 
 #-----------------------------------#
