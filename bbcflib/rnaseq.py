@@ -266,7 +266,7 @@ def save_results(ex, cols, conditions, group_ids, assembly, header=[], feature_t
                 t.convert(filename+'.bed','bed')
             description = "UCSC-BED track of %s' rpkm for group `%s'" % (feature_type,group)
             description = set_file_descr(feature_type.lower()+"_"+group+".bed", step="pileup", type="bed", \
-                                         groupId=group_ids[group], gdv='1', comment=description)
+                                         groupId=group_ids[group], ucsc='1', comment=description)
             ex.add(filename+'.bed', description=description)
     print feature_type+": Done successfully."
 
