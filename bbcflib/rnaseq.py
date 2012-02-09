@@ -124,7 +124,7 @@ def fetch_mappings(assembly, path_to_map=None):
 
     * [0] gene_mapping is a dict ``{gene ID: (gene name,start,end,chromosome)}``
     * [1] transcript_mapping is a dictionary ``{transcript ID: (gene ID,start,end,chromosome)}``
-    * [2] exon_mapping is a dictionary ``{exon ID: ([trancript IDs],gene ID,start,end,chromosome)}``
+    * [2] exon_mapping is a dictionary ``{exon ID: ([transcript IDs],gene ID,start,end,chromosome)}``
     * [3] trans_in_gene is a dict ``{gene ID: [IDs of the transcripts it contains]}``
     * [4] exons_in_trans is a dict ``{transcript ID: [IDs of the exons it contains]}``
 
@@ -416,7 +416,6 @@ def rnaseq_workflow(ex, job, bam_files, pileup_level=["exons","genes","transcrip
     :param ex: the bein's execution Id.
     :param job: a Job object (or a dictionary of the same form) as returned from HTSStation's frontend.
     :param bam_files: a complicated dictionary such as returned by mapseq.get_bam_wig_files.
-    :param unmapped: the name or path to a fastq file containing the unmapped reads.
     :param pileup_level: a string or array of strings indicating the features you want to compare.
                          Targets can be 'genes', 'transcripts', or 'exons'.
     :param via: 'local' or 'lsf'.
@@ -459,7 +458,7 @@ def rnaseq_workflow(ex, job, bam_files, pileup_level=["exons","genes","transcrip
     print "Load mappings"
     """ [0] gene_mapping is a dict ``{gene ID: (gene name,start,end,chromosome)}``
         [1] transcript_mapping is a dictionary ``{transcript ID: (gene ID,start,end,chromosome)}``
-        [2] exon_mapping is a dictionary ``{exon ID: ([trancript IDs],gene ID,start,end,chromosome)}``
+        [2] exon_mapping is a dictionary ``{exon ID: ([transcript IDs],gene ID,start,end,chromosome)}``
         [3] trans_in_gene is a dict ``{gene ID: [IDs of the transcripts it contains]}``
         [4] exons_in_trans is a dict ``{transcript ID: [IDs of the exons it contains]}`` """
     (gene_mapping, transcript_mapping, exon_mapping, trans_in_gene, exons_in_trans) = fetch_mappings(assembly)
@@ -512,7 +511,7 @@ def rnaseq_workflow(ex, job, bam_files, pileup_level=["exons","genes","transcrip
             if unmapped_fastq[cond] and cond in additionals:
                 for a,x in additionals[cond].iteritems():
                     exon_pileup[a] = exon_pileup.get(a,0) + x
-            exon_pileups[cond] = [exon_pileup[e] for e in exonsID] # {cond1.run1: [pileup], cond1.run2: [pileup]...}
+            exon_pileups[cond] = [exon_pileup[e] for e in exonsID] # {cond1.run1: {pileup}, cond1.run2: {pileup}...}
             nreads[cond] = nreads.get(cond,0) + sum(exon_pileup.values()) # total number of reads
             print "....Pileup", cond, "done"
 
@@ -529,14 +528,13 @@ def rnaseq_workflow(ex, job, bam_files, pileup_level=["exons","genes","transcrip
 
     print "Get scores"
     hconds = ["counts."+c for c in conditions] + ["rpkm."+c for c in conditions]
-    nc = len(hconds)
     genesName, echr = zip(*[(x[0],x[-1]) for x in [gene_mapping.get(g,("NA",)*4) for g in genesID]])
     exons_data = [exonsID]+list(counts)+list(rpkm)+[starts,ends,genesID,genesName,echr]
 
     """ Print counts for exons """
     if "exons" in pileup_level:
         exons_data = zip(*exons_data)
-        exons_data = sorted(exons_data, key=itemgetter(nc+5,nc+1)) # sort w.r.t. chromosome, then start
+        exons_data = sorted(exons_data, key=itemgetter(7,4)) # sort w.r.t. chromosome, then start
         header = ["ExonID"] + hconds + ["Start","End","GeneID","GeneName","Chromosome"]
         exons_data = zip(*exons_data)
         save_results(ex, exons_data, conditions, group_ids, assembly, header=header, feature_type="EXONS")
