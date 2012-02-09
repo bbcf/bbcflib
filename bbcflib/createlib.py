@@ -278,6 +278,6 @@ def get_libForGrp(ex,group,fasta_or_assembly,new_libraries, job_id, grpId):
 	else:
 		reffile=None
 
-	print("reffile="+reffile)
+	print("reffile="+str(reffile))
 	return reffile
 

@@ -250,7 +250,7 @@ def get_fastq_files( ex, job, dafl=None, set_seed_length=True):
 # BAM/SAM files
 ###############
 @program
-def sam_to_bam(sam_filename, bam_filename=unique_filename_in()):
+def sam_to_bam(sam_filename, bam_filename=None):
     """Convert *sam_filename* to a BAM file.
 
     *sam_filename* must obviously be the filename of a SAM file.
@@ -258,6 +258,7 @@ def sam_to_bam(sam_filename, bam_filename=unique_filename_in()):
 
     Equivalent: ``samtools view -b -S -o ...``
     """
+    if bam_filename is None: bam_filename = unique_filename_in()
     return {"arguments": ["samtools","view","-b","-S","-o",bam_filename,sam_filename],
             "return_value": bam_filename}
 
@@ -283,29 +284,28 @@ def replace_bam_header(header, bamfile):
             'return_value': bamfile}
 
 @program
-def sort_bam(bamfile):
+def sort_bam(bamfile, filename=None):
     """Sort a BAM file *bamfile* by chromosome coordinates.
 
     Returns the filename of the newly created, sorted BAM file.
 
     Equivalent: ``samtools sort ...``
     """
-    filename = unique_filename_in()
+    if filename is None: filename = unique_filename_in()
     return {'arguments': ['samtools','sort',bamfile,filename],
             'return_value': filename + '.bam'}
 
 @program
-def sort_bam_by_read(bamfile):
+def sort_bam_by_read(bamfile, filename=None):
     """Sort a BAM file *bamfile* by read names.
 
     Returns the filename of the newly created, sorted BAM file.
 
     Equivalent: ``samtools sort -n ...``
     """
-    filename = unique_filename_in()
+    if filename is None: filename = unique_filename_in()
     return {'arguments': ['samtools','sort','-n',bamfile,filename],
             'return_value': filename + '.bam'}
-
 
 def read_sets(reads,keep_unmapped=False):
     """Groups the alignments in a BAM file by read.
@@ -1288,7 +1288,7 @@ def get_bam_wig_files( ex, job, minilims=None, hts_url=None, suffix=['fwd','rev'
                                      {gid: grname},
                                      script_path,
                                      set_file_descr(grname+"_mapping_report.pdf",step='import_data',type='pdf',groupId=gid) )
-#                mapped_files[gid][rid]['poisson_threshold'] = poisson_threshold( 50*stats["actual_coverage"] )
+                mapped_files[gid][rid]['poisson_threshold'] = poisson_threshold( 50*stats["actual_coverage"] )
     return (mapped_files,job)
 
 #-----------------------------------#

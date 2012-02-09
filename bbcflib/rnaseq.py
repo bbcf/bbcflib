@@ -407,7 +407,7 @@ def estimate_size_factors(counts):
     return res, size_factors
 
 #@timer
-def rnaseq_workflow(ex, job, assembly, bam_files, pileup_level=["exons","genes","transcripts"],
+def rnaseq_workflow(ex, job, bam_files, pileup_level=["exons","genes","transcripts"],
                     via="lsf", unmapped=True):
     """
     Main function of the workflow.
@@ -416,7 +416,6 @@ def rnaseq_workflow(ex, job, assembly, bam_files, pileup_level=["exons","genes",
 
     :param ex: the bein's execution Id.
     :param job: a Job object (or a dictionary of the same form) as returned from HTSStation's frontend.
-    :param assembly: the assembly Id of the species, string or int (e.g. 'hg19' or 76).
     :param bam_files: a complicated dictionary such as returned by mapseq.get_bam_wig_files.
     :param unmapped: the name or path to a fastq file containing the unmapped reads.
     :param pileup_level: a string or array of strings indicating the features you want to compare.
@@ -512,7 +511,7 @@ def rnaseq_workflow(ex, job, assembly, bam_files, pileup_level=["exons","genes",
             k+=1
             cond = group_names[gid]+'.'+str(k)
             exon_pileup = build_pileup(f['bam'], exons)
-            if unmapped:
+            if unmapped and cond in additionals:
                 for a,x in additionals[cond].iteritems():
                     exon_pileup[a] = exon_pileup.get(a,0) + x
             exon_pileups[cond] = [exon_pileup[e] for e in exonsID] # {cond1.run1: [pileup], cond1.run2: [pileup]...}
@@ -538,33 +537,33 @@ def rnaseq_workflow(ex, job, assembly, bam_files, pileup_level=["exons","genes",
 
     """ Print counts for exons """
     if "exons" in pileup_level:
-        header = ["ExonID"] + hconds + ["Start","End","GeneID","GeneName","Chromosome"]
         exons_data = zip(*exons_data)
         exons_data = sorted(exons_data, key=itemgetter(nc+5,nc+1)) # sort w.r.t. chromosome, then start
+        header = ["ExonID"] + hconds + ["Start","End","GeneID","GeneName","Chromosome"]
         exons_data = zip(*exons_data)
         save_results(ex, exons_data, conditions, group_ids, assembly, header=header, feature_type="EXONS")
 
     """ Get scores of genes from exons """
     if "genes" in pileup_level:
-        header = ["GeneID"] + hconds + ["Start","End","GeneName","Chromosome"]
         (gcounts, grpkm) = genes_expression(exons_data, exon_to_gene, len(conditions))
         genesID = gcounts.keys()
         genes_data = [[g,gcounts[g],grpkm[g]]+list(gene_mapping.get(g,("NA",)*4)) for g in genesID]
-        genes_data = sorted(genes_data, key=itemgetter(nc+4,nc+1)) # sort w.r.t. chromosome, then start
+        genes_data = sorted(genes_data, key=itemgetter(6,4)) # sort w.r.t. chromosome, then start
         (genesID,gcounts,grpkm,gname,gstart,gend,gchr) = zip(*genes_data)
+        header = ["GeneID"] + hconds + ["Start","End","GeneName","Chromosome"]
         genes_data = [genesID]+list(zip(*gcounts))+list(zip(*grpkm))+[gstart,gend,gname,gchr]
         save_results(ex, genes_data, conditions, group_ids, assembly, header=header, feature_type="GENES")
 
     """ Get scores of transcripts from exons, using non-negative least-squares """
     if "transcripts" in pileup_level:
-        header = ["TranscriptID"] + hconds + ["Start","End","GeneID","GeneName","Chromosome"]
         (tcounts, trpkm) = transcripts_expression(exons_data, exon_lengths,
                    transcript_mapping, trans_in_gene, exons_in_trans,len(conditions))
         transID = tcounts.keys()
         trans_data = [[t,tcounts[t],trpkm[t]]+list(transcript_mapping.get(t,("NA",)*5)) for t in transID]
-        trans_data = sorted(trans_data, key=itemgetter(nc+5,nc+1)) # sort w.r.t. chromosome, then start
+        trans_data = sorted(trans_data, key=itemgetter(7,4)) # sort w.r.t. chromosome, then start
         (transID,tcounts,trpkm,genesID,tstart,tend,tlen,tchr) = zip(*trans_data)
         genesName = [gene_mapping.get(g,("NA",)*4)[0] for g in genesID]
+        header = ["TranscriptID"] + hconds + ["Start","End","GeneID","GeneName","Chromosome"]
         trans_data = [transID]+list(zip(*tcounts))+list(zip(*trpkm))+[tstart,tend,genesID,genesName,tchr]
         save_results(ex, trans_data, conditions, group_ids, assembly, header=header, feature_type="TRANSCRIPTS")
 
