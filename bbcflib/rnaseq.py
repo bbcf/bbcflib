@@ -466,19 +466,18 @@ def rnaseq_workflow(ex, job, bam_files, pileup_level=["exons","genes","transcrip
     (gene_mapping, transcript_mapping, exon_mapping, trans_in_gene, exons_in_trans) = fetch_mappings(assembly)
 
     """ Map remaining reads to transcriptome """
-    additionals = {}
-    if unmapped and bam_files[gid][rid].get('unmapped_fastq'):
-        print "Get unmapped reads"
-        unmapped_bam={}
-        refseq_path = assembly.index_path
-        assert os.path.exists(refseq_path+".1.ebwt"), "Refseq index not found: %s" % refseq_path+".1.ebwt"
-        for gid, group in job.groups.iteritems():
-            k = 0
-            for rid, run in group['runs'].iteritems():
-                k +=1
-                cond = group_names[gid]+'.'+str(k)
-                unmapped_fastq = bam_files[gid][rid]['unmapped_fastq']
-                unmapped_bam[cond] = mapseq.map_reads(ex, unmapped_fastq, {}, refseq_path, \
+    additionals = {}; unmapped_bam = {}; unmapped_fastq = {}
+    refseq_path = assembly.index_path
+    for gid, group in job.groups.iteritems():
+        k = 0
+        for rid, run in group['runs'].iteritems():
+            k +=1
+            cond = group_names[gid]+'.'+str(k)
+            unmapped_fastq[cond] = bam_files[gid][rid].get('unmapped_fastq')
+            if unmapped_fastq:
+                print "Add splice junction reads for run %s.%s" % (gid,rid)
+                assert os.path.exists(refseq_path+".1.ebwt"), "Refseq index not found: %s" % refseq_path+".1.ebwt"
+                unmapped_bam[cond] = mapseq.map_reads(ex, unmapped_fastq[cond], {}, refseq_path, \
                       remove_pcr_duplicates=False, bwt_args=[], via=via)['bam']
                 if unmapped_bam[cond]:
                     sam = pysam.Samfile(unmapped_bam[cond])
@@ -511,7 +510,7 @@ def rnaseq_workflow(ex, job, bam_files, pileup_level=["exons","genes","transcrip
             k+=1
             cond = group_names[gid]+'.'+str(k)
             exon_pileup = build_pileup(f['bam'], exons)
-            if unmapped and cond in additionals:
+            if unmapped_fastq[cond] and cond in additionals:
                 for a,x in additionals[cond].iteritems():
                     exon_pileup[a] = exon_pileup.get(a,0) + x
             exon_pileups[cond] = [exon_pileup[e] for e in exonsID] # {cond1.run1: [pileup], cond1.run2: [pileup]...}

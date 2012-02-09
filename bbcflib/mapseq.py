@@ -70,7 +70,7 @@ Below is the script used by the frontend::
 """
 
 # Built-in modules #
-import os, re, json, shutil, gzip, tarfile, pickle, urllib
+import os, re, json, shutil, gzip, tarfile, pickle, urllib, time
 
 # Internal modules #
 from . import frontend, genrep, daflims
@@ -628,7 +628,7 @@ def bamstats(bamfile):
         except:
             pass
         s=''.join(p.stdout)
-        if not(re.search(r'Total (\d+)',s): 
+        if not(re.search(r'Total (\d+)',s)):
                time.sleep(60)
                s=''.join(p.stdout)
         results["read_length"]=int(re.search(r'Read length (\d+)',s).groups()[0])
