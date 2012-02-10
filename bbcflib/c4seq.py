@@ -13,7 +13,7 @@ from bein.util import touch
 from bbcflib import daflims, genrep, frontend, email, gdv, track, createlib
 from bbcflib.mapseq import *
 from bbcflib.common import unique_filename_in, gzipfile
-import sys, getopt, os, json, re
+import sys, getopt, os, json, re, time
 import sqlite3
 import gMiner as gm
 
@@ -112,6 +112,7 @@ def loadPrimers(primersFile):
 
 @program
 def profileCorrection(inputFile,baitCoord,name,outputFile,reportFile,script_path='./'):
+	time.sleep(60)	
 	return{'arguments': ["R","--vanilla","--no-restore","--slave","-f",script_path+"profileCorrection.R","--args",inputFile,baitCoord,name,outputFile,reportFile],
                 'return_value':None}
 
