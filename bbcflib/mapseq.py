@@ -70,7 +70,7 @@ Below is the script used by the frontend::
 """
 
 # Built-in modules #
-import os, re, json, shutil, gzip, tarfile, pickle, urllib
+import os, re, json, shutil, gzip, tarfile, pickle, urllib, time
 
 # Internal modules #
 from . import frontend, genrep, daflims
@@ -250,7 +250,7 @@ def get_fastq_files( ex, job, dafl=None, set_seed_length=True):
 # BAM/SAM files
 ###############
 @program
-def sam_to_bam(sam_filename, bam_filename=unique_filename_in()):
+def sam_to_bam(sam_filename, bam_filename=None):
     """Convert *sam_filename* to a BAM file.
 
     *sam_filename* must obviously be the filename of a SAM file.
@@ -258,6 +258,7 @@ def sam_to_bam(sam_filename, bam_filename=unique_filename_in()):
 
     Equivalent: ``samtools view -b -S -o ...``
     """
+    if bam_filename is None: bam_filename = unique_filename_in()
     return {"arguments": ["samtools","view","-b","-S","-o",bam_filename,sam_filename],
             "return_value": bam_filename}
 
@@ -283,24 +284,26 @@ def replace_bam_header(header, bamfile):
             'return_value': bamfile}
 
 @program
-def sort_bam(bamfile, filename=unique_filename_in()):
+def sort_bam(bamfile, filename=None):
     """Sort a BAM file *bamfile* by chromosome coordinates.
 
     Returns the filename of the newly created, sorted BAM file.
 
     Equivalent: ``samtools sort ...``
     """
+    if filename is None: filename = unique_filename_in()
     return {'arguments': ['samtools','sort',bamfile,filename],
             'return_value': filename + '.bam'}
 
 @program
-def sort_bam_by_read(bamfile, filename=unique_filename_in()):
+def sort_bam_by_read(bamfile, filename=None):
     """Sort a BAM file *bamfile* by read names.
 
     Returns the filename of the newly created, sorted BAM file.
 
     Equivalent: ``samtools sort -n ...``
     """
+    if filename is None: filename = unique_filename_in()
     return {'arguments': ['samtools','sort','-n',bamfile,filename],
             'return_value': filename + '.bam'}
 
@@ -625,6 +628,9 @@ def bamstats(bamfile):
         except:
             pass
         s=''.join(p.stdout)
+        if not(re.search(r'Total (\d+)',s)):
+               time.sleep(60)
+               s=''.join(p.stdout)
         results["read_length"]=int(re.search(r'Read length (\d+)',s).groups()[0])
         results["genome_size"]=int(re.search(r'Genome size (\d+)',s).groups()[0])
         results["nb_positions"]=int(re.search(r'Nb positions (\d+)',s).groups()[0])

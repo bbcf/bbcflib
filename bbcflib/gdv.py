@@ -34,7 +34,7 @@ def new_project(mail, key, name, assembly_id, serv_url='http://gdv.epfl.ch/pygdv
                }
     return send_it(query_url, request)
 
-def new_track(mail, key, assembly_id=None, project_id=None, urls=None, url=None, fsys=None, fsys_list=None, serv_url='http://gdv.epfl.ch/pygdv', file_names=None, force=False, extension=None, extensions=None):
+def single_track(mail, key, serv_url='http://gdv.epfl.ch/pygdv', assembly_id=None, project_id=None, url=None, fsys=None, trackname=None, force=False, extension=None):
     '''
     Create a new track on GDV.
     :param mail : login in TEQUILA
@@ -44,13 +44,8 @@ def new_track(mail, key, assembly_id=None, project_id=None, urls=None, url=None,
     :param project_id : the project identifier to add the track to.
     :param url : an url pointing to a file.
     :param extension : extension of the file provided.
-    :param extensions : a list of extensions, separated by whitespace.
-    :param urls : a list of urls separated by whitespaces. 
     :param fsys : if the file is on the same file system, a filesystem path
-    :param fsys_list :  a list of fsys separated by whitespaces.
-    :param file_names : a list of file name, in the same order than the files uploaded.
-    If there is differents parameters given, the first file uploaded will be file_upload, 
-    then urls, url, fsys and finally fsys_list. The list is separated by whitespaces.
+    :param trackname : the name to give to the track 
     :param force : A boolean. Force the file to be recomputed. 
     :return a JSON
     '''
@@ -61,29 +56,75 @@ def new_track(mail, key, assembly_id=None, project_id=None, urls=None, url=None,
         request['assembly'] = assembly_id
     if project_id :
         request['project_id'] = project_id
-    if urls :
-        request['urls'] = urls
     if url :
         request['url'] = url
     if fsys :
         request['fsys'] = fsys
-    if fsys_list :
-        request['fsys_list'] = fsys_list
-    if file_names :
-        request['file_names'] = file_names
+    if trackname :
+        request['trackname'] = trackname
     if force :
         request['force'] = force
     if extension :
         request['extension'] = extension
-    if extensions :
-        request['extensions'] = extensions 
-        
-    return send_it(query_url, request)
+    return {'track' : send_it(query_url, request)}
+
+
+def multiple_tracks(mail, key, assembly_id=None, project_id=None, urls=None, fsys_list=None, serv_url='http://gdv.epfl.ch/pygdv', file_names=None, force=False, extensions=None):
+    '''
+    Create tracks on GDV
+    :param extensions : a list of extensions, separated by whitespace.
+    :param urls : a list of urls separated by whitespaces. 
+    :param fsys : if the file is on the same file system, a filesystem path
+    :param fsys_list :  a list of fsys separated by whitespaces.
+    :param file_names : a list of file name, in the same order than the files uploaded.
+    If there is differents parameters given, the first file uploaded will be file_upload, 
+    then urls, url, fsys and finally fsys_list. The list is separated by whitespaces.
+    For other params :see single_track
+    '''
+    tracks = []
+    if file_names : file_names = file_names.split()
+    if extensions : extensions = extensions.split()
+    index = index_ext = 0
+    filename = extension = None
+    if urls : 
+        urls = urls.split()
+        for u in urls :
+            if file_names:
+                filename = file_names[index]
+                index += 1
+            if extensions:
+                extension = extensions[index_ext]
+                index_ext += 1
+            tracks.append(single_track(mail, key, assembly_id=assembly_id, project_id=project_id, url=u, trackname=filename, extension=extension, force=force, serv_url=serv_url))
+    
+    if fsys_list : 
+        fsys_list = fsys_list.split()
+        for fsys in fsys_list :
+            if file_names:
+                filename = file_names[index]
+                index += 1
+            if extensions:
+                extension = extensions[index_ext]
+                index_ext += 1
+            tracks.append(single_track(mail, key, assembly_id=assembly_id, project_id=project_id, fsys=fsys, trackname=filename, extension=extension, force=force, serv_url=serv_url))
+    return {'tracks' : tracks}
+
+def new_track(mail, key, assembly_id=None, project_id=None, urls=None, url=None, fsys=None, fsys_list=None, serv_url='http://gdv.epfl.ch/pygdv', file_names=None, force=False, extension=None, extensions=None, trackname=None):
+    '''
+    @deprecated: you should use multiple_tracks or single tracks instead
+    '''
+    d1 = multiple_tracks(mail, key, assembly_id=assembly_id, project_id=project_id, urls=urls, fsys_list=fsys_list, serv_url=serv_url, file_names=file_names, force=force, extensions=extensions)
+    d2 = single_track(mail, key, serv_url=serv_url, assembly_id=assembly_id, project_id=project_id, url=url, fsys=fsys, trackname=trackname, force=force, extension=extension)
+    d1.update(d2)
+    return d1
+
+
 
 def send_it(url, request, return_type='json'):
     '''
     Send the request to GDV and return the result. As JSON or as a request.read().
     '''
+    print request
     req = urllib2.urlopen(url, urllib.urlencode(request))
     if return_type == 'json':
         return json.load(req)
