@@ -21,8 +21,7 @@ import os, pysam, math
 from operator import itemgetter
 
 # Internal modules #
-from bbcflib.common import writecols, set_file_descr
-from bbcflib.common import unique_filename_in
+from bbcflib.common import writecols, set_file_descr, unique_filename_in
 from bbcflib import mapseq, genrep
 import track
 
@@ -251,7 +250,6 @@ def save_results(ex, cols, conditions, group_ids, assembly, header=[], feature_t
                 t.chrmeta = assembly.chrmeta
                 for chr in t.chrmeta:
                     goodlines = [l for l in lines if (l[-1]!=0.0 and l[0]==chr)]
-                    #print "goodlines",goodlines
                     if goodlines:
                         goodlines.sort(key=lambda x: x[1]) # sort w.r.t start
                         goodlines = fusion(iter(goodlines))
@@ -269,6 +267,7 @@ def save_results(ex, cols, conditions, group_ids, assembly, header=[], feature_t
                                          groupId=group_ids[group], ucsc='1', comment=description)
             ex.add(filename+'.bed', description=description)
     print feature_type+": Done successfully."
+    return output_tab
 
 #@timer
 def genes_expression(exons_data, exon_to_gene, ncond):
@@ -530,6 +529,7 @@ def rnaseq_workflow(ex, job, bam_files, pileup_level=["exons","genes","transcrip
     hconds = ["counts."+c for c in conditions] + ["rpkm."+c for c in conditions]
     genesName, echr = zip(*[(x[0],x[-1]) for x in [gene_mapping.get(g,("NA",)*4) for g in genesID]])
     exons_data = [exonsID]+list(counts)+list(rpkm)+[starts,ends,genesID,genesName,echr]
+    exons_file = None; genes_file = None; trans_file = None
 
     """ Print counts for exons """
     if "exons" in pileup_level:
@@ -537,7 +537,7 @@ def rnaseq_workflow(ex, job, bam_files, pileup_level=["exons","genes","transcrip
         exons_data = sorted(exons_data, key=itemgetter(7,4)) # sort w.r.t. chromosome, then start
         header = ["ExonID"] + hconds + ["Start","End","GeneID","GeneName","Chromosome"]
         exons_data = zip(*exons_data)
-        save_results(ex, exons_data, conditions, group_ids, assembly, header=header, feature_type="EXONS")
+        exons_file = save_results(ex, exons_data, conditions, group_ids, assembly, header=header, feature_type="EXONS")
 
     """ Get scores of genes from exons """
     if "genes" in pileup_level:
@@ -548,7 +548,7 @@ def rnaseq_workflow(ex, job, bam_files, pileup_level=["exons","genes","transcrip
         (genesID,gcounts,grpkm,gname,gstart,gend,gchr) = zip(*genes_data)
         header = ["GeneID"] + hconds + ["Start","End","GeneName","Chromosome"]
         genes_data = [genesID]+list(zip(*gcounts))+list(zip(*grpkm))+[gstart,gend,gname,gchr]
-        save_results(ex, genes_data, conditions, group_ids, assembly, header=header, feature_type="GENES")
+        genes_file = save_results(ex, genes_data, conditions, group_ids, assembly, header=header, feature_type="GENES")
 
     """ Get scores of transcripts from exons, using non-negative least-squares """
     if "transcripts" in pileup_level:
@@ -561,15 +561,18 @@ def rnaseq_workflow(ex, job, bam_files, pileup_level=["exons","genes","transcrip
         genesName = [gene_mapping.get(g,("NA",)*4)[0] for g in genesID]
         header = ["TranscriptID"] + hconds + ["Start","End","GeneID","GeneName","Chromosome"]
         trans_data = [transID]+list(zip(*tcounts))+list(zip(*trpkm))+[tstart,tend,genesID,genesName,tchr]
-        save_results(ex, trans_data, conditions, group_ids, assembly, header=header, feature_type="TRANSCRIPTS")
+        trans_file = save_results(ex, trans_data, conditions, group_ids, assembly, header=header, feature_type="TRANSCRIPTS")
 
     # Testing
     # "ENSMUSG00000057666" "ENSG00000111640": TEST Gapdh
     # for g in list(set(genesID)):
     #     print sum(gcounts[g]), sum([sum(tcounts[t]) for t in trans_in_gene[g]])
 
-#-----------------------------------#
-# This code was written by the BBCF #
-# http://bbcf.epfl.ch/              #
-# webmaster.bbcf@epfl.ch            #
-#-----------------------------------#
+    return (exons_file, genes_file, trans_file)
+
+#------------------------------------------------------#
+# This code was written by Julien Delafontaine         #
+# Bioinformatics and Biostatistics Core Facility, EPFL #
+# http://bbcf.epfl.ch/                                 #
+# webmaster.bbcf@epfl.ch                               #
+#------------------------------------------------------#
