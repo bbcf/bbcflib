@@ -124,7 +124,6 @@ def send_it(url, request, return_type='json'):
     '''
     Send the request to GDV and return the result. As JSON or as a request.read().
     '''
-    print request
     req = urllib2.urlopen(url, urllib.urlencode(request))
     if return_type == 'json':
         return json.load(req)

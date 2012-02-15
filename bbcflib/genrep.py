@@ -567,13 +567,14 @@ class GenRep(object):
         request = urllib2.Request(url)
         return urllib2.urlopen(request).read().split(',')
 
-    def get_genrep_objects(self, url_tag, info_tag, filters = None):
+    def get_genrep_objects(self, url_tag, info_tag, filters = None, params = None):
         """
         Get a list of GenRep objets
         ... attribute url_tag: the GenrepObject type (plural)
         ... attribute info_tag: the GenrepObject type (singular)
         Optionals attributes:
         ... attribute filters: a dict that is used to filter the response
+        ... attribute param: to add some parameters to the query
         from GenRep.
         Example:
         To get the genomes related to 'Mycobacterium leprae' species.
@@ -583,7 +584,11 @@ class GenRep(object):
         """
         if not self.is_up(): return []
         if filters is None: filters = {}
-        infos = json.load(urllib2.urlopen("""%s/%s.json""" % (self.url, url_tag)))
+        url = '%s/%s.json' % (self.url, url_tag)
+        if params is not None:
+            url += '?'
+            url += '&'.join([k + '=' + v for k, v in params.iteritems()])
+        infos = json.load(urllib2.urlopen(url))
         result = []
         for info in infos:
             obj = GenrepObject(info,info_tag)
@@ -605,6 +610,9 @@ class GenrepObject(object):
     """
     def __init__(self, info, key):
         self.__dict__.update(info[key])
+        
+    def __repr__(self):
+        return str(self.__dict__)
 
 ################################################################################
 
