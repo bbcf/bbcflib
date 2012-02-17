@@ -266,7 +266,7 @@ def workflow_groups(ex, job, primers_dict, assembly, mapseq_files, mapseq_url, s
                         processed['density'][mapseq_files[gid][rid]['libname']]=mapseq_files[gid][rid]['wig']['merged']
 
                         # Add here: mergeBigWig files
-			bwFiles=bwFiles+mapseq_files[gid][rid]['libname']+".bw,"
+			bwFiles=bwFiles+mapseq_wig+".bw,"
                         # run the rest at the grp level
 
 		# back to grp level!
