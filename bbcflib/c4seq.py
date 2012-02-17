@@ -272,7 +272,7 @@ def workflow_groups(ex, job, primers_dict, assembly, mapseq_files, mapseq_url, s
 		# back to grp level!
 		print("density files of replicates for group "+str(gid)+"="+bwFiles)
 		mergedDensityFiles_bedGraph=unique_filename_in()
-		call_mergeBigWig(ex,bwFiles,mergedDensityFiles_bedGraph)
+		call_mergeBigWig(ex,bwFiles,mergedDensityFiles_bedGraph,script_path)
                 # convert result file to sql
 		mergedDensityFiles_sql=unique_filename_in()
 		with track.load(mergedDensityFiles_bedGraph,'bedGraph') as t:

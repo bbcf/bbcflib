@@ -948,9 +948,9 @@ def map_groups( ex, job_or_dict, assembly_or_dict, map_args=None ):
 #            "return_value": bigwig}
 
 @program
-def bam_to_density( bamfile, output, chromosome_accession = None, chromosome_name = None,
-                    nreads = 1, merge = -1, read_extension = -1, convert = True, sql = False,
-                    args = None ):
+def bam_to_density( bamfile, output, chromosome_accession=None, chromosome_name=None,
+                    nreads=-1, merge=-1, read_extension=-1, convert=True, sql=False,
+                    args=None ):
 
     """
     input parameters:
@@ -958,9 +958,9 @@ def bam_to_density( bamfile, output, chromosome_accession = None, chromosome_nam
     output = basename of output file
     chromosome_accession = globally unique chromosome identifier
     chromosome_name = specific chromosome in species context
-    nreads = If 0: normalise by total tag count per megabase, if >0: uses 1e-7*nreads as factor
+    nreads = If 0: normalise by total tag count per megabase, if >0: uses 1e-7*nreads as factor, by default: no normalization
     merge = only if -p is not specified, specify it with this value
-    read_extension = bam2wig argument 'Tags (psuedo-)size'
+    read_extension = bam2wig argument 'Tags (pseudo-)size'
     convert = whether or not to convert chromosome labels
     sql = whether or not to create an SQL database
     args = bam2wig arguments given directly by the user
