@@ -277,6 +277,8 @@ def workflow_groups(ex, job, primers_dict, assembly, mapseq_files, mapseq_url, s
 		mergedDensityFiles_sql=unique_filename_in()
 		with track.load(mergedDensityFiles_bedGraph,'bedGraph') as t:
 			t.convert(mergedDensityFiles_sql,'sql')
+		ex.add(mergedDensityFiles_bedGraph,description=set_file_descr("density_file_"+group['name']+"_merged.bedGraph ",groupId=gid,step="density",type="bedGraph",ucsc="1"))
+		ex.add(mergedDensityFiles_sql,description=set_file_descr("density_file_"+group['name']+"_merged.sql ",groupId=gid,step="density",type="sql",gdv="1"))
 
 		print("Will process to the main part of 4cseq module: calculate normalised counts per fragments from density file:"+mapseq_files[gid][rid]['wig']['merged'])
 		#resfiles=density_to_countsPerFrag(ex,mapseq_files[gid][rid]['wig']['merged'],mapseq_files[gid][rid]['libname'],assembly,reffile,regToExclude,ex.remote_working_directory+'/',script_path, via)
