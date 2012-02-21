@@ -83,6 +83,15 @@ def mergeBigWig(bwfiles,resfile):
 	return {'arguments': ['mergeBigWig.sh','-i',bwfiles,'-o',resfile],
                 'return_value':None}
 
+
+@program
+def call_runDomainogram(infile,name,prefix,regCoord=None,wmaxDomainogram=500,wmax_BRICKS=50,skip=0,script_path='./'):
+        time.sleep(60)
+        if regCoord == None: regCoord=""
+        return{'arguments': ["R","--vanilla","--no-restore","--slave","-f",script_path+"runDomainogram.R","--args",infile,name,prefix,regCoord,str(wmaxDomainogram),str(wmax_BRICKS),str(skip)],
+                'return_value':prefix+".log"}
+
+
 # *** Create a dictionary with infos for each primer (from file primers.fa)
 # ex: primers_dict=loadPrimers('/archive/epfl/bbcf/data/DubouleDaan/finalAnalysis/XmNGdlXjqoj6BN8Rj2Tl/primers.fa')
 def loadPrimers(primersFile):
@@ -319,6 +328,17 @@ def workflow_groups(ex, job, primers_dict, assembly, mapseq_files, mapseq_url, s
 #			with track.load(outputfile_afterProfileCorrection,'bedGraph') as t: 
 #				t.convert(smoothedFile_afterProfileCorrection_sql,'sql')
 #			ex.add(smoothedFile_afterProfileCorrection_sql,description=set_file_descr("res_segToFrag_"+mapseq_files[gid][rid]['libname']+"_profileCorrected_smoothed_"+nFragsPerWin+"FragsPerWin.sql",groupId=grpId,step="smoothing",type="sql",comment="smoothed data, after profile correction,sql format",gdv="1",view="admin"))
+
+		if group['run_domainogram']:
+			if regToExclude == None: regCoord=primers_dict[group['name']]['baitcoord'] 
+			else: regCoord=regToExclude
+
+			if group['before_profile_correction']:
+				print("Will run domainogram from informative fragments (file:"+resfiles[6]+")")
+				resFiles=call_runDomainogram(ex,resfiles[6],group['name'],group['name'],regCoord,script_path)
+			else:
+				print("Will run domainogram from profile corrected data (file:"+profileCorrectedFile+")")
+				resFiles=call_runDomainogram(ex,profileCorrectedFile,group['name'],group['name'],regCoord.split(':')[0],500,50,1,script_path)
 
 	step=0
 	return processed
