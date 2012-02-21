@@ -335,10 +335,20 @@ def workflow_groups(ex, job, primers_dict, assembly, mapseq_files, mapseq_url, s
 
 			if group['before_profile_correction']:
 				print("Will run domainogram from informative fragments (file:"+resfiles[6]+")")
-				resFiles=call_runDomainogram(ex,resfiles[6],group['name'],group['name'],regCoord,script_path)
+				call_runDomainogram(ex,resfiles[6],group['name'],group['name'],regCoord,script_path)
 			else:
 				print("Will run domainogram from profile corrected data (file:"+profileCorrectedFile+")")
-				resFiles=call_runDomainogram(ex,profileCorrectedFile,group['name'],group['name'],regCoord.split(':')[0],500,50,1,script_path)
+				call_runDomainogram(ex,profileCorrectedFile,group['name'],group['name'],regCoord.split(':')[0],500,50,1,script_path)
+	
+		        resFiles=[]
+        		startRead=0
+		        with open(pref+".log",'rb') as f:
+                		for s in f.readlines():
+                        		s=s.strip('\n')
+                        		if re.search('####resfiles####',s): startRead=1
+                        		if startRead>0: resFiles.append(s)
+
+			ex.add(resFiles[4],description=set_file_descr(pref,"_selectedBRICKS.txt",groupId=1,step="domainograms",type="txt",admin="1"))
 
 	step=0
 	return processed
