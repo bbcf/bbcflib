@@ -480,6 +480,25 @@ class Assembly(object):
                     trans_in_gene[str(k)] = [str(x[0]) for x in v]
         return trans_in_gene
 
+    def get_dico(self,h):
+        """Return a dictionary from GTF data"""
+        trans_in_gene = {}
+        l=[]
+        for k,v in h["conditions"].iteritems():
+            l.append(k+":"+v)
+            
+        for chr in self.chrnames:
+            request = self.genrep.url+"/nr_assemblies/get_dico?md5="+self.md5+\
+                "&keys="+h["keys"]+"&values="+h["values"]+\
+                h["uniq"]+"&conditions="+",".join(l)+"&chr_name="+chr+"&at_pos="+h["listpos"]
+            print request
+            resp = json.load(urllib2.urlopen(request))
+            for k,v in resp.iteritems():
+                trans_in_gene[str(k)] = [str(x[0]) for x in v]
+
+        return trans_in_gene
+
+
     @property
     def chrmeta(self):
         """
