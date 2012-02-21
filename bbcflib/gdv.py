@@ -113,6 +113,7 @@ def new_track(mail, key, assembly_id=None, project_id=None, urls=None, url=None,
     '''
     @deprecated: you should use multiple_tracks or single tracks instead
     '''
+    warnings.warn('This method is used by the old version of GDV', DeprecationWarning)
     d1 = multiple_tracks(mail, key, assembly_id=assembly_id, project_id=project_id, urls=urls, fsys_list=fsys_list, serv_url=serv_url, file_names=file_names, force=force, extensions=extensions)
     d2 = single_track(mail, key, serv_url=serv_url, assembly_id=assembly_id, project_id=project_id, url=url, fsys=fsys, trackname=trackname, force=force, extension=extension)
     d1.update(d2)
