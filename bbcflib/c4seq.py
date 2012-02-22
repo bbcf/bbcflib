@@ -348,7 +348,7 @@ def workflow_groups(ex, job, primers_dict, assembly, mapseq_files, mapseq_url, s
                         		if re.search('####resfiles####',s): startRead=1
                         		if startRead>0: resFiles.append(s)
 
-			ex.add(resFiles[4],description=set_file_descr(pref,"_selectedBRICKS.txt",groupId=1,step="domainograms",type="txt",admin="1"))
+			ex.add(resFiles[4],description=set_file_descr(pref+"_selectedBRICKS.txt",groupId=1,step="domainograms",type="txt",admin="1"))
 
 	step=0
 	return processed
