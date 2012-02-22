@@ -342,13 +342,21 @@ def workflow_groups(ex, job, primers_dict, assembly, mapseq_files, mapseq_url, s
 	
 		        resFiles=[]
         		startRead=0
+			res_tar=tarfile.open(pref+"_domainogram.tar.gz", "w:gz")
 		        with open(pref+".log",'rb') as f:
                 		for s in f.readlines():
                         		s=s.strip('\n')
                         		if re.search('####resfiles####',s): startRead=1
-                        		if startRead>0: resFiles.append(s)
+					if startRead>0 and not re.search("RData",s) and not re.search('####resfiles####',s):
+                        			resFiles.append(s)
+						res_tar.add(s)
+						if re.search("bedGraph$",s):
+							ex.add(s,description=set_file_descr(s,groupId=1,step="domainograms",type="bedGraph",ucsc="1",gdv="1"))
+				
+			res_tar.close()
+        		ex.add(pref+"_domainogram.tar.gz",description=set_file_descr(pref+"_domainogram.tar.gz",groupId=1,step="domainograms",type="tgz"))
+	
 
-			ex.add(resFiles[4],description=set_file_descr(pref+"_selectedBRICKS.txt",groupId=1,step="domainograms",type="txt",admin="1"))
 
 	step=0
 	return processed
