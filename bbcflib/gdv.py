@@ -34,7 +34,10 @@ def new_project(mail, key, name, assembly_id, serv_url='http://gdv.epfl.ch/pygdv
                }
     return send_it(query_url, request)
 
-def single_track(mail, key, serv_url='http://gdv.epfl.ch/pygdv', assembly_id=None, project_id=None, url=None, fsys=None, trackname=None, force=False, extension=None):
+def single_track(mail, key, serv_url='http://gdv.epfl.ch/pygdv', 
+                 assembly_id=None, project_id=None, 
+                 url=None, fsys=None, trackname=None, extension=None, 
+                 force=False):
     '''
     Create a new track on GDV.
     :param mail : login in TEQUILA
@@ -66,57 +69,59 @@ def single_track(mail, key, serv_url='http://gdv.epfl.ch/pygdv', assembly_id=Non
         request['force'] = force
     if extension :
         request['extension'] = extension
-    return {'track' : send_it(query_url, request)}
+    return send_it(query_url, request)
 
 
-def multiple_tracks(mail, key, assembly_id=None, project_id=None, urls=None, fsys_list=None, serv_url='http://gdv.epfl.ch/pygdv', file_names=None, force=False, extensions=None):
+def multiple_tracks(mail, key, serv_url='http://gdv.epfl.ch/pygdv',
+                    assembly_id=None, project_id=None, 
+                    urls=[], fsys_list=[], tracknames=[], extensions=[], 
+                    force=False):
     '''
     Create tracks on GDV
     :param extensions : a list of extensions, separated by whitespace.
     :param urls : a list of urls separated by whitespaces. 
     :param fsys : if the file is on the same file system, a filesystem path
     :param fsys_list :  a list of fsys separated by whitespaces.
-    :param file_names : a list of file name, in the same order than the files uploaded.
+    :param tracknames : a list of file name, in the same order than the files uploaded.
     If there is differents parameters given, the first file uploaded will be file_upload, 
     then urls, url, fsys and finally fsys_list. The list is separated by whitespaces.
     For other params :see single_track
     '''
     tracks = []
-    if file_names : file_names = file_names.split()
-    if extensions : extensions = extensions.split()
-    index = index_ext = 0
-    filename = extension = None
-    if urls : 
-        urls = urls.split()
-        for u in urls :
-            if file_names:
-                filename = file_names[index]
-                index += 1
-            if extensions:
-                extension = extensions[index_ext]
-                index_ext += 1
-            tracks.append(single_track(mail, key, assembly_id=assembly_id, project_id=project_id, url=u, trackname=filename, extension=extension, force=force, serv_url=serv_url))
-    
-    if fsys_list : 
-        fsys_list = fsys_list.split()
-        for fsys in fsys_list :
-            if file_names:
-                filename = file_names[index]
-                index += 1
-            if extensions:
-                extension = extensions[index_ext]
-                index_ext += 1
-            tracks.append(single_track(mail, key, assembly_id=assembly_id, project_id=project_id, fsys=fsys, trackname=filename, extension=extension, force=force, serv_url=serv_url))
-    return {'tracks' : tracks}
+    if isinstance(tracknames,basestring): tracknames = tracknames.split()
+    if isinstance(extensions,basestring): extensions = extensions.split()
+    if isinstance(urls,basestring): urls = urls.split()
+    if isinstance(fsys_list,basestring): fsys_list = fsys_list.split()
+    ntracks = len(urls)+len(fsys_list)
+    tr = tracknames+[None]*(ntracks-len(tracknames))
+    ex = extensions+[None]*(ntracks-len(extensions))
+    tracks = [single_track(mail, key, serv_url=serv_url, 
+                           assembly_id=assembly_id, project_id=project_id, 
+                           url=u, trackname=tr[n], extension=ex[n], force=force) 
+              for n,f in enumerate(urls)] \
+              + [single_track(mail, key, serv_url=serv_url, 
+                              assembly_id=assembly_id, project_id=project_id, 
+                              fsys=f, trackname=tr[len(urls)+n], extension=ex[len(urls)+n], force=force) 
+                 for n,f in enumerate(fsys_list)]
+    return tracks
 
-def new_track(mail, key, assembly_id=None, project_id=None, urls=None, url=None, fsys=None, fsys_list=None, serv_url='http://gdv.epfl.ch/pygdv', file_names=None, force=False, extension=None, extensions=None, trackname=None):
+def new_track(mail, key, serv_url='http://gdv.epfl.ch/pygdv',
+              assembly_id=None, project_id=None, 
+              urls=None, url=None, 
+              fsys_list=None, fsys=None, 
+              tracknames=None, trackname=None, 
+              extensions=None, extension=None, 
+              force=False):
     '''
     @deprecated: you should use multiple_tracks or single tracks instead
     '''
-    d1 = multiple_tracks(mail, key, assembly_id=assembly_id, project_id=project_id, urls=urls, fsys_list=fsys_list, serv_url=serv_url, file_names=file_names, force=force, extensions=extensions)
-    d2 = single_track(mail, key, serv_url=serv_url, assembly_id=assembly_id, project_id=project_id, url=url, fsys=fsys, trackname=trackname, force=force, extension=extension)
-    d1.update(d2)
-    return d1
+    warnings.warn('This method is used by the old version of GDV', DeprecationWarning)
+    d1 = multiple_tracks(mail, key, serv_url=serv_url, assembly_id=assembly_id, project_id=project_id, 
+                         urls=urls, fsys_list=fsys_list, tracknames=tracknames, extensions=extensions, 
+                         force=force)
+    d2 = single_track(mail, key, serv_url=serv_url, assembly_id=assembly_id, project_id=project_id, 
+                      url=url, fsys=fsys, trackname=trackname, extension=extension, force=force)
+    return d1+d2
 
 
 
