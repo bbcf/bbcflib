@@ -70,7 +70,7 @@ Below is the script used by the frontend::
 """
 
 # Built-in modules #
-import os, re, json, shutil, gzip, tarfile, pickle, urllib, time
+import os, re, json, shutil, gzip, tarfile, bz2, pickle, urllib, time
 
 # Internal modules #
 from . import frontend, genrep, daflims
@@ -154,37 +154,37 @@ def get_fastq_files( ex, job, dafl=None, set_seed_length=True):
     read length.
     """
     def _expand_fastq(ex,run,target):
-        is_gz = run.endswith(".gz") or run.endswith(".gzip")
+        target2 = unique_filename_in()
         run_strip = run
+        is_gz = run.endswith(".gz") or run.endswith(".gzip")
+        is_bz2 = run.endswith(".bz2")
         if is_gz: run_strip = re.sub('.gz[ip]*','',run)
-        is_tar = run_strip.endswith(".tar")
-        if is_tar:
+        if is_bz2: run_strip = re.sub('.bz[2]*','',run)
+
+        def _rewrite(input_file,output_file):
+            with open(output_file,'w') as g:
+                while True:
+                    chunk = input_file.read(4096)
+                    if chunk == '': break
+                    else: g.write(chunk)
+
+        if run_strip.endswith(".tar"):
             mode = 'r'
             if is_gz: mode += '|gz'
-            target2 = unique_filename_in()
             with open(target,'rb') as tf:
                 tar = tarfile.open(fileobj=tf, mode=mode)
                 tar_filename = tar.next()
                 input_file = tar.extractfile(tar_filename)
-                with open(target2, 'w') as output_file:
-                    while True:
-                        chunk = input_file.read(4096)
-                        if chunk == '':
-                            break
-                        else:
-                            output_file.write(chunk)
+                _rewrite(input_file,target2)
                 tar.close()
         elif is_gz:
-            target2 = unique_filename_in()
-            with open(target2,'w') as output_file:
-                input_file = gzip.open(target, 'rb')
-                while True:
-                    chunk = input_file.read(4096)
-                    if chunk == '':
-                        break
-                    else:
-                        output_file.write(chunk)
-                input_file.close()
+            input_file = gzip.open(target, 'rb')
+            _rewrite(input_file,target2)
+            input_file.close()
+        elif is_bz2:
+            input_file = bz2.BZ2File(target,mode='r')
+            _rewrite(input_file,target2)
+            input_file.close()
         elif run.endswith(".sra"):
             target2 = fastq_dump(ex,target)
         else:
