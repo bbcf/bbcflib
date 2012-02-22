@@ -329,6 +329,21 @@ def workflow_groups(ex, job, primers_dict, assembly, mapseq_files, mapseq_url, s
 #				t.convert(smoothedFile_afterProfileCorrection_sql,'sql')
 #			ex.add(smoothedFile_afterProfileCorrection_sql,description=set_file_descr("res_segToFrag_"+mapseq_files[gid][rid]['libname']+"_profileCorrected_smoothed_"+nFragsPerWin+"FragsPerWin.sql",groupId=grpId,step="smoothing",type="sql",comment="smoothed data, after profile correction,sql format",gdv="1",view="admin"))
 
+
+		if not('run_domainogram' in group):
+			group['run_domainogram'] = False
+		elif str(group['run_domainogram']).lower() in ['1','true','on','t']):
+			group['run_domainogram'] = True
+		else:
+			group['run_domainogram'] = False
+
+		if not('before_profile_correction' in group):
+			group['before_profile_correction'] = False
+		elif str(group['before_profile_correction']).lower() in ['1','true','on','t']):
+			group['before_profile_correction'] = True
+		else:
+			group['before_profile_correction'] = False
+
 		if group['run_domainogram']:
 			if regToExclude == None: regCoord=primers_dict[group['name']]['baitcoord'] 
 			else: regCoord=regToExclude
