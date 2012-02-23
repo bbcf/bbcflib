@@ -332,14 +332,14 @@ def workflow_groups(ex, job, primers_dict, assembly, mapseq_files, mapseq_url, s
 
 		if not('run_domainogram' in group):
 			group['run_domainogram'] = False
-		elif str(group['run_domainogram']).lower() in ['1','true','on','t']):
+		elif str(group['run_domainogram']).lower() in ['1','true','on','t']:
 			group['run_domainogram'] = True
 		else:
 			group['run_domainogram'] = False
 
 		if not('before_profile_correction' in group):
 			group['before_profile_correction'] = False
-		elif str(group['before_profile_correction']).lower() in ['1','true','on','t']):
+		elif str(group['before_profile_correction']).lower() in ['1','true','on','t']:
 			group['before_profile_correction'] = True
 		else:
 			group['before_profile_correction'] = False
