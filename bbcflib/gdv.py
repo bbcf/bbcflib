@@ -88,7 +88,7 @@ def single_track(mail, key, serv_url=default_url, assembly_id=None, project_id=N
     return send_it(query_url, request)
 
 
-def multiple_tracks(mail, key, assembly_id=None, project_id=None, urls=None, fsys_list=None, serv_url=default_url, file_names=None, force=False, extensions=None):
+def multiple_tracks(mail, key, assembly_id=None, project_id=None, urls=None, fsys_list=None, serv_url=default_url, tracknames=None, force=False, extensions=None):
     '''
     Create tracks on GDV
     :param extensions : a list of extensions, separated by whitespace.
