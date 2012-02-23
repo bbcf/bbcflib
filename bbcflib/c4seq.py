@@ -347,7 +347,7 @@ def workflow_groups(ex, job, primers_dict, assembly, mapseq_files, mapseq_url, s
 		if group['run_domainogram']:
 			if regToExclude == None: regCoord=primers_dict[group['name']]['baitcoord'] 
 			else: regCoord=regToExclude
-
+			
 			if group['before_profile_correction']:
 				print("Will run domainogram from informative fragments (file:"+resfiles[6]+")")
 				call_runDomainogram(ex,resfiles[6],group['name'],group['name'],regCoord,script_path=script_path)
@@ -357,8 +357,8 @@ def workflow_groups(ex, job, primers_dict, assembly, mapseq_files, mapseq_url, s
 	
 		        resFiles=[]
         		startRead=0
-			res_tar=tarfile.open(pref+"_domainogram.tar.gz", "w:gz")
-		        with open(pref+".log",'rb') as f:
+			res_tar=tarfile.open(group['name']+"_domainogram.tar.gz", "w:gz")
+		        with open(group['name']+".log",'rb') as f:
                 		for s in f.readlines():
                         		s=s.strip('\n')
                         		if re.search('####resfiles####',s): startRead=1
@@ -369,7 +369,7 @@ def workflow_groups(ex, job, primers_dict, assembly, mapseq_files, mapseq_url, s
 							ex.add(s,description=set_file_descr(s,groupId=1,step="domainograms",type="bedGraph",ucsc="1",gdv="1"))
 				
 			res_tar.close()
-        		ex.add(pref+"_domainogram.tar.gz",description=set_file_descr(pref+"_domainogram.tar.gz",groupId=1,step="domainograms",type="tgz"))
+        		ex.add(group['name']+"_domainogram.tar.gz",description=set_file_descr(group['name']+"_domainogram.tar.gz",groupId=1,step="domainograms",type="tgz"))
 	
 
 
