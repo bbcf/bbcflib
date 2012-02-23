@@ -321,7 +321,7 @@ def workflow_groups(ex, job, primers_dict, assembly, mapseq_files, mapseq_url, s
 #			ex.add(smoothedFile_sql,description=set_file_descr("res_segToFrag_"+mapseq_files[gid][rid]['libname']+"_smoothed_"+nFragsPerWin+"FragsPerWin.sql",groupId=gid,step="smoothing",type="bedGraph",comment="smoothed data, before profile correction, sql format",gdv="1",view="admin"))		
 	
        		outputfile_afterProfileCorrection=unique_filename_in()
-	        smoothFragFile(ex,profileCorrectedFile,nFragsPerWin,group['name']+"_[fromProfileCorrected]",outputfile_afterProfileCorrection,regToExclude,script_path)
+	        smoothFragFile(ex,profileCorrectedFile,nFragsPerWin,group['name']+"_fromProfileCorrected",outputfile_afterProfileCorrection,regToExclude,script_path)
 		ex.add(outputfile_afterProfileCorrection,description=set_file_descr("res_segToFrag_"+group['name']+"_profileCorrected_smoothed_"+nFragsPerWin+"FragsPerWin.bedGraph",groupId=grpId,step="smoothing",type="bedGraph",comment="smoothed data, after profile correction",ucsc='1',gdv='1'))
 
 #			smoothedFile_afterProfileCorrection_sql=unique_filename_in()+".sql"
@@ -350,10 +350,10 @@ def workflow_groups(ex, job, primers_dict, assembly, mapseq_files, mapseq_url, s
 
 			if group['before_profile_correction']:
 				print("Will run domainogram from informative fragments (file:"+resfiles[6]+")")
-				call_runDomainogram(ex,resfiles[6],group['name'],group['name'],regCoord,script_path)
+				call_runDomainogram(ex,resfiles[6],group['name'],group['name'],regCoord,script_path=script_path)
 			else:
 				print("Will run domainogram from profile corrected data (file:"+profileCorrectedFile+")")
-				call_runDomainogram(ex,profileCorrectedFile,group['name'],group['name'],regCoord.split(':')[0],500,50,1,script_path)
+				call_runDomainogram(ex,profileCorrectedFile,group['name'],group['name'],regCoord.split(':')[0],500,50,1,script_path=script_path)
 	
 		        resFiles=[]
         		startRead=0
