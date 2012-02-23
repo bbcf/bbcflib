@@ -226,8 +226,8 @@ def save_results(ex, cols, conditions, group_ids, assembly, header=[], feature_t
     # Tab-delimited output with all information
     output_tab = unique_filename_in()
     writecols(output_tab,cols,header=header, sep="\t")
-    description = "Expression level of "+feature_type+" in sample(s) "+conditions_s % conditions
-    description = set_file_descr(feature_type.lower()+"_expression.tab", step="pileup", type="txt", comment=description)
+#    description = "Expression level of "+feature_type+" in sample(s) "+conditions_s % conditions
+    description = set_file_descr(feature_type.lower()+"_expression.tab", step="pileup", type="txt")#, comment=description)
     ex.add(output_tab, description=description)
     # Create one track for each group
     if feature_type in ['GENES','EXONS']:
@@ -255,16 +255,16 @@ def save_results(ex, cols, conditions, group_ids, assembly, header=[], feature_t
                         goodlines = fusion(iter(goodlines))
                         for x in goodlines:
                             t.write(x[0],[(x[1],x[2],x[3])],fields=["start","end","score"])
-            description = "SQL track of %s'rpkm for group `%s'" % (feature_type,group)
+            #description = "SQL track of %s'rpkm for group `%s'" % (feature_type,group)
             description = set_file_descr(feature_type.lower()+"_"+group+".sql", step="pileup", type="sql", \
-                                         groupId=group_ids[group], gdv='1', comment=description)
+                                         groupId=group_ids[group], gdv='1')#, comment=description)
             ex.add(filename+'.sql', description=description)
             # UCSC-BED track
             with track.load(filename+'.sql') as t:
                 t.convert(filename+'.bed','bed')
-            description = "UCSC-BED track of %s' rpkm for group `%s'" % (feature_type,group)
+            #description = "UCSC-BED track of %s' rpkm for group `%s'" % (feature_type,group)
             description = set_file_descr(feature_type.lower()+"_"+group+".bed", step="pileup", type="bed", \
-                                         groupId=group_ids[group], ucsc='1', comment=description)
+                                         groupId=group_ids[group], ucsc='1')#, comment=description)
             ex.add(filename+'.bed', description=description)
     print feature_type+": Done successfully."
     return output_tab

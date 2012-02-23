@@ -98,7 +98,7 @@ def multiple_tracks(mail, key, serv_url='http://gdv.epfl.ch/pygdv',
     tracks = [single_track(mail, key, serv_url=serv_url, 
                            assembly_id=assembly_id, project_id=project_id, 
                            url=u, trackname=tr[n], extension=ex[n], force=force) 
-              for n,f in enumerate(urls)] \
+              for n,u in enumerate(urls)] \
               + [single_track(mail, key, serv_url=serv_url, 
                               assembly_id=assembly_id, project_id=project_id, 
                               fsys=f, trackname=tr[len(urls)+n], extension=ex[len(urls)+n], force=force) 
