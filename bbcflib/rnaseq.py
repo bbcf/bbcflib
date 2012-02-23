@@ -221,13 +221,11 @@ def save_results(ex, cols, conditions, group_ids, assembly, header=[], feature_t
     :param header: list of strings, the column headers of the output file.
     :param feature_type: (str) the kind of feature of which you measure the expression.
     """
-    conditions_s = '%s, '*(len(conditions)-1)+'%s.'
     conditions = tuple(conditions)
     # Tab-delimited output with all information
     output_tab = unique_filename_in()
     writecols(output_tab,cols,header=header, sep="\t")
-#    description = "Expression level of "+feature_type+" in sample(s) "+conditions_s % conditions
-    description = set_file_descr(feature_type.lower()+"_expression.tab", step="pileup", type="txt")#, comment=description)
+    description = set_file_descr(feature_type.lower()+"_expression.tab", step="pileup", type="txt")
     ex.add(output_tab, description=description)
     # Create one track for each group
     if feature_type in ['GENES','EXONS']:
@@ -235,7 +233,7 @@ def save_results(ex, cols, conditions, group_ids, assembly, header=[], feature_t
         groups = [c.split('.')[0] for c in conditions]
         start = cols[2*ncond+1]
         end = cols[2*ncond+2]
-        chr = cols[-1]
+        chromosomes = cols[-1]
         rpkm = {}; output_sql = {}
         for i in range(ncond):
             group = conditions[i].split('.')[0]
@@ -243,7 +241,7 @@ def save_results(ex, cols, conditions, group_ids, assembly, header=[], feature_t
             rpkm[group] = asarray(rpkm.get(group,zeros(len(start)))) + asarray(cols[i+ncond+1]) / nruns
             output_sql[group] = output_sql.get(group,unique_filename_in())
         for group,filename in output_sql.iteritems():
-            lines = zip(*[chr,start,end,rpkm[group]])
+            lines = zip(*[chromosomes,start,end,rpkm[group]])
             # SQL track
             with track.new(filename+'.sql') as t:
                 t.datatype = 'quantitative'
@@ -255,16 +253,14 @@ def save_results(ex, cols, conditions, group_ids, assembly, header=[], feature_t
                         goodlines = fusion(iter(goodlines))
                         for x in goodlines:
                             t.write(x[0],[(x[1],x[2],x[3])],fields=["start","end","score"])
-            #description = "SQL track of %s'rpkm for group `%s'" % (feature_type,group)
             description = set_file_descr(feature_type.lower()+"_"+group+".sql", step="pileup", type="sql", \
-                                         groupId=group_ids[group], gdv='1')#, comment=description)
+                                         groupId=group_ids[group], gdv='1')
             ex.add(filename+'.sql', description=description)
             # UCSC-BED track
             with track.load(filename+'.sql') as t:
                 t.convert(filename+'.bed','bed')
-            #description = "UCSC-BED track of %s' rpkm for group `%s'" % (feature_type,group)
             description = set_file_descr(feature_type.lower()+"_"+group+".bed", step="pileup", type="bed", \
-                                         groupId=group_ids[group], ucsc='1')#, comment=description)
+                                         groupId=group_ids[group], ucsc='1')
             ex.add(filename+'.bed', description=description)
     print feature_type+": Done successfully."
     return output_tab
