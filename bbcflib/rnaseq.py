@@ -21,8 +21,7 @@ import os, pysam, math
 from operator import itemgetter
 
 # Internal modules #
-from bbcflib.common import writecols, set_file_descr
-from bbcflib.common import unique_filename_in
+from bbcflib.common import writecols, set_file_descr, unique_filename_in
 from bbcflib import mapseq, genrep
 import track
 
@@ -124,7 +123,7 @@ def fetch_mappings(assembly, path_to_map=None):
 
     * [0] gene_mapping is a dict ``{gene ID: (gene name,start,end,chromosome)}``
     * [1] transcript_mapping is a dictionary ``{transcript ID: (gene ID,start,end,chromosome)}``
-    * [2] exon_mapping is a dictionary ``{exon ID: ([trancript IDs],gene ID,start,end,chromosome)}``
+    * [2] exon_mapping is a dictionary ``{exon ID: ([transcript IDs],gene ID,start,end,chromosome)}``
     * [3] trans_in_gene is a dict ``{gene ID: [IDs of the transcripts it contains]}``
     * [4] exons_in_trans is a dict ``{transcript ID: [IDs of the exons it contains]}``
 
@@ -251,7 +250,6 @@ def save_results(ex, cols, conditions, group_ids, assembly, header=[], feature_t
                 t.chrmeta = assembly.chrmeta
                 for chr in t.chrmeta:
                     goodlines = [l for l in lines if (l[-1]!=0.0 and l[0]==chr)]
-                    #print "goodlines",goodlines
                     if goodlines:
                         goodlines.sort(key=lambda x: x[1]) # sort w.r.t start
                         goodlines = fusion(iter(goodlines))
@@ -269,6 +267,7 @@ def save_results(ex, cols, conditions, group_ids, assembly, header=[], feature_t
                                          groupId=group_ids[group], ucsc='1', comment=description)
             ex.add(filename+'.bed', description=description)
     print feature_type+": Done successfully."
+    return output_tab
 
 #@timer
 def genes_expression(exons_data, exon_to_gene, ncond):
@@ -407,8 +406,7 @@ def estimate_size_factors(counts):
     return res, size_factors
 
 #@timer
-def rnaseq_workflow(ex, job, bam_files, pileup_level=["exons","genes","transcripts"],
-                    via="lsf", unmapped=True):
+def rnaseq_workflow(ex, job, bam_files, pileup_level=["exons","genes","transcripts"], via="lsf"):
     """
     Main function of the workflow.
 
@@ -417,7 +415,6 @@ def rnaseq_workflow(ex, job, bam_files, pileup_level=["exons","genes","transcrip
     :param ex: the bein's execution Id.
     :param job: a Job object (or a dictionary of the same form) as returned from HTSStation's frontend.
     :param bam_files: a complicated dictionary such as returned by mapseq.get_bam_wig_files.
-    :param unmapped: the name or path to a fastq file containing the unmapped reads.
     :param pileup_level: a string or array of strings indicating the features you want to compare.
                          Targets can be 'genes', 'transcripts', or 'exons'.
     :param via: 'local' or 'lsf'.
@@ -460,25 +457,24 @@ def rnaseq_workflow(ex, job, bam_files, pileup_level=["exons","genes","transcrip
     print "Load mappings"
     """ [0] gene_mapping is a dict ``{gene ID: (gene name,start,end,chromosome)}``
         [1] transcript_mapping is a dictionary ``{transcript ID: (gene ID,start,end,chromosome)}``
-        [2] exon_mapping is a dictionary ``{exon ID: ([trancript IDs],gene ID,start,end,chromosome)}``
+        [2] exon_mapping is a dictionary ``{exon ID: ([transcript IDs],gene ID,start,end,chromosome)}``
         [3] trans_in_gene is a dict ``{gene ID: [IDs of the transcripts it contains]}``
         [4] exons_in_trans is a dict ``{transcript ID: [IDs of the exons it contains]}`` """
     (gene_mapping, transcript_mapping, exon_mapping, trans_in_gene, exons_in_trans) = fetch_mappings(assembly)
 
     """ Map remaining reads to transcriptome """
-    additionals = {}
-    if unmapped and bam_files[gid][rid].get('unmapped_fastq'):
-        print "Get unmapped reads"
-        unmapped_bam={}
-        refseq_path = assembly.index_path
-        assert os.path.exists(refseq_path+".1.ebwt"), "Refseq index not found: %s" % refseq_path+".1.ebwt"
-        for gid, group in job.groups.iteritems():
-            k = 0
-            for rid, run in group['runs'].iteritems():
-                k +=1
-                cond = group_names[gid]+'.'+str(k)
-                unmapped_fastq = bam_files[gid][rid]['unmapped_fastq']
-                unmapped_bam[cond] = mapseq.map_reads(ex, unmapped_fastq, {}, refseq_path, \
+    additionals = {}; unmapped_bam = {}; unmapped_fastq = {}
+    refseq_path = assembly.index_path
+    for gid, group in job.groups.iteritems():
+        k = 0
+        for rid, run in group['runs'].iteritems():
+            k +=1
+            cond = group_names[gid]+'.'+str(k)
+            unmapped_fastq[cond] = bam_files[gid][rid].get('unmapped_fastq')
+            if unmapped_fastq[cond]:
+                print "Add splice junction reads for run %s.%s" % (gid,rid)
+                assert os.path.exists(refseq_path+".1.ebwt"), "Refseq index not found: %s" % refseq_path+".1.ebwt"
+                unmapped_bam[cond] = mapseq.map_reads(ex, unmapped_fastq[cond], {}, refseq_path, \
                       remove_pcr_duplicates=False, bwt_args=[], via=via)['bam']
                 if unmapped_bam[cond]:
                     sam = pysam.Samfile(unmapped_bam[cond])
@@ -511,10 +507,10 @@ def rnaseq_workflow(ex, job, bam_files, pileup_level=["exons","genes","transcrip
             k+=1
             cond = group_names[gid]+'.'+str(k)
             exon_pileup = build_pileup(f['bam'], exons)
-            if unmapped and cond in additionals:
+            if unmapped_fastq[cond] and cond in additionals:
                 for a,x in additionals[cond].iteritems():
                     exon_pileup[a] = exon_pileup.get(a,0) + x
-            exon_pileups[cond] = [exon_pileup[e] for e in exonsID] # {cond1.run1: [pileup], cond1.run2: [pileup]...}
+            exon_pileups[cond] = [exon_pileup[e] for e in exonsID] # {cond1.run1: {pileup}, cond1.run2: {pileup}...}
             nreads[cond] = nreads.get(cond,0) + sum(exon_pileup.values()) # total number of reads
             print "....Pileup", cond, "done"
 
@@ -531,17 +527,17 @@ def rnaseq_workflow(ex, job, bam_files, pileup_level=["exons","genes","transcrip
 
     print "Get scores"
     hconds = ["counts."+c for c in conditions] + ["rpkm."+c for c in conditions]
-    nc = len(hconds)
     genesName, echr = zip(*[(x[0],x[-1]) for x in [gene_mapping.get(g,("NA",)*4) for g in genesID]])
     exons_data = [exonsID]+list(counts)+list(rpkm)+[starts,ends,genesID,genesName,echr]
+    exons_file = None; genes_file = None; trans_file = None
 
     """ Print counts for exons """
     if "exons" in pileup_level:
         exons_data = zip(*exons_data)
-        exons_data = sorted(exons_data, key=itemgetter(nc+5,nc+1)) # sort w.r.t. chromosome, then start
+        exons_data = sorted(exons_data, key=itemgetter(7,4)) # sort w.r.t. chromosome, then start
         header = ["ExonID"] + hconds + ["Start","End","GeneID","GeneName","Chromosome"]
         exons_data = zip(*exons_data)
-        save_results(ex, exons_data, conditions, group_ids, assembly, header=header, feature_type="EXONS")
+        exons_file = save_results(ex, exons_data, conditions, group_ids, assembly, header=header, feature_type="EXONS")
 
     """ Get scores of genes from exons """
     if "genes" in pileup_level:
@@ -552,7 +548,7 @@ def rnaseq_workflow(ex, job, bam_files, pileup_level=["exons","genes","transcrip
         (genesID,gcounts,grpkm,gname,gstart,gend,gchr) = zip(*genes_data)
         header = ["GeneID"] + hconds + ["Start","End","GeneName","Chromosome"]
         genes_data = [genesID]+list(zip(*gcounts))+list(zip(*grpkm))+[gstart,gend,gname,gchr]
-        save_results(ex, genes_data, conditions, group_ids, assembly, header=header, feature_type="GENES")
+        genes_file = save_results(ex, genes_data, conditions, group_ids, assembly, header=header, feature_type="GENES")
 
     """ Get scores of transcripts from exons, using non-negative least-squares """
     if "transcripts" in pileup_level:
@@ -565,15 +561,18 @@ def rnaseq_workflow(ex, job, bam_files, pileup_level=["exons","genes","transcrip
         genesName = [gene_mapping.get(g,("NA",)*4)[0] for g in genesID]
         header = ["TranscriptID"] + hconds + ["Start","End","GeneID","GeneName","Chromosome"]
         trans_data = [transID]+list(zip(*tcounts))+list(zip(*trpkm))+[tstart,tend,genesID,genesName,tchr]
-        save_results(ex, trans_data, conditions, group_ids, assembly, header=header, feature_type="TRANSCRIPTS")
+        trans_file = save_results(ex, trans_data, conditions, group_ids, assembly, header=header, feature_type="TRANSCRIPTS")
 
     # Testing
     # "ENSMUSG00000057666" "ENSG00000111640": TEST Gapdh
     # for g in list(set(genesID)):
     #     print sum(gcounts[g]), sum([sum(tcounts[t]) for t in trans_in_gene[g]])
 
-#-----------------------------------#
-# This code was written by the BBCF #
-# http://bbcf.epfl.ch/              #
-# webmaster.bbcf@epfl.ch            #
-#-----------------------------------#
+    return (exons_file, genes_file, trans_file)
+
+#------------------------------------------------------#
+# This code was written by Julien Delafontaine         #
+# Bioinformatics and Biostatistics Core Facility, EPFL #
+# http://bbcf.epfl.ch/                                 #
+# webmaster.bbcf@epfl.ch                               #
+#------------------------------------------------------#

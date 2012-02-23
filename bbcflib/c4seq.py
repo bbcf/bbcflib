@@ -13,7 +13,7 @@ from bein.util import touch
 from bbcflib import daflims, genrep, frontend, email, gdv, track, createlib
 from bbcflib.mapseq import *
 from bbcflib.common import unique_filename_in, gzipfile
-import sys, getopt, os, json, re
+import sys, getopt, os, json, re, time
 import sqlite3
 import gMiner as gm
 
@@ -78,6 +78,19 @@ def call_sortOnCoord(*args, **kwargs):
 	future.wait()
 	return filename
 
+@program
+def mergeBigWig(bwfiles,resfile):
+	return {'arguments': ['mergeBigWig.sh','-i',bwfiles,'-o',resfile],
+                'return_value':None}
+
+
+@program
+def call_runDomainogram(infile,name,prefix,regCoord=None,wmaxDomainogram=500,wmax_BRICKS=50,skip=0,script_path='./'):
+        time.sleep(60)
+        if regCoord == None: regCoord=""
+        return{'arguments': ["R","--vanilla","--no-restore","--slave","-f",script_path+"runDomainogram.R","--args",infile,name,prefix,regCoord,str(wmaxDomainogram),str(wmax_BRICKS),str(skip)],
+                'return_value':prefix+".log"}
+
 
 # *** Create a dictionary with infos for each primer (from file primers.fa)
 # ex: primers_dict=loadPrimers('/archive/epfl/bbcf/data/DubouleDaan/finalAnalysis/XmNGdlXjqoj6BN8Rj2Tl/primers.fa')
@@ -112,6 +125,7 @@ def loadPrimers(primersFile):
 
 @program
 def profileCorrection(inputFile,baitCoord,name,outputFile,reportFile,script_path='./'):
+	time.sleep(60)	
 	return{'arguments': ["R","--vanilla","--no-restore","--slave","-f",script_path+"profileCorrection.R","--args",inputFile,baitCoord,name,outputFile,reportFile],
                 'return_value':None}
 
@@ -223,6 +237,7 @@ def workflow_groups(ex, job, primers_dict, assembly, mapseq_files, mapseq_url, s
 #		reffile='/archive/epfl/bbcf/data/DubouleDaan/library_Nla_30bps/library_Nla_30bps_segmentInfos.bed'
 		processed['lib'][gid]=reffile
 
+		bwFiles=""
 		for rid,run in group['runs'].iteritems():
                         #job_mapseq=htss_mapseq.job(run['key'])
 		
@@ -259,45 +274,105 @@ def workflow_groups(ex, job, primers_dict, assembly, mapseq_files, mapseq_url, s
 			ex.add(mapseq_files[gid][rid]['wig']['merged'],description=set_file_descr("density_file_"+mapseq_files[gid][rid]['libname']+".sql",groupId=gid,step="density",type="sql",view='admin',gdv="1"))
                         processed['density'][mapseq_files[gid][rid]['libname']]=mapseq_files[gid][rid]['wig']['merged']
 
-			print("Will process to the main part of 4cseq module: calculate normalised counts per fragments from density file:"+mapseq_files[gid][rid]['wig']['merged'])
-			resfiles=density_to_countsPerFrag(ex,mapseq_files[gid][rid]['wig']['merged'],mapseq_files[gid][rid]['libname'],assembly,reffile,regToExclude,ex.remote_working_directory+'/',script_path, via)
-			processed['4cseq']=resfiles
-			
-			print("Will proceed to profile correction of file "+str(resfiles[6]))
-			profileCorrectedFile=unique_filename_in()
-			reportFile_profileCorrection=unique_filename_in()
-			profileCorrection.nonblocking(ex,resfiles[6],primers_dict[group['name']]['baitcoord'],mapseq_files[gid][rid]['libname'],
-                                                      profileCorrectedFile,reportFile_profileCorrection,script_path,via=via).wait()
-		        ex.add(profileCorrectedFile,description=set_file_descr("res_segToFrag_"+mapseq_files[gid][rid]['libname']+"_profileCorrected.bedGraph",groupId=gid,step="profile_correction",type="bedGraph",comment="profile corrected data;bedGraph sorted",ucsc='1',gdv='1'))
-			ex.add(reportFile_profileCorrection,description=set_file_descr("report_profileCorrection_"+mapseq_files[gid][rid]['libname']+".pdf",groupId=gid,step="profile_correction",type="pdf",comment="report profile correction"))
+                        # Add here: mergeBigWig files
+			bwFiles=bwFiles+mapseq_wig+".bw,"
+                        # run the rest at the grp level
+
+		# back to grp level!
+		print("density files of replicates for group "+str(gid)+"="+bwFiles)
+		mergedDensityFiles_bedGraph=unique_filename_in()
+		mergeBigWig(ex,bwFiles,mergedDensityFiles_bedGraph)
+                # convert result file to sql
+		mergedDensityFiles_sql=unique_filename_in()
+		with track.load(mergedDensityFiles_bedGraph,'bedGraph') as t:
+			t.convert(mergedDensityFiles_sql,'sql')
+		ex.add(mergedDensityFiles_bedGraph,description=set_file_descr("density_file_"+group['name']+"_merged.bedGraph ",groupId=gid,step="density",type="bedGraph",ucsc="1"))
+		ex.add(mergedDensityFiles_sql,description=set_file_descr("density_file_"+group['name']+"_merged.sql ",groupId=gid,step="density",type="sql",gdv="1"))
+
+		print("Will process to the main part of 4cseq module: calculate normalised counts per fragments from density file:"+mapseq_files[gid][rid]['wig']['merged'])
+		#resfiles=density_to_countsPerFrag(ex,mapseq_files[gid][rid]['wig']['merged'],mapseq_files[gid][rid]['libname'],assembly,reffile,regToExclude,ex.remote_working_directory+'/',script_path, via)
+		resfiles=density_to_countsPerFrag(ex,mergedDensityFiles_sql,group['name'],assembly,reffile,regToExclude,ex.remote_working_directory+'/',script_path, via)
+		processed['4cseq']=resfiles
+		
+		print("Will proceed to profile correction of file "+str(resfiles[6]))
+		profileCorrectedFile=unique_filename_in()
+		reportFile_profileCorrection=unique_filename_in()
+		profileCorrection.nonblocking(ex,resfiles[6],primers_dict[group['name']]['baitcoord'],group['name'],
+                                                    profileCorrectedFile,reportFile_profileCorrection,script_path,via=via).wait()
+	        ex.add(profileCorrectedFile,description=set_file_descr("res_segToFrag_"+group['name']+"_profileCorrected.bedGraph",groupId=gid,step="profile_correction",type="bedGraph",comment="profile corrected data;bedGraph sorted",ucsc='1',gdv='1'))
+		ex.add(reportFile_profileCorrection,description=set_file_descr("report_profileCorrection_"+group['name']+".pdf",groupId=gid,step="profile_correction",type="pdf",comment="report profile correction"))
 #			profileCorrectedFile_sql=unique_filename_in()+".sql"
 #			with track.load(profileCorrectedFile,'bedGraph') as t:
 #				t.convert(profileCorrectedFile_sql,'sql')
 #			ex.add(profileCorrectedFile_sql,description=set_file_descr("res_segToFrag_"+mapseq_files[gid][rid]['libname']+"_profileCorrected.sql",groupId=gid,step="profile_correction",type="sql",comment="profile corrected data;bedGraph sorted; sql format",gdv="1",view="admin"))
 
-			step += 1
+		step += 1
 	
-			print("Will smooth data before and after profile correction")
-        		nFragsPerWin=str(group['window_size'])
-			print("Window size="+nFragsPerWin)
-        		outputfile=unique_filename_in()
-		        smoothFragFile(ex,resfiles[6],nFragsPerWin,mapseq_files[gid][rid]['libname'],outputfile,regToExclude,script_path)
-			ex.add(outputfile,description=set_file_descr("res_segToFrag_"+mapseq_files[gid][rid]['libname']+"_smoothed_"+nFragsPerWin+"FragsPerWin.bedGraph",groupId=gid,step="smoothing",type="bedGraph",comment="smoothed data, before profile correction",ucsc='1',gdv='1'))
+		print("Will smooth data before and after profile correction")
+       		nFragsPerWin=str(group['window_size'])
+		print("Window size="+nFragsPerWin)
+       		outputfile=unique_filename_in()
+	        smoothFragFile(ex,resfiles[6],nFragsPerWin,group['name'],outputfile,regToExclude,script_path)
+		ex.add(outputfile,description=set_file_descr("res_segToFrag_"+group['name']+"_smoothed_"+nFragsPerWin+"FragsPerWin.bedGraph",groupId=gid,step="smoothing",type="bedGraph",comment="smoothed data, before profile correction",ucsc='1',gdv='1'))
 
 #			smoothedFile_sql=unique_filename_in()+".sql"
 #			with track.load(outputfile,'bedGraph') as t:	
 #				t.convert(smoothedFile_sql,'sql')
 #			ex.add(smoothedFile_sql,description=set_file_descr("res_segToFrag_"+mapseq_files[gid][rid]['libname']+"_smoothed_"+nFragsPerWin+"FragsPerWin.sql",groupId=gid,step="smoothing",type="bedGraph",comment="smoothed data, before profile correction, sql format",gdv="1",view="admin"))		
 	
-        		outputfile_afterProfileCorrection=unique_filename_in()
-		        smoothFragFile(ex,profileCorrectedFile,nFragsPerWin,mapseq_files[gid][rid]['libname']+"_[fromProfileCorrected]",outputfile_afterProfileCorrection,regToExclude,script_path)
-			ex.add(outputfile_afterProfileCorrection,description=set_file_descr("res_segToFrag_"+mapseq_files[gid][rid]['libname']+"_profileCorrected_smoothed_"+nFragsPerWin+"FragsPerWin.bedGraph",groupId=grpId,step="smoothing",type="bedGraph",comment="smoothed data, after profile correction",ucsc='1',gdv='1'))
+       		outputfile_afterProfileCorrection=unique_filename_in()
+	        smoothFragFile(ex,profileCorrectedFile,nFragsPerWin,group['name']+"_fromProfileCorrected",outputfile_afterProfileCorrection,regToExclude,script_path)
+		ex.add(outputfile_afterProfileCorrection,description=set_file_descr("res_segToFrag_"+group['name']+"_profileCorrected_smoothed_"+nFragsPerWin+"FragsPerWin.bedGraph",groupId=grpId,step="smoothing",type="bedGraph",comment="smoothed data, after profile correction",ucsc='1',gdv='1'))
 
 #			smoothedFile_afterProfileCorrection_sql=unique_filename_in()+".sql"
 #			with track.load(outputfile_afterProfileCorrection,'bedGraph') as t: 
 #				t.convert(smoothedFile_afterProfileCorrection_sql,'sql')
 #			ex.add(smoothedFile_afterProfileCorrection_sql,description=set_file_descr("res_segToFrag_"+mapseq_files[gid][rid]['libname']+"_profileCorrected_smoothed_"+nFragsPerWin+"FragsPerWin.sql",groupId=grpId,step="smoothing",type="sql",comment="smoothed data, after profile correction,sql format",gdv="1",view="admin"))
 
-		step=0
+
+		if not('run_domainogram' in group):
+			group['run_domainogram'] = False
+		elif str(group['run_domainogram']).lower() in ['1','true','on','t']):
+			group['run_domainogram'] = True
+		else:
+			group['run_domainogram'] = False
+
+		if not('before_profile_correction' in group):
+			group['before_profile_correction'] = False
+		elif str(group['before_profile_correction']).lower() in ['1','true','on','t']):
+			group['before_profile_correction'] = True
+		else:
+			group['before_profile_correction'] = False
+
+		if group['run_domainogram']:
+			if regToExclude == None: regCoord=primers_dict[group['name']]['baitcoord'] 
+			else: regCoord=regToExclude
+
+			if group['before_profile_correction']:
+				print("Will run domainogram from informative fragments (file:"+resfiles[6]+")")
+				call_runDomainogram(ex,resfiles[6],group['name'],group['name'],regCoord,script_path=script_path)
+			else:
+				print("Will run domainogram from profile corrected data (file:"+profileCorrectedFile+")")
+				call_runDomainogram(ex,profileCorrectedFile,group['name'],group['name'],regCoord.split(':')[0],500,50,1,script_path=script_path)
+	
+		        resFiles=[]
+        		startRead=0
+			res_tar=tarfile.open(pref+"_domainogram.tar.gz", "w:gz")
+		        with open(pref+".log",'rb') as f:
+                		for s in f.readlines():
+                        		s=s.strip('\n')
+                        		if re.search('####resfiles####',s): startRead=1
+					if startRead>0 and not re.search("RData",s) and not re.search('####resfiles####',s):
+                        			resFiles.append(s)
+						res_tar.add(s)
+						if re.search("bedGraph$",s):
+							ex.add(s,description=set_file_descr(s,groupId=1,step="domainograms",type="bedGraph",ucsc="1",gdv="1"))
+				
+			res_tar.close()
+        		ex.add(pref+"_domainogram.tar.gz",description=set_file_descr(pref+"_domainogram.tar.gz",groupId=1,step="domainograms",type="tgz"))
+	
+
+
+	step=0
 	return processed
 

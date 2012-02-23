@@ -256,8 +256,8 @@ def get_libForGrp(ex,group,fasta_or_assembly,new_libraries, job_id, grpId):
 			print("will call createlib.createLibrary with:"+str(fasta_or_assembly)+" and "+ library_filename)
 			libfiles=createLibrary(ex,fasta_or_assembly,paramslib);
 			reffile=libfiles[4]
-			ex.add(libfiles[2],description=set_file_descr("new_library.bed",groupId=grpId,step=0,type="bed"))
-			ex.add(reffile,description=set_file_descr("new_library.sql",groupId=grpId,step=0,type="sql",view='admin'))
+			ex.add(libfiles[2],description=set_file_descr("new_library.bed",groupId=grpId,step="library",type="bed"))
+			ex.add(reffile,description=set_file_descr("new_library.sql",groupId=grpId,step="library",type="sql",view='admin'))
 			new_libraries.append({'library':libfiles[3]})
 		elif lib_id > 0 :
 			print("This library already exists (id="+str(lib_id)+")")

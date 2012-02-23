@@ -70,7 +70,7 @@ Below is the script used by the frontend::
 """
 
 # Built-in modules #
-import os, re, json, shutil, gzip, tarfile, pickle, urllib
+import os, re, json, shutil, gzip, tarfile, bz2, pickle, urllib, time
 
 # Internal modules #
 from . import frontend, genrep, daflims
@@ -154,37 +154,37 @@ def get_fastq_files( ex, job, dafl=None, set_seed_length=True):
     read length.
     """
     def _expand_fastq(ex,run,target):
-        is_gz = run.endswith(".gz") or run.endswith(".gzip")
+        target2 = unique_filename_in()
         run_strip = run
+        is_gz = run.endswith(".gz") or run.endswith(".gzip")
+        is_bz2 = run.endswith(".bz2")
         if is_gz: run_strip = re.sub('.gz[ip]*','',run)
-        is_tar = run_strip.endswith(".tar")
-        if is_tar:
+        if is_bz2: run_strip = re.sub('.bz[2]*','',run)
+
+        def _rewrite(input_file,output_file):
+            with open(output_file,'w') as g:
+                while True:
+                    chunk = input_file.read(4096)
+                    if chunk == '': break
+                    else: g.write(chunk)
+
+        if run_strip.endswith(".tar"):
             mode = 'r'
             if is_gz: mode += '|gz'
-            target2 = unique_filename_in()
             with open(target,'rb') as tf:
                 tar = tarfile.open(fileobj=tf, mode=mode)
                 tar_filename = tar.next()
                 input_file = tar.extractfile(tar_filename)
-                with open(target2, 'w') as output_file:
-                    while True:
-                        chunk = input_file.read(4096)
-                        if chunk == '':
-                            break
-                        else:
-                            output_file.write(chunk)
+                _rewrite(input_file,target2)
                 tar.close()
         elif is_gz:
-            target2 = unique_filename_in()
-            with open(target2,'w') as output_file:
-                input_file = gzip.open(target, 'rb')
-                while True:
-                    chunk = input_file.read(4096)
-                    if chunk == '':
-                        break
-                    else:
-                        output_file.write(chunk)
-                input_file.close()
+            input_file = gzip.open(target, 'rb')
+            _rewrite(input_file,target2)
+            input_file.close()
+        elif is_bz2:
+            input_file = bz2.BZ2File(target,mode='r')
+            _rewrite(input_file,target2)
+            input_file.close()
         elif run.endswith(".sra"):
             target2 = fastq_dump(ex,target)
         else:
@@ -628,7 +628,7 @@ def bamstats(bamfile):
         except:
             pass
         s=''.join(p.stdout)
-        if not(re.search(r'Total (\d+)',s): 
+        if not(re.search(r'Total (\d+)',s)):
                time.sleep(60)
                s=''.join(p.stdout)
         results["read_length"]=int(re.search(r'Read length (\d+)',s).groups()[0])
@@ -948,10 +948,24 @@ def map_groups( ex, job_or_dict, assembly_or_dict, map_args=None ):
 #            "return_value": bigwig}
 
 @program
-def bam_to_density( bamfile, output, chromosome_accession = None, chromosome_name = None,
-                    nreads = 1, merge = -1, read_extension = -1, convert = True, sql = False,
-                    args = None ):
-    """Runs the ``bam2wig`` program on a bam file and
+def bam_to_density( bamfile, output, chromosome_accession=None, chromosome_name=None,
+                    nreads=-1, merge=-1, read_extension=-1, convert=True, sql=False,
+                    args=None ):
+
+    """
+    input parameters:
+    bamfile = input BAM file
+    output = basename of output file
+    chromosome_accession = globally unique chromosome identifier
+    chromosome_name = specific chromosome in species context
+    nreads = If 0: normalise by total tag count per megabase, if >0: uses 1e-7*nreads as factor, by default: no normalization
+    merge = only if -p is not specified, specify it with this value
+    read_extension = bam2wig argument 'Tags (pseudo-)size'
+    convert = whether or not to convert chromosome labels
+    sql = whether or not to create an SQL database
+    args = bam2wig arguments given directly by the user
+
+    Runs the ``bam2wig`` program on a bam file and
     normalizes for the total number of reads
     provided as argument 'nreads'.
 
