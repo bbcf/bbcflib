@@ -53,7 +53,10 @@ def new_project(mail, key, name, assembly_id, serv_url=default_url):
     return send_it(query_url, request)
 
 
-def single_track(mail, key, serv_url=default_url, assembly_id=None, project_id=None, url=None, fsys=None, trackname=None, force=False, extension=None):
+def single_track(mail, key, serv_url=default_url,
+                 assembly_id=None, project_id=None, 
+                 url=None, fsys=None, trackname=None, extension=None, 
+                 force=False):
     '''
     Create a new track on GDV.
     :param mail : login in TEQUILA
@@ -88,7 +91,10 @@ def single_track(mail, key, serv_url=default_url, assembly_id=None, project_id=N
     return send_it(query_url, request)
 
 
-def multiple_tracks(mail, key, assembly_id=None, project_id=None, urls=None, fsys_list=None, serv_url=default_url, tracknames=None, force=False, extensions=None):
+def multiple_tracks(mail, key, serv_url=default_url,
+                    assembly_id=None, project_id=None, 
+                    urls=[], fsys_list=[], tracknames=[], extensions=[], 
+                    force=False):
     '''
     Create tracks on GDV
     :param extensions : a list of extensions, separated by whitespace.
