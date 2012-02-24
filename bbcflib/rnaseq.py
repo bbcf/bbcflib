@@ -440,7 +440,7 @@ def rnaseq_workflow(ex, job, bam_files, pileup_level=["exons","genes","transcrip
     for e in exons:
         (exon, gene, start, end, strand) = e[0].split('|')
         start = int(start); end = int(end)
-        if start!=end:
+        if end-start>1:
             starts.append(start)
             ends.append(end)
             exon_lengths[exon] = float(e[1])
