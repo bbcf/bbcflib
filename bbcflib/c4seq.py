@@ -209,7 +209,7 @@ def density_to_countsPerFrag(ex,density_file,density_name,assembly,reffile,regTo
 # *** 0.get/create the library 
 # *** 1.when necessary, calculate the density file from the bam file (mapseq.parallel_density_sql)
 # ### 2.calculate the count per fragment for each denstiy file with gFeatMiner:mean_score_by_feature to calculate)
-def workflow_groups(ex, job, primers_dict, assembly, mapseq_files, mapseq_url, script_path='', via='lsf' ):
+def workflow_groups(ex, job, primers_dict, assembly, mapseq_files, mapseq_url, script_path='', logfile=None, via='lsf' ):
 	'''
 		# Main 
 		#-------------------------------------------#
@@ -239,14 +239,13 @@ def workflow_groups(ex, job, primers_dict, assembly, mapseq_files, mapseq_url, s
 
 		bwFiles=""
 		for rid,run in group['runs'].iteritems():
-                        #job_mapseq=htss_mapseq.job(run['key'])
-		
 			if 'regToExclude' in primers_dict.get(group['name'],{}):
                                 regToExclude=primers_dict[group['name']]['regToExclude']
 				regToExclude=regToExclude=regToExclude.replace('\r','')
 			else:
 			        regToExclude=None
 			print("regToExclude="+str(regToExclude))
+
                         if not job.options.get('compute_densities') or job.options.get('merge_strands') != 0:
 				print("will call parallel_density_sql with bam:"+mapseq_files[gid][rid]['bam']+"\n")
 				density_file=parallel_density_sql( ex, mapseq_files[gid][rid]['bam'],
@@ -279,7 +278,9 @@ def workflow_groups(ex, job, primers_dict, assembly, mapseq_files, mapseq_url, s
                         # run the rest at the grp level
 
 		# back to grp level!
-		print("density files of replicates for group "+str(gid)+"="+bwFiles)
+		print("density files of replicates for group "+group['name']+ "("+str(gid)+")="+bwFiles)		
+		if logfile:
+			logfile.write("density files of replicates for group "+group['name']+ "("+str(gid)+")="+bwFiles);logfile.flush()
 		mergedDensityFiles=unique_filename_in()
 		mergeBigWig(ex,bwFiles,mergedDensityFiles,assembly.name)
                 # convert result file to sql
@@ -289,45 +290,37 @@ def workflow_groups(ex, job, primers_dict, assembly, mapseq_files, mapseq_url, s
 		ex.add(mergedDensityFiles,description=set_file_descr("density_file_"+group['name']+"_merged.bw",groupId=gid,step="density",type="bw",ucsc="1"))
 		ex.add(mergedDensityFiles_sql,description=set_file_descr("density_file_"+group['name']+"_merged.sql ",groupId=gid,step="density",type="sql",gdv="1"))
 
-		print("Will process to the main part of 4cseq module: calculate normalised counts per fragments from density file:"+mapseq_files[gid][rid]['wig']['merged'])
+		print("Will process to the main part of 4cseq module: calculate normalised counts per fragments from density file:"+bwFiles+" (group:"+group['name']+")")
+		if logfile:
+                        logfile.write("Will process to the main part of 4cseq module: calculate normalised counts per fragments from density file:"+mergedDensityFiles_sql);logfile.flush()
+
 		#resfiles=density_to_countsPerFrag(ex,mapseq_files[gid][rid]['wig']['merged'],mapseq_files[gid][rid]['libname'],assembly,reffile,regToExclude,ex.remote_working_directory+'/',script_path, via)
 		resfiles=density_to_countsPerFrag(ex,mergedDensityFiles_sql,group['name'],assembly,reffile,regToExclude,ex.remote_working_directory+'/',script_path, via)
 		processed['4cseq']=resfiles
 		
 		print("Will proceed to profile correction of file "+str(resfiles[6]))
+		if logfile:
+			logfile.write("Will proceed to profile correction of file "+str(resfiles[6]));logfile.flush()
 		profileCorrectedFile=unique_filename_in()
 		reportFile_profileCorrection=unique_filename_in()
 		profileCorrection.nonblocking(ex,resfiles[6],primers_dict[group['name']]['baitcoord'],group['name'],
                                                     profileCorrectedFile,reportFile_profileCorrection,script_path,via=via).wait()
 	        ex.add(profileCorrectedFile,description=set_file_descr("res_segToFrag_"+group['name']+"_profileCorrected.bedGraph",groupId=gid,step="profile_correction",type="bedGraph",comment="profile corrected data;bedGraph sorted",ucsc='1',gdv='1'))
 		ex.add(reportFile_profileCorrection,description=set_file_descr("report_profileCorrection_"+group['name']+".pdf",groupId=gid,step="profile_correction",type="pdf",comment="report profile correction"))
-#			profileCorrectedFile_sql=unique_filename_in()+".sql"
-#			with track.load(profileCorrectedFile,'bedGraph') as t:
-#				t.convert(profileCorrectedFile_sql,'sql')
-#			ex.add(profileCorrectedFile_sql,description=set_file_descr("res_segToFrag_"+mapseq_files[gid][rid]['libname']+"_profileCorrected.sql",groupId=gid,step="profile_correction",type="sql",comment="profile corrected data;bedGraph sorted; sql format",gdv="1",view="admin"))
 
 		step += 1
 	
-		print("Will smooth data before and after profile correction")
+		print("Will smooth data before and after profile correction (winSize="+str(group['window_size'])+" fragments per window)")
+		if logfile:
+			logfile.write("Will smooth data before and after profile correction (winSize="+str(group['window_size'])+" fragments per window)");logfile.flush()
        		nFragsPerWin=str(group['window_size'])
-		print("Window size="+nFragsPerWin)
        		outputfile=unique_filename_in()
 	        smoothFragFile(ex,resfiles[6],nFragsPerWin,group['name'],outputfile,regToExclude,script_path)
 		ex.add(outputfile,description=set_file_descr("res_segToFrag_"+group['name']+"_smoothed_"+nFragsPerWin+"FragsPerWin.bedGraph",groupId=gid,step="smoothing",type="bedGraph",comment="smoothed data, before profile correction",ucsc='1',gdv='1'))
 
-#			smoothedFile_sql=unique_filename_in()+".sql"
-#			with track.load(outputfile,'bedGraph') as t:	
-#				t.convert(smoothedFile_sql,'sql')
-#			ex.add(smoothedFile_sql,description=set_file_descr("res_segToFrag_"+mapseq_files[gid][rid]['libname']+"_smoothed_"+nFragsPerWin+"FragsPerWin.sql",groupId=gid,step="smoothing",type="bedGraph",comment="smoothed data, before profile correction, sql format",gdv="1",view="admin"))		
-	
        		outputfile_afterProfileCorrection=unique_filename_in()
 	        smoothFragFile(ex,profileCorrectedFile,nFragsPerWin,group['name']+"_fromProfileCorrected",outputfile_afterProfileCorrection,regToExclude,script_path)
 		ex.add(outputfile_afterProfileCorrection,description=set_file_descr("res_segToFrag_"+group['name']+"_profileCorrected_smoothed_"+nFragsPerWin+"FragsPerWin.bedGraph",groupId=grpId,step="smoothing",type="bedGraph",comment="smoothed data, after profile correction",ucsc='1',gdv='1'))
-
-#			smoothedFile_afterProfileCorrection_sql=unique_filename_in()+".sql"
-#			with track.load(outputfile_afterProfileCorrection,'bedGraph') as t: 
-#				t.convert(smoothedFile_afterProfileCorrection_sql,'sql')
-#			ex.add(smoothedFile_afterProfileCorrection_sql,description=set_file_descr("res_segToFrag_"+mapseq_files[gid][rid]['libname']+"_profileCorrected_smoothed_"+nFragsPerWin+"FragsPerWin.sql",groupId=grpId,step="smoothing",type="sql",comment="smoothed data, after profile correction,sql format",gdv="1",view="admin"))
 
 
 		if not('run_domainogram' in group):
@@ -350,9 +343,13 @@ def workflow_groups(ex, job, primers_dict, assembly, mapseq_files, mapseq_url, s
 			
 			if group['before_profile_correction']:
 				print("Will run domainogram from informative fragments (file:"+resfiles[6]+")")
+				if logfile:
+					logfile.write("Will run domainogram from informative fragments (file:"+resfiles[6]+")");logfile.flush()
 				call_runDomainogram(ex,resfiles[6],group['name'],group['name'],regCoord,script_path=script_path)
 			else:
 				print("Will run domainogram from profile corrected data (file:"+profileCorrectedFile+")")
+				if logfile:
+					logfile.write("Will run domainogram from profile corrected data (file:"+profileCorrectedFile+")");logfile.flush()
 				call_runDomainogram(ex,profileCorrectedFile,group['name'],group['name'],regCoord.split(':')[0],500,50,1,script_path=script_path)
 	
 		        resFiles=[]
