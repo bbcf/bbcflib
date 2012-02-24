@@ -247,12 +247,12 @@ def save_results(ex, cols, conditions, group_ids, assembly, header=[], feature_t
                 t.datatype = 'quantitative'
                 t.chrmeta = assembly.chrmeta
                 for chr in t.chrmeta:
-                    goodlines = [l for l in lines if (l[-1]!=0.0 and l[0]==chr)]
+                    goodlines = [l for l in lines if (l[3]!=0.0 and l[0]==chr and l[2]-l[1]>1)]
                     if goodlines:
                         goodlines.sort(key=lambda x: x[1]) # sort w.r.t start
                         goodlines = fusion(iter(goodlines))
                         for x in goodlines:
-                            t.write(x[0],[(x[1],x[2],x[3])],fields=["start","end","score"])
+			    t.write(x[0],[(x[1],x[2],x[3])],fields=["start","end","score"])
             description = set_file_descr(feature_type.lower()+"_"+group+".sql", step="pileup", type="sql", \
                                          groupId=group_ids[group], gdv='1')
             ex.add(filename+'.sql', description=description)
