@@ -79,8 +79,8 @@ def call_sortOnCoord(*args, **kwargs):
 	return filename
 
 @program
-def mergeBigWig(bwfiles,resfile):
-	return {'arguments': ['mergeBigWig.sh','-i',bwfiles,'-o',resfile],
+def mergeBigWig(bwfiles,resfile,assembly_name):
+	return {'arguments': ['mergeBigWig.sh','-i',bwfiles,'-o',resfile,'-a',assembly_name],
                 'return_value':None}
 
 
@@ -280,13 +280,13 @@ def workflow_groups(ex, job, primers_dict, assembly, mapseq_files, mapseq_url, s
 
 		# back to grp level!
 		print("density files of replicates for group "+str(gid)+"="+bwFiles)
-		mergedDensityFiles_bedGraph=unique_filename_in()
-		mergeBigWig(ex,bwFiles,mergedDensityFiles_bedGraph)
+		mergedDensityFiles=unique_filename_in()
+		mergeBigWig(ex,bwFiles,mergedDensityFiles,assembly.chrmeta)
                 # convert result file to sql
 		mergedDensityFiles_sql=unique_filename_in()
-		with track.load(mergedDensityFiles_bedGraph,'bedGraph') as t:
+		with track.load(mergedDensityFiles,'bw') as t:
 			t.convert(mergedDensityFiles_sql,'sql')
-		ex.add(mergedDensityFiles_bedGraph,description=set_file_descr("density_file_"+group['name']+"_merged.bedGraph ",groupId=gid,step="density",type="bedGraph",ucsc="1"))
+		ex.add(mergedDensityFiles,description=set_file_descr("density_file_"+group['name']+"_merged.bw",groupId=gid,step="density",type="bw",ucsc="1"))
 		ex.add(mergedDensityFiles_sql,description=set_file_descr("density_file_"+group['name']+"_merged.sql ",groupId=gid,step="density",type="sql",gdv="1"))
 
 		print("Will process to the main part of 4cseq module: calculate normalised counts per fragments from density file:"+mapseq_files[gid][rid]['wig']['merged'])
