@@ -230,6 +230,8 @@ def workflow_groups(ex, job, primers_dict, assembly, mapseq_files, mapseq_url, s
 	htss_mapseq = frontend.Frontend( url=mapseq_url )
 
 	new_libs=[]
+
+        if logfile is None: logfile = sys.stdout
 	
 	for gid, group in job_groups.iteritems():
                 grpId = gid
@@ -278,9 +280,7 @@ def workflow_groups(ex, job, primers_dict, assembly, mapseq_files, mapseq_url, s
                         # run the rest at the grp level
 
 		# back to grp level!
-		print("density files of replicates for group "+group['name']+ "("+str(gid)+")="+bwFiles)		
-		if logfile:
-			logfile.write("density files of replicates for group "+group['name']+ "("+str(gid)+")="+bwFiles);logfile.flush()
+		logfile.write("density files of replicates for group "+group['name']+ "("+str(gid)+")="+bwFiles);logfile.flush()
 		mergedDensityFiles=unique_filename_in()
 		mergeBigWig(ex,bwFiles,mergedDensityFiles,assembly.name)
                 # convert result file to sql
@@ -290,17 +290,13 @@ def workflow_groups(ex, job, primers_dict, assembly, mapseq_files, mapseq_url, s
 		ex.add(mergedDensityFiles,description=set_file_descr("density_file_"+group['name']+"_merged.bw",groupId=gid,step="density",type="bw",ucsc="1"))
 		ex.add(mergedDensityFiles_sql,description=set_file_descr("density_file_"+group['name']+"_merged.sql ",groupId=gid,step="density",type="sql",gdv="1"))
 
-		print("Will process to the main part of 4cseq module: calculate normalised counts per fragments from density file:"+bwFiles+" (group:"+group['name']+")")
-		if logfile:
-                        logfile.write("Will process to the main part of 4cseq module: calculate normalised counts per fragments from density file:"+mergedDensityFiles_sql);logfile.flush()
+		logfile.write("Will process to the main part of 4cseq module: calculate normalised counts per fragments from density file:"+mergedDensityFiles_sql);logfile.flush()
 
 		#resfiles=density_to_countsPerFrag(ex,mapseq_files[gid][rid]['wig']['merged'],mapseq_files[gid][rid]['libname'],assembly,reffile,regToExclude,ex.remote_working_directory+'/',script_path, via)
 		resfiles=density_to_countsPerFrag(ex,mergedDensityFiles_sql,group['name'],assembly,reffile,regToExclude,ex.remote_working_directory+'/',script_path, via)
 		processed['4cseq']=resfiles
 		
-		print("Will proceed to profile correction of file "+str(resfiles[6]))
-		if logfile:
-			logfile.write("Will proceed to profile correction of file "+str(resfiles[6]));logfile.flush()
+		logfile.write("Will proceed to profile correction of file "+str(resfiles[6]));logfile.flush()
 		profileCorrectedFile=unique_filename_in()
 		reportFile_profileCorrection=unique_filename_in()
 		profileCorrection.nonblocking(ex,resfiles[6],primers_dict[group['name']]['baitcoord'],group['name'],
@@ -310,9 +306,7 @@ def workflow_groups(ex, job, primers_dict, assembly, mapseq_files, mapseq_url, s
 
 		step += 1
 	
-		print("Will smooth data before and after profile correction (winSize="+str(group['window_size'])+" fragments per window)")
-		if logfile:
-			logfile.write("Will smooth data before and after profile correction (winSize="+str(group['window_size'])+" fragments per window)");logfile.flush()
+		logfile.write("Will smooth data before and after profile correction (winSize="+str(group['window_size'])+" fragments per window)");logfile.flush()
        		nFragsPerWin=str(group['window_size'])
        		outputfile=unique_filename_in()
 	        smoothFragFile(ex,resfiles[6],nFragsPerWin,group['name'],outputfile,regToExclude,script_path)
@@ -342,14 +336,10 @@ def workflow_groups(ex, job, primers_dict, assembly, mapseq_files, mapseq_url, s
 			else: regCoord=regToExclude
 			
 			if group['before_profile_correction']:
-				print("Will run domainogram from informative fragments (file:"+resfiles[6]+")")
-				if logfile:
-					logfile.write("Will run domainogram from informative fragments (file:"+resfiles[6]+")");logfile.flush()
+				logfile.write("Will run domainogram from informative fragments (file:"+resfiles[6]+")");logfile.flush()
 				call_runDomainogram(ex,resfiles[6],group['name'],group['name'],regCoord,script_path=script_path)
 			else:
-				print("Will run domainogram from profile corrected data (file:"+profileCorrectedFile+")")
-				if logfile:
-					logfile.write("Will run domainogram from profile corrected data (file:"+profileCorrectedFile+")");logfile.flush()
+				logfile.write("Will run domainogram from profile corrected data (file:"+profileCorrectedFile+")");logfile.flush()
 				call_runDomainogram(ex,profileCorrectedFile,group['name'],group['name'],regCoord.split(':')[0],500,50,1,script_path=script_path)
 	
 		        resFiles=[]
