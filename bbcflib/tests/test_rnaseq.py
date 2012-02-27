@@ -166,12 +166,13 @@ class Test_Fusion(unittest.TestCase):
 class Test_Expressions1(unittest.TestCase):
     """Two conditions, different lengths, invertible"""
     def setUp(self):
-        e1="e1"; e2="e2"; t1="t1"; t2="t2"; g1="g1";
+        e1="e1"; e2="e2"; t1="t1"; t2="t2"; g1="g1"; c="c";
         self.ncond = 2
         self.counts = numpy.array([[27,12],[3,3]]) # [[cond1],[cond2]]
         self.rpkms = numpy.array([[27/3.,12/6.],[3/3.,3/6.]])
-        self.exons_data = [[e1,e2]]+list(self.counts)+list(self.rpkms)+[[0.,3.],[3.,9.],["g1","g1"],["gg1","gg1"],["c","c"]]
-        self.transcript_mapping = {t1:("g1",0,3,3.,"c"), t2:("g1",0,9,9.,"c")}
+        self.exons_data = [[e1,e2]]+list(self.counts)+list(self.rpkms)+[[0.,3.],[3.,9.],[g1,g1],["gg1","gg1"],[c,c]]
+        self.transcript_mapping = {t1:(g1,0,3,3.,c), t2:(g1,0,9,9.,c)}
+        self.gene_mapping = {g1:("gg1",0,9,9.,c)}
         self.exon_lengths = {e1:3., e2:6.}
         self.exon_to_gene = {e1:g1, e2:g1}
         self.trans_in_gene = {g1:[t1,t2]}
@@ -204,14 +205,16 @@ class Test_Expressions1(unittest.TestCase):
         self.assertEqual(sum(sum(tcounts.values())), sum(sum(self.counts)))
 
     def test_genes_expression(self):
-        gcounts, grpkms = genes_expression(self.exons_data, self.exon_to_gene, self.ncond)
+        gcounts, grpkms = genes_expression(self.exons_data, self.exon_lengths, self.gene_mapping,
+                self.exon_to_gene, self.ncond)
         assert_almost_equal(gcounts["g1"], array([39., 6.]))
 
     def test_coherence(self):
         # Test if sum of transcript counts equals gene counts
         tcounts, trpk = transcripts_expression(self.exons_data, self.exon_lengths, self.transcript_mapping,
                      self.trans_in_gene, self.exons_in_trans, self.ncond)
-        gcounts, grpkms = genes_expression(self.exons_data, self.exon_to_gene, self.ncond)
+        gcounts, grpkms = genes_expression(self.exons_data, self.exon_lengths, self.gene_mapping,
+                self.exon_to_gene, self.ncond)
         self.assertEqual(sum(gcounts["g1"]), sum([sum(tcounts[t]) for t in self.trans_in_gene["g1"]]))
 
 
