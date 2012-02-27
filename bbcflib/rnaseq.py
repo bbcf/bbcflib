@@ -243,7 +243,6 @@ def save_results(ex, cols, conditions, group_ids, assembly, header=[], feature_t
         groups = [c.split('.')[0] for c in conditions]
         start = cols[2*ncond+1]
         end = cols[2*ncond+2]
-        start = asarray(start); end = asarray(end)
         chromosomes = cols[-1]
         rpkm = {}; output_sql = {}
         for i in range(ncond):
@@ -255,7 +254,6 @@ def save_results(ex, cols, conditions, group_ids, assembly, header=[], feature_t
             lines = zip(*[chromosomes,start,end,rpkm[group]])
             # SQL track
             with track.new(filename+'.sql') as t:
-                t.datatype = 'quantitative'
                 t.chrmeta = assembly.chrmeta
                 for chr in t.chrmeta:
                     goodlines = [l for l in lines if (l[3]!=0.0 and l[0]==chr)]
@@ -264,13 +262,12 @@ def save_results(ex, cols, conditions, group_ids, assembly, header=[], feature_t
                         goodlines.sort(key=lambda x: x[1]) # sort w.r.t start
                         goodlines = fusion(iter(goodlines))
                         for x in goodlines:
-                            t.write(x[0],[(int(x[1]),int(x[2]),float(x[3]))],fields=["start","end","score"])
+                            t.write(x[0],[(x[1],x[2],float(x[3]))],fields=["start","end","score"])
             description = set_file_descr(feature_type.lower()+"_"+group+".sql", step="pileup", type="sql", \
                                          groupId=group_ids[group], gdv='1')
             ex.add(filename+'.sql', description=description)
             # UCSC-BED track
             with track.load(filename+'.sql') as t:
-                t.datatype = 'quantitative'
                 t.convert(filename+'.bed','bed')
             description = set_file_descr(feature_type.lower()+"_"+group+".bed", step="pileup", type="bed", \
                                          groupId=group_ids[group], ucsc='1')
@@ -297,12 +294,11 @@ def genes_expression(exons_data, exon_lengths, gene_mapping, exon_to_gene, ncond
     grpkm = dict(zip(genes,zz))
     round = numpy.round
     for e,c in zip(exons_data[0],zip(*exons_data[1:2*ncond+1])):
-        c = asarray(c)
         g = exon_to_gene[e]
         ratio = exon_lengths[e]/gene_mapping.get(g,[0,0,0,4*exon_lengths[e],0])[3]
             # (approx. 4 exons per gene in average)
         gcounts[g] += round(c[:ncond],2)
-        grpkm[g] += round(ratio*c[ncond:],2)
+        grpkm[g] += ratio*round(c[ncond:],2)
     return gcounts, grpkm
 
 #@timer
