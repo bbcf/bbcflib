@@ -186,7 +186,7 @@ def fusion(X):
     last = x[1]
     last_was_alone = True
     for y in X:
-        if y[1] <= x[2]:
+        if y[1] < x[2]:
             if y[1]>last: # cheating, needed in case 3 features overlap, thanks to the annotation...
                 yield (c,last,y[1],x[3])
                 if y[2] < x[2]:     # y is embedded in x
