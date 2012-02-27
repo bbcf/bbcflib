@@ -270,6 +270,7 @@ def save_results(ex, cols, conditions, group_ids, assembly, header=[], feature_t
             ex.add(filename+'.sql', description=description)
             # UCSC-BED track
             with track.load(filename+'.sql') as t:
+                t.datatype = 'quantitative'
                 t.convert(filename+'.bed','bed')
             description = set_file_descr(feature_type.lower()+"_"+group+".bed", step="pileup", type="bed", \
                                          groupId=group_ids[group], ucsc='1')
@@ -298,7 +299,8 @@ def genes_expression(exons_data, exon_lengths, gene_mapping, exon_to_gene, ncond
     for e,c in zip(exons_data[0],zip(*exons_data[1:2*ncond+1])):
         c = asarray(c)
         g = exon_to_gene[e]
-        ratio = exon_lengths[e]/gene_mapping[g][3]
+        ratio = exon_lengths[e]/gene_mapping.get(g,[0,0,0,4*exon_lengths[e],0])[3]
+            # (approx. 4 exons per gene in average)
         gcounts[g] += round(c[:ncond],2)
         grpkm[g] += round(ratio*c[ncond:],2)
     return gcounts, grpkm
