@@ -139,22 +139,22 @@ class DAFLIMS(object):
         and ``'qc'``, each referring to a URL in the LIMS where that
         file is stored.
         """
-        check_type = {'fastq': ['fastq_gz','fastq_tgz'], 'export': ['gerald_gz'], 'qc': [None]}
+        check_type = {'fastq': ['fastq','fastq_gz','fastq_tgz'], 
+                      'export': ['gerald_gz'], 'qc': [None]}
         self._check_description(facility, machine, run, lane)
         response = self._run_method(type, facility, machine, run, lane).splitlines()
         if re.search('==DATA', response[0]) == None or len(response)<2:
             raise ValueError(("symlinkname method failed on DAFLIMS (facility='%s', " + \
                               "machine='%s', run=%d, lane=%d): %s") % (facility, machine, run, lane,
                                                                      '\n'.join(response[1:])))
-        else:
-            rtn = {}
-            for resp in response[1:]:
-                q = resp.split('\t')
-                if libname and not(q[1] == libname): continue
-                if not(int(q[0]) in rtn): rtn[int(q[0])] = {}
-                if len(q)<6 or q[5] in check_type[type]:
-                    rtn[int(q[0])][(int(q[3]),int(q[4]))] = q[2]
-            return rtn[max(rtn.keys())]
+        rtn = {}
+        for resp in response[1:]:
+            q = resp.split('\t')
+            if libname and not(q[1] == libname): continue
+            if not(int(q[0]) in rtn): rtn[int(q[0])] = {}
+            if len(q)<6 or q[5] in check_type[type]:
+                rtn[int(q[0])][(int(q[3]),int(q[4]))] = q[2]
+        return rtn[max(rtn.keys())]
 
     def _lanedesc(self, facility, machine, run, lane, libname=None):
         """Fetch the metadata of particular data set in the LIMS.
