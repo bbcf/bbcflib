@@ -240,6 +240,8 @@ class DAFLIMS(object):
                         tar_filename = tar.next()
         # extractfile returns a file-like object we can stream from.
                         input_file = tar.extractfile(tar_filename)
+                    elif not(link.endswith(".gz")):
+                        input_file = url
                     else:
                         tar = None
                         input_file = gzip.GzipFile(fileobj=StringIO.StringIO(url.read()))
