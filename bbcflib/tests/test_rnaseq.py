@@ -196,7 +196,7 @@ class Test_Expressions1(unittest.TestCase):
            |.e1.||.e2.|               |e1| |e2|
         """
     def test_transcripts_expression(self):
-        tcounts, trpkmm = transcripts_expression(self.exons_data, self.exon_lengths, self.transcript_mapping,
+        tcounts, trpkm = transcripts_expression(self.exons_data, self.exon_lengths, self.transcript_mapping,
                  self.trans_in_gene, self.exons_in_trans, self.ncond)
         assert_almost_equal(trpkm["t1"], array([7., 0.5]))
         assert_almost_equal(trpkm["t2"], array([2., 0.5]))
