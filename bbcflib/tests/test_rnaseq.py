@@ -4,7 +4,6 @@
 # Internal modules #
 from bbcflib.rnaseq import *
 from bein import execution
-import track
 
 # Unitesting modules #
 try: import unittest2 as unittest
@@ -140,6 +139,26 @@ class Test_Fusion(unittest.TestCase):
         X = [(c,0,20,5.),(c,5,25,4.),(c,10,15,2.)]
         #R = [(c,0,5,5.),(c,5,10,9.),(c,10,15,11.),(c,15,20,6.),(c,20,25,4.)] # what it should be
         R = [(c,0,5,5.),(c,5,20,9.),(c,20,25,4.)] # special treatment
+        T = [s for s in fusion(iter(X))]
+        self.assertEqual(T, R)
+        print "test12"
+        """
+         .  .  .  .  .  .
+        |***------***---|
+        |******---******|
+        """
+        X = [(c,0,5,5.),(c,0,10,4.),(c,15,20,2.),(c,15,25,3.)]
+        R = [(c,0,5,9.),(c,5,10,4.),(c,15,20,5.),(c,20,25,3.)]
+        T = [s for s in fusion(iter(X))]
+        self.assertEqual(T, R)
+        print "test13"
+        """
+         .  .  .  .  .  .
+        |******---******|
+        |---***------***|
+        """
+        X = [(c,0,10,5.),(c,5,10,4.),(c,15,25,2.),(c,20,25,3.)]
+        R = [(c,0,5,5.),(c,5,10,9.),(c,15,20,2.),(c,20,25,5.)]
         T = [s for s in fusion(iter(X))]
         self.assertEqual(T, R)
 

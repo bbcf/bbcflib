@@ -355,17 +355,17 @@ class Assembly(object):
         return os.path.join(root,self.md5+".sql")
 
     def get_gene_mapping(self):
-        """Return a dictionary {geneID: (geneName, start, end, chromosome)}"""
+        """Return a dictionary {geneID: (geneName, start, end, length, chromosome)}"""
         gene_mapping = {}
         dbpath = self.sqlite_path()
         if os.path.exists(dbpath):
             db = sqlite3.connect(dbpath)
             cursor = db.cursor()
             for chr in self.chrnames:
-                sql = "SELECT DISTINCT gene_id,gene_name,MIN(start),MAX(end) FROM '%s' WHERE (type LIKE 'exon') GROUP BY gene_id" %chr
+                sql = "SELECT DISTINCT gene_id,gene_name,MIN(start),MAX(end),SUM(end-start) FROM '%s' WHERE (type LIKE 'exon') GROUP BY gene_id" %chr
                 cursor.execute(sql)
-                for g,name,start,end in cursor:
-                    gene_mapping[str(g)] = (str(name),start,end,chr)
+                for g,name,start,end,length in cursor:
+                    gene_mapping[str(g)] = (str(name),start,end,length,chr)
         else:
             for chr in self.chrnames:
                 request = self.genrep.url+"/nr_assemblies/get_dico?md5="+self.md5+\
@@ -375,8 +375,9 @@ class Assembly(object):
                 for k,v in resp.iteritems():
                     start = min([x[1] for x in v])
                     end = max([x[2] for x in v])
+                    length = sum([x[2]-x[1] for x in v])
                     name = str(v[0][0])
-                    gene_mapping[str(k)] = (name,start,end,chr)
+                    gene_mapping[str(k)] = (name,start,end,length,chr)
         return gene_mapping
 
     def get_transcript_mapping(self):
@@ -486,7 +487,7 @@ class Assembly(object):
         l=[]
         for k,v in h["conditions"].iteritems():
             l.append(k+":"+v)
-            
+
         for chr in self.chrnames:
             request = self.genrep.url+"/nr_assemblies/get_dico?md5="+self.md5+\
                 "&keys="+h["keys"]+"&values="+h["values"]+\
@@ -629,7 +630,7 @@ class GenrepObject(object):
     """
     def __init__(self, info, key):
         self.__dict__.update(info[key])
-        
+
     def __repr__(self):
         return str(self.__dict__)
 
