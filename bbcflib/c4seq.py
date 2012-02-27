@@ -285,7 +285,7 @@ def workflow_groups(ex, job, primers_dict, assembly, mapseq_files, mapseq_url, s
 		mergeBigWig(ex,bwFiles,mergedDensityFiles,assembly.name)
                 # convert result file to sql
 		mergedDensityFiles_sql=unique_filename_in()
-		with track.load(mergedDensityFiles,'bw') as t:
+		with track.load(mergedDensityFiles,'bigWig') as t:
 			t.convert(mergedDensityFiles_sql,'sql')
 		ex.add(mergedDensityFiles,description=set_file_descr("density_file_"+group['name']+"_merged.bw",groupId=gid,step="density",type="bw",ucsc="1"))
 		ex.add(mergedDensityFiles_sql,description=set_file_descr("density_file_"+group['name']+"_merged.sql ",groupId=gid,step="density",type="sql",gdv="1"))
