@@ -241,6 +241,7 @@ class DAFLIMS(object):
         # extractfile returns a file-like object we can stream from.
                         input_file = tar.extractfile(tar_filename)
                     elif not(link.endswith(".gz")):
+                        tar = None
                         input_file = url
                     else:
                         tar = None
