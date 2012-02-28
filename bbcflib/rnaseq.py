@@ -187,38 +187,57 @@ def fusion(X):
     c = x[0]
     last = x[1]
     last_was_alone = True
+    last_had_same_end = False
     for y in X:
         if y[1] < x[2]:
+            #print """ A """
+            last_had_same_end = False
             if y[1] >= last: # cheating, needed in case 3 features overlap, thanks to the annotation...
                 if y[1] != last:
                     yield (c,last,y[1],x[3])
+                    #print """ init """
                 if y[2] < x[2]:     # y is embedded in x
                     yield (c,y[1],y[2],x[3]+y[3])
                     last = y[2]
+                    #print """ a) """
                 elif y[2] == x[2]:
                     yield (c,y[1],y[2],x[3]+y[3])
-                    last = None
+                    x = y
+                    last_had_same_end = True
+                    #print """ b) """
                 else:               # y exceeds x
                     yield (c,y[1],x[2],x[3]+y[3])
                     last = x[2]
                     x = y
+                    #print """ c) """
             last_was_alone = False
         else:                       # y is outside of x
+            #print """ B """
             if last_was_alone:
                 yield x
-            elif not last:
+                #print """ na) """
+            elif last_had_same_end:
                 pass
+                #print """ nb) """
             else:
                 yield (c,last,x[2],x[3])
+                #print """ nc) """
             x = y
             last = x[1]
             last_was_alone = True
+            last_had_same_end = False
+        #print "last_was_alone:", last_was_alone
+        #print "last_had_same_end",last_had_same_end
     if last_was_alone:
         yield x
-    elif not last:
+        #print """ enda) """
+    elif last_had_same_end:
         pass
+        #print """ endb) """
     else:
         yield (c,last,x[2],x[3])
+        #print """ endc) """
+    #print "\n\n"
 
 def save_results(ex, cols, conditions, group_ids, assembly, header=[], feature_type='features'):
     """Save results in a tab-delimited file, one line per feature, one column per run.
@@ -259,7 +278,7 @@ def save_results(ex, cols, conditions, group_ids, assembly, header=[], feature_t
                     goodlines = [l for l in lines if (l[3]!=0.0 and l[0]==chr)]
                     [lines.remove(l) for l in goodlines]
                     if goodlines:
-                        goodlines.sort(key=lambda x: x[1]) # sort w.r.t start
+                        goodlines.sort(key=lambda x: itemgetter(1,2)) # sort w.r.t start
                         goodlines = fusion(iter(goodlines))
                         for x in goodlines:
                             t.write(x[0],[(x[1],x[2],float(x[3]))],fields=["start","end","score"])
