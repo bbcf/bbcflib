@@ -117,7 +117,7 @@ def lsqnonneg(C, d, x0=None, tol=None, itmax_factor=3):
     return (x, sum(resid*resid), resid)
 
 #@timer
-def fetch_mappings(assembly, path_to_map=None):
+def fetch_mappings(assembly):
     """Given an assembly ID, returns a tuple
     ``(gene_mapping, transcript_mapping, exon_mapping, trans_in_gene, exons_in_trans)``
 
@@ -190,14 +190,14 @@ def fusion(X):
     for y in X:
         if y[1] < x[2]:
             if y[1] >= last: # cheating, needed in case 3 features overlap, thanks to the annotation...
-                if y[1] > last:
+                if y[1] != last:
                     yield (c,last,y[1],x[3])
                 if y[2] < x[2]:     # y is embedded in x
                     yield (c,y[1],y[2],x[3]+y[3])
                     last = y[2]
                 elif y[2] == x[2]:
                     yield (c,y[1],y[2],x[3]+y[3])
-                    last = 0
+                    last = None
                 else:               # y exceeds x
                     yield (c,y[1],x[2],x[3]+y[3])
                     last = x[2]
@@ -206,7 +206,7 @@ def fusion(X):
         else:                       # y is outside of x
             if last_was_alone:
                 yield x
-            elif last == 0:
+            elif not last:
                 pass
             else:
                 yield (c,last,x[2],x[3])
@@ -215,7 +215,7 @@ def fusion(X):
             last_was_alone = True
     if last_was_alone:
         yield x
-    elif last == 0:
+    elif not last:
         pass
     else:
         yield (c,last,x[2],x[3])
@@ -267,11 +267,10 @@ def save_results(ex, cols, conditions, group_ids, assembly, header=[], feature_t
                                          groupId=group_ids[group], gdv='1')
             ex.add(filename+'.sql', description=description)
             # UCSC-BED track
-            with track.load(filename+'.sql') as t:
-                t.convert(filename+'.bed','bed')
+            track.convert(filename+'.sql',filename+'.bedGraph')
             description = set_file_descr(feature_type.lower()+"_"+group+".bed", step="pileup", type="bed", \
                                          groupId=group_ids[group], ucsc='1')
-            ex.add(filename+'.bed', description=description)
+            ex.add(filename+'.bedGraph', description=description)
     print feature_type+": Done successfully."
     return output_tab
 

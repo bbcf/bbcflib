@@ -208,7 +208,7 @@ class Test_Expressions1(unittest.TestCase):
         gcounts, grpkm = genes_expression(self.exons_data, self.exon_lengths, self.gene_mapping,
                 self.exon_to_gene, self.ncond)
         assert_almost_equal(gcounts["g1"], array([39., 6.]))
-        assert_almost_equal(grpkm["g1"],array([4.33,0.66]))
+        assert_almost_equal(grpkm["g1"],array([39./9,6./9]))
 
     def test_coherence(self):
         # Test if sum of transcript counts equals gene counts
@@ -256,7 +256,7 @@ class Test_Expressions2(unittest.TestCase):
         gcounts, grpkm = genes_expression(self.exons_data, self.exon_lengths, self.gene_mapping,
                 self.exon_to_gene, self.ncond)
         assert_almost_equal(gcounts["g1"], array([35.]))
-        assert_almost_equal(grpkm["g1"],array([3.89]))
+        assert_almost_equal(grpkm["g1"],array([35./9]))
 
 
 class Test_Expressions3(unittest.TestCase):
