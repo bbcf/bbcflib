@@ -29,6 +29,7 @@ equally well be written::
 # Built-in modules #
 import urllib2, json, os, re
 from datetime import datetime
+from operator import itemgetter
 
 # Internal modules #
 from bbcflib.common import normalize_url, unique_filename_in
@@ -368,24 +369,23 @@ class Assembly(object):
                 for g,name,start,end in cursor:
                     gene_mapping[str(g)] = [str(name),start,end,-1,chr]
                 # Find gene lengths
-                sql = """SELECT DISTINCT exon_id,gene_id,start,end
+                sql = """SELECT DISTINCT gene_id,start,end
                        FROM '%s' WHERE (type='exon') ORDER BY strand,start,end""" %chr
                 cursor.execute(sql)
-                fe,fg,start,fend = cursor.fetchone() # initialize
+                fg,start,fend = cursor.fetchone()  # initialize
                 length = fend-start
-                for e,g,start,end in cursor:
+                for g,start,end in cursor:
                     if g == fg:                    # if still in the same gene
                         if start >= fend:
                             length += end-start # new exon
                             fend = end
-                        elif end <= fend:
-                            pass                # embedded exon
+                        elif end <= fend: pass  # embedded exon
                         else:
-                            length += end-fend              # overlapping exon
+                            length += end-fend  # overlapping exon
                             fend = end
                     else:                          # if new gene
                         gene_mapping[str(fg)][3] = length
-                        fend = gene_mapping[fg][2]; fg = g; length = 0 # re-initialize
+                        fend = gene_mapping[str(fg)][2]; fg = g; length = 0 # re-initialize
                 gene_mapping[str(g)][3] = length   # last gene
         else:
             for chr in self.chrnames:
@@ -405,15 +405,21 @@ class Assembly(object):
                 fe,fg,start,fend = resp.iteritems().next() # initialize
                 length = fend-start
                 for g,v in resp.iteritems():
-                # http://bbcftools.vital-it.ch/genrep/nr_assemblies/get_dico?md5=22251fb5451eac220c459d419874582a3f4165e697&keys=gene_id&values=gene_name,start,end&uniq&conditions=type:exon&chr_name=chr6
+                    v.sort(key=itemgetter(0,1)) # sort w.r.t. start, then end
                     for x in v:
                         start = x[0]; end = x[1]
-                        if start >= fend: length += end-start # new exon
-                        elif end <= fend: pass                # embedded exon
-                        else: length += end-fend              # overlapping exon
+                        if start >= fend:
+                            length += end-start # new exon
+                            fend = end
+                        elif end <= fend: pass  # embedded exon
+                        else:
+                            length += end-fend  # overlapping exon
+                            fend = end
                     gene_mapping[str(g)][3] = length
-                    fend = end; length = 0 # re-initialize
+                    fend = gene_mapping[str(g)][2]; length = 0 # re-initialize
         return gene_mapping
+        # TEST
+        # http://bbcftools.vital-it.ch/genrep/nr_assemblies/get_dico?md5=22251fb5451eac220c459d419874582a3f4165e697&keys=gene_id&values=gene_name,start,end&uniq&conditions=type:exon&chr_name=chr6
 
     def get_transcript_mapping(self):
         """Return a dictionary ``{transcript ID: (gene ID,start,end,length,chromosome)}``"""
