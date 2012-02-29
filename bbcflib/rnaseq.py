@@ -183,62 +183,46 @@ def fusion(X):
     This is to avoid having overlapping coordinates of features from both DNA strands,
     which some genome browsers cannot handle for quantitative tracks.
     """
-    #for x in X: break # take first available element
     x = X.next()
     c = x[0]
     last = x[1]
     last_was_alone = True
     last_had_same_end = False
     for y in X:
-        if y[1] < x[2]:
-            #print """ A """
+        if y[1] < x[2]:             # y intersects x
             last_had_same_end = False
             if y[1] >= last: # cheating, needed in case 3 features overlap, thanks to the annotation...
-                if y[1] != last:
+                if y[1] != last:    # y does not have same start as x
                     yield (c,last,y[1],x[3])
-                    #print """ init """
                 if y[2] < x[2]:     # y is embedded in x
                     yield (c,y[1],y[2],x[3]+y[3])
                     last = y[2]
-                    #print """ a) """
-                elif y[2] == x[2]:
+                elif y[2] == x[2]:  # y has same end as x
                     yield (c,y[1],y[2],x[3]+y[3])
                     x = y
                     last_had_same_end = True
-                    #print """ b) """
                 else:               # y exceeds x
                     yield (c,y[1],x[2],x[3]+y[3])
                     last = x[2]
                     x = y
-                    #print """ c) """
             last_was_alone = False
         else:                       # y is outside of x
-            #print """ B """
             if last_was_alone:
                 yield x
-                #print """ na) """
             elif last_had_same_end:
                 pass
-                #print """ nb) """
             else:
                 yield (c,last,x[2],x[3])
-                #print """ nc) """
             x = y
             last = x[1]
             last_was_alone = True
             last_had_same_end = False
-        #print "last_was_alone:", last_was_alone
-        #print "last_had_same_end",last_had_same_end
     if last_was_alone:
         yield x
-        #print """ enda) """
     elif last_had_same_end:
         pass
-        #print """ endb) """
     else:
         yield (c,last,x[2],x[3])
-        #print """ endc) """
-    #print "\n\n"
 
 def save_results(ex, cols, conditions, group_ids, assembly, header=[], feature_type='features'):
     """Save results in a tab-delimited file, one line per feature, one column per run.
@@ -288,7 +272,7 @@ def save_results(ex, cols, conditions, group_ids, assembly, header=[], feature_t
             ex.add(filename+'.sql', description=description)
             # UCSC-BED track
             track.convert(filename+'.sql',filename+'.bedGraph')
-            description = set_file_descr(feature_type.lower()+"_"+group+".bed", step="pileup", type="bed", \
+            description = set_file_descr(feature_type.lower()+"_"+group+".bedGraph", step="pileup", type="bedGraph", \
                                          groupId=group_ids[group], ucsc='1')
             ex.add(filename+'.bedGraph', description=description)
     print feature_type+": Done successfully."
