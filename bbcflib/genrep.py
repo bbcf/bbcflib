@@ -366,34 +366,53 @@ class Assembly(object):
                        FROM '%s' WHERE (type='exon') GROUP BY gene_id""" %chr
                 cursor.execute(sql)
                 for g,name,start,end in cursor:
-                    gene_mapping[str(g)] = [str(name),start+1,end,None,chr]
+                    gene_mapping[str(g)] = [str(name),start,end,-1,chr]
                 # Find gene lengths
                 sql = """SELECT DISTINCT exon_id,gene_id,start,end
-                       FROM '%s' WHERE (type='exon') ORDER BY start,end""" %chr
+                       FROM '%s' WHERE (type='exon') ORDER BY strand,start,end""" %chr
                 cursor.execute(sql)
-                fe,fg,fstart,fend = cursor.fetchone() # initialize
-                length = fend-fstart
+                fe,fg,start,fend = cursor.fetchone() # initialize
+                length = fend-start
                 for e,g,start,end in cursor:
                     if g == fg:                    # if still in the same gene
+                        if start >= fend:
+                            length += end-start # new exon
+                            fend = end
+                        elif end <= fend:
+                            pass                # embedded exon
+                        else:
+                            length += end-fend              # overlapping exon
+                            fend = end
+                    else:                          # if new gene
+                        gene_mapping[str(fg)][3] = length
+                        fend = gene_mapping[fg][2]; fg = g; length = 0 # re-initialize
+                gene_mapping[str(g)][3] = length   # last gene
+        else:
+            for chr in self.chrnames:
+                request = self.genrep.url+"/nr_assemblies/get_dico?md5="+self.md5+\
+                    "&keys=gene_id&values=gene_name,start,end&uniq"+\
+                    "&conditions=type:exon&chr_name="+chr
+                resp = json.load(urllib2.urlopen(request))
+                for k,v in resp.iteritems():
+                    start = min([x[1] for x in v])
+                    end = max([x[2] for x in v])
+                    name = str(v[0][0])
+                    gene_mapping[str(k)] = (name,start,end,-1,chr)
+                request = self.genrep.url+"/nr_assemblies/get_dico?md5="+self.md5+\
+                    "&keys=gene_id&start,end&uniq"+\
+                    "&conditions=type:exon&chr_name="+chr
+                resp = json.load(urllib2.urlopen(request))
+                fe,fg,start,fend = resp.iteritems().next() # initialize
+                length = fend-start
+                for g,v in resp.iteritems():
+                # http://bbcftools.vital-it.ch/genrep/nr_assemblies/get_dico?md5=22251fb5451eac220c459d419874582a3f4165e697&keys=gene_id&values=gene_name,start,end&uniq&conditions=type:exon&chr_name=chr6
+                    for x in v:
+                        start = x[0]; end = x[1]
                         if start >= fend: length += end-start # new exon
                         elif end <= fend: pass                # embedded exon
                         else: length += end-fend              # overlapping exon
-                    else:                          # if new gene
-                        gene_mapping[str(fg)][3] = length
-                        fg = g; fstart = start; fend = end; length = fend-fstart # re-initialize
-                gene_mapping[str(g)][3] = length   # last gene
-        #else:
-        #    for chr in self.chrnames:
-        #        request = self.genrep.url+"/nr_assemblies/get_dico?md5="+self.md5+\
-        #            "&keys=gene_id&values=gene_name,start,end&uniq"+\
-        #            "&conditions=type:exon&chr_name="+chr
-        #        resp = json.load(urllib2.urlopen(request))
-        #        for k,v in resp.iteritems():
-        #            start = min([x[1] for x in v])
-        #            end = max([x[2] for x in v])
-        #            length = sum([x[2]-x[1] for x in v])
-        #            name = str(v[0][0])
-        #            gene_mapping[str(k)] = (name,start,end,length,chr)
+                    gene_mapping[str(g)][3] = length
+                    fend = end; length = 0 # re-initialize
         return gene_mapping
 
     def get_transcript_mapping(self):
@@ -408,7 +427,7 @@ class Assembly(object):
                        FROM '%s' WHERE (type='exon') GROUP BY transcript_id""" %chr
                 cursor.execute(sql)
                 for t,g,start,end,length in cursor:
-                    transcript_mapping[str(t)] = (str(g),start+1,end,length,chr)
+                    transcript_mapping[str(t)] = (str(g),start,end,length,chr)
         else:
             for chr in self.chrnames:
                 request = self.genrep.url+"/nr_assemblies/get_dico?md5="+self.md5+\
@@ -439,7 +458,7 @@ class Assembly(object):
                 sql = """SELECT DISTINCT exon_id,gene_id,start,end FROM '%s' WHERE (type='exon')""" %chr
                 cursor.execute(sql)
                 for e,g,start,end in cursor:
-                    exon_mapping[str(e)] = (T[e],str(g),start+1,end,chr)
+                    exon_mapping[str(e)] = (T[e],str(g),start,end,chr)
         else:
             for chr in self.chrnames:
                 request = self.genrep.url+"/nr_assemblies/get_dico?md5="+self.md5+\
