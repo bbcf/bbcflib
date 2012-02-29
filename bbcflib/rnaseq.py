@@ -20,14 +20,7 @@ The annotation of the bowtie index has to be consistent to that of the database 
 import os, pysam, math
 from operator import itemgetter
 
-# Hack to avoid bbcflib.track #
-import sys
-if sys.path[0]=='':
-    sys.path.remove('')
-    import track
-    sys.path.insert(0,'')
-else:
-    import track
+import track
 
 # Internal modules #
 from bbcflib.common import writecols, set_file_descr, unique_filename_in

@@ -11,7 +11,7 @@ import re, os, tarfile
 from operator import add
 
 # Internal modules #
-from . import track
+from bbcflib import btrack as track
 from bbcflib.common import set_file_descr, unique_filename_in
 
 # Other modules #

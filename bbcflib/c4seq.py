@@ -10,7 +10,8 @@ a reference genome.
 
 from bein import *
 from bein.util import touch
-from bbcflib import daflims, genrep, frontend, email, gdv, track, createlib
+from bbcflib import daflims, genrep, frontend, email, gdv, createlib
+from bbcflib import btrack as track
 from bbcflib.mapseq import *
 from bbcflib.common import unique_filename_in, gzipfile
 import sys, getopt, os, json, re, time

@@ -7,7 +7,7 @@ Functions used for the creation of a library in a 4c-seq analysis.
 """
 
 from bein import program
-from bbcflib.track import Track, new
+from bbcflib.btrack import Track, new
 from bbcflib import genrep
 from bbcflib.common import cat, set_file_descr, unique_filename_in
 import os, json, re

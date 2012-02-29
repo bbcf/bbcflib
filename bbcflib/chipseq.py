@@ -185,7 +185,7 @@ def run_deconv(ex, sql, peaks, chromosomes, read_extension, script_path, via = '
     Returns a dictionary of file outputs with keys file types
     ('pdf', 'sql' and 'bed') and values the file names.
     """
-    from .track import new
+    from bbcflib.btrack import new
     rdeconv_futures = {}
     for c in chromosomes.values():
         f = sql_prepare_deconv.nonblocking( ex, sql, peaks, c['name'], c['length'],
