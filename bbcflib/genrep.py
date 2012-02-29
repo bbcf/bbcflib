@@ -362,22 +362,38 @@ class Assembly(object):
             db = sqlite3.connect(dbpath)
             cursor = db.cursor()
             for chr in self.chrnames:
-                sql = "SELECT DISTINCT gene_id,gene_name,MIN(start),MAX(end),SUM(end-start) FROM '%s' WHERE (type LIKE 'exon') GROUP BY gene_id" %chr
+                sql = """SELECT DISTINCT gene_id,gene_name,MIN(start),MAX(end)
+                       FROM '%s' WHERE (type='exon') GROUP BY gene_id""" %chr
                 cursor.execute(sql)
-                for g,name,start,end,length in cursor:
-                    gene_mapping[str(g)] = (str(name),start,end,length,chr)
-        else:
-            for chr in self.chrnames:
-                request = self.genrep.url+"/nr_assemblies/get_dico?md5="+self.md5+\
-                    "&keys=gene_id&values=gene_name,start,end&uniq"+\
-                    "&conditions=type:exon&chr_name="+chr
-                resp = json.load(urllib2.urlopen(request))
-                for k,v in resp.iteritems():
-                    start = min([x[1] for x in v])
-                    end = max([x[2] for x in v])
-                    length = sum([x[2]-x[1] for x in v])
-                    name = str(v[0][0])
-                    gene_mapping[str(k)] = (name,start,end,length,chr)
+                for g,name,start,end in cursor:
+                    gene_mapping[str(g)] = [str(name),start+1,end,None,chr]
+                # Find gene lengths
+                sql = """SELECT DISTINCT exon_id,gene_id,start,end
+                       FROM '%s' WHERE (type='exon') ORDER BY start,end""" %chr
+                cursor.execute(sql)
+                fe,fg,fstart,fend = cursor.fetchone() # initialize
+                length = fend-fstart
+                for e,g,start,end in cursor:
+                    if g == fg:                    # if still in the same gene
+                        if start >= fend: length += end-start # new exon
+                        elif end <= fend: pass                # embedded exon
+                        else: length += end-fend              # overlapping exon
+                    else:                          # if new gene
+                        gene_mapping[str(fg)][3] = length
+                        fg = g; fstart = start; fend = end; length = fend-fstart # re-initialize
+                gene_mapping[str(g)][3] = length   # last gene
+        #else:
+        #    for chr in self.chrnames:
+        #        request = self.genrep.url+"/nr_assemblies/get_dico?md5="+self.md5+\
+        #            "&keys=gene_id&values=gene_name,start,end&uniq"+\
+        #            "&conditions=type:exon&chr_name="+chr
+        #        resp = json.load(urllib2.urlopen(request))
+        #        for k,v in resp.iteritems():
+        #            start = min([x[1] for x in v])
+        #            end = max([x[2] for x in v])
+        #            length = sum([x[2]-x[1] for x in v])
+        #            name = str(v[0][0])
+        #            gene_mapping[str(k)] = (name,start,end,length,chr)
         return gene_mapping
 
     def get_transcript_mapping(self):
@@ -388,10 +404,11 @@ class Assembly(object):
             db = sqlite3.connect(dbpath)
             cursor = db.cursor()
             for chr in self.chrnames:
-                sql = "SELECT DISTINCT transcript_id,gene_id,MIN(start),MAX(end),SUM(end-start) FROM '%s' WHERE (type LIKE 'exon') GROUP BY transcript_id" %chr
+                sql = """SELECT DISTINCT transcript_id,gene_id,MIN(start),MAX(end),SUM(end-start)
+                       FROM '%s' WHERE (type='exon') GROUP BY transcript_id""" %chr
                 cursor.execute(sql)
                 for t,g,start,end,length in cursor:
-                    transcript_mapping[str(t)] = (str(g),start,end,length,chr)
+                    transcript_mapping[str(t)] = (str(g),start+1,end,length,chr)
         else:
             for chr in self.chrnames:
                 request = self.genrep.url+"/nr_assemblies/get_dico?md5="+self.md5+\
@@ -414,15 +431,15 @@ class Assembly(object):
             db = sqlite3.connect(dbpath)
             cursor = db.cursor()
             for chr in self.chrnames:
-                sql = "SELECT DISTINCT exon_id,transcript_id from '%s' WHERE (type LIKE 'exon')" %chr
+                sql = """SELECT DISTINCT exon_id,transcript_id from '%s' WHERE (type='exon')""" %chr
                 cursor.execute(sql)
                 T={}
                 for e,t in cursor:
                     T.setdefault(e,[]).append(str(t))
-                sql = "SELECT DISTINCT exon_id,gene_id,start,end FROM '%s' WHERE (type LIKE 'exon')" %chr
+                sql = """SELECT DISTINCT exon_id,gene_id,start,end FROM '%s' WHERE (type='exon')""" %chr
                 cursor.execute(sql)
                 for e,g,start,end in cursor:
-                    exon_mapping[str(e)] = (T[e],str(g),start,end,chr)
+                    exon_mapping[str(e)] = (T[e],str(g),start+1,end,chr)
         else:
             for chr in self.chrnames:
                 request = self.genrep.url+"/nr_assemblies/get_dico?md5="+self.md5+\
@@ -445,7 +462,7 @@ class Assembly(object):
             db = sqlite3.connect(dbpath)
             cursor = db.cursor()
             for chr in self.chrnames:
-                sql = "SELECT DISTINCT transcript_id,exon_id from '%s' WHERE (type LIKE 'exon')"%chr
+                sql = """SELECT DISTINCT transcript_id,exon_id from '%s' WHERE (type='exon')""" %chr
                 cursor.execute(sql)
                 for t,e in cursor:
                     exons_in_trans.setdefault(str(t),[]).append(str(e))
@@ -467,7 +484,7 @@ class Assembly(object):
             db = sqlite3.connect(dbpath)
             cursor = db.cursor()
             for chr in self.chrnames:
-                sql = "SELECT DISTINCT gene_id,transcript_id FROM '%s' WHERE (type LIKE 'exon')"%chr
+                sql = """SELECT DISTINCT gene_id,transcript_id FROM '%s' WHERE (type='exon')""" %chr
                 cursor.execute(sql)
                 for g,t in cursor:
                     trans_in_gene.setdefault(str(g),[]).append(str(t))
