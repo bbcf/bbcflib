@@ -1,6 +1,6 @@
 """
 ===================================
-Submodule: bbcflib.track.track_text
+Submodule: bbcflib.btrack.track_text
 ===================================
 
 Methods common to the text formats.
@@ -17,7 +17,7 @@ Methods common to the text formats.
 import shlex
 
 # Internal modules #
-from bbcflib.track import Track
+from bbcflib.btrack import Track
 
 #-----------------------------------------------------------------------------#
 def strand_to_int(strand):

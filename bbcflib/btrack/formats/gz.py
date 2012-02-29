@@ -17,7 +17,7 @@ Implementation of a compression layer GNU zip format.
 import os, gzip
 
 # Internal modules #
-from bbcflib.track.track_util import import_implementation
+from bbcflib.btrack.track_util import import_implementation
 
 ################################################################################
 def TrackFormat(path, format=None, name=None, chrmeta=None, datatype=None, readonly=False, empty=False):
