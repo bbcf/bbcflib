@@ -201,8 +201,8 @@ class Assembly(object):
         or a list [['chr',start1,end1],['chr',start2,end2]],
         will simply iterate through its items instead of loading a track from file.
         """
-        from .track import load
-        from .track.extras.sql import TrackExtras
+        from bbcflib.btrack import load
+        from bbcflib.btrack.extras.sql import TrackExtras
         if out == None:
             out = unique_filename_in()
         def _push_slices(slices,start,end,name,cur_chunk):
