@@ -20,6 +20,11 @@ The annotation of the bowtie index has to be consistent to that of the database 
 import os, pysam, math
 from operator import itemgetter
 
+# Hack to avoid bbcflib.track #
+import sys
+sys.path.remove('')
+sys.path = sys.path+['']
+
 # Internal modules #
 from bbcflib.common import writecols, set_file_descr, unique_filename_in
 from bbcflib import mapseq, genrep
@@ -281,7 +286,7 @@ def save_results(ex, cols, conditions, group_ids, assembly, header=[], feature_t
                         goodlines.sort(key=lambda x: itemgetter(1,2)) # sort w.r.t start
                         goodlines = fusion(iter(goodlines))
                         for x in goodlines:
-                            t.write(x[0],[(x[1],x[2],float(x[3]))],fields=["start","end","score"])
+                            t.write(x[0],[(x[1],x[2],x[3])],fields=["start","end","score"])
             description = set_file_descr(feature_type.lower()+"_"+group+".sql", step="pileup", type="sql", \
                                          groupId=group_ids[group], gdv='1')
             ex.add(filename+'.sql', description=description)
