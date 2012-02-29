@@ -1,6 +1,6 @@
 """
 =========================================
-Submodule: bbcflib.track.track_collection
+Submodule: bbcflib.btrack.track_collection
 =========================================
 
 Creates a large dictionary of different tracks found in the "extras" directory (mainly small validation tracks).
@@ -18,7 +18,7 @@ This is then used by the unittests.
 import os
 
 # Internal modules #
-from bbcflib.track import Track
+from bbcflib.btrack import Track
 
 ###########################################################################
 # Tracks path #

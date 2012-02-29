@@ -230,6 +230,7 @@ class DAFLIMS(object):
             with open(target, 'w') as output_file:
                 for link in llist:
                     url = self._open_url(link)
+                    tar = None
                     if re.sub('.gz[ip]*','',link).endswith(".tar"):
                         tar = tarfile.open(fileobj=url, mode='r|gz')
         # Since the tar file contains exactly one file, calling
@@ -241,10 +242,8 @@ class DAFLIMS(object):
         # extractfile returns a file-like object we can stream from.
                         input_file = tar.extractfile(tar_filename)
                     elif not(link.endswith(".gz")):
-                        tar = None
                         input_file = url
                     else:
-                        tar = None
                         input_file = gzip.GzipFile(fileobj=StringIO.StringIO(url.read()))
                     while True:
                         chunk = input_file.read(4096)

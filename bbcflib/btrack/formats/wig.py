@@ -1,6 +1,6 @@
 """
 ====================================
-Submodule: bbcflib.track.formats.wig
+Submodule: bbcflib.btrack.formats.wig
 ====================================
 
 Implementation of the WIG format.
@@ -17,9 +17,9 @@ Implementation of the WIG format.
 import sys, shlex
 
 # Internal modules #
-from bbcflib.track.track_proxy import TrackProxy
-from bbcflib.track.track_text import TrackText
-from bbcflib.track.common import sentinelize
+from bbcflib.btrack.track_proxy import TrackProxy
+from bbcflib.btrack.track_text import TrackText
+from bbcflib.btrack.common import sentinelize
 
 ###########################################################################
 class TrackFormat(TrackText, TrackProxy):

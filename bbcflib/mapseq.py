@@ -73,14 +73,14 @@ Below is the script used by the frontend::
 import os, re, json, shutil, gzip, tarfile, bz2, pickle, urllib, time
 
 # Internal modules #
-from . import frontend, genrep, daflims
+from bbcflib import frontend, genrep, daflims
 from bbcflib.common import cat, set_file_descr, merge_sql, gzipfile, unique_filename_in
-from .track import Track, new
+from bbcflib.btrack import Track, new
 
 # Other modules #
 import pysam
-from bein       import  program, ProgramFailed, MiniLIMS
-from bein.util  import  add_pickle, touch, split_file, count_lines
+from bein import program, ProgramFailed, MiniLIMS
+from bein.util import add_pickle, touch, split_file, count_lines
 
 demultiplex_path = "/data/htsstation/demultiplexing/demultiplexing_minilims.files/"
 
