@@ -22,13 +22,16 @@ from operator import itemgetter
 
 # Hack to avoid bbcflib.track #
 import sys
-sys.path.remove('')
-sys.path = sys.path+['']
+if sys.path[0]=='':
+    sys.path.remove('')
+    import track
+    sys.path.insert(0,'')
+else:
+    import track
 
 # Internal modules #
 from bbcflib.common import writecols, set_file_descr, unique_filename_in
 from bbcflib import mapseq, genrep
-import track
 
 # Other modules #
 import numpy
