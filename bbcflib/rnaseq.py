@@ -298,10 +298,11 @@ def genes_expression(exons_data, exon_lengths, gene_mapping, exon_to_gene, ncond
     round = numpy.round
     for e,c in zip(exons_data[0],zip(*exons_data[1:2*ncond+1])):
         g = exon_to_gene[e]
-        ratio = exon_lengths[e]/gene_mapping.get(g,[0,0,0,4*exon_lengths[e],0])[3]
-            # (approx. 4 exons per gene in average)
         gcounts[g] += round(c[:ncond],2)
-        grpkm[g] += ratio*round(c[ncond:],2)
+	try:
+	    ratio = exon_lengths[e]/gene_mapping[g][3]
+	    grpkm[g] += ratio*round(c[ncond:],2)
+	except KeyError, ZeroDivisionError: pass
     return gcounts, grpkm
 
 #@timer

@@ -355,6 +355,34 @@ class Assembly(object):
         root = os.path.join(self.genrep.root,"nr_assemblies/annot_tracks")
         return os.path.join(root,self.md5+".sql")
 
+    def get_features_from_gtf(self,h):
+        '''Return a dictionary *data* from GTF.
+        Available keys for h, and possible values:
+        "keys":       "*,*,..."            (fields to SELECT and pass as a key of *data*)
+        "values":     "*,*,..."            (fields to SELECT and pass as respective values of *data*)
+        "conditions": "*:#,*:#,..."        (filter (SQL `WHERE`))
+        "uniq":       "whatever"           (SQL `DISTINCT` if specified, no matter what the -string- value is)
+        "at_pos":     "12,36,45,1124,..."  (to select only features overlapping this list of positions)
+
+        where
+        * holds for any column name in the database
+        # holds for any value in the database
+
+        None: giving several field names to "keys" permits to select unique combinations of these fields.
+        The corresponding keys of *data* are a concatenation (by ';') of these fields.
+        '''
+        data = {}
+        for chr_name in self.chrnames:
+            request = self.genrep.url+"/nr_assemblies/get_dico?md5="+self.md5
+            for k,v in h.iteritems():
+                request += "&"+k+"="+v
+	    print request
+            request += "&chr_name="+chr_name
+            resp = json.load(urllib2.urlopen(request))
+            for k,v in resp.iteritems():
+                data[str(k)] = [str(x[0]) for x in v]
+        return data
+
     def get_gene_mapping(self):
         """Return a dictionary {geneID: (geneName, start, end, length, chromosome)}"""
         gene_mapping = {}
@@ -372,8 +400,10 @@ class Assembly(object):
                 sql = """SELECT DISTINCT gene_id,start,end
                        FROM '%s' WHERE (type='exon') ORDER BY strand,start,end""" %chr
                 cursor.execute(sql)
+                print cursor
                 fg,start,fend = cursor.fetchone()  # initialize
                 length = fend-start
+                print cursor
                 for g,start,end in cursor:
                     if g == fg:                    # if still in the same gene
                         if start >= fend:
@@ -389,6 +419,7 @@ class Assembly(object):
                 gene_mapping[str(g)][3] = length   # last gene
         else:
             for chr in self.chrnames:
+                h = {"keys":"gene_id", "values":"gene_name,start,end", "conditions":{"type":"exon"}}
                 request = self.genrep.url+"/nr_assemblies/get_dico?md5="+self.md5+\
                     "&keys=gene_id&values=gene_name,start,end&uniq"+\
                     "&conditions=type:exon&chr_name="+chr
@@ -436,6 +467,7 @@ class Assembly(object):
                     transcript_mapping[str(t)] = (str(g),start,end,length,chr)
         else:
             for chr in self.chrnames:
+                h = {"keys":"transcript_id", "values":"gene_id,start,end", "conditions":"type:exon", "uniq":"1"}
                 request = self.genrep.url+"/nr_assemblies/get_dico?md5="+self.md5+\
                     "&keys=transcript_id&values=gene_id,start,end&uniq"+\
                     "&conditions=type:exon&chr_name="+chr
@@ -464,19 +496,16 @@ class Assembly(object):
                 sql = """SELECT DISTINCT exon_id,gene_id,start,end FROM '%s' WHERE (type='exon')""" %chr
                 cursor.execute(sql)
                 for e,g,start,end in cursor:
-                    exon_mapping[str(e)] = (T[e],str(g),start,end,chr)
+                    exon_mapping[str(e)] = (T[e],str(g),start+1,end,chr)
         else:
-            for chr in self.chrnames:
-                request = self.genrep.url+"/nr_assemblies/get_dico?md5="+self.md5+\
-                    "&keys=exon_id&values=gene_id,transcript_id,start,end"+\
-                    "&uniq&conditions=type:exon&chr_name="+chr
-                resp = json.load(urllib2.urlopen(request))
-                for k,v in resp.iteritems():
-                    start = v[0][2]
-                    end = v[0][3]
-                    tid = [str(x[1]) for x in v]
-                    gid = str(v[0][0])
-                    exon_mapping[str(k)] = (tid,gid,start,end,chr)
+            h = {"keys":"exon_id", "values":"gene_id,transcript_id,start,end", "conditions":"type:exon", "uniq":"1"}
+            resp = self.get_features_from_gtf(h)
+            for k,v in resp.iteritems():
+                start = int(v[0][2])
+                end = int(v[0][3])
+                tid = [x[1] for x in v]
+                gid = v[0][0]
+                exon_mapping[k] = (tid,gid,start,end,chr)
         return exon_mapping
 
     def get_exons_in_trans(self):
@@ -492,13 +521,8 @@ class Assembly(object):
                 for t,e in cursor:
                     exons_in_trans.setdefault(str(t),[]).append(str(e))
         else:
-            for chr in self.chrnames:
-                request = self.genrep.url+"/nr_assemblies/get_dico?md5="+self.md5+\
-                    "&keys=transcript_id&values=exon_id"+\
-                    "&uniq&conditions=type:exon&chr_name="+chr
-                resp = json.load(urllib2.urlopen(request))
-                for k,v in resp.iteritems():
-                    exons_in_trans[str(k)] = [str(x[0]) for x in v]
+            h = {"keys":"transcript_id", "values":"exon_id", "conditions":"type:exon", "uniq":"1"}
+            exons_in_trans = self.get_features_from_gtf(h)
         return exons_in_trans
 
     def get_trans_in_gene(self):
@@ -514,33 +538,9 @@ class Assembly(object):
                 for g,t in cursor:
                     trans_in_gene.setdefault(str(g),[]).append(str(t))
         else:
-            for chr in self.chrnames:
-                request = self.genrep.url+"/nr_assemblies/get_dico?md5="+self.md5+\
-                    "&keys=gene_id&values=transcript_id"+\
-                    "&uniq&conditions=type:exon&chr_name="+chr
-                resp = json.load(urllib2.urlopen(request))
-                for k,v in resp.iteritems():
-                    trans_in_gene[str(k)] = [str(x[0]) for x in v]
+            h = {"keys":"gene_id", "values":"transcript_id", "conditions":"type:exon", "uniq":"1"}
+            trans_in_gene = self.get_features_from_gtf(h)
         return trans_in_gene
-
-    def get_dico(self,h):
-        """Return a dictionary from GTF data"""
-        trans_in_gene = {}
-        l=[]
-        for k,v in h["conditions"].iteritems():
-            l.append(k+":"+v)
-
-        for chr in self.chrnames:
-            request = self.genrep.url+"/nr_assemblies/get_dico?md5="+self.md5+\
-                "&keys="+h["keys"]+"&values="+h["values"]+\
-                h["uniq"]+"&conditions="+",".join(l)+"&chr_name="+chr+"&at_pos="+h["listpos"]
-            print request
-            resp = json.load(urllib2.urlopen(request))
-            for k,v in resp.iteritems():
-                trans_in_gene[str(k)] = [str(x[0]) for x in v]
-
-        return trans_in_gene
-
 
     @property
     def chrmeta(self):
