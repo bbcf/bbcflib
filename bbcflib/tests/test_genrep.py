@@ -31,7 +31,7 @@ class Test_Assembly(unittest.TestCase):
                 |========|         |====|         |======|         |=========|         |======|
         2863   =   107        +     194       +     333        +       708       +       1461
         """
-    #@unittest.skip('')
+    @unittest.skip('')
     def test_get_gene_mapping(self):
         expected = ('eif-3.B',14795327,14798367,2803,'chrII')
         # Test with local database request

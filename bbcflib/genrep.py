@@ -356,7 +356,8 @@ class Assembly(object):
         return os.path.join(root,self.md5+".sql")
 
     def get_features_from_gtf(self,h,chr=None):
-        '''Return a dictionary *data* of the form
+        '''
+        Returns a dictionary *data* of the form
         {key:[[values],[values],...]} containing the result of an SQL request which
         parameters are given as a dictionary *h*. All [values] correspond to a line in the SQL.
 
