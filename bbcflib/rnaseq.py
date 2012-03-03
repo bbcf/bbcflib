@@ -299,7 +299,7 @@ def genes_expression(exons_data, exon_lengths, gene_mapping, exon_to_gene, ncond
     for e,c in zip(exons_data[0],zip(*exons_data[1:2*ncond+1])):
         g = exon_to_gene[e]
         gcounts[g] += round(c[:ncond],2)
-	try:
+	try: # Let's avoid errors of that kind until the article id done
 	    ratio = exon_lengths[e]/gene_mapping[g][3]
 	    grpkm[g] += ratio*round(c[ncond:],2)
 	except KeyError, ZeroDivisionError: pass

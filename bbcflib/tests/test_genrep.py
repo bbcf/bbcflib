@@ -32,36 +32,6 @@ class Test_Assembly(unittest.TestCase):
         2858   =   166        +     193       +     332        +       707       +       1460
         """
     #@unittest.skip('')
-    def test_get_exon_mapping(self):
-        expected = (['Y54E2A.11a.1'],'Y54E2A.11',14795328,14795434,'chrII')
-        # Test with database request
-        map = self.assembly.get_exon_mapping()
-        zc = map['Y54E2A.11a.1.1']
-        self.assertEqual(zc,expected)
-        # Test with url request
-        self.assembly.genrep.root = ''
-        map = self.assembly.get_exon_mapping()
-        zc = map['Y54E2A.11a.1']
-        print "zc",zc
-        print "exp",expected
-        self.assertEqual(zc,expected)
-        self.assembly.genrep.root = self.root
-
-    @unittest.skip('')
-    def test_get_transcript_mapping(self):
-        expected = ('Y54E2A.11',14795328,14798367,2803,'chrII')
-        # Test with database request
-        map = self.assembly.get_transcript_mapping()
-        zc = map['Y54E2A.11a.1']
-        self.assertEqual(zc,expected)
-        # Test with url request
-        self.assembly.genrep.root = ''
-        map = self.assembly.get_transcript_mapping()
-        zc = map['Y54E2A.11a.1']
-        self.assertEqual(zc,expected)
-        self.assembly.genrep.root = self.root
-
-    @unittest.skip('')
     def test_get_gene_mapping(self):
         expected = ('eif-3.B',14795328,14798367,2858,'chrII')
         # Test with database request
@@ -75,7 +45,37 @@ class Test_Assembly(unittest.TestCase):
         self.assertEqual(zc,expected)
         self.assembly.genrep.root = self.root
 
-    @unittest.skip('') #ok
+    #@unittest.skip('')
+    def test_get_transcript_mapping(self):
+        expected = ('Y54E2A.11',14795328,14798367,2803,'chrII')
+        # Test with database request
+        map = self.assembly.get_transcript_mapping()
+        zc = map['Y54E2A.11a.1']
+        self.assertEqual(zc,expected)
+        # Test with url request
+        self.assembly.genrep.root = ''
+        map = self.assembly.get_transcript_mapping()
+        zc = map['Y54E2A.11a.1']
+        self.assertEqual(zc,expected)
+        self.assembly.genrep.root = self.root
+
+    #@unittest.skip('')
+    def test_get_exon_mapping(self):
+        expected = (['Y54E2A.11a.1'],'Y54E2A.11',14795328,14795434,'chrII')
+        # Test with database request
+        map = self.assembly.get_exon_mapping()
+        zc = map['Y54E2A.11a.1.1']
+        self.assertEqual(zc,expected)
+        # Test with url request
+        self.assembly.genrep.root = ''
+        map = self.assembly.get_exon_mapping()
+        zc = map['Y54E2A.11a.1.1']
+        print "zc",zc
+        print "exp",expected
+        self.assertEqual(zc,expected)
+        self.assembly.genrep.root = self.root
+
+    #@unittest.skip('')
     def test_get_exons_in_trans(self):
         expected = ['Y54E2A.11a.1.1','Y54E2A.11b.2.2','Y54E2A.11a.1.3',
                     'Y54E2A.11a.1.4','Y54E2A.11b.1.5'] # Y54E2A.11a.1.5 = Y54E2A.11b.1.5
@@ -90,7 +90,7 @@ class Test_Assembly(unittest.TestCase):
         self.assertItemsEqual(zc,expected)
         self.assembly.genrep.root = self.root
 
-    @unittest.skip('') #ok
+    #@unittest.skip('')
     def test_trans_in_gene(self):
         expected = ['Y54E2A.11a.1','Y54E2A.11a.2','Y54E2A.11b.1','Y54E2A.11b.2']
         # Test with database request
@@ -108,6 +108,7 @@ class Test_Assembly(unittest.TestCase):
 test_config_file = '''[genrep]
     genrep_url = http://bbcftools.vital-it.ch/genrep/
     genrep_root = /db/genrep'''
+
 def get_config_file_parser():
     file = cStringIO.StringIO()
     file.write(test_config_file)
