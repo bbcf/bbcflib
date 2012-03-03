@@ -402,7 +402,7 @@ class Assembly(object):
                        FROM '%s' WHERE (type='exon') GROUP BY gene_id""" %chr
                 cursor.execute(sql)
                 for g,name,start,end in cursor:
-                    gene_mapping[str(g)] = (str(name),start+1,end,-1,chr)
+                    gene_mapping[str(g)] = (str(name),start,end,-1,chr)
                 # Find gene lengths
                 sql = """SELECT DISTINCT gene_id,start,end
                        FROM '%s' WHERE (type='exon') ORDER BY strand,start,end""" %chr
@@ -439,7 +439,7 @@ class Assembly(object):
                     start = min([x[1] for x in v])
                     end = max([x[2] for x in v])
                     name = str(v[0][0])
-                    gene_mapping[str(k)] = (name,start+1,end,-1,chr)
+                    gene_mapping[str(k)] = (name,start,end,-1,chr)
                 # Find gene lengths
                 resp_iter = resp.iteritems()
                 try: fg,init = resp_iter.next() # initialize
@@ -478,13 +478,13 @@ class Assembly(object):
                        FROM '%s' WHERE (type='exon') GROUP BY transcript_id""" %chr
                 cursor.execute(sql)
                 for t,g,start,end,length in cursor:
-                    transcript_mapping[str(t)] = (str(g),start+1,end,length,chr)
+                    transcript_mapping[str(t)] = (str(g),start,end,length,chr)
         else:
             h = {"keys":"transcript_id", "values":"gene_id,start,end", "conditions":"type:exon", "uniq":"1"}
             for chr in self.chrnames:
                 resp = self.get_features_from_gtf(h,chr)
                 for k,v in resp.iteritems():
-                    start = min([x[1] for x in v]) + 1
+                    start = min([x[1] for x in v])
                     end = max([x[2] for x in v])
                     length = sum([x[2]-x[1] for x in v])
                     gid = str(v[0][0])
@@ -507,13 +507,13 @@ class Assembly(object):
                 sql = """SELECT DISTINCT exon_id,gene_id,start,end FROM '%s' WHERE (type='exon')""" %chr
                 cursor.execute(sql)
                 for e,g,start,end in cursor:
-                    exon_mapping[str(e)] = (T[e],str(g),start+1,end,chr)
+                    exon_mapping[str(e)] = (T[e],str(g),start,end,chr)
         else:
             h = {"keys":"exon_id", "values":"gene_id,transcript_id,start,end", "conditions":"type:exon", "uniq":"1"}
             for chr in self.chrnames:
                 resp = self.get_features_from_gtf(h,chr)
                 for k,v in resp.iteritems():
-                    start = int(v[0][2]) + 1
+                    start = int(v[0][2])
                     end = int(v[0][3])
                     tid = [str(x[1]) for x in v]
                     gid = str(v[0][0])
