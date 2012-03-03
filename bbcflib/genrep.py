@@ -502,11 +502,11 @@ class Assembly(object):
                 cursor.execute(sql)
                 T={}
                 for e,t in cursor:
-                    T.setdefault(e,[]).append(str(t))
+                    T.setdefault(str(e),[]).append(str(t))
                 sql = """SELECT DISTINCT exon_id,gene_id,start,end FROM '%s' WHERE (type='exon')""" %chr
                 cursor.execute(sql)
                 for e,g,start,end in cursor:
-                    exon_mapping[str(e)] = (T[e],str(g),start,end,chr)
+                    exon_mapping[str(e)] = (T[str(e)],str(g),start,end,chr)
         else:
             h = {"keys":"exon_id", "values":"gene_id,transcript_id,start,end", "conditions":"type:exon", "uniq":"1"}
             for chr in self.chrnames:
