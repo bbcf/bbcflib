@@ -409,10 +409,8 @@ class Assembly(object):
                 cursor.execute(sql)
                 try: fg,start,fend = cursor.fetchone()  # initialize
                 except TypeError: continue
-                #start+=1
                 length = fend-start
                 for g,start,end in cursor:
-                    #start+=1
                     if g == fg:                    # if still in the same gene
                         if start >= fend:
                             length += end-start    # new exon
@@ -426,7 +424,7 @@ class Assembly(object):
                         gmap[3] = length
                         gene_mapping.update({str(fg):tuple(gmap)})
                         length = end-start
-                        fend = gmap[2]
+                        fend = end
                         fg = g
                 gmap = list(gene_mapping[str(g)])
                 gmap[3] = length
