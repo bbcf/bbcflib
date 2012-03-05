@@ -143,6 +143,12 @@ def run_fastqc( ex, job, via='lsf' ):
                         description=set_file_descr(rname+"_fastqc.zip",**descr) )
     return None
 
+def _rewrite(input_file,output_file):
+    with open(output_file,'w') as g:
+        while True:
+            chunk = input_file.read(4096)
+            if chunk == '': break
+            else: g.write(chunk)
 
 def get_fastq_files( ex, job, dafl=None, set_seed_length=True):
     """
@@ -160,13 +166,6 @@ def get_fastq_files( ex, job, dafl=None, set_seed_length=True):
         is_bz2 = run.endswith(".bz2")
         if is_gz: run_strip = re.sub('.gz[ip]*','',run)
         if is_bz2: run_strip = re.sub('.bz[2]*','',run)
-
-        def _rewrite(input_file,output_file):
-            with open(output_file,'w') as g:
-                while True:
-                    chunk = input_file.read(4096)
-                    if chunk == '': break
-                    else: g.write(chunk)
 
         if run_strip.endswith(".tar"):
             mode = 'r'
@@ -1245,16 +1244,12 @@ def get_bam_wig_files( ex, job, minilims=None, hts_url=None, suffix=['fwd','rev'
                         else:
                             fastq_loc = [MMS.path_to_file(allfiles[name+"_unmapped.fastq.gz"])]
                             fastqfiles = (fastqname,)
-                    for i,fqf in enumerate(fastq_loc):
-                        with open(fastqfiles[i],'w') as f:
+                        for i,fqf in enumerate(fastq_loc):
                             temp = gzip.open(fqf, 'rb')
-                            while True:
-                                chunk = temp.read(4096)
-                                if chunk == '': break
-                                else: f.write(chunk)
+                            _rewrite(temp,fastqfiles[i])
                             temp.close()
-                    if len(fastqfiles) == 1:
-                        fastqfiles = fastqfiles[0]
+                        if len(fastqfiles) == 1:
+                            fastqfiles = fastqfiles[0]
                 if name+"_Poisson_threshold" in allfiles:
                     pickle_thresh = allfiles[name+"_Poisson_threshold"]
                     with open(MMS.path_to_file(pickle_thresh)) as q:
