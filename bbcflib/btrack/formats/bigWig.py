@@ -1,6 +1,6 @@
 """
 =======================================
-Submodule: bbcflib.track.formats.bigWig
+Submodule: bbcflib.btrack.formats.bigWig
 =======================================
 
 Implementation of the bigWig format. Requires the command line utilities "bigWigToBedGraph" and "bedGraphToBigWig" to be installed and present in the $PATH environment variable.
@@ -17,9 +17,9 @@ Implementation of the bigWig format. Requires the command line utilities "bigWig
 import os
 
 # Internal modules #
-from bbcflib.track.common import check_executable
-from bbcflib.track.track_binary import TrackBinary
-from bbcflib.track.formats.bedGraph import TrackFormat as TrackBedgraph
+from bbcflib.btrack.common import check_executable
+from bbcflib.btrack.track_binary import TrackBinary
+from bbcflib.btrack.formats.bedGraph import TrackFormat as TrackBedgraph
 
 ###########################################################################
 class TrackFormat(TrackBinary, TrackBedgraph):

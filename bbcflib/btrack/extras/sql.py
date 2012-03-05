@@ -1,6 +1,6 @@
 """
 ===================================
-Submodule: bbcflib.track.extras.sql
+Submodule: bbcflib.btrack.extras.sql
 ===================================
 
 Implementation of special methods of the Track object specific
@@ -12,7 +12,7 @@ that all formats should have.
 import random
 
 # Internal modules #
-from bbcflib import track
+from bbcflib import btrack as track
 
 ###################################################################################
 class TrackExtras(object):

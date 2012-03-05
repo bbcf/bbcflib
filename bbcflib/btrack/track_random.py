@@ -1,6 +1,6 @@
 """
 =====================================
-Submodule: bbcflib.track.formats.rand
+Submodule: bbcflib.btrack.formats.rand
 =====================================
 
 
@@ -18,7 +18,7 @@ Implementation of a random track generator.
 import sys, random, tempfile
 
 # Internal modules #
-from bbcflib.track import Track
+from bbcflib.btrack import Track
 
 # Variables #
 chrsuffix = 'Awfully super extra long chromosome denomination string '

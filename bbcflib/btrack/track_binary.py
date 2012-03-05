@@ -1,6 +1,6 @@
 """
 =====================================
-Submodule: bbcflib.track.track_binary
+Submodule: bbcflib.btrack.track_binary
 =====================================
 
 Methods that create a text file upon opening a binary file in the temporary directory
@@ -18,9 +18,9 @@ and reconverts everything to a binary file file upon closing, all transparently.
 import os, shutil, subprocess
 
 # Internal modules #
-from bbcflib.track import Track
-from bbcflib.track.common import named_temporary_path
-from bbcflib.track.track_proxy import TrackProxy, TrackBackend, backend_format
+from bbcflib.btrack import Track
+from bbcflib.btrack.common import named_temporary_path
+from bbcflib.btrack.track_proxy import TrackProxy, TrackBackend, backend_format
 
 ###########################################################################
 class TrackBinary(object):

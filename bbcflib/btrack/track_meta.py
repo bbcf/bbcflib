@@ -1,6 +1,6 @@
 """
 =======================================
-Subpackage: bbcflib.track.track_chrmeta
+Subpackage: bbcflib.btrack.track_chrmeta
 =======================================
 
 Takes care of managing chromosome meta data.
@@ -18,7 +18,7 @@ import os
 
 # Internal modules #
 from bbcflib.genrep import GenRep
-from bbcflib.track.common import named_temporary_path, ModifiedDict
+from bbcflib.btrack.common import named_temporary_path, ModifiedDict
 
 ###########################################################################
 class ChromMetaData(ModifiedDict):

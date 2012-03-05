@@ -15,9 +15,27 @@ from .common import normalize_url
 
 import warnings
 
+default_url = 'http://gdv.epfl.ch/pygdv'
+
 ################################################################################
 # GDV requests #
-def new_project(mail, key, name, assembly_id, serv_url='http://gdv.epfl.ch/pygdv'):
+def get_project(mail, key, project_key, serv_url=default_url):
+    '''
+    Get a project by it's key.
+    :param mail : login in TEQUILA
+    :param key : an user-specific key (ask it to GDV admin)
+    :param project_key : the project key
+    '''
+    query_url = '%s/%s' % (normalize_url(serv_url), 'projects/get')
+    request = {'mail':mail, 
+               'key':key,
+               'project_key':project_key
+               }
+    return send_it(query_url, request)
+
+
+
+def new_project(mail, key, name, assembly_id, serv_url=default_url):
     '''
     Create a new project on GDV.
     :param mail : login in TEQUILA
@@ -34,7 +52,8 @@ def new_project(mail, key, name, assembly_id, serv_url='http://gdv.epfl.ch/pygdv
                }
     return send_it(query_url, request)
 
-def single_track(mail, key, serv_url='http://gdv.epfl.ch/pygdv', 
+
+def single_track(mail, key, serv_url=default_url,
                  assembly_id=None, project_id=None, 
                  url=None, fsys=None, trackname=None, extension=None, 
                  force=False):
@@ -72,7 +91,7 @@ def single_track(mail, key, serv_url='http://gdv.epfl.ch/pygdv',
     return send_it(query_url, request)
 
 
-def multiple_tracks(mail, key, serv_url='http://gdv.epfl.ch/pygdv',
+def multiple_tracks(mail, key, serv_url=default_url,
                     assembly_id=None, project_id=None, 
                     urls=[], fsys_list=[], tracknames=[], extensions=[], 
                     force=False):
@@ -98,7 +117,7 @@ def multiple_tracks(mail, key, serv_url='http://gdv.epfl.ch/pygdv',
     tracks = [single_track(mail, key, serv_url=serv_url, 
                            assembly_id=assembly_id, project_id=project_id, 
                            url=u, trackname=tr[n], extension=ex[n], force=force) 
-              for n,f in enumerate(urls)] \
+              for n,u in enumerate(urls)] \
               + [single_track(mail, key, serv_url=serv_url, 
                               assembly_id=assembly_id, project_id=project_id, 
                               fsys=f, trackname=tr[len(urls)+n], extension=ex[len(urls)+n], force=force) 
@@ -181,7 +200,7 @@ def transfert(prefix, file_path, delimiter, mail, key, serv_url, datatype, nr_as
 
 def create_gdv_project( gdv_key, gdv_email,
                         name, nr_assembly_id,
-                        gdv_url="http://gdv.epfl.ch/gdv", public=False ):
+                        gdv_url=default_url, public=False ):
     '''
     Create a new project on GDV interface
     :param gdv_email: your login in TEQUILA
@@ -240,7 +259,7 @@ def add_gdv_sqlite( gdv_key, gdv_email,
                     project_id,
                     url,
                     name=None,
-                    gdv_url="http://gdv.epfl.ch/gdv"):
+                    gdv_url=default_url):
     '''
     Deprecated :  use add_gdv_track instead
     '''
@@ -252,7 +271,7 @@ def add_sql_files( gdv_key, gdv_email,
                    project_id,
                    files, names,
                    serv_url,
-                   gdv_url="http://gdv.epfl.ch/gdv"):
+                   gdv_url=default_url):
     '''
     Run `add_gdv_sqlite` on a list of files
     '''

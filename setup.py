@@ -12,8 +12,8 @@ setup(
         install_requires=   ['mailer', 'bein', 'rpy2', 'pysam', 'scipy', 'BeautifulSoup', 'cogent', 'mysql-python', 'sqlalchemy'],
         classifiers     =   ['Topic :: Scientific/Engineering :: Bio-Informatics'],
         packages        =   ['bbcflib',
-                             'bbcflib.track',
-                             'bbcflib.track.extras',
-                             'bbcflib.track.formats',
+                             'bbcflib.btrack',
+                             'bbcflib.btrack.extras',
+                             'bbcflib.btrack.formats',
                             ],
     )
