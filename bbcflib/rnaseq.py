@@ -579,6 +579,26 @@ def rnaseq_workflow(ex, job, bam_files, pileup_level=["exons","genes","transcrip
 
     return {"exons":exons_file, "genes":genes_file, "transcripts":trans_file}
 
+
+def clean_deseq_output(filename):
+    filename_clean = unique_filename_in()
+    with open(filename,"rb") as f:
+        with open(filename_clean,"wb") as g:
+            contrast = f.readline()
+            header = f.readline()
+            g.write(contrast+header)
+            for line in f:
+                line = line.split("\t")[1:]
+                if not (line[2]=="0" and line[3]=="0"):
+                    meanA = float(line[2]) or 0.5
+                    meanB = float(line[3]) or 0.5
+                    fold = meanB/meanA
+                    log2fold = math.log(fold,2)
+                    line[2] = str(meanA); line[3] = str(meanB); line[4] = str(fold); line[5] = str(log2fold)
+                    line = '\t'.join(line)
+                    g.write(line)
+    return filename_clean
+
 #------------------------------------------------------#
 # This code was written by Julien Delafontaine         #
 # Bioinformatics and Biostatistics Core Facility, EPFL #

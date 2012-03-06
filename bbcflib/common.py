@@ -236,11 +236,8 @@ def readcols(filename, header=False, sep="\t", skip=0):
     """
     with open(filename,"rb") as f:
         r = csv.reader(f, delimiter=sep)
-        for i in range(skip):
-            f.next()
-        if header:
-            if not getattr(header, '__iter__', False): # if not iterable
-                header = r.next() # then the first line is read as the header
+        for i in range(skip): f.next()
+        if header: header = r.next()
         rows = [row for row in r]
         if not header:
             header = range(1,len(rows[0])+1)
