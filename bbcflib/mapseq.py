@@ -661,6 +661,7 @@ def plot_stats(sample_stats,script_path="./"):
     stats_file = unique_filename_in()
     with open( stats_file, 'w' ) as f:
         json.dump(sample_stats,f)
+        f.write("\n")
     pdf_file = unique_filename_in()
     return {'arguments': ["R","--vanilla","--slave","-f",
                           os.path.join(script_path,"pdfstats.R"),
