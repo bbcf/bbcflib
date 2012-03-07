@@ -357,11 +357,11 @@ class Assembly(object):
 
     def get_features_from_gtf(self,h,chr=None):
         '''
-        Returns a dictionary *data* of the form
+        Return a dictionary *data* of the form
         {key:[[values],[values],...]} containing the result of an SQL request which
         parameters are given as a dictionary *h*. All [values] correspond to a line in the SQL.
 
-        :param chr: (list of str) chromosomes on which to perform the request. By default, 
+        :param chr: (str, or list of str) chromosomes on which to perform the request. By default, 
         every chromosome is searched.
 
         Available keys for h, and possible values:
@@ -375,7 +375,7 @@ class Assembly(object):
         * holds for any column name in the database
         # holds for any value in the database
 
-        None: giving several field names to "keys" permits to select unique combinations of these fields.
+        Note: giving several field names to "keys" permits to select unique combinations of these fields.
         The corresponding keys of *data* are a concatenation (by ';') of these fields.
         '''
         data = {}

@@ -7,7 +7,7 @@ Methods of the bbcflib's RNA-seq worflow. The main function is ``rnaseq_workflow
 and is usually called by bbcfutils' ``run_rnaseq.py``, e.g. command-line:
 
 ``python run_rnaseq.py -v lsf -c config_files/gapdh.txt -d rnaseq -p transcripts``
-``python run_rnaseq.py -v lsf -c config_files/rnaseq2.txt -d rnaseq -p transcripts -u -m ../mapseq2``
+``python run_rnaseq.py -v lsf -c config_files/rnaseq2.txt -d rnaseq -p transcripts -m ../mapseq2``
 
 From a BAM file produced by an alignement on the **exonome**, gets counts of reads
 on the exons, add them to get counts on genes, and uses least-squares to infer
@@ -20,11 +20,10 @@ The annotation of the bowtie index has to be consistent to that of the database 
 import os, pysam, math
 from operator import itemgetter
 
-import track
-
 # Internal modules #
 from bbcflib.common import writecols, set_file_descr, unique_filename_in
 from bbcflib import mapseq, genrep
+import track
 
 # Other modules #
 import numpy
@@ -299,10 +298,10 @@ def genes_expression(exons_data, exon_lengths, gene_mapping, exon_to_gene, ncond
     for e,c in zip(exons_data[0],zip(*exons_data[1:2*ncond+1])):
         g = exon_to_gene[e]
         gcounts[g] += round(c[:ncond],2)
-	try: # Let's avoid errors of that kind until the article id done
-	    ratio = exon_lengths[e]/gene_mapping[g][3]
-	    grpkm[g] += ratio*round(c[ncond:],2)
-	except KeyError, ZeroDivisionError: pass
+        try: # Let's avoid errors of that kind until the article is done
+            ratio = exon_lengths[e]/gene_mapping[g][3]
+            grpkm[g] += ratio*round(c[ncond:],2)
+        except KeyError, ZeroDivisionError: pass
     return gcounts, grpkm
 
 #@timer
@@ -486,7 +485,7 @@ def rnaseq_workflow(ex, job, bam_files, pileup_level=["exons","genes","transcrip
             k +=1
             cond = group_names[gid]+'.'+str(k)
             unmapped_fastq[cond] = bam_files[gid][rid].get('unmapped_fastq')
-            if unmapped_fastq[cond]:
+            if unmapped_fastq[cond] and os.path.exists(unmapped_fastq[cond]):
                 print "Add splice junction reads for run %s.%s" % (gid,rid)
                 assert os.path.exists(refseq_path+".1.ebwt"), "Refseq index not found: %s" % refseq_path+".1.ebwt"
                 unmapped_bam[cond] = mapseq.map_reads(ex, unmapped_fastq[cond], {}, refseq_path, \
@@ -578,12 +577,27 @@ def rnaseq_workflow(ex, job, bam_files, pileup_level=["exons","genes","transcrip
         trans_data = [transID]+list(zip(*tcounts))+list(zip(*trpkm))+[tstart,tend,genesID,genesName,tchr]
         trans_file = save_results(ex, trans_data, conditions, group_ids, assembly, header=header, feature_type="TRANSCRIPTS")
 
-    # Testing
-    # "ENSMUSG00000057666" "ENSG00000111640": TEST Gapdh
-    # for g in list(set(genesID)):
-    #     print sum(gcounts[g]), sum([sum(tcounts[t]) for t in trans_in_gene[g]])
+    return {"exons":exons_file, "genes":genes_file, "transcripts":trans_file}
 
-    return (exons_file, genes_file, trans_file)
+
+def clean_deseq_output(filename):
+    filename_clean = unique_filename_in()
+    with open(filename,"rb") as f:
+        with open(filename_clean,"wb") as g:
+            contrast = f.readline()
+            header = f.readline()
+            g.write(contrast+header)
+            for line in f:
+                line = line.split("\t")[1:]
+                if not (line[2]=="0" and line[3]=="0"):
+                    meanA = float(line[2]) or 0.5
+                    meanB = float(line[3]) or 0.5
+                    fold = meanB/meanA
+                    log2fold = math.log(fold,2)
+                    line[2] = str(meanA); line[3] = str(meanB); line[4] = str(fold); line[5] = str(log2fold)
+                    line = '\t'.join(line)
+                    g.write(line)
+    return filename_clean
 
 #------------------------------------------------------#
 # This code was written by Julien Delafontaine         #
