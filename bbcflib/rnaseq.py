@@ -6,7 +6,7 @@ Module: bbcflib.rnaseq
 Methods of the bbcflib's RNA-seq worflow. The main function is ``rnaseq_workflow()``,
 and is usually called by bbcfutils' ``run_rnaseq.py``, e.g. command-line:
 
-``python run_rnaseq.py -v lsf -c config_files/gapdh.txt -d rnaseq -p transcripts``
+``python run_rnaseq.py -v lsf -c config_files/gapkowt.txt -d rnaseq -p transcripts,genes``
 ``python run_rnaseq.py -v lsf -c config_files/rnaseq2.txt -d rnaseq -p transcripts -m ../mapseq2``
 
 From a BAM file produced by an alignement on the **exonome**, gets counts of reads
@@ -24,6 +24,7 @@ from operator import itemgetter
 from bbcflib.common import writecols, set_file_descr, unique_filename_in
 from bbcflib import mapseq, genrep
 import track
+from bein import program
 
 # Other modules #
 import numpy
@@ -534,7 +535,7 @@ def rnaseq_workflow(ex, job, bam_files, pileup_level=["exons","genes","transcrip
     ends = asarray(ends, dtype=numpy.float_)
     nreads = asarray([nreads[cond] for cond in conditions], dtype=numpy.float_)
     counts = asarray([exon_pileups[cond] for cond in conditions], dtype=numpy.float_)
-    counts, sf = estimate_size_factors(counts)
+    #counts, sf = estimate_size_factors(counts)
     rpkm = 1000*(1e6*counts.T/nreads).T/(ends-starts)
 
     hconds = ["counts."+c for c in conditions] + ["rpkm."+c for c in conditions]
@@ -580,7 +581,35 @@ def rnaseq_workflow(ex, job, bam_files, pileup_level=["exons","genes","transcrip
     return {"exons":exons_file, "genes":genes_file, "transcripts":trans_file}
 
 
+#-------------------------- DIFFERENTIAL ANALYSIS ----------------------------#
+
+@program
+def run_glm(rpath, data_file, options=[]):
+    """Run negbin.test.R"""
+    output_file = unique_filename_in()
+    options += ["-o",output_file]
+    script_path = os.path.join(rpath,'negbin.test.R')
+    return {'arguments': ["R","--slave","-f",script_path,"--args",data_file]+options,
+            'return_value': output_file}
+
+def clean_before_deseq(filename):
+    """Delete all lines of *filename* where counts are 0 in every run."""
+    filename_clean = unique_filename_in()
+    with open(filename,"rb") as f:
+        with open(filename_clean,"wb") as g:
+            header = f.readline()
+            g.write(header)
+            ncond = sum([h.split('.').count("counts") for h in header.split('\t')])
+            for line in f:
+                goodline = line.split("\t")[1:]
+                scores = [float(x) for x in goodline[:ncond]]
+                if any(scores):
+                    g.write(line)
+    return filename_clean
+
 def clean_deseq_output(filename):
+    """Delete all lines of *filename* with NA's everywhere, and add 0.5 to zero scores
+    before recalculating fold change."""
     filename_clean = unique_filename_in()
     with open(filename,"rb") as f:
         with open(filename_clean,"wb") as g:
@@ -598,6 +627,31 @@ def clean_deseq_output(filename):
                     line = '\t'.join(line)
                     g.write(line)
     return filename_clean
+
+def differential_analysis(ex, result, rpath, design=None, contrast=None):
+    """For each file in *result*, launches an analysis of differential expression on the count
+    values, and saves the output in the MiniLIMS.
+
+    :param ex: the bein's execution.
+    :param result: dictionary {type:filename} as returned by rnaseq_workflow.
+    :param rpath: path to the R scripts (negbin.test.R).
+    :param design: name of the file containing the design matrix.
+    :param contrast: name of the file containing the contrasts matrix.
+    """
+    for type,res_file in result.iteritems():
+        if res_file and rpath and os.path.exists(rpath):
+            res_file = clean_before_deseq(res_file)
+            options = ['-s','tab']
+            if design: options += ['-d',design]
+            if contrast: options += ['-c', contrast]
+            try:
+                glmfile = run_glm(ex, rpath, res_file, options)
+                output_files = [f for f in os.listdir(ex.working_directory) if glmfile in f]
+                for o in output_files:
+                    desc = set_file_descr(type+"_differential"+o.split(glmfile)[1]+".txt", step='stats', type='txt')
+                    o = clean_deseq_output(o)
+                    ex.add(o, description=desc)
+            except: print "Skipped differential analysis"
 
 #------------------------------------------------------#
 # This code was written by Julien Delafontaine         #
