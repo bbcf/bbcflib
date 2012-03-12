@@ -601,15 +601,15 @@ def clean_before_deseq(filename):
             g.write(header)
             ncond = sum([h.split('.').count("counts") for h in header.split('\t')])
             for line in f:
-                goodline = line.split("\t")[1:]
-                scores = [float(x) for x in goodline[:ncond]]
+                goodline = line.split("\t")[1:1+ncond]
+                scores = [float(x) for x in goodline]
                 if any(scores):
                     g.write(line)
     return filename_clean
 
 def clean_deseq_output(filename):
-    """Delete all lines of *filename* with NA's everywhere, and add 0.5 to zero scores
-    before recalculating fold change."""
+    """Delete all lines of *filename* with NA's everywhere, add 0.5 to zero scores
+    before recalculating fold change, and remove rows' ids."""
     filename_clean = unique_filename_in()
     with open(filename,"rb") as f:
         with open(filename_clean,"wb") as g:
