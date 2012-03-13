@@ -43,7 +43,7 @@ def sam_pileup(job,bamfile,refGenome,via='lsf'):
     return {"arguments": ["samtools","pileup","-B","-cvsf",refGenome,"-N",str(ploidy),bamfile],
              "return_value": [minCoverage,minSNP]}
 
-def parse_pileupFile(ex,job,dictPileupFile,allSNPpos,via='lsf',minCoverage=80,minSNP=10):
+def parse_pileupFile(ex,job,dictPileupFile,allSNPpos,minCoverage=80,minSNP=10,via='lsf'):
     formatedPileupFilename=unique_filename_in()
     pos=open(allSNPpos,'rb')
     posSNP=pos.readlines()
