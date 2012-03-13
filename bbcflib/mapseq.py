@@ -73,14 +73,14 @@ Below is the script used by the frontend::
 import os, re, json, shutil, gzip, tarfile, bz2, pickle, urllib, time
 
 # Internal modules #
-from . import frontend, genrep, daflims
+from bbcflib import frontend, genrep, daflims
 from bbcflib.common import cat, set_file_descr, merge_sql, gzipfile, unique_filename_in
-from .track import Track, new
+from bbcflib.btrack import Track, new
 
 # Other modules #
 import pysam
-from bein       import  program, ProgramFailed, MiniLIMS
-from bein.util  import  add_pickle, touch, split_file, count_lines
+from bein import program, ProgramFailed, MiniLIMS
+from bein.util import add_pickle, touch, split_file, count_lines
 
 demultiplex_path = "/data/htsstation/demultiplexing/demultiplexing_minilims.files/"
 
@@ -143,6 +143,12 @@ def run_fastqc( ex, job, via='lsf' ):
                         description=set_file_descr(rname+"_fastqc.zip",**descr) )
     return None
 
+def _rewrite(input_file,output_file):
+    with open(output_file,'w') as g:
+        while True:
+            chunk = input_file.read(4096)
+            if chunk == '': break
+            else: g.write(chunk)
 
 def get_fastq_files( ex, job, dafl=None, set_seed_length=True):
     """
@@ -160,13 +166,6 @@ def get_fastq_files( ex, job, dafl=None, set_seed_length=True):
         is_bz2 = run.endswith(".bz2")
         if is_gz: run_strip = re.sub('.gz[ip]*','',run)
         if is_bz2: run_strip = re.sub('.bz[2]*','',run)
-
-        def _rewrite(input_file,output_file):
-            with open(output_file,'w') as g:
-                while True:
-                    chunk = input_file.read(4096)
-                    if chunk == '': break
-                    else: g.write(chunk)
 
         if run_strip.endswith(".tar"):
             mode = 'r'
@@ -662,6 +661,7 @@ def plot_stats(sample_stats,script_path="./"):
     stats_file = unique_filename_in()
     with open( stats_file, 'w' ) as f:
         json.dump(sample_stats,f)
+        f.write("\n")
     pdf_file = unique_filename_in()
     return {'arguments': ["R","--vanilla","--slave","-f",
                           os.path.join(script_path,"pdfstats.R"),
@@ -897,7 +897,7 @@ def map_groups( ex, job_or_dict, assembly_or_dict, map_args=None ):
                 add_pickle( ex, m['stats'], set_file_descr(name+"_filter_bamstat",**py_descr) )
             if 'unmapped' in m:
                 if isinstance(run,tuple):
-                    ex.add( m['unmapped'], description=set_file_descr(name+"_unmapped",**fqn_descr) )
+                    ex.add( m['unmapped'], description=set_file_descr(name+"_unmapped.fastq.gz",**fqn_descr) )
                     ex.add( m['unmapped']+"_1.gz", description=set_file_descr(name+"_unmapped_1.fastq.gz",**fq_descr),
                             associate_to_filename=m['unmapped'], template='%s_1.fastq.gz' )
                     ex.add( m['unmapped']+"_2.gz", description=set_file_descr(name+"_unmapped_2.fastq.gz",**fq_descr),
@@ -1245,16 +1245,12 @@ def get_bam_wig_files( ex, job, minilims=None, hts_url=None, suffix=['fwd','rev'
                         else:
                             fastq_loc = [MMS.path_to_file(allfiles[name+"_unmapped.fastq.gz"])]
                             fastqfiles = (fastqname,)
-                    for i,fqf in enumerate(fastq_loc):
-                        with open(fastqfiles[i],'w') as f:
+                        for i,fqf in enumerate(fastq_loc):
                             temp = gzip.open(fqf, 'rb')
-                            while True:
-                                chunk = temp.read(4096)
-                                if chunk == '': break
-                                else: f.write(chunk)
+                            _rewrite(temp,fastqfiles[i])
                             temp.close()
-                    if len(fastqfiles) == 1:
-                        fastqfiles = fastqfiles[0]
+                        if len(fastqfiles) == 1:
+                            fastqfiles = fastqfiles[0]
                 if name+"_Poisson_threshold" in allfiles:
                     pickle_thresh = allfiles[name+"_Poisson_threshold"]
                     with open(MMS.path_to_file(pickle_thresh)) as q:

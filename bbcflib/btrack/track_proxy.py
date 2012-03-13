@@ -1,6 +1,6 @@
 """
 ====================================
-Submodule: bbcflib.track.track_proxy
+Submodule: bbcflib.btrack.track_proxy
 ====================================
 
 Methods that create an SQL file upon opening in the temporary directory
@@ -18,9 +18,9 @@ and reconverts everything to a text file file upon closing, all transparently.
 import os, shutil
 
 # Internal modules #
-from bbcflib.track import Track, new
-from bbcflib.track.common import named_temporary_path, check_path
-from bbcflib.track.formats.sql import TrackFormat as TrackBackend
+from bbcflib.btrack import Track, new
+from bbcflib.btrack.common import named_temporary_path, check_path
+from bbcflib.btrack.formats.sql import TrackFormat as TrackBackend
 
 # Globals #
 backend_format = 'sql'

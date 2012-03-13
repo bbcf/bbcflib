@@ -1,6 +1,6 @@
 """
 ===================================
-Submodule: bbcflib.track.track_util
+Submodule: bbcflib.btrack.track_util
 ===================================
 
 Useful stuff for the track package.
@@ -17,7 +17,7 @@ Useful stuff for the track package.
 import os, sys, shlex
 
 # Internal modules #
-from bbcflib.track import formats
+from bbcflib.btrack import formats
 
 ###############################################################################
 def determine_format(path):

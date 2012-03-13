@@ -1,6 +1,6 @@
 """
 ===============================
-Submodule: bbcflib.track.common
+Submodule: bbcflib.btrack.common
 ===============================
 
 Common stuff for the track package.

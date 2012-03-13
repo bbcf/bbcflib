@@ -6,8 +6,8 @@ Module: bbcflib.rnaseq
 Methods of the bbcflib's RNA-seq worflow. The main function is ``rnaseq_workflow()``,
 and is usually called by bbcfutils' ``run_rnaseq.py``, e.g. command-line:
 
-``python run_rnaseq.py -v lsf -c config_files/gapdh.txt -d rnaseq -p transcripts``
-``python run_rnaseq.py -v lsf -c config_files/rnaseq2.txt -d rnaseq -p transcripts -u -m ../mapseq2``
+``python run_rnaseq.py -v lsf -c config_files/gapkowt.txt -d rnaseq -p transcripts,genes``
+``python run_rnaseq.py -v lsf -c config_files/rnaseq2.txt -d rnaseq -p transcripts -m ../mapseq2``
 
 From a BAM file produced by an alignement on the **exonome**, gets counts of reads
 on the exons, add them to get counts on genes, and uses least-squares to infer
@@ -24,6 +24,7 @@ from operator import itemgetter
 from bbcflib.common import writecols, set_file_descr, unique_filename_in
 from bbcflib import mapseq, genrep
 import track
+from bein import program
 
 # Other modules #
 import numpy
@@ -117,15 +118,17 @@ def lsqnonneg(C, d, x0=None, tol=None, itmax_factor=3):
     return (x, sum(resid*resid), resid)
 
 #@timer
-def fetch_mappings(assembly, path_to_map=None):
+def fetch_mappings(assembly):
     """Given an assembly ID, returns a tuple
     ``(gene_mapping, transcript_mapping, exon_mapping, trans_in_gene, exons_in_trans)``
 
-    * [0] gene_mapping is a dict ``{gene ID: (gene name,start,end,chromosome)}``
-    * [1] transcript_mapping is a dictionary ``{transcript ID: (gene ID,start,end,chromosome)}``
+    * [0] gene_mapping is a dict ``{gene ID: (gene name,start,end,length,chromosome)}``
+    * [1] transcript_mapping is a dictionary ``{transcript ID: (gene ID,start,end,length,chromosome)}``
     * [2] exon_mapping is a dictionary ``{exon ID: ([transcript IDs],gene ID,start,end,chromosome)}``
     * [3] trans_in_gene is a dict ``{gene ID: [IDs of the transcripts it contains]}``
     * [4] exons_in_trans is a dict ``{transcript ID: [IDs of the exons it contains]}``
+
+    'Lenghts' are always the sum of the lengths of the exons in the gene/transcript.
 
     :param path_or_assembly_id: can be a numeric or nominal ID for GenRep
     (e.g. 11, 76 or 'hg19' for H.Sapiens), or a path to a file containing a
@@ -180,18 +183,24 @@ def fusion(X):
     This is to avoid having overlapping coordinates of features from both DNA strands,
     which some genome browsers cannot handle for quantitative tracks.
     """
-    #for x in X: break # take first available element
     x = X.next()
     c = x[0]
     last = x[1]
     last_was_alone = True
+    last_had_same_end = False
     for y in X:
-        if y[1] <= x[2]:
-            if y[1]>last: # cheating, needed in case 3 features overlap, thanks to the annotation...
-                yield (c,last,y[1],x[3])
+        if y[1] < x[2]:             # y intersects x
+            last_had_same_end = False
+            if y[1] >= last: # cheating, needed in case 3 features overlap, thanks to the annotation...
+                if y[1] != last:    # y does not have same start as x
+                    yield (c,last,y[1],x[3])
                 if y[2] < x[2]:     # y is embedded in x
                     yield (c,y[1],y[2],x[3]+y[3])
                     last = y[2]
+                elif y[2] == x[2]:  # y has same end as x
+                    yield (c,y[1],y[2],x[3]+y[3])
+                    x = y
+                    last_had_same_end = True
                 else:               # y exceeds x
                     yield (c,y[1],x[2],x[3]+y[3])
                     last = x[2]
@@ -200,13 +209,18 @@ def fusion(X):
         else:                       # y is outside of x
             if last_was_alone:
                 yield x
+            elif last_had_same_end:
+                pass
             else:
                 yield (c,last,x[2],x[3])
             x = y
             last = x[1]
             last_was_alone = True
+            last_had_same_end = False
     if last_was_alone:
         yield x
+    elif last_had_same_end:
+        pass
     else:
         yield (c,last,x[2],x[3])
 
@@ -244,12 +258,12 @@ def save_results(ex, cols, conditions, group_ids, assembly, header=[], feature_t
             lines = zip(*[chromosomes,start,end,rpkm[group]])
             # SQL track
             with track.new(filename+'.sql') as t:
-                t.datatype = 'quantitative'
                 t.chrmeta = assembly.chrmeta
                 for chr in t.chrmeta:
-                    goodlines = [l for l in lines if (l[-1]!=0.0 and l[0]==chr)]
+                    goodlines = [l for l in lines if (l[3]!=0.0 and l[0]==chr)]
+                    [lines.remove(l) for l in goodlines]
                     if goodlines:
-                        goodlines.sort(key=lambda x: x[1]) # sort w.r.t start
+                        goodlines.sort(key=lambda x: itemgetter(1,2)) # sort w.r.t start
                         goodlines = fusion(iter(goodlines))
                         for x in goodlines:
                             t.write(x[0],[(x[1],x[2],x[3])],fields=["start","end","score"])
@@ -257,21 +271,22 @@ def save_results(ex, cols, conditions, group_ids, assembly, header=[], feature_t
                                          groupId=group_ids[group], gdv='1')
             ex.add(filename+'.sql', description=description)
             # UCSC-BED track
-            with track.load(filename+'.sql') as t:
-                t.convert(filename+'.bed','bed')
-            description = set_file_descr(feature_type.lower()+"_"+group+".bed", step="pileup", type="bed", \
+            track.convert(filename+'.sql',filename+'.bedGraph')
+            description = set_file_descr(feature_type.lower()+"_"+group+".bedGraph", step="pileup", type="bedGraph", \
                                          groupId=group_ids[group], ucsc='1')
-            ex.add(filename+'.bed', description=description)
+            ex.add(filename+'.bedGraph', description=description)
     print feature_type+": Done successfully."
     return output_tab
 
 #@timer
-def genes_expression(exons_data, exon_to_gene, ncond):
+def genes_expression(exons_data, exon_lengths, gene_mapping, exon_to_gene, ncond):
     """Get gene counts from exons counts.
 
     Returns two dictionaries, one for counts and one for rpkm, of the form ``{gene ID: score}``.
 
     :param exons_data: list of lists ``[exonsID, counts, rpkm, start, end, geneID, geneName]``.
+    :param exon_lengths: dictionary ``{exon ID: length}``
+    :param gene_mapping: dictionary ``{gene ID: (gene name,start,end,length,chromosome)}``
     :param exon_to_gene: dictionary ``{exon ID: gene ID}``.
     :param ncond: number of samples.
     """
@@ -279,13 +294,16 @@ def genes_expression(exons_data, exon_to_gene, ncond):
     z = numpy.zeros((len(genes),ncond))
     zz = numpy.zeros((len(genes),ncond))
     gcounts = dict(zip(genes,z))
-    grpk = dict(zip(genes,zz))
+    grpkm = dict(zip(genes,zz))
     round = numpy.round
     for e,c in zip(exons_data[0],zip(*exons_data[1:2*ncond+1])):
         g = exon_to_gene[e]
         gcounts[g] += round(c[:ncond],2)
-        grpk[g] += round(c[ncond:],2)
-    return gcounts, grpk
+        try: # Let's avoid errors of that kind until the article is done
+            ratio = exon_lengths[e]/gene_mapping[g][3]
+            grpkm[g] += ratio*round(c[ncond:],2)
+        except KeyError, ZeroDivisionError: pass
+    return gcounts, grpkm
 
 #@timer
 def transcripts_expression(exons_data, exon_lengths, transcript_mapping, trans_in_gene, exons_in_trans, ncond):
@@ -295,7 +313,7 @@ def transcripts_expression(exons_data, exon_lengths, transcript_mapping, trans_i
 
     :param exons_data: list of lists ``[exonsID, counts, rpkm, start, end, geneID, geneName, chromosome]``
     :param exon_lengths: dictionary ``{exon ID: length}``
-    :param transcript_mapping: dictionary ``{transcript ID: (gene ID, start, end, chromosome)}``
+    :param transcript_mapping: dictionary ``{transcript ID: (gene ID, start, end, length, chromosome)}``
     :param trans_in_gene: dictionary ``{gene ID: [transcript IDs it contains]}``
     :param exons_in_trans: dictionary ``{transcript ID: [exon IDs it contains]}``
     :param ncond: number of samples
@@ -436,11 +454,12 @@ def rnaseq_workflow(ex, job, bam_files, pileup_level=["exons","genes","transcrip
     exons = fetch_labels(bam_files[groups.keys()[0]][groups.values()[0]['runs'].keys()[0]]['bam'])
 
     """ Extract information from bam headers """
-    exonsID=[]; genesID=[]; genesName=[]; starts=[]; ends=[]; exon_lengths={}; exon_to_gene={}; badexons=[]
+    exonsID=[]; genesID=[]; genesName=[]; starts=[]; ends=[];
+    exon_lengths={}; exon_to_gene={}; badexons=[]
     for e in exons:
         (exon, gene, start, end, strand) = e[0].split('|')
         start = int(start); end = int(end)
-        if start!=end:
+        if end-start>1:
             starts.append(start)
             ends.append(end)
             exon_lengths[exon] = float(e[1])
@@ -451,7 +470,7 @@ def rnaseq_workflow(ex, job, bam_files, pileup_level=["exons","genes","transcrip
     [exons.remove(e) for e in badexons]
 
     print "Load mappings"
-    """ [0] gene_mapping is a dict ``{gene ID: (gene name,start,end,chromosome)}``
+    """ [0] gene_mapping is a dict ``{gene ID: (gene name,start,end,length,chromosome)}``
         [1] transcript_mapping is a dictionary ``{transcript ID: (gene ID,start,end,chromosome)}``
         [2] exon_mapping is a dictionary ``{exon ID: ([transcript IDs],gene ID,start,end,chromosome)}``
         [3] trans_in_gene is a dict ``{gene ID: [IDs of the transcripts it contains]}``
@@ -467,7 +486,7 @@ def rnaseq_workflow(ex, job, bam_files, pileup_level=["exons","genes","transcrip
             k +=1
             cond = group_names[gid]+'.'+str(k)
             unmapped_fastq[cond] = bam_files[gid][rid].get('unmapped_fastq')
-            if unmapped_fastq[cond]:
+            if unmapped_fastq[cond] and os.path.exists(unmapped_fastq[cond]):
                 print "Add splice junction reads for run %s.%s" % (gid,rid)
                 assert os.path.exists(refseq_path+".1.ebwt"), "Refseq index not found: %s" % refseq_path+".1.ebwt"
                 unmapped_bam[cond] = mapseq.map_reads(ex, unmapped_fastq[cond], {}, refseq_path, \
@@ -516,19 +535,17 @@ def rnaseq_workflow(ex, job, bam_files, pileup_level=["exons","genes","transcrip
     ends = asarray(ends, dtype=numpy.float_)
     nreads = asarray([nreads[cond] for cond in conditions], dtype=numpy.float_)
     counts = asarray([exon_pileups[cond] for cond in conditions], dtype=numpy.float_)
-    counts, sf = estimate_size_factors(counts)
+    #counts, sf = estimate_size_factors(counts)
     rpkm = 1000*(1e6*counts.T/nreads).T/(ends-starts)
-    #for i in range(len(counts.ravel())):
-    #    if counts.flat[i]==0: counts.flat[i] += 1.0 # if zero counts, add 1 for further comparisons
 
-    print "Get scores"
     hconds = ["counts."+c for c in conditions] + ["rpkm."+c for c in conditions]
-    genesName, echr = zip(*[(x[0],x[-1]) for x in [gene_mapping.get(g,("NA",)*4) for g in genesID]])
+    genesName, echr = zip(*[(x[0],x[-1]) for x in [gene_mapping.get(g,("NA",)*5) for g in genesID]])
     exons_data = [exonsID]+list(counts)+list(rpkm)+[starts,ends,genesID,genesName,echr]
     exons_file = None; genes_file = None; trans_file = None
 
     """ Print counts for exons """
     if "exons" in pileup_level:
+        print "Get scores of exons"
         exons_data = zip(*exons_data)
         exons_data = sorted(exons_data, key=itemgetter(7,4)) # sort w.r.t. chromosome, then start
         header = ["ExonID"] + hconds + ["Start","End","GeneID","GeneName","Chromosome"]
@@ -537,34 +554,104 @@ def rnaseq_workflow(ex, job, bam_files, pileup_level=["exons","genes","transcrip
 
     """ Get scores of genes from exons """
     if "genes" in pileup_level:
-        (gcounts, grpkm) = genes_expression(exons_data, exon_to_gene, len(conditions))
+        print "Get scores of genes"
+        (gcounts, grpkm) = genes_expression(exons_data, exon_lengths, gene_mapping, exon_to_gene, len(conditions))
         genesID = gcounts.keys()
-        genes_data = [[g,gcounts[g],grpkm[g]]+list(gene_mapping.get(g,("NA",)*4)) for g in genesID]
-        genes_data = sorted(genes_data, key=itemgetter(6,4)) # sort w.r.t. chromosome, then start
-        (genesID,gcounts,grpkm,gname,gstart,gend,gchr) = zip(*genes_data)
+        genes_data = [[g,gcounts[g],grpkm[g]]+list(gene_mapping.get(g,("NA",)*5)) for g in genesID]
+        genes_data = sorted(genes_data, key=itemgetter(7,4)) # sort w.r.t. chromosome, then start
+        (genesID,gcounts,grpkm,gname,gstart,gend,glen,gchr) = zip(*genes_data)
         header = ["GeneID"] + hconds + ["Start","End","GeneName","Chromosome"]
         genes_data = [genesID]+list(zip(*gcounts))+list(zip(*grpkm))+[gstart,gend,gname,gchr]
         genes_file = save_results(ex, genes_data, conditions, group_ids, assembly, header=header, feature_type="GENES")
 
     """ Get scores of transcripts from exons, using non-negative least-squares """
     if "transcripts" in pileup_level:
+        print "Get scores of transcripts"
         (tcounts, trpkm) = transcripts_expression(exons_data, exon_lengths,
                    transcript_mapping, trans_in_gene, exons_in_trans,len(conditions))
         transID = tcounts.keys()
         trans_data = [[t,tcounts[t],trpkm[t]]+list(transcript_mapping.get(t,("NA",)*5)) for t in transID]
         trans_data = sorted(trans_data, key=itemgetter(7,4)) # sort w.r.t. chromosome, then start
         (transID,tcounts,trpkm,genesID,tstart,tend,tlen,tchr) = zip(*trans_data)
-        genesName = [gene_mapping.get(g,("NA",)*4)[0] for g in genesID]
+        genesName = [gene_mapping.get(g,("NA",)*5)[0] for g in genesID]
         header = ["TranscriptID"] + hconds + ["Start","End","GeneID","GeneName","Chromosome"]
         trans_data = [transID]+list(zip(*tcounts))+list(zip(*trpkm))+[tstart,tend,genesID,genesName,tchr]
         trans_file = save_results(ex, trans_data, conditions, group_ids, assembly, header=header, feature_type="TRANSCRIPTS")
 
-    # Testing
-    # "ENSMUSG00000057666" "ENSG00000111640": TEST Gapdh
-    # for g in list(set(genesID)):
-    #     print sum(gcounts[g]), sum([sum(tcounts[t]) for t in trans_in_gene[g]])
+    return {"exons":exons_file, "genes":genes_file, "transcripts":trans_file}
 
-    return (exons_file, genes_file, trans_file)
+
+#-------------------------- DIFFERENTIAL ANALYSIS ----------------------------#
+
+@program
+def run_glm(rpath, data_file, options=[]):
+    """Run negbin.test.R"""
+    output_file = unique_filename_in()
+    options += ["-o",output_file]
+    script_path = os.path.join(rpath,'negbin.test.R')
+    return {'arguments': ["R","--slave","-f",script_path,"--args",data_file]+options,
+            'return_value': output_file}
+
+def clean_before_deseq(filename):
+    """Delete all lines of *filename* where counts are 0 in every run."""
+    filename_clean = unique_filename_in()
+    with open(filename,"rb") as f:
+        with open(filename_clean,"wb") as g:
+            header = f.readline()
+            g.write(header)
+            ncond = sum([h.split('.').count("counts") for h in header.split('\t')])
+            for line in f:
+                goodline = line.split("\t")[1:1+ncond]
+                scores = [float(x) for x in goodline]
+                if any(scores):
+                    g.write(line)
+    return filename_clean
+
+def clean_deseq_output(filename):
+    """Delete all lines of *filename* with NA's everywhere, add 0.5 to zero scores
+    before recalculating fold change, and remove rows' ids."""
+    filename_clean = unique_filename_in()
+    with open(filename,"rb") as f:
+        with open(filename_clean,"wb") as g:
+            contrast = f.readline()
+            header = f.readline()
+            g.write(contrast+header)
+            for line in f:
+                line = line.split("\t")[1:]
+                if not (line[2]=="0" and line[3]=="0"):
+                    meanA = float(line[2]) or 0.5
+                    meanB = float(line[3]) or 0.5
+                    fold = meanB/meanA
+                    log2fold = math.log(fold,2)
+                    line[2] = str(meanA); line[3] = str(meanB); line[4] = str(fold); line[5] = str(log2fold)
+                    line = '\t'.join(line)
+                    g.write(line)
+    return filename_clean
+
+def differential_analysis(ex, result, rpath, design=None, contrast=None):
+    """For each file in *result*, launches an analysis of differential expression on the count
+    values, and saves the output in the MiniLIMS.
+
+    :param ex: the bein's execution.
+    :param result: dictionary {type:filename} as returned by rnaseq_workflow.
+    :param rpath: path to the R scripts (negbin.test.R).
+    :param design: name of the file containing the design matrix.
+    :param contrast: name of the file containing the contrasts matrix.
+    """
+    for type,res_file in result.iteritems():
+        if res_file and rpath and os.path.exists(rpath):
+            res_file = clean_before_deseq(res_file)
+            options = ['-s','tab']
+            if design: options += ['-d',design]
+            if contrast: options += ['-c', contrast]
+            try:
+                glmfile = run_glm(ex, rpath, res_file, options)
+                output_files = [f for f in os.listdir(ex.working_directory) if glmfile in f]
+                for o in output_files:
+                    desc = set_file_descr(type+"_differential"+o.split(glmfile)[1]+".txt", step='stats', type='txt')
+                    o = clean_deseq_output(o)
+                    ex.add(o, description=desc)
+            except: print "Skipped differential analysis"
 
 #------------------------------------------------------#
 # This code was written by Julien Delafontaine         #

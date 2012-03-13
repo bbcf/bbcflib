@@ -10,7 +10,8 @@ a reference genome.
 
 from bein import *
 from bein.util import touch
-from bbcflib import daflims, genrep, frontend, email, gdv, track, createlib
+from bbcflib import daflims, genrep, frontend, email, gdv, createlib
+from bbcflib import btrack as track
 from bbcflib.mapseq import *
 from bbcflib.common import unique_filename_in, gzipfile
 import sys, getopt, os, json, re, time
@@ -285,7 +286,7 @@ def workflow_groups(ex, job, primers_dict, assembly, mapseq_files, mapseq_url, s
 		mergeBigWig(ex,bwFiles,mergedDensityFiles,assembly.name)
                 # convert result file to sql
 		mergedDensityFiles_sql=unique_filename_in()
-		with track.load(mergedDensityFiles,'bw') as t:
+		with track.load(mergedDensityFiles,'bigWig') as t:
 			t.convert(mergedDensityFiles_sql,'sql')
 		ex.add(mergedDensityFiles,description=set_file_descr("density_file_"+group['name']+"_merged.bw",groupId=gid,step="density",type="bw",ucsc="1"))
 		ex.add(mergedDensityFiles_sql,description=set_file_descr("density_file_"+group['name']+"_merged.sql ",groupId=gid,step="density",type="sql",gdv="1"))
@@ -353,10 +354,10 @@ def workflow_groups(ex, job, primers_dict, assembly, mapseq_files, mapseq_url, s
                         			resFiles.append(s)
 						res_tar.add(s)
 						if re.search("bedGraph$",s):
-							ex.add(s,description=set_file_descr(s,groupId=1,step="domainograms",type="bedGraph",ucsc="1",gdv="1"))
+							ex.add(s,description=set_file_descr(s,groupId=gid,step="domainograms",type="bedGraph",ucsc="1",gdv="1"))
 				
 			res_tar.close()
-        		ex.add(group['name']+"_domainogram.tar.gz",description=set_file_descr(group['name']+"_domainogram.tar.gz",groupId=1,step="domainograms",type="tgz"))
+        		ex.add(group['name']+"_domainogram.tar.gz",description=set_file_descr(group['name']+"_domainogram.tar.gz",groupId=gid,step="domainograms",type="tgz"))
 	
 
 

@@ -1,6 +1,6 @@
 """
 ====================================
-Submodule: bbcflib.track.formats.sql
+Submodule: bbcflib.btrack.formats.sql
 ====================================
 
 Implementation of the SQL format.
@@ -17,10 +17,10 @@ Implementation of the SQL format.
 import re, sqlite3
 
 # Internal modules #
-from bbcflib.track import Track
-from bbcflib.track.track_util import join_read_queries, make_cond_from_sel
-from bbcflib.track.extras.sql import TrackExtras
-from bbcflib.track.common import natural_sort, int_to_roman, roman_to_int
+from bbcflib.btrack import Track
+from bbcflib.btrack.track_util import join_read_queries, make_cond_from_sel
+from bbcflib.btrack.extras.sql import TrackExtras
+from bbcflib.btrack.common import natural_sort, int_to_roman, roman_to_int
 
 ################################################################################
 class TrackFormat(Track, TrackExtras):
