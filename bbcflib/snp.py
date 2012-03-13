@@ -34,10 +34,14 @@ def sam_pileup(job,bamfile,refGenome,via='lsf'):
 
     if(job.assembly_id == 'MLeprae_TN' or job.assembly_id == 'MSmeg_MC2_155' or job.assembly_id == 'MTb_H37Rv' or job.assembly_id == 'NA1000' or job.assembly_id == 'TB40-BAC4' ):
         ploidy=1
+        minSNP=10
+        minCoverage=80
     else:
         ploidy=2
+        minSNP=20
+        minCoverage=40
     return {"arguments": ["samtools","pileup","-B","-cvsf",refGenome,"-N",str(ploidy),bamfile],
-             "return_value": None}
+             "return_value": [minCoverage,minSNP]}
 
 def parse_pileupFile(ex,job,dictPileupFile,allSNPpos,via='lsf',minCoverage=80,minSNP=10):
     formatedPileupFilename=unique_filename_in()
@@ -103,6 +107,14 @@ def parse_pileupFile(ex,job,dictPileupFile,allSNPpos,via='lsf',minCoverage=80,mi
 
     return formatedPileupFilename
 
+def synonymous(ex,job,allSnp):
+    allCodon=unique_filename_in()
+    file=open(allSnp,'rb')
+    outfile=open(allCodon,'wb')
+    outfile.write(file.readline())
+    
+    return allCodon
+    
 
 def posAllUniqSNP(ex,job,dictPileupFile,minCoverage=80):
     allSNPpos=unique_filename_in()
