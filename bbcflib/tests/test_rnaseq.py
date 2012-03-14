@@ -248,8 +248,8 @@ class Test_Expressions2(unittest.TestCase):
         self.counts = numpy.array([[10,15,10]]) # [[cond1]]
         self.rpkms = numpy.array([[10/5.,15/5.,10/5.]])
         self.exons_data = [[e1,e2,e3]]+list(self.counts)+list(self.rpkms)+\
-               [[0.,5.,10],[5.,10.,15.],["g1"]*3,["gg1"]*3,["c"]*3]
-        self.transcript_mapping = {t1:("g1",0,10,10.,"c"), t2:("g1",5,15,10.,"c"), t3:("g1",0,15,15.,"c")}
+               [[0.,5.,10],[5.,10.,15.],["g1"]*3,["gg1"]*3,[c]*3]
+        self.transcript_mapping = {t1:(g1,0,10,10.,c), t2:(g1,5,15,10.,c), t3:(g1,0,15,15.,c)}
         self.gene_mapping = {g1:("gg1",0,9,9.,c)}
         self.exon_lengths = {e1:5., e2:5., e3:5.}
         self.exon_to_gene = {e1:g1, e2:g1, e3:g1}
@@ -284,14 +284,13 @@ class Test_Expressions3(unittest.TestCase):
     """Underdetermined system"""
     def setUp(self):
         e1="e1"; e2="e2"; e3="e3"; t1="t1"; t2="t2"; t3="t3"; t4="t4"; g1="g1"; c="c"
-
         self.ncond = 1
         self.counts = numpy.array([[10,15,10]]) # [[cond1]]
         self.rpkms = numpy.array([[10/5.,15/5.,10/5.]])
         self.exons_data = [[e1,e2,e3]]+list(self.counts)+list(self.rpkms)+\
-               [[0.,5.,10],[5.,10.,15.],["g1"]*3,["gg1"]*3,["c"]*3]
-        self.transcript_mapping = {t1:("g1",0,10,10.,"c"), t2:("g1",5,15,10.,"c"), \
-                                   t3:("g1",0,15,15.,"c"), t4:("g1",0,15,10.,"c")}
+               [[0.,5.,10],[5.,10.,15.],[g1]*3,["gg1"]*3,[c]*3]
+        self.transcript_mapping = {t1:(g1,0,10,10.,c), t2:(g1,5,15,10.,c), \
+                                   t3:(g1,0,15,15.,c), t4:(g1,0,15,10.,c)}
         self.gene_mapping = {g1:("gg1",0,9,9.,c)}
         self.exon_lengths = {e1:5., e2:5., e3:5.}
         self.exon_to_gene = {e1:g1, e2:g1, e3:g1}
@@ -322,8 +321,8 @@ class Test_Expressions4(unittest.TestCase):
         self.counts = numpy.array([[10.,10.,10.,10.]]) # [[cond1]]
         self.rpkms = numpy.array([[10/5.,10/5.,10/5.,10/5.]])
         self.exons_data = [[e1,e2,e3,e4]]+list(self.counts)+list(self.rpkms)+\
-               [[0,5,10,15],[5,10,15,20],["g1"]*4,["gg1"]*4,["c"]*4]
-        self.transcript_mapping = {t1:("g1",0,10,10.,"c"), t2:("g1",5,20,15.,"c"), t3:("g1",5,20,10.,"c")}
+               [[0,5,10,15],[5,10,15,20],[g1]*4,["gg1"]*4,[c]*4]
+        self.transcript_mapping = {t1:(g1,0,10,10.,c), t2:(g1,5,20,15.,c), t3:(g1,5,20,10.,c)}
         self.gene_mapping = {g1:("gg1",0,12,12.,c)}
         self.exon_lengths = {e1:5., e2:5., e3:5., e4:5.}
         self.exon_to_gene = {e1:g1, e2:g1, e3:g1, e4:g1}
@@ -353,8 +352,8 @@ class Test_Expressions5(unittest.TestCase):
         self.counts = numpy.array([[10.,10.,10.,10.,10.]]) # [[cond1]]
         self.rpkms = numpy.array([[10/5.,10/5.,10/5.,10/5.,10/5.]])
         self.exons_data = [[e1,e2,e3,e4,e5]]+list(self.counts)+list(self.rpkms)+\
-               [[0,5,10,15,20],[5,10,15,20,25],["g1"]*5,["gg1"]*5,["c"]*5]
-        self.transcript_mapping = {t1:("g1",0,15,10.,"c"), t2:("g1",10,25,15.,"c"), t3:("g1",5,25,10.,"c")}
+               [[0,5,10,15,20],[5,10,15,20,25],[g1]*5,["gg1"]*5,[c]*5]
+        self.transcript_mapping = {t1:(g1,0,15,10.,c), t2:(g1,10,25,15.,c), t3:(g1,5,25,10.,c)}
         self.gene_mapping = {g1:("gg1",0,15,15.,c)}
         self.exon_lengths = {e1:5., e2:5., e3:5., e4:5., e5:5.}
         self.exon_to_gene = {e1:g1, e2:g1, e3:g1, e4:g1, e5:g1}
@@ -374,6 +373,39 @@ class Test_Expressions5(unittest.TestCase):
         tcounts, trpkm = transcripts_expression(self.exons_data, self.exon_lengths, self.transcript_mapping,
                  self.trans_in_gene, self.exons_in_trans, self.ncond)
         self.assertGreater(sum(sum(tcounts.values()))/sum(sum(self.counts)), 0.9)
+
+class Test_Expressions_Solenne(unittest.TestCase):
+    def setUp(self):
+        e1="ENSMUSE00000139423"; e2="ENSMUSE00000139425"; t1="ENSMUST00000015723";
+        g1="ENSMUSG00000015579"; c="chr17"; gname="Nkx2-5"
+        self.ncond = 6
+        self.counts = numpy.array([[0,6.8],[0,10.6],[0,28.9],
+                                   [4.4,160.9],[1.9,87.2],[2.7,58.5]])
+        self.rpkms = numpy.array([[0,0.00691],[0,0.01077],[0,0.02937],
+                                  [0.008133,0.16352],[0.00351,0.08862],[0.00499,0.05945]])
+        self.exons_data = [[e1,e2]]+list(self.counts)+list(self.rpkms)+\
+               [[26978510,26976592],[26977970,26975609],[g1]*2,[gname]*2,[c]*2]
+        self.transcript_mapping = {t1:(g1,26975609,26978510,1525.,c)}
+        self.gene_mapping = {g1:(gname,26975609,26978510,2901.,c)}
+        self.exon_lengths = {e1:541., e2:984.}
+        self.exon_to_gene = {e1:g1, e2:g1}
+        self.trans_in_gene = {g1:[t1]}
+        self.exons_in_trans = {t1:[e1,e2]}
+        """
+        g1 |===.===.===|  6.8
+        t1 |-----------|  6.8
+             0      6.8
+           |e1-|   |-e2|
+        """
+    def test_transcripts_expression(self):
+        tcounts, trpkm = transcripts_expression(self.exons_data, self.exon_lengths, self.transcript_mapping,
+                 self.trans_in_gene, self.exons_in_trans, self.ncond)
+        # Exact solution, special case len(tg)==1
+        assert_almost_equal(tcounts["ENSMUST00000015723"], array([6.8,10.6,28.9,165.3,89.1,61.2])) #exact solution
+        self.assertAlmostEqual(sum(sum(tcounts.values())), sum(sum(self.counts))) #exact solution, special case len(tg)==1
+        # Pseudo-inverse solution
+        #assert_almost_equal(tcounts["ENSMUST00000015723"], array([7.25,11.31,30.83,175.52,94.7,64.78]))
+        #self.assertAlmostEqual(sum(sum(tcounts.values())), 384.39) #pinv solution
 
 
 class Test_others(unittest.TestCase):

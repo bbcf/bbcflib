@@ -34,6 +34,12 @@ numpy.set_printoptions(precision=3,suppress=True)
 numpy.seterr(divide='ignore')
 
 
+def positive(x):
+    """Set to zero all negative components of an array."""
+    for i in range(len(x)):
+        if x[i] < 0 : x[i] = 0
+    return x
+
 def lsqnonneg(C, d, x0=None, tol=None, itmax_factor=3):
     """Linear least squares with nonnegativity constraints (NNLS), based on MATLAB's lsqnonneg function.
 
@@ -69,8 +75,8 @@ def lsqnonneg(C, d, x0=None, tol=None, itmax_factor=3):
     if tol is None: tol = 10*eps*norm1(C)*(max(C.shape)+1)
     C = asarray(C)
     (m,n) = C.shape
-    P = numpy.zeros(n)
-    Z = ZZ = numpy.arange(1, n+1)
+    P = numpy.zeros(n)            # sets of indices, empty for now
+    Z = ZZ = numpy.arange(1, n+1) # sets of indices, will be transferred to P
     if x0 is None or any(x0 < 0): x=P
     else: x=x0
     resid = d - numpy.dot(C, x)
@@ -91,7 +97,10 @@ def lsqnonneg(C, d, x0=None, tol=None, itmax_factor=3):
         CP[:, PP-1] = C[:, PP-1] # CP[:,j] is C[:,j] if j in P, or 0 if j in Z
         CP[:, ZZ-1] = numpy.zeros((m, msize(ZZ, 1)))
         z=numpy.dot(numpy.linalg.pinv(CP), d) # solution of least-squares min||d-CPx||
-        z[ZZ-1] = numpy.zeros((msize(ZZ,1), msize(ZZ,0)))
+        if len(ZZ) == 0:
+            return (positive(z), sum(resid*resid), resid)
+        else:
+            z[ZZ-1] = numpy.zeros((msize(ZZ,1), msize(ZZ,0)))
 
         # inner loop to remove elements from the positve set which no longer belong
         while numpy.any(z[PP-1] <= tol): # if z_j>0 for all j, set x=z and return to outer loop
@@ -252,6 +261,7 @@ def save_results(ex, cols, conditions, group_ids, assembly, header=[], feature_t
         for i in range(ncond):
             group = conditions[i].split('.')[0]
             nruns = groups.count(group)
+            #mean of all replicates in the group
             rpkm[group] = asarray(rpkm.get(group,zeros(len(start)))) + asarray(cols[i+ncond+1]) / nruns
             output_sql[group] = output_sql.get(group,unique_filename_in())
         for group,filename in output_sql.iteritems():
@@ -326,10 +336,11 @@ def transcripts_expression(exons_data, exon_lengths, transcript_mapping, trans_i
     z = numpy.zeros((len(transcripts),ncond))
     zz = numpy.zeros((len(transcripts),ncond))
     trans_counts = dict(zip(transcripts,z))
-    trans_rpk = dict(zip(transcripts,zz))
+    trans_rpkm = dict(zip(transcripts,zz))
     exons_counts = dict(zip( exons_data[0], zip(*exons_data[1:ncond+1])) )
-    exons_rpk = dict(zip( exons_data[0], zip(*exons_data[ncond+1:2*ncond+1])) )
+    exons_rpkm = dict(zip( exons_data[0], zip(*exons_data[ncond+1:2*ncond+1])) )
     totalerror = 0; unknown = 0; #alltranscount=0; allexonscount=0;
+    pinv = numpy.linalg.pinv
     for g in genes:
         if trans_in_gene.get(g): # if the gene is (still) in the Ensembl database
             # Get all transcripts in the gene
@@ -354,16 +365,22 @@ def transcripts_expression(exons_data, exon_lengths, transcript_mapping, trans_i
                 if exons_counts.get(e) is not None:
                     for c in range(ncond):
                         ec[c][i] += exons_counts[e][c]
-                        er[c][i] += exons_rpk[e][c]
+                        er[c][i] += exons_rpkm[e][c]
+            # If only one transcript, special case for more precision
+            if len(tg) == 1:
+                for c in range(ncond):
+                    trans_counts[t][c] = round(sum(ec[c]),2)
+                    R = numpy.asarray([l[0] for l in L])
+                    trans_rpkm[t][c] = round(sum(R*er[c]),5)
+                continue
             # Compute transcript scores
             tc = []; tr = []
             for c in range(ncond):  # - rpkm
                 Er = er[c]
                 tol = 10*2.22e-16*numpy.linalg.norm(M,1)*(max(M.shape)+1)
                 try: Tr, resnormr, resr = lsqnonneg(M,Er,tol=100*tol)
-                except: Tr = zeros(len(tg)) # Bad idea
+                except: Tr = round(positive(pinv(M,Er)), 5)
                 tr.append(Tr)
-            #N = M
             M = numpy.vstack((M,numpy.ones(M.shape[1]))) # add constraint |E| = |T|
             L = numpy.vstack((L,numpy.ones(M.shape[1])))
             N = M*L
@@ -372,15 +389,15 @@ def transcripts_expression(exons_data, exon_lengths, transcript_mapping, trans_i
                 Ec = numpy.hstack((Ec,asarray(sum(Ec))))
                 tol = 10*2.22e-16*numpy.linalg.norm(N,1)*(max(N.shape)+1)
                 try: Tc, resnormc, resc = lsqnonneg(N,Ec,tol=100*tol)
-                except: Tc = zeros(len(tg)) # Bad idea
+                except: Tc = round(positive(pinv(N,Ec)), 2)
                 tc.append(Tc)
                 totalerror += math.sqrt(resnormc)
             # Store results in a dict *tcounts*/*trpk*
             for k,t in enumerate(tg):
-                if trans_rpk.get(t) is not None:
+                if trans_rpkm.get(t) is not None:
                     for c in range(ncond):
                         trans_counts[t][c] = round(tc[c][k], 2)
-                        trans_rpk[t][c] = round(tr[c][k], 2)
+                        trans_rpkm[t][c] = round(tr[c][k], 5)
             # Testing
             #total_trans_c = sum([sum(trans_counts[t]) for t in tg]) or 0
             #total_exons_c = sum([sum(ec[c]) for c in range(ncond)]) or 0
@@ -395,7 +412,7 @@ def transcripts_expression(exons_data, exon_lengths, transcript_mapping, trans_i
     #       % (alltranscount,allexonscount,alltranscount/allexonscount)
     #except ZeroDivisionError: pass
     #print "\t Total error (sum of resnorms):", totalerror
-    return trans_counts, trans_rpk
+    return trans_counts, trans_rpkm
 
 def estimate_size_factors(counts):
     """
