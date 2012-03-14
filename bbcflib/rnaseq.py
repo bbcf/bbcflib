@@ -75,8 +75,8 @@ def lsqnonneg(C, d, x0=None, tol=None, itmax_factor=3):
     if tol is None: tol = 10*eps*norm1(C)*(max(C.shape)+1)
     C = asarray(C)
     (m,n) = C.shape
-    P = numpy.zeros(n)            # sets of indices, empty for now
-    Z = ZZ = numpy.arange(1, n+1) # sets of indices, will be transferred to P
+    P = numpy.zeros(n)            # set P of indices, empty for now
+    Z = ZZ = numpy.arange(1, n+1) # set Z of indices, will be transferred to P
     if x0 is None or any(x0 < 0): x=P
     else: x=x0
     resid = d - numpy.dot(C, x)
@@ -90,14 +90,14 @@ def lsqnonneg(C, d, x0=None, tol=None, itmax_factor=3):
         t = w[ZZ-1].argmax() # find an index t s.t. w_t = max(w)
         t = ZZ[t]
         P[t-1]=t # move the index t from set Z to set P
-        Z[t-1]=0
-        PP = numpy.where(P != 0)[0]+1 # set P of indices
-        ZZ = numpy.where(Z != 0)[0]+1 # set Z of indices
+        Z[t-1]=0 # Z becomes [0] if n=1
+        PP = numpy.where(P != 0)[0]+1 # index of first non-zero element of P, +1 (-1 later)
+        ZZ = numpy.where(Z != 0)[0]+1 # index of first non-zero element of Z, +1 (-1 later)
         CP = numpy.zeros(C.shape)
         CP[:, PP-1] = C[:, PP-1] # CP[:,j] is C[:,j] if j in P, or 0 if j in Z
         CP[:, ZZ-1] = numpy.zeros((m, msize(ZZ, 1)))
         z=numpy.dot(numpy.linalg.pinv(CP), d) # solution of least-squares min||d-CPx||
-        if len(ZZ) == 0:
+        if isinstance(ZZ,numpy.ndarray) and len(ZZ) == 0: # if Z = [0], ZZ = [] and makes it fail
             return (positive(z), sum(resid*resid), resid)
         else:
             z[ZZ-1] = numpy.zeros((msize(ZZ,1), msize(ZZ,0)))
