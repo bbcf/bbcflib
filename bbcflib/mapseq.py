@@ -75,7 +75,7 @@ import os, re, json, shutil, gzip, tarfile, bz2, pickle, urllib, time
 # Internal modules #
 from bbcflib import frontend, genrep, daflims
 from bbcflib.common import cat, set_file_descr, merge_sql, gzipfile, unique_filename_in
-from bbcflib.btrack import Track, new
+import bbcflib.btrack as track
 
 # Other modules #
 import pysam
@@ -143,12 +143,6 @@ def run_fastqc( ex, job, via='lsf' ):
                         description=set_file_descr(rname+"_fastqc.zip",**descr) )
     return None
 
-def _rewrite(input_file,output_file):
-    with open(output_file,'w') as g:
-        while True:
-            chunk = input_file.read(4096)
-            if chunk == '': break
-            else: g.write(chunk)
 
 def get_fastq_files( ex, job, dafl=None, set_seed_length=True):
     """
@@ -166,6 +160,13 @@ def get_fastq_files( ex, job, dafl=None, set_seed_length=True):
         is_bz2 = run.endswith(".bz2")
         if is_gz: run_strip = re.sub('.gz[ip]*','',run)
         if is_bz2: run_strip = re.sub('.bz[2]*','',run)
+
+        def _rewrite(input_file,output_file):
+            with open(output_file,'w') as g:
+                while True:
+                    chunk = input_file.read(4096)
+                    if chunk == '': break
+                    else: g.write(chunk)
 
         if run_strip.endswith(".tar"):
             mode = 'r'
@@ -918,36 +919,6 @@ def map_groups( ex, job_or_dict, assembly_or_dict, map_args=None ):
     add_pickle( ex, file_names, set_file_descr('file_names',step='bowtie',type='py',view='admin',comment='pickle file') )
     return processed
 
-############################################################
-#@program
-#def wigToBigWig( sql ):
-#    """Binds ``wigToBigWig`` from the UCSC tools.
-#    """
-#    import sqlite3
-#    chrsizes = unique_filename_in()
-#    chromosomes = []
-#    connection = sqlite3.connect( sql )
-#    cur = connection.cursor()
-#    with open(chrsizes,'w') as f:
-#        cur = connection.cursor()
-#        cur.execute('select * from chrNames')
-#        connection.commit()
-#        for sql_row in cur:
-#            chromosomes.append(sql_row[0])
-#            f.write(' '.join([str(x) for x in sql_row])+"\n")
-#        cur.close()
-#    bedgraph = unique_filename_in()
-#    with open(bedgraph,'w') as f:
-#        for c in chromosomes:
-#            cur.execute('select * from "'+c+'"')
-#            connection.commit()
-#            for sql_row in cur:
-#                f.write("\t".join([c]+[str(x) for x in sql_row])+"\n")
-#            cur.close()
-#    bigwig = unique_filename_in()
-#    return {"arguments": ['wigToBigWig',bedgraph,chrsizes,bigwig],
-#            "return_value": bigwig}
-
 @program
 def bam_to_density( bamfile, output, chromosome_accession=None, chromosome_name=None,
                     nreads=-1, merge=-1, read_extension=-1, convert=True, sql=False,
@@ -1052,39 +1023,28 @@ def parallel_density_sql( ex, bamfile, chromosomes,
     chrlist = dict((v['name'], {'length': v['length']}) for v in chromosomes.values())
     output = unique_filename_in()
     touch(ex,output)
+    trackargs = {'fields': ['start','end','score'],
+                 'chrmeta': chrlist,
+                 'info': {'datatype':'quantitative'}}
     if merge < 0:
-        def _wig(infile,strnd="+"):
-            for row in infile:
-                r = row.split("\t")
-                if len(r)>5 and r[5][0] == strnd:
-                    yield((int(r[1]),int(r[2]),float(r[4])))
-        with new(output+"rev.sql",datatype="quantitative",chrmeta=chrlist) as trev:
-            with new(output+"fwd.sql",datatype="quantitative",chrmeta=chrlist) as tfwd:
-                for k,v in chromosomes.iteritems():
-                    try:
-                        wig = str(futures[k].wait())
-                        with open(wig,"r") as f:
-                            tfwd.write(v['name'],_wig(f,"+"))
-                        with open(wig,"r") as f:
-                            trev.write(v['name'],_wig(f,"-"))
-                    except (ProgramFailed, IOError):
-                        tfwd.write(v['name'],[])
-                        trev.write(v['name'],[])
+        trev = track.track(output+"rev.sql",**trackargs)
+        tfwd = track.track(output+"fwd.sql",**trackargs)
+        for k,v in chromosomes.iteritems():
+            wig = str(futures[k].wait())
+            if os.path.exists(wig) and os.path.getsize(wig):
+                twig = track.track(wig,format='bed')
+                trev.write(twig.read(selection={'strand':'-'}))
+                tfwd.write(twig.read(selection={'strand':'+'}))
+        trev.close()
+        tfwd.close()
     else:
-        def _bedgr(infile):
-            for row in infile:
-                if not row.startswith('track'):
-                    r = row.split("\t")
-                    if len(r)>3:
-                        yield((int(r[1]),int(r[2]),float(r[3])))
-        with new(output+"merged.sql",datatype="quantitative",chrmeta=chrlist) as tboth:
-            for k,v in chromosomes.iteritems():
-                try:
-                    bedgr = str(futures[k].wait())
-                    with open(bedgr,"r") as f:
-                        tboth.write(v['name'],_bedgr(f))
-                except (ProgramFailed, IOError):
-                    tboth.write(v['name'],[])
+        tboth = track.track(output+"merged.sql",**trackargs)
+        for k,v in chromosomes.iteritems():
+            wig = str(futures[k].wait())
+            if os.path.exists(wig) and os.path.getsize(wig):
+                twig = track.track(wig,format='bedgraph')
+                tboth.write(twig.read())
+        tboth.close()
     return output
 
 ############################################################
@@ -1157,9 +1117,8 @@ def densities_groups( ex, job_or_dict, file_dict, chromosomes, via='lsf' ):
              for s in suffixes]
         if len(mapped)>1:
             merged_bam = merge_bam(ex, [m['bam'] for m in mapped.values()])
-            ids = [m['libname'] for m in mapped.values()]
-            merged_wig = dict((s,
-                               merge_sql(ex, [x+s+".sql" for x in wig], ids,via='local'))
+#            ids = [m['libname'] for m in mapped.values()]
+            merged_wig = dict((s, merge_sql(ex, [x+s+".sql" for x in wig], via=via))
                               for s in suffixes)
             [ex.add( merged_wig[s], description=set_file_descr(group_name+"_"+s+".sql",**pars1) ) for s in suffixes]
         else:
@@ -1170,8 +1129,7 @@ def densities_groups( ex, job_or_dict, file_dict, chromosomes, via='lsf' ):
         if ucsc_bigwig:
             out = unique_filename_in()
             for s in suffixes:
-                with Track(merged_wig[s]) as t:
-                    t.convert(out+s,"bigWig")
+                track.convert(merged_wig[s],(out+s,"bigWig"))
                 ex.add(out+s,
                        description=set_file_descr(group_name+"_"+s+".bw",groupId=gid,step='density',type='bigWig',ucsc='1'))
     processed.update({'read_extension': options.get('read_extension',-1),
@@ -1246,12 +1204,16 @@ def get_bam_wig_files( ex, job, minilims=None, hts_url=None, suffix=['fwd','rev'
                         else:
                             fastq_loc = [MMS.path_to_file(allfiles[name+"_unmapped.fastq.gz"])]
                             fastqfiles = (fastqname,)
-                        for i,fqf in enumerate(fastq_loc):
+                    for i,fqf in enumerate(fastq_loc):
+                        with open(fastqfiles[i],'w') as f:
                             temp = gzip.open(fqf, 'rb')
-                            _rewrite(temp,fastqfiles[i])
+                            while True:
+                                chunk = temp.read(4096)
+                                if chunk == '': break
+                                else: f.write(chunk)
                             temp.close()
-                        if len(fastqfiles) == 1:
-                            fastqfiles = fastqfiles[0]
+                    if len(fastqfiles) == 1:
+                        fastqfiles = fastqfiles[0]
                 if name+"_Poisson_threshold" in allfiles:
                     pickle_thresh = allfiles[name+"_Poisson_threshold"]
                     with open(MMS.path_to_file(pickle_thresh)) as q:

@@ -202,8 +202,7 @@ class Assembly(object):
         or a list [['chr',start1,end1],['chr',start2,end2]],
         will simply iterate through its items instead of loading a track from file.
         """
-        from bbcflib.btrack import load
-        from bbcflib.btrack.extras.sql import TrackExtras
+        from bbcflib import btrack as track
         if out == None:
             out = unique_filename_in()
         def _push_slices(slices,start,end,name,cur_chunk):
@@ -249,13 +248,13 @@ class Assembly(object):
                 size += cur_chunk
                 slices = _flush_slices(slices,cid[0],chrom['name'],out)
         else:
-            with load(regions, chrmeta=chrlist) as t:
+            with track.track(regions, chrmeta=chrlist) as t:
                 cur_chunk = 0
                 for cid,chrom in self.chromosomes.iteritems():
                     if shuffled:
-                        features = t.read_shuffled(chrom['name'], repeat_number=1, fields=["start","end","name"])
+                        features = t.read_shuffled(repeat_number=1, selection=chrom['name'], fields=["start","end","name"])
                     else:
-                        features = t.read(chrom['name'], fields=["start","end","name"])
+                        features = t.read(selection=chrom['name'], fields=["start","end","name"])
                     for row in features:
                         s = max(row[0],0)
                         e = min(row[1],chrom['length'])
@@ -555,7 +554,9 @@ class Assembly(object):
             data = self.get_features_from_gtf(h) 
             for k,v in data.iteritems():
                 trans_in_gene[str(k)] = [str(x[0]) for x in v]
+
         return trans_in_gene
+
 
     @property
     def chrmeta(self):

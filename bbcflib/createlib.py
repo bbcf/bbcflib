@@ -7,7 +7,7 @@ Functions used for the creation of a library in a 4c-seq analysis.
 """
 
 from bein import program
-from bbcflib.btrack import Track, new
+import bbcflib.btrack as track
 from bbcflib import genrep
 from bbcflib.common import cat, set_file_descr, unique_filename_in
 import os, json, re
@@ -152,7 +152,7 @@ def getEnzymeSeq(enzyme_id,enzymes_dict=None):
 		Return the restriction site corresponding to a given enzyme id (from existing enzymes)
 	'''
 	if enzymes_dict == None or not isinstance(enzymes_dict,list):
-		enzymes='/archive/epfl/bbcf/mleleu/pipeline_vMarion/pipeline_3Cseq/vWebServer_Bein/tests/enzymes.json'
+		enzymes='/scratch/cluster/monthly/jrougemo/libv2/4cLibraries/enzymes.json'
 	        g=open(enzymes)
         	enzymes_dict=json.load(g)
 	for x in enzymes_dict:
@@ -167,7 +167,7 @@ def getEnzymeId(enzyme_seq,enzymes_dict=None):
 		Return the enzyme id corresponding to a given restriction site sequence (from existing enzymes).
 	'''
 	if enzymes_dict == None or not isinstance(enzymes_dict,list):
-		enzymes='/archive/epfl/bbcf/mleleu/pipeline_vMarion/pipeline_3Cseq/vWebServer_Bein/tests/enzymes.json'
+		enzymes='/scratch/cluster/monthly/jrougemo/libv2/4cLibraries/enzymes.json'
 		g=open(enzymes)
 		enzymes_dict=json.load(g)
 	for x in enzymes_dict:
@@ -181,10 +181,10 @@ def lib_exists(params,libs_dict=None,returnType="id"):
 		Return id or filename corresponding to the library described in params.
 	'''
 	if libs_dict == None :
-		libs='/archive/epfl/bbcf/mleleu/pipeline_vMarion/pipeline_3Cseq/vWebServer_Bein/tests/libraries.json'
+		libs='/scratch/cluster/monthly/jrougemo/libv2/4cLibraries/libraries.json'
 		f=open(libs)
 		libs_dict = json.load(f)
-	enzymes='/archive/epfl/bbcf/mleleu/pipeline_vMarion/pipeline_3Cseq/vWebServer_Bein/tests/enzymes.json'
+	enzymes='/scratch/cluster/monthly/jrougemo/libv2/4cLibraries/enzymes.json'
 	g=open(enzymes)
 	enzymes_dict=json.load(g)
 	for lib in libs_dict:
@@ -205,7 +205,7 @@ def lib_exists(params,libs_dict=None,returnType="id"):
 		return None
 
 def get_libfile(id_lib):
-	libs='/archive/epfl/bbcf/mleleu/pipeline_vMarion/pipeline_3Cseq/vWebServer_Bein/tests/libraries.json'
+	libs='/scratch/cluster/monthly/jrougemo/libv2/4cLibraries/libraries.json'
         f=open(libs)
         libs_dict = json.load(f)
 	#id_lib=13
@@ -232,10 +232,12 @@ def createLibrary(ex,fasta_allchr,params):
 	resfile=getCoverageInRepeats(ex,bedfiles[0],params['specie'],via='local')
 	print('convert bed segments infos file to sql format')
 	resfile_sql=resfile+".sql"
-	with Track(resfile,format="bed",chrmeta=params['specie']) as Lib:
-		with new(resfile_sql, 'sql',chrmeta=params['specie']) as out:
-			for ch in Lib:
-				out.write(ch,Lib.read(ch,fields=['start', 'end', 'name']),fields=['start', 'end', 'name'])
+	track.convert((resfile,'bed'),(resfile_sql,'sql'),)
+	Lib = track.track(format="bed",chrmeta=params['specie'],assembly=params['specie'])
+#	with Track(resfile,format="bed",chrmeta=params['specie']) as Lib:
+#		with new(resfile_sql, 'sql',chrmeta=params['specie']) as out:
+#			for ch in Lib:
+#				out.write(ch,Lib.read(ch,fields=['start', 'end', 'name']),fields=['start', 'end', 'name'])
 
 	infos_lib={'assembly_name':params['specie'],'enzyme1_id':getEnzymeId(params['primary']),'enzyme2_id':getEnzymeId(params['secondary']),'segment_length':params['length'],'type':params['type'],'filename':resfile}
 	return([libfiles,bedfiles,resfile,infos_lib,resfile_sql])
@@ -243,7 +245,7 @@ def createLibrary(ex,fasta_allchr,params):
 
 def get_libForGrp(ex,group,fasta_or_assembly,new_libraries, job_id, grpId):
 	#wd_archive="/archive/epfl/bbcf/mleleu/pipeline_vMarion/pipeline_3Cseq/vWebServer_Bein/" #temporary: will be /scratch/cluster/monthly/htsstation/4cseq/job.id
-	lib_dir = os.path.split(ex.remote_working_directory)[0]
+	lib_dir = '/scratch/cluster/monthly/jrougemo/libv2/4cLibraries/' #os.path.split(ex.remote_working_directory)[0]
 	print "Group:\n"
 	print group
 	if 'library_param_file' in group and group['library_param_file'] != "" :
@@ -270,7 +272,7 @@ def get_libForGrp(ex,group,fasta_or_assembly,new_libraries, job_id, grpId):
 		if reffile==None:
 			raise TypeError("No valid parameter passed for the library.")
 		elif not os.path.exists(reffile):
-			reffile=reffile+'.sql'
+			reffile=reffile+'.bed.gz'
 		else:
 			raise TypeError("library file ("+reffile+") is not valid")
 	elif 'library_file_url' in group and group['library_file_url'] != "" :

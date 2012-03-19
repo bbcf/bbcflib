@@ -7,7 +7,7 @@ Utility functions common to several pipelines.
 """
 
 # Built-in modules #
-import os, sys, time, csv, string, random, pickle, re
+import os, sys, time, csv, string, random, pickle, re, json
 
 
 def unique_filename_in(path=None):
@@ -156,37 +156,26 @@ def track_header( descr, ftype, url, ffile ):
 #"track type="+type+" name='"+fname+"' bigDataUrl="+htsurl+style+"\n"
 
 #-------------------------------------------------------------------------#
-def merge_sql( ex, sqls, names, outdir=None, via='lsf' ):
-    """Run ``gMiner``'s 'merge_score' function on a set of sql files
+def merge_sql( ex, sqls, outdir=None, via='lsf' ):
+    """Run ``gMiner``'s 'merge_scores' function on a set of sql files
     """
-    import os
     if outdir == None:
         outdir = unique_filename_in()
     if not(os.path.exists(outdir)):
         os.mkdir(outdir)
-    if not(isinstance(names,list)):
-        names = []
-    if len(names) < len(sqls):
-        n = sqls
-        n[:len(names)] = names
-        names = n
-    gMiner_job = dict([('track'+str(i+1),f) for i,f in enumerate(sqls)]
-                      +[('track'+str(i+1)+'_name',str(ni))
-                        for i,ni in enumerate(names)])
-    gMiner_job['operation_type'] = 'genomic_manip'
-    gMiner_job['manipulation'] = 'merge_scores'
-    gMiner_job['output_location'] = outdir
-    files = run_gMiner.nonblocking(ex,gMiner_job,via=via).wait()
+    gMiner_job = {"operation": "merge_scores", "output": outdir,
+                  "args": "'"+json.dumps({"trackList":",".join(sqls)})+"'"}
+    files = gMiner_run.nonblocking(ex,gMiner_job,via=via).wait()
     return files[0]
 
 #-------------------------------------------------------------------------#
-def merge_many_bed(ex,files,via='lsf'):
+def intersect_many_bed(ex,files,via='lsf'):
     """Runs ``intersectBed`` iteratively over a list of bed files.
     """
     out = files[0]
     for f in files[1:]:
         next = unique_filename_in()
-        merge_two_bed.nonblocking( ex, out, f, via=via, stdout=next ).wait()
+        intersectBed.nonblocking( ex, out, f, via=via, stdout=next ).wait()
         out = next
     return out
 
@@ -308,22 +297,20 @@ try:
 
         #-------------------------------------------------------------------------#
     @program
-    def merge_two_bed(file1,file2):
+    def intersectBed(file1,file2):
         """Binds ``intersectBed`` from the 'BedTools' suite.
         """
         return {"arguments": ['intersectBed','-a',file1,'-b',file2], "return_value": None}
 
         #-------------------------------------------------------------------------#
     @program
-    def run_gMiner( job ):
-        job_file = unique_filename_in()
-        with open(job_file,'w') as f:
-            pickle.dump(job,f)
-        def get_output_files(p):
-            with open(job_file,'r') as f:
-                job = pickle.load(f)
-            return job['job_output']
-        return {"arguments": ["run_gminer.py",job_file],"return_value": get_output_files}
+    def gMiner_run( job ):
+        gminer_args = ["--"+str(k)+"="+str(v) for k,v in job.iteritems()]
+        def _split_output(p):
+            files = ''.join(p.stdout).strip().split(',')
+            return files
+        return {"arguments": ["gminer_run"]+gminer_args,
+                "return_value": _split_output}
 
         #-------------------------------------------------------------------------#
 

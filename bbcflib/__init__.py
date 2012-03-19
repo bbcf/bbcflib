@@ -82,4 +82,4 @@ of this license is in the LICENSE.txt file.
 
 b'This module needs Python 2.6 or later.'
 
-__version__ = '1.4.1'
+__version__ = '2.0.0'

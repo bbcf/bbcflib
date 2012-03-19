@@ -14,9 +14,9 @@ from bbcflib import daflims, genrep, frontend, email, gdv, createlib
 from bbcflib import btrack as track
 from bbcflib.mapseq import *
 from bbcflib.common import unique_filename_in, gzipfile
-import sys, getopt, os, json, re, time
-import sqlite3
-import gMiner as gm
+import sys, os, json, re, time
+#import sqlite3
+import bbcflib.bFlatMajor as gMiner
 
 grpId=1
 step=0
@@ -33,11 +33,11 @@ def segToFrag(in_countsPerFragFile,regToExclude=None, script_path='./'):
 	'''
 	if regToExclude == None:
 		print('will call: awk -f '+script_path+'segToFrag.awk '+in_countsPerFragFile)
-		return {'arguments': ["awk","-f",script_path+'segToFrag.awk',in_countsPerFragFile],
+		return {'arguments': ["awk","-f",os.path.join(script_path,'segToFrag.awk'),in_countsPerFragFile],
 			'return_value':None}
 	else:	
 		print('will call: awk -f '+script_path+'segToFrag.awk '+' -v reg2Excl='+regToExclude+' '+in_countsPerFragFile)
-		return {'arguments': ["awk","-f",script_path+'segToFrag.awk ',"-v","reg2Excl="+regToExclude,in_countsPerFragFile],
+		return {'arguments': ["awk","-f",os.path.join(script_path,'segToFrag.awk'),"-v","reg2Excl="+regToExclude,in_countsPerFragFile],
 			'return_value':None}
 
 def call_segToFrag(*args, **kwargs):
@@ -89,7 +89,7 @@ def mergeBigWig(bwfiles,resfile,assembly_name):
 def call_runDomainogram(infile,name,prefix,regCoord=None,wmaxDomainogram=500,wmax_BRICKS=50,skip=0,script_path='./'):
         time.sleep(60)
         if regCoord == None: regCoord=""
-        return{'arguments': ["R","--vanilla","--no-restore","--slave","-f",script_path+"runDomainogram.R","--args",infile,name,prefix,regCoord,str(wmaxDomainogram),str(wmax_BRICKS),str(skip)],
+        return{'arguments': ["R","--vanilla","--no-restore","--slave","-f",os.path.join(script_path,"runDomainogram.R"),"--args",infile,name,prefix,regCoord,str(wmaxDomainogram),str(wmax_BRICKS),str(skip)],
                 'return_value':prefix+".log"}
 
 
@@ -127,13 +127,13 @@ def loadPrimers(primersFile):
 @program
 def profileCorrection(inputFile,baitCoord,name,outputFile,reportFile,script_path='./'):
 	time.sleep(60)	
-	return{'arguments': ["R","--vanilla","--no-restore","--slave","-f",script_path+"profileCorrection.R","--args",inputFile,baitCoord,name,outputFile,reportFile],
+	return{'arguments': ["R","--vanilla","--no-restore","--slave","-f",os.path.join(script_path,"profileCorrection.R"),"--args",inputFile,baitCoord,name,outputFile,reportFile],
                 'return_value':None}
 
 @program
 def smoothFragFile(inputFile,nFragsPerWin,curName,outputFile,regToExclude=None,script_path='./'):
         if not(regToExclude): regToExclude=''
-	return{'arguments': ["R","--vanilla","--no-restore","--slave","-f",script_path+"smoothData.R","--args",inputFile,nFragsPerWin,curName,outputFile,regToExclude],
+	return{'arguments': ["R","--vanilla","--no-restore","--slave","-f",os.path.join(script_path,"smoothData.R"),"--args",inputFile,nFragsPerWin,curName,outputFile,regToExclude],
         	'return_value':None}
 
 # *** main function to compute normalised counts per fragments from a density file
@@ -146,31 +146,52 @@ def density_to_countsPerFrag(ex,density_file,density_name,assembly,reffile,regTo
 	global step
 
 	print("will call mean_score_by_feature for t1=%s (name=%s) and t2=%s" %(density_file,density_name,reffile))
-        output = unique_filename_in()
-        chlist = []
-        from gMiner.operations.genomic_manip.scores import mean_score_by_feature
-        with track.Track(density_file) as scores:
-                with track.Track(reffile) as features:
-                        with track.new(output,format='sql',chrmeta=assembly.chrmeta) as out:
-                                for ch in scores:
-                                        chlist.append(ch)
-                                        out.write(ch,mean_score_by_feature()(
-                                                        scores.read(ch),
-                                                        features.read(ch,fields=['start', 'end', 'name'])),
-                                                  fields=['start', 'end', 'name', 'score'])
-	countsPerFragFile=unique_filename_in()+".bed"
-	with track.load(output,'sql') as t:
-		t.convert(countsPerFragFile,'bed')
+##########
+	countsPerFragFile = unique_filename_in()+".bed"
+	touch(ex,countsPerFragFile)
+	scores = track.track(density_file)
+	features = track.track(reffile,'bed')
+	out = track.track(countsPerFragFile,format='bed', fields=['start', 'end', 'name', 'score'])
+	for ch in assembly.chrmeta.keys():
+		out.write(gMiner.stream.mean_score_by_feature(
+			scores.read(selection=ch),
+			features.read(selection=ch)),mode='append')
+        output = unique_filename_in()+".sql"
+	sqlouttr = track.track(output,format='bed', chrmeta=assembly.chrmeta,
+			       info={'datatype':'quantitative'},
+			       fields=['start', 'end', 'score'])
+	sqlouttr.write(out.read(fields=['chr','start', 'end', 'score'],
+				selection={'score':(0.01,sys.maxint)}))
+	sqlouttr.close()
+##########
+#	track.convert(output,(countsPerFragFile,'bed'))
+##########
+#	ex.add(countsPerFragFile,description=set_file_descr("meanScorePerFeature_"+density_name+".bed.gz",groupId=grpId,step="density",type="bed",view="admin"))
+#        chlist = []
+#        from gMiner.operations.genomic_manip.scores import mean_score_by_feature
+#        with track.Track(density_file) as scores:
+#                with track.Track(reffile) as features:
+#                        with track.new(output,format='sql',chrmeta=assembly.chrmeta) as out:
+#                                for ch in scores:
+#                                        chlist.append(ch)
+#                                        out.write(ch,mean_score_by_feature()(
+#                                                        scores.read(ch),
+#                                                        features.read(ch,fields=['start', 'end', 'name'])),
+#                                                  fields=['start', 'end', 'name', 'score'])
+#	countsPerFragFile=unique_filename_in()+".bed"
+#	with track.load(output,'sql') as t:
+#		t.convert(countsPerFragFile,'bed')
 
 #	gzipfile(ex,countsPerFragFile)
 #	ex.add(countsPerFragFile+".gz",description=set_file_descr("meanScorePerFeature_"+density_name+".bed.gz",groupId=grpId,step="density",type="bed",view="admin"))
-        connection = sqlite3.connect(output)
-        cursor = connection.cursor()
-	cursor.execute("UPDATE 'attributes' SET value='%s' WHERE key='%s'"%('quantitative','datatype'))        
-	[cursor.execute("UPDATE '%s' SET name=''" %ch) for ch in chlist]
-	connection.commit()
-	cursor.close()
-        connection.close()
+#        connection = sqlite3.connect(output)
+#        cursor = connection.cursor()
+#	cursor.execute("UPDATE 'attributes' SET value='%s' WHERE key='%s'"%('quantitative','datatype'))        
+#	[cursor.execute("UPDATE '%s' SET name=''" %ch) for ch in chlist]
+#	connection.commit()
+#	cursor.close()
+#        connection.close()
+##########
         ex.add(output,description=set_file_descr("meanScorePerFeature_"+density_name+".sql",groupId=grpId,step="norm_counts_per_frag",type="sql",view="admin",gdv='1'))
 
 	step += 1
@@ -183,8 +204,6 @@ def density_to_countsPerFrag(ex,density_file,density_name,assembly,reffile,regTo
 	ex.add(countsPerFragFile+".gz",description=set_file_descr("meanScorePerFeature_"+density_name+".bed.gz",groupId=grpId,step="density",type="bed",view="admin"))
 	gzipfile(ex,res)
 	ex.add(res+".gz",description=set_file_descr("res_segToFrag_"+density_name+".bedGraph.gz",groupId=grpId,step="norm_counts_per_frag",type="bedGraph",view="admin",comment="rough"))
-#	ex.add(resBedGraph,description=set_file_descr("res_segToFrag_"+density_name+".bedGraph",groupId=grpId,step="norm_counts_per_frag",type="bedGraph",view="admin",comment="bedGraph non-sorted"))
-#	ex.add(resBedGraph_all,description=set_file_descr("res_segToFrag_"+density_name+"_all_nonSorted.bedGraph",groupId=grpId,step="norm_counts_per_frag",type="bedGraph",view="admin",comment="all informative frags - null included - bedGraph non-sorted"))
 	resBedGraph_all=call_sortOnCoord(ex,resBedGraph_all,via=via)
 	gzipfile(ex,resBedGraph_all,args=["-c"],stdout=resBedGraph_all+".gz")
 	ex.add(resBedGraph_all+".gz",description=set_file_descr("res_segToFrag_"+density_name+"_all.bedGraph.gz",groupId=grpId,step="norm_counts_per_frag",type="bedGraph",view="admin",comment="all informative frags - null included -sorted bedGraph"))
@@ -198,8 +217,9 @@ def density_to_countsPerFrag(ex,density_file,density_name,assembly,reffile,regTo
 	ex.add(sortedBedGraph,description=set_file_descr("res_segToFrag_"+density_name+".bedGraph",groupId=grpId,step="norm_counts_per_frag",type="bedGraph",comment="bedGraph sorted",ucsc='1'))
 	sortedBedGraph_sql=unique_filename_in()
 	touch(ex,sortedBedGraph_sql)
-	with track.load(sortedBedGraph,'bedGraph', chrmeta=assembly.chrmeta) as t:
-                t.convert(sortedBedGraph_sql+".sql",'sql')
+	track.convert((sortedBedGraph,'bedGraph'),sortedBedGraph_sql+".sql",chrmeta=assembly.chrmeta)
+#	with track.load(sortedBedGraph,'bedGraph', chrmeta=assembly.chrmeta) as t:
+#                t.convert(sortedBedGraph_sql+".sql",'sql')
 	ex.add(sortedBedGraph_sql+".sql",description=set_file_descr("res_segToFrag_"+density_name+".sql",groupId=grpId,step="norm_counts_per_frag",type="sql",view="admin",gdv="1",comment="bedGraph sorted"))
 	step += 1
 	return [output,countsPerFragFile+".gz",res+".gz",resBedGraph,sortedBedGraph,sortedBedGraph_sql,resBedGraph_all]
@@ -269,8 +289,9 @@ def workflow_groups(ex, job, primers_dict, assembly, mapseq_files, mapseq_url, s
 			mapseq_wig = unique_filename_in()
 			touch(ex,mapseq_wig)
 			print("mapseq_wig filename will be:"+mapseq_wig)
-			with track.load(mapseq_files[gid][rid]['wig']['merged'],'sql') as t:
-                		t.convert(mapseq_wig+".bw",'bigWig')
+			track.convert(mapseq_files[gid][rid]['wig']['merged'],mapseq_wig+".bw")
+#			with track.load(mapseq_files[gid][rid]['wig']['merged'],'sql') as t:
+#                		t.convert(mapseq_wig+".bw",'bigWig')
 			ex.add(mapseq_wig+".bw",description=set_file_descr("density_file_"+mapseq_files[gid][rid]['libname']+".bw",groupId=gid,step="density",type="bigWig",ucsc='1'))	
 
 			ex.add(mapseq_files[gid][rid]['wig']['merged'],description=set_file_descr("density_file_"+mapseq_files[gid][rid]['libname']+".sql",groupId=gid,step="density",type="sql",view='admin',gdv="1"))
@@ -281,13 +302,15 @@ def workflow_groups(ex, job, primers_dict, assembly, mapseq_files, mapseq_url, s
                         # run the rest at the grp level
 
 		# back to grp level!
-		logfile.write("density files of replicates for group "+group['name']+ "("+str(gid)+")="+bwFiles);logfile.flush()
+		logfile.write("density files of replicates for group "+group['name']+ "("+str(gid)+")="+bwFiles+"\n");logfile.flush()
 		mergedDensityFiles=unique_filename_in()
 		mergeBigWig(ex,bwFiles,mergedDensityFiles,assembly.name)
                 # convert result file to sql
 		mergedDensityFiles_sql=unique_filename_in()
-		with track.load(mergedDensityFiles,'bigWig') as t:
-			t.convert(mergedDensityFiles_sql,'sql')
+		track.convert((mergedDensityFiles,'bigWig'),(mergedDensityFiles_sql,'sql'),
+			      chrmeta=assembly.chrmeta)
+#		with track.load(mergedDensityFiles,'bigWig') as t:
+#			t.convert(mergedDensityFiles_sql,'sql')
 		ex.add(mergedDensityFiles,description=set_file_descr("density_file_"+group['name']+"_merged.bw",groupId=gid,step="density",type="bw",ucsc="1"))
 		ex.add(mergedDensityFiles_sql,description=set_file_descr("density_file_"+group['name']+"_merged.sql ",groupId=gid,step="density",type="sql",gdv="1"))
 

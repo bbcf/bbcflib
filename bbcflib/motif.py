@@ -46,7 +46,7 @@ def parse_meme_xml( ex, meme_file, chrmeta ):
                 for col in parray:
                     m[col.attrib['letter_id']] = float(col.text)
                 mat_out.write("1\t%f\t%f\t%f\t%f\n" %(m['letter_A'],m['letter_C'],m['letter_G'],m['letter_T']))
-    def _xmltree(_c,_t):
+    def _xmltree(_t):#(_c,_t):
         seq_name = {}
         seq_chr = None
         for it in _t.getiterator():
@@ -55,7 +55,7 @@ def parse_meme_xml( ex, meme_file, chrmeta ):
             if it.tag == 'scanned_sites':
                 name = seq_name[it.attrib['sequence_id']]
                 name,seq_chr,start,end = re.search(r'(.*)\|(.+):(\d+)-(\d+)',name).groups()
-            if it.tag == 'scanned_site' and _c == seq_chr:
+            if it.tag == 'scanned_site':# and _c == seq_chr:
                 start = int(start)+int(it.attrib['position'])-1
                 end = str(start+ncol[it.attrib['motif_id']])
                 start = str(start)
@@ -63,10 +63,10 @@ def parse_meme_xml( ex, meme_file, chrmeta ):
                 score = it.attrib['pvalue']
                 yield (start,end,it.attrib['motif_id'],score,strnd)
     outsql = unique_filename_in()
-    with track.new(outsql, format='sql', chrmeta=chrmeta, datatype='qualitative') as t:
-        t.attributes['source'] = 'Meme'
-        for chrom in chrmeta.keys():
-            t.write(chrom,_xmltree(chrom,tree),fields=['start','end','name','score','strand'])
+    outtrack = track.track(outsql, chrmeta=chrmeta, info={'datatype':'qualitative'},
+                           fields=['start','end','name','score','strand'])
+    outtrack.write(track.FeatureStream(_xmltree(tree),fields=outtrack.fields))
+    outtrack.close()
     return {'sql':outsql,'matrices':allmatrices}
 
 
@@ -135,36 +135,35 @@ def save_motif_profile( ex, motifs, background, assembly, regions, keep_max_only
         futures[name] = ( output, motif_scan.nonblocking( ex, fasta, pwm, background,
                                                           threshold, stdout=output, via=via ) )
 ##############
-    def _parse_s1k(_f,_c,_n):
+    def _parse_s1k(_f,_n):
         if keep_max_only:
             maxscore = {}
         with open(_f, 'r') as fin:
             for line in fin:
                 row = line.split("\t")
                 sname,seq_chr,start,end = re.search(r'(.*)\|(.+):(\d+)-(\d+)',row[0]).groups()
-                if seq_chr != _c:
-                    continue
                 start = int(row[3])+int(start)-1
                 tag = row[1]
                 end = start+len(tag)
                 score = float(row[2])
                 strnd = row[4]=='+' and 1 or -1
                 if keep_max_only:
-                    if not(sname in maxscore) or score>maxscore[sname][3]:
-                        maxscore[sname] = (start,end,_n+":"+tag,score,strnd)
+                    if not((sname,seq_chr) in maxscore) or score>maxscore[(sname,seq_chr)][3]:
+                        maxscore[(sname,seq_chr)] = (seq_chr,start,end,_n+":"+tag,score,strnd)
                 else:
-                    yield (start,end,_n+":"+tag,score,strnd)
+                    yield (seq_chr,start,end,_n+":"+tag,score,strnd)
         if keep_max_only:
             for x in maxscore.values():
                 yield x
 ##############
-    with track.new( sqlout, format="sql", datatype="qualitative", chrmeta=assembly.chrmeta ) as track_result:
-        track_result.attributes['source'] = 'S1K'
-        for name, future in futures.iteritems():
-            _ = future[1].wait()
-            for chrom in assembly.chrnames:
-                track_result.write( chrom, _parse_s1k(future[0],chrom,name),
-                                    fields=['start','end','name','score','strand'] )
+    track_result = track.track( sqlout, chrmeta=assembly.chrmeta,
+                                info={'datatype':'qualitative'},
+                                fields=['start','end','name','score','strand'] )
+    for name, future in futures.iteritems():
+        future[1].wait()
+        track_result.write( track.FeatureStream(_parse_s1k(future[0], name ),
+                                                fields=['chr']+track_result.fields) )
+    track_result.close()
     ex.add( sqlout, description=description )
     return sqlout
 
