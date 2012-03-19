@@ -503,7 +503,7 @@ def rnaseq_workflow(ex, job, bam_files, pileup_level=["exons","genes","transcrip
             k +=1
             cond = group_names[gid]+'.'+str(k)
             unmapped_fastq[cond] = bam_files[gid][rid].get('unmapped_fastq')
-            if unmapped_fastq[cond] and os.path.exists(unmapped_fastq[cond]):
+            if unmapped_fastq[cond]:
                 print "Add splice junction reads for run %s.%s" % (gid,rid)
                 assert os.path.exists(refseq_path+".1.ebwt"), "Refseq index not found: %s" % refseq_path+".1.ebwt"
                 unmapped_bam[cond] = mapseq.map_reads(ex, unmapped_fastq[cond], {}, refseq_path, \
