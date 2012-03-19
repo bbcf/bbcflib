@@ -271,6 +271,9 @@ class Test_Expressions2(unittest.TestCase):
         assert_almost_equal(tcounts["t1"], array([10.]))
         assert_almost_equal(tcounts["t2"], array([10.]))
         assert_almost_equal(tcounts["t3"], array([15.]))
+        assert_almost_equal(trpkm["t1"], array([1.]))
+        assert_almost_equal(trpkm["t2"], array([1.]))
+        assert_almost_equal(trpkm["t3"], array([1.]))
         self.assertEqual(sum(sum(tcounts.values())), sum(sum(self.counts)))
 
     def test_genes_expression(self):
@@ -401,8 +404,11 @@ class Test_Expressions_Solenne(unittest.TestCase):
         tcounts, trpkm = transcripts_expression(self.exons_data, self.exon_lengths, self.transcript_mapping,
                  self.trans_in_gene, self.exons_in_trans, self.ncond)
         # Exact solution, special case len(tg)==1
-        assert_almost_equal(tcounts["ENSMUST00000015723"], array([6.8,10.6,28.9,165.3,89.1,61.2])) #exact solution
-        self.assertAlmostEqual(sum(sum(tcounts.values())), sum(sum(self.counts))) #exact solution, special case len(tg)==1
+        assert_almost_equal(tcounts["ENSMUST00000015723"],
+                            array([6.8,10.6,28.9,165.3,89.1,61.2]))
+        assert_almost_equal(trpkm["ENSMUST00000015723"],
+                            array([0.00446,0.00695,0.01895,0.10839,0.05843,0.04013]), 5)
+        self.assertAlmostEqual(sum(sum(tcounts.values())), sum(sum(self.counts)))
         # Pseudo-inverse solution
         #assert_almost_equal(tcounts["ENSMUST00000015723"], array([7.25,11.31,30.83,175.52,94.7,64.78]))
         #self.assertAlmostEqual(sum(sum(tcounts.values())), 384.39) #pinv solution
