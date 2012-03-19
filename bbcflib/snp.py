@@ -11,21 +11,22 @@ from bein import program, ProgramFailed, MiniLIMS
 from bein.util import add_pickle, touch, split_file, count_lines
 
 
-@program
-def gunzip_untar(file,workingDirectory):
-    print file
-    return {"arguments": ["tar","xvfz",file,"-C",workingDirectory],
-            "return_value": None}
-
-
-def untar_cat(ex,path):
-    archive = tarfile.open(path)
+def untar_genome_fasta(assembly):
+    chrlist = dict((str(k[0])+"_"+str(k[1])+"."+str(k[2]),v['name']) 
+                   for k,v in assembly.chromosomes.iteritems())
+    archive = tarfile.open(assembly.fasta_path())
     archive.extractall()
-    allfiles=[]
-    for f in archive.getmembers():
-        if not f.isdir():
-            allfiles.append(f.name)
-    genomeRef=cat(allfiles)
+    genomeRef = unique_filename_in()
+    with open(genomeRef,"w") as outf:
+        for f in archive.getmembers():
+            if f.isdir(): continue
+            with open(f.name,"r") as inf:
+                header = inf.next()
+                headpatt = re.search(r'>(\S+)\s',header)
+                if headpatt and headpatt.groups()[0] in chrlist:
+                    header = re.sub(headpatt.groups()[0],chrlist[headpatt.groups()[0]],header)
+                outf.write(header)
+                [outf.write(l) for l in inf]
     archive.close()
     return genomeRef
 
