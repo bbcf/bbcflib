@@ -53,8 +53,6 @@ __all__ = ['Track','track','FeatureStream','strand_to_int','int_to_strand','form
 import sys, os, re
 from bbcflib import genrep
 
-print >>sys.stderr,  "************ JR dev version *****************\n"
-
 _track_map = {
     'sql': ('bbcflib.btrack.sql','SqlTrack'),
     'db':  ('bbcflib.btrack.sql','SqlTrack'),
