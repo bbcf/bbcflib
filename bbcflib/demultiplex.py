@@ -65,7 +65,7 @@ def split_exonerate(filename,n=1,x=22,l=30):
 
 @program
 def raw_exonerate(fastaFile,dbFile,minScore=77,n=1,x=22,l=30):
-	return{'arguments': ["exonerate","--model","affine:local","-o","-4","-e","-12","-s",str(minScore),fastaFile,dbFile],
+	return{'arguments': ["exonerate","--showalignment","no","--model","affine:local","-o","-4","-e","-12","-s",str(minScore),fastaFile,dbFile],
 	       'return_value': None}
 
 def exonerate(ex,subfiles, dbFile, grp_name, minScore=77,n=1,x=22,l=30,via="local"):
@@ -80,7 +80,8 @@ def exonerate(ex,subfiles, dbFile, grp_name, minScore=77,n=1,x=22,l=30,via="loca
         faSubFiles=[f.wait() for f in futures]
 
 #	for f in faSubFiles[0:5]:
-	ex.add(faSubFiles[0],description=set_file_descr(grp_name+"_input_part.fasta",group=grp_name,step="init",type="fa",view="admin",comment="part") )
+	gzipfile(ex,faSubFiles[0])
+	ex.add(faSubFiles[0]+".gz",description=set_file_descr(grp_name+"_input_part.fa.gz",group=grp_name,step="init",type="fa",view="admin",comment="part") )
 
 	print("Will call raw_exonerate for each fasta files")
 	futures = []

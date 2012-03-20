@@ -124,7 +124,7 @@ def add_macs_results( ex, read_length, genome_size, bamfile,
             [bedzip.write(l) for l in bedinf]
         bedzip.close()
         ex.add( p+"_peaks.bed.gz",
-                description=set_file_descr(filename+"_peaks.bed",**macs_descr2),
+                description=set_file_descr(filename+"_peaks.bed.gz",**macs_descr2),
                 associate_to_filename=p, template='%s_peaks.bed.gz' )
         bedzip = gzip.open(p+"_summits.bed.gz",'wb')
         bedzip.write("track name='"+filename+"_macs_summits'\n")

@@ -246,7 +246,14 @@ def get_libForGrp(ex,group,fasta_or_assembly,new_libraries, job_id, grpId):
 	lib_dir = os.path.split(ex.remote_working_directory)[0]
 	print "Group:\n"
 	print group
-	if 'library_param_file' in group and group['library_param_file'] != "" :
+	if not('library_param_file' in group) or str(group['library_param_file']) == "null" :
+		group['library_param_file'] = False
+	elif str(group['library_param_file']).lower() in ['1','true','on','t'] or str(group['library_param_file']) != '':
+		group['library_param_file'] = True
+	else:
+		group['library_param_file'] = False
+
+	if group['library_param_file']:
 		library_filename = os.path.join(lib_dir,'group_' + group['name'] + "_paramsFileLibrary.txt")
 		paramslib=load_libraryParamsFile(library_filename);
 		lib_id=lib_exists(paramslib)
@@ -265,7 +272,7 @@ def get_libForGrp(ex,group,fasta_or_assembly,new_libraries, job_id, grpId):
 		else:
 			print("This library has just been created ("+ex_libfile+")")
 			reffile=ex_libfile+".sql"
-	elif 'library_id' in group and group['library_id'] > 0:
+	elif 'library_id' in group and group['library_id']> 0 and not str(group['library_id'])=="":
 		reffile=get_libfile(group['library_id'])
 		if reffile==None:
 			raise TypeError("No valid parameter passed for the library.")

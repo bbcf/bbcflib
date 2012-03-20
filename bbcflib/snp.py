@@ -11,21 +11,22 @@ from bein import program, ProgramFailed, MiniLIMS
 from bein.util import add_pickle, touch, split_file, count_lines
 
 
-@program
-def gunzip_untar(file,workingDirectory):
-    print file
-    return {"arguments": ["tar","xvfz",file,"-C",workingDirectory],
-            "return_value": None}
-
-
-def untar_cat(ex,path):
-    archive = tarfile.open(path)
+def untar_genome_fasta(assembly):
+    chrlist = dict((str(k[0])+"_"+str(k[1])+"."+str(k[2]),v['name']) 
+                   for k,v in assembly.chromosomes.iteritems())
+    archive = tarfile.open(assembly.fasta_path())
     archive.extractall()
-    allfiles=[]
-    for f in archive.getmembers():
-        if not f.isdir():
-            allfiles.append(f.name)
-    genomeRef=cat(allfiles)
+    genomeRef = unique_filename_in()
+    with open(genomeRef,"w") as outf:
+        for f in archive.getmembers():
+            if f.isdir(): continue
+            with open(f.name,"r") as inf:
+                header = inf.next()
+                headpatt = re.search(r'>(\S+)\s',header)
+                if headpatt and headpatt.groups()[0] in chrlist:
+                    header = re.sub(headpatt.groups()[0],chrlist[headpatt.groups()[0]],header)
+                outf.write(header)
+                [outf.write(l) for l in inf]
     archive.close()
     return genomeRef
 
@@ -34,12 +35,16 @@ def sam_pileup(job,bamfile,refGenome,via='lsf'):
 
     if(job.assembly_id == 'MLeprae_TN' or job.assembly_id == 'MSmeg_MC2_155' or job.assembly_id == 'MTb_H37Rv' or job.assembly_id == 'NA1000' or job.assembly_id == 'TB40-BAC4' ):
         ploidy=1
+        minSNP=10
+        minCoverage=80
     else:
         ploidy=2
+        minSNP=20
+        minCoverage=40
     return {"arguments": ["samtools","pileup","-B","-cvsf",refGenome,"-N",str(ploidy),bamfile],
-             "return_value": None}
+             "return_value": [minCoverage,minSNP]}
 
-def parse_pileupFile(ex,job,dictPileupFile,allSNPpos,via='lsf',minCoverage=80,minSNP=10):
+def parse_pileupFile(ex,job,dictPileupFile,allSNPpos,minCoverage=80,minSNP=10,via='lsf'):
     formatedPileupFilename=unique_filename_in()
     pos=open(allSNPpos,'rb')
     posSNP=pos.readlines()
@@ -103,6 +108,14 @@ def parse_pileupFile(ex,job,dictPileupFile,allSNPpos,via='lsf',minCoverage=80,mi
 
     return formatedPileupFilename
 
+def synonymous(ex,job,allSnp):
+    allCodon=unique_filename_in()
+    file=open(allSnp,'rb')
+    outfile=open(allCodon,'wb')
+    outfile.write(file.readline())
+    
+    return allCodon
+    
 
 def posAllUniqSNP(ex,job,dictPileupFile,minCoverage=80):
     allSNPpos=unique_filename_in()

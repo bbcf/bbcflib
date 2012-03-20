@@ -6,7 +6,7 @@ Module: bbcflib.rnaseq
 Methods of the bbcflib's RNA-seq worflow. The main function is ``rnaseq_workflow()``,
 and is usually called by bbcfutils' ``run_rnaseq.py``, e.g. command-line:
 
-``python run_rnaseq.py -v lsf -c config_files/gapdh.txt -d rnaseq -p transcripts``
+``python run_rnaseq.py -v lsf -c config_files/gapkowt.txt -d rnaseq -p transcripts,genes``
 ``python run_rnaseq.py -v lsf -c config_files/rnaseq2.txt -d rnaseq -p transcripts -m ../mapseq2``
 
 From a BAM file produced by an alignement on the **exonome**, gets counts of reads
@@ -24,6 +24,7 @@ from operator import itemgetter
 from bbcflib.common import writecols, set_file_descr, unique_filename_in
 from bbcflib import mapseq, genrep
 import track
+from bein import program
 
 # Other modules #
 import numpy
@@ -32,6 +33,12 @@ from numpy import zeros, asarray
 numpy.set_printoptions(precision=3,suppress=True)
 numpy.seterr(divide='ignore')
 
+
+def positive(x):
+    """Set to zero all negative components of an array."""
+    for i in range(len(x)):
+        if x[i] < 0 : x[i] = 0
+    return x
 
 def lsqnonneg(C, d, x0=None, tol=None, itmax_factor=3):
     """Linear least squares with nonnegativity constraints (NNLS), based on MATLAB's lsqnonneg function.
@@ -68,8 +75,8 @@ def lsqnonneg(C, d, x0=None, tol=None, itmax_factor=3):
     if tol is None: tol = 10*eps*norm1(C)*(max(C.shape)+1)
     C = asarray(C)
     (m,n) = C.shape
-    P = numpy.zeros(n)
-    Z = ZZ = numpy.arange(1, n+1)
+    P = numpy.zeros(n)            # set P of indices, empty for now
+    Z = ZZ = numpy.arange(1, n+1) # set Z of indices, will be transferred to P
     if x0 is None or any(x0 < 0): x=P
     else: x=x0
     resid = d - numpy.dot(C, x)
@@ -83,14 +90,17 @@ def lsqnonneg(C, d, x0=None, tol=None, itmax_factor=3):
         t = w[ZZ-1].argmax() # find an index t s.t. w_t = max(w)
         t = ZZ[t]
         P[t-1]=t # move the index t from set Z to set P
-        Z[t-1]=0
-        PP = numpy.where(P != 0)[0]+1 # set P of indices
-        ZZ = numpy.where(Z != 0)[0]+1 # set Z of indices
+        Z[t-1]=0 # Z becomes [0] if n=1
+        PP = numpy.where(P != 0)[0]+1 # index of first non-zero element of P, +1 (-1 later)
+        ZZ = numpy.where(Z != 0)[0]+1 # index of first non-zero element of Z, +1 (-1 later)
         CP = numpy.zeros(C.shape)
         CP[:, PP-1] = C[:, PP-1] # CP[:,j] is C[:,j] if j in P, or 0 if j in Z
         CP[:, ZZ-1] = numpy.zeros((m, msize(ZZ, 1)))
         z=numpy.dot(numpy.linalg.pinv(CP), d) # solution of least-squares min||d-CPx||
-        z[ZZ-1] = numpy.zeros((msize(ZZ,1), msize(ZZ,0)))
+        if isinstance(ZZ,numpy.ndarray) and len(ZZ) == 0: # if Z = [0], ZZ = [] and makes it fail
+            return (positive(z), sum(resid*resid), resid)
+        else:
+            z[ZZ-1] = numpy.zeros((msize(ZZ,1), msize(ZZ,0)))
 
         # inner loop to remove elements from the positve set which no longer belong
         while numpy.any(z[PP-1] <= tol): # if z_j>0 for all j, set x=z and return to outer loop
@@ -251,6 +261,7 @@ def save_results(ex, cols, conditions, group_ids, assembly, header=[], feature_t
         for i in range(ncond):
             group = conditions[i].split('.')[0]
             nruns = groups.count(group)
+            #mean of all replicates in the group
             rpkm[group] = asarray(rpkm.get(group,zeros(len(start)))) + asarray(cols[i+ncond+1]) / nruns
             output_sql[group] = output_sql.get(group,unique_filename_in())
         for group,filename in output_sql.iteritems():
@@ -278,7 +289,7 @@ def save_results(ex, cols, conditions, group_ids, assembly, header=[], feature_t
     return output_tab
 
 #@timer
-def genes_expression(exons_data, exon_lengths, gene_mapping, exon_to_gene, ncond):
+def genes_expression(exons_data, gene_mapping, exon_to_gene, ncond, nreads):
     """Get gene counts from exons counts.
 
     Returns two dictionaries, one for counts and one for rpkm, of the form ``{gene ID: score}``.
@@ -292,20 +303,20 @@ def genes_expression(exons_data, exon_lengths, gene_mapping, exon_to_gene, ncond
     genes = list(set(exons_data[-3]))
     z = numpy.zeros((len(genes),ncond))
     zz = numpy.zeros((len(genes),ncond))
-    gcounts = dict(zip(genes,z))
-    grpkm = dict(zip(genes,zz))
+    gene_counts = dict(zip(genes,z))
+    gene_rpkm = dict(zip(genes,zz))
     round = numpy.round
     for e,c in zip(exons_data[0],zip(*exons_data[1:2*ncond+1])):
         g = exon_to_gene[e]
-        gcounts[g] += round(c[:ncond],2)
-        try: # Let's avoid errors of that kind until the article is done
-            ratio = exon_lengths[e]/gene_mapping[g][3]
-            grpkm[g] += ratio*round(c[ncond:],2)
-        except KeyError, ZeroDivisionError: pass
-    return gcounts, grpkm
+        gene_counts[g] += round(c[:ncond],2)
+    for g in genes:
+        if gene_mapping.get(g):
+            gene_rpkm[g] = to_rpkm(gene_counts[g], gene_mapping[g][3], nreads)
+        else: gene_rpkm[g] = ["NA"]*ncond
+    return gene_counts, gene_rpkm
 
 #@timer
-def transcripts_expression(exons_data, exon_lengths, transcript_mapping, trans_in_gene, exons_in_trans, ncond):
+def transcripts_expression(exons_data, exon_lengths, transcript_mapping, trans_in_gene, exons_in_trans, ncond, nreads):
     """Get transcript rpkms from exon rpkms.
 
     Returns two dictionaries, one for counts and one for rpkm, of the form ``{transcript ID: score}``.
@@ -325,10 +336,11 @@ def transcripts_expression(exons_data, exon_lengths, transcript_mapping, trans_i
     z = numpy.zeros((len(transcripts),ncond))
     zz = numpy.zeros((len(transcripts),ncond))
     trans_counts = dict(zip(transcripts,z))
-    trans_rpk = dict(zip(transcripts,zz))
+    trans_rpkm = dict(zip(transcripts,zz))
     exons_counts = dict(zip( exons_data[0], zip(*exons_data[1:ncond+1])) )
-    exons_rpk = dict(zip( exons_data[0], zip(*exons_data[ncond+1:2*ncond+1])) )
     totalerror = 0; unknown = 0; #alltranscount=0; allexonscount=0;
+    pinv = numpy.linalg.pinv
+    norm = numpy.linalg.norm
     for g in genes:
         if trans_in_gene.get(g): # if the gene is (still) in the Ensembl database
             # Get all transcripts in the gene
@@ -339,8 +351,9 @@ def transcripts_expression(exons_data, exon_lengths, transcript_mapping, trans_i
                 if exons_in_trans.get(t):
                     eg = eg.union(set(exons_in_trans[t]))
             # Create the correspondance matrix
-            M = zeros((len(eg),len(tg))); L = zeros((len(eg),len(tg)))
-            ec = zeros((ncond,len(eg))); er = zeros((ncond,len(eg)))
+            M = zeros((len(eg),len(tg)))
+            L = zeros((len(eg),len(tg)))
+            ec = zeros((ncond,len(eg)))
             for i,e in enumerate(eg):
                 for j,t in enumerate(tg):
                     if exons_in_trans.get(t) and e in exons_in_trans[t]:
@@ -353,48 +366,37 @@ def transcripts_expression(exons_data, exon_lengths, transcript_mapping, trans_i
                 if exons_counts.get(e) is not None:
                     for c in range(ncond):
                         ec[c][i] += exons_counts[e][c]
-                        er[c][i] += exons_rpk[e][c]
+            # If only one transcript, special case for more precision
+            if len(tg) == 1:
+                for c in range(ncond):
+                    trans_counts[t][c] = round(sum(ec[c]),2)
+                continue
             # Compute transcript scores
-            tc = []; tr = []
-            for c in range(ncond):  # - rpkm
-                Er = er[c]
-                tol = 10*2.22e-16*numpy.linalg.norm(M,1)*(max(M.shape)+1)
-                try: Tr, resnormr, resr = lsqnonneg(M,Er,tol=100*tol)
-                except: Tr = zeros(len(tg)) # Bad idea
-                tr.append(Tr)
-            #N = M
+            tc = []
             M = numpy.vstack((M,numpy.ones(M.shape[1]))) # add constraint |E| = |T|
             L = numpy.vstack((L,numpy.ones(M.shape[1])))
             N = M*L
             for c in range(ncond): # - counts
                 Ec = ec[c]
                 Ec = numpy.hstack((Ec,asarray(sum(Ec))))
-                tol = 10*2.22e-16*numpy.linalg.norm(N,1)*(max(N.shape)+1)
+                tol = 10*2.22e-16*norm(N,1)*(max(N.shape)+1)
                 try: Tc, resnormc, resc = lsqnonneg(N,Ec,tol=100*tol)
-                except: Tc = zeros(len(tg)) # Bad idea
+                except: Tc = round(positive(pinv(N,Ec)), 2)
                 tc.append(Tc)
                 totalerror += math.sqrt(resnormc)
-            # Store results in a dict *tcounts*/*trpk*
+            # Store results in a dict *trans_counts*
             for k,t in enumerate(tg):
-                if trans_rpk.get(t) is not None:
+                if trans_counts.get(t) is not None:
                     for c in range(ncond):
                         trans_counts[t][c] = round(tc[c][k], 2)
-                        trans_rpk[t][c] = round(tr[c][k], 2)
-            # Testing
-            #total_trans_c = sum([sum(trans_counts[t]) for t in tg]) or 0
-            #total_exons_c = sum([sum(ec[c]) for c in range(ncond)]) or 0
-            #alltranscount += total_trans_c
-            #allexonscount += total_exons_c
         else:
             unknown += 1
     print "Unknown transcripts for %d of %d genes (%.2f %%)" \
            % (unknown, len(genes), 100*float(unknown)/float(len(genes)) )
-    # Testing
-    #try: print "\t Total transcript counts: %.2f, Total exon counts: %.2f, Ratio: %.2f" \
-    #       % (alltranscount,allexonscount,alltranscount/allexonscount)
-    #except ZeroDivisionError: pass
-    #print "\t Total error (sum of resnorms):", totalerror
-    return trans_counts, trans_rpk
+    # Convert to rpkm
+    for t in transcripts:
+        trans_rpkm[t] = to_rpkm(trans_counts[t], transcript_mapping[t][3], nreads)
+    return trans_counts, trans_rpkm
 
 def estimate_size_factors(counts):
     """
@@ -417,6 +419,18 @@ def estimate_size_factors(counts):
     res = res.T
     print "Size factors:",size_factors
     return res, size_factors
+
+def to_rpkm(counts, lengths, nreads):
+    if isinstance(counts, numpy.ndarray):
+        rpkm = 1000*(1e6*counts.T/nreads).T/lengths
+    elif isinstance(counts, float) or isinstance(counts, int):
+        rpkm = (1000*1e6*counts)/(nreads*lengths)
+    elif isinstance(counts, dict):
+        rpkm = {}
+        for k,v in counts.iteritems():
+            rpkm[k] = 1000*(1e6*v/nreads)/lengths
+    return rpkm
+
 
 #@timer
 def rnaseq_workflow(ex, job, bam_files, pileup_level=["exons","genes","transcripts"], via="lsf"):
@@ -448,6 +462,7 @@ def rnaseq_workflow(ex, job, bam_files, pileup_level=["exons","genes","transcrip
             k+=1
             cond = group_names[gid]+'.'+str(k)
             conditions.append(cond)
+    ncond = len(conditions)
 
     #Exon labels: ('exonID|geneID|start|end|strand', length)
     exons = fetch_labels(bam_files[groups.keys()[0]][groups.values()[0]['runs'].keys()[0]]['bam'])
@@ -485,7 +500,7 @@ def rnaseq_workflow(ex, job, bam_files, pileup_level=["exons","genes","transcrip
             k +=1
             cond = group_names[gid]+'.'+str(k)
             unmapped_fastq[cond] = bam_files[gid][rid].get('unmapped_fastq')
-            if unmapped_fastq[cond] and os.path.exists(unmapped_fastq[cond]):
+            if unmapped_fastq[cond]:
                 print "Add splice junction reads for run %s.%s" % (gid,rid)
                 assert os.path.exists(refseq_path+".1.ebwt"), "Refseq index not found: %s" % refseq_path+".1.ebwt"
                 unmapped_bam[cond] = mapseq.map_reads(ex, unmapped_fastq[cond], {}, refseq_path, \
@@ -535,7 +550,7 @@ def rnaseq_workflow(ex, job, bam_files, pileup_level=["exons","genes","transcrip
     nreads = asarray([nreads[cond] for cond in conditions], dtype=numpy.float_)
     counts = asarray([exon_pileups[cond] for cond in conditions], dtype=numpy.float_)
     counts, sf = estimate_size_factors(counts)
-    rpkm = 1000*(1e6*counts.T/nreads).T/(ends-starts)
+    rpkm = to_rpkm(counts, ends-starts, nreads)
 
     hconds = ["counts."+c for c in conditions] + ["rpkm."+c for c in conditions]
     genesName, echr = zip(*[(x[0],x[-1]) for x in [gene_mapping.get(g,("NA",)*5) for g in genesID]])
@@ -554,7 +569,7 @@ def rnaseq_workflow(ex, job, bam_files, pileup_level=["exons","genes","transcrip
     """ Get scores of genes from exons """
     if "genes" in pileup_level:
         print "Get scores of genes"
-        (gcounts, grpkm) = genes_expression(exons_data, exon_lengths, gene_mapping, exon_to_gene, len(conditions))
+        (gcounts, grpkm) = genes_expression(exons_data, gene_mapping, exon_to_gene, ncond, nreads)
         genesID = gcounts.keys()
         genes_data = [[g,gcounts[g],grpkm[g]]+list(gene_mapping.get(g,("NA",)*5)) for g in genesID]
         genes_data = sorted(genes_data, key=itemgetter(7,4)) # sort w.r.t. chromosome, then start
@@ -566,8 +581,8 @@ def rnaseq_workflow(ex, job, bam_files, pileup_level=["exons","genes","transcrip
     """ Get scores of transcripts from exons, using non-negative least-squares """
     if "transcripts" in pileup_level:
         print "Get scores of transcripts"
-        (tcounts, trpkm) = transcripts_expression(exons_data, exon_lengths,
-                   transcript_mapping, trans_in_gene, exons_in_trans,len(conditions))
+        (tcounts,trpkm) = transcripts_expression(exons_data, exon_lengths,
+                   transcript_mapping, trans_in_gene, exons_in_trans, ncond, nreads)
         transID = tcounts.keys()
         trans_data = [[t,tcounts[t],trpkm[t]]+list(transcript_mapping.get(t,("NA",)*5)) for t in transID]
         trans_data = sorted(trans_data, key=itemgetter(7,4)) # sort w.r.t. chromosome, then start
@@ -580,7 +595,35 @@ def rnaseq_workflow(ex, job, bam_files, pileup_level=["exons","genes","transcrip
     return {"exons":exons_file, "genes":genes_file, "transcripts":trans_file}
 
 
+#-------------------------- DIFFERENTIAL ANALYSIS ----------------------------#
+
+@program
+def run_glm(rpath, data_file, options=[]):
+    """Run negbin.test.R"""
+    output_file = unique_filename_in()
+    options += ["-o",output_file]
+    script_path = os.path.join(rpath,'negbin.test.R')
+    return {'arguments': ["R","--slave","-f",script_path,"--args",data_file]+options,
+            'return_value': output_file}
+
+def clean_before_deseq(filename):
+    """Delete all lines of *filename* where counts are 0 in every run."""
+    filename_clean = unique_filename_in()
+    with open(filename,"rb") as f:
+        with open(filename_clean,"wb") as g:
+            header = f.readline()
+            g.write(header)
+            ncond = sum([h.split('.').count("counts") for h in header.split('\t')])
+            for line in f:
+                goodline = line.split("\t")[1:1+ncond]
+                scores = [float(x) for x in goodline]
+                if any(scores):
+                    g.write(line)
+    return filename_clean
+
 def clean_deseq_output(filename):
+    """Delete all lines of *filename* with NA's everywhere, add 0.5 to zero scores
+    before recalculating fold change, and remove rows' ids."""
     filename_clean = unique_filename_in()
     with open(filename,"rb") as f:
         with open(filename_clean,"wb") as g:
@@ -598,6 +641,31 @@ def clean_deseq_output(filename):
                     line = '\t'.join(line)
                     g.write(line)
     return filename_clean
+
+def differential_analysis(ex, result, rpath, design=None, contrast=None):
+    """For each file in *result*, launches an analysis of differential expression on the count
+    values, and saves the output in the MiniLIMS.
+
+    :param ex: the bein's execution.
+    :param result: dictionary {type:filename} as returned by rnaseq_workflow.
+    :param rpath: path to the R scripts (negbin.test.R).
+    :param design: name of the file containing the design matrix.
+    :param contrast: name of the file containing the contrasts matrix.
+    """
+    for type,res_file in result.iteritems():
+        if res_file and rpath and os.path.exists(rpath):
+            res_file = clean_before_deseq(res_file)
+            options = ['-s','tab']
+            if design: options += ['-d',design]
+            if contrast: options += ['-c', contrast]
+            try:
+                glmfile = run_glm(ex, rpath, res_file, options)
+                output_files = [f for f in os.listdir(ex.working_directory) if glmfile in f]
+                for o in output_files:
+                    desc = set_file_descr(type+"_differential"+o.split(glmfile)[1]+".txt", step='stats', type='txt')
+                    o = clean_deseq_output(o)
+                    ex.add(o, description=desc)
+            except: print "Skipped differential analysis"
 
 #------------------------------------------------------#
 # This code was written by Julien Delafontaine         #
