@@ -169,8 +169,7 @@ class TextTrack(Track):
             srcfields = fields
         if fields is None:
             fields = self.fields
-        else:
-            fields = [f for f in fields if f in self.fields and f in srcfields]
+        fields = [f for f in fields if f in self.fields and f in srcfields]
 
         voidvec = [self.outtypes.get(f,str)() for f in self.fields]
         if not(chrom is None):

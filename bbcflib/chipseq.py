@@ -41,6 +41,7 @@ import re, os, gzip, sys
 from bbcflib import frontend, mapseq
 from bbcflib.common import merge_sql, intersect_many_bed, join_pdf, set_file_descr, unique_filename_in
 from bbcflib import btrack as track
+from bbcflib import bFlatMajor as gMiner
 
 # Other modules #
 from bein import program
@@ -311,7 +312,6 @@ def workflow_groups( ex, job_or_dict, mapseq_files, assembly, script_path='',
     logfile.write("Done MACS.\n");logfile.flush()
     peak_list = {}
     if run_meme:
-        import bbcflib.bFlatMajor as gMiner
         chrlist = assembly.chrmeta
         _select = {'score':(6,sys.maxint)}
         _fields = ['chr','start','end','name','score']
@@ -321,7 +321,7 @@ def workflow_groups( ex, job_or_dict, mapseq_files, assembly, script_path='',
                 macsbed = track.track(processed['macs'][ctrl]+"_summits.bed",
                                       chrmeta=chrlist, fields=_fields).read(selection=_select)
             else:
-                macsbed = gMiner.concatenate(
+                macsbed = gMiner.stream.concatenate(
                     [track.track(processed['macs'][(name,x)]+"_summits.bed",
                                  chrmeta=chrlist, fields=_fields).read(selection=_select)
                      for x in names['controls']])
@@ -396,9 +396,11 @@ def workflow_groups( ex, job_or_dict, mapseq_files, assembly, script_path='',
         peakfile = unique_filename_in()
         peakout = track.track(peakfile, format='txt', 
                               fields=['start','end','name','strand','gene','location_type','distance'])
+        touch(ex,peakout)
         for chrom in assembly.chrnames():
-            peakout.write(gMiner.getNearestFeature(track.read(selection=chrom), 
-                                                   annotations.read(selection=chrom)))
+            peakout.write(gMiner.stream.getNearestFeature(
+                    ptrack.read(selection=chrom), 
+                    annotations.read(selection=chrom)),mode='append')
         peakout.close()
         gzipfile(ex,peakfile)
         ex.add(peakfile+".gz", 

@@ -1,4 +1,8 @@
-def getNearestFeature(track, annotations,
+import sys
+from bbcflib.bFlatMajor import common
+from bbcflib import btrack as track
+
+def getNearestFeature(features, annotations,
                       thresholdPromot=2000, thresholdInter=100000, thresholdUTR=10):
     def _get_feature(_t,_a):
         F = []
@@ -118,9 +122,9 @@ def getNearestFeature(track, annotations,
                     typeLoc = typeLoc+"_Included"
                 yield peak+(gene,typeLoc,dist)
 
-    track = common.reorder(track,['start','end'])
-    annot = common.reorder(annotations,['start','end','name','strand'])
-    _fields = track.fields+['gene','location_type','distance']
-    return common.FeatureStream(_get_feature(track,annot),fields=_fields)
+    features = common.reorder(features,['start','end'])
+    annot = common.reorder(annotations,['start','end','gene_name','strand'])
+    _fields = features.fields+['gene','location_type','distance']
+    return track.FeatureStream(_get_feature(features,annot),fields=_fields)
 
 
