@@ -60,7 +60,7 @@ class Assembly(object):
 
         .. attribute:: name
 
-        A string giving the name of the assembly in GenRep.
+        A string giving the nameassembly of the assembly in GenRep.
 
         .. attribute:: index_path
 
