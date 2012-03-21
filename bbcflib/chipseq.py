@@ -390,6 +390,20 @@ def workflow_groups( ex, job_or_dict, mapseq_files, assembly, script_path='',
             [ex.add(v, description=set_file_descr(name+'_deconv.'+k,type=k,step='deconvolution',group=name))
              for k,v in deconv.iteritems()]
             processed['deconv'][name] = deconv
+    for name, plist in peak_list.iteritems():
+        ptrack = track.track(plist)
+        annotations = track.track(assembly.sqlite_path())
+        peakfile = unique_filename_in()
+        peakout = track.track(peakfile, format='txt', 
+                              fields=['start','end','name','strand','gene','location_type','distance'])
+        for chrom in assembly.chrnames():
+            peakout.write(gMiner.getNearestFeature(track.read(selection=chrom), 
+                                                   annotations.read(selection=chrom)))
+        peakout.close()
+        gzipfile(ex,peakfile)
+        ex.add(peakfile+".gz", 
+               description=set_file_descr(name+'_annotated_peaks.txt.gz',type='text',
+                                          step='annotation',group=name))
     if run_meme:
         from bbcflib.motif import parallel_meme
         logfile.write("Starting MEME.\n");logfile.flush()

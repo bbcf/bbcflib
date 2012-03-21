@@ -56,6 +56,7 @@ from bbcflib import genrep
 _track_map = {
     'sql': ('bbcflib.btrack.sql','SqlTrack'),
     'db':  ('bbcflib.btrack.sql','SqlTrack'),
+    'text':('bbcflib.btrack.text','TextTrack'),
     'txt': ('bbcflib.btrack.text','TextTrack'),
     'bed': ('bbcflib.btrack.text','BedTrack'),
     'bedGraph': ('bbcflib.btrack.text','BedGraphTrack'),
