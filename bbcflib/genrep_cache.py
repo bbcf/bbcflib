@@ -1,4 +1,33 @@
-import genrep, hashlib, datetime, os, ConfigParser, json, inspect
+'''
+Build a local database that store queries to GenRep. Once stored, result are fetched from it
+instead of from GenRep web-service.
+
+Use it :
+from bbcflib import genrep_cache as genrep
+print genrep.Assembly('mm9').chrnames
+
+Warning :
+You can only call Assembly and all methods belonging to it.
+Direct calls to GenRep() or GenRepObject() are not supported
+
+Functioning :
+On import it create the configuration file `.genrepcache.conf` in your home directory with 
+parameters :
+    db_name = Database name.
+    time_limit = Time limit when a cached response must be reloaded (in days).
+    assembly_cache = List of methods you want to cache.
+    unique_ids = Important attributes in your class that will determine the uniqueness of the child object
+    connector = Default connector : change it to what you want and supported by sqlalchemy 
+        (see http://docs.sqlalchemy.org/en/latest/core/engines.html#supported-databases).
+
+Then on method call, if the method is not in `assembly_cache` parameter, your call is redirected
+to the original GenRep library, else the response is fetched from the local database (if query already logged
+and not outdated)
+
+'''
+
+
+import genrep, hashlib, datetime, os, ConfigParser, json
 
 from sqlalchemy import create_engine, and_, MetaData, Table
 from sqlalchemy.ext.declarative import declarative_base
@@ -14,7 +43,7 @@ from sqlalchemy.orm import sessionmaker
 '''
 Directory where genrep_cache db will be installed (if connector is sqlite)
 '''
-home_dir = os.getenv('USERPROFILE') or os.getenv('HOME', '.')
+home_dir =  os.getenv('HOME') or os.getenv('USERPROFILE', '.')
 
 '''
 Configuration file name.
@@ -26,17 +55,10 @@ Configuration path.
 '''
 conf_path = os.path.join(home_dir, conf_file)
 
-'''
-db_name = Database name.
-time_limit = Time limit when a cached response must be reloaded (in days).
-assembly_cache = List of methods you want to cache.
-unique_ids = Important attributes in your class that will determine the uniqueness of the child object
-connector = Default connector : change it to what you want and supported by sqlalchemy 
-(see http://docs.sqlalchemy.org/en/latest/core/engines.html#supported-databases).
-'''
+
 default_conf = {'db_name' : 'genrepcache.sqlite',
                 'time_limit' : 14,
-                'assembly_cache' : ['chrnames', 'fasta_path'],
+                'assembly_cache' : ['chrnames', 'fasta_path', 'get_sqlite_url', 'sqlite_path'],
                 'unique_ids' : ['intype', 'nr_assembly_id', 'source_id'],
                 }
 
