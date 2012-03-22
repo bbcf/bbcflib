@@ -11,22 +11,28 @@ from bein import program, ProgramFailed, MiniLIMS
 from bein.util import add_pickle, touch, split_file, count_lines
 
 
-def untar_genome_fasta(assembly):
-    chrlist = dict((str(k[0])+"_"+str(k[1])+"."+str(k[2]),v['name']) 
-                   for k,v in assembly.chromosomes.iteritems())
+def untar_genome_fasta(assembly, convert=True):
+    if convert: 
+        chrlist = dict((str(k[0])+"_"+str(k[1])+"."+str(k[2]),v['name']) 
+                       for k,v in assembly.chromosomes.iteritems())
+    else:
+        chrlist = {}
     archive = tarfile.open(assembly.fasta_path())
-    archive.extractall()
-    genomeRef = unique_filename_in()
-    with open(genomeRef,"w") as outf:
-        for f in archive.getmembers():
-            if f.isdir(): continue
-            with open(f.name,"r") as inf:
-                header = inf.next()
-                headpatt = re.search(r'>(\S+)\s',header)
-                if headpatt and headpatt.groups()[0] in chrlist:
-                    header = re.sub(headpatt.groups()[0],chrlist[headpatt.groups()[0]],header)
-                outf.write(header)
-                [outf.write(l) for l in inf]
+    genomeRef = {}
+    for f in archive.getmembers():
+        if f.isdir(): continue
+        inf = archive.extractfile(f)
+        header = inf.readline()
+        headpatt = re.search(r'>(\S+)\s',header)
+        if headpatt: chrom = headpatt.groups()[0]
+        else: continue
+        if chrom in chrlist:
+            header = re.sub(headpatt.groups()[0],chrlist[headpatt.groups()[0]],header)
+        genomeRef[chrom] = unique_filename_in()
+        with open(genomeRef[chrom],"w") as outf:
+            outf.write(header)
+            [outf.write(l) for l in inf]
+        inf.close()
     archive.close()
     return genomeRef
 
@@ -44,22 +50,23 @@ def sam_pileup(job,bamfile,refGenome,via='lsf'):
     return {"arguments": ["samtools","pileup","-B","-cvsf",refGenome,"-N",str(ploidy),bamfile],
              "return_value": [minCoverage,minSNP]}
 
-def parse_pileupFile(ex,job,dictPileupFile,allSNPpos,minCoverage=80,minSNP=10,via='lsf'):
+def parse_pileupFile(ex,job,dictPileupFile,allSNPpos,chrom,minCoverage=80,minSNP=10):
     formatedPileupFilename=unique_filename_in()
     pos=open(allSNPpos,'rb')
     posSNP=pos.readlines()
     pos.close()
 
     allSample={}
-    iupac={'M':['A','a','C','c'],'Y':['T','t','C','c'],'R':['A','a','G','g'],'S':['G','g','C','c'],'W':['A','a','T','t'],'K':['T','t','G','g']}
+    iupac={'M':['A','a','C','c'],'Y':['T','t','C','c'],'R':['A','a','G','g'],
+           'S':['G','g','C','c'],'W':['A','a','T','t'],'K':['T','t','G','g']}
 
-    for p in dictPileupFile:
+    for p,sname in dictPileupFile.iteritems():
         sample=open(p,'rb')
         cpt=0
         flag=0
         s=sample.readlines()
         sample.close()
-        allSample[dictPileupFile[p]]={}
+        allSample[sname]={}
         for position in posSNP:
             position=position.strip("\n")
             flag=1
@@ -73,7 +80,7 @@ def parse_pileupFile(ex,job,dictPileupFile,allSNPpos,minCoverage=80,minSNP=10,vi
                         string=""
                     if re.search(r'[ACGT]',info[3]):
                         string+=info[3]
-                        allSample[dictPileupFile[p]][position]=string
+                        allSample[sname][position]=string
                     else:
                         snp=0
                         snp2=0
@@ -82,21 +89,21 @@ def parse_pileupFile(ex,job,dictPileupFile,allSNPpos,minCoverage=80,minSNP=10,vi
                         snp2=info[8].count(iupac[info[3]][2])+info[8].count(iupac[info[3]][3])
                         if ((snp*100.)/int(info[7]))+((snp2*100.)/int(info[7])) > minCoverage :
                             if info[2] == iupac[info[3]][0]:
-                                allSample[dictPileupFile[p]][position]=string+str(snp2*100./int(info[7]))+" % "+iupac[info[3]][2]+" / "+str((int(info[7])-snp2)*100./int(info[7]))+" % "+iupac[info[3]][0] 
+                                allSample[sname][position]=string+str(snp2*100./int(info[7]))+" % "+iupac[info[3]][2]+" / "+str((int(info[7])-snp2)*100./int(info[7]))+" % "+iupac[info[3]][0] 
                             elif info[2] == iupac[info[3]][2]:
-                                allSample[dictPileupFile[p]][position]=string+str(snp*100./int(info[7]))+" % "+iupac[info[3]][0]+" / "+str((int(info[7])-snp)*100./int(info[7]))+" % "+iupac[info[3]][2]
+                                allSample[sname][position]=string+str(snp*100./int(info[7]))+" % "+iupac[info[3]][0]+" / "+str((int(info[7])-snp)*100./int(info[7]))+" % "+iupac[info[3]][2]
                             else:
-                                allSample[dictPileupFile[p]][position]=string+str(snp*100./int(info[7]))+" % "+iupac[info[3]][0]+" / "+str(snp2*100./int(info[7]))+" % "+iupac[info[3]][2]
+                                allSample[sname][position]=string+str(snp*100./int(info[7]))+" % "+iupac[info[3]][0]+" / "+str(snp2*100./int(info[7]))+" % "+iupac[info[3]][2]
                         else:
-                            allSample[dictPileupFile[p]][position]="-"
+                            allSample[sname][position]="-"
          
             if flag==1:
-                allSample[dictPileupFile[p]][position]="-"
+                allSample[sname][position]="-"
     
-    firstSample=allSample[allSample.keys()[0]]
+    firstSample=allSample.values()[0]
 
     with open(formatedPileupFilename,'w') as outfile:
-        outfile.write("position\treference\t"+"\t".join(dictPileupFile.values())+"\n")
+        outfile.write("chromosome\tposition\treference\t"+"\t".join(dictPileupFile.values())+"\n")
         
         for p in sorted(firstSample):
             nbNoSnp=0
@@ -104,7 +111,7 @@ def parse_pileupFile(ex,job,dictPileupFile,allSNPpos,minCoverage=80,minSNP=10,vi
                 nbNoSnp+=allSample[s][p].count("-")
 
             if nbNoSnp!=len(allSample.keys()):
-                outfile.write(str(p)+"\t"+"\t".join([allSample[s][p] for s in allSample])+"\n")
+                outfile.write("\t".join([chrom,str(p)]+[allSample[s][p] for s in allSample])+"\n")
 
     return formatedPileupFilename
 
@@ -117,24 +124,25 @@ def synonymous(ex,job,allSnp):
     return allCodon
     
 
-def posAllUniqSNP(ex,job,dictPileupFile,minCoverage=80):
+def posAllUniqSNP(ex,job,PileupFile,minCoverage=80):
     allSNPpos=unique_filename_in()
     file=open(allSNPpos,'wb')
     #file.write("position\treference\n")
     d={}
-    for p in dictPileupFile.keys():
+    for p,v in PileupFile.iteritems():
+        parameters=v[1].wait()
+        PileupFile[p]=v[0]
         f=open(p,'rb')
         for l in f:
             data=l.split("\t")
             cpt=data[8].count(".")+data[8].count(",")
             if (cpt*100./int(data[7]))<int(minCoverage):
                 d[int(data[1])]=data[2]
-
         f.close() 
     
     for pos in sorted(d.keys()):
         file.write("%s\t%s\n" % (pos,d[pos]))
 
     file.close()
-    return allSNPpos
+    return (allSNPpos,parameters)
     
