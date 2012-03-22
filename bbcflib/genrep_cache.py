@@ -27,11 +27,11 @@ and not outdated)
 '''
 
 
-import genrep, hashlib, datetime, os, ConfigParser, json
+import genrep, hashlib, datetime, os, ConfigParser, json, pickle
 
 from sqlalchemy import create_engine, and_, MetaData, Table
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy import Column, Text
+from sqlalchemy import Column, Text, PickleType
 from sqlalchemy.types import DateTime
 from sqlalchemy.orm import sessionmaker
 
@@ -82,9 +82,33 @@ def dec(obj, func, _property=False):
     return wrapper
 
 
+def cached_ass(*args, **kw):
+    '''
+    Cache assembly
+    '''
+    session = get_session()
+    ass = session.query(Ass).filter(and_(Ass.args == str(args),
+                                     Ass.kw == str(kw))).first()
+    if ass is not None:
+        now = datetime.datetime.now()
+        if timedelta > (now - ass.date):
+            session.close()
+            return pickle.loads(str(ass.assembly))
+    else :
+        ass = Ass()
+    
+    assembly = genrep.Assembly(*args, **kw)
+    ass.args = str(args)
+    ass.kw = str(kw)
+    ass.assembly = pickle.dumps(assembly)
+    session.add(ass)
+    session.commit()
+    session.close()
+    return assembly
+
 def cached(obj, func, uid, args, kw, _property):
     '''
-    Look if the method is already caself.gr.__dict__ched and not outdated
+    Look if the method is already cached and not outdated
     then return the response
     '''
     session = get_session()
@@ -95,6 +119,7 @@ def cached(obj, func, uid, args, kw, _property):
     if store is not None:
         now = datetime.datetime.now()
         if timedelta > (now - store.date):
+            session.close()
             return store.response
     else :
         store = Store()
@@ -124,12 +149,18 @@ class Assembly(object):
         Each method in `assembly_cache` will be decorated by the 
         `dec` method. Others will be redirected to the Assembly decorated.
         '''
-        self.gr = genrep.Assembly(*args, **kw)
         self.uid = None
+        self.gr = cached_ass(*args, **kw)
+        
+        
         for func in assembly_cache:
             if hasattr(self.gr, func):
                 v = self.gr.__class__.__dict__.get(str(func))
-                if v is not None and isinstance(v, property):
+                if v is None :
+                    ## instance  
+                    raise AttributeError('Only function or property can be decorated : "%s" is an attribute' % func)
+                ## class
+                elif isinstance(v, property):
                     prop = property(dec(self, str(func), _property=True))
                     setattr(self.__class__, str(func), prop)
                 else :
@@ -178,7 +209,18 @@ class Store(Base):
     kw = Column(Text, primary_key=True)
     response = Column(Text)
     date = Column(DateTime, default=datetime.datetime.now, nullable=False)                                                                                       
-        
+
+class Ass(Base):
+    '''
+    Data store.
+    '''
+    __tablename__ = 'ass'
+    args = Column(Text, primary_key=True)
+    kw = Column(Text, primary_key=True)
+    assembly = Column(Text)
+    date = Column(DateTime, default=datetime.datetime.now, nullable=False) 
+    
+    
 metadata = MetaData()
 grc = Table('grc', metadata,
      Column('uid', Text, primary_key=True),
@@ -186,6 +228,12 @@ grc = Table('grc', metadata,
      Column('kw', Text, primary_key=True),
      Column('response', Text),
      Column('date', DateTime))
+
+ass = Table('ass', metadata,
+    Column('args', Text, primary_key=True),
+    Column('kw', Text, primary_key=True),
+    Column('assembly', PickleType),
+    Column('date', DateTime))
 
 
 def init(connector, metadata, tables, echo=False):
@@ -220,7 +268,7 @@ json.loads(config.get(section, 'assembly_cache'))
     
 unique_ids = json.loads(config.get(section, 'unique_ids'))
 timedelta = datetime.timedelta(days=nb)
-DBSession = init(connector, metadata, [grc], echo=False)
+DBSession = init(connector, metadata, [grc, ass], echo=False)
 
 def get_session():
     return DBSession()
@@ -230,11 +278,12 @@ def get_session():
 if __name__ == '__main__':
     session = get_session()
     a = Assembly('mm9')
-    print 'CHRNAMES'
-    print a.chrnames
-    print 'FASTA PATH'
-    print a.fasta_path('chr1')
-    
+#    print 'CHRNAMES'
+#    print a.chrnames
+#    print 'FASTA PATH'
+#    print a.fasta_path('chr1')
+    print 'AGAIN'
+    print a.chromosomes
     
     
     
