@@ -9,7 +9,7 @@ Utility functions common to several pipelines.
 # Built-in modules #
 import os, sys, time, csv, string, random, pickle, re, json
 
-
+#-------------------------------------------------------------------------#
 def unique_filename_in(path=None):
     """Return a random filename unique in the given path.
 
@@ -26,7 +26,7 @@ def unique_filename_in(path=None):
         if files == []: break
     return filename
 
-###############################################################################
+#-------------------------------------------------------------------------#
 def normalize_url(url):
     """Produce a fixed form for an HTTP URL.
 
@@ -44,7 +44,7 @@ def normalize_url(url):
         url = "http://" + url
     return url.strip("/")
 
-###############################################################################
+#-------------------------------------------------------------------------#
 def cat(files,out=None,skip=0):
     """Concatenates files.
     """
@@ -62,85 +62,6 @@ def cat(files,out=None,skip=0):
         out = None
     return out
 
-###############################################################################
-def set_file_descr(filename,**kwargs):
-    """Implements file naming compatible with the 'get_files' function::
-
-        >>> set_file_descr("toto",**{'tag':'pdf','step':1,'type':'doc','comment':'ahaha'})
-        'pdf:toto[step:1,type:doc] (ahaha)'
-
-    if 'tag' and/or comment are ommitted::
-
-        >>> set_file_descr("toto",step=1,type='doc')
-        'toto[step:1,type:doc]'
-
-    """
-    file_descr = filename
-    argskeys = kwargs.keys()
-    if 'tag' in kwargs:
-        file_descr = kwargs['tag']+":"+filename
-        argskeys.remove('tag')
-    comment = ''
-    if 'comment' in argskeys:
-        comment = " ("+str(kwargs['comment'])+")"
-        argskeys.remove('comment')
-    plst = (",").join([str(k)+":"+str(kwargs[k]) for k in argskeys])
-    file_descr += "["+plst+"]"
-    file_descr += comment
-    return file_descr
-#    tag:filename[group:grpId,step:stepId,type:fileType,view:admin] (comment)
-
-#-------------------------------------------------------------------------#
-def get_files( id_or_key, minilims, by_type=True, select_param=None ):
-    """Retrieves a dictionary of files created by an htsstation job identified by its key
-    or bein id in a MiniLIMS.
-
-    The dictionary keys are the file types (e.g. 'pdf', 'bam', 'py' for python objects),
-    the values are dictionaries with keys repository file names and values actual file
-    descriptions (names to provide in the user interface).
-
-    'select_param' can be used to select a subset of files: if it is a string or a list of strings,
-    then only files containing these parameters will be returned,
-    and if it is a dictionary, only files with parameters matching the key/value pairs will be returned.
-    """
-    if isinstance(select_param,str): select_param = [select_param]
-    if isinstance(id_or_key, str):
-        try:
-            exid = max(minilims.search_executions(with_text=id_or_key))
-        except ValueError, v:
-            raise ValueError("No execution with key "+id_or_key)
-    else:
-        exid = id_or_key
-    file_dict = {}
-    allf = dict((y['repository_name'],y['description']) for y in
-                [minilims.fetch_file(x) for x in minilims.search_files(source=('execution',exid))])
-    for f,d in allf.iteritems():
-        tag_d = d.split(':')
-        tag = None
-        if len(tag_d)>1 and not(re.search("\[",tag_d[0])):
-            tag = tag_d[0]
-            d = ":".join(tag_d[1:])
-        pars_patt = re.search(r'\[(.*)\]',d)
-        if not(pars_patt):
-            pars = "group:0,step:0,type:none,view:admin"
-            re.sub(r'([^\s\[]*)',r'\1['+pars+']',d,1)
-        else:
-            pars = pars_patt.groups()[0]
-        par_dict = dict(x.split(":") for x in pars.split(","))
-        if select_param:
-            if isinstance(select_param,dict):
-                if not(all([k in par_dict and par_dict[k]==v for k,v in select_param.iteritems()])):
-                    continue
-            else:
-                if not(all([k in par_dict for k in select_param])):
-                    continue
-        cat = (by_type and par_dict.get('type')) or tag or 'none'
-        if cat in file_dict:
-            file_dict[cat][f]=d
-        else:
-            file_dict[cat] = {f: d}
-    return file_dict
-
 #-------------------------------------------------------------------------#
 def track_header( descr, ftype, url, ffile ):
     header = "track type="+ftype+" name="+re.sub(r'\[.*','',descr)
@@ -154,30 +75,6 @@ def track_header( descr, ftype, url, ffile ):
     return header+style+"\n"
 
 #"track type="+type+" name='"+fname+"' bigDataUrl="+htsurl+style+"\n"
-
-#-------------------------------------------------------------------------#
-def merge_sql( ex, sqls, outdir=None, via='lsf' ):
-    """Run ``gMiner``'s 'merge_scores' function on a set of sql files
-    """
-    if outdir == None:
-        outdir = unique_filename_in()
-    if not(os.path.exists(outdir)):
-        os.mkdir(outdir)
-    gMiner_job = {"operation": "merge_scores", "output": outdir,
-                  "args": "'"+json.dumps({"trackList":",".join(sqls)})+"'"}
-    files = gMiner_run.nonblocking(ex,gMiner_job,via=via).wait()
-    return files[0]
-
-#-------------------------------------------------------------------------#
-def intersect_many_bed(ex,files,via='lsf'):
-    """Runs ``intersectBed`` iteratively over a list of bed files.
-    """
-    out = files[0]
-    for f in files[1:]:
-        next = unique_filename_in()
-        intersectBed.nonblocking( ex, out, f, via=via, stdout=next ).wait()
-        out = next
-    return out
 
 #-------------------------------------------------------------------------#
 def timer(function):
@@ -313,8 +210,108 @@ try:
                 "return_value": _split_output}
 
         #-------------------------------------------------------------------------#
+    def merge_sql( ex, sqls, outdir=None, via='lsf' ):
+        """Run ``gMiner``'s 'merge_scores' function on a set of sql files
+        """
+        if outdir == None:
+            outdir = unique_filename_in()
+        if not(os.path.exists(outdir)):
+            os.mkdir(outdir)
+        gMiner_job = {"operation": "merge_scores", "output": outdir,
+                      "args": "'"+json.dumps({"trackList":",".join(sqls)})+"'"}
+        files = gMiner_run.nonblocking(ex,gMiner_job,via=via).wait()
+        return files[0]
 
+        #-------------------------------------------------------------------------#
+    def intersect_many_bed(ex,files,via='lsf'):
+        """Runs ``intersectBed`` iteratively over a list of bed files.
+        """
+        out = files[0]
+        for f in files[1:]:
+            next = unique_filename_in()
+            intersectBed.nonblocking( ex, out, f, via=via, stdout=next ).wait()
+            out = next
+        return out
 
+    def set_file_descr(filename,**kwargs):
+        """Implements file naming compatible with the 'get_files' function::
+
+            >>> set_file_descr("toto",**{'tag':'pdf','step':1,'type':'doc','comment':'ahaha'})
+            'pdf:toto[step:1,type:doc] (ahaha)'
+
+        if 'tag' and/or comment are ommitted::
+
+            >>> set_file_descr("toto",step=1,type='doc')
+            'toto[step:1,type:doc]'
+
+        """
+        file_descr = filename
+        argskeys = kwargs.keys()
+        if 'tag' in kwargs:
+            file_descr = kwargs['tag']+":"+filename
+            argskeys.remove('tag')
+        comment = ''
+        if 'comment' in argskeys:
+            comment = " ("+str(kwargs['comment'])+")"
+            argskeys.remove('comment')
+        plst = (",").join([str(k)+":"+str(kwargs[k]) for k in argskeys])
+        file_descr += "["+plst+"]"
+        file_descr += comment
+        return file_descr
+    #    tag:filename[group:grpId,step:stepId,type:fileType,view:admin] (comment)
+
+#-------------------------------------------------------------------------#
+    def get_files( id_or_key, minilims, by_type=True, select_param=None ):
+        """Retrieves a dictionary of files created by an htsstation job identified by its key
+        or bein id in a MiniLIMS.
+
+        The dictionary keys are the file types (e.g. 'pdf', 'bam', 'py' for python objects),
+        the values are dictionaries with keys repository file names and values actual file
+        descriptions (names to provide in the user interface).
+
+        'select_param' can be used to select a subset of files: if it is a string or a list of strings,
+        then only files containing these parameters will be returned,
+        and if it is a dictionary, only files with parameters matching the key/value pairs will be returned.
+        """
+        if isinstance(select_param,str): select_param = [select_param]
+        if isinstance(id_or_key, str):
+            try:
+                exid = max(minilims.search_executions(with_text=id_or_key))
+            except ValueError, v:
+                raise ValueError("No execution with key "+id_or_key)
+        else:
+            exid = id_or_key
+        file_dict = {}
+        allf = dict((y['repository_name'],y['description']) for y in
+                    [minilims.fetch_file(x) for x in minilims.search_files(source=('execution',exid))])
+        for f,d in allf.iteritems():
+            tag_d = d.split(':')
+            tag = None
+            if len(tag_d)>1 and not(re.search("\[",tag_d[0])):
+                tag = tag_d[0]
+                d = ":".join(tag_d[1:])
+            pars_patt = re.search(r'\[(.*)\]',d)
+            if not(pars_patt):
+                pars = "group:0,step:0,type:none,view:admin"
+                re.sub(r'([^\s\[]*)',r'\1['+pars+']',d,1)
+            else:
+                pars = pars_patt.groups()[0]
+            par_dict = dict(x.split(":") for x in pars.split(","))
+            if select_param:
+                if isinstance(select_param,dict):
+                    if not(all([k in par_dict and par_dict[k]==v for k,v in select_param.iteritems()])):
+                        continue
+                else:
+                    if not(all([k in par_dict for k in select_param])):
+                        continue
+            cat = (by_type and par_dict.get('type')) or tag or 'none'
+            if cat in file_dict:
+                file_dict[cat][f]=d
+            else:
+                file_dict[cat] = {f: d}
+        return file_dict
+
+        #-------------------------------------------------------------------------#
 except ImportError: print "Warning: no module named 'bein'. @program imports skipped."
 
 #-----------------------------------#
