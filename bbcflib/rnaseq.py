@@ -269,6 +269,7 @@ def save_results(ex, cols, conditions, group_ids, assembly, header=[], feature_t
             # SQL track
             with track.new(filename+'.sql') as t:
                 t.chrmeta = assembly.chrmeta
+                t.datatype = 'signal'
                 for chr in t.chrmeta:
                     goodlines = [l for l in lines if (l[3]!=0.0 and l[0]==chr)]
                     [lines.remove(l) for l in goodlines]
