@@ -498,12 +498,12 @@ class Assembly(object):
             db = sqlite3.connect(dbpath)
             cursor = db.cursor()
             for chr in self.chrnames:
-                sql = """SELECT DISTINCT exon_id,transcript_id from '%s' WHERE (type='exon')""" %chr
+                sql = """SELECT DISTINCT exon_id,transcript_id FROM '%s' WHERE (type='exon') AND exon_id IS NOT NULL""" %chr
                 cursor.execute(sql)
                 T={}
                 for e,t in cursor:
                     T.setdefault(str(e),[]).append(str(t))
-                sql = """SELECT DISTINCT exon_id,gene_id,start,end FROM '%s' WHERE (type='exon')""" %chr
+                sql = """SELECT DISTINCT exon_id,gene_id,start,end FROM '%s' WHERE (type='exon') AND exon_id IS NOT NULL""" %chr
                 cursor.execute(sql)
                 for e,g,start,end in cursor:
                     exon_mapping[str(e)] = (T[str(e)],str(g),start,end,chr)
@@ -527,7 +527,7 @@ class Assembly(object):
             db = sqlite3.connect(dbpath)
             cursor = db.cursor()
             for chr in self.chrnames:
-                sql = """SELECT DISTINCT transcript_id,exon_id from '%s' WHERE (type='exon')""" %chr
+                sql = """SELECT DISTINCT transcript_id,exon_id from '%s' WHERE (type='exon') AND exon_id IS NOT NULL""" %chr
                 cursor.execute(sql)
                 for t,e in cursor:
                     exons_in_trans.setdefault(str(t),[]).append(str(e))
