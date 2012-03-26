@@ -201,6 +201,17 @@ try:
 
         #-------------------------------------------------------------------------#
     @program
+    def track_convert( fileIn, fileOut=None, formatIn=None, formatOut=None, 
+                       assembly=None, chrmeta=None ):
+        if fileOut is None: fileOut = unique_filename_in()
+        args = [fileIn,fileOut]
+        if formatIn:  args += ["--format1",str(formatIn)]
+        if formatOut: args += ["--format2",str(formatOut)]
+        if assembly:  args += ["--assembly",str(assembly)]
+        if chrmeta:   args += ["--chrmeta",json.dumps(chrmeta)]
+        return {"arguments": ["track_convert"]+args, "return_value": fileOut}
+        #-------------------------------------------------------------------------#
+    @program
     def gMiner_run( job ):
         gminer_args = ["--"+str(k)+"="+str(v) for k,v in job.iteritems()]
         def _split_output(p):
