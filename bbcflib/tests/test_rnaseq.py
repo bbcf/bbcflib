@@ -21,169 +21,205 @@ class Assem(object):
     def __init__(self):
         self.chrmeta = None
 
+def commonTest(X,R):
+    for w in self.win_sizes:
+        T = [s for s in fusion(iter(X), w)]
+        unittest.TestCase.assertEqual(T,R)
 
 class Test_Fusion(unittest.TestCase):
-    def test_fusion(self):
-        c = 'c'
-        k = 0
-        print "test"+str(k); k+=1
+    def setUp(self):
+        self.win_sizes = [12]
+
+    def commonTest(self,X,R):
+        for w in [12]:
+            T = [s for s in fusion(iter(X), w)]
+            self.assertEqual(T,R)
+
+    #@unittest.skip('')
+    def test_fusion1(self):
         """
         |***---***---***|
         """
+        c = 'c'
         X = [(c,0,5,5.),(c,10,15,4.),(c,20,25,2.)]
         R = [(c,0,5,5.),(c,10,15,4.),(c,20,25,2.)]
-        T1 = [s for s in fusion(iter(X),12)]
-        T2 = [s for s in fusion(iter(X),4)]
-        self.assertEqual(T1, R)
-        self.assertEqual(T2, R)
-        print "test"+str(k); k+=1
+        self.commonTest(X,R)
+
+    #@unittest.skip('')
+    def test_fusion2(self):
         """
         |*********|
         |---***---|
         """
+        c = 'c'
         X = [(c,0,15,5.),(c,5,10,4.)]
         R = [(c,0,5,5.),(c,5,10,9.),(c,10,15,5.)]
-        T = [s for s in fusion(iter(X))]
-        self.assertEqual(T, R)
-        print "test"+str(k); k+=1
+        self.commonTest(X,R)
+
+    #@unittest.skip('')
+    def test_fusion3(self):
         """
         |***************|
         |---***---***---|
         """
+        c = 'c'
         X = [(c,0,25,5.),(c,5,10,4.),(c,15,20,2.)]
         R = [(c,0,5,5.),(c,5,10,9.),(c,10,15,5.),(c,15,20,7.),(c,20,25,5.)]
-        T = [s for s in fusion(iter(X))]
-        self.assertEqual(T, R)
-        print "test"+str(k); k+=1
+        self.commonTest(X,R)
+    
+    #@unittest.skip('')
+    def test_fusion4(self):    
         """
         |*********---***|
         |---***---------|
         """
+        c = 'c'
         X = [(c,0,15,5.),(c,5,10,4.),(c,20,25,2.)]
         R = [(c,0,5,5.),(c,5,10,9.),(c,10,15,5.),(c,20,25,2.)]
-        T = [s for s in fusion(iter(X))]
-        self.assertEqual(T, R)
-        print "test"+str(k); k+=1
+        self.commonTest(X,R)
+        
+    #@unittest.skip('')
+    def test_fusion5(self):
         """
          .  .  .  .  .  .  .  .
         |***************---***|
         |---***---***---------|
         """
+        c = 'c'
         X = [(c,0,25,5.),(c,5,10,4.),(c,15,20,2.),(c,30,35,1.)]
         R = [(c,0,5,5.),(c,5,10,9.),(c,10,15,5.),(c,15,20,7.),(c,20,25,5.),(c,30,35,1.)]
-        T = [s for s in fusion(iter(X))]
-        self.assertEqual(T, R)
-        print "test"+str(k); k+=1
+        self.commonTest(X,R)
+    
+    #@unittest.skip('')
+    def test_fusion6(self):
         """
         |******---|
         |---******|
         """
+        c = 'c'
         X = [(c,0,10,5.),(c,5,15,4.)]
         R = [(c,0,5,5.),(c,5,10,9.),(c,10,15,4.)]
-        T = [s for s in fusion(iter(X))]
-        self.assertEqual(T, R)
-        print "test"+str(k); k+=1
+        self.commonTest(X,R)
+    
+    #@unittest.skip('')
+    def test_fusion7(self):
         """
          .  .  .  .  .  .
         |******------***|
         |---******------|
         """
+        c = 'c'
         X = [(c,0,10,5.),(c,5,15,4.),(c,20,25,2.)]
         R = [(c,0,5,5.),(c,5,10,9.),(c,10,15,4.),(c,20,25,2.)]
-        T = [s for s in fusion(iter(X))]
-        self.assertEqual(T, R)
-        print "test"+str(k); k+=1
+        self.commonTest(X,R)
+        
+    #@unittest.skip('')
+    def test_fusion8(self):
         """
          .  .  .  .  .  .
         |******---******|
         |---*********---|
         """
+        c = 'c'
         X = [(c,0,10,5.),(c,5,20,4.),(c,15,25,2.)]
         R = [(c,0,5,5.),(c,5,10,9.),(c,10,15,4.),(c,15,20,6.),(c,20,25,2.)]
-        T = [s for s in fusion(iter(X))]
-        self.assertEqual(T, R)
-        print "test"+str(k); k+=1
+        self.commonTest(X,R)
+        
+    #@unittest.skip('')
+    def test_fusion9(self):
         """
          0  5  10 15 20 25 30    40    50    60    70    80    90    100   110   120   130   140
          .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .
         |******************---------------******---*********---***---******---************---***|
         |---***---***---******---------******---------***---------------*********---***---------|
         """
+        c = 'c'
         X = [(c,0,30,5.),(c,5,10,4.),(c,15,20,3.),(c,25,35,8.),(c,50,60,1.),
              (c,55,65,3.),(c,70,85,8.),(c,75,80,3.),(c,90,95,2.),(c,100,110,4.),
              (c,105,120,3.),(c,115,135,2.),(c,125,130,6.),(c,140,145,9.)]
-        T = [s for s in fusion(iter(X))]
         R = [(c,0,5,5.),(c,5,10,9.),(c,10,15,5.),(c,15,20,8.),
              (c,20,25,5.),(c,25,30,13.),(c,30,35,8.),(c,50,55,1.),
              (c,55,60,4.),(c,60,65,3.),(c,70,75,8.),(c,75,80,11.),
              (c,80,85,8.),(c,90,95,2.),(c,100,105,4.),(c,105,110,7.),
              (c,110,115,3.),(c,115,120,5.),(c,120,125,2.),(c,125,130,8.),
              (c,130,135,2.),(c,140,145,9.)]
-        self.assertEqual(T,R)
-        print "test"+str(k); k+=1
+        self.commonTest(X,R)
+        
+    #@unittest.skip('')
+    def test_fusion10(self):
         """
          .  .  .  .  .  .
         |***************|
         |---*********---| -> |***.*********.***|
         |------***------| -> |------(xxx)------|
         """
+        c = 'c'
         X = [(c,0,25,5.),(c,5,20,4.),(c,10,15,2.)]
         R = [(c,0,5,5.),(c,5,10,9.),(c,10,15,11.),(c,15,20,9.),(c,20,25,5.)] # what it should be
         #R = [(c,0,5,5.),(c,5,20,9.),(c,20,25,5.)] # special treatment
-        T = [s for s in fusion(iter(X))]
-        self.assertEqual(T, R)
-        print "test"+str(k); k+=1
+        self.commonTest(X,R)
+        
+    #@unittest.skip('')
+    def test_fusion11(self):
         """
          .  .  .  .  .  .
         |************---|
         |---************|
         |------***------
         """
+        c = 'c'
         X = [(c,0,20,5.),(c,5,25,4.),(c,10,15,2.)]
         R = [(c,0,5,5.),(c,5,10,9.),(c,10,15,11.),(c,15,20,9.),(c,20,25,4.)] # what it should be
         #R = [(c,0,5,5.),(c,5,20,9.),(c,20,25,4.)] # special treatment
-        T = [s for s in fusion(iter(X))]
-        self.assertEqual(T, R)
-        print "test"+str(k); k+=1
+        self.commonTest(X,R)
+        
+    #@unittest.skip('')
+    def test_fusion12(self):
         """
          .  .  .  .  .  .
         |***------***---|
         |******---******|
         """
+        c = 'c'
         X = [(c,0,5,5.),(c,0,10,4.),(c,15,20,2.),(c,15,25,3.)]
         R = [(c,0,5,9.),(c,5,10,4.),(c,15,20,5.),(c,20,25,3.)]
-        T = [s for s in fusion(iter(X))]
-        self.assertEqual(T, R)
-        print "test"+str(k); k+=1
+        self.commonTest(X,R)
+        
+    #@unittest.skip('')
+    def test_fusion13(self):
         """
          .  .  .  .  .  .
         |******---******|
         |---***------***|
         """
+        c = 'c'
         X = [(c,0,10,5.),(c,5,10,4.),(c,15,25,2.),(c,20,25,3.)]
         R = [(c,0,5,5.),(c,5,10,9.),(c,15,20,2.),(c,20,25,5.)]
-        T = [s for s in fusion(iter(X))]
-        self.assertEqual(T, R)
-        print "test"+str(k); k+=1
+        self.commonTest(X,R)
+        
+    #@unittest.skip('')
+    def test_fusion14(self):
         """
          .  .  .  .  .  .  .  .  .  .
         |******---******------******|
         |---***------******---***---|
         """
+        c = 'c'
         X = [(c,0,10,5.),(c,5,10,4.),(c,15,25,2.),(c,20,30,3.),(c,35,40,7.),(c,35,45,6.)]
         R = [(c,0,5,5.),(c,5,10,9.),(c,15,20,2.),(c,20,25,5.),(c,25,30,3.),(c,35,40,13.),(c,40,45,6.)]
-        T = [s for s in fusion(iter(X))]
-        self.assertEqual(T, R)
-        print "test"+str(k); k+=1
+        self.commonTest(X,R)
+        
+    #@unittest.skip('')
+    def test_fusion15(self):
         """
          .  .  .  .  .  .  .  .  .  .
         |---************------******|
         |---***------******---***---|
         """
+        c = 'c'
         X = [(c,5,10,8.),(c,5,25,5.),(c,20,30,4.),(c,35,40,3.),(c,35,45,2.)]
         R = [(c,5,10,13.),(c,10,20,5.),(c,20,25,9.),(c,25,30,4.),(c,35,40,5.),(c,40,45,2.)]
-        T = [s for s in fusion(iter(X))]
-        self.assertEqual(T, R)
+        self.commonTest(X,R)
 
 
 class Test_Expressions1(unittest.TestCase):
