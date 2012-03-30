@@ -186,52 +186,55 @@ def build_pileup(bamfile, labels):
     sam.close()
     return counts
 
-def fusion(X):
+def fusion(X, win_size=1000):
     """ Takes a track-like generator with items of the form (chromosome,start,end,score)
     and returns a merged track-like generator with summed scores.
     This is to avoid having overlapping coordinates of features from both DNA strands,
     which some genome browsers cannot handle for quantitative tracks.
     """
-    x = X.next()
-    c = x[0]
-    last = x[1]
-    last_was_alone = True
-    last_had_same_end = False
-    for y in X:
-        if y[1] < x[2]:             # y intersects x
-            last_had_same_end = False
-            if y[1] >= last: # cheating, needed in case 3 features overlap, thanks to the annotation...
-                if y[1] != last:    # y does not have same start as x
-                    yield (c,last,y[1],x[3])
-                if y[2] < x[2]:     # y is embedded in x
-                    yield (c,y[1],y[2],x[3]+y[3])
-                    last = y[2]
-                elif y[2] == x[2]:  # y has same end as x
-                    yield (c,y[1],y[2],x[3]+y[3])
-                    x = y
-                    last_had_same_end = True
-                else:               # y exceeds x
-                    yield (c,y[1],x[2],x[3]+y[3])
-                    last = x[2]
-                    x = y
-            last_was_alone = False
-        else:                       # y is outside of x
-            if last_was_alone:
-                yield x
-            elif last_had_same_end:
-                pass
-            else:
-                yield (c,last,x[2],x[3])
-            x = y
-            last = x[1]
-            last_was_alone = True
-            last_had_same_end = False
-    if last_was_alone:
-        yield x
-    elif last_had_same_end:
-        pass
-    else:
-        yield (c,last,x[2],x[3])
+    numpy.set_printoptions(linewidth=120)
+    shape = numpy.shape; hstack = numpy.hstack
+    remain = zeros((2,0))
+    k = 0; start = 0
+    # iterate over windows
+    while 1:
+        # load *win_size* bp in memory
+        A = hstack((remain,zeros((2,win_size))))
+        shift = k*win_size
+        try:
+            while start < shift + win_size:
+                x = X.next()
+                print "x",x
+                chr, start, end, score = x
+                Alength = shape(A)[1]
+                if end-shift > Alength:
+                    A = hstack((A,zeros((2,end-shift-Alength))))
+                lag = start - shift
+                for i in range(lag, lag+end-start):
+                    A[0,i] += 1  # number of overlaps
+                    A[1,i] = A[1,i] + score
+        except StopIteration:
+            left = 0
+            A = hstack((A,asarray([[1e8,1e8],[1e8,1e8]])))
+            for i in range(shape(A)[1]-1):
+                diff = A[0,i+1]-A[0,i]
+                score = A[1,i]
+                if diff != 0:
+                    if score !=0:
+                        yield (chr,shift+left,shift+i+1,score)
+                    left = i+1
+            break
+        remain = A[:,win_size:]
+        # Yield only elements within *win_size*
+        left = 0
+        for i in range(win_size-1):
+            diff = A[0,i+1]-A[0,i]
+            score = A[1,i]
+            if diff != 0 and score != 0:
+                if score !=0:
+                    yield (chr,shift+left,shift+i+1,score)
+                left = i+1
+        k+=1
 
 def save_results(ex, cols, conditions, group_ids, assembly, header=[], feature_type='features'):
     """Save results in a tab-delimited file, one line per feature, one column per run.
@@ -271,13 +274,20 @@ def save_results(ex, cols, conditions, group_ids, assembly, header=[], feature_t
                 t.chrmeta = assembly.chrmeta
                 t.datatype = 'signal'
                 for chr in t.chrmeta:
-                    goodlines = [l for l in lines if (l[3]!=0.0 and l[0]==chr)]
-                    [lines.remove(l) for l in goodlines]
+                    if chr=='chr6':
+                        import pdb
+                        pdb.set_trace()
+                    chrlines = [l for l in lines if l[0]==chr]
+                    goodlines = [l for l in chrlines if l[3]!=0.0]
+                    [lines.remove(l) for l in chrlines]
                     if goodlines:
                         goodlines.sort(key=lambda x: itemgetter(1,2)) # sort w.r.t start
                         goodlines = fusion(iter(goodlines))
+                        #with open("../temp/goodlines"+str(chr),'w') as f:
+                        #    for x in goodlines: print >> f, x
                         for x in goodlines:
                             t.write(x[0],[(x[1],x[2],x[3])],fields=["start","end","score"])
+                        print "ended chr", chr
             description = set_file_descr(feature_type.lower()+"_"+group+".sql", step="pileup", type="sql", \
                                          groupId=group_ids[group], gdv='1')
             ex.add(filename+'.sql', description=description)

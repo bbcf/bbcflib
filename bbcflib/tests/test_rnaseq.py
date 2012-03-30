@@ -32,8 +32,10 @@ class Test_Fusion(unittest.TestCase):
         """
         X = [(c,0,5,5.),(c,10,15,4.),(c,20,25,2.)]
         R = [(c,0,5,5.),(c,10,15,4.),(c,20,25,2.)]
-        T = [s for s in fusion(iter(X))]
-        self.assertEqual(T, R)
+        T1 = [s for s in fusion(iter(X),12)]
+        T2 = [s for s in fusion(iter(X),4)]
+        self.assertEqual(T1, R)
+        self.assertEqual(T2, R)
         print "test"+str(k); k+=1
         """
         |*********|
@@ -126,8 +128,8 @@ class Test_Fusion(unittest.TestCase):
         |------***------| -> |------(xxx)------|
         """
         X = [(c,0,25,5.),(c,5,20,4.),(c,10,15,2.)]
-        #R = [(c,0,5,5.),(c,5,10,9.),(c,10,15,11.),(c,15,20,6.),(c,20,25,2.)] # what it should be
-        R = [(c,0,5,5.),(c,5,20,9.),(c,20,25,5.)] # special treatment
+        R = [(c,0,5,5.),(c,5,10,9.),(c,10,15,11.),(c,15,20,9.),(c,20,25,5.)] # what it should be
+        #R = [(c,0,5,5.),(c,5,20,9.),(c,20,25,5.)] # special treatment
         T = [s for s in fusion(iter(X))]
         self.assertEqual(T, R)
         print "test"+str(k); k+=1
@@ -138,8 +140,8 @@ class Test_Fusion(unittest.TestCase):
         |------***------
         """
         X = [(c,0,20,5.),(c,5,25,4.),(c,10,15,2.)]
-        #R = [(c,0,5,5.),(c,5,10,9.),(c,10,15,11.),(c,15,20,6.),(c,20,25,4.)] # what it should be
-        R = [(c,0,5,5.),(c,5,20,9.),(c,20,25,4.)] # special treatment
+        R = [(c,0,5,5.),(c,5,10,9.),(c,10,15,11.),(c,15,20,9.),(c,20,25,4.)] # what it should be
+        #R = [(c,0,5,5.),(c,5,20,9.),(c,20,25,4.)] # special treatment
         T = [s for s in fusion(iter(X))]
         self.assertEqual(T, R)
         print "test"+str(k); k+=1
