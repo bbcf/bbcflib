@@ -198,7 +198,34 @@ def fusion(X, win_size=1000):
     dummy = asarray([[100],[100]])
     last = asarray([[0],[0]])
     k = 0; start = 0
-    # iterate over windows
+
+    def _yield_stuff(A,last,win_size):
+        toyield = []
+        left = 0
+        for i in range(win_size-1):
+            diff = A[0,i+1]-A[0,i]
+            nfeat = A[0,i]
+            score = A[1,i]
+            if diff != 0:
+                if score != 0:
+                    # Last feature of previous window continues
+                    if nfeat == last[0,-1] and score == last[1,-1] and left == 0:
+                        last_len = shape(last)[1]
+                        #print "last",last
+                        #print "A",A
+                        toyield.append((chr, shift+left-last_len, shift+i+1, score))
+                    # Last feature of previous window has to be first yielded entirely
+                    elif left == 0 and last[1,-1] != 0:
+                        last_len = shape(last)[1]
+                        toyield.append((chr, shift-last_len, shift, last[1,-1]))
+                        toyield.append((chr, shift, shift+i+1, score))
+                    # Don't care about the previous window
+                    else:
+                        toyield.append((chr, shift+left, shift+i+1, score))
+                left = i+1
+        return toyield, left
+
+    # Iterate over windows
     while 1:
         # Load *win_size* bp in memory
         A = hstack((remain,zeros((2,win_size))))
@@ -218,51 +245,13 @@ def fusion(X, win_size=1000):
         # On termination
         except StopIteration:
             A = hstack((A,dummy))
-            left = 0
-            for i in range(shape(A)[1]-1):
-                diff = A[0,i+1]-A[0,i]
-                nfeat = A[0,i]
-                score = A[1,i]
-                if diff != 0:
-                    if score != 0:
-                        if nfeat == last[0,-1] and score == last[1,-1] and left == 0:
-                            last_len = shape(last)[1]
-                            yield (chr, shift+left-last_len, shift+i+1, score)
-                            last = dummy
-                        elif left == 0 and last[1,-1] != 0:
-                            last_len = shape(last)[1]
-                            yield (chr, shift-last_len, shift, last[1,-1])
-                            yield (chr, shift, shift+i+1, score)
-                        else:
-                            yield (chr, shift+left, shift+i+1, score)
-                    left = i+1
+            toyield, left = _yield_stuff(A,last,shape(A)[1])
+            for y in toyield: yield y
             break
         # Yield elements within *win_size*
         remain = A[:,win_size:]
-        def _yield_stuff(A,last,win_size):
-            left = 0
-            for i in range(win_size-1):
-                diff = A[0,i+1]-A[0,i]
-                nfeat = A[0,i]
-                score = A[1,i]
-                if diff != 0:
-                    if score != 0:
-                        # Last feature of previous window continues
-                        if nfeat == last[0,-1] and score == last[1,-1] and left == 0:
-                            last_len = shape(last)[1]
-                            #print "last",last
-                            #print "A",A
-                            yield (chr, shift+left-last_len, shift+i+1, score)
-                        # Last feature of previous window has to be first yielded entirely
-                        elif left == 0 and last[1,-1] != 0:
-                            last_len = shape(last)[1]
-                            yield (chr, shift-last_len, shift, last[1,-1])
-                            yield (chr, shift, shift+i+1, score)
-                        # Don't care about the previous window
-                        else:
-                            yield (chr, shift+left, shift+i+1, score)
-                    left = i+1
-        _yield_stuff(A,last,win_size)
+        toyield, left = _yield_stuff(A,last,win_size)
+        for y in toyield: yield y
         last = A[:,left:win_size]
         k+=1
 
