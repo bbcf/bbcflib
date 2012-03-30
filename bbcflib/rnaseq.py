@@ -300,7 +300,7 @@ def save_results(ex, cols, conditions, group_ids, assembly, header=[], feature_t
                     goodlines = [l for l in chrlines if l[3]!=0.0]
                     [lines.remove(l) for l in chrlines]
                     if goodlines:
-                        goodlines.sort(key=lambda x: itemgetter(1,2)) # sort w.r.t start
+                        goodlines.sort(key=itemgetter(1,2)) # sort w.r.t start
                         goodlines = fusion(iter(goodlines))
                         #with open("../temp/goodlines"+str(chr),'w') as f:
                         #    for x in goodlines: print >> f, x
