@@ -58,16 +58,17 @@ def parse_pileupFile(ex,dictPileupFile,allSNPpos,chrom,minCoverage=80,minSNP=10)
 
     for p,sname in dictPileupFile.iteritems():
         cpt=0
-        allpos = sorted(allSNPpos.keys())
+        allpos = sorted(allSNPpos.keys(),reverse=True)
         position = -1
         allSample[sname]={}
         with open(p) as sample:
             for line in sample:
                 info=line.split("\t")
-                while info[1]>position: 
+                while int(info[1])>position: 
+                    if not(allpos): break
                     position = allpos.pop()
                     allSample[sname][position]="-"
-                if info[1]<position: continue
+                if not(int(info[1]) == position): continue
                 if int(info[7])<minSNP:
                     string="* "
                 else:
@@ -114,9 +115,6 @@ def synonymous(ex,job,allSnp):
     
 
 def posAllUniqSNP(ex,PileupFile,minCoverage=80):
-#    allSNPpos=unique_filename_in()
-#    file=open(allSNPpos,'wb')
-    #file.write("position\treference\n")
     d={}
     for p,v in PileupFile.iteritems():
         parameters=v[1].wait()
@@ -125,13 +123,8 @@ def posAllUniqSNP(ex,PileupFile,minCoverage=80):
             for l in f:
                 data=l.split("\t")
                 cpt=data[8].count(".")+data[8].count(",")
-                if cpt*100 < int(data[7])*int(minCoverage):
+                if cpt*100 < int(data[7])*int(minCoverage) and int(data[7])>9:
                     d[int(data[1])]=data[2]
     
-#    for pos in sorted(d.keys()):
-#        file.write("%s\t%s\n" % (pos,d[pos]))
-#    file.close()
-#    return (allSNPpos,parameters)
-
     return (d,parameters)
     
