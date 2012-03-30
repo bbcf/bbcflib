@@ -238,8 +238,6 @@ def fusion2(X, win_size=1000):
                 Alength = shape(A)[1]
                 if end-shift > Alength:
                     A = hstack((A,zeros((2,end-shift-Alength))))
-               # import pdb
-               # pdb.set_trace()
                 for i in range(int(lag), int(lag+end-start)):
                     A[0,i] += 1  # number of overlaps
                     A[1,i] = A[1,i] + score
