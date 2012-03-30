@@ -186,7 +186,7 @@ def build_pileup(bamfile, labels):
     sam.close()
     return counts
 
-def fusion(X, win_size=1000):
+def fusion2(X, win_size=1000):
     """ Takes a track-like generator with items of the form (chromosome,start,end,score)
     and returns a merged track-like generator with summed scores.
     This is to avoid having overlapping coordinates of features from both DNA strands,
@@ -256,24 +256,38 @@ def fusion(X, win_size=1000):
         last = A[:,left:win_size]
         k+=1
 
-def fusion2(X):
+def fusion(X):
     x = X.next()
     toyield = [x]
 
     def _intersect(A,B):
-        if B[2] < A[1]:
-            if B[2] < A[2]:  # B embedded in A
-                return [(A[0],A[1],B[1],A[3]), (A[0],B[1],B[2],A[3]+B[3])]     
-            else:            # B displaced to the right
-                return [(A[0],A[1],B[1],A[3]), (A[0],B[1],A[2],A[3]+B[3]), (A[0],A[2],B[2],B[3])]  
-        else: return False   # no intersection
+        if B[1] < A[2]:           # has an intersection
+            if B[2] < A[2]:       # B embedded in A
+                if B[1] == A[1]:  # same left border, A is bigger
+                    return [(A[0],B[1],B[2],A[3]+B[3]), (A[0],B[2],A[2],A[3])]     
+                else:
+                    return [(A[0],A[1],B[1],A[3]), (A[0],B[1],B[2],A[3]+B[3]), (A[0],B[2],A[2],A[3])]     
+            elif B[2] == A[2]:    # same right border
+                if B[1] == A[1]:  # same left border, identical
+                    return A     
+                else:
+                    return [(A[0],A[1],B[1],A[3]), (A[0],B[1],B[2],A[3]+B[3])]     
+            else:                 # B extends A
+                if B[1] == A[1]:  # same left border, B is bigger
+                    return [(A[0],A[1],A[2],A[3]+B[3]), (A[0],A[2],B[2],B[3])]     
+                else:
+                    return [(A[0],A[1],B[1],A[3]), (A[0],B[1],A[2],A[3]+B[3]), (A[0],A[2],B[2],B[3])]  
+        else: return False        # no intersection
  
     while 1:
         try:
             x = X.next()
+            print "x",x
             intersected = False
             for y in toyield:
+                print "y",y
                 inter = _intersect(y,x) 
+                print "inter",inter
                 if inter:
                     iy = toyield.index(y)
                     y = toyield.pop(iy)
@@ -287,6 +301,8 @@ def fusion2(X):
                     yield y
                 toyield = [x]
         except StopIteration: 
+            print "StopIteration"
+            print toyield
             while toyield:
                 y = toyield.pop(0)
                 yield y
