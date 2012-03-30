@@ -25,7 +25,7 @@ c = 'c'
 
 class Test_Fusion(unittest.TestCase):
     def setUp(self):
-        self.win_sizes = [12]
+        self.win_sizes = [12,100,1000]
 
     def commonTest(self,X,R):
         for w in self.win_sizes:
