@@ -186,75 +186,12 @@ def build_pileup(bamfile, labels):
     sam.close()
     return counts
 
-def fusion2(X, win_size=1000):
+def fusion(X):
     """ Takes a track-like generator with items of the form (chromosome,start,end,score)
     and returns a merged track-like generator with summed scores.
     This is to avoid having overlapping coordinates of features from both DNA strands,
     which some genome browsers cannot handle for quantitative tracks.
     """
-    numpy.set_printoptions(linewidth=140)
-    shape = numpy.shape; hstack = numpy.hstack
-    remain = zeros((2,0))
-    dummy = asarray([[100],[100]])
-    last = asarray([[0],[0]])
-    k = 0; start = 0
-
-    def _yield_stuff(A,last,win_size):
-        toyield = []
-        left = 0
-        for i in range(win_size-1):
-            diff = A[0,i+1]-A[0,i]
-            nfeat = A[0,i]
-            score = A[1,i]
-            if diff != 0:
-                if score != 0:
-                    # Last feature of previous window continues
-                    if nfeat == last[0,-1] and score == last[1,-1] and left == 0:
-                        last_len = shape(last)[1]
-                        #print "last",last
-                        #print "A",A
-                        toyield.append((chr, shift+left-last_len, shift+i+1, score))
-                    # Last feature of previous window has to be first yielded entirely
-                    elif left == 0 and last[1,-1] != 0:
-                        last_len = shape(last)[1]
-                        toyield.append((chr, shift-last_len, shift, last[1,-1]))
-                        toyield.append((chr, shift, shift+i+1, score))
-                    # Don't care about the previous window
-                    else:
-                        toyield.append((chr, shift+left, shift+i+1, score))
-                left = i+1
-        return toyield, left
-
-    # Iterate over windows
-    while 1:
-        # Load *win_size* bp in memory
-        A = hstack((remain,zeros((2,win_size))))
-        shift = k*win_size
-        # Fill A       
-        try:
-            while start <= shift + win_size:
-                x = X.next()
-                chr, start, end, score = x
-                Alength = shape(A)[1]
-                if end-shift > Alength:
-                    A = hstack((A,zeros((2,end-shift-Alength))))
-                for i in range(int(lag), int(lag+end-start)):
-                    A[0,i] += 1  # number of overlaps
-                    A[1,i] = A[1,i] + score
-        # On termination
-        except StopIteration:
-            A = hstack((A,dummy))
-            toyield, left = _yield_stuff(A,last,shape(A)[1])
-            for y in toyield: yield y
-            break
-        # Yield elements within *win_size*
-        remain = A[:,win_size:]
-        toyield, left = _yield_stuff(A,last,win_size)
-        for y in toyield: yield y
-        last = A[:,left:win_size]
-        k+=1
-
-def fusion(X):
     x = X.next()
     toyield = [x]
 
