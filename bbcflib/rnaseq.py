@@ -204,7 +204,6 @@ def fusion(X, win_size=1000):
         try:
             while start < shift + win_size:
                 x = X.next()
-                print "x",x
                 chr, start, end, score = x
                 Alength = shape(A)[1]
                 if end-shift > Alength:
@@ -225,6 +224,8 @@ def fusion(X, win_size=1000):
                     left = i+1
             break
         remain = A[:,win_size:]
+        print "A",A
+        print "remain",remain
         # Yield only elements within *win_size*
         left = 0
         for i in range(win_size-1):
