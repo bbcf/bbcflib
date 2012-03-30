@@ -313,7 +313,7 @@ def genes_expression(exons_data, gene_mapping, exon_to_gene, ncond, nreads):
     for g in genes:
         if gene_mapping.get(g):
             gene_rpkm[g] = to_rpkm(gene_counts[g], gene_mapping[g][3], nreads)
-        else: gene_rpkm[g] = ["NA"]*ncond
+        else: gene_rpkm[g] = [0]*ncond
     return gene_counts, gene_rpkm
 
 #@timer
