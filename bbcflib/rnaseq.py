@@ -192,15 +192,19 @@ def fusion(X, win_size=1000):
     This is to avoid having overlapping coordinates of features from both DNA strands,
     which some genome browsers cannot handle for quantitative tracks.
     """
+    print "\n\nSTART"
     numpy.set_printoptions(linewidth=120)
     shape = numpy.shape; hstack = numpy.hstack
     remain = zeros((2,0))
+    last = asarray([[1e8],[1e8]])
     k = 0; start = 0
     # iterate over windows
     while 1:
-        # load *win_size* bp in memory
+        print "\nk =", k
+        # Load *win_size* bp in memory
         A = hstack((remain,zeros((2,win_size))))
         shift = k*win_size
+        # Fill A       
         try:
             while start < shift + win_size:
                 x = X.next()
@@ -212,29 +216,52 @@ def fusion(X, win_size=1000):
                 for i in range(lag, lag+end-start):
                     A[0,i] += 1  # number of overlaps
                     A[1,i] = A[1,i] + score
+        # On termination
         except StopIteration:
             left = 0
-            A = hstack((A,asarray([[1e8,1e8],[1e8,1e8]])))
+            A = hstack((A,asarray([[100],[100]])))
+            print "A",A
+            print "last, left =",left
+            print last
             for i in range(shape(A)[1]-1):
                 diff = A[0,i+1]-A[0,i]
                 score = A[1,i]
                 if diff != 0:
                     if score !=0:
-                        yield (chr,shift+left,shift+i+1,score)
+                        if nfeat != last[0,-1] and score != last[1,-1]:
+                            print "new", (chr, shift+left, shift+i+1, score)
+                            yield (chr, shift+left, shift+i+1, score)
+                        else: 
+                            last_len = shape(last)[1]
+                            print "old", (chr, shift+left-last_len, shift+i+1, score)
+                            yield (chr, shift+left-last_len, shift+i+1, score)
+                        #yield (chr,shift+left,shift+i+1,score)
                     left = i+1
             break
+
+        # Yield elements within *win_size*
         remain = A[:,win_size:]
-        print "A",A
-        print "remain",remain
-        # Yield only elements within *win_size*
+        #print "A",A
+        #print "remain",remain
         left = 0
         for i in range(win_size-1):
             diff = A[0,i+1]-A[0,i]
+            nfeat = A[0,i]
             score = A[1,i]
-            if diff != 0 and score != 0:
+            if diff != 0:
                 if score !=0:
-                    yield (chr,shift+left,shift+i+1,score)
+                    if nfeat != last[0,-1] and score != last[1,-1]:
+                        print "new", (chr, shift+left, shift+i+1, score)
+                        yield (chr, shift+left, shift+i+1, score)
+                    else: 
+                        last_len = shape(last)[1]
+                        print "old", (chr, shift+left-last_len, shift+i+1, score)
+                        yield (chr, shift+left-last_len, shift+i+1, score)
                 left = i+1
+        print "A",A
+        last = A[:,left:win_size]
+        print "last, left =",left
+        print last
         k+=1
 
 def save_results(ex, cols, conditions, group_ids, assembly, header=[], feature_type='features'):
