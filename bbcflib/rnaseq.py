@@ -238,8 +238,9 @@ def fusion(X, win_size=1000):
                 Alength = shape(A)[1]
                 if end-shift > Alength:
                     A = hstack((A,zeros((2,end-shift-Alength))))
-                lag = start - shift
-                for i in range(lag, lag+end-start):
+               # import pdb
+               # pdb.set_trace()
+                for i in range(int(lag), int(lag+end-start)):
                     A[0,i] += 1  # number of overlaps
                     A[1,i] = A[1,i] + score
         # On termination
@@ -254,6 +255,42 @@ def fusion(X, win_size=1000):
         for y in toyield: yield y
         last = A[:,left:win_size]
         k+=1
+
+def fusion2(X):
+    x = X.next()
+    toyield = [x]
+
+    def _intersect(A,B):
+        if B[2] < A[1]:
+            if B[2] < A[2]:  # B embedded in A
+                return [(A[0],A[1],B[1],A[3]), (A[0],B[1],B[2],A[3]+B[3])]     
+            else:            # B displaced to the right
+                return [(A[0],A[1],B[1],A[3]), (A[0],B[1],A[2],A[3]+B[3]), (A[0],A[2],B[2],B[3])]  
+        else: return False   # no intersection
+ 
+    while 1:
+        try:
+            x = X.next()
+            intersected = False
+            for y in toyield:
+                inter = _intersect(y,x) 
+                if inter:
+                    iy = toyield.index(y)
+                    y = toyield.pop(iy)
+                    for k in range(len(inter)):
+                        toyield.insert(iy+k, inter[k])
+                    intersected = True
+                    break
+            if not intersected:
+                while toyield:
+                    y = toyield.pop(0)
+                    yield y
+                toyield = [x]
+        except StopIteration: 
+            while toyield:
+                y = toyield.pop(0)
+                yield y
+            break
 
 def save_results(ex, cols, conditions, group_ids, assembly, header=[], feature_type='features'):
     """Save results in a tab-delimited file, one line per feature, one column per run.
@@ -293,9 +330,9 @@ def save_results(ex, cols, conditions, group_ids, assembly, header=[], feature_t
                 t.chrmeta = assembly.chrmeta
                 t.datatype = 'signal'
                 for chr in t.chrmeta:
-                    if chr=='chr6':
-                        import pdb
-                        pdb.set_trace()
+               #     if chr=='chr6':
+               #         import pdb
+               #         pdb.set_trace()
                     chrlines = [l for l in lines if l[0]==chr]
                     goodlines = [l for l in chrlines if l[3]!=0.0]
                     [lines.remove(l) for l in chrlines]
@@ -306,7 +343,7 @@ def save_results(ex, cols, conditions, group_ids, assembly, header=[], feature_t
                         #    for x in goodlines: print >> f, x
                         for x in goodlines:
                             t.write(x[0],[(x[1],x[2],x[3])],fields=["start","end","score"])
-                        print "ended chr", chr
+                        print "ended", chr
             description = set_file_descr(feature_type.lower()+"_"+group+".sql", step="pileup", type="sql", \
                                          groupId=group_ids[group], gdv='1')
             ex.add(filename+'.sql', description=description)
