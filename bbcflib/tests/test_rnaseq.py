@@ -21,11 +21,6 @@ class Assem(object):
     def __init__(self):
         self.chrmeta = None
 
-def commonTest(X,R):
-    for w in self.win_sizes:
-        T = [s for s in fusion(iter(X), w)]
-        unittest.TestCase.assertEqual(T,R)
-
 c = 'c'
 
 class Test_Fusion(unittest.TestCase):
@@ -33,7 +28,7 @@ class Test_Fusion(unittest.TestCase):
         self.win_sizes = [12]
 
     def commonTest(self,X,R):
-        for w in [12]:
+        for w in self.win_sizes:
             T = [s for s in fusion(iter(X), w)]
             self.assertEqual(T,R)
 
