@@ -38,7 +38,8 @@ def concatenate(trackList, fields=None):
     return track.FeatureStream(_knead(tl,len(fields)),fields=fields)
 
 ###############################################################################
-def neighborhood(trackList, before_start=None, after_end=None, after_start=None, before_end=None, on_strand=False):
+def neighborhood(trackList, before_start=None, after_end=None, 
+                 after_start=None, before_end=None, on_strand=False):
 ###################################
     def _generate_single(track,a,b,c,d):
         if a:

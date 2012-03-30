@@ -4,7 +4,6 @@ import os, re, json, shutil, gzip, tarfile, pickle, urllib
 # Internal modules #
 from bbcflib import frontend, genrep, daflims
 from bbcflib.common import get_files, cat, set_file_descr, merge_sql, gzipfile, unique_filename_in
-from bbcflib.btrack import Track, new
 
 # Other modules #
 from bein import program, ProgramFailed, MiniLIMS
