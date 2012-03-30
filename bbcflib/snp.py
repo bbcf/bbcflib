@@ -26,7 +26,9 @@ def untar_genome_fasta(assembly, convert=True):
         headpatt = re.search(r'>(\S+)\s',header)
         if headpatt: chrom = headpatt.groups()[0]
         else: continue
-        if chrom in chrlist: header = re.sub(chrom,chrlist[chrom],header)
+        if chrom in chrlist: 
+            header = re.sub(chrom,chrlist[chrom],header)
+            chrom = chrlist[chrom]
         genomeRef[chrom] = unique_filename_in()
         with open(genomeRef[chrom],"w") as outf:
             outf.write(header)
