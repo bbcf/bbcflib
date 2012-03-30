@@ -282,12 +282,9 @@ def fusion(X):
     while 1:
         try:
             x = X.next()
-            print "x",x
             intersected = False
             for y in toyield:
-                print "y",y
                 inter = _intersect(y,x) 
-                print "inter",inter
                 if inter:
                     iy = toyield.index(y)
                     y = toyield.pop(iy)
@@ -301,8 +298,6 @@ def fusion(X):
                     yield y
                 toyield = [x]
         except StopIteration: 
-            print "StopIteration"
-            print toyield
             while toyield:
                 y = toyield.pop(0)
                 yield y
