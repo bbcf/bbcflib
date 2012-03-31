@@ -608,7 +608,8 @@ def rnaseq_workflow(ex, job, bam_files, pileup_level=["exons","genes","transcrip
 def run_glm(rpath, data_file, options=[]):
     """Run negbin.test.R"""
     output_file = unique_filename_in()
-    options += ["-o",output_file]
+    opts = ["-o",output_file]
+    if options: opts.extend(options)
     script_path = os.path.join(rpath,'negbin.test.R')
     return {'arguments': ["R","--slave","-f",script_path,"--args",data_file]+options,
             'return_value': output_file}
