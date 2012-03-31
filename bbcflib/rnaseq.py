@@ -204,7 +204,7 @@ def fusion(X):
                     return [(A[0],A[1],B[1],A[3]), (A[0],B[1],B[2],A[3]+B[3]), (A[0],B[2],A[2],A[3])]     
             elif B[2] == A[2]:    # same right border
                 if B[1] == A[1]:  # same left border, identical
-                    return A     
+                    return [A]     
                 else:
                     return [(A[0],A[1],B[1],A[3]), (A[0],B[1],B[2],A[3]+B[3])]     
             else:                 # B extends A
