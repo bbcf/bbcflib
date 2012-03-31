@@ -611,7 +611,7 @@ def run_glm(rpath, data_file, options=[]):
     opts = ["-o",output_file]
     if options: opts.extend(options)
     script_path = os.path.join(rpath,'negbin.test.R')
-    return {'arguments': ["R","--slave","-f",script_path,"--args",data_file]+options,
+    return {'arguments': ["R","--slave","-f",script_path,"--args",data_file]+opts,
             'return_value': output_file}
 
 def clean_before_deseq(filename):
