@@ -530,7 +530,7 @@ def rnaseq_workflow(ex, job, bam_files, pileup_level=["exons","genes","transcrip
                 additional = {}
                 for read in sam:
                     t_id = sam.getrname(read.tid).split('|')[0]
-                    if transcript_mapping.get(t_id):
+                    if transcript_mapping.get(t_id) and exons_in_trans.get(t_id):
                         lag = 0
                         r_start = read.pos
                         r_end = r_start + read.rlen
