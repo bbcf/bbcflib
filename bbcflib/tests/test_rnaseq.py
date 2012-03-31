@@ -197,6 +197,18 @@ class Test_Fusion(unittest.TestCase):
         R = [(c,5,10,13.),(c,10,20,5.),(c,20,25,9.),(c,25,30,4.),(c,35,40,5.),(c,40,45,2.)]
         self.commonTest(X,R)
 
+    #@unittest.skip('')
+    def test_fusion16(self):
+        """
+         .  .  .  .  .  .  .  .
+        |---*********---------|
+        |------*********------|
+        |---------*********---|
+        """
+        X = [(c,5,20,8.),(c,10,25,5.),(c,15,30,4.)]
+        R = [(c,5,10,8.),(c,10,15,13.),(c,15,20,17.),(c,20,25,9.),(c,25,30,4.)]
+        self.commonTest(X,R)
+
 
 class Test_Expressions1(unittest.TestCase):
     """Two conditions, different lengths, invertible"""
