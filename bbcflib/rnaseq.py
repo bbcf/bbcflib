@@ -193,45 +193,50 @@ def fusion(X):
     which some genome browsers cannot handle for quantitative tracks.
     """
     x = X.next()
-    c = x[0]
-    last = x[1]
-    last_was_alone = True
-    last_had_same_end = False
-    for y in X:
-        if y[1] < x[2]:             # y intersects x
-            last_had_same_end = False
-            if y[1] >= last: # cheating, needed in case 3 features overlap, thanks to the annotation...
-                if y[1] != last:    # y does not have same start as x
-                    yield (c,last,y[1],x[3])
-                if y[2] < x[2]:     # y is embedded in x
-                    yield (c,y[1],y[2],x[3]+y[3])
-                    last = y[2]
-                elif y[2] == x[2]:  # y has same end as x
-                    yield (c,y[1],y[2],x[3]+y[3])
-                    x = y
-                    last_had_same_end = True
-                else:               # y exceeds x
-                    yield (c,y[1],x[2],x[3]+y[3])
-                    last = x[2]
-                    x = y
-            last_was_alone = False
-        else:                       # y is outside of x
-            if last_was_alone:
-                yield x
-            elif last_had_same_end:
-                pass
-            else:
-                yield (c,last,x[2],x[3])
-            x = y
-            last = x[1]
-            last_was_alone = True
-            last_had_same_end = False
-    if last_was_alone:
-        yield x
-    elif last_had_same_end:
-        pass
-    else:
-        yield (c,last,x[2],x[3])
+    toyield = [x]
+
+    def _intersect(A,B):
+        if B[1] < A[2]:           # has an intersection
+            if B[2] < A[2]:       # B embedded in A
+                if B[1] == A[1]:  # same left border, A is bigger
+                    return [(A[0],B[1],B[2],A[3]+B[3]), (A[0],B[2],A[2],A[3])]     
+                else:
+                    return [(A[0],A[1],B[1],A[3]), (A[0],B[1],B[2],A[3]+B[3]), (A[0],B[2],A[2],A[3])]     
+            elif B[2] == A[2]:    # same right border
+                if B[1] == A[1]:  # same left border, identical
+                    return [A]     
+                else:
+                    return [(A[0],A[1],B[1],A[3]), (A[0],B[1],B[2],A[3]+B[3])]     
+            else:                 # B extends A
+                if B[1] == A[1]:  # same left border, B is bigger
+                    return [(A[0],A[1],A[2],A[3]+B[3]), (A[0],A[2],B[2],B[3])]     
+                else:
+                    return [(A[0],A[1],B[1],A[3]), (A[0],B[1],A[2],A[3]+B[3]), (A[0],A[2],B[2],B[3])]  
+        else: return False        # no intersection
+ 
+    while 1:
+        try:
+            x = X.next()
+            intersected = False
+            for y in toyield:
+                inter = _intersect(y,x) 
+                if inter:
+                    iy = toyield.index(y)
+                    y = toyield.pop(iy)
+                    for k in range(len(inter)):
+                        toyield.insert(iy+k, inter[k])
+                    intersected = True
+                    break
+            if not intersected:
+                while toyield:
+                    y = toyield.pop(0)
+                    yield tuple(y)
+                toyield = [x]
+        except StopIteration: 
+            while toyield:
+                y = toyield.pop(0)
+                yield tuple(y)
+            break
 
 def save_results(ex, cols, conditions, group_ids, assembly, header=[], feature_type='features'):
     """Save results in a tab-delimited file, one line per feature, one column per run.
@@ -271,10 +276,11 @@ def save_results(ex, cols, conditions, group_ids, assembly, header=[], feature_t
                 t.chrmeta = assembly.chrmeta
                 t.datatype = 'signal'
                 for chr in t.chrmeta:
-                    goodlines = [l for l in lines if (l[3]!=0.0 and l[0]==chr)]
-                    [lines.remove(l) for l in goodlines]
+                    chrlines = [l for l in lines if l[0]==chr]
+                    goodlines = [l for l in chrlines if l[3]!=0.0]
+                    [lines.remove(l) for l in chrlines]
                     if goodlines:
-                        goodlines.sort(key=lambda x: itemgetter(1,2)) # sort w.r.t start
+                        goodlines.sort(key=itemgetter(1,2)) # sort w.r.t start
                         goodlines = fusion(iter(goodlines))
                         for x in goodlines:
                             t.write(x[0],[(x[1],x[2],x[3])],fields=["start","end","score"])
