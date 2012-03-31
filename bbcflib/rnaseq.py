@@ -230,12 +230,12 @@ def fusion(X):
             if not intersected:
                 while toyield:
                     y = toyield.pop(0)
-                    yield y
+                    yield tuple(y)
                 toyield = [x]
         except StopIteration: 
             while toyield:
                 y = toyield.pop(0)
-                yield y
+                yield tuple(y)
             break
 
 def save_results(ex, cols, conditions, group_ids, assembly, header=[], feature_type='features'):
