@@ -276,20 +276,14 @@ def save_results(ex, cols, conditions, group_ids, assembly, header=[], feature_t
                 t.chrmeta = assembly.chrmeta
                 t.datatype = 'signal'
                 for chr in t.chrmeta:
-               #     if chr=='chr6':
-               #         import pdb
-               #         pdb.set_trace()
                     chrlines = [l for l in lines if l[0]==chr]
                     goodlines = [l for l in chrlines if l[3]!=0.0]
                     [lines.remove(l) for l in chrlines]
                     if goodlines:
                         goodlines.sort(key=itemgetter(1,2)) # sort w.r.t start
                         goodlines = fusion(iter(goodlines))
-                        #with open("../temp/goodlines"+str(chr),'w') as f:
-                        #    for x in goodlines: print >> f, x
                         for x in goodlines:
                             t.write(x[0],[(x[1],x[2],x[3])],fields=["start","end","score"])
-                        print "ended", chr
             description = set_file_descr(feature_type.lower()+"_"+group+".sql", step="pileup", type="sql", \
                                          groupId=group_ids[group], gdv='1')
             ex.add(filename+'.sql', description=description)
