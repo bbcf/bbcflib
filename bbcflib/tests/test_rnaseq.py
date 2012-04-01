@@ -166,6 +166,30 @@ class Test_Fusion(unittest.TestCase):
         self.commonTest(X,R)
         
     #@unittest.skip('')
+    def test_fusion104(self):
+        """
+         .  .  .  .  .  .
+        |*********------|
+        |***************|
+        |***************|
+        """
+        X = [(c,0,15,4.),(c,0,25,5.),(c,0,25,2.)]
+        R = [(c,0,15,11.),(c,15,25,7.)] 
+        self.commonTest(X,R)
+        
+    #@unittest.skip('')
+    def test_fusion104(self):
+        """
+         .  .  .  .  .  .
+        |*********------|
+        |************---|
+        |***************|
+        """
+        X = [(c,0,15,4.),(c,0,20,5.),(c,0,25,2.)]
+        R = [(c,0,15,11.),(c,15,20,7.),(c,20,25,2.)] 
+        self.commonTest(X,R)
+        
+    #@unittest.skip('')
     def test_fusion12(self):
         """
          .  .  .  .  .  .  .  .

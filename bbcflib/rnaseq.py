@@ -207,16 +207,18 @@ def fusion(X):
                     z = [(A[0],A[1],B[1],A[3]), (A[0],B[1],B[2],A[3]+B[3]), (A[0],B[2],A[2],A[3])]     
             elif B[2] == A[2]:
                 if B[1] == A[1]:  # identical
-                    z = [A]     
+                    z = [(A[0],A[1],A[2],A[3]+B[3])]     
                 elif B[1] < A[1]: # same right border, B is bigger
                     z = [(A[0],B[1],A[1],B[3]), (A[0],A[1],B[2],A[3]+B[3])]     
                 else:             # same right border, A is bigger
                     z = [(A[0],A[1],B[1],A[3]), (A[0],B[1],B[2],A[3]+B[3])]     
             else:      
                 if B[1] == A[1]:  # same left border, B is bigger
-                    z = [(A[0],A[1],A[2],A[3]+B[3]), (A[0],A[2],B[2],B[3])]     
+                    z = [(A[0],A[1],A[2],A[3]+B[3])]
+                    rest = (A[0],A[2],B[2],B[3])     
                 elif B[1] < A[1]: # B contains A
-                    z = [(A[0],B[1],A[1],B[3]), (A[0],A[1],A[2],A[3]+B[3]), (A[0],A[2],B[2],B[3])]     
+                    z = [(A[0],B[1],A[1],B[3]), (A[0],A[1],A[2],A[3]+B[3])]
+                    rest = (A[0],A[2],B[2],B[3])    
                 else:             # B shifted to the right wrt A
                     z = [(A[0],A[1],B[1],A[3]), (A[0],B[1],A[2],A[3]+B[3])]
                     rest = (A[0],A[2],B[2],B[3])  
@@ -226,9 +228,11 @@ def fusion(X):
     while 1:
         try:
             x = X.next()
+            print "x :",x
             intersected = False
             for y in toyield:
                 replace, rest = _intersect(y,x) 
+                print "REPLACE",y," BY ",replace
                 if replace:
                     intersected = True
                     iy = toyield.index(y)
@@ -244,6 +248,7 @@ def fusion(X):
                 toyield = [x]
             elif x: 
                 toyield.append(x)
+            print "toyield",toyield
         except StopIteration: 
             while toyield:
                 y = toyield.pop(0)
@@ -292,7 +297,7 @@ def save_results(ex, cols, conditions, group_ids, assembly, header=[], feature_t
                     goodlines = [l for l in chrlines if l[3]!=0.0]
                     [lines.remove(l) for l in chrlines]
                     if goodlines:
-                        goodlines.sort(key=itemgetter(1,2)) # sort w.r.t start
+                        goodlines.sort(key=itemgetter(1,2)) # sort w.r.t start, then end
                         goodlines = fusion(iter(goodlines))
                         for x in goodlines:
                             t.write(x[0],[(x[1],x[2],x[3])],fields=["start","end","score"])
