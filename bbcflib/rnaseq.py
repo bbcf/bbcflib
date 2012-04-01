@@ -196,6 +196,8 @@ def fusion(X):
     toyield = [x]
 
     def _intersect(A,B):
+        """Return *z*, the part that must replace A in *toyield*, and
+        *rest*, that must reenter the loop instead of B."""
         rest = None
         if B[1] < A[2]:           # has an intersection
             if B[2] < A[2]:
