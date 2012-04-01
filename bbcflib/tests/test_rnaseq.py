@@ -130,7 +130,7 @@ class Test_Fusion(unittest.TestCase):
         self.commonTest(X,R)
         
     #@unittest.skip('')
-    def test_fusion10(self):
+    def test_fusion101(self):
         """
          .  .  .  .  .  .
         |***************|
@@ -142,7 +142,7 @@ class Test_Fusion(unittest.TestCase):
         self.commonTest(X,R)
         
     #@unittest.skip('')
-    def test_fusion11(self):
+    def test_fusion102(self):
         """
          .  .  .  .  .  .
         |************---|
@@ -154,7 +154,55 @@ class Test_Fusion(unittest.TestCase):
         self.commonTest(X,R)
         
     #@unittest.skip('')
+    def test_fusion103(self):
+        """
+         .  .  .  .  .  .
+        |************---|
+        |---******------|
+        |------*********|
+        """
+        X = [(c,0,20,5.),(c,5,15,4.),(c,10,25,2.)]
+        R = [(c,0,5,5.),(c,5,10,9.),(c,10,15,11.),(c,15,20,7.),(c,20,25,2.)] 
+        self.commonTest(X,R)
+        
+    #@unittest.skip('')
+    def test_fusion104(self):
+        """
+         .  .  .  .  .  .
+        |*********------|
+        |***************|
+        |***************|
+        """
+        X = [(c,0,15,4.),(c,0,25,5.),(c,0,25,2.)]
+        R = [(c,0,15,11.),(c,15,25,7.)] 
+        self.commonTest(X,R)
+        
+    #@unittest.skip('')
+    def test_fusion104(self):
+        """
+         .  .  .  .  .  .
+        |*********------|
+        |************---|
+        |***************|
+        """
+        X = [(c,0,15,4.),(c,0,20,5.),(c,0,25,2.)]
+        R = [(c,0,15,11.),(c,15,20,7.),(c,20,25,2.)] 
+        self.commonTest(X,R)
+        
+    #@unittest.skip('')
     def test_fusion12(self):
+        """
+         .  .  .  .  .  .  .  .
+        |---*********---------|
+        |------*********------|
+        |---------*********---|
+        """
+        X = [(c,5,20,8.),(c,10,25,5.),(c,15,30,4.)]
+        R = [(c,5,10,8.),(c,10,15,13.),(c,15,20,17.),(c,20,25,9.),(c,25,30,4.)]
+        self.commonTest(X,R)
+
+    #@unittest.skip('')
+    def test_fusion13(self):
         """
          .  .  .  .  .  .
         |***------***---|
@@ -165,7 +213,7 @@ class Test_Fusion(unittest.TestCase):
         self.commonTest(X,R)
         
     #@unittest.skip('')
-    def test_fusion13(self):
+    def test_fusion14(self):
         """
          .  .  .  .  .  .
         |******---******|
@@ -176,7 +224,7 @@ class Test_Fusion(unittest.TestCase):
         self.commonTest(X,R)
         
     #@unittest.skip('')
-    def test_fusion14(self):
+    def test_fusion15(self):
         """
          .  .  .  .  .  .  .  .  .  .
         |******---******------******|
@@ -187,7 +235,7 @@ class Test_Fusion(unittest.TestCase):
         self.commonTest(X,R)
         
     #@unittest.skip('')
-    def test_fusion15(self):
+    def test_fusion16(self):
         """
          .  .  .  .  .  .  .  .  .  .
         |---************------******|
@@ -195,18 +243,6 @@ class Test_Fusion(unittest.TestCase):
         """
         X = [(c,5,10,8.),(c,5,25,5.),(c,20,30,4.),(c,35,40,3.),(c,35,45,2.)]
         R = [(c,5,10,13.),(c,10,20,5.),(c,20,25,9.),(c,25,30,4.),(c,35,40,5.),(c,40,45,2.)]
-        self.commonTest(X,R)
-
-    #@unittest.skip('')
-    def test_fusion16(self):
-        """
-         .  .  .  .  .  .  .  .
-        |---*********---------|
-        |------*********------|
-        |---------*********---|
-        """
-        X = [(c,5,20,8.),(c,10,25,5.),(c,15,30,4.)]
-        R = [(c,5,10,8.),(c,10,15,13.),(c,15,20,17.),(c,20,25,9.),(c,25,30,4.)]
         self.commonTest(X,R)
 
 
