@@ -1198,7 +1198,7 @@ def get_bam_wig_files( ex, job, minilims=None, hts_url=None, suffix=['fwd','rev'
             bamfile = unique_filename_in()
             wig = {}
             name = group_name
-            stats = None
+            stats = {}
             p_thresh = None
             fastqfiles = None
             if len(group['runs'])>1:
@@ -1265,7 +1265,7 @@ def get_bam_wig_files( ex, job, minilims=None, hts_url=None, suffix=['fwd','rev'
                     if int(ms_job.options.get('read_extension',-1))>0 and int(ms_job.options.get('read_extension'))<80:
                         read_exts[rid] = int(ms_job.options['read_extension'])
                     else:
-                        read_exts[rid] = stats['read_length']
+                        read_exts[rid] = stats.get('read_length',50)
                 else:
                     ms_job = job
                 if ms_job.options.get('compute_densities'):
