@@ -207,7 +207,7 @@ def fusion(X):
                     z = [(A[0],A[1],B[1],A[3]), (A[0],B[1],B[2],A[3]+B[3]), (A[0],B[2],A[2],A[3])]     
             elif B[2] == A[2]:
                 if B[1] == A[1]:  # identical
-                    z = None     
+                    z = [A]     
                 elif B[1] < A[1]: # same right border, B is bigger
                     z = [(A[0],B[1],A[1],B[3]), (A[0],A[1],B[2],A[3]+B[3])]     
                 else:             # same right border, A is bigger
