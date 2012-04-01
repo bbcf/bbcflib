@@ -196,42 +196,54 @@ def fusion(X):
     toyield = [x]
 
     def _intersect(A,B):
+        rest = None
         if B[1] < A[2]:           # has an intersection
-            if B[2] < A[2]:       # B embedded in A
+            if B[2] < A[2]:
                 if B[1] == A[1]:  # same left border, A is bigger
-                    return [(A[0],B[1],B[2],A[3]+B[3]), (A[0],B[2],A[2],A[3])]     
-                else:
-                    return [(A[0],A[1],B[1],A[3]), (A[0],B[1],B[2],A[3]+B[3]), (A[0],B[2],A[2],A[3])]     
-            elif B[2] == A[2]:    # same right border
-                if B[1] == A[1]:  # same left border, identical
-                    return [A]     
-                else:
-                    return [(A[0],A[1],B[1],A[3]), (A[0],B[1],B[2],A[3]+B[3])]     
-            else:                 # B extends A
+                    z = [(A[0],B[1],B[2],A[3]+B[3]), (A[0],B[2],A[2],A[3])]     
+                elif B[1] < A[1]: # B shifted to the left wrt A
+                    z = [(A[0],B[1],A[1],B[3]), (A[0],A[1],B[2],A[3]+B[3]), (A[0],B[2],A[2],A[3])]     
+                else:             # B embedded in A
+                    z = [(A[0],A[1],B[1],A[3]), (A[0],B[1],B[2],A[3]+B[3]), (A[0],B[2],A[2],A[3])]     
+            elif B[2] == A[2]:
+                if B[1] == A[1]:  # identical
+                    z = None     
+                elif B[1] < A[1]: # same right border, B is bigger
+                    z = [(A[0],B[1],A[1],B[3]), (A[0],A[1],B[2],A[3]+B[3])]     
+                else:             # same right border, A is bigger
+                    z = [(A[0],A[1],B[1],A[3]), (A[0],B[1],B[2],A[3]+B[3])]     
+            else:      
                 if B[1] == A[1]:  # same left border, B is bigger
-                    return [(A[0],A[1],A[2],A[3]+B[3]), (A[0],A[2],B[2],B[3])]     
-                else:
-                    return [(A[0],A[1],B[1],A[3]), (A[0],B[1],A[2],A[3]+B[3]), (A[0],A[2],B[2],B[3])]  
-        else: return False        # no intersection
+                    z = [(A[0],A[1],A[2],A[3]+B[3]), (A[0],A[2],B[2],B[3])]     
+                elif B[1] < A[1]: # B contains A
+                    z = [(A[0],B[1],A[1],B[3]), (A[0],A[1],A[2],A[3]+B[3]), (A[0],A[2],B[2],B[3])]     
+                else:             # B shifted to the right wrt A
+                    z = [(A[0],A[1],B[1],A[3]), (A[0],B[1],A[2],A[3]+B[3])]
+                    rest = (A[0],A[2],B[2],B[3])  
+        else: z = None            # no intersection
+        return z, rest
  
     while 1:
         try:
             x = X.next()
             intersected = False
             for y in toyield:
-                inter = _intersect(y,x) 
-                if inter:
+                replace, rest = _intersect(y,x) 
+                if replace:
+                    intersected = True
                     iy = toyield.index(y)
                     y = toyield.pop(iy)
-                    for k in range(len(inter)):
-                        toyield.insert(iy+k, inter[k])
-                    intersected = True
-                    break
+                    for k in range(len(replace)):
+                        toyield.insert(iy+k, replace[k])
+                    x = rest
+                    if not x: break
             if not intersected:
                 while toyield:
                     y = toyield.pop(0)
                     yield tuple(y)
                 toyield = [x]
+            elif x: 
+                toyield.append(x)
         except StopIteration: 
             while toyield:
                 y = toyield.pop(0)
@@ -518,7 +530,7 @@ def rnaseq_workflow(ex, job, bam_files, pileup_level=["exons","genes","transcrip
                 additional = {}
                 for read in sam:
                     t_id = sam.getrname(read.tid).split('|')[0]
-                    if transcript_mapping.get(t_id):
+                    if transcript_mapping.get(t_id) and exons_in_trans.get(t_id):
                         lag = 0
                         r_start = read.pos
                         r_end = r_start + read.rlen
@@ -608,9 +620,10 @@ def rnaseq_workflow(ex, job, bam_files, pileup_level=["exons","genes","transcrip
 def run_glm(rpath, data_file, options=[]):
     """Run negbin.test.R"""
     output_file = unique_filename_in()
-    options += ["-o",output_file]
+    opts = ["-o",output_file]
+    if options: opts.extend(options)
     script_path = os.path.join(rpath,'negbin.test.R')
-    return {'arguments': ["R","--slave","-f",script_path,"--args",data_file]+options,
+    return {'arguments': ["R","--slave","-f",script_path,"--args",data_file]+opts,
             'return_value': output_file}
 
 def clean_before_deseq(filename):
