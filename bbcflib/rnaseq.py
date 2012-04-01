@@ -228,11 +228,9 @@ def fusion(X):
     while 1:
         try:
             x = X.next()
-            print "x :",x
             intersected = False
             for y in toyield:
                 replace, rest = _intersect(y,x) 
-                print "REPLACE",y," BY ",replace
                 if replace:
                     intersected = True
                     iy = toyield.index(y)
@@ -248,7 +246,6 @@ def fusion(X):
                 toyield = [x]
             elif x: 
                 toyield.append(x)
-            print "toyield",toyield
         except StopIteration: 
             while toyield:
                 y = toyield.pop(0)
