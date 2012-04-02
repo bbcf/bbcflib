@@ -487,19 +487,21 @@ def rnaseq_workflow(ex, job, bam_files, pileup_level=["exons","genes","transcrip
             conditions.append(cond)
     ncond = len(conditions)
 
-    #Exon labels: ('exonID|geneID|start|end|strand', length)
+    #Exon labels: ('exonID|geneID|start|end|strand|type', length)
     exons = fetch_labels(bam_files[groups.keys()[0]][groups.values()[0]['runs'].keys()[0]]['bam'])
 
     """ Extract information from bam headers """
     exonsID=[]; genesID=[]; genesName=[]; starts=[]; ends=[];
     exon_lengths={}; exon_to_gene={}; badexons=[]
     for e in exons:
-        (exon, gene, start, end, strand, type) = e[0].split('|')
+        length = e[1]
+        e = e[0].split('|')
+        exon = e[0]; gene = e[1]; start = e[2]; end = e[3];
         start = int(start); end = int(end)
         if end-start>1:
             starts.append(start)
             ends.append(end)
-            exon_lengths[exon] = float(e[1])
+            exon_lengths[exon] = float(length)
             exonsID.append(exon)
             genesID.append(gene)
             exon_to_gene[exon] = gene
