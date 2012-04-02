@@ -494,7 +494,7 @@ def rnaseq_workflow(ex, job, bam_files, pileup_level=["exons","genes","transcrip
     exonsID=[]; genesID=[]; genesName=[]; starts=[]; ends=[];
     exon_lengths={}; exon_to_gene={}; badexons=[]
     for e in exons:
-        (exon, gene, start, end, strand) = e[0].split('|')
+        (exon, gene, start, end, strand, type) = e[0].split('|')
         start = int(start); end = int(end)
         if end-start>1:
             starts.append(start)
