@@ -395,9 +395,10 @@ def workflow_groups( ex, job_or_dict, mapseq_files, assembly, script_path='',
         annotations = track.track(assembly.sqlite_path())
         peakfile = unique_filename_in()
         peakout = track.track(peakfile, format='txt', 
-                              fields=['start','end','name','strand','gene','location_type','distance'])
+                              fields=['chr','start','end','name','strand',
+                                      'gene','location_type','distance'])
         touch(ex,peakout)
-        for chrom in assembly.chrnames():
+        for chrom in assembly.chrnames:
             peakout.write(gMiner.stream.getNearestFeature(
                     ptrack.read(selection=chrom), 
                     annotations.read(selection=chrom)),mode='append')
