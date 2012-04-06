@@ -505,7 +505,7 @@ def rnaseq_workflow(ex, job, bam_files, pileup_level=["exons","genes","transcrip
             genesID.append(gene)
             exon_to_gene[exon] = gene
         else: badexons.append(e)
-    [exons.remove(e) for e in badexons]
+    [exons.remove(e) for e in badexons if e in exons]
 
     print "Load mappings"
     """ [0] gene_mapping is a dict ``{gene ID: (gene name,start,end,length,chromosome)}``
