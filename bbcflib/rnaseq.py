@@ -361,7 +361,7 @@ def transcripts_expression(exons_data, exon_lengths, transcript_mapping, trans_i
     trans_counts = dict(zip(transcripts,z))
     trans_rpkm = dict(zip(transcripts,zz))
     exons_counts = dict(zip( exons_data[0], zip(*exons_data[1:ncond+1])) )
-    totalerror = 0; unknown = 0; #alltranscount=0; allexonscount=0;
+    unknown = 0
     pinv = numpy.linalg.pinv
     norm = numpy.linalg.norm
     for g in genes:
@@ -404,9 +404,12 @@ def transcripts_expression(exons_data, exon_lengths, transcript_mapping, trans_i
                 Ec = numpy.hstack((Ec,asarray(sum(Ec))))
                 tol = 10*2.22e-16*norm(N,1)*(max(N.shape)+1)
                 try: Tc, resnormc, resc = lsqnonneg(N,Ec,tol=100*tol)
-                except: Tc = round(positive(pinv(N,Ec)), 2)
+                except:
+                    import pickle
+                    with open("../widmer_(N,Ec).pickle","wb") as f:
+                        pickle.dump((N,Ec),f)
+                    Tc = round(positive(pinv(N,Ec)), 2)
                 tc.append(Tc)
-                totalerror += math.sqrt(resnormc)
             # Store results in a dict *trans_counts*
             for k,t in enumerate(tg):
                 if trans_counts.get(t) is not None:
