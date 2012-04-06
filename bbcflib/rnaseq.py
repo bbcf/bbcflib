@@ -492,7 +492,7 @@ def rnaseq_workflow(ex, job, bam_files, pileup_level=["exons","genes","transcrip
     exonsID=[]; genesID=[]; genesName=[]; starts=[]; ends=[];
     exon_lengths={}; exon_to_gene={}; badexons=[]
     for e in exons:
-        (exon, gene, start, end, strand) = e[0].split('|')
+        (exon, gene, start, end, strand) = e[0].split('|')[:5]
         start = int(start); end = int(end)
         if end-start>1:
             starts.append(start)
@@ -502,7 +502,7 @@ def rnaseq_workflow(ex, job, bam_files, pileup_level=["exons","genes","transcrip
             genesID.append(gene)
             exon_to_gene[exon] = gene
         else: badexons.append(e)
-    [exons.remove(e) for e in badexons]
+    [exons.remove(e) for e in badexons if e in exons]
 
     print "Load mappings"
     """ [0] gene_mapping is a dict ``{gene ID: (gene name,start,end,length,chromosome)}``
