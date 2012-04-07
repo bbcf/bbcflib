@@ -361,7 +361,7 @@ def transcripts_expression(exons_data, exon_lengths, transcript_mapping, trans_i
     trans_counts = dict(zip(transcripts,z))
     trans_rpkm = dict(zip(transcripts,zz))
     exons_counts = dict(zip( exons_data[0], zip(*exons_data[1:ncond+1])) )
-    totalerror = 0; unknown = 0; #alltranscount=0; allexonscount=0;
+    unknown = 0
     pinv = numpy.linalg.pinv
     norm = numpy.linalg.norm
     for g in genes:
@@ -406,7 +406,6 @@ def transcripts_expression(exons_data, exon_lengths, transcript_mapping, trans_i
                 try: Tc, resnormc, resc = lsqnonneg(N,Ec,tol=100*tol)
                 except: Tc = round(positive(pinv(N,Ec)), 2)
                 tc.append(Tc)
-                totalerror += math.sqrt(resnormc)
             # Store results in a dict *trans_counts*
             for k,t in enumerate(tg):
                 if trans_counts.get(t) is not None:
@@ -495,8 +494,8 @@ def rnaseq_workflow(ex, job, bam_files, pileup_level=["exons","genes","transcrip
     exon_lengths={}; exon_to_gene={}; badexons=[]
     for e in exons:
         length = e[1]
-        e = e[0].split('|')
-        exon = e[0]; gene = e[1]; start = int(e[2]); end = int(e[3])
+        E = e[0].split('|')
+        exon = E[0]; gene = E[1]; start = int(E[2]); end = int(E[3])
         if end-start>1:
             starts.append(start)
             ends.append(end)
@@ -505,7 +504,7 @@ def rnaseq_workflow(ex, job, bam_files, pileup_level=["exons","genes","transcrip
             genesID.append(gene)
             exon_to_gene[exon] = gene
         else: badexons.append(e)
-    [exons.remove(e) for e in badexons if e in exons]
+    [exons.remove(e) for e in badexons]
 
     print "Load mappings"
     """ [0] gene_mapping is a dict ``{gene ID: (gene name,start,end,length,chromosome)}``
@@ -623,10 +622,9 @@ def rnaseq_workflow(ex, job, bam_files, pileup_level=["exons","genes","transcrip
 
 @program
 def run_glm(rpath, data_file, options=[]):
-    """Run negbin.test.R"""
+    """Run *rpath*/negbin.test.R on *data_file*."""
     output_file = unique_filename_in()
-    opts = ["-o",output_file]
-    if options: opts.extend(options)
+    opts = ["-o",output_file].extend(options)
     script_path = os.path.join(rpath,'negbin.test.R')
     return {'arguments': ["R","--slave","-f",script_path,"--args",data_file]+opts,
             'return_value': output_file}
@@ -690,7 +688,7 @@ def differential_analysis(ex, result, rpath, design=None, contrast=None):
                     desc = set_file_descr(type+"_differential"+o.split(glmfile)[1]+".txt", step='stats', type='txt')
                     o = clean_deseq_output(o)
                     ex.add(o, description=desc)
-            except: print "Skipped differential analysis"
+            except Exception as exc: print "Skipped differential analysis: %s" % exc
 
 #------------------------------------------------------#
 # This code was written by Julien Delafontaine         #
