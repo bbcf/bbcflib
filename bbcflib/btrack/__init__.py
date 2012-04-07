@@ -64,10 +64,11 @@ _track_map = {
     'wig': ('bbcflib.btrack.text','WigTrack'),
     'gff': ('bbcflib.btrack.text','GffTrack'),
     'gtf': ('bbcflib.btrack.text','GffTrack'),
+    'sga': ('bbcflib.btrack.text','SgaTrack'),
     'bigWig': ('bbcflib.btrack.bin','BigWigTrack'),
     'bigwig': ('bbcflib.btrack.bin','BigWigTrack'), 
     'bw':  ('bbcflib.btrack.bin','BigWigTrack'),
-    'bam': ('bbcflib.btrack.bin','BamTrack')
+    'bam': ('bbcflib.btrack.bin','BamTrack'),
 }
 
 def track(path, format=None, **kwargs):

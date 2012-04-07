@@ -3,7 +3,6 @@ from bbcflib.bFlatMajor import *
 _members = {'merge_scores': ['trackList'],
             'mean_score_by_feature': ['trackScores', 'trackFeatures'],
             'window_smoothing': ['trackList'],
-            'combine': ['trackList'],
             'neighborhood': ['trackList'],
             'combine': ['trackList'],
             'getNearestFeature': ['track','annotations']

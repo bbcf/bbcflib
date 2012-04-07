@@ -219,6 +219,65 @@ class BedGraphTrack(TextTrack):
         kwargs['fields'] = ['chr','start','end','score']
         TextTrack.__init__(self,path,**kwargs)
 
+################################### Sga ############################################
+
+class SgaTrack(TextTrack):
+    def __init__(self,path,**kwargs):
+        kwargs['format'] = 'sga'
+        kwargs['fields'] = ['chr','start','end','counts','strand','name']
+        kwargs['intypes'] = {'counts': int}
+        #### Force assembly param?
+        TextTrack.__init__(self,path,**kwargs)
+        self.chromosomes = {}
+
+    def _read(self, fields, index_list, selection=None):
+        self.open('read')
+        rowdata = {'+': ['',-1,-1,'','+',''],
+                   '-': ['',-1,-1,'','-',''],
+                   '0': ['',-1,-1,'','.','']}
+        for row in self.filehandle:
+            row = row.strip()
+            if not(row) or row.startswith("#"): continue
+            row = row.split(self.separator)
+            yieldit = True
+            strand = row[3]
+            rowdata[strand][0] = row[0]
+            start = int(row[2])
+            counts = row[4]
+            name = row[1]
+            if start-1 == rowdata[strand][2] and \
+                    counts == rowdata[strand][3] and \
+                    name == rowdata[strand][5]:
+                rowdata[strand][2] = start
+                yieldit = False
+            if selection and not(self._select_values(rowdata[strand],selection)): 
+                continue
+            if not(yieldit): continue
+            if rowdata[strand][1]>=0:
+                yield tuple(self._check_type(rowdata[strand][index_list[n]],f) 
+                            for n,f in enumerate(fields))
+            rowdata[strand][1] = start-1
+            rowdata[strand][2] = start
+            rowdata[strand][3] = counts
+            rowdata[strand][5] = name
+        for rd in rowdata.values():
+            if (rd[1]>=0):
+                yield tuple(self._check_type(rd[index_list[n]],f) 
+                            for n,f in enumerate(fields))
+
+
+    def _format_fields(self,vec,row,source_list,target_list):
+        chrom = row[source_list[0]]
+        start = row[source_list[1]]
+        end = row[source_list[2]]
+        feat = []
+        for pos in range(start,end):
+            x = [chrom,name,self.outtypes.get("start",str)(pos+1),
+                 self.outtypes.get("strand",str)(strand),
+                 self.outtypes.get("counts",str)(counts)]
+            feat.append(self.separator.join(x))
+        return "\n".join(feat)
+
 ################################### Wig ############################################
 
 class WigTrack(TextTrack):
@@ -233,43 +292,78 @@ class WigTrack(TextTrack):
         chrom = None
         span = 1
         start = None
+        end = None
         step = None
+        score = None
         try:
+            rowdata = ['',-1,-1,'']
             for row in self.filehandle:
-                if row.startswith("#"): continue
+                row = row.strip()
+                if not(row) or row.startswith("#"): continue
                 if row.startswith("browser") or \
                         row.startswith("track"): 
                     fixedStep = None
                     chrom = None
                     span = 1
                     start = None
+                    end = None
+                    score = None
                     step = None
-                    continue
-                if row.startswith("variableStep"): 
-                    fixedStep = False 
-                    chrom = re.search(r'chrom=(\S+)',row).groups()[0]
-                    s_patt = re.search(r'span=(\d+)',row)
-                    if s_patt:
-                        span = s_patt.groups()[0]
                     continue
                 if row.startswith("fixedStep"):
                     fixedStep = True
                     chrom,start,step = re.search(r'chrom=(\S+)\s+start=(\d+)\s+step=(\d+)',row).groups()
+                    start = int(start)
+                    step = int(step)
+                    rowdata[0] = chrom
+                    rowdata[1] = -1
+                    rowdata[2] = -1
                     s_patt = re.search(r'span=(\d+)',row)
                     if s_patt:
-                        span = s_patt.groups()[0]
+                        span = int(s_patt.groups()[0])
+                    end = -1
+                    start -= step
+                    continue
+                if row.startswith("variableStep"): 
+                    fixedStep = False 
+                    chrom = re.search(r'chrom=(\S+)',row).groups()[0]
+                    rowdata[0] = chrom
+                    rowdata[1] = -1
+                    rowdata[2] = -1
+                    start = -1
+                    s_patt = re.search(r'span=(\d+)',row)
+                    if s_patt:
+                        span = int(s_patt.groups()[0])
+                    end = start+span
                     continue
                 if fixedStep is None: continue
-                splitrow = row.strip().split(self.separator)
+                splitrow = row.split(self.separator)
+                yieldit = True
                 if fixedStep:
-                    data = (chrom,start,start+span,splitrow[0])
+                    score = splitrow[0]
                     start += step
+                    end = start+span
+                    if start == rowdata[2] and score == rowdata[3]: 
+                        yieldit = False
+                        rowdata[2] = end
                 else:
-                    start = splitrow[0]
-                    data = (chrom,start,start+span,splitrow[1])
-                if selection and not(self._select_values(data,selection)): 
+                    score = splitrow[1]
+                    start = int(splitrow[0])
+                    end = start+span
+                    if start == rowdata[2] and score == rowdata[3]: 
+                        yieldit = False
+                        rowdata[2] = end
+                if not(yieldit): continue
+                if selection and not(self._select_values(rowdata,selection)): 
                     continue
-                yield tuple(self._check_type(data[index_list[n]],f) 
+                if rowdata[1]>=0:
+                    yield tuple(self._check_type(rowdata[index_list[n]],f) 
+                                for n,f in enumerate(fields))
+                rowdata[1] = start
+                rowdata[2] = end
+                rowdata[3] = score
+            if (rowdata[1]>=0):
+                yield tuple(self._check_type(rowdata[index_list[n]],f) 
                             for n,f in enumerate(fields))
         except ValueError:
             raise ValueError("Bad line in file %s:\n %s\n"%(self.path,row))

@@ -13,6 +13,7 @@ def sentinelize(iterable, sentinel):
 ####################################################################
 def reorder(stream,fields):
     if not(all([f in stream.fields for f in fields])):
+#        return stream ##assume it has been reordered consistently
         raise ValueError("Need %s fields in stream."%(", ".join(fields)))
     if all(stream.fields[n] == f for n,f in enumerate(fields)):
         return stream
