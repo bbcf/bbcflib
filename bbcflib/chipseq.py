@@ -38,8 +38,7 @@ Below is the script used by the frontend::
 import re, os, gzip, sys
 
 # Internal modules #
-from bbcflib import frontend, mapseq
-from bbcflib.common import merge_sql, intersect_many_bed, join_pdf, set_file_descr, unique_filename_in
+from bbcflib import frontend, mapseq, common
 from bbcflib import btrack as track
 from bbcflib import bFlatMajor as gMiner
 
@@ -61,7 +60,7 @@ def macs( read_length, genome_size, bamfile, ctrlbam = None, args = None ):
     """
     if args is None:
         args = []
-    outname = unique_filename_in()
+    outname = common.unique_filename_in()
     macs_args = ["macs14","-t",bamfile]
     if ctrlbam != None:
         macs_args += ["-c",ctrlbam]
@@ -113,9 +112,10 @@ def add_macs_results( ex, read_length, genome_size, bamfile,
         macs_descr2 = {'step':'macs','type':'bed','group':n[0],'ucsc':'1'}
         filename = "_vs_".join([x for x in n if not(x is None)])
         touch( ex, p )
-        ex.add( p, description=set_file_descr(filename,**macs_descr0), alias=alias )
+        ex.add( p, description=common.set_file_descr(filename,**macs_descr0), 
+                alias=alias )
         ex.add( p+"_peaks.xls",
-                description=set_file_descr(filename+"_peaks.xls",**macs_descr1),
+                description=common.set_file_descr(filename+"_peaks.xls",**macs_descr1),
                 associate_to_filename=p, template='%s_peaks.xls' )
         bedzip = gzip.open(p+"_peaks.bed.gz",'wb')
         bedzip.write("track name='"+filename+"_macs_peaks'\n")
@@ -123,7 +123,7 @@ def add_macs_results( ex, read_length, genome_size, bamfile,
             [bedzip.write(l) for l in bedinf]
         bedzip.close()
         ex.add( p+"_peaks.bed.gz",
-                description=set_file_descr(filename+"_peaks.bed.gz",**macs_descr2),
+                description=common.set_file_descr(filename+"_peaks.bed.gz",**macs_descr2),
                 associate_to_filename=p, template='%s_peaks.bed.gz' )
         bedzip = gzip.open(p+"_summits.bed.gz",'wb')
         bedzip.write("track name='"+filename+"_macs_summits'\n")
@@ -131,11 +131,11 @@ def add_macs_results( ex, read_length, genome_size, bamfile,
             [bedzip.write(l) for l in bedinf]
         bedzip.close()
         ex.add( p+"_summits.bed.gz",
-                description=set_file_descr(filename+"_summits.bed",**macs_descr2),
+                description=common.set_file_descr(filename+"_summits.bed",**macs_descr2),
                 associate_to_filename=p, template='%s_summits.bed.gz' )
         if not(n[1] is None):
             ex.add( p+"_negative_peaks.xls",
-                    description=set_file_descr(filename+"_negative_peaks.xls",**macs_descr1),
+                    description=common.set_file_descr(filename+"_negative_peaks.xls",**macs_descr1),
                     associate_to_filename=p, template='%s_negative_peaks.xls' )
     return prefixes
 
@@ -148,7 +148,7 @@ def camelPeaks( scores_fwd, scores_rev, peaks, chromosome_name, chromosome_lengt
     and 'read_extension', using functions from 'script_path'/deconv_fcts.R.
     Returns a pdf file and several data tracks.
     """
-    output = unique_filename_in()
+    output = common.unique_filename_in()
     args = ["-p",peaks,"-f",scores_fwd,"-r",scores_rev,"-o",output,"-c",chromosome_name,
             "-l",str(chromosome_length),"-e",str(read_extension),"-z",script_path,"-s","1500"]
     return {'arguments': ["camelPeaks.py"]+args,
@@ -165,7 +165,7 @@ def run_deconv(ex, sql, peaks, chromosomes, read_extension, script_path, via = '
     deconv_futures = {}
     stdout_files = {}
     for cid,chr in chromosomes.iteritems():
-        stdout_files[cid] = unique_filename_in()
+        stdout_files[cid] = common.unique_filename_in()
         deconv_futures[cid] = camelPeaks.nonblocking( ex, sql['fwd'], sql['rev'], peaks,
                                                       chr['name'], chr['length'],
                                                       read_extension, script_path,
@@ -184,11 +184,11 @@ def run_deconv(ex, sql, peaks, chromosomes, read_extension, script_path, via = '
                 if re.search(r'\*\*\*\*\*\*\*\*\*\*\*\*OUTPUT FILES\*\*\*\*\*\*\*\*\*\*',row):
                     scan = True
     if len(deconv_out)>0:
-        pdf_future = join_pdf.nonblocking( ex,
-                                           [x[0] for x in deconv_out.values() if len(x)>0],
-                                           via=via )
+        pdf_future = common.join_pdf.nonblocking( ex,
+                                                  [x[0] for x in deconv_out.values() if len(x)>0],
+                                                  via=via )
     chrlist = dict((v['name'], {'length': v['length']}) for v in chromosomes.values())
-    output = unique_filename_in()
+    output = common.unique_filename_in()
     outfiles = {}
     outfiles['bed'] = output+"_peaks.sql"
     outfiles['sql'] = output+"_deconv.sql"
@@ -327,7 +327,7 @@ def workflow_groups( ex, job_or_dict, mapseq_files, assembly, script_path='',
                      for x in names['controls']])
             ##############################
             macs_neighb = gMiner.stream.neighborhood(macsbed, before_start=150, after_end=150 )
-            peak_list[name] = unique_filename_in()+".sql"
+            peak_list[name] = common.unique_filename_in()+".sql"
             macs_final = track.track( peak_list[name], chrmeta=chrlist,
                                       info={'datatype':'qualitative'},
                                       fields=['start','end','name','score'] )
@@ -357,7 +357,7 @@ def workflow_groups( ex, job_or_dict, mapseq_files, assembly, script_path='',
                 else:
                     wig.append(m['wig'])
             if len(wig) > 1:
-                merged_wig[group_name] = dict((s,merge_sql(ex, [x[s] for x in wig], via=via))
+                merged_wig[group_name] = dict((s,common.merge_sql(ex, [x[s] for x in wig], via=via))
                                               for s in suffixes)
             else:
                 merged_wig[group_name] = wig[0]
@@ -367,8 +367,8 @@ def workflow_groups( ex, job_or_dict, mapseq_files, assembly, script_path='',
                 ctrl = (name,names['controls'][0])
                 macsbed = processed['macs'][ctrl]+"_peaks.bed"
             else:
-                macsbed = intersect_many_bed( ex, [processed['macs'][(name,x)]+"_peaks.bed"
-                                                   for x in names['controls']], via=via )
+                macsbed = common.intersect_many_bed( ex, [processed['macs'][(name,x)]+"_peaks.bed"
+                                                          for x in names['controls']], via=via )
             
             deconv = run_deconv( ex, merged_wig[name], macsbed, assembly.chromosomes,
                                  options['read_extension'], script_path, via=via )
@@ -378,7 +378,7 @@ def workflow_groups( ex, job_or_dict, mapseq_files, assembly, script_path='',
                     rowpatt = re.search(r';FERR=([\d\.]+)\s',row[4])
                     if rowpatt and float(rowpatt.groups()[0]) <= pval: yield row
             ##############################
-            peak_list[name] = unique_filename_in()+".bed"
+            peak_list[name] = common.unique_filename_in()+".bed"
             bedfile = track.track(peak_list[name], chrmeta=chrlist,
                                   fields=["chr","start","end","name","score"])
             trbed = track.track(deconv['bed'])
@@ -386,27 +386,27 @@ def workflow_groups( ex, job_or_dict, mapseq_files, assembly, script_path='',
             bedfile.write(track.FeatureStream(
                 _filter_deconv(trbed.read(fields=trfields),0.65),fields=trfields))
             bedfile.close()
-            ex.add(deconv.pop('bed'), description=set_file_descr(name+'_peaks.sql',type='sql',step='deconvolution',group=name))
-            [ex.add(v, description=set_file_descr(name+'_deconv.'+k,type=k,step='deconvolution',group=name))
+            ex.add(deconv.pop('bed'), description=common.set_file_descr(name+'_peaks.sql',type='sql',step='deconvolution',group=name))
+            [ex.add(v, description=common.set_file_descr(name+'_deconv.'+k,type=k,step='deconvolution',group=name))
              for k,v in deconv.iteritems()]
             processed['deconv'][name] = deconv
     for name, plist in peak_list.iteritems():
         ptrack = track.track(plist)
         annotations = track.track(assembly.sqlite_path())
-        peakfile = unique_filename_in()
+        peakfile = common.unique_filename_in()
+        touch(ex,peakfile)
         peakout = track.track(peakfile, format='txt', 
                               fields=['chr','start','end','name','strand',
                                       'gene','location_type','distance'])
-        touch(ex,peakout)
         for chrom in assembly.chrnames:
             peakout.write(gMiner.stream.getNearestFeature(
                     ptrack.read(selection=chrom), 
                     annotations.read(selection=chrom)),mode='append')
         peakout.close()
-        gzipfile(ex,peakfile)
+        common.gzipfile(ex,peakfile)
         ex.add(peakfile+".gz", 
-               description=set_file_descr(name+'_annotated_peaks.txt.gz',type='text',
-                                          step='annotation',group=name))
+               description=common.set_file_descr(name+'_annotated_peaks.txt.gz',type='text',
+                                                 step='annotation',group=name))
     if run_meme:
         from bbcflib.motif import parallel_meme
         logfile.write("Starting MEME.\n");logfile.flush()

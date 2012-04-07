@@ -87,7 +87,8 @@ def density_to_countsPerFrag( ex, file_dict, groups, assembly, regToExclude, scr
 	features = track.track(reffile,'bed')
         countsPerFragFile = unique_filename_in()+".bed"
 	touch(ex,countsPerFragFile)
-	outbed = track.track(countsPerFragFile, fields=['start', 'end', 'name', 'score'])
+	outbed = track.track(countsPerFragFile, 
+                             fields=['chr','start', 'end', 'name', 'score'])
 	for ch in assembly.chrmeta.keys():
             outbed.write(gMiner.stream.mean_score_by_feature(
                     scores.read(selection=ch),
@@ -143,9 +144,11 @@ def workflow_groups( ex, job, primers_dict, assembly, mapseq_files, mapseq_url,
     htss_mapseq = frontend.Frontend( url=mapseq_url )
     if logfile is None: logfile = sys.stdout
 ### options
-    run_domainogram = group.get('run_domainogram',False)
-    if isinstance(run_domainogram,basestring):
-        run_domainogram = (run_domainogram.lower() in ['1','true','on','t'])
+    run_domainogram = {}
+    for gid, group in job_groups.iteritems():
+        run_domainogram[gid] = group.get('run_domainogram',False)
+        if isinstance(run_domainogram[gid],basestring):
+            run_domainogram[gid] = (run_domainogram[gid].lower() in ['1','true','on','t'])
     before_profile_correction = group.get('before_profile_correction',False)
     if isinstance(before_profile_correction,basestring):
         before_profile_correction = (before_profile_correction.lower() in ['1','true','on','t'])
@@ -204,8 +207,8 @@ def workflow_groups( ex, job, primers_dict, assembly, mapseq_files, mapseq_url,
          processed['4cseq']['smoothFrag'][gid].append(file4)
          futures2[gid] = (smoothFragFile.nonblocking( ex, profileCorrectedFile, nFragsPerWin, grName,
                                                       file4, regToExclude[gid], script_path, via=via ), )
-         if run_domainogram:
-             regCoord = regToExclude or primers_dict[group['name']]['baitcoord'] 
+         if run_domainogram[gid]:
+             regCoord = regToExclude[gid] or primers_dict[group['name']]['baitcoord'] 
              if before_profile_correction:
                  futures2[gid] += (runDomainogram.nonblocking( ex, bedGraph, job_groups[gid]['name'], 
                                                                regCoord=regCoord, 
