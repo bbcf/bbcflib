@@ -624,7 +624,7 @@ def rnaseq_workflow(ex, job, bam_files, pileup_level=["exons","genes","transcrip
 def run_glm(rpath, data_file, options=[]):
     """Run *rpath*/negbin.test.R on *data_file*."""
     output_file = unique_filename_in()
-    opts = ["-o",output_file].extend(options)
+    opts = ["-o",output_file]+options
     script_path = os.path.join(rpath,'negbin.test.R')
     return {'arguments': ["R","--slave","-f",script_path,"--args",data_file]+opts,
             'return_value': output_file}
@@ -688,7 +688,7 @@ def differential_analysis(ex, result, rpath, design=None, contrast=None):
                     desc = set_file_descr(type+"_differential"+o.split(glmfile)[1]+".txt", step='stats', type='txt')
                     o = clean_deseq_output(o)
                     ex.add(o, description=desc)
-            except Exception as exc: print "Skipped differential analysis: %s" % exc
+            except Exception as exc: print "Skipped differential analysis: %s \n" % exc
 
 #------------------------------------------------------#
 # This code was written by Julien Delafontaine         #
