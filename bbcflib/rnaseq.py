@@ -404,7 +404,7 @@ def transcripts_expression(exons_data, exon_lengths, transcript_mapping, trans_i
                 Ec = numpy.hstack((Ec,asarray(sum(Ec))))
                 tol = 10*2.22e-16*norm(N,1)*(max(N.shape)+1)
                 try: Tc, resnormc, resc = lsqnonneg(N,Ec,tol=100*tol)
-                except: Tc = round(positive(pinv(N,Ec)), 2)
+                except: Tc = round(positive(dot(pinv(N),Ec)), 2)
                 tc.append(Tc)
             # Store results in a dict *trans_counts*
             for k,t in enumerate(tg):
