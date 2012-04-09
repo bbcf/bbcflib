@@ -404,7 +404,7 @@ def transcripts_expression(exons_data, exon_lengths, transcript_mapping, trans_i
                 Ec = numpy.hstack((Ec,asarray(sum(Ec))))
                 tol = 10*2.22e-16*norm(N,1)*(max(N.shape)+1)
                 try: Tc, resnormc, resc = lsqnonneg(N,Ec,tol=100*tol)
-                except: Tc = round(positive(pinv(N,Ec)), 2)
+                except: Tc = positive(numpy.dot(pinv(N),Ec))
                 tc.append(Tc)
             # Store results in a dict *trans_counts*
             for k,t in enumerate(tg):
@@ -624,7 +624,7 @@ def rnaseq_workflow(ex, job, bam_files, pileup_level=["exons","genes","transcrip
 def run_glm(rpath, data_file, options=[]):
     """Run *rpath*/negbin.test.R on *data_file*."""
     output_file = unique_filename_in()
-    opts = ["-o",output_file].extend(options)
+    opts = ["-o",output_file]+options
     script_path = os.path.join(rpath,'negbin.test.R')
     return {'arguments': ["R","--slave","-f",script_path,"--args",data_file]+opts,
             'return_value': output_file}
@@ -688,7 +688,7 @@ def differential_analysis(ex, result, rpath, design=None, contrast=None):
                     desc = set_file_descr(type+"_differential"+o.split(glmfile)[1]+".txt", step='stats', type='txt')
                     o = clean_deseq_output(o)
                     ex.add(o, description=desc)
-            except Exception as exc: print "Skipped differential analysis: %s" % exc
+            except Exception as exc: print "Skipped differential analysis: %s \n" % exc
 
 #------------------------------------------------------#
 # This code was written by Julien Delafontaine         #
