@@ -12,9 +12,9 @@ _in_types = {'start':        int,
              'block_count':  int,
              'frame':        int}
 
-_out_types = {'start': format_int,
-              'end': format_int,
-              'score': format_float,
+_out_types = {'start':  format_int,
+              'end':    format_int,
+              'score':  format_float,
               'strand': int_to_strand}
 
 ################################ GENERIC TEXT ####################################
@@ -224,11 +224,14 @@ class BedGraphTrack(TextTrack):
 class SgaTrack(TextTrack):
     def __init__(self,path,**kwargs):
         kwargs['format'] = 'sga'
-        kwargs['fields'] = ['chr','start','end','counts','strand','name']
+        kwargs['fields'] = ['chr','start','end','name','strand','counts']
         kwargs['intypes'] = {'counts': int}
-        #### Force assembly param?
         TextTrack.__init__(self,path,**kwargs)
         self.chromosomes = {}
+        if self.assembly:
+            chdict = genrep.Assembly(self.assembly).chromosomes
+            self.chromosomes = dict((v['name'],str(key[1])+"."+str(key[2])) 
+                                    for k,v in chdict.iteritems()) 
 
     def _read(self, fields, index_list, selection=None):
         self.open('read')
@@ -246,8 +249,8 @@ class SgaTrack(TextTrack):
             counts = row[4]
             name = row[1]
             if start-1 == rowdata[strand][2] and \
-                    counts == rowdata[strand][3] and \
-                    name == rowdata[strand][5]:
+                    counts == rowdata[strand][5] and \
+                    name == rowdata[strand][3]:
                 rowdata[strand][2] = start
                 yieldit = False
             if selection and not(self._select_values(rowdata[strand],selection)): 
@@ -258,18 +261,22 @@ class SgaTrack(TextTrack):
                             for n,f in enumerate(fields))
             rowdata[strand][1] = start-1
             rowdata[strand][2] = start
-            rowdata[strand][3] = counts
-            rowdata[strand][5] = name
+            rowdata[strand][3] = name
+            rowdata[strand][5] = counts
         for rd in rowdata.values():
-            if (rd[1]>=0):
+            if rd[1]>=0:
                 yield tuple(self._check_type(rd[index_list[n]],f) 
                             for n,f in enumerate(fields))
 
 
     def _format_fields(self,vec,row,source_list,target_list):
         chrom = row[source_list[0]]
+        chrom = self.chromosomes.get(chrom,chrom)
         start = row[source_list[1]]
         end = row[source_list[2]]
+        name = row[source_list[3]]
+        strand = row[source_list[4]]
+        counts = row[source_list[5]]
         feat = []
         for pos in range(start,end):
             x = [chrom,name,self.outtypes.get("start",str)(pos+1),
@@ -362,7 +369,7 @@ class WigTrack(TextTrack):
                 rowdata[1] = start
                 rowdata[2] = end
                 rowdata[3] = score
-            if (rowdata[1]>=0):
+            if rowdata[1]>=0:
                 yield tuple(self._check_type(rowdata[index_list[n]],f) 
                             for n,f in enumerate(fields))
         except ValueError:

@@ -16,6 +16,7 @@ from bbcflib.common import set_file_descr, unique_filename_in
 
 # Other modules #
 from bein import program
+from bein.util import touch
 
 ################################################################################
 @program
@@ -32,6 +33,7 @@ def meme( fasta, outdir, maxsize=10000000, args=None ):
 def parse_meme_xml( ex, meme_file, chrmeta ):
     """ Parse meme xml file and convert to track """
     from xml.etree import ElementTree as ET
+    touch(ex,meme_file)
     tree = ET.parse(meme_file)
     ncol = {}
     allmatrices = {}

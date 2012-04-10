@@ -194,6 +194,13 @@ try:
 
         #-------------------------------------------------------------------------#
     @program
+    def coverageBed(file1,file2):
+        """Binds ``coverageBed`` from the 'BedTools' suite.
+        """
+        return {"arguments": ['coverageBed','-a',file1,'-b',file2], "return_value":None}
+
+        #-------------------------------------------------------------------------#
+    @program
     def intersectBed(file1,file2):
         """Binds ``intersectBed`` from the 'BedTools' suite.
         """
