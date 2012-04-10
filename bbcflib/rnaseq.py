@@ -193,45 +193,66 @@ def fusion(X):
     which some genome browsers cannot handle for quantitative tracks.
     """
     x = X.next()
-    c = x[0]
-    last = x[1]
-    last_was_alone = True
-    last_had_same_end = False
-    for y in X:
-        if y[1] < x[2]:             # y intersects x
-            last_had_same_end = False
-            if y[1] >= last: # cheating, needed in case 3 features overlap, thanks to the annotation...
-                if y[1] != last:    # y does not have same start as x
-                    yield (c,last,y[1],x[3])
-                if y[2] < x[2]:     # y is embedded in x
-                    yield (c,y[1],y[2],x[3]+y[3])
-                    last = y[2]
-                elif y[2] == x[2]:  # y has same end as x
-                    yield (c,y[1],y[2],x[3]+y[3])
-                    x = y
-                    last_had_same_end = True
-                else:               # y exceeds x
-                    yield (c,y[1],x[2],x[3]+y[3])
-                    last = x[2]
-                    x = y
-            last_was_alone = False
-        else:                       # y is outside of x
-            if last_was_alone:
-                yield x
-            elif last_had_same_end:
-                pass
-            else:
-                yield (c,last,x[2],x[3])
-            x = y
-            last = x[1]
-            last_was_alone = True
-            last_had_same_end = False
-    if last_was_alone:
-        yield x
-    elif last_had_same_end:
-        pass
-    else:
-        yield (c,last,x[2],x[3])
+    toyield = [x]
+
+    def _intersect(A,B):
+        """Return *z*, the part that must replace A in *toyield*, and
+        *rest*, that must reenter the loop instead of B."""
+        rest = None
+        if B[1] < A[2]:           # has an intersection
+            if B[2] < A[2]:
+                if B[1] == A[1]:  # same left border, A is bigger
+                    z = [(A[0],B[1],B[2],A[3]+B[3]), (A[0],B[2],A[2],A[3])]     
+                elif B[1] < A[1]: # B shifted to the left wrt A
+                    z = [(A[0],B[1],A[1],B[3]), (A[0],A[1],B[2],A[3]+B[3]), (A[0],B[2],A[2],A[3])]     
+                else:             # B embedded in A
+                    z = [(A[0],A[1],B[1],A[3]), (A[0],B[1],B[2],A[3]+B[3]), (A[0],B[2],A[2],A[3])]     
+            elif B[2] == A[2]:
+                if B[1] == A[1]:  # identical
+                    z = [(A[0],A[1],A[2],A[3]+B[3])]     
+                elif B[1] < A[1]: # same right border, B is bigger
+                    z = [(A[0],B[1],A[1],B[3]), (A[0],A[1],B[2],A[3]+B[3])]     
+                else:             # same right border, A is bigger
+                    z = [(A[0],A[1],B[1],A[3]), (A[0],B[1],B[2],A[3]+B[3])]     
+            else:      
+                if B[1] == A[1]:  # same left border, B is bigger
+                    z = [(A[0],A[1],A[2],A[3]+B[3])]
+                    rest = (A[0],A[2],B[2],B[3])     
+                elif B[1] < A[1]: # B contains A
+                    z = [(A[0],B[1],A[1],B[3]), (A[0],A[1],A[2],A[3]+B[3])]
+                    rest = (A[0],A[2],B[2],B[3])    
+                else:             # B shifted to the right wrt A
+                    z = [(A[0],A[1],B[1],A[3]), (A[0],B[1],A[2],A[3]+B[3])]
+                    rest = (A[0],A[2],B[2],B[3])  
+        else: z = None            # no intersection
+        return z, rest
+ 
+    while 1:
+        try:
+            x = X.next()
+            intersected = False
+            for y in toyield:
+                replace, rest = _intersect(y,x) 
+                if replace:
+                    intersected = True
+                    iy = toyield.index(y)
+                    y = toyield.pop(iy)
+                    for k in range(len(replace)):
+                        toyield.insert(iy+k, replace[k])
+                    x = rest
+                    if not x: break
+            if not intersected:
+                while toyield:
+                    y = toyield.pop(0)
+                    yield tuple(y)
+                toyield = [x]
+            elif x: 
+                toyield.append(x)
+        except StopIteration: 
+            while toyield:
+                y = toyield.pop(0)
+                yield tuple(y)
+            break
 
 def save_results(ex, cols, conditions, group_ids, assembly, header=[], feature_type='features'):
     """Save results in a tab-delimited file, one line per feature, one column per run.
@@ -269,11 +290,13 @@ def save_results(ex, cols, conditions, group_ids, assembly, header=[], feature_t
             # SQL track
             with track.new(filename+'.sql') as t:
                 t.chrmeta = assembly.chrmeta
+                t.datatype = 'signal'
                 for chr in t.chrmeta:
-                    goodlines = [l for l in lines if (l[3]!=0.0 and l[0]==chr)]
-                    [lines.remove(l) for l in goodlines]
+                    chrlines = [l for l in lines if l[0]==chr]
+                    goodlines = [l for l in chrlines if l[3]!=0.0]
+                    [lines.remove(l) for l in chrlines]
                     if goodlines:
-                        goodlines.sort(key=lambda x: itemgetter(1,2)) # sort w.r.t start
+                        goodlines.sort(key=itemgetter(1,2)) # sort w.r.t start, then end
                         goodlines = fusion(iter(goodlines))
                         for x in goodlines:
                             t.write(x[0],[(x[1],x[2],x[3])],fields=["start","end","score"])
@@ -312,7 +335,7 @@ def genes_expression(exons_data, gene_mapping, exon_to_gene, ncond, nreads):
     for g in genes:
         if gene_mapping.get(g):
             gene_rpkm[g] = to_rpkm(gene_counts[g], gene_mapping[g][3], nreads)
-        else: gene_rpkm[g] = ["NA"]*ncond
+        else: gene_rpkm[g] = [0]*ncond
     return gene_counts, gene_rpkm
 
 #@timer
@@ -338,7 +361,7 @@ def transcripts_expression(exons_data, exon_lengths, transcript_mapping, trans_i
     trans_counts = dict(zip(transcripts,z))
     trans_rpkm = dict(zip(transcripts,zz))
     exons_counts = dict(zip( exons_data[0], zip(*exons_data[1:ncond+1])) )
-    totalerror = 0; unknown = 0; #alltranscount=0; allexonscount=0;
+    unknown = 0
     pinv = numpy.linalg.pinv
     norm = numpy.linalg.norm
     for g in genes:
@@ -381,9 +404,8 @@ def transcripts_expression(exons_data, exon_lengths, transcript_mapping, trans_i
                 Ec = numpy.hstack((Ec,asarray(sum(Ec))))
                 tol = 10*2.22e-16*norm(N,1)*(max(N.shape)+1)
                 try: Tc, resnormc, resc = lsqnonneg(N,Ec,tol=100*tol)
-                except: Tc = round(positive(pinv(N,Ec)), 2)
+                except: Tc = positive(numpy.dot(pinv(N),Ec))
                 tc.append(Tc)
-                totalerror += math.sqrt(resnormc)
             # Store results in a dict *trans_counts*
             for k,t in enumerate(tg):
                 if trans_counts.get(t) is not None:
@@ -464,19 +486,20 @@ def rnaseq_workflow(ex, job, bam_files, pileup_level=["exons","genes","transcrip
             conditions.append(cond)
     ncond = len(conditions)
 
-    #Exon labels: ('exonID|geneID|start|end|strand', length)
+    #Exon labels: ('exonID|geneID|start|end|strand|type', length)
     exons = fetch_labels(bam_files[groups.keys()[0]][groups.values()[0]['runs'].keys()[0]]['bam'])
 
     """ Extract information from bam headers """
     exonsID=[]; genesID=[]; genesName=[]; starts=[]; ends=[];
     exon_lengths={}; exon_to_gene={}; badexons=[]
     for e in exons:
-        (exon, gene, start, end, strand) = e[0].split('|')
-        start = int(start); end = int(end)
+        length = e[1]
+        E = e[0].split('|')
+        exon = E[0]; gene = E[1]; start = int(E[2]); end = int(E[3])
         if end-start>1:
             starts.append(start)
             ends.append(end)
-            exon_lengths[exon] = float(e[1])
+            exon_lengths[exon] = float(length)
             exonsID.append(exon)
             genesID.append(gene)
             exon_to_gene[exon] = gene
@@ -511,7 +534,7 @@ def rnaseq_workflow(ex, job, bam_files, pileup_level=["exons","genes","transcrip
                 additional = {}
                 for read in sam:
                     t_id = sam.getrname(read.tid).split('|')[0]
-                    if transcript_mapping.get(t_id):
+                    if transcript_mapping.get(t_id) and exons_in_trans.get(t_id):
                         lag = 0
                         r_start = read.pos
                         r_end = r_start + read.rlen
@@ -599,11 +622,11 @@ def rnaseq_workflow(ex, job, bam_files, pileup_level=["exons","genes","transcrip
 
 @program
 def run_glm(rpath, data_file, options=[]):
-    """Run negbin.test.R"""
+    """Run *rpath*/negbin.test.R on *data_file*."""
     output_file = unique_filename_in()
-    options += ["-o",output_file]
+    opts = ["-o",output_file]+options
     script_path = os.path.join(rpath,'negbin.test.R')
-    return {'arguments': ["R","--slave","-f",script_path,"--args",data_file]+options,
+    return {'arguments': ["R","--slave","-f",script_path,"--args",data_file]+opts,
             'return_value': output_file}
 
 def clean_before_deseq(filename):
@@ -665,7 +688,7 @@ def differential_analysis(ex, result, rpath, design=None, contrast=None):
                     desc = set_file_descr(type+"_differential"+o.split(glmfile)[1]+".txt", step='stats', type='txt')
                     o = clean_deseq_output(o)
                     ex.add(o, description=desc)
-            except: print "Skipped differential analysis"
+            except Exception as exc: print "Skipped differential analysis: %s \n" % exc
 
 #------------------------------------------------------#
 # This code was written by Julien Delafontaine         #

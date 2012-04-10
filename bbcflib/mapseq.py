@@ -582,10 +582,10 @@ def parallel_bowtie(ex, index, reads, unmapped=None, n_lines=1000000, bowtie_arg
     else:
         subfiles = split_file(ex, reads, n_lines = n_lines)
     if unmapped:
-        futures = [bowtie.nonblocking(ex, index, sf, args=bowtie_args+["--un",unmapped+"_"+str(n)], via=via)
+        futures = [bowtie.nonblocking(ex, index, sf, args=bowtie_args+["--un",unmapped+"_"+str(n)], via=via, memory=3)
                    for n,sf in enumerate(subfiles)]
     else:
-        futures = [bowtie.nonblocking(ex, index, sf, args=bowtie_args, via=via)
+        futures = [bowtie.nonblocking(ex, index, sf, args=bowtie_args, via=via, memory=3)
                    for sf in subfiles]
     samfiles = [f.wait() for f in futures]
     futures = []
@@ -758,7 +758,7 @@ def map_reads( ex, fastq_file, chromosomes, bowtie_index,
                                add_nh_flags=True, via=via )
     else:
         bwtarg += ["--un",unmapped]
-        future = bowtie.nonblocking( ex, bowtie_index, fastq_file, bwtarg, via=via )
+        future = bowtie.nonblocking( ex, bowtie_index, fastq_file, bwtarg, via=via, memory=3 )
         samfile = future.wait()
         bam = add_nh_flag( samfile )
     sorted_bam = sort_bam(ex, bam)
@@ -1198,7 +1198,7 @@ def get_bam_wig_files( ex, job, minilims=None, hts_url=None, suffix=['fwd','rev'
             bamfile = unique_filename_in()
             wig = {}
             name = group_name
-            stats = None
+            stats = {}
             p_thresh = None
             fastqfiles = None
             if len(group['runs'])>1:
@@ -1265,7 +1265,7 @@ def get_bam_wig_files( ex, job, minilims=None, hts_url=None, suffix=['fwd','rev'
                     if int(ms_job.options.get('read_extension',-1))>0 and int(ms_job.options.get('read_extension'))<80:
                         read_exts[rid] = int(ms_job.options['read_extension'])
                     else:
-                        read_exts[rid] = stats['read_length']
+                        read_exts[rid] = stats.get('read_length',50)
                 else:
                     ms_job = job
                 if ms_job.options.get('compute_densities'):

@@ -45,7 +45,7 @@ def normalize_url(url):
     return url.strip("/")
 
 ###############################################################################
-def cat(files,out=None):
+def cat(files,out=None,skip=0):
     """Concatenates files.
     """
     if len(files) > 1:
@@ -53,9 +53,9 @@ def cat(files,out=None):
         with open(out,"w") as f1:
             for inf in files:
                 with open(inf,"r") as f2:
+                    for i in range(skip):
+                        f2.readline() 
                     [f1.write(l) for l in f2]
-                    f2.close()
-            f1.close()
     elif len(files) == 1:
         out = files[0]
     else:
