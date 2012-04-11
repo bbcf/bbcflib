@@ -77,8 +77,7 @@ def mean_score_by_feature(trackScores,trackFeatures):
     else:
         _fields = ["score"]
     _ts = [common.reorder(t,['start','end','score']) for t in trackScores]
-    return track.FeatureStream(_stream(_ts,trackFeatures),
-                               trackFeatures.fields+_fields)
+    return track.FeatureStream(_stream(_ts,trackFeatures), trackFeatures.fields+_fields)
 
 ###############################################################################
 def window_smoothing( trackList, window_size, step_size=1, stop_val=sys.maxint ):

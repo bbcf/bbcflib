@@ -84,12 +84,14 @@ def density_to_countsPerFrag( ex, file_dict, groups, assembly, regToExclude, scr
         density_file = file_dict['density'][gid]
         reffile = file_dict['lib'][gid]
 	scores = track.track(density_file)
-	features = track.track(reffile,'bed')
         countsPerFragFile = unique_filename_in()+".bed"
 	touch(ex,countsPerFragFile)
 	outbed = track.track(countsPerFragFile, 
                              fields=['chr','start', 'end', 'name', 'score'])
-	for ch in assembly.chrmeta.keys():
+	for ch in assembly.chrnames:
+            chref = os.path.join(reffile,ch+".bed.gz")
+            if not(os.path.exists(chref)): chref = reffile
+            features = track.track(chref,'bed')
             outbed.write(gMiner.stream.mean_score_by_feature(
                     scores.read(selection=ch),
                     features.read(selection=ch)), mode='append')
@@ -108,7 +110,8 @@ def density_to_countsPerFrag( ex, file_dict, groups, assembly, regToExclude, scr
     def _parse_select_frag(stream):
         for s in stream:
             sr = s.strip('\n').split('\t')
-            if re.search(r'IsValid',sr[2]) and not re.search(r'_and_',sr[8]) and not re.search(r'BothRepeats',sr[8]) and not re.search(r'notValid',sr[8]):
+            if re.search(r'IsValid',sr[2]) \
+                    and not(re.search(r'_and_',sr[8]) or re.search(r'BothRepeats',sr[8]) or re.search(r'notValid',sr[8])):
                 patt = re.search(r'([^:]+):(\d+)-(\d+)',sr[1])
                 if patt:
                     coord = patt.groups()
