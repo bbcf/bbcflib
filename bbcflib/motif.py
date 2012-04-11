@@ -59,15 +59,14 @@ def parse_meme_xml( ex, meme_file, chrmeta ):
                 name,seq_chr,start,end = re.search(r'(.*)\|(.+):(\d+)-(\d+)',name).groups()
             if it.tag == 'scanned_site':# and _c == seq_chr:
                 start = int(start)+int(it.attrib['position'])-1
-                end = str(start+ncol[it.attrib['motif_id']])
-                start = str(start)
+                end = start+ncol[it.attrib['motif_id']]
                 strnd = it.attrib['strand'] == 'plus' and 1 or -1
                 score = it.attrib['pvalue']
-                yield (start,end,it.attrib['motif_id'],score,strnd)
-    outsql = unique_filename_in()
+                yield (seq_chr,str(start),str(end),it.attrib['motif_id'],score,strnd)
+    outsql = unique_filename_in()+".sql"
     outtrack = track.track(outsql, chrmeta=chrmeta, info={'datatype':'qualitative'},
                            fields=['start','end','name','score','strand'])
-    outtrack.write(track.FeatureStream(_xmltree(tree),fields=outtrack.fields))
+    outtrack.write(track.FeatureStream(_xmltree(tree),fields=['chr']+outtrack.fields))
     outtrack.close()
     return {'sql':outsql,'matrices':allmatrices}
 
@@ -98,8 +97,7 @@ def parallel_meme( ex, assembly, regions, name=None, meme_args=None, via='lsf' )
         tgz = tarfile.open(archive, "w:gz")
         tgz.add( meme_out )
         tgz.close()
-        meme_res = parse_meme_xml( ex, os.path.join(meme_out, "meme.xml"), 
-                                   assembly.chrmeta )
+        meme_res = parse_meme_xml( ex, os.path.join(meme_out, "meme.xml"), assembly.chrmeta )
         if os.path.exists(os.path.join(meme_out, "meme.html")):
             ex.add( os.path.join(meme_out, "meme.html"),
                     description=set_file_descr(n+"_meme.html",step='meme',type='html',group=n) )

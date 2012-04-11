@@ -375,7 +375,7 @@ def workflow_groups( ex, job_or_dict, mapseq_files, assembly, script_path='',
             ##############################
             def _filter_deconv( stream, pval ):
                 for row in stream:
-                    rowpatt = re.search(r';FERR=([\d\.]+)\s',row[4])
+                    rowpatt = re.search(r';FERR=([\d\.]+)$',row[4])
                     if rowpatt and float(rowpatt.groups()[0]) <= pval: yield row
             ##############################
             peak_list[name] = common.unique_filename_in()+".bed"
