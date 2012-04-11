@@ -61,7 +61,7 @@ def parse_fragFile(fragfile):
             if re.search('FragIsNotValid',s): continue
             s=s.strip('\n').split('\t')
             chrom="chr"+s[1]
-            fragmentInfo='|'.join(['',s[0],chrom+':'str(int(s[2])+1)+'-'+s[3],
+            fragmentInfo='|'.join(['',s[0],chrom+':'+str(int(s[2])+1)+'-'+s[3],
                                    'indexOfSecondRestSiteOcc='+s[10],
                                    'status='+s[-1],'length='+str(int(s[3])-int(s[2])),
                                    0,0,0,0])
@@ -114,7 +114,7 @@ def getEnzymeSeq(enzyme_id,enzymes_dict=None,libpath=GlobalLibPath):
                 return v['site']
     return None
 
-def lib_exists(params,path=,returnType="id"):
+def lib_exists(params,path=GlobalLibPath,returnType="id"):
     '''
     Return id or filename corresponding to the library described in params.
     '''
