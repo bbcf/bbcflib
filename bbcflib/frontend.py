@@ -149,24 +149,33 @@ class Job(object):
             raise KeyError("No such group with ID "+str(group))
 
 
-def parseConfig( file ):
-    """Constructs a Job object from parsing a text config file with ConfigObj.
+def parseConfig( file, job=None, gl=None ):
+    """Constructs or updates a Job object from parsing a text config file with ConfigObj.
     """
     from configobj import ConfigObj
     import time
 
     config = ConfigObj( file, unrepr=True )
-    if not('Job' in config and 'Groups' in config and 'Runs' in config):
+    if not(job and 'Job' in config and 'Groups' in config and 'Runs' in config):
         raise ValueError("Need 'Job', 'Groups' and 'Runs' sections in the configuration, only had: "+", ".join(config.keys()))
-    job = Job(
+    if job is None: job = {}
+    newjob = Job(
         id = int(config['Job'].get('id',0)),
         created_at = int(time.time()),
-        key = config['Job'].get('key','userconfig'),
-        assembly_id = config['Job']['assembly_id'],
+        key = config['Job'].get('key',''),
+        assembly_id = config['Job'].get('assembly_id'),
         description = str(config['Job'].get('description')),
         email = str(config['Job'].get('email')),
         options = config.get('Options',{}))
-    for gid, group in config['Groups'].iteritems():
+    for k,v in newjob.iteritems():
+        if k in job:
+            if not v: continue
+            if isinstance(v,dict):
+                for k2, v2 in v.iteritems():
+                    if v2: job[k][k2] = v2
+                continue
+        job[k] = v
+    for gid, group in config.get('Groups',{}).iteritems():
         if not('name' in group):
             raise ValueError("Each entry in 'Groups' must have a 'name'")
         if isinstance(group.get('control'),str):
@@ -175,12 +184,15 @@ def parseConfig( file ):
             group['control'] = False
         job.add_group(id=int(gid),name=group.pop('name'),group=group)
 
-    for rid, run in config['Runs'].iteritems():
+    for rid, run in config.get('Runs',{}).iteritems():
         if not('group_id' in run):
             raise ValueError("Each entry in 'Runs' must have a 'group_id'")
         run['group_id'] = int(run['group_id'])
         job.add_run(id=int(rid),**run)
     globals = config.get('Global variables',{})
+    if gl is None: gl = {}
+    for k,v in gl:
+        if not(k in globals): globals[k] = v
     return (job,globals)
 
 #-----------------------------------#
