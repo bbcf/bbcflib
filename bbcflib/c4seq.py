@@ -14,7 +14,7 @@ from bein.util import touch
 from bbcflib import daflims, genrep, frontend, email, gdv, createlib
 from bbcflib import btrack as track
 from bbcflib.mapseq import *
-from bbcflib.common import unique_filename_in, gzipfile, merge_sql
+from bbcflib.common import unique_filename_in, gzipfile, merge_sql, cat
 import bbcflib.bFlatMajor as gMiner
 
 # *** Create a dictionary with infos for each primer (from file primers.fa)
@@ -83,25 +83,35 @@ def density_to_countsPerFrag( ex, file_dict, groups, assembly, regToExclude, scr
     for gid, group in groups.iteritems():
         density_file = file_dict['density'][gid]
         reffile = file_dict['lib'][gid]
-	scores = track.track(density_file)
-        countsPerFragFile = unique_filename_in()+".bed"
-	touch(ex,countsPerFragFile)
-	outbed = track.track(countsPerFragFile, 
-                             fields=['chr','start', 'end', 'name', 'score'])
+#	scores = track.track(density_file)
+        futures = []
 	for ch in assembly.chrnames:
             chref = os.path.join(reffile,ch+".bed.gz")
             if not(os.path.exists(chref)): chref = reffile
-            features = track.track(chref,'bed')
-            outbed.write(gMiner.stream.mean_score_by_feature(
-                    scores.read(selection=ch),
-                    features.read(selection=ch)), mode='append')
+#            features = track.track(chref,'bed')
+#            outbed.write(gMiner.stream.mean_score_by_feature(
+#                    scores.read(selection=ch),
+#                    features.read(selection=ch)), mode='append')
+            gMiner_job = {"operation": "mean_score_by_feature",
+                          "output": unique_filename_in()+".bed",
+                          "args": "'"+json.dumps({"trackScores":density_file,
+                                                  "trackFeatures":features,
+                                                  "chromosome":ch})+"'"}
+            futures.append(gMiner_run.nonblocking(ex,gMiner_job,via=via))
         outsql = unique_filename_in()+".sql"
 	sqlouttr = track.track( outsql, chrmeta=assembly.chrmeta, 
                                 info={'datatype':'quantitative'},
                                 fields=['start', 'end', 'score'] )
-	sqlouttr.write( outbed.read(fields=['chr','start', 'end', 'score'],
-                                    selection={'score':(0.01,sys.maxint)}))
+        outbed_all = []
+        for n,f in enumerate(futures):
+            outbed_all.append(f.wait())
+            outbed = track.track(outbed_all[n])
+            sqlouttr.write( outbed.read(fields=['start', 'end', 'score'],
+                                        selection={'score':(0.01,sys.maxint)}),
+                            chrom=assembly.chrnames[n] )
 	sqlouttr.close()
+        countsPerFragFile = unique_filename_in()+".bed"
+        cat(outbed_all,out=countsPerFragFile)
         results[gid] = [ countsPerFragFile, outsql ]
 	FragFile = unique_filename_in()
  	futures[gid] = (FragFile,
