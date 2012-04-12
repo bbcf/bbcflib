@@ -72,6 +72,7 @@ def mean_score_by_feature(trackScores,trackFeatures):
             yield tuple(y)+scores
 #########
     if not(isinstance(trackScores,(list,tuple))): trackScores = [trackScores]
+    if isinstance(trackFeatures,(list,tuple)): trackFeatures = trackFeatures[0]
     if len(trackScores)>1:
         _fields = ["score"+str(i) for i in range(len(trackScores))]
     else:

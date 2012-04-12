@@ -74,6 +74,8 @@ _track_map = {
 def track(path, format=None, **kwargs):
     if format is None:
         format = os.path.splitext(path)[1][1:]
+        if format in ['gz','gzip']:
+            format = os.path.splitext(path.strip("."+format))[1][1:]
         if format == '': 
             with open(path, 'r') as file:
                 rstart = file.read(15)

@@ -121,7 +121,9 @@ def getNearestFeature(features, annotations,
                     dist = str(dist)+"_"+str(includedDist)
                     typeLoc = typeLoc+"_Included"
                 yield peak+(gene,typeLoc,dist)
-
+    
+    if isinstance(features,(tuple,list)): features = features[0]
+    if isinstance(annotations,(tuple,list)): annotations = annotations[0]
     features = common.reorder(features,['start','end'])
     annot = common.reorder(annotations,['start','end','gene_name','strand'])
     _fields = features.fields+['gene','location_type','distance']

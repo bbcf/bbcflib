@@ -32,7 +32,12 @@ def run(**kwargs):
     module = _function_map[funct]
     output = kwargs.pop("output","./")
     if os.path.isdir(output):
-        output = os.path.join(output,unique_filename_in(output))
+        output = os.path.join(output,unique_filename_in(output)+".sql")
+        format = "sql"
+    else:
+        format = os.path.splitext(output)[1][1:] or "sql"
+    if format in ['gz','gzip']:
+        format = os.path.splitext(output.strip("."+format))[1][1:]+"."+format
     __import__('bbcflib.bFlatMajor.'+module)
     smod = sys.modules['bbcflib.bFlatMajor.'+module]
     trackSet = {}
@@ -45,6 +50,9 @@ def run(**kwargs):
         chrmeta = genrep.Assembly(assembly).chrmeta
     else:
         chrmeta = trackSet[targ][0].chrmeta
+        if 'chromosome' in kwargs:
+            chrom = kwargs.pop('chromosome')
+            chrmeta = {chrom: chrmeta.get(chrom,{})}
     chr = chrmeta.keys()[0]
     files = None
     for targ in getattr(smod, module)().loadable(funct):
@@ -53,7 +61,7 @@ def run(**kwargs):
     if isinstance(funct_output,list):
         files = []
         for n,stream in enumerate(funct_output):
-            outf = output+"_%i.sql"%n
+            outf = "%s_%i.%s" %(output.strip(format),n,format)
             files.append(outf)
             fields = stream.fields
             track.track(outf,chrmeta=chrmeta,fields=fields).write(stream,chrom=chr)
@@ -64,7 +72,7 @@ def run(**kwargs):
             for n,stream in enumerate(funct_output):
                 track.track(files[n],chrmeta=chrmeta).write(stream,chrom=chr)
     else:
-        files = output+".sql"
+        files = output
         fields = funct_output.fields
         track.track(files,chrmeta=chrmeta,fields=fields).write(funct_output,chrom=chr)
         for chr in chrmeta.keys()[1:]:

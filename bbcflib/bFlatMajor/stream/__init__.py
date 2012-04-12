@@ -5,7 +5,7 @@ _members = {'merge_scores': ['trackList'],
             'window_smoothing': ['trackList'],
             'neighborhood': ['trackList'],
             'combine': ['trackList'],
-            'getNearestFeature': ['track','annotations']
+            'getNearestFeature': ['features','annotations']
             }
 class stream(bFlatMajorGroup):
     def __init__(self):
