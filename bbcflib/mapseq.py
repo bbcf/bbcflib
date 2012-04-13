@@ -1209,7 +1209,7 @@ def get_bam_wig_files( ex, job, minilims=None, hts_url=None, suffix=['fwd','rev'
             if file_loc.startswith(("http://","https://","ftp://")):
                 urllib.urlretrieve( file_loc, bamfile )
                 if not(file_loc.startswith('ftp://')) \
-                        and urllib.urlopen( file_loc+".bai").getcode() == 200:
+                        and urllib.urlopen(file_loc+".bai").getcode() == 200:
                     urllib.urlretrieve( file_loc+".bai", bamfile+".bai" )
                 else:
                     index_bam(ex, bamfile)
