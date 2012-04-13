@@ -164,7 +164,7 @@ def workflow_groups(ex, job, gl, file_path="../", via='lsf'):
     script_path=gl['script_path']
     if 'lims' in gl:
         dafl=dict((loc,daflims.DAFLIMS( username=gl['lims']['user'], password=pwd ))
-                    for loc,pwd in gl['lims']['passwd'].iteritems())
+                  for loc,pwd in gl['lims']['passwd'].iteritems())
     else:
         dafl=None
 	

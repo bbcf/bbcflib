@@ -5,6 +5,8 @@ from bbcflib import genrep
 from bbcflib import btrack as track
 from bbcflib.common import unique_filename_in
 
+_here = 'bbcflib.bFlatMajor.'
+_module_list = ['stream','numeric','figure']
 ###############################################################################
 class bFlatMajorGroup(object):
     def __init__(self,members):
@@ -20,16 +22,31 @@ class bFlatMajorGroup(object):
         return self.__dict__.get(fct,'')
 
 ###############################################################################
-_function_map = {}
-for module in ['stream','numeric','figure']:
-    __import__('bbcflib.bFlatMajor.'+module)
-    smod = sys.modules['bbcflib.bFlatMajor.'+module]
-    for k in getattr(smod, module)().__dict__.keys():
-        _function_map[k] = module
-###############################################################################
 def run(**kwargs):
-    funct = kwargs.pop("operation")
-    module = _function_map[funct]
+    """
+    Wrapper function to execute any operation contained in this package, directly from 
+    file inputs.
+    Arguments are:
+    :param operation: the name of the function to be called.
+    :param output: a filename or a directory to write the results into.
+    :param assembly: a genome assembly identifier if needed.    
+    :param chromosome: a chromosome name if operation must be restricted to a single chromsome.    
+    :param ...: additional parameters passed to `operation`.
+
+    Example::
+        run(operation="mean_score_by_feature", output="score_output.bed",
+            chromosome="chr1", trackScores="density_file.sql", trackFeatures="genes.sql")
+    """
+    def _map(fct):
+        for module in _module_list:
+            __import__(_here+module)
+            smod = sys.modules[_here+module]
+            if hasattr(getattr(smod, module)(),fct): return module 
+        return None
+    funct = kwargs.pop("operation",'None')
+    module = _map(funct)
+    if module is None:
+        raise ValueError("No such operation %s." %funct)
     output = kwargs.pop("output","./")
     if os.path.isdir(output):
         output = os.path.join(output,unique_filename_in(output)+".sql")
@@ -38,8 +55,7 @@ def run(**kwargs):
         format = os.path.splitext(output)[1][1:] or "sql"
     if format in ['gz','gzip']:
         format = os.path.splitext(output.strip("."+format))[1][1:]+"."+format
-    __import__('bbcflib.bFlatMajor.'+module)
-    smod = sys.modules['bbcflib.bFlatMajor.'+module]
+    smod = sys.modules[_here+module]
     trackSet = {}
     for targ in getattr(smod, module)().loadable(funct):
         trackSet[targ] = [track.track(t) for t in kwargs[targ].split(",")]
