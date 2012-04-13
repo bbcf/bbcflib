@@ -44,8 +44,8 @@ def loadPrimers(primersFile):
 @program
 def segToFrag( countsPerFragFile, regToExclude="", script_path='./' ):
     ''' 
-    This function calls segToFrag.awk (which transforms the counts per segment to a normalised count per fragment) 
-    Gives the region to exclude if any. 
+    This function calls segToFrag.awk (which transforms the counts per segment to a normalised count per fragment).
+    Provide a region to exclude if needed. 
     '''
     args = ["awk","-f",os.path.join(script_path,'segToFrag.awk')]
     if regToExclude: args += ["-v","reg2Excl="+regToExclude]
@@ -95,7 +95,7 @@ def density_to_countsPerFrag( ex, file_dict, groups, assembly, regToExclude, scr
             gMiner_job = {"operation": "mean_score_by_feature",
                           "output": unique_filename_in()+".bed",
                           "args": "'"+json.dumps({"trackScores":density_file,
-                                                  "trackFeatures":features,
+                                                  "trackFeatures":chref,
                                                   "chromosome":ch})+"'"}
             futures.append(gMiner_run.nonblocking(ex,gMiner_job,via=via))
         outsql = unique_filename_in()+".sql"
@@ -104,8 +104,9 @@ def density_to_countsPerFrag( ex, file_dict, groups, assembly, regToExclude, scr
                                 fields=['start', 'end', 'score'] )
         outbed_all = []
         for n,f in enumerate(futures):
-            outbed_all.append(f.wait())
-            outbed = track.track(outbed_all[n])
+            fout = f.wait()[0]
+            outbed_all.append(fout)
+            outbed = track.track(fout)
             sqlouttr.write( outbed.read(fields=['start', 'end', 'score'],
                                         selection={'score':(0.01,sys.maxint)}),
                             chrom=assembly.chrnames[n] )
@@ -145,7 +146,7 @@ def workflow_groups( ex, job, primers_dict, assembly, mapseq_files, mapseq_url,
     Main 
     * open the 4C-seq minilims and create execution
     * 0. get/create the library 
-    * 1. when necessary, calculate the density file from the bam file (mapseq.parallel_density_sql)
+    * 1. if necessary, calculate the density file from the bam file (mapseq.parallel_density_sql)
     * 2. calculate the count per fragment for each denstiy file with gFeatMiner:mean_score_by_feature to calculate)
     '''
 ### outputs
