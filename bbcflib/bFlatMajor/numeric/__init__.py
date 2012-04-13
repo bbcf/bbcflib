@@ -11,4 +11,4 @@ class numeric(bFlatMajorGroup):
 ###############################################################################
 
 from .signal import *
-#from .regions import *
+from .regions import *

@@ -50,7 +50,9 @@ def cat(files,out=None,skip=0):
     """
     if len(files) > 1:
         out = out or unique_filename_in()
-        with open(out,"w") as f1:
+        if os.path.exists(out): mode = "a"
+        else: mode = "w"
+        with open(out,mode) as f1:
             for inf in files:
                 with open(inf,"r") as f2:
                     for i in range(skip):
@@ -58,8 +60,6 @@ def cat(files,out=None,skip=0):
                     [f1.write(l) for l in f2]
     elif len(files) == 1:
         out = files[0]
-    else:
-        out = None
     return out
 
 #-------------------------------------------------------------------------#

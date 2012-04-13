@@ -19,9 +19,9 @@ def average_feature_matrix(trackScores,trackFeatures,nbins=20,):
     all_means = mean_score_by_feature(trackScores,trackFeatures)
     nscores = len(trackScores)
     averages = numpy.zeros(shape=(nbins,nscores))
-    for x,ntot in enumerate(all_means):
+    for ntot,x in enumerate(all_means):
         averages[x[-1]] += x[nfields:-1]
-    averages *= 1.0/ntot
+    averages *= 1.0/(ntot+1)
     return averages
     
     
