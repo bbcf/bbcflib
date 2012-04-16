@@ -11,19 +11,17 @@ from bbcflib import daflims
 from mapseq import bowtie_build, bowtie,get_fastq_files#, add_bowtie_index
 import os, urllib, shutil, re
 
-MLPath="/archive/epfl/bbcf/mleleu/pipeline_vMarion/pipeline_3Cseq/vWebServer_Bein/"
+#MLPath="/archive/epfl/bbcf/mleleu/pipeline_vMarion/pipeline_3Cseq/vWebServer_Bein/"
 
-### use fastx ?
 @program
-def exportToFasta(exportFile,n=1,x=22,script_path=MLPath):
-    faFile=unique_filename_in()
-###os.path.join(script_path,"exportToFasta.py")
+def exportToFasta(exportFile,n=1,x=22,output=None):
+    faFile=output or unique_filename_in()
     return{'arguments': ["exportToFasta.py","-i",exportFile,"-n",str(n),"-x",str(x)],
            'return_value':faFile}
 
 @program
-def fastqToFasta(fqFile,n=1,x=22,script_path=MLPath):
-    faFile=unique_filename_in()
+def fastqToFasta(fqFile,n=1,x=22,output=None):
+    faFile=output or unique_filename_in()
     return{'arguments': ["fastqToFasta.py","-i",fqFile,"-o",faFile,"-n",str(n),"-x",str(x)],
            'return_value':faFile}
 
