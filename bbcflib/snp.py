@@ -1,19 +1,16 @@
 # Built-in modules #
-import os, re, json, shutil, gzip, tarfile, pickle, urllib
+import re, tarfile
 
 # Internal modules #
-from bbcflib import frontend, genrep, daflims
-from bbcflib.common import get_files, cat, set_file_descr, merge_sql, gzipfile, unique_filename_in
-from bbcflib.btrack import Track, new
+from bbcflib.common import unique_filename_in
 
 # Other modules #
-from bein import program, ProgramFailed, MiniLIMS
-from bein.util import add_pickle, touch, split_file, count_lines
+from bein import program
 
 
 def untar_genome_fasta(assembly, convert=True):
-    if convert: 
-        chrlist = dict((str(k[0])+"_"+str(k[1])+"."+str(k[2]),v['name']) 
+    if convert:
+        chrlist = dict((str(k[0])+"_"+str(k[1])+"."+str(k[2]),v['name'])
                        for k,v in assembly.chromosomes.iteritems())
     else:
         chrlist = {}
@@ -26,7 +23,7 @@ def untar_genome_fasta(assembly, convert=True):
         headpatt = re.search(r'>(\S+)\s',header)
         if headpatt: chrom = headpatt.groups()[0]
         else: continue
-        if chrom in chrlist: 
+        if chrom in chrlist:
             header = re.sub(chrom,chrlist[chrom],header)
             chrom = chrlist[chrom]
         genomeRef[chrom] = unique_filename_in()
@@ -66,7 +63,7 @@ def parse_pileupFile(ex,dictPileupFile,allSNPpos,chrom,minCoverage=80,minSNP=10)
         with open(p) as sample:
             for line in sample:
                 info=line.split("\t")
-                while int(info[1])>position: 
+                while int(info[1])>position:
                     if not(allpos): break
                     position = allpos.pop()
                     allSample[sname][position]="-"
@@ -91,7 +88,7 @@ def parse_pileupFile(ex,dictPileupFile,allSNPpos,chrom,minCoverage=80,minSNP=10)
                             allSample[sname][position]=string+"%.4g%% %s / %.4g%% %s" %(snp*cov, iupac[info[3]][0],100-snp*cov, iupac[info[3]][2])
                         else:
                             allSample[sname][position]=string+"%.4g%% %s / %.4g%% %s" %(snp*cov, iupac[info[3]][0],    snp2*cov,iupac[info[3]][2])
-            while allpos: 
+            while allpos:
                 position = allpos.pop()
                 allSample[sname][position]="-"
 
@@ -112,9 +109,9 @@ def synonymous(ex,job,allSnp):
     file=open(allSnp,'rb')
     outfile=open(allCodon,'wb')
     outfile.write(file.readline())
-    
+
     return allCodon
-    
+
 
 def posAllUniqSNP(ex,PileupFile,minCoverage=80):
     d={}
@@ -127,6 +124,6 @@ def posAllUniqSNP(ex,PileupFile,minCoverage=80):
                 cpt=data[8].count(".")+data[8].count(",")
                 if cpt*100 < int(data[7])*int(minCoverage) and int(data[7])>9:
                     d[int(data[1])]=data[2]
-    
+
     return (d,parameters)
-    
+
