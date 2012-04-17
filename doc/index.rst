@@ -50,8 +50,5 @@ Library guide
    bbcflib_rnaseq
    bbcflib_c4seq
    bbcflib_gdv
-   bbcflib_track
-
-
 
 Also see the `developer documentation <http://bbcf.github.com/bbcflib/>`_.
