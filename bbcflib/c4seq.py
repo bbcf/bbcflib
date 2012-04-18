@@ -14,7 +14,7 @@ from bein.util import touch
 from bbcflib import daflims, genrep, frontend, email, gdv, createlib
 from bbcflib import btrack as track
 from bbcflib.mapseq import *
-from bbcflib.common import unique_filename_in, gzipfile, merge_sql, cat
+from bbcflib.common import unique_filename_in, gzipfile, merge_sql, cat, gMiner_run
 import bbcflib.bFlatMajor as gMiner
 
 # *** Create a dictionary with infos for each primer (from file primers.fa)
@@ -84,7 +84,7 @@ def density_to_countsPerFrag( ex, file_dict, groups, assembly, regToExclude, scr
         density_file = file_dict['density'][gid]
         reffile = file_dict['lib'][gid]
 #	scores = track.track(density_file)
-        futures = []
+        gm_futures = []
 	for ch in assembly.chrnames:
             chref = os.path.join(reffile,ch+".bed.gz")
             if not(os.path.exists(chref)): chref = reffile
@@ -97,13 +97,13 @@ def density_to_countsPerFrag( ex, file_dict, groups, assembly, regToExclude, scr
                           "args": "'"+json.dumps({"trackScores":density_file,
                                                   "trackFeatures":chref,
                                                   "chromosome":ch})+"'"}
-            futures.append(gMiner_run.nonblocking(ex,gMiner_job,via=via))
+            gm_futures.append(gMiner_run.nonblocking(ex,gMiner_job,via=via))
         outsql = unique_filename_in()+".sql"
 	sqlouttr = track.track( outsql, chrmeta=assembly.chrmeta, 
                                 info={'datatype':'quantitative'},
                                 fields=['start', 'end', 'score'] )
         outbed_all = []
-        for n,f in enumerate(futures):
+        for n,f in enumerate(gm_futures):
             fout = f.wait()[0]
             outbed_all.append(fout)
             outbed = track.track(fout)
@@ -226,11 +226,11 @@ def workflow_groups( ex, job, primers_dict, assembly, mapseq_files, mapseq_url,
              if before_profile_correction:
                  futures2[gid] += (runDomainogram.nonblocking( ex, bedGraph, job_groups[gid]['name'], 
                                                                regCoord=regCoord, 
-                                                               script_path=script_path, via=via, memory=4 ), )
+                                                               script_path=script_path, via=via, memory=10 ), )
              else:
                  futures2[gid] += (runDomainogram.nonblocking( ex, profileCorrectedFile, job_groups[gid]['name'],
                                                                regCoord=regCoord.split(':')[0], 
-                                                               skip=1, script_path=script_path, via=via, memory=4 ), )
+                                                               skip=1, script_path=script_path, via=via, memory=10 ), )
     for gid, f in futures2.iteritems():
         futures[gid][1].wait()
         f[0].wait()

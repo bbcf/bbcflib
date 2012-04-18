@@ -1,7 +1,7 @@
-RNA-seq
-=======
+SNP
+===
 
-Here is a short tutorial showing how to launch a RNA-seq analysis from the interface http://htsstation.vital-it.ch/rnaseq/.
+Here is a short tutorial showing how to search for SNPs from the interface http://htsstation.vital-it.ch/snp/.
 
 
 New Job
@@ -35,22 +35,4 @@ Results
 -------
 
 When the job finishes successfully, you will receive an e-mail with a link to the page where you can download the results. Results consist in tab-delimited files containing counts and rpkm for genes, exons and transcripts, a differential expression analysis for each pair of groups in the experiment, and mapping reports of reads that did not map to the exonome first.
-
-
-Interactive MA-plot
--------------------
-
-From there you can also create an interactive MA-plot to look for differential transcript expression.
-
-* Select the `MA-plot` option;
-* select the type of genomic features you want to compare (`level`);
-* select the type of normalization to apply to the data (`raw` for untransformed count data, or `RPKM`);
-* select the two samples you want to compare from you data (`Choose two runs to compare` checkboxes);
-* click on the `Compute` button.
-
-.. image:: images/RNAseq_create_maplot.png
-
-On the graph's page, click on the points you are interested in to display its name in the column on the right. Click on it again to remove it from the list. Click on the name to get information about the selected feature from Ensembl. Note that the graph may take a long time to load and react if there are a lot of features to draw.
-
-.. image:: images/RNAseq_maplot.png
 

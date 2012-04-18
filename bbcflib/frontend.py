@@ -155,6 +155,7 @@ def parseConfig( file, job=None, gl=None ):
     from configobj import ConfigObj
 
     config = ConfigObj( file, unrepr=True )
+
     if not(job or ('Job' in config and 'Groups' in config and 'Runs' in config)):
         raise ValueError("Need 'Job', 'Groups' and 'Runs' sections in the configuration, only had: "+", ".join(config.keys()))
     id = 0
@@ -196,13 +197,13 @@ def parseConfig( file, job=None, gl=None ):
             group['control'] = group['control'].lower() in ['1','true','t']
         else:
             group['control'] = False
-        job.add_group(id=int(gid),name=group.pop('name'),group=group)
+        newjob.add_group(id=int(gid),name=group.pop('name'),group=group)
 
     for rid, run in config.get('Runs',{}).iteritems():
         if not('group_id' in run):
             raise ValueError("Each entry in 'Runs' must have a 'group_id'")
         run['group_id'] = int(run['group_id'])
-        job.add_run(id=int(rid),**run)
+        newjob.add_run(id=int(rid),**run)
     newgl = config.get('Global variables',{})
     if gl is None: gl = {}
     for k,v in gl.iteritems():
