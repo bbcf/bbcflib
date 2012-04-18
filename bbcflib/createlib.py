@@ -14,6 +14,7 @@ import os, json, re
 import tarfile
 
 GlobalLibPath='/scratch/cluster/monthly/jrougemo/libv2/4cLibraries/'
+GlobalRepbasePath="/archive/epfl/bbcf/data/genomes/repeats/"
 
 @program
 def getRestEnzymeOccAndSeq(assembly_or_fasta, prim_site, sec_site, l_seg, l_type='typeI'):
@@ -43,7 +44,7 @@ def getRestEnzymeOccAndSeq(assembly_or_fasta, prim_site, sec_site, l_seg, l_type
     options=[progname,
              "-i",fasta_file,"-m",prim_site,"-s",sec_site,
              "-l",l_seg,"-o",segFile,"-f",fragFile,"-x",logFile]
-    return {'arguments': options,'return_value':outfiles}
+    return {'arguments': options, 'return_value':outfiles}
 
 def parse_fragFile(fragfile):
     '''
@@ -79,10 +80,10 @@ def parse_fragFile(fragfile):
     return([segInfoBedFile,fragmentBedFile,segmentBedFile])
 
 
-def coverageInRepeats(ex,infile,genomeName='mm9',repeatsPath="/archive/epfl/bbcf/data/genomes/repeats/",via='lsf'):
+def coverageInRepeats(ex,infile,genomeName='mm9',repeatsPath=GlobalRepbasePath,via='lsf'):
     '''
     Completes the segment info bed file with the coverage in repeats of each segment.
-    For now, works only for mm9, hg19 and dm3
+    For now, works only for mm9, hg19 and dm3.
     '''
     repeatsFile=os.path.join(repeatsPath,genomeName,genomeName+'_rmsk.bed')
     if not(os.path.exists(repeatsFile)):
@@ -101,18 +102,26 @@ def coverageInRepeats(ex,infile,genomeName='mm9',repeatsPath="/archive/epfl/bbcf
                 o.write('\t'.join(s[0:3]+[infos])+'\n')
     return resfile
 
-def getEnzymeSeq(enzyme_id,enzymes_dict=None,libpath=GlobalLibPath):
+def getEnzymeSeqId(enzyme_id,byId=False,enzymes_dict=None,libpath=GlobalLibPath):
     '''
     Returns the restriction site corresponding to a given enzyme id (from existing enzymes)
     '''
     if not(isinstance(enzymes_dict,list)):
         with open(os.path.join(libpath,'enzymes.json')) as g:
             enzymes_dict=json.load(g)
+    if byId:
+        src = 'site'
+        trg = 'id'
+        default = 0
+    else:
+        src = 'id'
+        trg = 'site'
+        default = None
     for x in enzymes_dict:
         for v in x.values():
-            if v['id']==enzyme_id:
-                return v['site']
-    return None
+            if v[src]==enzyme_id:
+                return v[trg]
+    return default
 
 def lib_exists(params,path=GlobalLibPath,returnType="id"):
     '''
@@ -124,11 +133,11 @@ def lib_exists(params,path=GlobalLibPath,returnType="id"):
     with open(os.path.join(path,'enzymes.json')) as g:
         enzymes_dict=json.load(g)
     for lib in libs_dict:
-        enz1=getEnzymeSeq(lib['library']['enzyme1_id'],enzymes_dict)
-        enz2=getEnzymeSeq(lib['library']['enzyme2_id'],enzymes_dict)
+        enz1=getEnzymeSeqId(lib['library']['enzyme1_id'],False,enzymes_dict)
+        enz2=getEnzymeSeqId(lib['library']['enzyme2_id'],False,enzymes_dict)
 		#temporary...
         if not 'type' in lib['library']: lib['library']['type']='typeI'
-        if params['specie']==lib['library']['assembly_name'] and params['primary']==enz1 and params['secondary']==enz2 and int(params['length'])==int(lib['library']['segment_length']) and params['type']==lib['library']['type']:
+        if params['species']==lib['library']['assembly_name'] and params['primary']==enz1 and params['secondary']==enz2 and int(params['length'])==int(lib['library']['segment_length']) and params['type']==lib['library']['type']:
             if returnType=="id":
                 return lib['library']['id']
             else:
@@ -140,7 +149,7 @@ def lib_exists(params,path=GlobalLibPath,returnType="id"):
         return None
 
 # *** main call to create the library
-def createLibrary(ex,fasta_allchr,params):
+def createLibrary(ex,fasta_allchr,params,via='local'):
     '''
     Main call to create the library
     '''
@@ -151,12 +160,12 @@ def createLibrary(ex,fasta_allchr,params):
     libfiles=getRestEnzymeOccAndSeq(ex,fasta_allchr,params['primary'],params['secondary'],
                                     params['length'], params['type'])
     bedfiles=parse_fragFile(libfiles[1])
-    resfile=coverageInRepeats(ex,bedfiles[0],params['specie'],via='local')
+    resfile=coverageInRepeats(ex,bedfiles[0],params['species'],via=via)
     resfile_sql=resfile+".sql"
-    track.convert((resfile,'bed'),(resfile_sql,'sql'),)
-    infos_lib={'assembly_name':params['specie'],
-               'enzyme1_id':getEnzymeId(params['primary']),
-               'enzyme2_id':getEnzymeId(params['secondary']),
+    track.convert((resfile,'bed'),(resfile_sql,'sql'),assembly=params['species'])
+    infos_lib={'assembly_name':params['species'],
+               'enzyme1_id':getEnzymeSeqId(params['primary'],True),
+               'enzyme2_id':getEnzymeSeqId(params['secondary'],True),
                'segment_length':params['length'],
                'type':params['type'],
                'filename':resfile}
@@ -181,12 +190,14 @@ def get_libForGrp(ex,group,fasta_or_assembly,new_libraries, job_id, grpId, lib_d
         with open(paramsfile) as f:
             for s in f:
                 s=s.strip().split('=')
-                if   re.search('Library name',s[0]) and len(s[1])>1:   paramslib['name']=s[1]
-                elif re.search('Genome name',s[0]):                    paramslib['specie']=s[1]
-                elif re.search('Primary',s[0]):                        paramslib['primary']=s[1]
-                elif re.search('Secondary',s[0]):                      paramslib['secondary']=s[1]
-                elif re.search('Segment length',s[0]) and len(s[1])>0: paramslib['length']=s[1]
-                elif re.search('(T|t)ype',s[0]) and len(s[1])>1:       paramslib['type']=s[1]
+                key = None
+                if   re.search('Library name',s[0],re.I) and len(s[1])>1:   key='name'
+                elif re.search('Genome name',s[0],re.I):                    key='species'
+                elif re.search('Primary',s[0],re.I):                        key='primary'
+                elif re.search('Secondary',s[0],re.I):                      key='secondary'
+                elif re.search('Segment length',s[0],re.I) and len(s[1])>0: key='length'
+                elif re.search('Type',s[0],re.I) and len(s[1])>1:           key='type'
+                if key: paramslib[key]=s[1]
         return paramslib
 
     libfile = group.get('library_param_file',False)
@@ -208,12 +219,12 @@ def get_libForGrp(ex,group,fasta_or_assembly,new_libraries, job_id, grpId, lib_d
             reffile=ex_libfile+".sql"
     elif 'library_id' in group and group['library_id']> 0 and not str(group['library_id'])=="":
         reffile=_libfile(group['library_id'])
-        if reffile==None:
+        if reffile is None:
             raise TypeError("No valid parameter passed for the library.")
-        elif not os.path.exists(reffile):
-            reffile=reffile+'.bed.gz'
-        else:
+        if not(os.path.exists(reffile) or os.path.exists(reffile+'.bed.gz')):
             raise TypeError("library file ("+reffile+") is not valid")
+        if not os.path.exists(reffile):
+            reffile=reffile+'.bed.gz'
     elif 'library_file_url' in group and group['library_file_url'] != "" :
         reffile=group['library_file_url']
     else:
