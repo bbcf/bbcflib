@@ -9,7 +9,7 @@ from bein import program
 
 
 def untar_genome_fasta(assembly, convert=True):
-    """Untar (genome) fasta files.
+    """Untar and concatenate reference sequence fasta files.
 
     :param assembly: the GenRep.Assembly instance of the species of interest.
     :param convert: (bool) True if chromosome names need conversion RefSeq -> Ensembl, 
@@ -60,15 +60,16 @@ def sam_pileup(assembly,bamfile,refGenome,via='lsf'):
             "return_value": [minCoverage,minSNP]}
 
 def parse_pileupFile(dictPileupFile,allSNPpos,chrom,minCoverage=80,minSNP=10):
-    """ ..., produces a file containing
-    quantification and localization of SNPs.
+    """ return filename of summary file containing all SNPs significantly found in samples provide in dictPileupFile.
+    Each raw contains chromosome id, SNP position, reference base, SNP base (with quantification)
 
     :param ex: a bein.Execution instance.
-    :param dictPileupFile: (dict) ?
-    :param allSNPPos: (dict) ?
+    :param dictPileupFile: (dict) dictionary of the form {[]}
+    :param allSNPPos: (str) name of a file as returned by posAllUniqSNP (it contains position of all SNPs found in all samples)  
     :param chrom: (str) chromosome name.
-    :param minCoverage: (int) ?
-    :param minSNP: (int) ?
+    :param minCoverage: (int) the minimal percentage of reads with SNP to considere SNP as true and not as sequencing error
+    :param minSNP: (int) the minimal coverage of the SNP position to considere SNP
+ 
     """
     formatedPileupFilename=unique_filename_in()
     allSample={}
