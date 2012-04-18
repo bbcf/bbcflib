@@ -164,7 +164,7 @@ html_show_sphinx = False
 htmlhelp_basename = 'bbcflibdoc'
 
 # Google analytics
-googleanalytics_id = "UA-24167610-17"
+googleanalytics_id = "UA-24167610-22"
 
 # -- Options for LaTeX output --------------------------------------------------
 
