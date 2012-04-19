@@ -238,7 +238,7 @@ def workflow_groups( ex, job, primers_dict, assembly, mapseq_files, mapseq_url,
             resFiles = []
             logFile = f[1].wait()
             start = False
-            resTar = tarfile.open(job_groups[gid]['name']+"_domainogram.tar.gz", "w:gz")
+            res_tar = tarfile.open(job_groups[gid]['name']+"_domainogram.tar.gz", "w:gz")
             with open(logFile,'rb') as f:
                 for s in f:
                     s = s.strip('\n')
@@ -247,8 +247,8 @@ def workflow_groups( ex, job, primers_dict, assembly, mapseq_files, mapseq_url,
                     elif start and not re.search("RData",s):
                         resFiles.append(s)
                         res_tar.add(s)
-                        res_tar.close()
-            processed['4cseq']['domainogram'][gid] = resFiles+[resTar]
+            res_tar.close()
+            processed['4cseq']['domainogram'][gid] = resFiles+[res_tar]
             
 ################ Add everything to minilims below!
     step = "density"

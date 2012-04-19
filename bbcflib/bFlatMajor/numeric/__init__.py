@@ -2,7 +2,7 @@ from bbcflib.bFlatMajor import *
 
 ###############################################################################
 _members = {'correlation': ['trackList'],
-            'feature_matrix': ['trackScores','trackFeatures']
+            'feature_matrix': ['trackScores','trackFeatures'],
             'scaled_feature_matrix': ['trackScores','trackFeatures']
             }
 class numeric(bFlatMajorGroup):

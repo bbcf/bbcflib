@@ -178,17 +178,22 @@ class SqlTrack(Track):
     def read(self, selection=None, fields=None, order='start,end', cursor=False):
         if selection is None:
             selection = sorted(self.chrmeta.keys())
-        if isinstance(selection, (str,dict)): 
+        if isinstance(selection, (basestring,dict)): 
             selection = [selection]
+        sel2 = []
         if isinstance(selection, (list, tuple)):
-            for n,x in enumerate(selection):
+            for x in selection:
                 if isinstance(x,basestring):
-                    selection[n] = (x,{})
-                else:
-                    selection[n] = (x['chr'],dict((k,v) for k,v in x.iteritems()
-                                                  if not(k=='chr')) )
+                    sel2.append( (str(x),{}) )
+                elif isinstance(x,dict):
+                    if 'chr' in x:
+                        sel2.append( (x['chr'],dict((k,v) for k,v in x.iteritems()
+                                                    if not(k=='chr')) ) )
+                    else:
+                        sel2.extend([(chrom,selection) for chrom in sorted(self.chrmeta.keys())])
         elif not(selection is None or isinstance(selection,FeatureStream)): 
             raise TypeError("Bad selection %s."%selection)
+        selection = sel2
         if fields: 
             add_chr = 'chr' in fields
             _fields = [f for f in fields if f in self.fields and f != 'chr']
