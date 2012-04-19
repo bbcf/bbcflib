@@ -190,7 +190,7 @@ class SqlTrack(Track):
                         sel2.append( (x['chr'],dict((k,v) for k,v in x.iteritems()
                                                     if not(k=='chr')) ) )
                     else:
-                        sel2.extend([(chrom,selection) for chrom in sorted(self.chrmeta.keys())])
+                        sel2.extend([(chrom,x) for chrom in sorted(self.chrmeta.keys())])
         elif not(selection is None or isinstance(selection,FeatureStream)): 
             raise TypeError("Bad selection %s."%selection)
         selection = sel2
