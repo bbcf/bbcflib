@@ -300,7 +300,7 @@ def workflow_groups( ex, job, primers_dict, assembly, mapseq_files, mapseq_url,
         fname = "segToFrag_"+job_groups[gid]['name']+"_profileCorrected_smoothed_"+nFrags+"FragsPerWin.bedGraph.gz"
         gzipfile(ex,afterProfileCorrection)
         ex.add(afterProfileCorrection+".gz", 
-               description=set_file_descr(fname,groupId=grpId,step=step,type="bedGraph",ucsc='1',gdv='1'))
+               description=set_file_descr(fname,groupId=gid,step=step,type="bedGraph",ucsc='1',gdv='1'))
     step = "domainograms"
     for gid, resfiles in processed['4cseq']['domainogram'].iteritems():
         tarFile = resfiles.pop()
