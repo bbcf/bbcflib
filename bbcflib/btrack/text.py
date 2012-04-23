@@ -1,5 +1,5 @@
 from bbcflib.btrack import *
-import re, urllib2, gzip, os
+import re, urllib2, gzip, os, sys
 
 #### remark: to do ucsc<->ensembl conversion, define _in_type/_out_type for 'start'
 
@@ -67,23 +67,6 @@ class TextTrack(Track):
                 tests.append(str(row[fi]) == str(v))
         return all(tests)
 
-    def order_stream(self,stream):
-        order = ['chr','start','end']
-        indices = [stream.fields.index(o) for o in order if o in stream.fields]
-        sort_list = []
-        feature_list = []
-        chrnames = self.chrmeta.keys()
-        for n,f in enumerate(stream):
-            fi1 = chrnames.index(f[indices[0]])
-            sort_list.append((fi1,f[indices[1]],f[indices[1]],n))
-            feature_list.append(f)
-        sort_list.sort()
-        def _sorted_stream(l1,l2,n):
-            for t in l1:
-                yield l2[t[n]]
-        return FeatureStream(_sorted_stream(sort_list,feature_list,len(indices)), 
-                             stream.fields)
-
     def open(self,mode='read'):
         isgzip = False
         if self.path.endswith(".gz") or self.path.endswith(".gzip"):
@@ -128,7 +111,7 @@ class TextTrack(Track):
                         row.startswith("track") or \
                         row.startswith("#"): continue
                 splitrow = row.strip().split(self.separator)
-                if selection and not(self._select_values(splitrow,selection)): 
+                if selection and not(any(self._select_values(splitrow,s) for s in selection)): 
                     continue
                 yield tuple(self._check_type(splitrow[index_list[n]],f) 
                             for n,f in enumerate(fields))
@@ -146,9 +129,21 @@ class TextTrack(Track):
             except ValueError:
                 raise ValueError("No such field %s in %s."%(f,self.path))
         if isinstance(selection,basestring):
-            selection = [str(selection)]
-        if isinstance(selection,(list,tuple)): 
-            selection = {'chr':selection}
+            selection = [selection]
+        if isinstance(selection,(list,tuple)) and isinstance(selection[0],basestring): 
+            selection = {'chr': [str(x) for x in selection]}
+        if isinstance(selection,dict):
+            selection = [selection]
+        if isinstance(selection,FeatureStream):
+            chr_idx = selection.fields.index('chr')
+            start_idx = selection.fields.index('start')
+            end_idx = selection.fields.index('end')
+            sel2 = []
+            for feat in selection:
+                sel2.append({'chr': feat[chr_idx],
+                             'start': (-1,feat[end_idx]),
+                             'end': (feat[start_idx],sys.maxint)})
+            selection = sel2
         return FeatureStream(self._read(fields,ilist,selection),fields)
 
     def _format_fields(self,vec,row,source_list,target_list):

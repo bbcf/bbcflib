@@ -81,13 +81,30 @@ def mean_score_by_feature(trackScores,trackFeatures):
     return track.FeatureStream(_stream(_ts,trackFeatures), trackFeatures.fields+_fields)
 
 ###############################################################################
-def window_smoothing( trackList, window_size, step_size=1, stop_val=sys.maxint ):
+def window_smoothing( trackList, window_size, step_size=1, stop_val=sys.maxint,
+                      featurewise=False ):
     """
     Example of windows, window_size=9, step_size=3
     [0,1,2,3,4,5,6,7,8,9), [3,4,5,6,7,8,9,10,11,12), ...
     """
 #####################
-    def _running_mean(track,score,F,win_start,denom):
+    def _stepping_mean(track,score,denom):
+        score = 0.0
+        F = []
+        score = 0.0
+        nmid = window_size/2
+        for x in track:
+            F.append(x)
+            score += x[2]
+            if len(F)<window_size: continue
+            score -= F.pop(0)[2]
+            yield (F[nmid][0],F[nmid][1],score*denom)+F[nmid][3:]
+            for shift in xrange(2,step_size):
+                score -= F.pop(0)[2]
+#####################
+    def _running_mean(track,win_start,denom):
+        score = 0.0
+        F = []
         for x in track:
             F.append(x)
             fstart = F[0][0]
@@ -101,22 +118,23 @@ def window_smoothing( trackList, window_size, step_size=1, stop_val=sys.maxint )
                 steps = [fend-win_start,lend-win_end]
                 if fstart>win_start: steps += [fstart-win_start]
                 else: delta -= F[0][2]
-                if lstart>win_end: steps += [lstart-win_end]
+                if lstart>win_end:   steps += [lstart-win_end]
                 else: delta += F[-1][2]
                 nsteps = min(steps)
                 sst = -(win_start % step_size)%step_size
                 sen = -(win_start+nsteps % step_size)%step_size
+                win_center = (win_start+win_end)/2
                 if abs(delta) > 1e-11:
                     delta *= denom
                     score += delta*sst
                     for step in xrange(sst,nsteps,step_size):
-                        if score>0 and win_start>=0 and win_start<stop_val:
-                            yield (win_start+step,win_start+step+step_size,score)
+                        if score>0 and win_center+step>=0 and win_center+step+step_size<=stop_val:
+                            yield (win_center+step,win_center+step+step_size,score)
                         score += delta*step_size
                     score -= delta*sen
                 else:
-                    if score>0 and win_start>=0 and win_start<=stop_val:
-                        yield (win_start+sst,win_start+sen+nsteps,score)
+                    if score>0 and win_center+sst>=0 and win_center+sen+nsteps<=stop_val:
+                        yield (win_center+sst,win_center+sen+nsteps,score)
                 win_start += nsteps
                 win_end += nsteps
                 if fend <= win_start: 
@@ -135,17 +153,18 @@ def window_smoothing( trackList, window_size, step_size=1, stop_val=sys.maxint )
                 nsteps = min(steps)
                 sst = -(win_start % step_size)%step_size
                 sen = -(win_start+nsteps % step_size)%step_size
+                win_center = (win_start+win_end)/2
                 if abs(delta) > 1e-11:
                     delta *= denom
                     score += delta*sst
                     for step in xrange(sst,nsteps,step_size):
-                        if score>0 and win_start>=0 and win_start<stop_val:
-                            yield (win_start+step,win_start+step+step_size,score)
+                        if score>0 and win_center+step>=0 and win_center+step+step_size<=stop_val:
+                            yield (win_center+step,win_center+step+step_size,score)
                         score += delta*step_size
                     score -= delta*sen
                 else:
-                    if score>0 and win_start>=0 and win_start<=stop_val:
-                        yield (win_start+sst,win_start+sen+nsteps,score)
+                    if score>0 and win_center+sst>=0 and win_center+sen+nsteps<=stop_val:
+                        yield (win_center+sst,win_center+sen+nsteps,score)
                 win_start += nsteps
                 win_end += nsteps
                 if fend <= win_start: 
@@ -160,11 +179,12 @@ def window_smoothing( trackList, window_size, step_size=1, stop_val=sys.maxint )
     denom = 1.0/window_size
     win_start = -window_size
     _f = ['start','end','score']
+    if featurewise:
+        call = _stepping_mean
+    else:
+        call = _running_mean
     if isinstance(trackList,(list,tuple)):
-        score = [0.0 for t in trackList]
-        F = [[] for t in trackList]
-        return [track.FeatureStream(_running_mean(common.reorder(t,_f),score[n],F[n],win_start,denom),
-                              fields=_f)
+        return [track.FeatureStream(call(common.reorder(t,_f),win_start,denom),fields=_f)
                 for n,t in enumerate(trackList)]
     else:
-        return track.FeatureStream(_running_mean(common.reorder(trackList,_f),score,F,win_start,denom),fields=_f)
+        return track.FeatureStream(call(common.reorder(trackList,_f),win_start,denom),fields=_f)

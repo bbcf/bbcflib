@@ -1,6 +1,7 @@
 from bbcflib.btrack import *
 import subprocess, tempfile, os
 
+
 class BinTrack(Track):
     def __init__(self,path,**kwargs):
         Track.__init__(self,path,**kwargs)
@@ -87,35 +88,47 @@ class BigWigTrack(BinTrack):
 
 ################################ Bam via pysam ################################
 
-class BamTrack(BinTrack):
-    def __init__(self,path,**kwargs):
-        import pysam
-        kwargs['format'] = 'bam'
-        kwargs['fields'] = ['chr','start','end','score','name','strand',
-                            'flag','qual','tags']
-        BinTrack.__init__(self,path,**kwargs)
-        self.filehandle = None
+try:
+    import pysam
+    class BamTrack(BinTrack):
+        def __init__(self,path,**kwargs):
+            kwargs['format'] = 'bam'
+            kwargs['fields'] = ['chr','start','end','score','name','strand',
+                                'flag','qual','tags']
+            BinTrack.__init__(self,path,**kwargs)
+            self.filehandle = None
+            self.open()
+            for h in self.filehandle.header["SQ"]:
+                self.chrmeta[h["SN"]] = {'length':h["LN"]}
+            self.close()
 
-    def open(self):
-        self.filehandle = pysam.Samfile(self.path, "rb")
-        for h in self.filehandle.header["SQ"]:
-            self.chrmeta[h["SN"]] = {'length':h["LN"]}
+        def open(self):
+            self.filehandle = pysam.Samfile(self.path, "rb")
 
-    def close(self):
-        self.filehandle.close()
+        def close(self):
+            self.filehandle.close()
 
-    def read(self, selection=None, fields=None):
-        if not(isinstance(selection,(list,tuple))):
-            selection = [selection]
-        def _bamrecord(stream):
-            for sel in selection:
-                reg = self._make_selection(sel)
-                for read in stream.fetch(reference=reg[0],start=reg[1],end=reg[2]):
-                    yield (self.filehandle.getrname(read.rname),
-                           read.pos, read.pos+read.rlen,
-                           read.mapq, read.qname,(read.is_reverse and -1 or 1),
-                           read.flag, read.qual, read.tags)
-        return FeatureStream(_bamrecord(self.filehandle),self.fields)
+        def read(self, selection=None, fields=None):
+            self.open()
+            if not(isinstance(selection,(list,tuple))):
+                selection = [selection]
+            if fields is None: fields = self.fields
+            else: fields = [f for f in fields if f in self.fields]
+            srcl = [self.fields.index(f) for f in fields]
 
-    def write(self, source, fields):
-        raise NotImplementedError("Writing to bam is not implemented.")
+            def _bamrecord(stream, srcl):
+                for sel in selection:
+                    reg = self._make_selection(sel)
+                    for read in stream.fetch(reference=reg[0],start=reg[1],end=reg[2]):
+                        row = [self.filehandle.getrname(read.rname),
+                               read.pos, read.pos+read.rlen,
+                               read.mapq, read.qname, (read.is_reverse and -1 or 1),
+                               read.flag, read.qual, read.tags]
+                        yield tuple([row[n] for n in srcl])
+                self.close()
+            return FeatureStream(_bamrecord(self.filehandle,srcl),fields)
+
+        def write(self, source, fields):
+            raise NotImplementedError("Writing to bam is not implemented.")
+
+except ImportError: print "Warning: 'pysam' not installed, 'bam' format unavailable.

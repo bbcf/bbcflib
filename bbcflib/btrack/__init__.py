@@ -29,7 +29,7 @@ Examples::
         print x #['chr2', 3030497, 3032496, 'ENSMUST00000072955', 'txS']
         break
 
-    for n,x in enumerate(track_in.order_stream(track_in.read_shuffled())):
+    for n,x in enumerate(bFlatMajor.common.sorted_stream(track_in.read_shuffled()),track_in.chrmeta.keys()):
         print x
         if n>10: break
 
@@ -48,7 +48,8 @@ Examples::
 
 """
 
-__all__ = ['Track','track','FeatureStream','strand_to_int','int_to_strand','format_float','format_int']
+__all__ = ['Track','track','FeatureStream','strand_to_int','int_to_strand','format_float','format_int',
+           'ucsc_to_ensembl','ensembl_to_ucsc',]
 
 import sys, os, re
 from bbcflib import genrep
@@ -162,6 +163,12 @@ def format_float(f=float()):
 def format_int(i=int()):
     return '%i' % int(i)
 
+def ucsc_to_ensembl(start):
+    return format_int(int(start)+1)
+
+def ensembl_to_ucsc(start):
+    return format_int(int(start)-1)
+
 ################################################################################
 
 class Track(object):
@@ -174,6 +181,10 @@ class Track(object):
         self.assembly = kwargs.get('assembly')
         self.chrmeta = self._get_chrmeta(kwargs.get('chrmeta'))
         self.info = self._get_info(info=kwargs.get('info'))
+        if kwargs.get('ucsc_to_ensembl',False):
+            kwargs['outtypes']['start'] = ucsc_to_ensembl
+        if kwargs.get('ensembl_to_ucsc',False):
+            kwargs['outtypes']['start'] = ensembl_to_ucsc
 
     def _get_chrmeta(self,chrmeta=None):
         if isinstance(chrmeta,dict):

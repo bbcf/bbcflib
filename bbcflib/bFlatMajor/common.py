@@ -39,6 +39,21 @@ def unroll( stream, start, end, fields=['score'] ):
             if pos>=end: break
     return track.FeatureStream(_unr(s),fields=s.fields[2:])
 ####################################################################
+def sorted_stream(stream,chrnames,fields=['chr','start','end']):
+    s = reorder(stream,fields)
+    sort_list = []
+    feature_list = []
+    for n,f in enumerate(s):
+        fi1 = chrnames.index(f[0])
+        sort_list.append((fi1,f[1],f[2],n))
+        feature_list.append(f)
+    sort_list.sort()
+    def _sorted_stream(l1,l2,n):
+        for t in l1:
+            yield l2[t[n]]
+    return track.FeatureStream(_sorted_stream(sort_list,feature_list,len(fields)), 
+                               stream.fields)
+####################################################################
 def strand_merge(x): 
     return all(x[0]==y for y in x[1:]) and x[0] or 0
 
