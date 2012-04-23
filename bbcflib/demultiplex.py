@@ -191,7 +191,7 @@ def workflow_groups(ex, job, gl, file_path="../", via='lsf'):
             n=count_lines(ex,run)
             tot_counts += n/4
             if n>10000000:
-                allSubFiles.append(split_file(ex,run,n_lines=8000000))
+                allSubFiles.extend(split_file(ex,run,n_lines=8000000))
             else:
                 allSubFiles.append(run)
         resExonerate = demultiplex(ex,allSubFiles,primersFile,group['name'],

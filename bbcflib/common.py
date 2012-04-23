@@ -235,6 +235,8 @@ try:
             outdir = unique_filename_in()
         if not(os.path.exists(outdir)):
             os.mkdir(outdir)
+        if len(sqls) == 1:
+            return sqls[0]
         gMiner_job = {"operation": "merge_scores", "output": outdir,
                       "args": "'"+json.dumps({"trackList":",".join(sqls)})+"'"}
         files = gMiner_run.nonblocking(ex,gMiner_job,via=via).wait()
