@@ -269,6 +269,7 @@ def workflow_groups( ex, job, primers_dict, assembly, mapseq_files, mapseq_url,
         gzipfile(ex,resfiles[0])
         ex.add( resfiles[0]+".gz", description=set_file_descr( fname+".bed.gz",
                                                                groupId=gid,step=step,type="bed",view="admin" ))
+        fname = "segToFrag_"+job_groups[gid]['name']
         ex.add( resfiles[3], description=set_file_descr( fname+"_all.sql",
                                                          groupId=gid,step=step,type="sql",view="admin",
                                                          comment="all informative frags - null included" ))

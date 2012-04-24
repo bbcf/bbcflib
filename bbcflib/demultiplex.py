@@ -208,7 +208,7 @@ def workflow_groups(ex, job, gl, file_path="../", via='lsf'):
             file_names[gid][k]=group['name']+"_"+k
         logfile=unique_filename_in()
         log=open(logfile,"w")
-        log.write("Will get sequences to filter\n");logfile.flush()
+        log.write("Will get sequences to filter\n");log.flush()
         seqToFilter=getSeqToFilter(ex,primersFile)
 
         # if seqToFilter is NOT none...
@@ -216,10 +216,10 @@ def workflow_groups(ex, job, gl, file_path="../", via='lsf'):
         filteredFastq=filterSeq(ex,resExonerate,seqToFilter,group['name'],via=via)
 
         log.write("After filterSeq, filteredFastq=\n")
-        log.write(str(filteredFastq));logfile.flush()
+        log.write(str(filteredFastq));log.flush()
 
         for k,f in filteredFastq.iteritems():
-            log.write("\nWill add filtered file "+f+" with descr="+group['name']+"_"+k+"_filtered.fastq\n");logfile.flush()
+            log.write("\nWill add filtered file "+f+" with descr="+group['name']+"_"+k+"_filtered.fastq\n");log.flush()
             ex.add(f,description=set_file_descr(group['name']+"_"+k+"_filtered.fastq",
                                                 group=group['name'],step="filtering",
                                                 type="fastq"))
