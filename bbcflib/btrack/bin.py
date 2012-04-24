@@ -131,4 +131,4 @@ try:
         def write(self, source, fields):
             raise NotImplementedError("Writing to bam is not implemented.")
 
-except ImportError: print "Warning: 'pysam' not installed, 'bam' format unavailable.
+except ImportError: print "Warning: 'pysam' not installed, 'bam' format unavailable."
