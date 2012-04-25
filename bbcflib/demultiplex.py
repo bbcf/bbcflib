@@ -63,15 +63,16 @@ def exonerate(fastaFile,dbFile,minScore=77,n=1,x=22,l=30):
 
 def parallel_exonerate(ex, subfiles, dbFile, grp_name, 
                        minScore=77, n=1, x=22, l=30, via="local"):
-    faSubFiles=[]
     futures=[fastqToFasta.nonblocking(ex,sf,n=n,x=x,via=via) for sf in subfiles]
 
     futures2 = []
     res = []
     resExonerate = []
+    faSubFiles=[]
     for sf in futures:
         subResFile = unique_filename_in()
-        futures2.append(exonerate.nonblocking(ex,sf.wait(),dbFile,minScore=minScore,n=n,x=x,l=l,via=via,stdout=subResFile,memory=6))
+        faSubFiles.append(sf.wait())
+        futures2.append(exonerate.nonblocking(ex,faSubFiles[-1],dbFile,minScore=minScore,n=n,x=x,l=l,via=via,stdout=subResFile,memory=6))
         resExonerate.append(subResFile)
     for n,f in enumerate(resExonerate):
         futures2[n].wait()
