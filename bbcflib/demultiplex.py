@@ -65,30 +65,29 @@ def parallel_exonerate(ex, subfiles, dbFile, grp_name,
                        minScore=77, n=1, x=22, l=30, via="local"):
     faSubFiles=[]
     futures=[fastqToFasta.nonblocking(ex,sf,n=n,x=x,via=via) for sf in subfiles]
-    faSubFiles=[f.wait() for f in futures]
+
+    futures2 = []
+    res = []
+    resExonerate = []
+    for sf in futures:
+        subResFile = unique_filename_in()
+        futures2.append(exonerate.nonblocking(ex,sf.wait(),dbFile,minScore=minScore,n=n,x=x,l=l,via=via,stdout=subResFile,memory=6))
+        resExonerate.append(subResFile)
+    for n,f in enumerate(resExonerate):
+        futures2[n].wait()
+        resSplitExonerate=split_exonerate(f,n=n,x=x,l=l)
+        res.append(resSplitExonerate)
 
     gzipfile(ex,faSubFiles[0])
     ex.add(faSubFiles[0]+".gz",
            description=set_file_descr(grp_name+"_input_part.fa.gz",
                                       group=grp_name,step="init",type="fa",
                                       view="admin",comment="part") )
-    futures = []
-    res = []
-    resExonerate = []
-    for sf in faSubFiles:
-        subResFile = unique_filename_in()
-        futures.append(exonerate.nonblocking(ex,sf,dbFile,minScore=minScore,n=n,x=x,l=l,via=via,stdout=subResFile))
-        resExonerate.append(subResFile)
-    for f in futures: f.wait()
-    for f in resExonerate:
-        resSplitExonerate=split_exonerate(f,n=n,x=x,l=l)
-        res.append(resSplitExonerate)
-
     gzipfile(ex,resExonerate[0])
     ex.add(resExonerate[0]+".gz",
            description=set_file_descr(grp_name+"_exonerate_part.txt.gz",
-                                      group=grp_name,step="exonerate",
-                                      type="txt",view="admin",comment="part") )
+                                      group=grp_name,step="exonerate",type="txt",
+                                      view="admin",comment="part") )
     return res
 
 def demultiplex(ex,subFiles,dbFile,grp_name,minScore=77,n=1,x=22,l=30,via="local"):
