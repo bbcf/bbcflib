@@ -652,7 +652,7 @@ def bamstats(bamfile):
     return {"arguments": ["bamstat",bamfile], "return_value": coverage_stats}
 
 @program
-def plot_stats(sample_stats,script_path="./"):
+def plot_stats(sample_stats,script_path=""):
     """Wrapper to the ``pdfstats.R`` script which generates
     a pdf report of the mapping statistics.
 
@@ -1137,7 +1137,7 @@ def densities_groups( ex, job_or_dict, file_dict, chromosomes, via='lsf' ):
     return processed
 
 
-def get_bam_wig_files( ex, job, minilims=None, hts_url=None, suffix=['fwd','rev'], script_path = './', fetch_unmapped=False, via='lsf' ):
+def get_bam_wig_files( ex, job, minilims=None, hts_url=None, suffix=['fwd','rev'], script_path = '', fetch_unmapped=False, via='lsf' ):
     """
     Will replace file references by actual file paths in the 'job' object.
     These references are either 'mapseq' keys or urls.

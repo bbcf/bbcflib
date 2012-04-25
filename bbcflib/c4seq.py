@@ -42,7 +42,7 @@ def loadPrimers(primersFile):
     return primers
 
 @program
-def segToFrag( countsPerFragFile, regToExclude="", script_path='./' ):
+def segToFrag( countsPerFragFile, regToExclude="", script_path='' ):
     ''' 
     This function calls segToFrag.awk (which transforms the counts per segment to a normalised count per fragment).
     Provide a region to exclude if needed. 
@@ -55,22 +55,22 @@ def _RCMD(path,script):
     return ["R","--vanilla","--slave","-f",os.path.join(path,script),"--args"]
 
 @program
-def profileCorrection( inputFile, baitCoord, name, outputFile, reportFile, script_path='./' ):
+def profileCorrection( inputFile, baitCoord, name, outputFile, reportFile, script_path='' ):
     time.sleep(60)
     args = _RCMD(script_path,"profileCorrection.R")+[inputFile,baitCoord,name,outputFile,reportFile]
     return {'arguments': args, 'return_value':None}
 
 @program
-def smoothFragFile( inputFile, nFragsPerWin, curName, outputFile, regToExclude="", script_path='./' ):
+def smoothFragFile( inputFile, nFragsPerWin, curName, outputFile, regToExclude="", script_path='' ):
     args = _RCMD(script_path,"smoothData.R")+[inputFile,str(nFragsPerWin),curName,outputFile,regToExclude]
     return {'arguments': args, 'return_value':None}
 
 @program
 def runDomainogram( infile, name, prefix=None, regCoord="", 
-                    wmaxDomainogram=500, wmax_BRICKS=50, skip=0, script_path='./' ):
+                    wmaxDomainogram=500, wmax_BRICKS=50, skip=0, script_path='' ):
     time.sleep(60)
     if prefix is None: prefix = name
-    args = _RCMD(script_path,"runDomainogram.R")+[infile,name,prefix,regCoord,str(wmaxDomainogram),str(wmax_BRICKS),str(skip)]
+    args = _RCMD(script_path,"runDomainogram.R")+[infile,name,prefix,regCoord,str(wmaxDomainogram),str(wmax_BRICKS),str(skip),script_path]
     return {'arguments': args, 'return_value': prefix+".log"}
 
 
@@ -141,7 +141,7 @@ def density_to_countsPerFrag( ex, file_dict, groups, assembly, regToExclude, scr
 
 ############################################################################
 def workflow_groups( ex, job, primers_dict, assembly, mapseq_files, mapseq_url, 
-                     script_path='./', logfile=None, via='lsf' ):
+                     script_path='', logfile=None, via='lsf' ):
     '''
     Main 
     * open the 4C-seq minilims and create execution
