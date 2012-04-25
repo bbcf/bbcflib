@@ -13,8 +13,8 @@ from bbcflib.common import cat, set_file_descr, unique_filename_in, coverageBed
 import os, json, re
 import tarfile
 
-GlobalLibPath='/scratch/cluster/monthly/jrougemo/libv2/4cLibraries/'
-GlobalRepbasePath="/archive/epfl/bbcf/data/genomes/repeats/"
+GlobalLibPath="/archive/epfl/bbcf/data/genomes/4cLibraries"
+GlobalRepbasePath="/archive/epfl/bbcf/data/genomes/repeats"
 
 @program
 def getRestEnzymeOccAndSeq(assembly_or_fasta, prim_site, sec_site, l_seg, l_type='typeI'):
