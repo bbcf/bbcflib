@@ -976,7 +976,7 @@ def _compact_chromosome_name(key):
     elif isinstance(key,tuple) and len(key)>2:
         return str(key[0])+"_"+str(key[1])+"."+str(key[2])
     else:
-        raise ValueError("Can't handle this chromosomes key ",key)
+        raise ValueError("Can't handle this chromosome key ",key)
 
 def parallel_density_wig( ex, bamfile, chromosomes,
                           nreads=1, merge=-1, read_extension=-1, convert=True,
