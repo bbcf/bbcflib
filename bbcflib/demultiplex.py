@@ -239,9 +239,9 @@ def workflow_groups(ex, job, gl, file_path="../", via='lsf'):
         ex.add(reportFile_pdf,description=set_file_descr(
                 group['name']+"_report_demultiplexing.pdf",
                 group=group['name'],step="final",type="pdf"))
-	add_pickle( ex, file_names, set_file_descr('file_names',
-                                                   step="final",type='py',view='admin') )
-	return resFiles
+    add_pickle( ex, file_names, 
+                set_file_descr('file_names',step="final",type='py',view='admin') )
+    return resFiles
 
 
 def getSeqToFilter(ex,primersFile):
