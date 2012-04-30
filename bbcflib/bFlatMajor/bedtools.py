@@ -3,6 +3,7 @@ from bbcflib.common import unique_filename_in
 
 @program
 def bedtools(tool, args=None):
+    if args is None: args = []
     return {"arguments": ["bedtools",tool]+args, "return_value": None}
 
 def annotateBed(ex,intervals,files,via='local',**kw):
@@ -179,7 +180,7 @@ def fastaFromBed(ex,bedfile,fasta,via='local',**kw):
     for k,v in kw.iteritems():
         args.extend(["-"+str(k),str(v)])
     args += ["-fi",fasta,"-bed",bedfile,"-fo",outfile]
-    future = bedtools.nonblocking(ex,"getfasta",args,via=via,stdout=outfile)
+    future = bedtools.nonblocking(ex,"getfasta",args,via=via)
     future.wait()
     return outfile 
 
@@ -299,7 +300,7 @@ def maskFastaFromBed(ex,bedfile,fasta,via='local',**kw):
     for k,v in kw.iteritems():
         args.extend(["-"+str(k),str(v)])
     args += ["-fi",fasta,"-bed",bedfile,"-fo",outfile]
-    future = bedtools.nonblocking(ex,"maskfasta",args,via=via,stdout=outfile)
+    future = bedtools.nonblocking(ex,"maskfasta",args,via=via)
     future.wait()
     return outfile 
  
@@ -349,8 +350,6 @@ def multiIntersectBed(ex,bedfiles,via='local',**kw):
 def nucBed(ex,bedfile,fasta,via='local',**kw):
     if 'outfile' in kw:
         outfile = kw.pop('outfile')
-    elif 'fo' in kw:
-        outfile = kw.pop('fo')
     else: 
         outfile = unique_filename_in()
     args = []
