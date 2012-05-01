@@ -108,7 +108,7 @@ def load_paramsFile(paramsfile):
     with open(paramsfile) as f:
         for s in f:
             if re.search('^#',s): continue
-            (k,v)=s.strip('\n').split('=')
+            (k,v)=s.strip().split('=')
             if re.search('Search the primer from base i',k): 
                 params['n']=v
             if re.search('Search the primer in the next n bps of the reads',k):
