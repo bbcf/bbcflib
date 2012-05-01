@@ -40,7 +40,8 @@ import re, os, gzip, sys
 # Internal modules #
 from bbcflib import frontend, mapseq, common
 from bbcflib import btrack as track
-from bbcflib import bFlatMajor as gMiner
+from bbcflib import bFlatMajor.stream as gm_stream
+from bbcflib import bFlatMajor.common as gm_common
 
 # Other modules #
 from bein import program
@@ -321,17 +322,17 @@ def workflow_groups( ex, job_or_dict, mapseq_files, assembly, script_path='',
                 macsbed = track.track(processed['macs'][ctrl]+"_summits.bed",
                                       chrmeta=chrlist, fields=_fields).read(selection=_select)
             else:
-                macsbed = gMiner.stream.concatenate(
+                macsbed = gm_stream.concatenate(
                     [track.track(processed['macs'][(name,x)]+"_summits.bed",
                                  chrmeta=chrlist, fields=_fields).read(selection=_select)
                      for x in names['controls']])
             ##############################
-            macs_neighb = gMiner.stream.neighborhood(macsbed, before_start=150, after_end=150 )
+            macs_neighb = gm_stream.neighborhood(macsbed, before_start=150, after_end=150 )
             peak_list[name] = common.unique_filename_in()+".sql"
             macs_final = track.track( peak_list[name], chrmeta=chrlist,
                                       info={'datatype':'qualitative'},
                                       fields=['start','end','name','score'] )
-            macs_final.write(gMiner.common.fusion(macs_neighb))
+            macs_final.write(gm_common.fusion(macs_neighb))
             macs_final.close()
             ##############################
     if peak_deconvolution:
@@ -399,7 +400,7 @@ def workflow_groups( ex, job_or_dict, mapseq_files, assembly, script_path='',
                               fields=['chr','start','end','name','strand',
                                       'gene','location_type','distance'])
         for chrom in assembly.chrnames:
-            peakout.write(gMiner.stream.getNearestFeature(
+            peakout.write(gm_stream.getNearestFeature(
                     ptrack.read(selection=chrom), 
                     annotations.read(selection=chrom)),mode='append')
         peakout.close()

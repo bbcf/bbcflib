@@ -15,7 +15,6 @@ from bbcflib import daflims, genrep, frontend, email, gdv, createlib
 from bbcflib import btrack as track
 from bbcflib.mapseq import *
 from bbcflib.common import unique_filename_in, gzipfile, merge_sql, cat, gMiner_run
-import bbcflib.bFlatMajor as gMiner
 
 # *** Create a dictionary with infos for each primer (from file primers.fa)
 # ex: primers_dict=loadPrimers('/archive/epfl/bbcf/data/DubouleDaan/finalAnalysis/XmNGdlXjqoj6BN8Rj2Tl/primers.fa')
