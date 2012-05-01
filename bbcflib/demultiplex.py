@@ -148,7 +148,7 @@ def prepareReport(ex,name,tot_counts,counts_primers,counts_primers_filtered):
     out.write("Unclassified\t"+str(tot_counts-tot_counts_primers)+"\n")
     out.write("Total\t"+str(tot_counts)+"\n")
     out.close()
-    return dataReport
+    return (tot_counts>tot_counts_primers,dataReport)
 
 @program
 def createReport(numbersFile,reportFile,script_path='./'):
@@ -229,16 +229,19 @@ def workflow_groups(ex, job, gl, file_path="../", via='lsf'):
         ex.add(logfile,description=set_file_descr("logfile",group=group['name'],
                                                   step="final",type="txt",view="admin"))
         # Prepare report per group of runs
-        reportFile=prepareReport(ex,group['name'],tot_counts,
-                                 counts_primers,counts_primers_filtered)
+        report_ok,reportFile=prepareReport(ex,group['name'],tot_counts,
+                                           counts_primers,counts_primers_filtered)
         ex.add(reportFile,description=set_file_descr(
                 group['name']+"_report_demultiplexing.txt",
                 group=group['name'],step="final",type="txt",view="admin"))
-        reportFile_pdf=unique_filename_in()
-        createReport(ex,reportFile,reportFile_pdf,script_path)
-        ex.add(reportFile_pdf,description=set_file_descr(
-                group['name']+"_report_demultiplexing.pdf",
-                group=group['name'],step="final",type="pdf"))
+        if report_ok:
+            reportFile_pdf=unique_filename_in()
+            createReport(ex,reportFile,reportFile_pdf,script_path)
+            ex.add(reportFile_pdf,description=set_file_descr(
+                    group['name']+"_report_demultiplexing.pdf",
+                    group=group['name'],step="final",type="pdf"))
+        else:
+            log.write("*** Probable ambiguous classification: total_reads < sum(reads_by_primers) ***\n");log.flush()
     add_pickle( ex, file_names, 
                 set_file_descr('file_names',step="final",type='py',view='admin') )
     return resFiles
