@@ -317,7 +317,7 @@ def mergeBed(ex,bedfile,via='local',**kw):
     future.wait()
     return outfile
  
-multiBamCov(ex,bedfile,bamfiles,via='local',**kw):
+def multiBamCov(ex,bedfile,bamfiles,via='local',**kw):
     if 'outfile' in kw:
         outfile = kw.pop('outfile')
     else: 

@@ -40,8 +40,8 @@ import re, os, gzip, sys
 # Internal modules #
 from bbcflib import frontend, mapseq, common
 from bbcflib import btrack as track
-from bbcflib import bFlatMajor.stream as gm_stream
-from bbcflib import bFlatMajor.common as gm_common
+from bbcflib.bFlatMajor import stream as gm_stream
+from bbcflib.bFlatMajor import common as gm_common
 
 # Other modules #
 from bein import program
