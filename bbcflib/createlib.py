@@ -44,9 +44,9 @@ def getRestEnzymeOccAndSeq(assembly_or_fasta, prim_site, sec_site, l_seg, l_type
     options=[progname,
              "-i",fasta_file,"-m",prim_site,"-s",sec_site,
              "-l",l_seg,"-o",segFile,"-f",fragFile,"-x",logFile]
-    return {'arguments': options, 'return_value':outfiles}
+    return {'arguments': options, 'return_value': outfiles}
 
-def parse_fragFile(fragfile):
+def parse_fragFile(fragfile,chrom_dict={}):
     '''
     Parse fragment file to create segment info bed file and fragment bed file
     '''
@@ -61,11 +61,11 @@ def parse_fragFile(fragfile):
         for s in f:
             if re.search('FragIsNotValid',s): continue
             s=s.strip().split('\t')
-            chrom="chr"+s[1]
+            chrom=chrom_dict.get(s[1],"chr"+s[1])
             fragmentInfo='|'.join(['',s[0],chrom+':'+str(int(s[2])+1)+'-'+s[3],
                                    'indexOfSecondRestSiteOcc='+s[10],
                                    'status='+s[-1],'length='+str(int(s[3])-int(s[2])),
-                                   0,0,0,0])
+                                   '0','0','0','0'])
             o.write('\t'.join([chrom,s[5],s[6],'type=startSegment'+fragmentInfo])+'\n')
             o.write('\t'.join([chrom,s[8],s[9],'type=endSegment'+fragmentInfo])+'\n')
             row = [chrom,s[2],s[3],'frag'+s[0]]
@@ -123,7 +123,7 @@ def getEnzymeSeqId(enzyme_id,byId=False,enzymes_dict=None,libpath=GlobalLibPath)
                 return v[trg]
     return default
 
-def lib_exists(params,path=GlobalLibPath,returnType="id"):
+def lib_exists(params,libs_dict=None,path=GlobalLibPath,returnType="id"):
     '''
     Return id or filename corresponding to the library described in params.
     '''
@@ -159,7 +159,12 @@ def createLibrary(ex,fasta_allchr,params,via='local'):
         return [None,None,None,None]
     libfiles=getRestEnzymeOccAndSeq(ex,fasta_allchr,params['primary'],params['secondary'],
                                     params['length'], params['type'])
-    bedfiles=parse_fragFile(libfiles[1])
+    if isinstance(fasta_allchr,genrep.Assembly):
+        chrom_dict = dict([(str(k[0])+"_"+k[1]+"."+str(k[2]),v['name'])
+                            for k,v in fasta_allchr.chromosomes.iteritems()])
+    else:
+        chrom_dict = {}
+    bedfiles=parse_fragFile(libfiles[1],chrom_dict)
     resfile=coverageInRepeats(ex,bedfiles[0],params['species'],via=via)
     resfile_sql=resfile+".sql"
     track.convert((resfile,'bed'),(resfile_sql,'sql'),assembly=params['species'])
@@ -175,7 +180,8 @@ def get_libForGrp(ex,group,fasta_or_assembly,new_libraries, job_id, grpId, lib_d
 #wd_archive="/archive/epfl/bbcf/mleleu/pipeline_vMarion/pipeline_3Cseq/vWebServer_Bein/" #temporary: will be /scratch/cluster/monthly/htsstation/4cseq/job.id
 #os.path.split(ex.remote_working_directory)[0]
     def _libfile(id_lib):
-        with open(os.path.join(GlobalLibPath,'libraries.json')) as f: libs_dict = json.load(f)
+        with open(os.path.join(GlobalLibPath,'libraries.json')) as f: 
+            libs_dict = json.load(f)
             #id_lib=13
         for lib in libs_dict:
             if lib['library']['id']==int(id_lib):
