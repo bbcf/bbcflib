@@ -171,11 +171,11 @@ def createLibrary(ex,fasta_allchr,params,via='local'):
                'filename':resfile}
     return [libfiles,bedfiles,resfile,infos_lib,resfile_sql]
 
-def get_libForGrp(ex,group,fasta_or_assembly,new_libraries, job_id, grpId, lib_dir=GlobalLibPath):
+def get_libForGrp(ex,group,fasta_or_assembly,new_libraries, job_id, grpId, lib_dir=None):
 #wd_archive="/archive/epfl/bbcf/mleleu/pipeline_vMarion/pipeline_3Cseq/vWebServer_Bein/" #temporary: will be /scratch/cluster/monthly/htsstation/4cseq/job.id
 #os.path.split(ex.remote_working_directory)[0]
     def _libfile(id_lib):
-        with open(os.path.join(lib_dir,'libraries.json')) as f: libs_dict = json.load(f)
+        with open(os.path.join(GlobalLibPath,'libraries.json')) as f: libs_dict = json.load(f)
             #id_lib=13
         for lib in libs_dict:
             if lib['library']['id']==int(id_lib):
@@ -200,6 +200,7 @@ def get_libForGrp(ex,group,fasta_or_assembly,new_libraries, job_id, grpId, lib_d
                 if key: paramslib[key]=s[1]
         return paramslib
 
+    if lib_dir is None: lib_dir = os.path.split(ex.remote_working_directory)[0]
     libfile = group.get('library_param_file',False)
     if str(group['library_param_file']).lower() in ['1','true','on','t']: libfile = True
     if libfile:
