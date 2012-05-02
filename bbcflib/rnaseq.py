@@ -202,37 +202,37 @@ def fusion(X):
         if B[1] < A[2]:           # has an intersection
             if B[2] < A[2]:
                 if B[1] == A[1]:  # same left border, A is bigger
-                    z = [(A[0],B[1],B[2],A[3]+B[3]), (A[0],B[2],A[2],A[3])]     
+                    z = [(A[0],B[1],B[2],A[3]+B[3]), (A[0],B[2],A[2],A[3])]
                 elif B[1] < A[1]: # B shifted to the left wrt A
-                    z = [(A[0],B[1],A[1],B[3]), (A[0],A[1],B[2],A[3]+B[3]), (A[0],B[2],A[2],A[3])]     
+                    z = [(A[0],B[1],A[1],B[3]), (A[0],A[1],B[2],A[3]+B[3]), (A[0],B[2],A[2],A[3])]
                 else:             # B embedded in A
-                    z = [(A[0],A[1],B[1],A[3]), (A[0],B[1],B[2],A[3]+B[3]), (A[0],B[2],A[2],A[3])]     
+                    z = [(A[0],A[1],B[1],A[3]), (A[0],B[1],B[2],A[3]+B[3]), (A[0],B[2],A[2],A[3])]
             elif B[2] == A[2]:
                 if B[1] == A[1]:  # identical
-                    z = [(A[0],A[1],A[2],A[3]+B[3])]     
+                    z = [(A[0],A[1],A[2],A[3]+B[3])]
                 elif B[1] < A[1]: # same right border, B is bigger
-                    z = [(A[0],B[1],A[1],B[3]), (A[0],A[1],B[2],A[3]+B[3])]     
+                    z = [(A[0],B[1],A[1],B[3]), (A[0],A[1],B[2],A[3]+B[3])]
                 else:             # same right border, A is bigger
-                    z = [(A[0],A[1],B[1],A[3]), (A[0],B[1],B[2],A[3]+B[3])]     
-            else:      
+                    z = [(A[0],A[1],B[1],A[3]), (A[0],B[1],B[2],A[3]+B[3])]
+            else:
                 if B[1] == A[1]:  # same left border, B is bigger
                     z = [(A[0],A[1],A[2],A[3]+B[3])]
-                    rest = (A[0],A[2],B[2],B[3])     
+                    rest = (A[0],A[2],B[2],B[3])
                 elif B[1] < A[1]: # B contains A
                     z = [(A[0],B[1],A[1],B[3]), (A[0],A[1],A[2],A[3]+B[3])]
-                    rest = (A[0],A[2],B[2],B[3])    
+                    rest = (A[0],A[2],B[2],B[3])
                 else:             # B shifted to the right wrt A
                     z = [(A[0],A[1],B[1],A[3]), (A[0],B[1],A[2],A[3]+B[3])]
-                    rest = (A[0],A[2],B[2],B[3])  
+                    rest = (A[0],A[2],B[2],B[3])
         else: z = None            # no intersection
         return z, rest
- 
+
     while 1:
         try:
             x = X.next()
             intersected = False
             for y in toyield:
-                replace, rest = _intersect(y,x) 
+                replace, rest = _intersect(y,x)
                 if replace:
                     intersected = True
                     iy = toyield.index(y)
@@ -246,9 +246,9 @@ def fusion(X):
                     y = toyield.pop(0)
                     yield tuple(y)
                 toyield = [x]
-            elif x: 
+            elif x:
                 toyield.append(x)
-        except StopIteration: 
+        except StopIteration:
             while toyield:
                 y = toyield.pop(0)
                 yield tuple(y)
@@ -572,7 +572,7 @@ def rnaseq_workflow(ex, job, bam_files, pileup_level=["exons","genes","transcrip
     ends = asarray(ends, dtype=numpy.float_)
     nreads = asarray([nreads[cond] for cond in conditions], dtype=numpy.float_)
     counts = asarray([exon_pileups[cond] for cond in conditions], dtype=numpy.float_)
-    counts, sf = estimate_size_factors(counts)
+    #counts, sf = estimate_size_factors(counts)
     rpkm = to_rpkm(counts, ends-starts, nreads)
 
     hconds = ["counts."+c for c in conditions] + ["rpkm."+c for c in conditions]
