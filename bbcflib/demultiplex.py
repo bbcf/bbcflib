@@ -33,7 +33,7 @@ def split_exonerate(filename,n=1,x=22,l=30):
     with open(filename,"r") as f:
         for s in f:
             if not(re.search(r'vulgar',s)): continue
-            s=s.strip('\n').split(' ')
+            s=s.strip().split(' ')
             s_split = s[5].split('|')
             key = s_split[0]
             if not key in correction:

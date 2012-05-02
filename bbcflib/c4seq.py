@@ -24,7 +24,7 @@ def loadPrimers(primersFile):
     name = ''
     with open(primersFile,'rb') as f:
         for s in f:
-            s = s.strip('\n')
+            s = s.strip()
             if not(re.search(r'^>',s)) and name:
                 primers[name]['seq']=s
                 continue
@@ -119,7 +119,7 @@ def density_to_countsPerFrag( ex, file_dict, groups, assembly, regToExclude, scr
                                                script_path, via=via, stdout=FragFile ))
     def _parse_select_frag(stream):
         for s in stream:
-            sr = s.strip('\n').split('\t')
+            sr = s.strip().split('\t')
             if re.search(r'IsValid',sr[2]) \
                     and not(re.search(r'_and_',sr[8]) or re.search(r'BothRepeats',sr[8]) or re.search(r'notValid',sr[8])):
                 patt = re.search(r'([^:]+):(\d+)-(\d+)',sr[1])
@@ -241,7 +241,7 @@ def workflow_groups( ex, job, primers_dict, assembly, mapseq_files, mapseq_url,
             res_tar = tarfile.open(tarname, "w:gz")
             with open(logFile,'rb') as f:
                 for s in f:
-                    s = s.strip('\n')
+                    s = s.strip()
                     if re.search('####resfiles####',s): 
                         start = True
                     elif start and not re.search("RData",s):

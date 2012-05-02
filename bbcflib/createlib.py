@@ -60,7 +60,7 @@ def parse_fragFile(fragfile):
         s = f.next()
         for s in f:
             if re.search('FragIsNotValid',s): continue
-            s=s.strip('\n').split('\t')
+            s=s.strip().split('\t')
             chrom="chr"+s[1]
             fragmentInfo='|'.join(['',s[0],chrom+':'+str(int(s[2])+1)+'-'+s[3],
                                    'indexOfSecondRestSiteOcc='+s[10],
@@ -96,7 +96,7 @@ def coverageInRepeats(ex,infile,genomeName='mm9',repeatsPath=GlobalRepbasePath,v
     with open(resfile,'w') as o:
         with open(tmpfile,'r') as f:
             for s in f:
-                s=s.strip('\n').split('\t')
+                s=s.strip().split('\t')
                 s_split=s[3].split('|')
                 infos='|'.join(s_split[0:(len(s_split)-4)]+s[4:8])
                 o.write('\t'.join(s[0:3]+[infos])+'\n')
