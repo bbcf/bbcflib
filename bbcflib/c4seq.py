@@ -36,8 +36,8 @@ def loadPrimers(primersFile):
                             'seq': '' }
             if re.search('Exclude',infos[-1]):
                 primerInfos['regToExclude'] = infos[-1].split('=')[1]
-                primerInfos['seqToFilter'] = infos[4:-1]
-                if not name in primers:	primers[name] = primerInfos
+            primerInfos['seqToFilter'] = infos[4:-1]
+            if not name in primers: primers[name] = primerInfos
     return primers
 
 @program
