@@ -70,6 +70,8 @@ def run(**kwargs):
             chrom = kwargs.pop('chromosome')
             chrmeta = {chrom: chrmeta.get(chrom,{})}
     chr = chrmeta.keys()[0]
+    info = None
+    if 'datatype' in kwargs: info = {'datatype': kwargs.pop('datatype')}
     files = None
     for targ in getattr(smod, module)().loadable(funct):
         kwargs[targ] = [t.read(selection=chr) for t in trackSet[targ]]
@@ -80,7 +82,8 @@ def run(**kwargs):
             outf = "%s_%i.%s" %(output.strip(format),n,format)
             files.append(outf)
             fields = stream.fields
-            track.track(outf,chrmeta=chrmeta,fields=fields).write(stream,chrom=chr)
+            track.track(outf,chrmeta=chrmeta,fields=fields,
+                        info=info).write(stream,chrom=chr)
         for chr in chrmeta.keys()[1:]:
             for targ in getattr(smod, module)().loadable(funct):
                 kwargs[targ] = [t.read(selection=chr) for t in trackSet[targ]]
@@ -90,7 +93,8 @@ def run(**kwargs):
     else:
         files = output
         fields = funct_output.fields
-        track.track(files,chrmeta=chrmeta,fields=fields).write(funct_output,chrom=chr)
+        track.track(files,chrmeta=chrmeta,fields=fields,
+                    info=info).write(funct_output,chrom=chr)
         for chr in chrmeta.keys()[1:]:
             for targ in getattr(smod, module)().loadable(funct):
                 kwargs[targ] = [t.read(selection=chr) for t in trackSet[targ]]

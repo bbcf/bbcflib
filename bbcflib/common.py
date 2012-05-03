@@ -228,7 +228,7 @@ try:
                 "return_value": _split_output}
 
         #-------------------------------------------------------------------------#
-    def merge_sql( ex, sqls, outdir=None, via='lsf' ):
+    def merge_sql( ex, sqls, outdir=None, datatype='quantitative', via='lsf' ):
         """Run ``gMiner``'s 'merge_scores' function on a set of sql files
         """
         if outdir == None:
@@ -238,6 +238,7 @@ try:
         if len(sqls) == 1:
             return sqls[0]
         gMiner_job = {"operation": "merge_scores", "output": outdir,
+                      "datatype": datatype,
                       "args": "'"+json.dumps({"trackList":",".join(sqls)})+"'"}
         files = gMiner_run.nonblocking(ex,gMiner_job,via=via).wait()
         return files[0]

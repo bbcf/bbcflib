@@ -3,8 +3,8 @@
 Module: bbcflib.c4seq
 =======================
 
-This module provides functions to run a 4c-seq analysis from reads mapped on
-a reference genome.
+This module provides functions to run a 4c-seq analysis 
+from reads mapped on a reference genome.
 
 """
 
@@ -93,6 +93,7 @@ def density_to_countsPerFrag( ex, file_dict, groups, assembly, regToExclude, scr
 #                    features.read(selection=ch)), mode='append')
             gMiner_job = {"operation": "mean_score_by_feature",
                           "output": unique_filename_in()+".bed",
+                          "datatype": "qualitative",                          
                           "args": "'"+json.dumps({"trackScores":density_file,
                                                   "trackFeatures":chref,
                                                   "chromosome":ch})+"'"}
