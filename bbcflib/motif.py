@@ -88,7 +88,10 @@ def parallel_meme( ex, assembly, regions, name=None, meme_args=None, via='lsf' )
         (fasta, size) = assembly.fasta_from_regions( regions[i], out=unique_filename_in() )
         tmpfile = unique_filename_in()
         outdir = unique_filename_in()
-        futures[n] = (outdir, meme.nonblocking( ex, fasta, outdir, maxsize=size*1.5, args=meme_args, via=via, stderr=tmpfile ))
+        futures[n] = (outdir, meme.nonblocking( ex, fasta, outdir, 
+                                                maxsize=(size*3)/2, 
+                                                args=meme_args, via=via, 
+                                                stderr=tmpfile ))
     all_res = {}
     for n,f in futures.iteritems():
         f[1].wait()
