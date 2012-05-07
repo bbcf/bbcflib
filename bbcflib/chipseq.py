@@ -132,7 +132,7 @@ def add_macs_results( ex, read_length, genome_size, bamfile,
             [bedzip.write(l) for l in bedinf]
         bedzip.close()
         ex.add( p+"_summits.bed.gz",
-                description=common.set_file_descr(filename+"_summits.bed",**macs_descr2),
+                description=common.set_file_descr(filename+"_summits.bed.gz",**macs_descr2),
                 associate_to_filename=p, template='%s_summits.bed.gz' )
         if not(n[1] is None):
             ex.add( p+"_negative_peaks.xls",
@@ -312,29 +312,28 @@ def workflow_groups( ex, job_or_dict, mapseq_files, assembly, script_path='',
                                            macs_args=macs_args, via=via ) }
     logfile.write("Done MACS.\n");logfile.flush()
     peak_list = {}
-    if run_meme:
-        chrlist = assembly.chrmeta
-        _select = {'score':(6,sys.maxint)}
-        _fields = ['chr','start','end','name','score']
-        for i,name in enumerate(names['tests']):
-            if len(names['controls']) < 2:
-                ctrl = (name,names['controls'][0])
-                macsbed = track.track(processed['macs'][ctrl]+"_summits.bed",
-                                      chrmeta=chrlist, fields=_fields).read(selection=_select)
-            else:
-                macsbed = gm_stream.concatenate(
-                    [track.track(processed['macs'][(name,x)]+"_summits.bed",
-                                 chrmeta=chrlist, fields=_fields).read(selection=_select)
-                     for x in names['controls']])
-            ##############################
-            macs_neighb = gm_stream.neighborhood(macsbed, before_start=150, after_end=150 )
-            peak_list[name] = common.unique_filename_in()+".sql"
-            macs_final = track.track( peak_list[name], chrmeta=chrlist,
-                                      info={'datatype':'qualitative'},
-                                      fields=['start','end','name','score'] )
-            macs_final.write(gm_common.fusion(macs_neighb))
-            macs_final.close()
-            ##############################
+    chrlist = assembly.chrmeta
+    _select = {'score':(6,sys.maxint)}
+    _fields = ['chr','start','end','name','score']
+    for i,name in enumerate(names['tests']):
+        if len(names['controls']) < 2:
+            ctrl = (name,names['controls'][0])
+            macsbed = track.track(processed['macs'][ctrl]+"_summits.bed",
+                                  chrmeta=chrlist, fields=_fields).read(selection=_select)
+        else:
+            macsbed = gm_stream.concatenate(
+                [track.track(processed['macs'][(name,x)]+"_summits.bed",
+                             chrmeta=chrlist, fields=_fields).read(selection=_select)
+                 for x in names['controls']])
+        ##############################
+        macs_neighb = gm_stream.neighborhood(macsbed, before_start=150, after_end=150 )
+        peak_list[name] = common.unique_filename_in()+".sql"
+        macs_final = track.track( peak_list[name], chrmeta=chrlist,
+                                  info={'datatype':'qualitative'},
+                                  fields=['start','end','name','score'] )
+        macs_final.write(gm_common.fusion(macs_neighb))
+        macs_final.close()
+        ##############################
     if peak_deconvolution:
         processed['deconv'] = {}
         merged_wig = {}

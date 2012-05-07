@@ -25,10 +25,26 @@ def fastqToFasta(fqFile,n=1,x=22,output=None):
     return{'arguments': ["fastqToFasta.py","-i",fqFile,"-o",faFile,"-n",str(n),"-x",str(x)],
            'return_value':faFile}
 
-def split_exonerate(filename,n=1,x=22,l=30):
-    correction={}
+def split_exonerate(filename,minScore,l=30):
+    correction = {}
     files = {}
-    filenames={}
+    filenames = {}
+    alignments = {}
+    prev_idLine = ''
+    alignments["ambiguous"] = unique_filename_in()
+    files["ambiguous"] = open(alignments["ambiguous"],"w")
+    alignments["unaligned"] = unique_filename_in()
+    files["unaligned"] = open(alignments["unaligned"],"w")
+    line_buffer = []
+
+    def _process_line(line_buffer):
+        if len(line_buffer) == 1:
+            files[line_buffer[0][3]].write(line_buffer[0][1])
+        elif len(line_buffer)>1:
+            for buf in sorted(line_buffer)[0]:
+                files["ambiguous"].write(" ".join(buf[2])+"\n")
+            files[buf[3]].write(buf[1])
+
 
     with open(filename,"r") as f:
         for s in f:
@@ -36,6 +52,12 @@ def split_exonerate(filename,n=1,x=22,l=30):
             s=s.strip().split(' ')
             s_split = s[5].split('|')
             key = s_split[0]
+            info = s[1].split('_')
+            idLine = info[0]
+            if idLine != prev_idLine:
+                _process_line(line_buffer)
+                line_buffer = []
+            prev_idLine = idLine
             if not key in correction:
                 if len(s_split) > 3:
                     correction[key]=len(s_split[1])-len(s_split[3])+1
@@ -44,19 +66,23 @@ def split_exonerate(filename,n=1,x=22,l=30):
                 filenames[key]=unique_filename_in()
                 files[key]=open(filenames[key],"w")
             k=int(s[3])-int(s[7])+correction[key]
-            info=s[1].split('_')
             l_linename=len(info[0])
             l_seq=len(info[1])
             full_qual=s[1][int(l_linename)+int(l_seq)+2:int(l_linename)+2*int(l_seq)+2]
             seq=info[1][k:l+k]
             qual=full_qual[k:l+k]
-            files[key].write("@"+info[0]+"_"+seq+"_"+qual+"\n"+seq+"\n+\n"+qual+"\n")
+            if s[9] < minScore:
+                files["unaligned"].write(" ".join(s)+"\n")
+            else:
+                line_buffer.append((s[9],"@"+info[0]+"_"+seq+"_"+qual+"\n"+seq+"\n+\n"+qual+"\n",s,key))
+    
+    _process_line(line_buffer)
     for f in files.itervalues():
         f.close()
-    return filenames
+    return (filenames,alignments)
 
 @program
-def exonerate(fastaFile,dbFile,minScore=77,n=1,x=22,l=30):
+def exonerate(fastaFile,dbFile,minScore=77):
     return{'arguments': ["exonerate","--showalignment","no","--model","affine:local",
                          "-o","-4","-e","-12","-s",str(minScore),fastaFile,dbFile],
            'return_value': None}
@@ -68,16 +94,41 @@ def parallel_exonerate(ex, subfiles, dbFile, grp_name,
     futures2 = []
     res = []
     resExonerate = []
-    faSubFiles=[]
+    faSubFiles = []
+    all_ambigous = []
+    all_unaligned = []
+    def _get_minscore(dbf):
+        with open(dbf) as df:
+            firstl = df.read()
+            firstl = df.read()
+            primer_len = len(firstl)-1
+## max score = len*5, len/2 mismatches => penalty len/2 * 9 => score = len/2
+            return primer_len/2 
+
+    my_minscore = _get_minscore(dbFile)
     for sf in futures:
         subResFile = unique_filename_in()
         faSubFiles.append(sf.wait())
-        futures2.append(exonerate.nonblocking(ex,faSubFiles[-1],dbFile,minScore=minScore,n=n,x=x,l=l,via=via,stdout=subResFile,memory=6))
+        futures2.append(exonerate.nonblocking(ex,faSubFiles[-1],dbFile,minScore=my_minscore,
+                                              n=n,x=x,l=l,via=via,stdout=subResFile,memory=6))
         resExonerate.append(subResFile)
     for n,f in enumerate(resExonerate):
         futures2[n].wait()
-        resSplitExonerate=split_exonerate(f,n=n,x=x,l=l)
+        (resSplitExonerate,alignments) = split_exonerate(f,minScore,n=n,x=x,l=l)
+        all_unaligned.append(alignments["unaligned"])
+        all_ambiguous.append(alignments["ambiguous"])
         res.append(resSplitExonerate)
+
+    gzipfile(ex,cat(all_unaligned[1:],out=all_unaligned[0]))
+    gzipfile(ex,cat(all_ambiguous[1:],out=all_ambiguous[0]))
+    ex.add(all_unaligned[0]+".gz",
+           description=set_file_descr(grp_name+"_unaligned.txt.gz",
+                                      group=grp_name,step="exonerate",type="txt",
+                                      view="admin", comment="scores between %i and %i"%(my_minscore,minScore)) )
+    ex.add(all_ambiguous[0]+".gz",
+           description=set_file_descr(grp_name+"_ambiguous.txt.gz",
+                                      group=grp_name,step="exonerate",type="txt",
+                                      view="admin") )
 
     gzipfile(ex,faSubFiles[0])
     ex.add(faSubFiles[0]+".gz",
@@ -89,15 +140,12 @@ def parallel_exonerate(ex, subfiles, dbFile, grp_name,
            description=set_file_descr(grp_name+"_exonerate_part.txt.gz",
                                       group=grp_name,step="exonerate",type="txt",
                                       view="admin",comment="part") )
-    return res
 
-def demultiplex(ex,subFiles,dbFile,grp_name,minScore=77,n=1,x=22,l=30,via="local"):
-    exonerated = parallel_exonerate(ex, subFiles, dbFile, grp_name, minScore=int(minScore),n=n,x=x,l=int(l),via=via)
-    
-    resFiles = dict((k,'') for d in exonerated for k in d.keys())
+    resFiles = dict((k,'') for d in res for k in d.keys())
     for k in resFiles.keys():
         v = [d[k] for d in exonerated if k in d]
         resFiles[k] = cat(v[1:],out=v[0])
+
     return resFiles
 
 def load_paramsFile(paramsfile):
@@ -194,9 +242,9 @@ def workflow_groups(ex, job, gl, file_path="../", via='lsf'):
                 allSubFiles.extend(split_file(ex,run,n_lines=8000000))
             else:
                 allSubFiles.append(run)
-        resExonerate = demultiplex(ex,allSubFiles,primersFile,group['name'],
-                                   params['s'],params['n'],params['x'],params['l'],
-                                   via=via)
+        resExonerate = parallel_exonerate(ex, allSubFiles, primersFile, group['name'], 
+                                          minScore=int(params['s']), n=params['n'], x=params['x'],
+                                          l=int(params['l']), via=via)
         filteredFastq={}
         counts_primers={}
         counts_primers_filtered={}
