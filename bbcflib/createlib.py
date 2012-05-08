@@ -1,15 +1,15 @@
 """
-======================
-Module: bbcflib.createlib.py
-======================
+=========================
+Module: bbcflib.createlib
+=========================
 
-Functions used for the creation of a library in a 4c-seq analysis.
+Functions to create and manage a restrition fragments library in a 4c-seq analysis.
 """
 
 from bein import program
 import bbcflib.btrack as track
 from bbcflib import genrep
-from bbcflib.common import cat, set_file_descr, unique_filename_in, coverageBed
+from bbcflib.common import cat, set_file_descr, unique_filename_in, coverageBed, gzipfile
 import os, json, re
 import tarfile
 
@@ -17,34 +17,19 @@ GlobalLibPath="/archive/epfl/bbcf/data/genomes/4cLibraries"
 GlobalRepbasePath="/archive/epfl/bbcf/data/genomes/repeats"
 
 @program
-def getRestEnzymeOccAndSeq(assembly_or_fasta, prim_site, sec_site, l_seg, l_type='typeI'):
+def getRestEnzymeOccAndSeq(fasta_file, prim_site, sec_site, l_seg, l_type='typeI'):
     '''
-    Creates segments and fragments files of the new library from the genome sequence (via a call to getRestEnzymeOccAndSeq.pl)
-    The genome sequence (assembly_or_fasta) can be given either as a genrep assembly or as a fasta file.
+    Creates segments and fragments files of the new library from the genome sequence 
+    (via a call to getRestEnzymeOccAndSeq.pl).
     '''
-    if isinstance(assembly_or_fasta,genrep.Assembly):
-        fasta_path=assembly_or_fasta.fasta_path()
-        tar = tarfile.open(fasta_path)
-        tar.extractall()
-        allfiles=[]
-        for finfo in tar.getmembers():
-            if not finfo.isdir():
-                allfiles.append(finfo.name)
-        fasta_file=cat(allfiles)
-        tar.close()
-    else:
-        fasta_file=assembly_or_fasta
-
     segFile = unique_filename_in()
     fragFile = unique_filename_in()
     logFile = unique_filename_in()
-    outfiles=[segFile, fragFile, logFile, fasta_file]
 #	script_path='/archive/epfl/bbcf/mleleu/pipeline_vMarion/pipeline_3Cseq/vWebServer_SAM/'
     progname = (l_type=='typeI') and "getRestEnzymeOccAndSeq.pl" or "getRestEnzymeOccAndSeq_typeII.pl"
-    options=[progname,
-             "-i",fasta_file,"-m",prim_site,"-s",sec_site,
+    options=["-i",fasta_file,"-m",prim_site,"-s",sec_site,
              "-l",l_seg,"-o",segFile,"-f",fragFile,"-x",logFile]
-    return {'arguments': options, 'return_value': outfiles}
+    return {'arguments': [progname]+options, 'return_value': [ segFile, fragFile, logFile ]}
 
 def parse_fragFile(fragfile,chrom_dict={}):
     '''
@@ -80,26 +65,40 @@ def parse_fragFile(fragfile,chrom_dict={}):
     return([segInfoBedFile,fragmentBedFile,segmentBedFile])
 
 
-def coverageInRepeats(ex,infile,genomeName='mm9',repeatsPath=GlobalRepbasePath,via='lsf'):
+def coverageInRepeats(ex, infile, genomeName='mm9', repeatsPath=GlobalRepbasePath,
+                      outdir=None, via='lsf'):
     '''
     Completes the segment info bed file with the coverage in repeats of each segment.
     For now, works only for mm9, hg19 and dm3.
     '''
-    repeatsFile=os.path.join(repeatsPath,genomeName,genomeName+'_rmsk.bed')
+    repeatsFile = os.path.join(repeatsPath, genomeName, genomeName+'_rmsk.bed')
     if not(os.path.exists(repeatsFile)):
         print("coverage in repeats not calculated as file "+repeatsFile+" does not exist.")
         return(infile)
-
-    tmpfile = unique_filename_in()
-    coverageBed.nonblocking(ex,repeatsFile,infile,via=via,stdout=tmpfile).wait()
-    resfile = unique_filename_in()+".bed"
-    with open(resfile,'w') as o:
-        with open(tmpfile,'r') as f:
+    if not(isinstance(infile,dict)):
+        infile = {"":infile}
+    if outdir is None:
+        resfile = unique_filename_in()+".bed"
+        outf = open(resfile,'w')
+    futures = {}
+    for chrom,inf in infile.iteritems():
+        tmpfile = unique_filename_in()
+        futures[chrom] = (tmpfile,coverageBed.nonblocking(ex,repeatsFile,inf[0],via=via,stdout=tmpfile))
+    for chrom,fut in futures.iteritems():
+        if not(outdir is None):
+            resfile = os.path.join(outdir,chrom+".bed")
+            outf = open(resfile,'w')
+        fut[1].wait()
+        with open(fut[0],'r') as f:
             for s in f:
-                s=s.strip().split('\t')
-                s_split=s[3].split('|')
-                infos='|'.join(s_split[0:(len(s_split)-4)]+s[4:8])
-                o.write('\t'.join(s[0:3]+[infos])+'\n')
+                s = s.strip().split('\t')
+                s_split = s[3].split('|')
+                infos = '|'.join(s_split[0:(len(s_split)-4)]+s[4:8])
+                outf.write('\t'.join(s[0:3]+[infos])+'\n')
+        if not(outdir is None): 
+            outf.close()
+    if outdir is None: outf.close()
+    else: resfile = outdir
     return resfile
 
 def getEnzymeSeqId(enzyme_id,byId=False,enzymes_dict=None,libpath=GlobalLibPath):
@@ -148,8 +147,7 @@ def lib_exists(params,libs_dict=None,path=GlobalLibPath,returnType="id"):
     else:
         return None
 
-# *** main call to create the library
-def createLibrary(ex,fasta_allchr,params,via='local'):
+def createLibrary(ex, assembly_or_fasta, params, via='local'):
     '''
     Main call to create the library
     '''
@@ -157,26 +155,57 @@ def createLibrary(ex,fasta_allchr,params,via='local'):
         print('Some parameters are missing, cannot create the library')
         print('primary='+params['primary']+" ; "+'secondary='+params['secondary'])
         return [None,None,None,None]
-    libfiles=getRestEnzymeOccAndSeq(ex,fasta_allchr,params['primary'],params['secondary'],
-                                    params['length'], params['type'])
-    if isinstance(fasta_allchr,genrep.Assembly):
-        chrom_dict = dict([(str(k[0])+"_"+k[1]+"."+str(k[2]),v['name'])
-                            for k,v in fasta_allchr.chromosomes.iteritems()])
-    else:
-        chrom_dict = {}
-    bedfiles=parse_fragFile(libfiles[1],chrom_dict)
-    resfile=coverageInRepeats(ex,bedfiles[0],params['species'],via=via)
-    resfile_sql=resfile+".sql"
-    track.convert((resfile,'bed'),(resfile_sql,'sql'),assembly=params['species'])
-    infos_lib={'assembly_name':params['species'],
-               'enzyme1_id':getEnzymeSeqId(params['primary'],True),
-               'enzyme2_id':getEnzymeSeqId(params['secondary'],True),
-               'segment_length':params['length'],
-               'type':params['type'],
-               'filename':resfile}
-    return [libfiles,bedfiles,resfile,infos_lib,resfile_sql]
 
-def get_libForGrp(ex,group,fasta_or_assembly,new_libraries, job_id, grpId, lib_dir=None):
+    if isinstance(assembly_or_fasta,genrep.Assembly):
+        fasta_path = assembly_or_fasta.fasta_path()
+        tar = tarfile.open(fasta_path)
+        tar.extractall()
+        allfiles = {}
+        for finfo in tar.getmembers():
+            if not finfo.isdir():
+                with open(finfo.name) as fin:
+                    header = fin.readline()
+                hpatt = re.search(r'>(\S+)\s',header)
+                if hpatt:
+                    allfiles[hpatt.groups()[0]] = finfo.name
+#        fasta_file=cat(allfiles)
+        tar.close()
+        chrom_dict = dict([(str(k[0])+"_"+k[1]+"."+str(k[2]),v['name'])
+                            for k,v in assembly_or_fasta.chromosomes.iteritems()])
+        chrnames = assembly_or_fasta.chrnames
+    else:
+        allfiles["lib"] = assembly_or_fasta
+        chrom_dict = {}
+        chrnames = ["lib"]
+
+    libfiles = {}
+    for ch, fasta_file in allfiles.iteritems():
+        chrom = chrom_dict.get(ch,"lib")
+        libfiles[chrom] = getRestEnzymeOccAndSeq.nonblocking( ex, fasta_file,
+                                                              params['primary'], params['secondary'],
+                                                              params['length'],  params['type'], 
+                                                              via=via )
+    resfile = unique_filename_in()
+    os.mkdir(resfile)
+    bedfiles = {}
+    for chrom, future in libfiles.iteritems():
+        libfiles[chrom] = future.wait()
+        bedfiles[chrom] = parse_fragFile(libfiles[chrom][1], chrom_dict)
+    coverageInRepeats(ex, bedfiles, params['species'], outdir=resfile, via=via)
+    bedchrom = [os.path.join(resfile,chrom+".bed") for chrom in chrnames]
+    cat(bedchrom,out=resfile+".bed")
+    gzipfile(ex,[resfile+".bed"]+bedchrom)
+#    resfile_sql = resfile+".sql"
+#    track.convert((resfile,'bed'),(resfile_sql,'sql'),assembly=params['species'])
+    infos_lib = { 'assembly_name':  params['species'],
+                  'enzyme1_id':     getEnzymeSeqId(params['primary'],True),
+                  'enzyme2_id':     getEnzymeSeqId(params['secondary'],True),
+                  'segment_length': params['length'],
+                  'type':           params['type'],
+                  'filename':       resfile }
+    return [ libfiles, bedfiles, resfile, infos_lib ]
+
+def get_libForGrp(ex, group, fasta_or_assembly, new_libraries, grpId, lib_dir=None, via='lsf'):
 #wd_archive="/archive/epfl/bbcf/mleleu/pipeline_vMarion/pipeline_3Cseq/vWebServer_Bein/" #temporary: will be /scratch/cluster/monthly/htsstation/4cseq/job.id
 #os.path.split(ex.remote_working_directory)[0]
     def _libfile(id_lib):
@@ -210,28 +239,30 @@ def get_libForGrp(ex,group,fasta_or_assembly,new_libraries, job_id, grpId, lib_d
     libfile = group.get('library_param_file',False)
     if str(group['library_param_file']).lower() in ['1','true','on','t']: libfile = True
     if libfile:
-        library_filename = os.path.join(lib_dir,'group_' + group['name'] + "_paramsFileLibrary.txt")
-        paramslib=_paramsFile(library_filename);
-        lib_id=lib_exists(paramslib)
-        ex_libfile=lib_exists(paramslib,new_libraries,returnType="filename")
+        library_filename = os.path.join(lib_dir,'group_'+group['name']+"_paramsFileLibrary.txt")
+        paramslib = _paramsFile(library_filename);
+        lib_id = lib_exists(paramslib)
+        ex_libfile = lib_exists(paramslib, new_libraries, returnType="filename")
         if lib_id == 0 and ex_libfile == None :
-            libfiles=createLibrary(ex,fasta_or_assembly,paramslib);
-            reffile=libfiles[4]
-            ex.add(libfiles[2],description=set_file_descr("new_library.bed",groupId=grpId,step="library",type="bed"))
-            ex.add(reffile,description=set_file_descr("new_library.sql",groupId=grpId,step="library",type="sql",view='admin'))
-            new_libraries.append({'library':libfiles[3]})
+            libfiles = createLibrary(ex,fasta_or_assembly,paramslib,via=via);
+            reffile = libfiles[2]
+            ex.add( libfiles[2]+".bed.gz",
+                    description=set_file_descr( group['name']+"_new_library.bed.gz", groupId=grpId,
+                                                step="library", type="bed" ))
+#            ex.add(reffile,description=set_file_descr("new_library.sql",groupId=grpId,step="library",type="sql",view='admin'))
+            new_libraries.append( {'library': libfiles[3]} )
         elif lib_id > 0 :
             reffile=_libfile(lib_id)+".sql"
         else:
             reffile=ex_libfile+".sql"
     elif 'library_id' in group and group['library_id']> 0 and not str(group['library_id'])=="":
-        reffile=_libfile(group['library_id'])
+        reffile = _libfile(group['library_id'])
         if reffile is None:
             raise TypeError("No valid parameter passed for the library.")
         if not(os.path.exists(reffile) or os.path.exists(reffile+'.bed.gz')):
             raise TypeError("library file ("+reffile+") is not valid")
         if not os.path.exists(reffile):
-            reffile=reffile+'.bed.gz'
+            reffile += '.bed.gz'
     elif 'library_file_url' in group and group['library_file_url'] != "" :
         reffile=group['library_file_url']
     else:
