@@ -99,22 +99,22 @@ def parallel_exonerate(ex, subfiles, dbFile, grp_name,
     all_unaligned = []
     def _get_minscore(dbf):
         with open(dbf) as df:
-            firstl = df.read()
-            firstl = df.read()
+            firstl = df.readline()
+            firstl = df.readline()
             primer_len = len(firstl)-1
-## max score = len*5, len/2 mismatches => penalty len/2 * 9 => score = len/2
-            return primer_len/2 
+## max score = len*5, penalty for len/2 mismatches = -9*len/2 => score = len/2
+        return primer_len/2 
 
     my_minscore = _get_minscore(dbFile)
     for sf in futures:
         subResFile = unique_filename_in()
         faSubFiles.append(sf.wait())
         futures2.append(exonerate.nonblocking(ex,faSubFiles[-1],dbFile,minScore=my_minscore,
-                                              n=n,x=x,l=l,via=via,stdout=subResFile,memory=6))
+                                              via=via,stdout=subResFile,memory=6))
         resExonerate.append(subResFile)
     for n,f in enumerate(resExonerate):
         futures2[n].wait()
-        (resSplitExonerate,alignments) = split_exonerate(f,minScore,n=n,x=x,l=l)
+        (resSplitExonerate,alignments) = split_exonerate(f,minScore,l=l)
         all_unaligned.append(alignments["unaligned"])
         all_ambiguous.append(alignments["ambiguous"])
         res.append(resSplitExonerate)
