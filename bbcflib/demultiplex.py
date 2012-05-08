@@ -87,6 +87,14 @@ def exonerate(fastaFile,dbFile,minScore=77):
                          "-o","-4","-e","-12","-s",str(minScore),fastaFile,dbFile],
            'return_value': None}
 
+def _get_minscore(dbf):
+    with open(dbf) as df:
+        firstl = df.readline()
+        firstl = df.readline()
+        primer_len = len(firstl)-1
+## max score = len*5, penalty for len/2 mismatches = -9*len/2 => score = len/2
+    return primer_len/2 
+
 def parallel_exonerate(ex, subfiles, dbFile, grp_name, 
                        minScore=77, n=1, x=22, l=30, via="local"):
     futures=[fastqToFasta.nonblocking(ex,sf,n=n,x=x,via=via) for sf in subfiles]
@@ -97,14 +105,6 @@ def parallel_exonerate(ex, subfiles, dbFile, grp_name,
     faSubFiles = []
     all_ambiguous = []
     all_unaligned = []
-    def _get_minscore(dbf):
-        with open(dbf) as df:
-            firstl = df.readline()
-            firstl = df.readline()
-            primer_len = len(firstl)-1
-## max score = len*5, penalty for len/2 mismatches = -9*len/2 => score = len/2
-        return primer_len/2 
-
     my_minscore = _get_minscore(dbFile)
     for sf in futures:
         subResFile = unique_filename_in()
@@ -120,11 +120,11 @@ def parallel_exonerate(ex, subfiles, dbFile, grp_name,
         res.append(resSplitExonerate)
 
     gzipfile(ex,cat(all_unaligned[1:],out=all_unaligned[0]))
-    gzipfile(ex,cat(all_ambiguous[1:],out=all_ambiguous[0]))
     ex.add(all_unaligned[0]+".gz",
            description=set_file_descr(grp_name+"_unaligned.txt.gz",
                                       group=grp_name,step="exonerate",type="txt",
                                       view="admin", comment="scores between %i and %i"%(my_minscore,minScore)) )
+    gzipfile(ex,cat(all_ambiguous[1:],out=all_ambiguous[0]))
     ex.add(all_ambiguous[0]+".gz",
            description=set_file_descr(grp_name+"_ambiguous.txt.gz",
                                       group=grp_name,step="exonerate",type="txt",
