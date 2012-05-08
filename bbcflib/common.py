@@ -197,7 +197,7 @@ try:
     def coverageBed(file1,file2):
         """Binds ``coverageBed`` from the 'BedTools' suite.
         """
-        return {"arguments": ['coverageBed','-a',file1,'-b',file2], "return_value":None}
+        return {"arguments": ['coverageBed','-a',file1,'-b',file2], "return_value": None}
 
         #-------------------------------------------------------------------------#
     @program

@@ -95,7 +95,7 @@ def parallel_exonerate(ex, subfiles, dbFile, grp_name,
     res = []
     resExonerate = []
     faSubFiles = []
-    all_ambigous = []
+    all_ambiguous = []
     all_unaligned = []
     def _get_minscore(dbf):
         with open(dbf) as df:
@@ -143,7 +143,7 @@ def parallel_exonerate(ex, subfiles, dbFile, grp_name,
 
     resFiles = dict((k,'') for d in res for k in d.keys())
     for k in resFiles.keys():
-        v = [d[k] for d in exonerated if k in d]
+        v = [d[k] for d in res if k in d]
         resFiles[k] = cat(v[1:],out=v[0])
 
     return resFiles
