@@ -149,39 +149,66 @@ class Job(object):
             raise KeyError("No such group with ID "+str(group))
 
 
-def parseConfig( file ):
-    """Constructs a Job object from parsing a text config file with ConfigObj.
+def parseConfig( file, job=None, gl=None ):
+    """Constructs or updates a Job object from parsing a text config file with ConfigObj.
     """
     from configobj import ConfigObj
-    import time
 
     config = ConfigObj( file, unrepr=True )
-    if not('Job' in config and 'Groups' in config and 'Runs' in config):
+
+    if not(job or ('Job' in config and 'Groups' in config and 'Runs' in config)):
         raise ValueError("Need 'Job', 'Groups' and 'Runs' sections in the configuration, only had: "+", ".join(config.keys()))
-    job = Job(
-        id = int(config['Job'].get('id',0)),
-        created_at = int(time.time()),
-        key = config['Job'].get('key','userconfig'),
-        assembly_id = config['Job']['assembly_id'],
-        description = str(config['Job'].get('description')),
-        email = str(config['Job'].get('email')),
-        options = config.get('Options',{}))
-    for gid, group in config['Groups'].iteritems():
+    id = 0
+    created_at = datetime.now()
+    key = 'userconfig'
+    assembly_id = None
+    description = None
+    email = None
+    options = {}
+    if isinstance(job,Job):
+        id = job.id
+        created_at = job.created_at
+        key = job.key
+        assembly_id = job.assembly_id
+        description = job.description
+        email = job.email
+        options = job.options
+    if 'Job' in config:
+        id = int(config['Job'].get('id',id))
+        key = config['Job'].get('key',key)
+        assembly_id = config['Job'].get('assembly_id',assembly_id)
+        description = str(config['Job'].get('description',description))
+        email = str(config['Job'].get('email',email))
+    if isinstance(config.get('Options'),dict):
+        for k,v in config['Options'].iteritems():
+            if k in options:
+                if not v: continue
+                if isinstance(v,dict):
+                    for k2, v2 in v.iteritems():
+                        if v2: options[k][k2] = v2
+                    continue
+            options[k] = v
+    newjob = Job( id, created_at, key, assembly_id, description, email, options )
+    if isinstance(job,Job): newjob.groups = job.groups
+    for gid, group in config.get('Groups',{}).iteritems():
         if not('name' in group):
             raise ValueError("Each entry in 'Groups' must have a 'name'")
         if isinstance(group.get('control'),str):
             group['control'] = group['control'].lower() in ['1','true','t']
         else:
             group['control'] = False
-        job.add_group(id=int(gid),name=group.pop('name'),group=group)
+        newjob.add_group(id=int(gid),name=group.pop('name'),group=group)
 
-    for rid, run in config['Runs'].iteritems():
+    for rid, run in config.get('Runs',{}).iteritems():
         if not('group_id' in run):
             raise ValueError("Each entry in 'Runs' must have a 'group_id'")
         run['group_id'] = int(run['group_id'])
-        job.add_run(id=int(rid),**run)
-    globals = config.get('Global variables',{})
-    return (job,globals)
+        newjob.add_run(id=int(rid),**run)
+    newgl = config.get('Global variables',{})
+    if gl is None: gl = {}
+    for k,v in gl.iteritems():
+        if not(k in newgl): newgl[k] = v
+    return (newjob,newgl)
 
 #-----------------------------------#
 # This code was written by the BBCF #
