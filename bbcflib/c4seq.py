@@ -57,12 +57,12 @@ def _RCMD(path,script):
 def profileCorrection( inputFile, baitCoord, name, outputFile, reportFile, script_path='' ):
     time.sleep(60)
     args = _RCMD(script_path,"profileCorrection.R")+[inputFile,baitCoord,name,outputFile,reportFile]
-    return {'arguments': args, 'return_value':None}
+    return {'arguments': args, 'return_value': None}
 
 @program
 def smoothFragFile( inputFile, nFragsPerWin, curName, outputFile, regToExclude="", script_path='' ):
     args = _RCMD(script_path,"smoothData.R")+[inputFile,str(nFragsPerWin),curName,outputFile,regToExclude]
-    return {'arguments': args, 'return_value':None}
+    return {'arguments': args, 'return_value': None}
 
 @program
 def runDomainogram( infile, name, prefix=None, regCoord="", 
@@ -84,7 +84,7 @@ def density_to_countsPerFrag( ex, file_dict, groups, assembly, regToExclude, scr
         reffile = file_dict['lib'][gid]
 #	scores = track.track(density_file)
         gm_futures = []
-	for ch in assembly.chrnames:
+        for ch in assembly.chrnames:
             chref = os.path.join(reffile,ch+".bed.gz")
             if not(os.path.exists(chref)): chref = reffile
 #            features = track.track(chref,'bed')
@@ -99,7 +99,7 @@ def density_to_countsPerFrag( ex, file_dict, groups, assembly, regToExclude, scr
                                                   "chromosome":ch})+"'"}
             gm_futures.append(gMiner_run.nonblocking(ex,gMiner_job,via=via))
         outsql = unique_filename_in()+".sql"
-	sqlouttr = track.track( outsql, chrmeta=assembly.chrmeta, 
+        sqlouttr = track.track( outsql, chrmeta=assembly.chrmeta, 
                                 info={'datatype':'quantitative'},
                                 fields=['start', 'end', 'score'] )
         outbed_all = []
@@ -110,12 +110,13 @@ def density_to_countsPerFrag( ex, file_dict, groups, assembly, regToExclude, scr
             sqlouttr.write( outbed.read(fields=['start', 'end', 'score'],
                                         selection={'score':(0.01,sys.maxint)}),
                             chrom=assembly.chrnames[n] )
-	sqlouttr.close()
+        sqlouttr.close()
         countsPerFragFile = unique_filename_in()+".bed"
         cat(outbed_all,out=countsPerFragFile)
         results[gid] = [ countsPerFragFile, outsql ]
-	FragFile = unique_filename_in()
- 	futures[gid] = (FragFile,
+        FragFile = unique_filename_in()
+        touch(ex,FragFile)
+        futures[gid] = (FragFile,
                         segToFrag.nonblocking( ex, countsPerFragFile, regToExclude[gid], 
                                                script_path, via=via, stdout=FragFile ))
     def _parse_select_frag(stream):
@@ -197,8 +198,11 @@ def workflow_groups( ex, job, primers_dict, assembly, mapseq_files, mapseq_url,
     futures = {}
     for gid, group in job_groups.iteritems():
         file1 = unique_filename_in()
+        touch(ex,file1)
         file2 = unique_filename_in()
+        touch(ex,file2)
         file3 = unique_filename_in()
+        touch(ex,file3)
         nFragsPerWin = group['window_size']
         resfile = unique_filename_in()+".bedGraph"
         track.convert(processed['4cseq']['countsPerFrag'][gid][3],resfile)
@@ -218,6 +222,7 @@ def workflow_groups( ex, job, primers_dict, assembly, mapseq_files, mapseq_url,
          nFragsPerWin = job_groups[gid]['window_size']
          grName = job_groups[gid]['name']+"_fromProfileCorrected"
          file4 = unique_filename_in()
+         touch(ex,file4)
          processed['4cseq']['smoothFrag'][gid].append(file4)
          futures2[gid] = (smoothFragFile.nonblocking( ex, profileCorrectedFile, nFragsPerWin, grName,
                                                       file4, regToExclude[gid], script_path, via=via ), )
@@ -229,8 +234,8 @@ def workflow_groups( ex, job, primers_dict, assembly, mapseq_files, mapseq_url,
                                                                script_path=script_path, via=via, memory=10 ), )
              else:
                  futures2[gid] += (runDomainogram.nonblocking( ex, profileCorrectedFile, job_groups[gid]['name'],
-                                                               regCoord=regCoord.split(':')[0], 
-                                                               skip=1, script_path=script_path, via=via, memory=10 ), )
+                                                               regCoord=regCoord.split(':')[0], skip=1, 
+                                                               script_path=script_path, via=via, memory=10 ), )
     for gid, f in futures2.iteritems():
         futures[gid][1].wait()
         f[0].wait()
