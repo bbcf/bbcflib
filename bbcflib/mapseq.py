@@ -1296,7 +1296,10 @@ def get_bam_wig_files( ex, job, minilims=None, hts_url=None, suffix=['fwd','rev'
             if ('read_extension' in job.options) and (read_exts.get(rid) != job.options['read_extension']):
                 mapped_files[gid][rid]['wig'] = []
             if not(isinstance(mapped_files[gid][rid]['stats'],dict)):
-                stats = mapped_files[gid][rid]['stats'].wait()
+                try:
+                    stats = mapped_files[gid][rid]['stats'].wait()
+                except Exception as ex:
+                    print "\nError:", ex,"\n"; raise
                 mapped_files[gid][rid]['stats'] = stats
                 grname = mapped_files[gid][rid]['libname']
                 pdf = add_pdf_stats( ex, {gid:{rid:{'stats':stats}}},
