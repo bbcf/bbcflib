@@ -213,9 +213,9 @@ def workflow_groups(ex, job, gl, file_path="../", via='lsf'):
                   for loc,pwd in gl['lims']['passwd'].iteritems())
     else:
         dafl=None
-	
+
     job=get_fastq_files(ex, job, dafl)
-	
+
     file_names = {}
     job_groups=job.groups
     resFiles={}

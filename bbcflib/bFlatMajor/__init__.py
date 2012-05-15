@@ -47,7 +47,7 @@ def run(**kwargs):
     module = _map(funct)
     if module is None:
         raise ValueError("No such operation %s." %funct)
-    output = kwargs.pop("output","./")
+    output = kwargs.pop("output","./") or "./"
     if os.path.isdir(output):
         output = os.path.join(output,unique_filename_in(output)+".sql")
         format = "sql"

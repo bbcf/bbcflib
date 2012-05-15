@@ -134,11 +134,12 @@ def lib_exists( params, libs_dict=None, path=GlobalLibPath ):
     for lib in libs_dict:
         enz1=getEnzymeSeqId(lib['library']['enzyme1_id'],False,enzymes_dict)
         enz2=getEnzymeSeqId(lib['library']['enzyme2_id'],False,enzymes_dict)
-		#temporary...
-        if not 'type' in lib['library']: lib['library']['type']='typeI'
-        if params['species']==lib['library']['assembly_name'] and params['primary']==enz1 and params['secondary']==enz2 and int(params['length'])==int(lib['library']['segment_length']) and params['type']==lib['library']['type']:
-            return (lib['library']['id'], lib['library']['filename'])
-
+        if params['species'] == lib['library']['assembly_name'] \
+                and params['primary'] == enz1 \
+                and params['secondary'] == enz2 \
+                and int(params['length']) == int(lib['library']['segment_length']) \
+                and params['type'] == lib['library'].get('type','typeI'):
+            return (lib['library'].get('id',0), lib['library'].get('filename'))
     return (0, None)
 
 def createLibrary(ex, assembly_or_fasta, params, via='local'):
@@ -245,9 +246,9 @@ def get_libForGrp(ex, group, fasta_or_assembly, new_libraries, grpId, lib_dir=No
 #            ex.add(reffile,description=set_file_descr("new_library.sql",groupId=grpId,step="library",type="sql",view='admin'))
             new_libraries.append( {'library': libfiles[3]} )
         elif lib_id > 0 :
-            reffile = _libfile(lib_id)+".sql"
+            reffile = _libfile(lib_id)
         else:
-            reffile = ex_libfile+".sql"
+            reffile = ex_libfile
     elif 'library_id' in group and group['library_id']> 0 and not str(group['library_id'])=="":
         reffile = _libfile(group['library_id'])
         if reffile is None:
