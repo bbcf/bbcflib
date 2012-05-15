@@ -11,10 +11,10 @@ import bbcflib.btrack as track
 from bbcflib import genrep
 from bbcflib.common import cat, set_file_descr, unique_filename_in, coverageBed, gzipfile
 from bbcflib.bFlatMajor.common import sorted_stream
-import os, json, re
-import tarfile
+import os, json, re, tarfile, urllib2
 
-GlobalLibPath="/archive/epfl/bbcf/data/genomes/4cLibraries"
+#GlobalLibPath="/archive/epfl/bbcf/data/genomes/4cLibraries"
+hts_url="http://htsstation.epfl.ch/4cseq/" 
 GlobalRepbasePath="/archive/epfl/bbcf/data/genomes/repeats"
 
 @program
@@ -101,13 +101,13 @@ def coverageInRepeats(ex, infile, genomeName='mm9', repeatsPath=GlobalRepbasePat
     else: resfile = outdir
     return resfile
 
-def getEnzymeSeqId(enzyme_id,byId=False,enzymes_dict=None,libpath=GlobalLibPath):
+def getEnzymeSeqId(enzyme_id,byId=False,enzymes_list=[],url=hts_url):
     '''
     Returns the restriction site corresponding to a given enzyme id (from existing enzymes)
     '''
-    if not(isinstance(enzymes_dict,list)):
-        with open(os.path.join(libpath,'enzymes.json')) as g:
-            enzymes_dict=json.load(g)
+    
+    if len(enzymes_list) == 0 and not(url is None): 
+        enzymes_list.extend( json.load(urllib2.urlopen( url+"/enzymes.json" )) )
     if byId:
         src = 'site'
         trg = 'id'
@@ -116,24 +116,23 @@ def getEnzymeSeqId(enzyme_id,byId=False,enzymes_dict=None,libpath=GlobalLibPath)
         src = 'id'
         trg = 'site'
         default = None
-    for x in enzymes_dict:
+    for x in enzymes_list:
         for v in x.values():
             if v[src]==enzyme_id:
                 return v[trg]
     return default
 
-def lib_exists( params, libs_dict=None, path=GlobalLibPath ):
+def lib_exists( params, libs_list=None, url=hts_url ):
     '''
     Return id or filename corresponding to the library described in params.
     '''
-    if not(isinstance(libs_dict,list)):
-        with open(os.path.join(path,'libraries.json')) as f:
-            libs_dict = json.load(f)
-    with open(os.path.join(path,'enzymes.json')) as g:
-        enzymes_dict=json.load(g)
-    for lib in libs_dict:
-        enz1=getEnzymeSeqId(lib['library']['enzyme1_id'],False,enzymes_dict)
-        enz2=getEnzymeSeqId(lib['library']['enzyme2_id'],False,enzymes_dict)
+    if not(isinstance(libs_list,list) or url is None):
+#        with open(os.path.join(path,'libraries.json')) as f:
+        libs_list = json.load(urllib2.urlopen( url+"/libraries.json" ))
+    enzymes_list = []
+    for lib in libs_list:
+        enz1=getEnzymeSeqId(lib['library']['enzyme1_id'],False,enzymes_list,hts_url)
+        enz2=getEnzymeSeqId(lib['library']['enzyme2_id'],False,enzymes_list,hts_url)
         if params['species'] == lib['library']['assembly_name'] \
                 and params['primary'] == enz1 \
                 and params['secondary'] == enz2 \
@@ -142,7 +141,7 @@ def lib_exists( params, libs_dict=None, path=GlobalLibPath ):
             return (lib['library'].get('id',0), lib['library'].get('filename'))
     return (0, None)
 
-def createLibrary(ex, assembly_or_fasta, params, via='local'):
+def createLibrary(ex, assembly_or_fasta, params, hts_url=hts_url, via='local'):
     '''
     Main call to create the library
     '''
@@ -192,22 +191,22 @@ def createLibrary(ex, assembly_or_fasta, params, via='local'):
     gzipfile(ex,[resfile+".bed"]+bedchrom)
 #    resfile_sql = resfile+".sql"
 #    track.convert((resfile,'bed'),(resfile_sql,'sql'),assembly=params['species'])
+    enz_list = []
     infos_lib = { 'assembly_name':  params['species'],
-                  'enzyme1_id':     getEnzymeSeqId(params['primary'],True),
-                  'enzyme2_id':     getEnzymeSeqId(params['secondary'],True),
+                  'enzyme1_id':     getEnzymeSeqId(params['primary'],True,enz_list,hts_url),
+                  'enzyme2_id':     getEnzymeSeqId(params['secondary'],True,enz_list,hts_url),
                   'segment_length': params['length'],
                   'type':           params['type'],
                   'filename':       resfile }
     return [ libfiles, bedfiles, resfile, infos_lib ]
 
-def get_libForGrp(ex, group, fasta_or_assembly, new_libraries, grpId, lib_dir=None, via='lsf'):
+def get_libForGrp(ex, group, fasta_or_assembly, new_libraries, grpId, hts_url=None, lib_dir=None, via='lsf'):
 #wd_archive="/archive/epfl/bbcf/mleleu/pipeline_vMarion/pipeline_3Cseq/vWebServer_Bein/" #temporary: will be /scratch/cluster/monthly/htsstation/4cseq/job.id
 #os.path.split(ex.remote_working_directory)[0]
     def _libfile(id_lib):
-        with open(os.path.join(GlobalLibPath,'libraries.json')) as f: 
-            libs_dict = json.load(f)
-            #id_lib=13
-        for lib in libs_dict:
+        if hts_url is None: return None
+        libs_list = json.load(urllib2.urlopen( hts_url+"/libraries.json" ))
+        for lib in libs_list:
             if lib['library']['id']==int(id_lib):
                 return lib['library']['filename']
         return None
@@ -231,14 +230,15 @@ def get_libForGrp(ex, group, fasta_or_assembly, new_libraries, grpId, lib_dir=No
         return paramslib
 
     if lib_dir is None: lib_dir = os.path.split(ex.remote_working_directory)[0]
-    libfile = group.get('library_param_file',False)
+    libfile = group.get('library_param_file','F')
     if str(group['library_param_file']).lower() in ['1','true','on','t']: libfile = True
+    else: libfile = False
     if libfile:
         library_filename = os.path.join(lib_dir,'group_'+group['name']+"_paramsFileLibrary.txt")
         paramslib = _paramsFile(library_filename)
-        lib_id, ex_libfile = lib_exists( paramslib, new_libraries )
+        lib_id, ex_libfile = lib_exists( paramslib, new_libraries, hts_url )
         if lib_id == 0 and ex_libfile == None :
-            libfiles = createLibrary(ex,fasta_or_assembly,paramslib,via=via);
+            libfiles = createLibrary(ex,fasta_or_assembly,paramslib,hts_url,via=via)
             reffile = libfiles[2]
             ex.add( libfiles[2]+".bed.gz",
                     description=set_file_descr( group['name']+"_new_library.bed.gz", groupId=grpId,

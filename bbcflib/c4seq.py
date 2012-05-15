@@ -142,7 +142,7 @@ def density_to_countsPerFrag( ex, file_dict, groups, assembly, regToExclude, scr
 
 ############################################################################
 def workflow_groups( ex, job, primers_dict, assembly, mapseq_files, mapseq_url, 
-                     script_path='', logfile=None, via='lsf' ):
+                     4c_url=None, script_path='', logfile=None, via='lsf' ):
     '''
     Main 
     * open the 4C-seq minilims and create execution
@@ -169,7 +169,9 @@ def workflow_groups( ex, job, primers_dict, assembly, mapseq_files, mapseq_url,
         before_profile_correction = (before_profile_correction.lower() in ['1','true','on','t'])
 ### do it
     for gid, group in job_groups.iteritems():
-        processed['lib'][gid] = createlib.get_libForGrp(ex, group, assembly, new_libs, gid, via=via)
+        processed['lib'][gid] = createlib.get_libForGrp(ex, group, assembly, 
+                                                        new_libs, gid, 4c_url,
+                                                        via=via)
 #reffile='/archive/epfl/bbcf/data/DubouleDaan/library_Nla_30bps/library_Nla_30bps_segmentInfos.bed'
         density_files = []
         regToExclude[gid] = primers_dict.get(group['name'],{}).get('regToExclude',"").replace('\r','')

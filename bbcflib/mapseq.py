@@ -35,7 +35,7 @@ Below is the script used by the frontend::
     M = MiniLIMS( limspath )
     working_dir = '/path/to/scratch/on/cluster'
     hts_key = 'test_key'
-    gl = { 'hts_mapseq': {'url': 'http://htsstation.vital-it.ch/mapseq/'},
+    gl = { 'hts_mapseq': {'url': 'http://htsstation.epfl.ch/mapseq/'},
            'genrep_url': 'http://bbcftools.vital-it.ch/genrep/',
            'bwt_root': '/db/genrep/',
            'script_path': '/srv/chipseq/lib',

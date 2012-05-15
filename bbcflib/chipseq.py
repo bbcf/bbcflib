@@ -20,8 +20,8 @@ Below is the script used by the frontend::
     working_dir = '/path/to/scratch/on/cluster'
     hts_key = 'test_key'
     assembly_id = 'mm9'
-    gl = { 'hts_chipseq': {'url': 'http://htsstation.vital-it.ch/chipseq/'},
-           'hts_mapseq': {'url': 'http://htsstation.vital-it.ch/mapseq/'},
+    gl = { 'hts_chipseq': {'url': 'http://htsstation.epfl.ch/chipseq/'},
+           'hts_mapseq': {'url': 'http://htsstation.epfl.ch/mapseq/'},
            'script_path': '/srv/chipseq/lib' }
     htss = frontend.Frontend( url=gl['hts_chipseq']['url'] )
     job = htss.job( hts_key )
