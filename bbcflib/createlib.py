@@ -10,6 +10,7 @@ from bein import program
 import bbcflib.btrack as track
 from bbcflib import genrep
 from bbcflib.common import cat, set_file_descr, unique_filename_in, coverageBed, gzipfile
+from bbcflib.bFlatMajor.common import sorted_stream
 import os, json, re
 import tarfile
 
@@ -89,12 +90,11 @@ def coverageInRepeats(ex, infile, genomeName='mm9', repeatsPath=GlobalRepbasePat
             resfile = os.path.join(outdir,chrom+".bed")
             outf = open(resfile,'w')
         fut[1].wait()
-        with open(fut[0],'r') as f:
-            for s in f:
-                s = s.strip().split('\t')
-                s_split = s[3].split('|')
-                infos = '|'.join(s_split[0:(len(s_split)-4)]+s[4:8])
-                outf.write('\t'.join(s[0:3]+[infos])+'\n')
+        coverout = track.track(fut[0],format='text',fields=['chr','start','end','name','c1','c2','c3','c4'])
+        for s in sorted_stream(coverout.read(),[chrom]):
+            s_split = s[3].split('|')
+            infos = '|'.join(s_split[0:(len(s_split)-4)]+list(s[4:7]))
+            outf.write('\t'.join([str(x) for x in s[0:3]+(infos,)])+'\n')
         if not(outdir is None): 
             outf.close()
     if outdir is None: outf.close()
@@ -122,11 +122,11 @@ def getEnzymeSeqId(enzyme_id,byId=False,enzymes_dict=None,libpath=GlobalLibPath)
                 return v[trg]
     return default
 
-def lib_exists(params,libs_dict=None,path=GlobalLibPath,returnType="id"):
+def lib_exists( params, libs_dict=None, path=GlobalLibPath ):
     '''
     Return id or filename corresponding to the library described in params.
     '''
-    if not(isinstance(libs_dict,dict)):
+    if not(isinstance(libs_dict,list)):
         with open(os.path.join(path,'libraries.json')) as f:
             libs_dict = json.load(f)
     with open(os.path.join(path,'enzymes.json')) as g:
@@ -137,15 +137,9 @@ def lib_exists(params,libs_dict=None,path=GlobalLibPath,returnType="id"):
 		#temporary...
         if not 'type' in lib['library']: lib['library']['type']='typeI'
         if params['species']==lib['library']['assembly_name'] and params['primary']==enz1 and params['secondary']==enz2 and int(params['length'])==int(lib['library']['segment_length']) and params['type']==lib['library']['type']:
-            if returnType=="id":
-                return lib['library']['id']
-            else:
-                return lib['library']['filename']
+            return (lib['library']['id'], lib['library']['filename'])
 
-    if returnType == "id" :
-        return 0
-    else:
-        return None
+    return (0, None)
 
 def createLibrary(ex, assembly_or_fasta, params, via='local'):
     '''
@@ -240,9 +234,8 @@ def get_libForGrp(ex, group, fasta_or_assembly, new_libraries, grpId, lib_dir=No
     if str(group['library_param_file']).lower() in ['1','true','on','t']: libfile = True
     if libfile:
         library_filename = os.path.join(lib_dir,'group_'+group['name']+"_paramsFileLibrary.txt")
-        paramslib = _paramsFile(library_filename);
-        lib_id = lib_exists(paramslib)
-        ex_libfile = lib_exists(paramslib, new_libraries, returnType="filename")
+        paramslib = _paramsFile(library_filename)
+        lib_id, ex_libfile = lib_exists( paramslib, new_libraries )
         if lib_id == 0 and ex_libfile == None :
             libfiles = createLibrary(ex,fasta_or_assembly,paramslib,via=via);
             reffile = libfiles[2]
@@ -252,9 +245,9 @@ def get_libForGrp(ex, group, fasta_or_assembly, new_libraries, grpId, lib_dir=No
 #            ex.add(reffile,description=set_file_descr("new_library.sql",groupId=grpId,step="library",type="sql",view='admin'))
             new_libraries.append( {'library': libfiles[3]} )
         elif lib_id > 0 :
-            reffile=_libfile(lib_id)+".sql"
+            reffile = _libfile(lib_id)+".sql"
         else:
-            reffile=ex_libfile+".sql"
+            reffile = ex_libfile+".sql"
     elif 'library_id' in group and group['library_id']> 0 and not str(group['library_id'])=="":
         reffile = _libfile(group['library_id'])
         if reffile is None:
