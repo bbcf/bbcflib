@@ -326,7 +326,7 @@ def workflow_groups( ex, job_or_dict, mapseq_files, assembly, script_path='',
                              chrmeta=chrlist, fields=_fields).read(selection=_select)
                  for x in names['controls']])
         ##############################
-        macs_neighb = gm_stream.neighborhood(macsbed, before_start=150, after_end=150 )
+        macs_neighb = gm_stream.neighborhood( macsbed, before_start=150, after_end=150 )
         peak_list[name] = common.unique_filename_in()+".sql"
         macs_final = track.track( peak_list[name], chrmeta=chrlist,
                                   info={'datatype':'qualitative'},

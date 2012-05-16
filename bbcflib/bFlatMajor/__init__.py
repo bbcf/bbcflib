@@ -89,7 +89,8 @@ def run(**kwargs):
                 kwargs[targ] = [t.read(selection=chr) for t in trackSet[targ]]
             funct_output = getattr(smod, funct)(**kwargs)
             for n,stream in enumerate(funct_output):
-                track.track(files[n],chrmeta=chrmeta).write(stream,chrom=chr)
+                track.track(files[n],chrmeta=chrmeta).write(stream,chrom=chr,
+                                                            mode='append')
     else:
         files = output
         fields = funct_output.fields
@@ -99,6 +100,7 @@ def run(**kwargs):
             for targ in getattr(smod, module)().loadable(funct):
                 kwargs[targ] = [t.read(selection=chr) for t in trackSet[targ]]
             funct_output = getattr(smod, funct)(**kwargs)
-            track.track(files,chrmeta=chrmeta).write(funct_output,chrom=chr)
+            track.track(files,chrmeta=chrmeta).write(funct_output,chrom=chr,
+                                                     mode='append')
     return files
     

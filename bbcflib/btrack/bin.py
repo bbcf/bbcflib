@@ -50,7 +50,7 @@ class BigWigTrack(BinTrack):
     def close(self):
         if os.path.exists(self.bedgraph): os.remove(self.bedgraph)
 
-    def read(self, selection=None, fields=None):
+    def read(self, selection=None, fields=None, **kw):
         self.open()
         if not(fields): fields = self.fields
         fields = [f for f in self.fields if f in fields]
@@ -63,7 +63,7 @@ class BigWigTrack(BinTrack):
         return track(self.bedgraph,format='bedGraph',
                      chrmeta=self.chrmeta,info=self.info).read(fields=fields)
 
-    def write(self, source, fields=None):
+    def write(self, source, fields=None, **kw):
         chrfile = tempfile.NamedTemporaryFile(dir='./',delete=False)
         for c,v in self.chrmeta.iteritems():
             chrfile.write("%s %i\n"%(c,v['length']))
@@ -108,7 +108,7 @@ try:
         def close(self):
             self.filehandle.close()
 
-        def read(self, selection=None, fields=None):
+        def read(self, selection=None, fields=None, **kw):
             self.open()
             if not(isinstance(selection,(list,tuple))):
                 selection = [selection]
@@ -128,7 +128,7 @@ try:
                 self.close()
             return FeatureStream(_bamrecord(self.filehandle,srcl),fields)
 
-        def write(self, source, fields):
+        def write(self, source, fields, **kw):
             raise NotImplementedError("Writing to bam is not implemented.")
 
 except ImportError: print "Warning: 'pysam' not installed, 'bam' format unavailable."

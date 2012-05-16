@@ -175,7 +175,7 @@ class SqlTrack(Track):
             for x in cursor: yield x
 
 
-    def read(self, selection=None, fields=None, order='start,end', cursor=False):
+    def read(self, selection=None, fields=None, order='start,end', cursor=False, **kw):
         if selection is None:
             selection = sorted(self.chrmeta.keys())
         if isinstance(selection, (basestring,dict)): 
@@ -211,7 +211,7 @@ class SqlTrack(Track):
                              _fields)
 
 ################################ Write ##########################################
-    def write(self, source, fields=None, chrom=None):
+    def write(self, source, fields=None, chrom=None, **kw):
         if not(self._prepare_db()):
             raise IOError("Cannot write database %s, readonly is %s."%(self.path,self.readonly))
         if hasattr(source, 'fields'):

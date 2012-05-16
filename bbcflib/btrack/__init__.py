@@ -215,10 +215,10 @@ class Track(object):
     def close(self):
         pass
 
-    def read(self):
+    def read(self, **kw):
         pass
 
-    def write(self):
+    def write(self, **kw):
         pass
 
     def read_shuffled(self, repeat_number=1, **kwargs):

@@ -119,7 +119,7 @@ class TextTrack(Track):
             raise ValueError("Bad line in file %s:\n %s\n"%(self.path,row))
         self.close()
                 
-    def read(self, selection=None, fields=None):
+    def read(self, selection=None, fields=None, **kw):
         if fields is None:
             fields = self.fields
             ilist = range(len(self.fields))
@@ -151,7 +151,7 @@ class TextTrack(Track):
             vec[j] = self.outtypes.get(self.fields[j],str)(row[source_list[i]])
         return self.separator.join(vec)
 
-    def write(self, source, fields=None, mode='write', chrom=None):
+    def write(self, source, fields=None, mode='write', chrom=None, **kw):
         if self.separator is None:
             self.separator = "\t"
         if hasattr(source, 'fields'):
