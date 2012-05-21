@@ -23,10 +23,11 @@ def concatenate(trackList, fields=None):
 
     def _knead(_t,N):
         current = [x.next()[:N] for x in _t]
-        n = _find_min(current)
-        if current[n][0] == sys.maxint: return
-        yield current[n]
-        current[n] = _t[n].next()[:N]
+        while (1):
+            n = _find_min(current)
+            if current[n][0] == sys.maxint: return
+            yield current[n]
+            current[n] = _t[n].next()[:N]
     
     if fields is None:
         fields = [f for f in tracks[0].fields if all(f in t.fields for t in tracks[1:])]
