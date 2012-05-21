@@ -52,7 +52,6 @@ __all__ = ['Track','track','FeatureStream','strand_to_int','int_to_strand','form
            'ucsc_to_ensembl','ensembl_to_ucsc',]
 
 import sys, os, re
-from bbcflib import genrep
 
 _track_map = {
     'sql': ('bbcflib.btrack.sql','SqlTrack'),
@@ -187,6 +186,7 @@ class Track(object):
             kwargs['outtypes']['start'] = ensembl_to_ucsc
 
     def _get_chrmeta(self,chrmeta=None):
+        from bbcflib import genrep
         if isinstance(chrmeta,dict):
             return chrmeta
         if isinstance(chrmeta,basestring):

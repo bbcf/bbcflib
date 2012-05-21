@@ -392,7 +392,6 @@ def workflow_groups( ex, job_or_dict, mapseq_files, assembly, script_path='',
             processed['deconv'][name] = deconv
     for name, plist in peak_list.iteritems():
         ptrack = track.track(plist)
-        annotations = track.track(assembly.sqlite_path())
         peakfile = common.unique_filename_in()
         touch(ex,peakfile)
         peakout = track.track(peakfile, format='txt', 
@@ -401,7 +400,7 @@ def workflow_groups( ex, job_or_dict, mapseq_files, assembly, script_path='',
         for chrom in assembly.chrnames:
             peakout.write(gm_stream.getNearestFeature(
                     ptrack.read(selection=chrom), 
-                    annotations.read(selection=chrom)),mode='append')
+                    assembly.gene_track(chrom)),mode='append')
         peakout.close()
         common.gzipfile(ex,peakfile)
         ex.add(peakfile+".gz", 

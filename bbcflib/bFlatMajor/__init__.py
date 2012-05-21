@@ -1,7 +1,6 @@
 __all__ = ['bFlatMajorGroup']
 
 import os, sys
-from bbcflib import genrep
 from bbcflib import btrack as track
 from bbcflib.common import unique_filename_in
 
@@ -37,6 +36,7 @@ def run(**kwargs):
         run(operation="mean_score_by_feature", output="score_output.bed",
             chromosome="chr1", trackScores="density_file.sql", trackFeatures="genes.sql")
     """
+    from bbcflib import genrep
     def _map(fct):
         for module in _module_list:
             __import__(_here+module)
