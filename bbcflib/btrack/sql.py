@@ -148,7 +148,11 @@ class SqlTrack(Track):
                 query.append(str(k)+" >= "+str(v[0]))
                 query.append(str(k)+" <= "+str(v[1]))
             else:
-                query.append(str(k)+" = "+str(v))
+                if isinstance(v,basestring):
+                    str_val = "'%s'" %v
+                else:
+                    str_val = str(v)
+                query.append(str(k)+" = "+str_val)
         return " AND ".join(query)
 
     def _read(self, cursor, fields, selection, order, add_chr):
