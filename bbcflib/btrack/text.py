@@ -220,7 +220,7 @@ class SgaTrack(TextTrack):
     def __init__(self,path,**kwargs):
         kwargs['format'] = 'sga'
         kwargs['fields'] = ['chr','start','end','name','strand','counts']
-        kwargs['intypes'] = {'counts': int}
+        kwargs['intypes'] = {'counts': int, 'strand': int}
         TextTrack.__init__(self,path,**kwargs)
         self.chromosomes = {}
         if self.assembly:
@@ -269,14 +269,15 @@ class SgaTrack(TextTrack):
         chrom = self.chromosomes.get(chrom,chrom)
         start = row[source_list[1]]
         end = row[source_list[2]]
-        name = row[source_list[3]]
-        strand = row[source_list[4]]
-        counts = row[source_list[5]]
+        other = ['',0,0]
+        for n,x in enumerate(source_list[3:]):
+            other[n] = row[x]
         feat = []
         for pos in range(start,end):
-            x = [chrom,name,self.outtypes.get("start",str)(pos+1),
-                 self.outtypes.get("strand",str)(strand),
-                 self.outtypes.get("counts",str)(counts)]
+            x = [chrom,other[0],
+                 self.outtypes.get("start",str)(pos+1),
+                 self.outtypes.get("strand",str)(other[1]),
+                 self.outtypes.get("counts",str)(other[2])]
             feat.append(self.separator.join(x))
         return "\n".join(feat)
 
