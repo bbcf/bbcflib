@@ -67,9 +67,10 @@ def generic_merge(x):
     if isinstance(x[0],basestring):
         return "|".join(x)
     if isinstance(x[0],tuple):
+        x0 = x[0]
         for y in x[1:]:
-            x[0] += tuple(y)
-        return x[0]
+            x0 += tuple(y)
+        return x0
 
 aggreg_functions = {'strand': strand_merge, 'chr': no_merge}
 

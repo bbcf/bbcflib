@@ -106,17 +106,23 @@ def convert( source, target, assembly=None, chrmeta=None ):
     ttrg.close()
     tsrc.close()
 
-def concat_fields( stream, infields, outfield='name', separator='|' ):
+def concat_fields( stream, infields, outfield='name', separator='|', as_tuple=False ):
     _infields = [f for f in stream.fields if not(f in infields)]
     in_out_indx = [stream.fields.index(f) for f in _infields]
-    if not(outfield in _infields): _infields += [outfield]
+    to_extend = []
+    if not(outfield in _infields): 
+        _infields += [outfield]
+        to_extend = [None]
     out_indx = _infields.index(outfield)
     in_indx = [stream.fields.index(f) for f in infields]
     def _concat(stream):
         for x in stream:
-            y = [x[i] for i in in_out_indx]
-            y[out_indx] = separator.join([str(x[i]) for i in in_indx])
-            yield y
+            y = [x[i] for i in in_out_indx]+to_extend
+            if as_tuple:
+                y[out_indx] = tuple((x[i] for i in in_indx))
+            else:
+                y[out_indx] = separator.join([str(x[i]) for i in in_indx])
+            yield tuple(y)
     return FeatureStream(_concat(stream),_infields)
 
 def split_field( stream, outfields, infield='name', separator=';' ):
