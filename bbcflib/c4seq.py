@@ -24,9 +24,10 @@ def loadPrimers(primersFile):
     name = ''
     with open(primersFile,'rb') as f:
         for s in f:
-            s = s.strip()
-            if not(re.search(r'^>',s)) and name:
+            s = re.sub(r'\s','',s)
+            if s and not(re.search(r'^>',s)) and name:
                 primers[name]['seq']=s
+                name = ''
                 continue
             infos = s.split('|')
             name = infos[0][1:]
