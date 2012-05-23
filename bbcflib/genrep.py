@@ -557,14 +557,18 @@ class Assembly(object):
 
         return trans_in_gene
 
-    def annot_track(self,annot_type='gene',chromlist=None):
+    def annot_track(self,annot_type='gene',chromlist=None,biotype=["protein_coding"]):
         if chromlist is None: chromlist = self.chrnames
+        elif isinstance(chromlist,basestring): chromlist = [chromlist]
         dbpath = self.sqlite_path()
         _fields = ['chr','start','end','name','strand']
         nmax = 5
+        biosel = ''
+        if not(biotype is None):
+            biosel = "AND gene_biotype IN ('"+"','".join(biotype)+"')"
         if annot_type == 'gene':
             sql1 = "SELECT DISTINCT MIN(start) AS gstart,MAX(end) AS gend,gene_id,gene_name,strand FROM '"
-            sql2 = "' WHERE type='exon' GROUP BY gene_id ORDER BY gstart,gend,gene_id"
+            sql2 = "' WHERE type='exon' %s GROUP BY gene_id ORDER BY gstart,gend,gene_id" %biosel
             webh = { "keys": "gene_id", 
                      "values": "start,end,gene_id,gene_name,strand", 
                      "conditions": "type:exon", 
@@ -572,14 +576,17 @@ class Assembly(object):
             nmax = 4
         elif annot_type in ['CDS','exon']:
             sql1 = "SELECT DISTINCT start,end,exon_id,gene_id,gene_name,strand,frame FROM '"
-            sql2 = "' WHERE type='%s' ORDER BY start,end,exon_id" %annot_type
+            sql2 = "' WHERE type='%s' %s ORDER BY start,end,exon_id" %(annot_type,biosel)
             webh = { "keys": "exon_id", 
                      "values": "start,end,gene_id,gene_name,strand,frame", 
                      "conditions": "type:"+annot_type, 
                      "uniq":"1" }
+            _fields += ['frame']
         elif annot_type == 'transcript':
+            if biosel:
+                biosel = "WHERE "+biosel[4:]
             sql1 = "SELECT DISTINCT MIN(start) AS tstart,MAX(end) AS tend,transcript_id,gene_name,strand FROM '"
-            sql2 = "' GROUP BY transcript_id ORDER BY tstart,tend,transcript_id"
+            sql2 = "' %s GROUP BY transcript_id ORDER BY tstart,tend,transcript_id" %biosel
             webh = { "keys": "transcript_id", 
                      "values": "start,end,gene_id,gene_name,strand", 
                      "conditions": "type:exon", 
@@ -597,13 +604,16 @@ class Assembly(object):
                     yield (chrom,int(x[0]),int(x[1]),name)+tuple(x[nmax:])
         def _web_query():
             for chrom in chromlist:
-                resp = self.get_features_from_gtf(webh,chrom)
                 sort_list = []
-                for k,v in resp.iteritems():
-                    start = min([x[0] for x in v])
-                    end = max([x[1] for x in v])
-                    name = "|".join([str(y) for y in v[0][2:nmax]])
-                    sort_list.append((start,end,name)+tuple(v[0][nmax:]))
+                for bt in biotype:
+                    wh = webh.copy()
+                    wh["conditions"]+=",gene_biotype:"+bt
+                    resp = self.get_features_from_gtf(wh,chrom)
+                    for k,v in resp.iteritems():
+                        start = min([x[0] for x in v])
+                        end = max([x[1] for x in v])
+                        name = "|".join([str(y) for y in v[0][2:nmax]])
+                        sort_list.append((start,end,name)+tuple(v[0][nmax:]))
                 sort_list.sort()
                 for k in sort_list: yield (chrom,)+k
         if os.path.exists(dbpath):
@@ -612,14 +622,14 @@ class Assembly(object):
             _db_call = _web_query
         return track.FeatureStream(_db_call(),fields=_fields)
 
-    def gene_track(self,chromlist=None):
-        return self.annot_track(annot_type='gene',chromlist=chromlist)
+    def gene_track(self,chromlist=None,biotype=["protein_coding"]):
+        return self.annot_track(annot_type='gene',chromlist=chromlist,biotype=biotype)
 
-    def exon_track(self,chromlist=None):
-        return self.annot_track(annot_type='exon',chromlist=chromlist)
+    def exon_track(self,chromlist=None,biotype=["protein_coding"]):
+        return self.annot_track(annot_type='exon',chromlist=chromlist,biotype=biotype)
 
-    def transcript_track(self,chromlist=None):
-        return self.annot_track(annot_type='transcript',chromlist=chromlist)
+    def transcript_track(self,chromlist=None,biotype=["protein_coding"]):
+        return self.annot_track(annot_type='transcript',chromlist=chromlist,biotype=biotype)
 
     @property
     def chrmeta(self):
