@@ -3,6 +3,8 @@ import re, tarfile
 
 # Internal modules #
 from bbcflib.common import unique_filename_in
+from bbcflib import btrack as track
+from bbcflib.bFlatMajor import stream as gm_stream
 
 # Other modules #
 from bein import program
@@ -71,7 +73,7 @@ def parse_pileupFile(dictPileupFile,allSNPpos,chrom,minCoverage=80,minSNP=10):
     :param minSNP: (int) the minimal coverage of the SNP position to considere SNP
  
     """
-    formatedPileupFilename=unique_filename_in()
+    formatedPileupFilename = unique_filename_in()
     allSample={}
     iupac={'M':['A','a','C','c'],'Y':['T','t','C','c'],'R':['A','a','G','g'],
            'S':['G','g','C','c'],'W':['A','a','T','t'],'K':['T','t','G','g']}
@@ -116,9 +118,8 @@ def parse_pileupFile(dictPileupFile,allSNPpos,chrom,minCoverage=80,minSNP=10):
                 position = allpos.pop()
                 allSample[sname][position]="-"
 
-    firstSample=allSample.values()[0]
+    firstSample = allSample.values()[0]
     with open(formatedPileupFilename,'w') as outfile:
-        outfile.write("chromosome\tposition\treference\t"+"\t".join(dictPileupFile.values())+"\n")
         for p in sorted(firstSample):
             nbNoSnp=0
             for s in allSample:
@@ -128,16 +129,65 @@ def parse_pileupFile(dictPileupFile,allSNPpos,chrom,minCoverage=80,minSNP=10):
 
     return formatedPileupFilename
 
+def annotate_snps( filedict, sample_names, assembly ):
+    def _process_annot( stream, fname ):
+        with open(fname,'a') as fout:
+            for snp in stream:
+                fout.write("\t".join([str(x) for x in (snp[2],snp[1])+snp[3:]])+"\n")
+                if "Included" in snp[-2].split("_"):
+                    yield (snp[2],int(snp[0]),int(snp[1]))+snp[3:-3]
+
+    output = unique_filename_in()
+    outall = output+"_all_snps.txt"
+    outexons = output+"_exon_snps.txt"
+    outex = open(outexons,"w")
+    with open(outall,"w") as fout:
+        newcols = sample_names+['gene','location_type','distance']
+        fout.write("chromosome\tposition\treference\t"+"\t".join(newcols)+"\n")
+    for chrom, filename in filedict.iteritems():
+        snp_file = track.track( filename, format='text',
+                                fields=['chr','end','name']+sample_names, chrmeta=assembly.chrmeta )
+        snp_read = track.FeatureStream( ((y[0],y[1]-1)+y[1:] for y in snp_file.read(chrom)),
+                                        fields=['chr','start','end']+snp_file.fields[2:])
+        annotations = assembly.gene_track(chrom)
+        fstream = gm_stream.getNearestFeature(snp_read, annotations,3000,3000)
+        inclstream = track.concat_fields(track.FeatureStream(_process_annot(fstream, outall),
+                                                             fields=snp_read.fields),
+                                         infields=['name']+sample_names, as_tuple=True)
+        annotstream = track.concat_fields(assembly.annot_track('CDS',chrom),
+                                          infields=['name','strand','frame'], as_tuple=True)
+        for x in gm_stream.combine([inclstream, annotstream], gm_stream.intersection):
+            outex.write("\t".join([str(y) for y in x])+"\n")
+    outexons.close()
+    return (outall, outexons)
+
+
 def synonymous(job,allSnp):
-    """Writes the first line of the file *allSnp* to the file *allCodon* (??)
+    """Writes the first line of the file *allSnp* to the file *allCodon*.
 
     :param job: a Frontend.Job object.
     :param allSnp: path to the file summarizing the localization of SNPs.
     """
-    allCodon=unique_filename_in()
-    file=open(allSnp,'rb')
-    outfile=open(allCodon,'wb')
-    outfile.write(file.readline())
+    allCodon = unique_filename_in()
+#    infile = track.rtack(allSnp)
+#    outtrack = track.track(allCodon)
+    translate = { "TTT": "F", "TTC": "F", "TTA": "L", "TTG": "L/START",
+                  "CTT": "L", "CTC": "L", "CTA": "L", "CTG": "L",
+                  "ATT": "I", "ATC": "I", "ATA": "I", "ATG": "M & START", 
+                  "GTT": "V", "GTA": "V", "GTC": "V", "GTG": "V/START",
+                  "TCT": "S", "TCC": "S", "TCA": "S", "TCG": "S", 
+                  "CCT": "P", "CCC": "P", "CCA": "P", "CCG": "P", 
+                  "ACT": "T", "ACC": "T", "ACA": "T", "ACG": "T", 
+                  "GCT": "A", "GCC": "A", "GCA": "A", "GCG": "A", 
+                  "TAT": "Y", "TAC": "Y", "TAA": "STOP", "TAG": "STOP", 
+                  "CAT": "H", "CAC": "H", "CAA": "Q", "CAG": "Q",
+                  "AAT": "N", "AAC": "N", "AAA": "K", "AAG": "K",
+                  "GAT": "D", "GAC": "D", "GAA": "E", "GAG": "E", 
+                  "TGT": "C", "TGC": "C", "TGA": "STOP", "TGG": "W", 
+                  "CGT": "R", "CGC": "R", "CGA": "R", "CGG": "R", 
+                  "AGT": "S", "AGC": "S", "AGA": "R", "AGG": "R", 
+                  "GGT": "G", "GGC": "G", "GGA": "G", "GGG": "G" }
+
     return allCodon
 
 
