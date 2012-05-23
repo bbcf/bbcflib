@@ -991,7 +991,7 @@ def parallel_density_wig( ex, bamfile, chromosomes,
     futures = [bam_to_density.nonblocking( ex, bamfile, unique_filename_in(),
                                            _compact_chromosome_name(k), v['name'],
                                            nreads, merge, read_extension, convert,
-                                           False, args=b2w_args, via=via, memory=6 )
+                                           False, args=b2w_args, via=via, memory=8 )
                for k,v in chromosomes.iteritems()]
     results = []
     for f in futures:
@@ -1019,7 +1019,7 @@ def parallel_density_sql( ex, bamfile, chromosomes,
         futures[k] = bam_to_density.nonblocking( ex, bamfile, unique_filename_in(),
                                                  _compact_chromosome_name(k), v['name'],
                                                  nreads, merge, read_extension, convert,
-                                                 False, args=b2w_args, via=via, memory=6 )
+                                                 False, args=b2w_args, via=via, memory=8 )
     chrlist = dict((v['name'], {'length': v['length']}) for v in chromosomes.values())
     output = unique_filename_in()
     touch(ex,output)
