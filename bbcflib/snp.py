@@ -157,8 +157,8 @@ def annotate_snps( filedict, sample_names, assembly ):
         annotstream = track.concat_fields(assembly.annot_track('CDS',chrom),
                                           infields=['name','strand','frame'], as_tuple=True)
         for x in gm_stream.combine([inclstream, annotstream], gm_stream.intersection):
-            outex.write("\t".join([str(y) for y in x])+"\n")
-    outexons.close()
+            outex.write("\t".join([str(y) for y in (x[2],x[1])+x[3:]])+"\n")
+    outex.close()
     return (outall, outexons)
 
 
