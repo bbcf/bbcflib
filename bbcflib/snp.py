@@ -14,8 +14,7 @@ def untar_genome_fasta(assembly, convert=True):
     """Untar and concatenate reference sequence fasta files.
 
     :param assembly: the GenRep.Assembly instance of the species of interest.
-    :param convert: (bool) True if chromosome names need conversion RefSeq -> Ensembl, 
-        False otherwise.
+    :param convert: (bool) True if chromosome names need conversion from id to chromosome name.
     """
     if convert:
         chrlist = dict((str(k[0])+"_"+str(k[1])+"."+str(k[2]),v['name'])
@@ -44,11 +43,11 @@ def untar_genome_fasta(assembly, convert=True):
 
 @program
 def sam_pileup(assembly,bamfile,refGenome,via='lsf'):
-    """Launches 'samtools pileup' on command-line.
+    """Binds 'samtools pileup'.
     
-    :param assembly: Genrep.Assembly object for the species of interest.
-    :param bamfile: path to the BAM file to run the samtool pileup command on.
-    :param refGenome: path to the species' reference genome (fasta file).
+    :param assembly: Genrep.Assembly object.
+    :param bamfile: path to the BAM file.
+    :param refGenome: path to the reference genome fasta file.
     """
     if str(assembly.name) in ['MLeprae_TN','MSmeg_MC2_155','MTb_H37Rv','NA1000','TB40-BAC4']:
         ploidy=1
@@ -62,15 +61,15 @@ def sam_pileup(assembly,bamfile,refGenome,via='lsf'):
             "return_value": [minCoverage,minSNP]}
 
 def parse_pileupFile(dictPileupFile,allSNPpos,chrom,minCoverage=80,minSNP=10):
-    """ return filename of summary file containing all SNPs significantly found in samples provide in dictPileupFile.
-    Each raw contains chromosome id, SNP position, reference base, SNP base (with quantification)
+    """Returns a summary file containing all SNPs identified in at least one of the samples from dictPileupFile.
+    Each row contains: chromosome id, SNP position, reference base, SNP base (with proportions)
 
     :param ex: a bein.Execution instance.
-    :param dictPileupFile: (dict) dictionary of the form {[]}
-    :param allSNPPos: (str) name of a file as returned by posAllUniqSNP (it contains position of all SNPs found in all samples)  
+    :param dictPileupFile: (dict) dictionary of the form {filename: samplename}
+    :param allSNPPos: (str) file returned by posAllUniqSNP (containing positions of all SNPs found in all samples)  
     :param chrom: (str) chromosome name.
-    :param minCoverage: (int) the minimal percentage of reads with SNP to considere SNP as true and not as sequencing error
-    :param minSNP: (int) the minimal coverage of the SNP position to considere SNP
+    :param minCoverage: (int) the minimal percentage of reads supporting a SNP to reject a sequencing error.
+    :param minSNP: (int) the minimal coverage of the SNP position to accept the SNP.
  
     """
     formatedPileupFilename = unique_filename_in()
@@ -130,6 +129,10 @@ def parse_pileupFile(dictPileupFile,allSNPpos,chrom,minCoverage=80,minSNP=10):
     return formatedPileupFilename
 
 def annotate_snps( filedict, sample_names, assembly ):
+    """Annotates SNPs described in filedict (a dictionary of the form {chromosome: filename} 
+    containing outputs of parse_pileupFile). 
+    Returns two files: the first contains all SNPs annotated with their position respective to genes in the specified assembly, and the second contains only SNPs found within CDS regions.
+    """
     def _process_annot( stream, fname ):
         with open(fname,'a') as fout:
             for snp in stream:
@@ -150,7 +153,7 @@ def annotate_snps( filedict, sample_names, assembly ):
         snp_read = track.FeatureStream( ((y[0],y[1]-1)+y[1:] for y in snp_file.read(chrom)),
                                         fields=['chr','start','end']+snp_file.fields[2:])
         annotations = assembly.gene_track(chrom)
-        fstream = gm_stream.getNearestFeature(snp_read, annotations,3000,3000)
+        fstream = gm_stream.getNearestFeature(snp_read, annotations, 3000, 3000)
         inclstream = track.concat_fields(track.FeatureStream(_process_annot(fstream, outall),
                                                              fields=snp_read.fields),
                                          infields=['name']+sample_names, as_tuple=True)
