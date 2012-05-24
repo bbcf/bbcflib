@@ -26,9 +26,10 @@ def loadPrimers(primersFile):
         for s in f:
             s = re.sub(r'\s','',s)
             if not(s): continue
-            if not(re.search(r'^>',s)) and name:
-                primers[name]['seq']=s
-                name = ''
+            if not(re.search(r'^>',s)):
+                if name: 
+                    primers[name]['seq']=s
+                    name = ''
                 continue
             infos = s.split('|')
             name = infos[0][1:]
