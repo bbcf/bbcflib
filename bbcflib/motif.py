@@ -12,7 +12,7 @@ from operator import add
 
 # Internal modules #
 from bbcflib import btrack as track
-from bbcflib.common import set_file_descr, unique_filename_in
+from bbcflib.common import set_file_descr, unique_filename_in, gzipfile
 
 # Other modules #
 from bein import program
@@ -72,8 +72,7 @@ def parse_meme_xml( ex, meme_file, chrmeta ):
 
 
 def parallel_meme( ex, assembly, regions, name=None, meme_args=None, via='lsf' ):
-    """Fetches sequences, then calls ``meme``
-    on them and finally saves the results in the repository.
+    """Fetches sequences, then calls ``meme`` on them and finally saves the results in the repository.
     """
     if meme_args is None:
         meme_args   = []
@@ -84,6 +83,7 @@ def parallel_meme( ex, assembly, regions, name=None, meme_args=None, via='lsf' )
             name = '_'
         name = [name]
     futures = {}
+    fasta_files = []
     for i,n in enumerate(name):
         (fasta, size) = assembly.fasta_from_regions( regions[i], out=unique_filename_in() )
         tmpfile = unique_filename_in()
@@ -92,6 +92,7 @@ def parallel_meme( ex, assembly, regions, name=None, meme_args=None, via='lsf' )
                                                 maxsize=(size*3)/2, 
                                                 args=meme_args, via=via, 
                                                 stderr=tmpfile ))
+        fasta_files.append(fasta)
     all_res = {}
     for n,f in futures.iteritems():
         f[1].wait()
@@ -106,6 +107,8 @@ def parallel_meme( ex, assembly, regions, name=None, meme_args=None, via='lsf' )
                     description=set_file_descr(n+"_meme.html",step='meme',type='html',group=n) )
         ex.add( meme_res['sql'], description=set_file_descr(n+"_meme_sites.sql",step='meme',type='sql',group=n) )
         ex.add( archive, description=set_file_descr(n+"_meme.tgz",step='meme',type='tar',group=n) )
+        gzipfile(ex,fasta_files[n])
+        ex.add( fasta_files[n]+".gz", description=set_file_descr(n+"_sites.fa.gz",step='meme',type='fasta',group=n) )
         for i,motif in enumerate(meme_res['matrices'].keys()):
             ex.add( meme_res['matrices'][motif], description=set_file_descr(n+"_meme_"+motif+".txt",step='meme',type='txt',group=n) )
             ex.add( os.path.join(meme_out, "logo"+str(i+1)+".png"), description=set_file_descr(n+"_meme_"+motif+".png",step='meme',type='png',group=n) )

@@ -283,19 +283,16 @@ class SgaTrack(TextTrack):
            
 
     def _format_fields(self,vec,row,source_list,target_list):
-        chrom = row[source_list[0]]
-        chrom = self.chromosomes.get(chrom,chrom)
-        start = row[source_list[1]]
-        end = row[source_list[2]]
-        other = ['',0,0]
-        for n,x in enumerate(source_list[3:]):
-            other[n] = row[x]
+        rowres = ['',0,0,'',0,0]
+        for k,n in enumerate(source_list):
+            rowres[target_list[k]] = row[n]
+        rowres[0] = self.chromosomes.get(rowres[0],rowres[0])
         feat = []
-        for pos in range(start,end):
-            x = [chrom,other[0],
+        for pos in range(rowres[1],rowres[2]):
+            x = [rowres[0],rowres[3],
                  self.outtypes.get("start",str)(pos+1),
-                 self.outtypes.get("strand",str)(other[1]),
-                 self.outtypes.get("counts",str)(other[2])]
+                 self.outtypes.get("strand",str)(rowres[4]),
+                 self.outtypes.get("counts",str)(rowres[5])]
             feat.append(self.separator.join(x))
         return "\n".join(feat)
 
