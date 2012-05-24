@@ -65,7 +65,8 @@ def macs( read_length, genome_size, bamfile, ctrlbam = None, args = None ):
     macs_args = ["macs14","-t",bamfile]
     if ctrlbam != None:
         macs_args += ["-c",ctrlbam]
-    macs_args += ["-n",outname,"-f","BAM","-g",str(genome_size),"-s",str(read_length),"--verbose","1"]
+    macs_args += ["-n",outname,"-f","BAM","-g",str(genome_size),"-s",str(read_length)]
+    if not("--verbose" in macs_args): macs_args += ["--verbose","1"]
     return {"arguments": macs_args+args, "return_value": outname}
 
 def add_macs_results( ex, read_length, genome_size, bamfile,
