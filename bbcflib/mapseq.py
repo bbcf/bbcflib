@@ -1031,19 +1031,19 @@ def parallel_density_sql( ex, bamfile, chromosomes,
         tfwd = track.track(output+"fwd.sql",**trackargs)
         for k,v in chromosomes.iteritems():
             wig = str(futures[k].wait())
-            if os.path.exists(wig) and os.path.getsize(wig):
-                twig = track.track(wig,format='bed')
-                trev.write(twig.read(selection={'strand':'-'}))
-                tfwd.write(twig.read(selection={'strand':'+'}))
+            if not(os.path.exists(wig)): touch(ex,wig) 
+            twig = track.track(wig,format='bed')
+            trev.write(twig.read(selection={'strand':'-'}))
+            tfwd.write(twig.read(selection={'strand':'+'}))
         trev.close()
         tfwd.close()
     else:
         tboth = track.track(output+"merged.sql",**trackargs)
         for k,v in chromosomes.iteritems():
             wig = str(futures[k].wait())
-            if os.path.exists(wig) and os.path.getsize(wig):
-                twig = track.track(wig,format='bedgraph')
-                tboth.write(twig.read())
+            if not(os.path.exists(wig)): touch(ex,wig) 
+            twig = track.track(wig,format='bedgraph')
+            tboth.write(twig.read())
         tboth.close()
     return output
 
