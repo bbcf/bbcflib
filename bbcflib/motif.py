@@ -12,10 +12,11 @@ from operator import add
 
 # Internal modules #
 from bbcflib import btrack as track
-from bbcflib.common import set_file_descr, unique_filename_in
+from bbcflib.common import set_file_descr, unique_filename_in, gzipfile
 
 # Other modules #
 from bein import program
+from bein.util import touch
 
 ################################################################################
 @program
@@ -32,6 +33,7 @@ def meme( fasta, outdir, maxsize=10000000, args=None ):
 def parse_meme_xml( ex, meme_file, chrmeta ):
     """ Parse meme xml file and convert to track """
     from xml.etree import ElementTree as ET
+    touch(ex,meme_file)
     tree = ET.parse(meme_file)
     ncol = {}
     allmatrices = {}
@@ -46,7 +48,7 @@ def parse_meme_xml( ex, meme_file, chrmeta ):
                 for col in parray:
                     m[col.attrib['letter_id']] = float(col.text)
                 mat_out.write("1\t%f\t%f\t%f\t%f\n" %(m['letter_A'],m['letter_C'],m['letter_G'],m['letter_T']))
-    def _xmltree(_c,_t):
+    def _xmltree(_t):#(_c,_t):
         seq_name = {}
         seq_chr = None
         for it in _t.getiterator():
@@ -55,24 +57,22 @@ def parse_meme_xml( ex, meme_file, chrmeta ):
             if it.tag == 'scanned_sites':
                 name = seq_name[it.attrib['sequence_id']]
                 name,seq_chr,start,end = re.search(r'(.*)\|(.+):(\d+)-(\d+)',name).groups()
-            if it.tag == 'scanned_site' and _c == seq_chr:
+            if it.tag == 'scanned_site':# and _c == seq_chr:
                 start = int(start)+int(it.attrib['position'])-1
-                end = str(start+ncol[it.attrib['motif_id']])
-                start = str(start)
+                end = start+ncol[it.attrib['motif_id']]
                 strnd = it.attrib['strand'] == 'plus' and 1 or -1
                 score = it.attrib['pvalue']
-                yield (start,end,it.attrib['motif_id'],score,strnd)
-    outsql = unique_filename_in()
-    with track.new(outsql, format='sql', chrmeta=chrmeta, datatype='qualitative') as t:
-        t.attributes['source'] = 'Meme'
-        for chrom in chrmeta.keys():
-            t.write(chrom,_xmltree(chrom,tree),fields=['start','end','name','score','strand'])
+                yield (seq_chr,str(start),str(end),it.attrib['motif_id'],score,strnd)
+    outsql = unique_filename_in()+".sql"
+    outtrack = track.track(outsql, chrmeta=chrmeta, info={'datatype':'qualitative'},
+                           fields=['start','end','name','score','strand'])
+    outtrack.write(track.FeatureStream(_xmltree(tree),fields=['chr']+outtrack.fields))
+    outtrack.close()
     return {'sql':outsql,'matrices':allmatrices}
 
 
 def parallel_meme( ex, assembly, regions, name=None, meme_args=None, via='lsf' ):
-    """Fetches sequences, then calls ``meme``
-    on them and finally saves the results in the repository.
+    """Fetches sequences, then calls ``meme`` on them and finally saves the results in the repository.
     """
     if meme_args is None:
         meme_args   = []
@@ -83,11 +83,16 @@ def parallel_meme( ex, assembly, regions, name=None, meme_args=None, via='lsf' )
             name = '_'
         name = [name]
     futures = {}
+    fasta_files = []
     for i,n in enumerate(name):
         (fasta, size) = assembly.fasta_from_regions( regions[i], out=unique_filename_in() )
         tmpfile = unique_filename_in()
         outdir = unique_filename_in()
-        futures[n] = (outdir, meme.nonblocking( ex, fasta, outdir, maxsize=size*1.5, args=meme_args, via=via, stderr=tmpfile ))
+        futures[n] = (outdir, meme.nonblocking( ex, fasta, outdir, 
+                                                maxsize=(size*3)/2, 
+                                                args=meme_args, via=via, 
+                                                stderr=tmpfile ))
+        fasta_files.append(fasta)
     all_res = {}
     for n,f in futures.iteritems():
         f[1].wait()
@@ -96,13 +101,14 @@ def parallel_meme( ex, assembly, regions, name=None, meme_args=None, via='lsf' )
         tgz = tarfile.open(archive, "w:gz")
         tgz.add( meme_out )
         tgz.close()
-        meme_res = parse_meme_xml( ex, os.path.join(meme_out, "meme.xml"), 
-                                   assembly.chrmeta )
+        meme_res = parse_meme_xml( ex, os.path.join(meme_out, "meme.xml"), assembly.chrmeta )
         if os.path.exists(os.path.join(meme_out, "meme.html")):
             ex.add( os.path.join(meme_out, "meme.html"),
                     description=set_file_descr(n+"_meme.html",step='meme',type='html',group=n) )
         ex.add( meme_res['sql'], description=set_file_descr(n+"_meme_sites.sql",step='meme',type='sql',group=n) )
         ex.add( archive, description=set_file_descr(n+"_meme.tgz",step='meme',type='tar',group=n) )
+        gzipfile(ex,fasta_files[n])
+        ex.add( fasta_files[n]+".gz", description=set_file_descr(n+"_sites.fa.gz",step='meme',type='fasta',group=n) )
         for i,motif in enumerate(meme_res['matrices'].keys()):
             ex.add( meme_res['matrices'][motif], description=set_file_descr(n+"_meme_"+motif+".txt",step='meme',type='txt',group=n) )
             ex.add( os.path.join(meme_out, "logo"+str(i+1)+".png"), description=set_file_descr(n+"_meme_"+motif+".png",step='meme',type='png',group=n) )
@@ -135,36 +141,35 @@ def save_motif_profile( ex, motifs, background, assembly, regions, keep_max_only
         futures[name] = ( output, motif_scan.nonblocking( ex, fasta, pwm, background,
                                                           threshold, stdout=output, via=via ) )
 ##############
-    def _parse_s1k(_f,_c,_n):
+    def _parse_s1k(_f,_n):
         if keep_max_only:
             maxscore = {}
         with open(_f, 'r') as fin:
             for line in fin:
                 row = line.split("\t")
                 sname,seq_chr,start,end = re.search(r'(.*)\|(.+):(\d+)-(\d+)',row[0]).groups()
-                if seq_chr != _c:
-                    continue
                 start = int(row[3])+int(start)-1
                 tag = row[1]
                 end = start+len(tag)
                 score = float(row[2])
                 strnd = row[4]=='+' and 1 or -1
                 if keep_max_only:
-                    if not(sname in maxscore) or score>maxscore[sname][3]:
-                        maxscore[sname] = (start,end,_n+":"+tag,score,strnd)
+                    if not((sname,seq_chr) in maxscore) or score>maxscore[(sname,seq_chr)][3]:
+                        maxscore[(sname,seq_chr)] = (seq_chr,start,end,_n+":"+tag,score,strnd)
                 else:
-                    yield (start,end,_n+":"+tag,score,strnd)
+                    yield (seq_chr,start,end,_n+":"+tag,score,strnd)
         if keep_max_only:
             for x in maxscore.values():
                 yield x
 ##############
-    with track.new( sqlout, format="sql", datatype="qualitative", chrmeta=assembly.chrmeta ) as track_result:
-        track_result.attributes['source'] = 'S1K'
-        for name, future in futures.iteritems():
-            _ = future[1].wait()
-            for chrom in assembly.chrnames:
-                track_result.write( chrom, _parse_s1k(future[0],chrom,name),
-                                    fields=['start','end','name','score','strand'] )
+    track_result = track.track( sqlout, chrmeta=assembly.chrmeta,
+                                info={'datatype':'qualitative'},
+                                fields=['start','end','name','score','strand'] )
+    for name, future in futures.iteritems():
+        future[1].wait()
+        track_result.write( track.FeatureStream(_parse_s1k(future[0], name ),
+                                                fields=['chr']+track_result.fields) )
+    track_result.close()
     ex.add( sqlout, description=description )
     return sqlout
 

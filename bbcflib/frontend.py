@@ -9,13 +9,13 @@ deploying web interfaces to workflows.  It provides a class
 type ``Job`` when queried.
 
 A ``Frontend`` object must be given either a URL to the frontend, such
-as ``http://htsstation.vital-it.ch/rnaseq/``, or a ``ConfigParser``
+as ``http://htsstation.epfl.ch/rnaseq/``, or a ``ConfigParser``
 object defining the field ``frontend_url`` in the appropriate section.
 
 Basic usage is to create a ``Frontend`` object, then call its ``job``
 method with a job key.::
 
-    f = Frontend(url='http://htsstation.vital-it.ch/rnaseq/')
+    f = Frontend(url='http://htsstation.epfl.ch/rnaseq/')
     j = f.job(14)
 
 .. autoclass:: Frontend
@@ -28,7 +28,7 @@ import json, urllib2
 from datetime import datetime
 
 # Internal modules #
-from .common import normalize_url
+from bbcflib.common import normalize_url
 
 ################################################################################
 class Frontend(object):

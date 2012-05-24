@@ -189,9 +189,9 @@ In the mapping module, the following options are valid, with the following defau
     map_args={}# a dictionary of arguments passed to map_reads
     b2w_args=[]# list of options to the bam2wig program
 
-See :py:func:`bbcflib.mapseq.map_reads` for the arguments that can be passed via `map_args`, for example::
+See :py:func:`bbcflib.mapseq.map_reads` for the arguments that can be passed via `map_args`, for example, to use custom bowtie options, the number of hits allowed for each read and the expected enrichement ratio::
 
-    map_args={"maxhits":1,"antibody_enrichment":100,"bwt_args":["-m","0","-n","1"]}
+    map_args={"maxhits":1,"antibody_enrichment":100,"bwt_args":["-5","10","-n","1"]}
 
 ChIP-seq parameters
 '''''''''''''''''''

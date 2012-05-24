@@ -33,6 +33,7 @@ from operator import itemgetter
 
 # Internal modules #
 from bbcflib.common import normalize_url, unique_filename_in
+from bbcflib import btrack as track
 
 # Other modules #
 import sqlite3
@@ -202,8 +203,6 @@ class Assembly(object):
         or a list [['chr',start1,end1],['chr',start2,end2]],
         will simply iterate through its items instead of loading a track from file.
         """
-        from bbcflib.btrack import load
-        from bbcflib.btrack.extras.sql import TrackExtras
         if out == None:
             out = unique_filename_in()
         def _push_slices(slices,start,end,name,cur_chunk):
@@ -249,13 +248,13 @@ class Assembly(object):
                 size += cur_chunk
                 slices = _flush_slices(slices,cid[0],chrom['name'],out)
         else:
-            with load(regions, chrmeta=chrlist) as t:
+            with track.track(regions, chrmeta=chrlist) as t:
                 cur_chunk = 0
                 for cid,chrom in self.chromosomes.iteritems():
                     if shuffled:
-                        features = t.read_shuffled(chrom['name'], repeat_number=1, fields=["start","end","name"])
+                        features = t.read_shuffled(repeat_number=1, selection=chrom['name'], fields=["start","end","name"])
                     else:
-                        features = t.read(chrom['name'], fields=["start","end","name"])
+                        features = t.read(selection=chrom['name'], fields=["start","end","name"])
                     for row in features:
                         s = max(row[0],0)
                         e = min(row[1],chrom['length'])
@@ -555,7 +554,82 @@ class Assembly(object):
             data = self.get_features_from_gtf(h) 
             for k,v in data.iteritems():
                 trans_in_gene[str(k)] = [str(x[0]) for x in v]
+
         return trans_in_gene
+
+    def annot_track(self,annot_type='gene',chromlist=None,biotype=["protein_coding"]):
+        if chromlist is None: chromlist = self.chrnames
+        elif isinstance(chromlist,basestring): chromlist = [chromlist]
+        dbpath = self.sqlite_path()
+        _fields = ['chr','start','end','name','strand']
+        nmax = 5
+        biosel = ''
+        if not(biotype is None):
+            biosel = "AND gene_biotype IN ('"+"','".join(biotype)+"')"
+        if annot_type == 'gene':
+            sql1 = "SELECT DISTINCT MIN(start) AS gstart,MAX(end) AS gend,gene_id,gene_name,strand FROM '"
+            sql2 = "' WHERE type='exon' %s GROUP BY gene_id ORDER BY gstart,gend,gene_id" %biosel
+            webh = { "keys": "gene_id", 
+                     "values": "start,end,gene_id,gene_name,strand", 
+                     "conditions": "type:exon", 
+                     "uniq":"1" }
+            nmax = 4
+        elif annot_type in ['CDS','exon']:
+            sql1 = "SELECT DISTINCT start,end,exon_id,gene_id,gene_name,strand,frame FROM '"
+            sql2 = "' WHERE type='%s' %s ORDER BY start,end,exon_id" %(annot_type,biosel)
+            webh = { "keys": "exon_id", 
+                     "values": "start,end,gene_id,gene_name,strand,frame", 
+                     "conditions": "type:"+annot_type, 
+                     "uniq":"1" }
+            _fields += ['frame']
+        elif annot_type == 'transcript':
+            if biosel:
+                biosel = "WHERE "+biosel[4:]
+            sql1 = "SELECT DISTINCT MIN(start) AS tstart,MAX(end) AS tend,transcript_id,gene_name,strand FROM '"
+            sql2 = "' %s GROUP BY transcript_id ORDER BY tstart,tend,transcript_id" %biosel
+            webh = { "keys": "transcript_id", 
+                     "values": "start,end,gene_id,gene_name,strand", 
+                     "conditions": "type:exon", 
+                     "uniq":"1" }
+        else:
+            raise TypeError("Annotation track type %s not implemented." %annot_type)
+            
+        def _sql_query():
+            db = sqlite3.connect(dbpath)
+            cursor = db.cursor()
+            for chrom in chromlist:
+                cursor.execute(sql1+chrom+sql2)
+                for x in cursor: 
+                    name = "|".join([str(y) for y in x[2:nmax]])
+                    yield (chrom,int(x[0]),int(x[1]),name)+tuple(x[nmax:])
+        def _web_query():
+            for chrom in chromlist:
+                sort_list = []
+                for bt in biotype:
+                    wh = webh.copy()
+                    wh["conditions"]+=",gene_biotype:"+bt
+                    resp = self.get_features_from_gtf(wh,chrom)
+                    for k,v in resp.iteritems():
+                        start = min([x[0] for x in v])
+                        end = max([x[1] for x in v])
+                        name = "|".join([str(y) for y in v[0][2:nmax]])
+                        sort_list.append((start,end,name)+tuple(v[0][nmax:]))
+                sort_list.sort()
+                for k in sort_list: yield (chrom,)+k
+        if os.path.exists(dbpath):
+            _db_call = _sql_query
+        else:
+            _db_call = _web_query
+        return track.FeatureStream(_db_call(),fields=_fields)
+
+    def gene_track(self,chromlist=None,biotype=["protein_coding"]):
+        return self.annot_track(annot_type='gene',chromlist=chromlist,biotype=biotype)
+
+    def exon_track(self,chromlist=None,biotype=["protein_coding"]):
+        return self.annot_track(annot_type='exon',chromlist=chromlist,biotype=biotype)
+
+    def transcript_track(self,chromlist=None,biotype=["protein_coding"]):
+        return self.annot_track(annot_type='transcript',chromlist=chromlist,biotype=biotype)
 
     @property
     def chrmeta(self):

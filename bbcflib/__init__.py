@@ -45,32 +45,14 @@ bbcflib requires:
 * numpy (http://numpy.scipy.org/)
 * pysam (http://code.google.com/p/pysam/)
 
-bbcflib doesn't have regular releases, since it is an internally used
-library. You should download the latest source code from GitHub,
-either by going to::
+Latest source code is available from GitHub::
 
     http://github.com/bbcf/bbcflib
 
-and clicking on "Downloads", or by cloning the git repository with::
+by clicking on "Downloads", or by cloning the git repository with::
 
     $ git clone https://github.com/bbcf/bbcflib.git
 
-Once you have the source code, run::
-
-    $ python setup.py build
-    $ sudo python setup.py install
-
-to install it. If you need to install it in a particular directory,
-use::
-
-    $ sudo python setup.py install --prefix=/prefix/path
-
-Then the modules will go in /prefix/path/lib/pythonX.Y/site-packages,
-where X.Y is the version of Python you run it with.
-
-To run the test suite, in the distribution directory, run::
-
-    $ nosetests
 
 =======
 License
@@ -82,4 +64,4 @@ of this license is in the LICENSE.txt file.
 
 b'This module needs Python 2.6 or later.'
 
-__version__ = '1.4.1'
+__version__ = '2.0.0'
