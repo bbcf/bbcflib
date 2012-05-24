@@ -99,9 +99,9 @@ def convert( source, target, assembly=None, chrmeta=None ):
     else:
         tsrc = track(source, assembly=assembly, chrmeta=chrmeta)
     if isinstance(target, tuple):
-        ttrg = track(target[0], format=target[1], chrmeta=tsrc.chrmeta, fields=tsrc.fields)
+        ttrg = track(target[0], format=target[1], assembly=assembly, chrmeta=tsrc.chrmeta, fields=tsrc.fields)
     else:
-        ttrg = track(target, chrmeta=tsrc.chrmeta, fields=tsrc.fields)
+        ttrg = track(target, assembly=assembly, chrmeta=tsrc.chrmeta, fields=tsrc.fields)
     ttrg.write( tsrc.read() )
     ttrg.close()
     tsrc.close()

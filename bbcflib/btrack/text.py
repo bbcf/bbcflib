@@ -220,12 +220,20 @@ class SgaTrack(TextTrack):
     def __init__(self,path,**kwargs):
         kwargs['format'] = 'sga'
         kwargs['fields'] = ['chr','start','end','name','strand','counts']
-        kwargs['intypes'] = {'counts': int, 'strand': int}
+        def _sga_strand(num=0):
+            num = int(num)
+            if num > 0: return '+'
+            if num < 0: return '-'
+            return '0'
+        def _score_to_counts(x=0.0): return "%i"%x
+        kwargs['intypes'] = {'counts': int}
+        kwargs['outtypes'] = {'strand': _sga_strand, 'counts': _score_to_counts}
         TextTrack.__init__(self,path,**kwargs)
         self.chromosomes = {}
         if self.assembly:
+            from bbcflib import genrep
             chdict = genrep.Assembly(self.assembly).chromosomes
-            self.chromosomes = dict((v['name'],str(key[1])+"."+str(key[2])) 
+            self.chromosomes = dict((v['name'],str(k[1])+"."+str(k[2])) 
                                     for k,v in chdict.iteritems()) 
 
     def _read(self, fields, index_list, selection=None):
@@ -248,7 +256,7 @@ class SgaTrack(TextTrack):
                     name == rowdata[strand][3]:
                 rowdata[strand][2] = start
                 yieldit = False
-            if selection and not(self._select_values(rowdata[strand],selection)): 
+            if selection and not(self._select_values(rowdata[strand],selection)):
                 continue
             if not(yieldit): continue
             if rowdata[strand][1]>=0:
@@ -263,6 +271,16 @@ class SgaTrack(TextTrack):
                 yield tuple(self._check_type(rd[index_list[n]],f) 
                             for n,f in enumerate(fields))
 
+
+    def write(self, source, **kw):
+        sidx = -1
+        if 'score' in source.fields:
+            sidx = source.fields.index('score')
+            source.fields[sidx] = 'counts'
+        TextTrack.write(self,source,**kw)
+        if sidx > -1:
+            source.fields[sidx] = 'score'
+           
 
     def _format_fields(self,vec,row,source_list,target_list):
         chrom = row[source_list[0]]
