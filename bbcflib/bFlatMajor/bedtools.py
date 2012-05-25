@@ -27,7 +27,7 @@ def _wait(wait,outfile,future):
         return (future,outfile)
 
 def annotateBed(ex,intervals,files,wait=True,via='local',**kw):
-    outfile = _outfile(kw):
+    outfile = _outfile(kw)
     if not(isinstance(files,(list,tuple))): files = [files]
     kw.update({"-i":intervals,"-files": list(files)})
     return _wait(wait,outfile,
@@ -139,7 +139,7 @@ def groupBy(ex,bedfile,groupcol,opcol,operation,wait=True,via='local',**kw):
     outfile = _outfile(kw)
     if isinstance(groupcol,(list,tuple)):
         groupcol = ",".join([str(x) for x in groupcol])
-    kw.update({"-i":bedfile,"-g":str(groupcol):"-c",str(opcol):"-o",operation})
+    kw.update({"-i":bedfile,"-g":str(groupcol),"-c":str(opcol),"-o":operation})
     return _wait(wait,outfile,
                  bedtools.nonblocking(ex,"groupby",kw,via=via,stdout=outfile))
  
@@ -192,7 +192,6 @@ def multiIntersectBed(ex,bedfiles,wait=True,via='local',**kw):
     if not(isinstance(bedfiles,(list,tuple))):
         bedfiles = [bedfiles]
     kw["-i"] = list(bedfiles)
-    future = 
     return _wait(wait,outfile,
                  bedtools.nonblocking(ex,"multiinter",kw,via=via,stdout=outfile))
  
