@@ -199,7 +199,7 @@ class Assembly(object):
         Returns the name of the file and the total sequence size.
 
         If 'out' is a (possibly empty) dictionary, will return the filled dictionary,
-        if 'regions' is a dictionary {'chr' [[start1,end1],[start2,end2]]}
+        if 'regions' is a dictionary {'chr': [[start1,end1],[start2,end2]]}
         or a list [['chr',start1,end1],['chr',start2,end2]],
         will simply iterate through its items instead of loading a track from file.
         """

@@ -45,7 +45,8 @@ def sorted_stream(stream,chrnames,fields=['chr','start','end']):
     sort_list = []
     feature_list = []
     for n,f in enumerate(s):
-        fi1 = chrnames.index(f[0])
+        if f[0] in chrnames: fi1 = chrnames.index(f[0])
+        else: fi1 = f[0]
         sort_list.append((fi1,f[1],f[2],n))
         feature_list.append(f)
     sort_list.sort()
