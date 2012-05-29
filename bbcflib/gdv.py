@@ -56,7 +56,7 @@ def new_project(mail, key, name, assembly_id, serv_url=default_url):
 def single_track(mail, key, serv_url=default_url,
                  assembly_id=None, project_id=None, 
                  url=None, fsys=None, trackname=None, extension=None, 
-                 force=False):
+                 force=False, delfile=False):
     '''
     Create a new track on GDV.
     :param mail : login in TEQUILA
@@ -68,7 +68,8 @@ def single_track(mail, key, serv_url=default_url,
     :param extension : extension of the file provided.
     :param fsys : if the file is on the same file system, a filesystem path
     :param trackname : the name to give to the track 
-    :param force : A boolean. Force the file to be recomputed. 
+    :param force : A boolean. Force the file to be recomputed.
+    :param delfile : If true and file comming from fsys, the original file will be removed after job success
     :return a JSON
     '''
     query_url = '%s/%s' % (normalize_url(serv_url), 'tracks/create')
@@ -88,6 +89,8 @@ def single_track(mail, key, serv_url=default_url,
         request['force'] = force
     if extension :
         request['extension'] = extension
+    if delfile:
+        request['delfile'] = delfile
     return send_it(query_url, request)
 
 
