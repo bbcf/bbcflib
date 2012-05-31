@@ -167,13 +167,13 @@ def run_deconv(ex, sql, peaks, chromosomes, read_extension, script_path, via = '
     deconv_futures = {}
     stdout_files = {}
     for clen,cid in sorted([(v['length'],k) for k,v in chromosomes.iteritems()],reverse=True):
-        chom = chromosomes[cid]['name']
+        chrom = chromosomes[cid]['name']
         stdout_files[cid] = common.unique_filename_in()
         deconv_futures[cid] = camelPeaks.nonblocking( ex, sql['fwd'], sql['rev'], peaks,
                                                       chrom, clen,
                                                       read_extension, script_path,
                                                       via=via, stdout=stdout_files[cid] )
-        time.sleep(200) ##avoid too many processes reading same sql 
+        time.sleep(150) ##avoid too many processes reading same sql 
     deconv_out = {}
     for c,f in deconv_futures.iteritems():
         f.wait()
