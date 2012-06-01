@@ -110,9 +110,9 @@ def add_macs_results( ex, read_length, genome_size, bamfile,
     prefixes = dict((n,f.wait()) for n,f in futures.iteritems())
     for n,p in prefixes.iteritems():
         macs_descr0 = {'step':'macs','type':'none','view':'admin'}
-        macs_descr1 = {'step':'macs','type':'xls','group':n[0]}
-        macs_descr2 = {'step':'macs','type':'bed','group':n[0],'ucsc':'1'}
-        filename = "_vs_".join([x for x in n if not(x is None)])
+        macs_descr1 = {'step':'macs','type':'xls','groupId':n[0][0]}
+        macs_descr2 = {'step':'macs','type':'bed','groupId':n[0][0],'ucsc':'1'}
+        filename = "_vs_".join([x[1] for x in n if x[0]])
         touch( ex, p )
         ex.add( p, description=common.set_file_descr(filename,**macs_descr0), 
                 alias=alias )
@@ -135,7 +135,7 @@ def add_macs_results( ex, read_length, genome_size, bamfile,
         ex.add( p+"_summits.bed.gz",
                 description=common.set_file_descr(filename+"_summits.bed.gz",**macs_descr2),
                 associate_to_filename=p, template='%s_summits.bed.gz' )
-        if not(n[1] is None):
+        if n[1][0]:
             ex.add( p+"_negative_peaks.xls",
                     description=common.set_file_descr(filename+"_negative_peaks.xls",**macs_descr1),
                     associate_to_filename=p, template='%s_negative_peaks.xls' )
@@ -299,15 +299,15 @@ def workflow_groups( ex, job_or_dict, mapseq_files, assembly, script_path='',
             bamfile = mapped.values()[0]['bam']
         if groups[gid]['control']:
             controls.append(bamfile)
-            names['controls'].append(group_name)
+            names['controls'].append((gid,group_name))
         else:
             tests.append(bamfile)
-            names['tests'].append(group_name)
+            names['tests'].append((gid,group_name))
             read_length.append(mapped.values()[0]['stats']['read_length'])
     genome_size = mapped.values()[0]['stats']['genome_size']
     if len(controls)<1:
         controls = [None]
-        names['controls'] = [None]
+        names['controls'] = [(0,None)]
     logfile.write("Starting MACS.\n");logfile.flush()
     processed = {'macs': add_macs_results( ex, read_length, genome_size,
                                            tests, ctrlbam=controls, name=names,
@@ -365,7 +365,7 @@ def workflow_groups( ex, job_or_dict, mapseq_files, assembly, script_path='',
             else:
                 merged_wig[group_name] = wig[0]
         for name in names['tests']:
-            logfile.write(name+" deconvolution.\n");logfile.flush()
+            logfile.write(name[1]+" deconvolution.\n");logfile.flush()
             if len(names['controls']) < 2:
                 ctrl = (name,names['controls'][0])
                 macsbed = processed['macs'][ctrl]+"_peaks.bed"
@@ -389,8 +389,8 @@ def workflow_groups( ex, job_or_dict, mapseq_files, assembly, script_path='',
             bedfile.write(track.FeatureStream(
                 _filter_deconv(trbed.read(fields=trfields),0.65),fields=trfields))
             bedfile.close()
-            ex.add(deconv.pop('bed'), description=common.set_file_descr(name+'_peaks.sql',type='sql',step='deconvolution',group=name))
-            [ex.add(v, description=common.set_file_descr(name+'_deconv.'+k,type=k,step='deconvolution',group=name))
+            ex.add(deconv.pop('bed'), description=common.set_file_descr(name[1]+'_peaks.sql',type='sql',step='deconvolution',groupId=name[0]))
+            [ex.add(v, description=common.set_file_descr(name[1]+'_deconv.'+k,type=k,step='deconvolution',groupId=name[0]))
              for k,v in deconv.iteritems()]
             processed['deconv'][name] = deconv
     for name, plist in peak_list.iteritems():
@@ -407,8 +407,8 @@ def workflow_groups( ex, job_or_dict, mapseq_files, assembly, script_path='',
         peakout.close()
         common.gzipfile(ex,peakfile)
         ex.add(peakfile+".gz", 
-               description=common.set_file_descr(name+'_annotated_peaks.txt.gz',type='text',
-                                                 step='annotation',group=name))
+               description=common.set_file_descr(name[1]+'_annotated_peaks.txt.gz',type='text',
+                                                 step='annotation',groupId=name[0]))
     if run_meme:
         from bbcflib.motif import parallel_meme
         logfile.write("Starting MEME.\n");logfile.flush()
