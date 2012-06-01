@@ -562,33 +562,36 @@ class Assembly(object):
         elif isinstance(chromlist,basestring): chromlist = [chromlist]
         dbpath = self.sqlite_path()
         _fields = ['chr','start','end','name','strand']
-        nmax = 5
+        nmax = 4
         biosel = ''
         if not(biotype is None):
-            biosel = "AND gene_biotype IN ('"+"','".join(biotype)+"')"
+            biosel = "AND source IN ('"+"','".join(biotype)+"')"
         if annot_type == 'gene':
-            sql1 = "SELECT DISTINCT MIN(start) AS gstart,MAX(end) AS gend,gene_id,gene_name,strand FROM '"
+            flist = "gene_id,gene_name,strand"
+            sql1 = "SELECT DISTINCT MIN(start) AS gstart,MAX(end) AS gend,"+flist+" FROM '"
             sql2 = "' WHERE type='exon' %s GROUP BY gene_id ORDER BY gstart,gend,gene_id" %biosel
             webh = { "keys": "gene_id", 
-                     "values": "start,end,gene_id,gene_name,strand", 
+                     "values": "start,end,"+flist, 
                      "conditions": "type:exon", 
                      "uniq":"1" }
-            nmax = 4
         elif annot_type in ['CDS','exon']:
-            sql1 = "SELECT DISTINCT start,end,exon_id,gene_id,gene_name,strand,frame FROM '"
+            flist = "exon_id,gene_id,gene_name,strand,frame"
+            sql1 = "SELECT DISTINCT start,end,"+flist+" FROM '"
             sql2 = "' WHERE type='%s' %s ORDER BY start,end,exon_id" %(annot_type,biosel)
             webh = { "keys": "exon_id", 
-                     "values": "start,end,gene_id,gene_name,strand,frame", 
+                     "values": "start,end,"+flist, 
                      "conditions": "type:"+annot_type, 
                      "uniq":"1" }
+            nmax = 5
             _fields += ['frame']
         elif annot_type == 'transcript':
             if biosel:
                 biosel = "WHERE "+biosel[4:]
-            sql1 = "SELECT DISTINCT MIN(start) AS tstart,MAX(end) AS tend,transcript_id,gene_name,strand FROM '"
+            flist = "transcript_id,gene_name,strand"
+            sql1 = "SELECT DISTINCT MIN(start) AS tstart,MAX(end) AS tend,"+flist+" FROM '"
             sql2 = "' %s GROUP BY transcript_id ORDER BY tstart,tend,transcript_id" %biosel
             webh = { "keys": "transcript_id", 
-                     "values": "start,end,gene_id,gene_name,strand", 
+                     "values": "start,end,"+flist, 
                      "conditions": "type:exon", 
                      "uniq":"1" }
         else:
@@ -607,7 +610,7 @@ class Assembly(object):
                 sort_list = []
                 for bt in biotype:
                     wh = webh.copy()
-                    wh["conditions"]+=",gene_biotype:"+bt
+                    wh["conditions"]+=",source:"+bt
                     resp = self.get_features_from_gtf(wh,chrom)
                     for k,v in resp.iteritems():
                         start = min([x[0] for x in v])

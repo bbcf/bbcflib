@@ -153,8 +153,7 @@ def camelPeaks( scores_fwd, scores_rev, peaks, chromosome_name, chromosome_lengt
     output = common.unique_filename_in()
     args = ["-p",peaks,"-f",scores_fwd,"-r",scores_rev,"-o",output,"-c",chromosome_name,
             "-l",str(chromosome_length),"-e",str(read_extension),"-z",script_path,"-s","1500"]
-    return {'arguments': ["camelPeaks.py"]+args,
-            'return_value': None}
+    return {'arguments': ["camelPeaks.py"]+args, 'return_value': None}
 
 def run_deconv(ex, sql, peaks, chromosomes, read_extension, script_path, via = 'lsf'):
     """Runs the complete deconvolution process for a set of sql files and a bed file,
