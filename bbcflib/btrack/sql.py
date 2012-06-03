@@ -237,17 +237,16 @@ class SqlTrack(Track):
                 chr_idx = srcfields.index('chr')
             fields_left = [srcfields.index(f) for f in fields if f != 'chr' and f in srcfields]
             fields_list = ','.join([srcfields[n] for n in fields_left])
+            pholders = ','.join(['?' for f in fields_left])
             if chrom is None:
                 if not 'chr' in srcfields:
                     raise Exception("Need a chromosome name in the source fields or in the arguments.")
                 for row in source:
                     chrom = row[chr_idx]
-                    vals = "','".join((str(row[f]) for f in fields_left))
-                    sql_command = "INSERT INTO '%s' (%s) VALUES ('%s')"%(chrom,fields_list,vals)
-                    self.cursor.execute(sql_command)
+                    sql_command = "INSERT INTO '%s' (%s) VALUES (%s)" %(chrom,fields_list,pholders)
+                    self.cursor.execute(sql_command,[str(row[f]) for f in fields_left])
             else:
-                pholders = ','.join(['?' for f in fields_left])
-                sql_command = "INSERT INTO '%s' (%s) VALUES (%s)"%(chrom,fields_list,pholders)
+                sql_command = "INSERT INTO '%s' (%s) VALUES (%s)" %(chrom,fields_list,pholders)
                 if 'chr' in srcfields:
                     def _skip_chrom(src):
                         for row in src:

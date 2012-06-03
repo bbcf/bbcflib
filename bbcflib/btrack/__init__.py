@@ -155,10 +155,11 @@ def split_field( stream, outfields, infield='name', separator=';',
             y = list(x)+[None for f in range(more_len)]
             xsplit = x[in_indx].split(separator)
             if header_split:
+                if not(header_split in v): continue
                 xmore = dict([re.search(r'\s*(\S+)'+header_split+'(\S+)',v).groups()
                               for v in xsplit])
                 for n,f in enumerate(outfields):
-                    y[in_out[n]] = xmore.get(f)
+                    y[in_out[n]] = xmore.get(f,'').strip('"')
                 if strip_input:
                     y[in_indx] = separator.join([str(k)+header_split+str(v)
                                                  for k,v in xmore.iteritems()
