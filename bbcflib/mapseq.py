@@ -1161,7 +1161,7 @@ def get_bam_wig_files( ex, job, minilims=None, hts_url=None, suffix=['fwd','rev'
             fastqfiles = None
             if len(group['runs'])>1:
                 if run.get('sequencing_library'):
-                    name = str(run['sequencing_library'])
+                    name += "_"+str(run['sequencing_library'])
                 elif all([run.get(x) for x in ['machine','run','lane']]):
                     name += "_".join(['',run['machine'],str(run['run']),str(run['lane'])])
                 else:

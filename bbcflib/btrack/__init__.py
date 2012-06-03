@@ -125,7 +125,27 @@ def concat_fields( stream, infields, outfield='name', separator='|', as_tuple=Fa
             yield tuple(y)
     return FeatureStream(_concat(stream),_infields)
 
-def split_field( stream, outfields, infield='name', separator=';' ):
+def map_chromosomes( stream, assembly, keep=False ):
+    if not('chr' in stream.fields): return stream 
+    ic = stream.fields.index('chr')
+    chrom_map = {}
+    for k,c in assembly.chromosomes.iteritems():
+        cname = c['name']
+        chrom_map[cname] = cname
+        if cname.startswith('chr') and len(cname)>3: chrom_map[cname[3:]] = cname
+        chrom_map[k[0]] = cname
+        chrom_map[str(k[1])+"."+str(k[2])] = cname
+        if c['synonyms']: 
+            for s in c['synonyms'].split(','): chrom_map[s] = cname
+    if keep:
+        return FeatureStream((x[:ic]+(chrom_map.get(x[ic],x[0]),)+x[ic+1:] 
+                              for x in stream),stream.fields)
+    else:
+        return FeatureStream((x[:ic]+(chrom_map[x[ic]],)+x[ic+1:] 
+                              for x in stream if x[ic] in chrom_map),stream.fields)
+
+def split_field( stream, outfields, infield='name', separator=';',
+                 header_split=None, strip_input=False ):
     _outfields = stream.fields+[f for f in outfields if not(f in stream.fields)]
     in_indx = stream.fields.index(infield)
     in_out = [_outfields.index(f) for f in outfields]
@@ -133,9 +153,23 @@ def split_field( stream, outfields, infield='name', separator=';' ):
     def _split(stream):
         for x in stream:
             y = list(x)+[None for f in range(more_len)]
-            for n,v in enumerate(x[in_indx].split(separator)):
-                y[in_out[n]] = v
-            yield y
+            xsplit = x[in_indx].split(separator)
+            if header_split:
+                xmore = dict([re.search(r'\s*(\S+)'+header_split+'(\S+)',v).groups()
+                              for v in xsplit])
+                for n,f in enumerate(outfields):
+                    y[in_out[n]] = xmore.get(f)
+                if strip_input:
+                    y[in_indx] = separator.join([str(k)+header_split+str(v)
+                                                 for k,v in xmore.iteritems()
+                                                 if not(k in outfields)])
+            else:
+                for n,v in enumerate(xsplit):
+                    if n >= len(in_out): break
+                    y[in_out[n]] = v
+                if strip_input:
+                    y[in_indx] = separator.join(xsplit[n:])
+            yield tuple(y)
     return FeatureStream(_split(stream),_outfields)
 
 def score_threshold( source, threshold=0.0, lower=False, fields='score' ):
@@ -186,10 +220,6 @@ class Track(object):
         self.assembly = kwargs.get('assembly')
         self.chrmeta = self._get_chrmeta(kwargs.get('chrmeta'))
         self.info = self._get_info(info=kwargs.get('info'))
-        if kwargs.get('ucsc_to_ensembl',False):
-            kwargs['outtypes']['start'] = ucsc_to_ensembl
-        if kwargs.get('ensembl_to_ucsc',False):
-            kwargs['outtypes']['start'] = ensembl_to_ucsc
 
     def _get_chrmeta(self,chrmeta=None):
         from bbcflib import genrep

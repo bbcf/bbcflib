@@ -1,8 +1,6 @@
 from bbcflib.btrack import *
 import re, urllib2, gzip, os, sys
 
-#### remark: to do ucsc<->ensembl conversion, define _in_type/_out_type for 'start'
-
 _in_types = {'start':        int,
              'end':          int,
              'score':        float,
@@ -22,6 +20,12 @@ _out_types = {'start':  format_int,
 class TextTrack(Track):
     def __init__(self,path,**kwargs):
         Track.__init__(self,path,**kwargs)
+        if kwargs.get('ucsc_to_ensembl',False):
+            if not('outtypes' in kwargs): kwargs['outtypes'] = {}
+            kwargs['outtypes']['start'] = ucsc_to_ensembl
+        if kwargs.get('ensembl_to_ucsc',False):
+            if not('outtypes' in kwargs): kwargs['outtypes'] = {}
+            kwargs['outtypes']['start'] = ensembl_to_ucsc
         self.format = kwargs.get("format",'txt')
         self.fields = kwargs.get("fields",['chr','start','end'])
         self.intypes = dict((k,v) for k,v in _in_types.iteritems() if k in self.fields)

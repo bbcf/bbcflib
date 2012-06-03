@@ -388,8 +388,10 @@ def workflow_groups( ex, job_or_dict, mapseq_files, assembly, script_path='',
             bedfile.write(track.FeatureStream(
                 _filter_deconv(trbed.read(fields=trfields),0.65),fields=trfields))
             bedfile.close()
-            ex.add(deconv.pop('bed'), description=common.set_file_descr(name[1]+'_peaks.sql',type='sql',step='deconvolution',groupId=name[0]))
-            [ex.add(v, description=common.set_file_descr(name[1]+'_deconv.'+k,type=k,step='deconvolution',groupId=name[0]))
+            ex.add(deconv.pop('bed'), description=common.set_file_descr(name[1]+'_peaks.sql',type='sql',
+                                                                        step='deconvolution',groupId=name[0]))
+            [ex.add(v, description=common.set_file_descr(name[1]+'_deconv.'+k,type=k,
+                                                         step='deconvolution',groupId=name[0]))
              for k,v in deconv.iteritems()]
             processed['deconv'][name] = deconv
     for name, plist in peak_list.iteritems():

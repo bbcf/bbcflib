@@ -177,7 +177,7 @@ def union(x):
 ###############################################################################
 def segment_features(trackList,nbins=10,upstream=None,downstream=None):
     """
-    The features plus their upstream and downstream flanks must not overlap
+    The features plus their upstream and downstream flanks must not overlap.
     """
     def _split_feat(_t):
         starti = _t.fields.index('start')
