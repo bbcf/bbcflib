@@ -565,7 +565,7 @@ class Assembly(object):
         nmax = 4
         biosel = ''
         if not(biotype is None):
-            biosel = "AND source IN ('"+"','".join(biotype)+"')"
+            biosel = "AND biotype IN ('"+"','".join(biotype)+"')"
         if annot_type == 'gene':
             flist = "gene_id,gene_name,strand"
             sql1 = "SELECT DISTINCT MIN(start) AS gstart,MAX(end) AS gend,"+flist+" FROM '"
@@ -610,7 +610,7 @@ class Assembly(object):
                 sort_list = []
                 for bt in biotype:
                     wh = webh.copy()
-                    wh["conditions"]+=",source:"+bt
+                    wh["conditions"]+=",biotype:"+bt
                     resp = self.get_features_from_gtf(wh,chrom)
                     for k,v in resp.iteritems():
                         start = min([x[0] for x in v])
