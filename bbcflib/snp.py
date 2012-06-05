@@ -1,5 +1,5 @@
 # Built-in modules #
-import re, tarfile
+import re, tarfile, os
 
 # Internal modules #
 from bbcflib.common import unique_filename_in
@@ -10,7 +10,7 @@ from bbcflib.bFlatMajor import stream as gm_stream
 from bein import program
 
 
-def untar_genome_fasta(assembly, convert=True):
+def untar_genome_fasta(assembly, path_to_ref=None, convert=True):
     """Untar and concatenate reference sequence fasta files.
 
     :param assembly: the GenRep.Assembly instance of the species of interest.
@@ -21,7 +21,7 @@ def untar_genome_fasta(assembly, convert=True):
                        for k,v in assembly.chromosomes.iteritems())
     else:
         chrlist = {}
-    archive = tarfile.open(assembly.fasta_path())
+    archive = tarfile.open(path_to_ref)
     genomeRef = {}
     for f in archive.getmembers():
         if f.isdir(): continue
@@ -66,12 +66,12 @@ def parse_pileupFile(dictPileupFile,allSNPpos,chrom,minCoverage=80,minSNP=10):
 
     :param ex: a bein.Execution instance.
     :param dictPileupFile: (dict) dictionary of the form {filename: samplename}
-    :param allSNPPos: (str) file returned by posAllUniqSNP (containing positions of all SNPs found in all samples)
+    :param allSNPPos: dict {pos: snp?} as returned by posAllUniqSNP(...)[0].
     :param chrom: (str) chromosome name.
     :param minCoverage: (int) the minimal percentage of reads supporting a SNP to reject a sequencing error.
     :param minSNP: (int) the minimal coverage of the SNP position to accept the SNP.
     """
-    formatedPileupFilename = unique_filename_in()
+    formattedPileupFilename = unique_filename_in()
     allSample = {}
     iupac = {'M':['A','a','C','c'],'Y':['T','t','C','c'],'R':['A','a','G','g'],
              'S':['G','g','C','c'],'W':['A','a','T','t'],'K':['T','t','G','g']}
@@ -117,15 +117,15 @@ def parse_pileupFile(dictPileupFile,allSNPpos,chrom,minCoverage=80,minSNP=10):
                 allSample[sname][position] = "-"
 
     firstSample = allSample.values()[0]
-    with open(formatedPileupFilename,'w') as outfile:
+    with open(formattedPileupFilename,'w') as outfile:
         for p in sorted(firstSample):
-            nbNoSnp=0
+            nbNoSnp = 0
             for s in allSample:
                 nbNoSnp += allSample[s][p].count("-")
             if nbNoSnp != len(allSample.keys()):
-                outfile.write("\t".join([chrom,str(p),allSNPpos[p]]+[allSample[s][p] for s in allSample])+"\n")
+                outfile.write("\t".join([chrom,str(p),allSNPpos[p]] + [allSample[s][p] for s in allSample])+"\n")
 
-    return formatedPileupFilename
+    return formattedPileupFilename
 
 def annotate_snps( filedict, sample_names, assembly ):
     """Annotates SNPs described in filedict (a dictionary of the form {chromosome: filename}
@@ -202,15 +202,15 @@ def posAllUniqSNP(PileupFile,minCoverage=80):
     :param PileupFile: (dict) dictionary of the form {filename: [params(?), bein.Future]}
     :param minCoverage: (int)
     """
-    d={}
+    d = {}
     for p,v in PileupFile.iteritems():
         parameters = v[1].wait()
         PileupFile[p] = v[0]
         with open(p) as f:
             for l in f:
                 data = l.split("\t")
-                cpt = data[8].count(".")+data[8].count(",")
+                cpt = data[8].count(".") + data[8].count(",")
                 if cpt*100 < int(data[7])*int(minCoverage) and int(data[7])>9:
-                    d[int(data[1])]=data[2]
+                    d[int(data[1])] = data[2]
     return (d,parameters)
 
