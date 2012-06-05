@@ -44,7 +44,7 @@ def untar_genome_fasta(assembly, convert=True):
 @program
 def sam_pileup(assembly,bamfile,refGenome,via='lsf'):
     """Binds 'samtools pileup'.
-    
+
     :param assembly: Genrep.Assembly object.
     :param bamfile: path to the BAM file.
     :param refGenome: path to the reference genome fasta file.
@@ -66,16 +66,15 @@ def parse_pileupFile(dictPileupFile,allSNPpos,chrom,minCoverage=80,minSNP=10):
 
     :param ex: a bein.Execution instance.
     :param dictPileupFile: (dict) dictionary of the form {filename: samplename}
-    :param allSNPPos: (str) file returned by posAllUniqSNP (containing positions of all SNPs found in all samples)  
+    :param allSNPPos: (str) file returned by posAllUniqSNP (containing positions of all SNPs found in all samples)
     :param chrom: (str) chromosome name.
     :param minCoverage: (int) the minimal percentage of reads supporting a SNP to reject a sequencing error.
     :param minSNP: (int) the minimal coverage of the SNP position to accept the SNP.
- 
     """
     formatedPileupFilename = unique_filename_in()
-    allSample={}
-    iupac={'M':['A','a','C','c'],'Y':['T','t','C','c'],'R':['A','a','G','g'],
-           'S':['G','g','C','c'],'W':['A','a','T','t'],'K':['T','t','G','g']}
+    allSample = {}
+    iupac = {'M':['A','a','C','c'],'Y':['T','t','C','c'],'R':['A','a','G','g'],
+             'S':['G','g','C','c'],'W':['A','a','T','t'],'K':['T','t','G','g']}
 
     for p,sname in dictPileupFile.iteritems():
         cpt=0
@@ -84,19 +83,19 @@ def parse_pileupFile(dictPileupFile,allSNPpos,chrom,minCoverage=80,minSNP=10):
         allSample[sname]={}
         with open(p) as sample:
             for line in sample:
-                info=line.split("\t")
-                while int(info[1])>position:
+                info = line.split("\t")
+                while int(info[1]) > position:
                     if not(allpos): break
                     position = allpos.pop()
-                    allSample[sname][position]="-"
+                    allSample[sname][position] = "-"
                 if not(int(info[1]) == position): continue
-                if int(info[7])<minSNP:
-                    string="* "
+                if int(info[7]) < minSNP:
+                    string = "* "
                 else:
-                    string=""
+                    string = ""
                 if re.search(r'[ACGT]',info[3]):
-                    string+=info[3]
-                    allSample[sname][position]=string
+                    string += info[3]
+                    allSample[sname][position] = string
                 else:
                     snp=0
                     snp2=0
@@ -105,33 +104,34 @@ def parse_pileupFile(dictPileupFile,allSNPpos,chrom,minCoverage=80,minSNP=10):
                     if (snp+snp2)*100 > minCoverage*int(info[7]):
                         cov = 100/float(info[7])
                         if info[2] == iupac[info[3]][0]:
-                            allSample[sname][position]=string+"%.4g%% %s / %.4g%% %s" \
+                            allSample[sname][position] = string+"%.4g%% %s / %.4g%% %s" \
                                     %(snp2*cov,iupac[info[3]][2],100-snp2*cov,iupac[info[3]][0])
                         elif info[2] == iupac[info[3]][2]:
-                            allSample[sname][position]=string+"%.4g%% %s / %.4g%% %s" \
+                            allSample[sname][position] = string+"%.4g%% %s / %.4g%% %s" \
                                     %(snp*cov, iupac[info[3]][0],100-snp*cov, iupac[info[3]][2])
                         else:
-                            allSample[sname][position]=string+"%.4g%% %s / %.4g%% %s" \
+                            allSample[sname][position] = string+"%.4g%% %s / %.4g%% %s" \
                                     %(snp*cov, iupac[info[3]][0],    snp2*cov,iupac[info[3]][2])
             while allpos:
                 position = allpos.pop()
-                allSample[sname][position]="-"
+                allSample[sname][position] = "-"
 
     firstSample = allSample.values()[0]
     with open(formatedPileupFilename,'w') as outfile:
         for p in sorted(firstSample):
             nbNoSnp=0
             for s in allSample:
-                nbNoSnp+=allSample[s][p].count("-")
-            if nbNoSnp!=len(allSample.keys()):
+                nbNoSnp += allSample[s][p].count("-")
+            if nbNoSnp != len(allSample.keys()):
                 outfile.write("\t".join([chrom,str(p),allSNPpos[p]]+[allSample[s][p] for s in allSample])+"\n")
 
     return formatedPileupFilename
 
 def annotate_snps( filedict, sample_names, assembly ):
-    """Annotates SNPs described in filedict (a dictionary of the form {chromosome: filename} 
-    containing outputs of parse_pileupFile). 
-    Returns two files: the first contains all SNPs annotated with their position respective to genes in the specified assembly, and the second contains only SNPs found within CDS regions.
+    """Annotates SNPs described in filedict (a dictionary of the form {chromosome: filename}
+    containing outputs of parse_pileupFile).
+    Returns two files: the first contains all SNPs annotated with their position respective to genes in
+    the specified assembly, and the second contains only SNPs found within CDS regions.
     """
     def _process_annot( stream, fname ):
         with open(fname,'a') as fout:
@@ -145,7 +145,7 @@ def annotate_snps( filedict, sample_names, assembly ):
     outexons = output+"_exon_snps.txt"
     outex = open(outexons,"w")
     with open(outall,"w") as fout:
-        newcols = sample_names+['gene','location_type','distance']
+        newcols = sample_names + ['gene','location_type','distance']
         fout.write("chromosome\tposition\treference\t"+"\t".join(newcols)+"\n")
     for chrom, filename in filedict.iteritems():
         snp_file = track.track( filename, format='text',
@@ -160,13 +160,14 @@ def annotate_snps( filedict, sample_names, assembly ):
         annotstream = track.concat_fields(assembly.annot_track('CDS',chrom),
                                           infields=['name','strand','frame'], as_tuple=True)
         for x in gm_stream.combine([inclstream, annotstream], gm_stream.intersection):
+            # find codons here
             outex.write("\t".join([str(y) for y in (x[2],x[1])+x[3:]])+"\n")
     outex.close()
     return (outall, outexons)
 
 
 def synonymous(job,allSnp):
-    """Writes the first line of the file *allSnp* to the file *allCodon*.
+    """
 
     :param job: a Frontend.Job object.
     :param allSnp: path to the file summarizing the localization of SNPs.
@@ -176,37 +177,39 @@ def synonymous(job,allSnp):
 #    outtrack = track.track(allCodon)
     translate = { "TTT": "F", "TTC": "F", "TTA": "L", "TTG": "L/START",
                   "CTT": "L", "CTC": "L", "CTA": "L", "CTG": "L",
-                  "ATT": "I", "ATC": "I", "ATA": "I", "ATG": "M & START", 
+                  "ATT": "I", "ATC": "I", "ATA": "I", "ATG": "M & START",
                   "GTT": "V", "GTA": "V", "GTC": "V", "GTG": "V/START",
-                  "TCT": "S", "TCC": "S", "TCA": "S", "TCG": "S", 
-                  "CCT": "P", "CCC": "P", "CCA": "P", "CCG": "P", 
-                  "ACT": "T", "ACC": "T", "ACA": "T", "ACG": "T", 
-                  "GCT": "A", "GCC": "A", "GCA": "A", "GCG": "A", 
-                  "TAT": "Y", "TAC": "Y", "TAA": "STOP", "TAG": "STOP", 
+                  "TCT": "S", "TCC": "S", "TCA": "S", "TCG": "S",
+                  "CCT": "P", "CCC": "P", "CCA": "P", "CCG": "P",
+                  "ACT": "T", "ACC": "T", "ACA": "T", "ACG": "T",
+                  "GCT": "A", "GCC": "A", "GCA": "A", "GCG": "A",
+                  "TAT": "Y", "TAC": "Y", "TAA": "STOP", "TAG": "STOP",
                   "CAT": "H", "CAC": "H", "CAA": "Q", "CAG": "Q",
                   "AAT": "N", "AAC": "N", "AAA": "K", "AAG": "K",
-                  "GAT": "D", "GAC": "D", "GAA": "E", "GAG": "E", 
-                  "TGT": "C", "TGC": "C", "TGA": "STOP", "TGG": "W", 
-                  "CGT": "R", "CGC": "R", "CGA": "R", "CGG": "R", 
-                  "AGT": "S", "AGC": "S", "AGA": "R", "AGG": "R", 
+                  "GAT": "D", "GAC": "D", "GAA": "E", "GAG": "E",
+                  "TGT": "C", "TGC": "C", "TGA": "STOP", "TGG": "W",
+                  "CGT": "R", "CGC": "R", "CGA": "R", "CGG": "R",
+                  "AGT": "S", "AGC": "S", "AGA": "R", "AGG": "R",
                   "GGT": "G", "GGC": "G", "GGA": "G", "GGG": "G" }
 
     return allCodon
 
 
 def posAllUniqSNP(PileupFile,minCoverage=80):
-    """ 
-    :param PileupFile: (dict) dictionary of the form {filename: [?, bein.Future]} 
-    :param minCoverage: (int) 
+    """
+    Returns a couple ({int: str}, parameters)
+
+    :param PileupFile: (dict) dictionary of the form {filename: [params(?), bein.Future]}
+    :param minCoverage: (int)
     """
     d={}
     for p,v in PileupFile.iteritems():
-        parameters=v[1].wait()
-        PileupFile[p]=v[0]
+        parameters = v[1].wait()
+        PileupFile[p] = v[0]
         with open(p) as f:
             for l in f:
-                data=l.split("\t")
-                cpt=data[8].count(".")+data[8].count(",")
+                data = l.split("\t")
+                cpt = data[8].count(".")+data[8].count(",")
                 if cpt*100 < int(data[7])*int(minCoverage) and int(data[7])>9:
                     d[int(data[1])]=data[2]
     return (d,parameters)
