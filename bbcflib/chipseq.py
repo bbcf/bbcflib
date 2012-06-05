@@ -372,7 +372,7 @@ def workflow_groups( ex, job_or_dict, mapseq_files, assembly, script_path='',
                 macsbed = common.intersect_many_bed( ex, [processed['macs'][(name,x)]+"_peaks.bed"
                                                           for x in names['controls']], via=via )
             
-            deconv = run_deconv( ex, merged_wig[name], macsbed, assembly.chromosomes,
+            deconv = run_deconv( ex, merged_wig[name[1]], macsbed, assembly.chromosomes,
                                  options['read_extension'], script_path, via=via )
             ##############################
             def _filter_deconv( stream, pval ):
