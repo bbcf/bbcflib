@@ -251,6 +251,10 @@ class Track(object):
     def close(self):
         pass
 
+    def save(self):
+        self.open()
+        self.close()
+
     def read(self, **kw):
         pass
 
