@@ -195,22 +195,23 @@ def synonymous(job,allSnp):
     return allCodon
 
 
-def posAllUniqSNP(PileupFile,minCoverage=80):
+def posAllUniqSNP(PileupFile):
     """
-    Returns a couple ({int: str}, parameters)
+    Retrieve the results from samtools pileup and store them into a couple
+    ({pos: snp}, parameters)
 
-    :param PileupFile: (dict) dictionary of the form {filename: [params(?), bein.Future]}
+    :param PileupFile: (dict) dictionary of the form {filename: [?, bein.Future]}
     :param minCoverage: (int)
     """
-    d = {}
+    d={}
     for p,v in PileupFile.iteritems():
-        parameters = v[1].wait()
-        PileupFile[p] = v[0]
+        parameters = v[1].wait() #file is created and samtools pileup returns its parameters
+        minCoverage = parameters[0]
+        minSNP = parameters[1]
         with open(p) as f:
             for l in f:
                 data = l.split("\t")
                 cpt = data[8].count(".") + data[8].count(",")
-                if cpt*100 < int(data[7])*int(minCoverage) and int(data[7])>9:
-                    d[int(data[1])] = data[2]
+                if cpt*100 < int(data[7]) * int(minCoverage) and int(data[7]) >= minSNP:
+                    d[int(data[1])]=data[2]
     return (d,parameters)
-
