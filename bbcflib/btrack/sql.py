@@ -217,7 +217,6 @@ class SqlTrack(Track):
 ################################ Write ##########################################
     def _clip(self):
         for chrom,val in self.chrmeta.iteritems():
-            chrsize = 
             sql_command = "UPDATE '%s' SET start=0 WHERE start<0" %(chrom)
             self.cursor.execute(sql_command)
             sql_command = "UPDATE '%s' SET end=%i WHERE end>%i" %(chrom,val['length'],val['length'])
