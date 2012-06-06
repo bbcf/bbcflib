@@ -106,7 +106,7 @@ def add_macs_results( ex, read_length, genome_size, bamfile,
             nm = (n,m)
             futures[nm] = macs.nonblocking( ex, rl, genome_size, bam, cam,
                                             args=macs_args+["-m",enrich_bounds],
-                                            via=via )
+                                            via=via, memory=4 )
     prefixes = dict((n,f.wait()) for n,f in futures.iteritems())
     for n,p in prefixes.iteritems():
         macs_descr0 = {'step':'macs','type':'none','view':'admin'}

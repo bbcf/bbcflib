@@ -179,7 +179,19 @@ class TextTrack(Track):
         srcl = [srcfields.index(f) for f in fields]
         trgl = [self.fields.index(f) for f in fields]
         self.open(mode)
+        if 'chr' in srcfields: chridx = srcfields.index('chr')
+        else: chridx = 0
+        sidx = srcfields.index('start')
+        eidx = srcfields.index('end')
         for row in source:
+            if kw.get('clip'):
+                chrsize = self.chrmeta.get(chrom,
+                                           self.chrmeta.get(row[chridx],{}).get('length',sys.maxint))
+                start = max(0,row[sidx])
+                end = min(row[eidx],chrsize)
+                if end <= start: continue
+                row = row[:sidx]+(start,)+row[(sidx+1):]
+                row = row[:eidx]+(end,)+row[(eidx+1):]
             self.filehandle.write(self._format_fields(voidvec,row,srcl,trgl)+"\n")
         self.close()
         

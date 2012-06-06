@@ -215,6 +215,17 @@ class SqlTrack(Track):
                              _fields)
 
 ################################ Write ##########################################
+    def _clip(self):
+        for chrom in self.chrmeta:
+            chrsize = self.chrmeta[chrom]['length']
+            sql_command = "UPDATE '%s' SET start=0 WHERE start<0" %(chrom)
+            self.cursor.execute(sql_command)
+            sql_command = "UPDATE '%s' SET end=%i WHERE end>%i" %(chrom,chrsize,chrsize)
+            self.cursor.execute(sql_command)
+            sql_command = "DELETE FROM '%s' WHERE end<=start" %(chrom)
+            self.cursor.execute(sql_command)
+        self.connection.commit()
+
     def write(self, source, fields=None, chrom=None, **kw):
         if not(self._prepare_db()):
             raise IOError("Cannot write database %s, readonly is %s."%(self.path,self.readonly))
@@ -256,6 +267,7 @@ class SqlTrack(Track):
                 else:
                     self.cursor.executemany(sql_command, source)
             self.connection.commit()
+            if kw.get('clip'): self._clip()
         except (sqlite3.OperationalError, sqlite3.ProgrammingError) as err:
             raise Exception("Sql error: %s\n on file %s, with\n%s"%(err,self.path,sql_command))
 
