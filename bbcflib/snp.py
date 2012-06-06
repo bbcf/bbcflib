@@ -62,12 +62,12 @@ def sam_pileup(assembly,bamfile,refGenome,via='lsf'):
     return {"arguments": ["samtools","pileup","-B","-cvsf",refGenome,"-N",str(ploidy),bamfile],
             "return_value": [minCoverage,minSNP]}
 
-def parse_pileupFile(dictPileup,allSNPpos,chrom,minCoverage=80,minSNP=10):
-    """Returns a summary file containing all SNPs identified in at least one of the samples from dictPileup.
+def parse_pileupFile(samples,allSNPpos,chrom,minCoverage=80,minSNP=10):
+    """Returns a summary file containing all SNPs identified in at least one of the samples from samples.
     Each row contains: chromosome id, SNP position, reference base, SNP base (with proportions)
 
     :param ex: a bein.Execution instance.
-    :param dictPileup: (dict) dictionary of the form {filename: (samplename, .)}
+    :param samples: (dict) dictionary of the form {filename: sample_name}
     :param allSNPPos: dict {pos: snp} as returned by posAllUniqSNP(...)[0].
     :param chrom: (str) chromosome name.
     :param minCoverage: (int) the minimal percentage of reads supporting a SNP to reject a sequencing error.
@@ -78,7 +78,7 @@ def parse_pileupFile(dictPileup,allSNPpos,chrom,minCoverage=80,minSNP=10):
     iupac = {'M':['A','a','C','c'],'Y':['T','t','C','c'],'R':['A','a','G','g'],
              'S':['G','g','C','c'],'W':['A','a','T','t'],'K':['T','t','G','g']}
 
-    for filename,sname in dictPileup.iteritems():
+    for filename,sname in samples.iteritems():
         allpos = sorted(allSNPpos.keys(),reverse=True)
         position = -1
         allSample[sname] = {}
@@ -203,12 +203,12 @@ def posAllUniqSNP(PileupDict):
     Retrieve the results from samtools pileup and store them into a couple
     ({pos: snp}, (minCoverage, minSNP))
 
-    :param PileupDict: (dict) dictionary of the form {filename: (sample_name, bein.Future)}
+    :param PileupDict: (dict) dictionary of the form {filename: bein.Future}
     :param minCoverage: (int)
     """
     d={}
-    for filename,v in PileupDict.iteritems():
-        parameters = v[1].wait() #file p is created and samtools pileup returns its own parameters
+    for filename,future in PileupDict.iteritems():
+        parameters = future.wait() #file p is created and samtools pileup returns its own parameters
         minCoverage = parameters[0]
         minSNP = parameters[1]
         with open(filename) as f:
