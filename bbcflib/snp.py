@@ -12,11 +12,13 @@ from bein import program
 
 def untar_genome_fasta(assembly, path_to_ref=None, convert=True):
     """Untar and concatenate reference sequence fasta files.
+    Returns a dictionary {chr_name: file_name}
 
     :param assembly: the GenRep.Assembly instance of the species of interest.
     :param convert: (bool) True if chromosome names need conversion from id to chromosome name.
     """
     if convert:
+        # Create a dict of the form {'2704_NC_001144.4': chrXII}
         chrlist = dict((str(k[0])+"_"+str(k[1])+"."+str(k[2]),v['name'])
                        for k,v in assembly.chromosomes.iteritems())
     else:
@@ -30,7 +32,7 @@ def untar_genome_fasta(assembly, path_to_ref=None, convert=True):
         headpatt = re.search(r'>(\S+)\s',header)
         if headpatt: chrom = headpatt.groups()[0]
         else: continue
-        if chrom in chrlist:
+        if convert and chrom in chrlist:
             header = re.sub(chrom,chrlist[chrom],header)
             chrom = chrlist[chrom]
         genomeRef[chrom] = unique_filename_in()
@@ -60,13 +62,13 @@ def sam_pileup(assembly,bamfile,refGenome,via='lsf'):
     return {"arguments": ["samtools","pileup","-B","-cvsf",refGenome,"-N",str(ploidy),bamfile],
             "return_value": [minCoverage,minSNP]}
 
-def parse_pileupFile(dictPileupFile,allSNPpos,chrom,minCoverage=80,minSNP=10):
-    """Returns a summary file containing all SNPs identified in at least one of the samples from dictPileupFile.
+def parse_pileupFile(dictPileup,allSNPpos,chrom,minCoverage=80,minSNP=10):
+    """Returns a summary file containing all SNPs identified in at least one of the samples from dictPileup.
     Each row contains: chromosome id, SNP position, reference base, SNP base (with proportions)
 
     :param ex: a bein.Execution instance.
-    :param dictPileupFile: (dict) dictionary of the form {filename: samplename}
-    :param allSNPPos: dict {pos: snp?} as returned by posAllUniqSNP(...)[0].
+    :param dictPileup: (dict) dictionary of the form {filename: (samplename, .)}
+    :param allSNPPos: dict {pos: snp} as returned by posAllUniqSNP(...)[0].
     :param chrom: (str) chromosome name.
     :param minCoverage: (int) the minimal percentage of reads supporting a SNP to reject a sequencing error.
     :param minSNP: (int) the minimal coverage of the SNP position to accept the SNP.
@@ -76,12 +78,11 @@ def parse_pileupFile(dictPileupFile,allSNPpos,chrom,minCoverage=80,minSNP=10):
     iupac = {'M':['A','a','C','c'],'Y':['T','t','C','c'],'R':['A','a','G','g'],
              'S':['G','g','C','c'],'W':['A','a','T','t'],'K':['T','t','G','g']}
 
-    for p,sname in dictPileupFile.iteritems():
-        cpt=0
+    for filename,sname in dictPileup.iteritems():
         allpos = sorted(allSNPpos.keys(),reverse=True)
         position = -1
-        allSample[sname]={}
-        with open(p) as sample:
+        allSample[sname] = {}
+        with open(filename) as sample:
             for line in sample:
                 info = line.split("\t")
                 while int(info[1]) > position:
@@ -118,18 +119,20 @@ def parse_pileupFile(dictPileupFile,allSNPpos,chrom,minCoverage=80,minSNP=10):
 
     firstSample = allSample.values()[0]
     with open(formattedPileupFilename,'w') as outfile:
-        for p in sorted(firstSample):
+        for pos in sorted(firstSample):
             nbNoSnp = 0
             for s in allSample:
-                nbNoSnp += allSample[s][p].count("-")
+                nbNoSnp += allSample[s][pos].count("-")
             if nbNoSnp != len(allSample.keys()):
-                outfile.write("\t".join([chrom,str(p),allSNPpos[p]] + [allSample[s][p] for s in allSample])+"\n")
+                outfile.write("\t".join([chrom,str(pos),allSNPpos[pos]] + [allSample[s][pos] for s in allSample])+"\n")
+                # Write: chr    pos    ref_base    sample1_base ... sampleN_base
 
     return formattedPileupFilename
 
 def annotate_snps( filedict, sample_names, assembly ):
     """Annotates SNPs described in filedict (a dictionary of the form {chromosome: filename}
     containing outputs of parse_pileupFile).
+    Adds columns 'gene', 'location_type' and 'distance' to the output of parse_pileupFile.
     Returns two files: the first contains all SNPs annotated with their position respective to genes in
     the specified assembly, and the second contains only SNPs found within CDS regions.
     """
@@ -195,23 +198,23 @@ def synonymous(job,allSnp):
     return allCodon
 
 
-def posAllUniqSNP(PileupFile):
+def posAllUniqSNP(PileupDict):
     """
     Retrieve the results from samtools pileup and store them into a couple
-    ({pos: snp}, parameters)
+    ({pos: snp}, (minCoverage, minSNP))
 
-    :param PileupFile: (dict) dictionary of the form {filename: [?, bein.Future]}
+    :param PileupDict: (dict) dictionary of the form {filename: (sample_name, bein.Future)}
     :param minCoverage: (int)
     """
     d={}
-    for p,v in PileupFile.iteritems():
-        parameters = v[1].wait() #file is created and samtools pileup returns its parameters
+    for filename,v in PileupDict.iteritems():
+        parameters = v[1].wait() #file p is created and samtools pileup returns its own parameters
         minCoverage = parameters[0]
         minSNP = parameters[1]
-        with open(p) as f:
+        with open(filename) as f:
             for l in f:
                 data = l.split("\t")
                 cpt = data[8].count(".") + data[8].count(",")
                 if cpt*100 < int(data[7]) * int(minCoverage) and int(data[7]) >= minSNP:
-                    d[int(data[1])]=data[2]
+                    d[int(data[1])] = data[2]
     return (d,parameters)
