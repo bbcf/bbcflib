@@ -103,6 +103,7 @@ def _combine(tracks,N,fn,win_size,aggregate):
             N-=1
             tracks.pop(i)
             init.pop(i)
+    if N == 0: return 
     available_tracks = range(N-1,-1,-1)
     current = [(init[i][0],i)+init[i][2:] for i in range(N)]+[(init[i][1],i) for i in range(N)]
     current.sort()
