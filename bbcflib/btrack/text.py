@@ -186,7 +186,7 @@ class TextTrack(Track):
         for row in source:
             if kw.get('clip'):
                 chrsize = self.chrmeta.get(chrom,
-                                           self.chrmeta.get(row[chridx],{}).get('length',sys.maxint))
+                                           self.chrmeta.get(row[chridx],{})).get('length',sys.maxint)
                 start = max(0,row[sidx])
                 end = min(row[eidx],chrsize)
                 if end <= start: continue
