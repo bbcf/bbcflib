@@ -63,12 +63,13 @@ def sam_pileup(assembly,bamfile,refGenome,via='lsf'):
             "return_value": [minCoverage,minSNP]}
 
 def parse_pileupFile(samples,allSNPpos,chrom,minCoverage=80,minSNP=10):
-    """Returns a summary file containing all SNPs identified in at least one of the samples from samples.
+    """For a given chromosome, returns a summary file containing all SNPs identified 
+    in at least one of the samples from samples.
     Each row contains: chromosome id, SNP position, reference base, SNP base (with proportions)
 
     :param ex: a bein.Execution instance.
     :param samples: (dict) dictionary of the form {filename: sample_name}
-    :param allSNPPos: dict {pos: snp} as returned by posAllUniqSNP(...)[0].
+    :param allSNPpos: dict fo the type {3021: 'A'} as returned by posAllUniqSNP(...)[0].
     :param chrom: (str) chromosome name.
     :param minCoverage: (int) the minimal percentage of reads supporting a SNP to reject a sequencing error.
     :param minSNP: (int) the minimal coverage of the SNP position to accept the SNP.
@@ -78,15 +79,15 @@ def parse_pileupFile(samples,allSNPpos,chrom,minCoverage=80,minSNP=10):
     iupac = {'M':['A','a','C','c'],'Y':['T','t','C','c'],'R':['A','a','G','g'],
              'S':['G','g','C','c'],'W':['A','a','T','t'],'K':['T','t','G','g']}
 
-    for filename,sname in samples.iteritems():
-        allpos = sorted(allSNPpos.keys(),reverse=True)
+    for chr_filename,sname in samples.iteritems():
+        allpos = sorted(allSNPpos.keys(),reverse=True) # list of positions [int] with an SNP
         position = -1
         allSample[sname] = {}
-        with open(filename) as sample:
+        with open(chr_filename) as sample:
             for line in sample:
                 info = line.split("\t")
                 while int(info[1]) > position:
-                    if not(allpos): break
+                    if len(allpos) == 0: break
                     position = allpos.pop()
                     allSample[sname][position] = "-"
                 if not(int(info[1]) == position): continue
@@ -200,8 +201,8 @@ def synonymous(job,allSnp):
 
 def posAllUniqSNP(PileupDict):
     """
-    Retrieve the results from samtools pileup and store them into a couple
-    ({pos: snp}, (minCoverage, minSNP))
+    Retrieve the results from samtools pileup and store them into a couple of the type
+    ({3021: 'A'}, (minCoverage, minSNP))
 
     :param PileupDict: (dict) dictionary of the form {filename: bein.Future}
     :param minCoverage: (int)
