@@ -1,8 +1,9 @@
 from bbcflib.bFlatMajor import common
 from bbcflib import btrack as track
 import numpy
-from numpy.fft import fft, ifft
+from scipy.fftpack import fft, ifft
 from numpy import conjugate
+from math import log
 
 def normalize(x):
     """Substracts the average and divides by the standard deviation."""
@@ -17,6 +18,8 @@ def correlation(trackList, start, end, limits=(-1000,1000)):
          for t in trackList]
     x = [normalize(t) for t in x]
     N = len(x[0])+limits[1]-limits[0]-1
+##### convert to nearest power of 2, fft gets orders of magnitude faster...
+    N = 2**int(log(2+N,2)+.5)
     def _corr(x1,x2,N):
         corr = ifft(conjugate(fft(x1,N))*fft(x2,N))/len(x1)
         corr = numpy.concatenate((corr[N+limits[0]:], corr[:limits[1]+1]))
