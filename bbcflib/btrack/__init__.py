@@ -93,15 +93,16 @@ def track(path, format=None, **kwargs):
     return getattr(sys.modules[_track_map[format][0]],
                    _track_map[format][1])(path,**kwargs)
 
-def convert( source, target, assembly=None, chrmeta=None ):
+def convert( source, target, assembly=None, chrmeta=None, info=None ):
     if isinstance(source, tuple):
         tsrc = track(source[0], format=source[1], assembly=assembly, chrmeta=chrmeta)
     else:
         tsrc = track(source, assembly=assembly, chrmeta=chrmeta)
     if isinstance(target, tuple):
-        ttrg = track(target[0], format=target[1], assembly=assembly, chrmeta=tsrc.chrmeta, fields=tsrc.fields)
+        ttrg = track(target[0], format=target[1], assembly=assembly, 
+                     chrmeta=tsrc.chrmeta, fields=tsrc.fields, info=info)
     else:
-        ttrg = track(target, assembly=assembly, chrmeta=tsrc.chrmeta, fields=tsrc.fields)
+        ttrg = track(target, assembly=assembly, chrmeta=tsrc.chrmeta, fields=tsrc.fields, info=info)
     ttrg.write( tsrc.read() )
     ttrg.close()
     tsrc.close()
