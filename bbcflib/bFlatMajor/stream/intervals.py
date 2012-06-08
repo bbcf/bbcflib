@@ -98,6 +98,8 @@ def _combine(tracks,N,fn,win_size,aggregate):
     fields = tracks[0].fields
     tracks = [common.sentinelize(t, [sys.maxint]*len(fields)) for t in tracks]
     init = [tracks[i].next() for i in range(N)]
+    activity = [False]*N
+    z = [None]*N
     for i in xrange(N-1,-1,-1):
         if init[i][0] == sys.maxint: 
             N-=1
@@ -109,8 +111,6 @@ def _combine(tracks,N,fn,win_size,aggregate):
     current.sort()
 
     start = current[0][0]
-    activity = [False]*N
-    z = [None]*N
     while current[0][0] == start:
         i = current[0][1]
         activity[i] = True

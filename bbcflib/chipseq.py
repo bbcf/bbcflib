@@ -195,14 +195,14 @@ def run_deconv(ex, sql, peaks, chromosomes, read_extension, script_path, via = '
     outfiles = {}
     outfiles['bed'] = output+"_peaks.sql"
     outfiles['sql'] = output+"_deconv.sql"
-    outbed = track.track(outfiles['bed'],
+    outbed = track.track(outfiles['bed'], chrmeta=chrlist,
                          fields=["start","end","score","name"],
-                         chrmeta=chrlist,
                          info={'datatype':'qualitative'})
-    outwig = track.track(outfiles['sql'],
-                         fields=["start","end","score"],
-                         chrmeta=chrlist,
+    outwig = track.track(outfiles['sql'], chrmeta=chrlist,
+                         fields=["start","end","score"],                         
                          info={'datatype':'quantitative'})
+    outbed.open()
+    outwig.open()
     for c,fout in deconv_out.iteritems():
         if len(fout) < 3: continue
         outbed.write(track.track(fout[1]).read())
