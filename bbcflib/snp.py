@@ -131,44 +131,56 @@ def parse_pileupFile(samples,allSNPpos,chrom,minCoverage=80,minSNP=10):
     return formattedPileupFilename
 
 def annotate_snps( filedict, sample_names, assembly ):
-    """Annotates SNPs described in filedict (a dictionary of the form {chromosome: filename}
-    containing outputs of parse_pileupFile).
+    """Annotates SNPs described in `filedict` (a dictionary of the form {chromosome: filename}
+    where `filename` is an output of parse_pileupFile).
     Adds columns 'gene', 'location_type' and 'distance' to the output of parse_pileupFile.
     Returns two files: the first contains all SNPs annotated with their position respective to genes in
     the specified assembly, and the second contains only SNPs found within CDS regions.
     """
-    def _process_annot( stream, fname ):
+    def _process_annot(stream, fname):
+        """Write (append) features from the *stream* in a file *fname*."""
         with open(fname,'a') as fout:
             for snp in stream:
                 fout.write("\t".join([str(x) for x in (snp[2],snp[1])+snp[3:]])+"\n")
+                # chrV  1607    T   43.48% C / 56.52% T YEL077W-A|YEL077W-A_YEL077C|YEL077C 3UTR_Included   494_-2491
                 if "Included" in snp[-2].split("_"):
                     yield (snp[2],int(snp[0]),int(snp[1]))+snp[3:-3]
+                    # ('chrV', 1606, 1607, 'T', '43.48% C / 56.52% T')
 
     output = unique_filename_in()
     outall = output+"_all_snps.txt"
     outexons = output+"_exon_snps.txt"
     outex = open(outexons,"w")
+    # Complete the header
     with open(outall,"w") as fout:
         newcols = sample_names + ['gene','location_type','distance']
         fout.write("chromosome\tposition\treference\t"+"\t".join(newcols)+"\n")
+    # For each chromosome, read the result of parse_pileupFile and make a track
     for chrom, filename in filedict.iteritems():
         snp_file = track.track( filename, format='text',
                                 fields=['chr','end','name']+sample_names, chrmeta=assembly.chrmeta )
+        # snp_file.read() is an iterator on the track features: ('chrV', 1606, 1607, 'T', '43.48% C / 56.52% T') 
+        # Add a 'start' using end-1 and remake the track 
         snp_read = track.FeatureStream( ((y[0],y[1]-1)+y[1:] for y in snp_file.read(chrom)),
                                         fields=['chr','start','end']+snp_file.fields[2:])
-        annotations = assembly.gene_track(chrom)
+        annotations = assembly.gene_track(chrom) # gene annotation from genrep
+        # Find the nearest gene from each snp
         fstream = gm_stream.getNearestFeature(snp_read, annotations, 3000, 3000)
+        # Put together the reference base and the base of every sample
+        # Write a line in outall at each iteration; yield if the snp in a CDS only
         inclstream = track.concat_fields(track.FeatureStream(_process_annot(fstream, outall),
                                                              fields=snp_read.fields),
                                          infields=['name']+sample_names, as_tuple=True)
+        # import existing CDS annotation from genrep as a track, and join some fields
+        # typical annotstream: ('chrV', 266, 4097, ('|YEL077C|YEL077C', -1, 0))
         annotstream = track.concat_fields(assembly.annot_track('CDS',chrom),
                                           infields=['name','strand','frame'], as_tuple=True)
         for x in gm_stream.combine([inclstream, annotstream], gm_stream.intersection):
+            print x
             # find codons here
             outex.write("\t".join([str(y) for y in (x[2],x[1])+x[3:]])+"\n")
     outex.close()
     return (outall, outexons)
-
 
 def synonymous(job,allSnp):
     """
