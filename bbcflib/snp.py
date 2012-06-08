@@ -172,11 +172,11 @@ def annotate_snps( filedict, sample_names, assembly ):
                                                              fields=snp_read.fields),
                                          infields=['name']+sample_names, as_tuple=True)
         # import existing CDS annotation from genrep as a track, and join some fields
-        # typical annotstream: ('chrV', 266, 4097, ('|YEL077C|YEL077C', -1, 0))
         annotstream = track.concat_fields(assembly.annot_track('CDS',chrom),
                                           infields=['name','strand','frame'], as_tuple=True)
         for x in gm_stream.combine([inclstream, annotstream], gm_stream.intersection):
             print x
+            # (1606, 1607, 'chrV', ('T', '43.48% C / 56.52% T', 'YEL077C|YEL077C', -1, 0, '|YEL077W-A|YEL077W-A', 1, 0))
             # find codons here
             outex.write("\t".join([str(y) for y in (x[2],x[1])+x[3:]])+"\n")
     outex.close()
