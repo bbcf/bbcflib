@@ -9,6 +9,22 @@ from bbcflib.bFlatMajor import stream as gm_stream
 # Other modules #
 from bein import program
 
+translate = { "TTT": "F", "TTC": "F", "TTA": "L", "TTG": "L/START",
+              "CTT": "L", "CTC": "L", "CTA": "L", "CTG": "L",
+              "ATT": "I", "ATC": "I", "ATA": "I", "ATG": "M & START",
+              "GTT": "V", "GTA": "V", "GTC": "V", "GTG": "V/START",
+              "TCT": "S", "TCC": "S", "TCA": "S", "TCG": "S",
+              "CCT": "P", "CCC": "P", "CCA": "P", "CCG": "P",
+              "ACT": "T", "ACC": "T", "ACA": "T", "ACG": "T",
+              "GCT": "A", "GCC": "A", "GCA": "A", "GCG": "A",
+              "TAT": "Y", "TAC": "Y", "TAA": "STOP", "TAG": "STOP",
+              "CAT": "H", "CAC": "H", "CAA": "Q", "CAG": "Q",
+              "AAT": "N", "AAC": "N", "AAA": "K", "AAG": "K",
+              "GAT": "D", "GAC": "D", "GAA": "E", "GAG": "E",
+              "TGT": "C", "TGC": "C", "TGA": "STOP", "TGG": "W",
+              "CGT": "R", "CGC": "R", "CGA": "R", "CGG": "R",
+              "AGT": "S", "AGC": "S", "AGA": "R", "AGG": "R",
+              "GGT": "G", "GGC": "G", "GGA": "G", "GGG": "G" }
 
 def untar_genome_fasta(assembly, path_to_ref=None, convert=True):
     """Untar and concatenate reference sequence fasta files.
@@ -178,7 +194,7 @@ def annotate_snps( filedict, sample_names, assembly ):
         annotations = assembly.gene_track(chrom) # gene annotation from genrep
         # Find the nearest gene from each snp
         fstream = gm_stream.getNearestFeature(snp_read, annotations, 3000, 3000)
-        # Put together the reference base and the base of every sample
+        # Put together in a tuple the reference base and the base of every sample
         # Write a line in outall at each iteration; yield if the snp is in a CDS only
         inclstream = track.concat_fields(track.FeatureStream(_process_annot(fstream, outall),
                                                              fields=snp_read.fields),
@@ -196,18 +212,24 @@ def annotate_snps( filedict, sample_names, assembly ):
             else:
                 replaced = rest[1]
             phase = rest[4]
-            gene_id, gene_name = rest[2].split('|')
-            transcripts = trans_in_gene[gene_id]
-            for t in transcripts: 
-                ts, te = transcript_mapping[t][1:3]
-                if ts <= pos and pos <= te:
-                    exons = exons_in_trans[t]
-                    break # found one; the phase should be the same for the others
-            for e in exons:
-                es, ee = exon_mapping[e][2:4]
-                if es <= pos and pos <= ee:
-                    #es = es+1 # ???
-                    break
+            exon_id, gene_id, gene_name = rest[2].split('|')
+            # If no exon_id, let's find one (sometimes)
+            if not exon_id:
+                found = False
+                transcripts = trans_in_gene[gene_id]
+                for t in transcripts: 
+                    ts, te = transcript_mapping[t][1:3]
+                    if ts <= pos and pos <= te:
+                        exons = exons_in_trans[t]
+                        break # found one; the phase should be the same for the other transcripts
+                for e in exons:
+                    es, ee = exon_mapping[e][2:4]
+                    if es <= pos and pos <= ee:
+                        #es = es+1 # Ensembl ???
+                        exon_id = e
+                        break
+            if not exon_id: exon_id = '-'
+            #print rest[2].split(), exon_id
             shift = (pos - (es+phase)) % 3
             codon_start = pos - shift
             ref_codon = assembly.fasta_from_regions({chr: [[codon_start,codon_start+3]]}, out={})[0][chr][0]
@@ -215,8 +237,8 @@ def annotate_snps( filedict, sample_names, assembly ):
             new_codon[shift] = replaced
             new_codon = "".join(new_codon)
             assert ref_codon[shift] == refbase, "bug with shift within codon"
-            rest = (rest[0], rest[1], e+'|'+gene_id+'|'+gene_name, ref_codon, new_codon)
-            print rest
+            rest = (rest[0], rest[1], exon_id+'|'+gene_id+'|'+gene_name, ref_codon, new_codon)
+            #print rest
             outex.write("\t".join([str(y) for y in (x[2],x[1])+rest])+"\n")
     outex.close()
     return (outall, outexons)
@@ -230,22 +252,6 @@ def synonymous(job,allSnp):
     allCodon = unique_filename_in()
 #    infile = track.rtack(allSnp)
 #    outtrack = track.track(allCodon)
-    translate = { "TTT": "F", "TTC": "F", "TTA": "L", "TTG": "L/START",
-                  "CTT": "L", "CTC": "L", "CTA": "L", "CTG": "L",
-                  "ATT": "I", "ATC": "I", "ATA": "I", "ATG": "M & START",
-                  "GTT": "V", "GTA": "V", "GTC": "V", "GTG": "V/START",
-                  "TCT": "S", "TCC": "S", "TCA": "S", "TCG": "S",
-                  "CCT": "P", "CCC": "P", "CCA": "P", "CCG": "P",
-                  "ACT": "T", "ACC": "T", "ACA": "T", "ACG": "T",
-                  "GCT": "A", "GCC": "A", "GCA": "A", "GCG": "A",
-                  "TAT": "Y", "TAC": "Y", "TAA": "STOP", "TAG": "STOP",
-                  "CAT": "H", "CAC": "H", "CAA": "Q", "CAG": "Q",
-                  "AAT": "N", "AAC": "N", "AAA": "K", "AAG": "K",
-                  "GAT": "D", "GAC": "D", "GAA": "E", "GAG": "E",
-                  "TGT": "C", "TGC": "C", "TGA": "STOP", "TGG": "W",
-                  "CGT": "R", "CGC": "R", "CGA": "R", "CGG": "R",
-                  "AGT": "S", "AGC": "S", "AGA": "R", "AGG": "R",
-                  "GGT": "G", "GGC": "G", "GGA": "G", "GGG": "G" }
 
     return allCodon
 
