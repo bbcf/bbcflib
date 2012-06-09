@@ -176,6 +176,7 @@ def annotate_snps( filedict, sample_names, assembly ):
     outall = output+"_all_snps.txt"
     outexons = output+"_exon_snps.txt"
     outex = open(outexons,"w")
+    nsamples = len(sample_names)
     # Complete the header
     with open(outall,"w") as fout:
         newcols = sample_names + ['gene','location_type','distance']
@@ -184,7 +185,8 @@ def annotate_snps( filedict, sample_names, assembly ):
     # For each chromosome, read the result of parse_pileupFile and make a track
     for chrom, filename in filedict.iteritems():
         snp_file = track.track( filename, format='text',
-                                fields=['chr','end','name']+sample_names, chrmeta=assembly.chrmeta )
+                                fields=['chr','end','name',sample_names[0]], chrmeta=assembly.chrmeta )
+                                #fields=['chr','end','name']+sample_names, chrmeta=assembly.chrmeta )
         #for x in snp_file.read(): print x
         # snp_file.read() is an iterator on the track features: 
         # ('chrV', 1607, 'T', '43.48% C / 56.52% T', '43.48% C / 56.52% T') 
@@ -198,13 +200,14 @@ def annotate_snps( filedict, sample_names, assembly ):
         # Write a line in outall at each iteration; yield if the snp is in a CDS only
         inclstream = track.concat_fields(track.FeatureStream(_process_annot(fstream, outall),
                                                              fields=snp_read.fields),
-                                         infields=['name']+sample_names, as_tuple=True)
+                                         infields=['name',sample_names[0]], as_tuple=True)
+                                         #infields=['name']+sample_names, as_tuple=True)
         # import existing CDS annotation from genrep as a track, and join some fields
         annotstream = track.concat_fields(assembly.annot_track('CDS',chrom),
                                           infields=['name','strand','frame'], as_tuple=True)
         for x in gm_stream.combine([inclstream, annotstream], gm_stream.intersection):
             # x = (1606, 1607, 'chrV', ('T', '43.48% C / 56.52% T', 'YEL077C|YEL077C', -1, 0, 'YEL077W-A|YEL077W-A', 1, 0))
-            print 'x =',x
+            #print 'x =',x
             pos = x[0]; chr = x[2]; rest = x[3]
             refbase = rest[0]
             if len(rest[1].split()) > 1: # 43% C / 57% T
