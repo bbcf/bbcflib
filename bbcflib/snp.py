@@ -210,10 +210,13 @@ def annotate_snps( filedict, sample_names, assembly ):
             #print 'x =',x
             pos = x[0]; chr = x[2]; rest = x[3]
             refbase = rest[0]
-            if len(rest[1].split()) > 1: # 43% C / 57% T
-                replaced = rest[1].split()[1]
+            print rest[1]
+            if len(rest[1].strip('* ').split()) > 1: # 43% C / 57% T
+                replaced = rest[1].strip('* ').split()[1]
+            elif rest[1].strip('* ') == '-':
+                replaced = refbase
             else:
-                replaced = rest[1]
+                replaced = rest[1].strip('* ')
             phase = rest[4]
             exon_id, gene_id, gene_name = rest[2].split('|')
             # If no exon_id, let's find one (sometimes)
@@ -232,7 +235,6 @@ def annotate_snps( filedict, sample_names, assembly ):
                         exon_id = e
                         break
             if not exon_id: exon_id = '-'
-            #print rest[2].split(), exon_id
             shift = (pos - (es+phase)) % 3
             codon_start = pos - shift
             ref_codon = assembly.fasta_from_regions({chr: [[codon_start,codon_start+3]]}, out={})[0][chr][0]
