@@ -99,14 +99,13 @@ def add_macs_results( ex, read_length, genome_size, bamfile,
             enrich_bounds = str(min(30,low))+","+str(10*low)
         else:
             enrich_bounds = "10,100"
-        if isinstance(read_length,list):
-            rl = read_length[i]
+        if not("-m" in macs_args): macs_args += ["-m",enrich_bounds]
+        if isinstance(read_length,list): rl = read_length[i]
         for j,cam in enumerate(ctrlbam):
             m = name['controls'][j]
             nm = (n,m)
             futures[nm] = macs.nonblocking( ex, rl, genome_size, bam, cam,
-                                            args=macs_args+["-m",enrich_bounds],
-                                            via=via, memory=4 )
+                                            args=macs_args, via=via, memory=4 )
     prefixes = dict((n,f.wait()) for n,f in futures.iteritems())
     for n,p in prefixes.iteritems():
         macs_descr0 = {'step':'macs','type':'none','view':'admin'}
