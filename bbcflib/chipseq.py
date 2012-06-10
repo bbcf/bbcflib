@@ -51,7 +51,7 @@ from bein.util import touch
 # Peaks and annotation #
 
 @program
-def macs( read_length, genome_size, bamfile, ctrlbam = None, args = None ):
+def macs( read_length, genome_size, bamfile, ctrlbam=None, args=None ):
     """Binding for the ``macs`` peak caller.
 
     takes one (optionally two) bam file(s) and
@@ -59,15 +59,17 @@ def macs( read_length, genome_size, bamfile, ctrlbam = None, args = None ):
 
     Returns the file prefix ('-n' option of ``macs``)
     """
-    if args is None:
-        args = []
-    outname = common.unique_filename_in()
-    macs_args = ["macs14","-t",bamfile]
-    if ctrlbam != None:
-        macs_args += ["-c",ctrlbam]
-    macs_args += ["-n",outname,"-f","BAM","-g",str(genome_size),"-s",str(read_length)]
+    macs_args = ["macs14","-t",bamfile,"-f","BAM","-g",str(genome_size)]
+    if isinstance(args,list): macs_args += args
+    if not(ctrlbam is None): macs_args += ["-c",ctrlbam]
+    if "-n" in macs_args: 
+        outname = macs_args[macs_args.index("-n")+1]
+    else:
+        outname = common.unique_filename_in()
+        macs_args += ["-n",outname]
+    if not("-s" in macs_args): macs_args += ["-s",str(read_length)]
     if not("--verbose" in macs_args): macs_args += ["--verbose","1"]
-    return {"arguments": macs_args+args, "return_value": outname}
+    return {"arguments": macs_args, "return_value": outname}
 
 def add_macs_results( ex, read_length, genome_size, bamfile,
                       ctrlbam=None, name=None, poisson_threshold=None,
