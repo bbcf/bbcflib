@@ -1,6 +1,3 @@
-# Built-in modules #
-import datetime, ConfigParser, cStringIO
-
 # Internal modules #
 from bbcflib.snp import *
 from bbcflib import genrep
@@ -17,7 +14,7 @@ __test__ = True
 #Path tpo testing files
 path = "test_data/snp/"
 
-class Test_Assembly(unittest.TestCase):
+class Test_SNP(unittest.TestCase):
     def setUp(self):
         self.sample_names = ["sample1"]
         self.assembly = genrep.Assembly('sacCer2')
