@@ -607,7 +607,6 @@ class Assembly(object):
                 cursor.execute(sql1+chrom+sql2)
                 for x in cursor:
                     name = "|".join([str(y) for y in x[2:nmax]])
-                    name = name.strip('|')
                     yield (chrom,int(x[0]),int(x[1]),name)+tuple(x[nmax:])
         def _web_query():
             for chrom in chromlist:
@@ -620,7 +619,6 @@ class Assembly(object):
                         start = min([x[0] for x in v])
                         end = max([x[1] for x in v])
                         name = "|".join([str(y) for y in v[0][2:nmax]])
-                        name = name.strip('|')
                         sort_list.append((start,end,name)+tuple(v[0][nmax:]))
                 sort_list.sort()
                 for k in sort_list: yield (chrom,)+k
