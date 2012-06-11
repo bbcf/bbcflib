@@ -167,10 +167,10 @@ def annotate_snps( filedict, sample_names, assembly ):
                     yield (snp[2],int(snp[0]),int(snp[1]))+snp[3:-3]
                     # ('chrV', 1606, 1607, 'T', '43.48% C / 56.52% T')
 
-    trans_in_gene = assembly.get_trans_in_gene() # {gene_id: [transcript_ids]} mapping
-    exons_in_trans = assembly.get_exons_in_trans() # {transcript_id: [exon_ids]} mapping
-    transcript_mapping = assembly.get_transcript_mapping() # {transcript_id: (gene_id,start,end,length,chromosome)}
-    exon_mapping = assembly.get_exon_mapping() # {exon_id: ([transcript_ids],gene_id,start,end,chromosome)}
+    trans_in_gene = assembly.get_trans_in_gene() # {gene_id: [transcript_ids]}
+    exons_in_trans = assembly.get_exons_in_trans() # {transcript_id: [exon_ids]}
+    transcript_mapping = assembly.get_transcript_mapping() # {transcript_id: (gene_id,start,end,length,strand,chromosome)}
+    exon_mapping = assembly.get_exon_mapping() # {exon_id: ([transcript_ids],gene_id,start,end,strand,chromosome)}
 
     output = unique_filename_in()
     outall = output+"_all_snps.txt"
@@ -188,9 +188,7 @@ def annotate_snps( filedict, sample_names, assembly ):
                                 fields=['chr','end','name',sample_names[0]], chrmeta=assembly.chrmeta )
                                 #fields=['chr','end','name']+sample_names, chrmeta=assembly.chrmeta )
                                 # samples??
-        #for x in snp_file.read(): print x
-        # snp_file.read() is an iterator on the track features: 
-        # ('chrV', 1607, 'T', '43.48% C / 56.52% T', '43.48% C / 56.52% T') 
+        # snp_file.read() is an iterator on the track features: ('chrV', 1607, 'T', '43.48% C / 56.52% T') 
         # Add a 'start' using end-1 and remake the track 
         snp_read = track.FeatureStream( ((y[0],y[1]-1)+y[1:] for y in snp_file.read(chrom)),
                                         fields=['chr','start','end']+snp_file.fields[2:])
@@ -212,64 +210,53 @@ def annotate_snps( filedict, sample_names, assembly ):
             pos = x[0]; chr = x[2]; rest = x[3]
             refbase = rest[0]
             variant = rest[1].strip('* ')
-            strand = int(rest[3])
-            phase = rest[4]
-            print rest[1]
             if len(variant.split()) > 1: # 43% C / 57% T
                 replaced = variant.split()[1]
             elif variant == '-':
                 replaced = refbase
             else:
                 replaced = variant
-            exon_id, gene_id, gene_name = rest[2].split('|')
-            # If no exon_id, let's find one (sometimes)
-            if not exon_id:
-                found = False
+            annot = [rest[3*i+2:3*i+3+2] for i in range(len(rest[2:])/3)] # list of (cds,strand,phase)
+            for cds,strand,phase in annot:
+                exon_id, gene_id, gene_name = cds.split('|')
+                # If no exon_id, let's find one (sometimes)
                 transcripts = trans_in_gene[gene_id]
+                exons = None
                 for t in transcripts: 
                     ts, te = transcript_mapping[t][1:3]
                     if ts <= pos and pos <= te:
                         exons = exons_in_trans[t]
                         break # found one; the phase should be the same for the other transcripts
-                for e in exons:
-                    es, ee = exon_mapping[e][2:4]
-                    #es = es+1 # Ensembl ???
-                    if es <= pos and pos <= ee:
-                        exon_id = e
-                        break
-            if not exon_id: exon_id = '-'
-            if strand == 1:
-                shift = (pos - (es + phase)) % 3
-                codon_start = pos - shift
-            elif strand == -1:
-                shift = (ee - phase - pos) % 3
-                codon_start = pos + shift - 2
-            ref_codon = assembly.fasta_from_regions({chr: [[codon_start,codon_start+3]]}, out={})[0][chr][0]
-            new_codon = list(ref_codon)
-            if strand == 1:
-                new_codon[shift] = replaced
-                assert ref_codon[shift] == refbase, "bug with shift within codon"
-            elif strand == -1:
-                new_codon[2-shift] = replaced
-                assert ref_codon[2-shift] == refbase, "bug with shift within codon"
-            new_codon = "".join(new_codon)
-            rest = (rest[0], rest[1], exon_id+'|'+gene_id+'|'+gene_name, ref_codon, new_codon)
-            #print rest
-            outex.write("\t".join([str(y) for y in (x[2],x[1])+rest])+"\n")
+                if exons:
+                    for e in exons:
+                        es, ee = exon_mapping[e][2:4]
+                        #es = es+1 # Ensembl ???
+                        if es <= pos and pos <= ee:
+                            exon_id = e
+                            break
+                else: continue
+                if exon_id == '': exon_id = '-'
+                if strand == 1:
+                    shift = (pos - (es + phase)) % 3
+                    codon_start = pos - shift
+                elif strand == -1:
+                    shift = (ee - phase - pos) % 3
+                    codon_start = pos + shift - 2
+                ref_codon = assembly.fasta_from_regions({chr: [[codon_start,codon_start+3]]}, out={})[0][chr][0]
+                new_codon = list(ref_codon)
+                if strand == 1:
+                    new_codon[shift] = replaced
+                    assert ref_codon[shift] == refbase, "bug with shift within codon"
+                elif strand == -1:
+                    new_codon[2-shift] = replaced
+                    assert ref_codon[2-shift] == refbase, "bug with shift within codon"
+                new_codon = "".join(new_codon)
+                result = (rest[0]+' -> '+rest[1], exon_id+'|'+gene_id+'|'+gene_name, strand, \
+                        ref_codon+' -> '+new_codon, translate[ref_codon]+' -> '+translate[new_codon])
+                #print result,'\n'
+                outex.write("\t".join([str(y) for y in (x[2],x[1])+result])+"\n")
     outex.close()
     return (outall, outexons)
-
-def synonymous(job,allSnp):
-    """
-
-    :param job: a Frontend.Job object.
-    :param allSnp: path to the file summarizing the localization of SNPs.
-    """
-    allCodon = unique_filename_in()
-#    infile = track.rtack(allSnp)
-#    outtrack = track.track(allCodon)
-
-    return allCodon
 
 
 def posAllUniqSNP(PileupDict):
