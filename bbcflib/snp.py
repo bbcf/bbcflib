@@ -146,7 +146,7 @@ def parse_pileupFile(samples,allSNPpos,chrom,minCoverage=80,minSNP=10):
             if nbNoSnp != len(allSamples):
                 outfile.write("\t".join([chrom,str(pos),allSNPpos[pos]] + [allSamples[sname][pos] for s in allSamples])+"\n")
                 # Write: chr    pos    ref_base    sample1 ... sampleN
-                # sampleX is one of '-', 'A', '12% A / 88% T'
+                # sampleX is one of '-', 'A', '12% A / 88% T', with or wothout star
 
     return formattedPileupFilename
 
@@ -187,6 +187,7 @@ def annotate_snps( filedict, sample_names, assembly ):
         snp_file = track.track( filename, format='text',
                                 fields=['chr','end','name',sample_names[0]], chrmeta=assembly.chrmeta )
                                 #fields=['chr','end','name']+sample_names, chrmeta=assembly.chrmeta )
+                                # samples??
         #for x in snp_file.read(): print x
         # snp_file.read() is an iterator on the track features: 
         # ('chrV', 1607, 'T', '43.48% C / 56.52% T', '43.48% C / 56.52% T') 
@@ -210,14 +211,16 @@ def annotate_snps( filedict, sample_names, assembly ):
             #print 'x =',x
             pos = x[0]; chr = x[2]; rest = x[3]
             refbase = rest[0]
+            variant = rest[1].strip('* ')
+            strand = int(rest[3])
+            phase = rest[4]
             print rest[1]
-            if len(rest[1].strip('* ').split()) > 1: # 43% C / 57% T
-                replaced = rest[1].strip('* ').split()[1]
-            elif rest[1].strip('* ') == '-':
+            if len(variant.split()) > 1: # 43% C / 57% T
+                replaced = variant.split()[1]
+            elif variant == '-':
                 replaced = refbase
             else:
-                replaced = rest[1].strip('* ')
-            phase = rest[4]
+                replaced = variant
             exon_id, gene_id, gene_name = rest[2].split('|')
             # If no exon_id, let's find one (sometimes)
             if not exon_id:
@@ -230,18 +233,26 @@ def annotate_snps( filedict, sample_names, assembly ):
                         break # found one; the phase should be the same for the other transcripts
                 for e in exons:
                     es, ee = exon_mapping[e][2:4]
+                    #es = es+1 # Ensembl ???
                     if es <= pos and pos <= ee:
-                        #es = es+1 # Ensembl ???
                         exon_id = e
                         break
             if not exon_id: exon_id = '-'
-            shift = (pos - (es+phase)) % 3
-            codon_start = pos - shift
+            if strand == 1:
+                shift = (pos - (es + phase)) % 3
+                codon_start = pos - shift
+            elif strand == -1:
+                shift = (ee - phase - pos) % 3
+                codon_start = pos + shift - 2
             ref_codon = assembly.fasta_from_regions({chr: [[codon_start,codon_start+3]]}, out={})[0][chr][0]
             new_codon = list(ref_codon)
-            new_codon[shift] = replaced
+            if strand == 1:
+                new_codon[shift] = replaced
+                assert ref_codon[shift] == refbase, "bug with shift within codon"
+            elif strand == -1:
+                new_codon[2-shift] = replaced
+                assert ref_codon[2-shift] == refbase, "bug with shift within codon"
             new_codon = "".join(new_codon)
-            assert ref_codon[shift] == refbase, "bug with shift within codon"
             rest = (rest[0], rest[1], exon_id+'|'+gene_id+'|'+gene_name, ref_codon, new_codon)
             #print rest
             outex.write("\t".join([str(y) for y in (x[2],x[1])+rest])+"\n")
