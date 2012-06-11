@@ -31,9 +31,9 @@ class Test_Assembly(unittest.TestCase):
                 |========|         |====|         |======|         |=========|         |======|
         2863   =   107        +     194       +     333        +       708       +       1461
         """
-    @unittest.skip('')
+    @unittest.skip('long')
     def test_get_gene_mapping(self):
-        expected = ('eif-3.B',14795327,14798367,2803,'chrII')
+        expected = ('eif-3.B',14795327,14798367,2803,1,'chrII')
         # Test with local database request
         map = self.assembly.get_gene_mapping()
         zc = map['Y54E2A.11']
@@ -45,9 +45,9 @@ class Test_Assembly(unittest.TestCase):
         self.assertEqual(zc,expected)
         self.assembly.genrep.root = self.root
 
-    @unittest.skip('')
+    @unittest.skip('long')
     def test_get_transcript_mapping(self):
-        expected = ('Y54E2A.11',14795327,14798367,2803,'chrII')
+        expected = ('Y54E2A.11',14795327,14798367,2803,1,'chrII')
         # Test with local database request
         map = self.assembly.get_transcript_mapping()
         zc = map['Y54E2A.11a.1']
@@ -59,9 +59,9 @@ class Test_Assembly(unittest.TestCase):
         self.assertEqual(zc,expected)
         self.assembly.genrep.root = self.root
 
-    @unittest.skip('')
+    @unittest.skip('long')
     def test_get_exon_mapping(self):
-        expected = (['Y54E2A.11a.1'],'Y54E2A.11',14795327,14795434,'chrII')
+        expected = (['Y54E2A.11a.1'],'Y54E2A.11',14795327,14795434,1,'chrII')
         # Test with local database request
         map = self.assembly.get_exon_mapping()
         zc = map['Y54E2A.11a.1.1']
@@ -75,7 +75,7 @@ class Test_Assembly(unittest.TestCase):
         self.assertEqual(zc,expected)
         self.assembly.genrep.root = self.root
 
-    @unittest.skip('')
+    @unittest.skip('long')
     def test_get_exons_in_trans(self):
         expected = ['Y54E2A.11a.1.1','Y54E2A.11b.2.2','Y54E2A.11a.1.3',
                     'Y54E2A.11a.1.4','Y54E2A.11b.1.5'] # Y54E2A.11a.1.5 = Y54E2A.11b.1.5
@@ -90,7 +90,7 @@ class Test_Assembly(unittest.TestCase):
         self.assertItemsEqual(zc,expected)
         self.assembly.genrep.root = self.root
 
-    @unittest.skip('')
+    @unittest.skip('long')
     def test_trans_in_gene(self):
         expected = ['Y54E2A.11a.1','Y54E2A.11a.2','Y54E2A.11b.1','Y54E2A.11b.2']
         # Test with local database request
