@@ -317,13 +317,13 @@ def genes_expression(exons_data, gene_mapping, exon_to_gene, ncond, nreads):
 
     Returns two dictionaries, one for counts and one for rpkm, of the form ``{gene ID: score}``.
 
-    :param exons_data: list of lists ``[exonsID, counts, rpkm, start, end, geneID, geneName]``.
+    :param exons_data: list of lists ``[exonsIDs,counts,rpkm,starts,ends,geneIDs,geneNames,strands,chrs]``.
     :param exon_lengths: dictionary ``{exon ID: length}``
-    :param gene_mapping: dictionary ``{gene ID: (gene name,start,end,length,chromosome)}``
+    :param gene_mapping: dictionary ``{gene ID: (gene name,start,end,length,strand,chromosome)}``
     :param exon_to_gene: dictionary ``{exon ID: gene ID}``.
     :param ncond: number of samples.
     """
-    genes = list(set(exons_data[-3]))
+    genes = list(set(exons_data[-4]))
     z = numpy.zeros((len(genes),ncond))
     zz = numpy.zeros((len(genes),ncond))
     gene_counts = dict(zip(genes,z))
@@ -344,14 +344,14 @@ def transcripts_expression(exons_data, exon_lengths, transcript_mapping, trans_i
 
     Returns two dictionaries, one for counts and one for rpkm, of the form ``{transcript ID: score}``.
 
-    :param exons_data: list of lists ``[exonsID, counts, rpkm, start, end, geneID, geneName, chromosome]``
+    :param exons_data: list of lists ``[exonsIDs,counts,rpkm,starts,ends,geneIDs,geneNames,strands,chrs]``
     :param exon_lengths: dictionary ``{exon ID: length}``
-    :param transcript_mapping: dictionary ``{transcript ID: (gene ID, start, end, length, chromosome)}``
+    :param transcript_mapping: dictionary ``{transcript ID: (gene ID,start,end,length,strand,chromosome)}``
     :param trans_in_gene: dictionary ``{gene ID: [transcript IDs it contains]}``
     :param exons_in_trans: dictionary ``{transcript ID: [exon IDs it contains]}``
     :param ncond: number of samples
     """
-    genes = list(set(exons_data[-3]))
+    genes = list(set(exons_data[-4]))
     transcripts=[]
     for g in genes:
         transcripts.extend(trans_in_gene.get(g,[]))
@@ -490,15 +490,16 @@ def rnaseq_workflow(ex, job, bam_files, pileup_level=["exons","genes","transcrip
     exons = fetch_labels(bam_files[groups.keys()[0]][groups.values()[0]['runs'].keys()[0]]['bam'])
 
     """ Extract information from bam headers """
-    exonsID=[]; genesID=[]; genesName=[]; starts=[]; ends=[];
+    exonsID=[]; genesID=[]; genesName=[]; starts=[]; ends=[]; strands=[]
     exon_lengths={}; exon_to_gene={}; badexons=[]
     for e in exons:
         length = e[1]
         E = e[0].split('|')
-        exon = E[0]; gene = E[1]; start = int(E[2]); end = int(E[3])
+        exon = E[0]; gene = E[1]; start = int(E[2]); end = int(E[3]); strand = int(E[4])
         if end-start>1:
             starts.append(start)
             ends.append(end)
+            strands.append(strand)
             exon_lengths[exon] = float(length)
             exonsID.append(exon)
             genesID.append(gene)
@@ -507,9 +508,9 @@ def rnaseq_workflow(ex, job, bam_files, pileup_level=["exons","genes","transcrip
     [exons.remove(e) for e in badexons]
 
     print "Load mappings"
-    """ [0] gene_mapping is a dict ``{gene ID: (gene name,start,end,length,chromosome)}``
-        [1] transcript_mapping is a dictionary ``{transcript ID: (gene ID,start,end,chromosome)}``
-        [2] exon_mapping is a dictionary ``{exon ID: ([transcript IDs],gene ID,start,end,chromosome)}``
+    """ [0] gene_mapping is a dict ``{gene ID: (gene name,start,end,length,strand,chromosome)}``
+        [1] transcript_mapping is a dictionary ``{transcript ID: (gene ID,start,end,length,strand,chromosome)}``
+        [2] exon_mapping is a dictionary ``{exon ID: ([transcript IDs],gene ID,start,end,strand,chromosome)}``
         [3] trans_in_gene is a dict ``{gene ID: [IDs of the transcripts it contains]}``
         [4] exons_in_trans is a dict ``{transcript ID: [IDs of the exons it contains]}`` """
     (gene_mapping, transcript_mapping, exon_mapping, trans_in_gene, exons_in_trans) = fetch_mappings(assembly)
@@ -576,16 +577,17 @@ def rnaseq_workflow(ex, job, bam_files, pileup_level=["exons","genes","transcrip
     rpkm = to_rpkm(counts, ends-starts, nreads)
 
     hconds = ["counts."+c for c in conditions] + ["rpkm."+c for c in conditions]
-    genesName, echr = zip(*[(x[0],x[-1]) for x in [gene_mapping.get(g,("NA",)*5) for g in genesID]])
-    exons_data = [exonsID]+list(counts)+list(rpkm)+[starts,ends,genesID,genesName,echr]
+    genesName, echr = zip(*[(x[0],x[-1]) for x in [gene_mapping.get(g,("NA",)*6) for g in genesID]])
+    exons_data = [exonsID]+list(counts)+list(rpkm)+[starts,ends,genesID,genesName,strands,echr]
     exons_file = None; genes_file = None; trans_file = None
+    print exons_data[-2][0]
 
     """ Print counts for exons """
     if "exons" in pileup_level:
         print "Get scores of exons"
         exons_data = zip(*exons_data)
-        exons_data = sorted(exons_data, key=itemgetter(7,4)) # sort w.r.t. chromosome, then start
-        header = ["ExonID"] + hconds + ["Start","End","GeneID","GeneName","Chromosome"]
+        exons_data = sorted(exons_data, key=itemgetter(8,4)) # sort w.r.t. chromosome, then start
+        header = ["ExonID"] + hconds + ["Start","End","GeneID","GeneName","Strand","Chromosome"]
         exons_data = zip(*exons_data)
         exons_file = save_results(ex, exons_data, conditions, group_ids, assembly, header=header, feature_type="EXONS")
 
@@ -594,11 +596,11 @@ def rnaseq_workflow(ex, job, bam_files, pileup_level=["exons","genes","transcrip
         print "Get scores of genes"
         (gcounts, grpkm) = genes_expression(exons_data, gene_mapping, exon_to_gene, ncond, nreads)
         genesID = gcounts.keys()
-        genes_data = [[g,gcounts[g],grpkm[g]]+list(gene_mapping.get(g,("NA",)*5)) for g in genesID]
-        genes_data = sorted(genes_data, key=itemgetter(7,4)) # sort w.r.t. chromosome, then start
-        (genesID,gcounts,grpkm,gname,gstart,gend,glen,gchr) = zip(*genes_data)
-        header = ["GeneID"] + hconds + ["Start","End","GeneName","Chromosome"]
-        genes_data = [genesID]+list(zip(*gcounts))+list(zip(*grpkm))+[gstart,gend,gname,gchr]
+        genes_data = [[g,gcounts[g],grpkm[g]]+list(gene_mapping.get(g,("NA",)*6)) for g in genesID]
+        genes_data = sorted(genes_data, key=itemgetter(8,4)) # sort w.r.t. chromosome, then start
+        (genesID,gcounts,grpkm,gname,gstart,gend,glen,gstr,gchr) = zip(*genes_data)
+        header = ["GeneID"] + hconds + ["Start","End","GeneName","Strand","Chromosome"]
+        genes_data = [genesID]+list(zip(*gcounts))+list(zip(*grpkm))+[gstart,gend,gname,gstr,gchr]
         genes_file = save_results(ex, genes_data, conditions, group_ids, assembly, header=header, feature_type="GENES")
 
     """ Get scores of transcripts from exons, using non-negative least-squares """
@@ -607,12 +609,12 @@ def rnaseq_workflow(ex, job, bam_files, pileup_level=["exons","genes","transcrip
         (tcounts,trpkm) = transcripts_expression(exons_data, exon_lengths,
                    transcript_mapping, trans_in_gene, exons_in_trans, ncond, nreads)
         transID = tcounts.keys()
-        trans_data = [[t,tcounts[t],trpkm[t]]+list(transcript_mapping.get(t,("NA",)*5)) for t in transID]
-        trans_data = sorted(trans_data, key=itemgetter(7,4)) # sort w.r.t. chromosome, then start
-        (transID,tcounts,trpkm,genesID,tstart,tend,tlen,tchr) = zip(*trans_data)
-        genesName = [gene_mapping.get(g,("NA",)*5)[0] for g in genesID]
-        header = ["TranscriptID"] + hconds + ["Start","End","GeneID","GeneName","Chromosome"]
-        trans_data = [transID]+list(zip(*tcounts))+list(zip(*trpkm))+[tstart,tend,genesID,genesName,tchr]
+        trans_data = [[t,tcounts[t],trpkm[t]]+list(transcript_mapping.get(t,("NA",)*6)) for t in transID]
+        trans_data = sorted(trans_data, key=itemgetter(8,4)) # sort w.r.t. chromosome, then start
+        (transID,tcounts,trpkm,genesID,tstart,tend,tlen,tstr,tchr) = zip(*trans_data)
+        genesName = [gene_mapping.get(g,("NA",)*6)[0] for g in genesID]
+        header = ["TranscriptID"] + hconds + ["Start","End","GeneID","GeneName","Strand","Chromosome"]
+        trans_data = [transID]+list(zip(*tcounts))+list(zip(*trpkm))+[tstart,tend,genesID,genesName,tstr,tchr]
         trans_file = save_results(ex, trans_data, conditions, group_ids, assembly, header=header, feature_type="TRANSCRIPTS")
 
     return {"exons":exons_file, "genes":genes_file, "transcripts":trans_file}

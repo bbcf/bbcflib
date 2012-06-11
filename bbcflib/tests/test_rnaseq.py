@@ -56,9 +56,9 @@ class Test_Fusion(unittest.TestCase):
         X = [(c,0,25,5.),(c,5,10,4.),(c,15,20,2.)]
         R = [(c,0,5,5.),(c,5,10,9.),(c,10,15,5.),(c,15,20,7.),(c,20,25,5.)]
         self.commonTest(X,R)
-    
+
     #@unittest.skip('')
-    def test_fusion4(self):    
+    def test_fusion4(self):
         """
         |*********---***|
         |---***---------|
@@ -66,7 +66,7 @@ class Test_Fusion(unittest.TestCase):
         X = [(c,0,15,5.),(c,5,10,4.),(c,20,25,2.)]
         R = [(c,0,5,5.),(c,5,10,9.),(c,10,15,5.),(c,20,25,2.)]
         self.commonTest(X,R)
-        
+
     #@unittest.skip('')
     def test_fusion5(self):
         """
@@ -77,7 +77,7 @@ class Test_Fusion(unittest.TestCase):
         X = [(c,0,25,5.),(c,5,10,4.),(c,15,20,2.),(c,30,35,1.)]
         R = [(c,0,5,5.),(c,5,10,9.),(c,10,15,5.),(c,15,20,7.),(c,20,25,5.),(c,30,35,1.)]
         self.commonTest(X,R)
-    
+
     #@unittest.skip('')
     def test_fusion6(self):
         """
@@ -87,7 +87,7 @@ class Test_Fusion(unittest.TestCase):
         X = [(c,0,10,5.),(c,5,15,4.)]
         R = [(c,0,5,5.),(c,5,10,9.),(c,10,15,4.)]
         self.commonTest(X,R)
-    
+
     #@unittest.skip('')
     def test_fusion7(self):
         """
@@ -98,7 +98,7 @@ class Test_Fusion(unittest.TestCase):
         X = [(c,0,10,5.),(c,5,15,4.),(c,20,25,2.)]
         R = [(c,0,5,5.),(c,5,10,9.),(c,10,15,4.),(c,20,25,2.)]
         self.commonTest(X,R)
-        
+
     #@unittest.skip('')
     def test_fusion8(self):
         """
@@ -109,7 +109,7 @@ class Test_Fusion(unittest.TestCase):
         X = [(c,0,10,5.),(c,5,20,4.),(c,15,25,2.)]
         R = [(c,0,5,5.),(c,5,10,9.),(c,10,15,4.),(c,15,20,6.),(c,20,25,2.)]
         self.commonTest(X,R)
-        
+
     #@unittest.skip('')
     def test_fusion9(self):
         """
@@ -128,19 +128,19 @@ class Test_Fusion(unittest.TestCase):
              (c,110,115,3.),(c,115,120,5.),(c,120,125,2.),(c,125,130,8.),
              (c,130,135,2.),(c,140,145,9.)]
         self.commonTest(X,R)
-        
+
     #@unittest.skip('')
     def test_fusion101(self):
         """
          .  .  .  .  .  .
         |***************|
-        |---*********---| 
-        |------***------| 
+        |---*********---|
+        |------***------|
         """
         X = [(c,0,25,5.),(c,5,20,4.),(c,10,15,2.)]
-        R = [(c,0,5,5.),(c,5,10,9.),(c,10,15,11.),(c,15,20,9.),(c,20,25,5.)] 
+        R = [(c,0,5,5.),(c,5,10,9.),(c,10,15,11.),(c,15,20,9.),(c,20,25,5.)]
         self.commonTest(X,R)
-        
+
     #@unittest.skip('')
     def test_fusion102(self):
         """
@@ -150,9 +150,9 @@ class Test_Fusion(unittest.TestCase):
         |------***------
         """
         X = [(c,0,20,5.),(c,5,25,4.),(c,10,15,2.)]
-        R = [(c,0,5,5.),(c,5,10,9.),(c,10,15,11.),(c,15,20,9.),(c,20,25,4.)] 
+        R = [(c,0,5,5.),(c,5,10,9.),(c,10,15,11.),(c,15,20,9.),(c,20,25,4.)]
         self.commonTest(X,R)
-        
+
     #@unittest.skip('')
     def test_fusion103(self):
         """
@@ -162,9 +162,9 @@ class Test_Fusion(unittest.TestCase):
         |------*********|
         """
         X = [(c,0,20,5.),(c,5,15,4.),(c,10,25,2.)]
-        R = [(c,0,5,5.),(c,5,10,9.),(c,10,15,11.),(c,15,20,7.),(c,20,25,2.)] 
+        R = [(c,0,5,5.),(c,5,10,9.),(c,10,15,11.),(c,15,20,7.),(c,20,25,2.)]
         self.commonTest(X,R)
-        
+
     #@unittest.skip('')
     def test_fusion104(self):
         """
@@ -174,9 +174,9 @@ class Test_Fusion(unittest.TestCase):
         |***************|
         """
         X = [(c,0,15,4.),(c,0,25,5.),(c,0,25,2.)]
-        R = [(c,0,15,11.),(c,15,25,7.)] 
+        R = [(c,0,15,11.),(c,15,25,7.)]
         self.commonTest(X,R)
-        
+
     #@unittest.skip('')
     def test_fusion104(self):
         """
@@ -186,9 +186,9 @@ class Test_Fusion(unittest.TestCase):
         |***************|
         """
         X = [(c,0,15,4.),(c,0,20,5.),(c,0,25,2.)]
-        R = [(c,0,15,11.),(c,15,20,7.),(c,20,25,2.)] 
+        R = [(c,0,15,11.),(c,15,20,7.),(c,20,25,2.)]
         self.commonTest(X,R)
-        
+
     #@unittest.skip('')
     def test_fusion12(self):
         """
@@ -211,7 +211,7 @@ class Test_Fusion(unittest.TestCase):
         X = [(c,0,5,5.),(c,0,10,4.),(c,15,20,2.),(c,15,25,3.)]
         R = [(c,0,5,9.),(c,5,10,4.),(c,15,20,5.),(c,20,25,3.)]
         self.commonTest(X,R)
-        
+
     #@unittest.skip('')
     def test_fusion14(self):
         """
@@ -222,7 +222,7 @@ class Test_Fusion(unittest.TestCase):
         X = [(c,0,10,5.),(c,5,10,4.),(c,15,25,2.),(c,20,25,3.)]
         R = [(c,0,5,5.),(c,5,10,9.),(c,15,20,2.),(c,20,25,5.)]
         self.commonTest(X,R)
-        
+
     #@unittest.skip('')
     def test_fusion15(self):
         """
@@ -233,7 +233,7 @@ class Test_Fusion(unittest.TestCase):
         X = [(c,0,10,5.),(c,5,10,4.),(c,15,25,2.),(c,20,30,3.),(c,35,40,7.),(c,35,45,6.)]
         R = [(c,0,5,5.),(c,5,10,9.),(c,15,20,2.),(c,20,25,5.),(c,25,30,3.),(c,35,40,13.),(c,40,45,6.)]
         self.commonTest(X,R)
-        
+
     #@unittest.skip('')
     def test_fusion16(self):
         """
@@ -255,8 +255,8 @@ class Test_Expressions1(unittest.TestCase):
         self.counts = array([[27,12],[3,3]]) # [[cond1],[cond2]]
         self.rpkms = array([[27/3.,12/6.],[3/3.,3/6.]])
         self.exons_data = [[e1,e2]]+list(self.counts)+list(self.rpkms)+[[0.,3.],[3.,9.],[g1,g1],["gg1","gg1"],[c,c]]
-        self.transcript_mapping = {t1:(g1,0,3,3.,c), t2:(g1,0,9,9.,c)}
-        self.gene_mapping = {g1:("gg1",0,9,9.,c)}
+        self.transcript_mapping = {t1:(g1,0,3,3.,1,c), t2:(g1,0,9,9.,1,c)}
+        self.gene_mapping = {g1:("gg1",0,9,9.,1,c)}
         self.exon_lengths = {e1:3., e2:6.}
         self.exon_to_gene = {e1:g1, e2:g1}
         self.trans_in_gene = {g1:[t1,t2]}
@@ -313,8 +313,8 @@ class Test_Expressions2(unittest.TestCase):
         self.rpkms = array([[10/5.,15/5.,10/5.]])
         self.exons_data = [[e1,e2,e3]]+list(self.counts)+list(self.rpkms)+\
                [[0.,5.,10],[5.,10.,15.],["g1"]*3,["gg1"]*3,[c]*3]
-        self.transcript_mapping = {t1:(g1,0,10,10.,c), t2:(g1,5,15,10.,c), t3:(g1,0,15,15.,c)}
-        self.gene_mapping = {g1:("gg1",0,9,9.,c)}
+        self.transcript_mapping = {t1:(g1,0,10,10.,1,c), t2:(g1,5,15,10.,1,c), t3:(g1,0,15,15.,1,c)}
+        self.gene_mapping = {g1:("gg1",0,9,9.,1,c)}
         self.exon_lengths = {e1:5., e2:5., e3:5.}
         self.exon_to_gene = {e1:g1, e2:g1, e3:g1}
         self.trans_in_gene = {g1:[t1,t2,t3]}
@@ -357,9 +357,9 @@ class Test_Expressions3(unittest.TestCase):
         self.rpkms = array([[10/5.,15/5.,10/5.]])
         self.exons_data = [[e1,e2,e3]]+list(self.counts)+list(self.rpkms)+\
                [[0.,5.,10],[5.,10.,15.],[g1]*3,["gg1"]*3,[c]*3]
-        self.transcript_mapping = {t1:(g1,0,10,10.,c), t2:(g1,5,15,10.,c), \
-                                   t3:(g1,0,15,15.,c), t4:(g1,0,15,10.,c)}
-        self.gene_mapping = {g1:("gg1",0,9,9.,c)}
+        self.transcript_mapping = {t1:(g1,0,10,10.,1,c), t2:(g1,5,15,10.,1,c), \
+                                   t3:(g1,0,15,15.,1,c), t4:(g1,0,15,10.,1,c)}
+        self.gene_mapping = {g1:("gg1",0,9,9.,1,c)}
         self.exon_lengths = {e1:5., e2:5., e3:5.}
         self.exon_to_gene = {e1:g1, e2:g1, e3:g1}
         self.trans_in_gene = {g1:[t1,t2,t3,t4]}
@@ -391,8 +391,8 @@ class Test_Expressions4(unittest.TestCase):
         self.rpkms = array([[10/5.,10/5.,10/5.,10/5.]])
         self.exons_data = [[e1,e2,e3,e4]]+list(self.counts)+list(self.rpkms)+\
                [[0,5,10,15],[5,10,15,20],[g1]*4,["gg1"]*4,[c]*4]
-        self.transcript_mapping = {t1:(g1,0,10,10.,c), t2:(g1,5,20,15.,c), t3:(g1,5,20,10.,c)}
-        self.gene_mapping = {g1:("gg1",0,12,12.,c)}
+        self.transcript_mapping = {t1:(g1,0,10,10.,1,c), t2:(g1,5,20,15.,1,c), t3:(g1,5,20,10.,1,c)}
+        self.gene_mapping = {g1:("gg1",0,12,12.,1,c)}
         self.exon_lengths = {e1:5., e2:5., e3:5., e4:5.}
         self.exon_to_gene = {e1:g1, e2:g1, e3:g1, e4:g1}
         self.trans_in_gene = {g1:[t1,t2,t3]}
@@ -423,8 +423,8 @@ class Test_Expressions5(unittest.TestCase):
         self.rpkms = array([[10/5.,10/5.,10/5.,10/5.,10/5.]])
         self.exons_data = [[e1,e2,e3,e4,e5]]+list(self.counts)+list(self.rpkms)+\
                [[0,5,10,15,20],[5,10,15,20,25],[g1]*5,["gg1"]*5,[c]*5]
-        self.transcript_mapping = {t1:(g1,0,15,10.,c), t2:(g1,10,25,15.,c), t3:(g1,5,25,10.,c)}
-        self.gene_mapping = {g1:("gg1",0,15,15.,c)}
+        self.transcript_mapping = {t1:(g1,0,15,10.,1,c), t2:(g1,10,25,15.,1,c), t3:(g1,5,25,10.,1,c)}
+        self.gene_mapping = {g1:("gg1",0,15,15.,1,c)}
         self.exon_lengths = {e1:5., e2:5., e3:5., e4:5., e5:5.}
         self.exon_to_gene = {e1:g1, e2:g1, e3:g1, e4:g1, e5:g1}
         self.trans_in_gene = {g1:[t1,t2,t3]}
@@ -456,8 +456,8 @@ class Test_Expressions_Solenne(unittest.TestCase):
                                   [0.008133,0.16352],[0.00351,0.08862],[0.00499,0.05945]])
         self.exons_data = [[e1,e2]]+list(self.counts)+list(self.rpkms)+\
                [[26978510,26976592],[26977970,26975609],[g1]*2,[gname]*2,[c]*2]
-        self.transcript_mapping = {t1:(g1,26975609,26978510,1525.,c)}
-        self.gene_mapping = {g1:(gname,26975609,26978510,2901.,c)}
+        self.transcript_mapping = {t1:(g1,26975609,26978510,1525.,1,c)}
+        self.gene_mapping = {g1:(gname,26975609,26978510,2901.,1,c)}
         self.exon_lengths = {e1:541., e2:984.}
         self.exon_to_gene = {e1:g1, e2:g1}
         self.trans_in_gene = {g1:[t1]}
