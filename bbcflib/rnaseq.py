@@ -580,7 +580,6 @@ def rnaseq_workflow(ex, job, bam_files, pileup_level=["exons","genes","transcrip
     genesName, echr = zip(*[(x[0],x[-1]) for x in [gene_mapping.get(g,("NA",)*6) for g in genesID]])
     exons_data = [exonsID]+list(counts)+list(rpkm)+[starts,ends,genesID,genesName,strands,echr]
     exons_file = None; genes_file = None; trans_file = None
-    print exons_data[-2][0]
 
     """ Print counts for exons """
     if "exons" in pileup_level:
