@@ -254,7 +254,7 @@ class Test_Expressions1(unittest.TestCase):
         self.nreads = array([1e9]*self.ncond)
         self.counts = array([[27,12],[3,3]]) # [[cond1],[cond2]]
         self.rpkms = array([[27/3.,12/6.],[3/3.,3/6.]])
-        self.exons_data = [[e1,e2]]+list(self.counts)+list(self.rpkms)+[[0.,3.],[3.,9.],[g1,g1],["gg1","gg1"],[c,c]]
+        self.exons_data = [[e1,e2]]+list(self.counts)+list(self.rpkms)+[[0.,3.],[3.,9.],[g1,g1],["gg1","gg1"],[1,1],[c,c]]
         self.transcript_mapping = {t1:(g1,0,3,3.,1,c), t2:(g1,0,9,9.,1,c)}
         self.gene_mapping = {g1:("gg1",0,9,9.,1,c)}
         self.exon_lengths = {e1:3., e2:6.}
@@ -299,7 +299,7 @@ class Test_Expressions1(unittest.TestCase):
         tcounts, trpkmm = transcripts_expression(self.exons_data, self.exon_lengths, self.transcript_mapping,
                      self.trans_in_gene, self.exons_in_trans, self.ncond, self.nreads)
         gcounts, grpkms = genes_expression(self.exons_data, self.gene_mapping,
-                self.exon_to_gene, self.ncond, self.nreads)
+                     self.exon_to_gene, self.ncond, self.nreads)
         self.assertEqual(sum(gcounts["g1"]), sum([sum(tcounts[t]) for t in self.trans_in_gene["g1"]]))
 
 
@@ -312,7 +312,7 @@ class Test_Expressions2(unittest.TestCase):
         self.counts = array([[10,15,10]]) # [[cond1]]
         self.rpkms = array([[10/5.,15/5.,10/5.]])
         self.exons_data = [[e1,e2,e3]]+list(self.counts)+list(self.rpkms)+\
-               [[0.,5.,10],[5.,10.,15.],["g1"]*3,["gg1"]*3,[c]*3]
+               [[0.,5.,10],[5.,10.,15.],["g1"]*3,["gg1"]*3,[1]*3,[c]*3]
         self.transcript_mapping = {t1:(g1,0,10,10.,1,c), t2:(g1,5,15,10.,1,c), t3:(g1,0,15,15.,1,c)}
         self.gene_mapping = {g1:("gg1",0,9,9.,1,c)}
         self.exon_lengths = {e1:5., e2:5., e3:5.}
@@ -356,7 +356,7 @@ class Test_Expressions3(unittest.TestCase):
         self.counts = array([[10,15,10]]) # [[cond1]]
         self.rpkms = array([[10/5.,15/5.,10/5.]])
         self.exons_data = [[e1,e2,e3]]+list(self.counts)+list(self.rpkms)+\
-               [[0.,5.,10],[5.,10.,15.],[g1]*3,["gg1"]*3,[c]*3]
+               [[0.,5.,10],[5.,10.,15.],[g1]*3,["gg1"]*3,[1]*3,[c]*3]
         self.transcript_mapping = {t1:(g1,0,10,10.,1,c), t2:(g1,5,15,10.,1,c), \
                                    t3:(g1,0,15,15.,1,c), t4:(g1,0,15,10.,1,c)}
         self.gene_mapping = {g1:("gg1",0,9,9.,1,c)}
@@ -390,7 +390,7 @@ class Test_Expressions4(unittest.TestCase):
         self.counts = array([[10.,10.,10.,10.]]) # [[cond1]]
         self.rpkms = array([[10/5.,10/5.,10/5.,10/5.]])
         self.exons_data = [[e1,e2,e3,e4]]+list(self.counts)+list(self.rpkms)+\
-               [[0,5,10,15],[5,10,15,20],[g1]*4,["gg1"]*4,[c]*4]
+               [[0,5,10,15],[5,10,15,20],[g1]*4,["gg1"]*4,[1]*4,[c]*4]
         self.transcript_mapping = {t1:(g1,0,10,10.,1,c), t2:(g1,5,20,15.,1,c), t3:(g1,5,20,10.,1,c)}
         self.gene_mapping = {g1:("gg1",0,12,12.,1,c)}
         self.exon_lengths = {e1:5., e2:5., e3:5., e4:5.}
@@ -422,7 +422,7 @@ class Test_Expressions5(unittest.TestCase):
         self.counts = array([[10.,10.,10.,10.,10.]]) # [[cond1]]
         self.rpkms = array([[10/5.,10/5.,10/5.,10/5.,10/5.]])
         self.exons_data = [[e1,e2,e3,e4,e5]]+list(self.counts)+list(self.rpkms)+\
-               [[0,5,10,15,20],[5,10,15,20,25],[g1]*5,["gg1"]*5,[c]*5]
+               [[0,5,10,15,20],[5,10,15,20,25],[g1]*5,["gg1"]*5,[1]*5,[c]*5]
         self.transcript_mapping = {t1:(g1,0,15,10.,1,c), t2:(g1,10,25,15.,1,c), t3:(g1,5,25,10.,1,c)}
         self.gene_mapping = {g1:("gg1",0,15,15.,1,c)}
         self.exon_lengths = {e1:5., e2:5., e3:5., e4:5., e5:5.}
@@ -455,7 +455,7 @@ class Test_Expressions_Solenne(unittest.TestCase):
         self.rpkms = array([[0,0.00691],[0,0.01077],[0,0.02937],
                                   [0.008133,0.16352],[0.00351,0.08862],[0.00499,0.05945]])
         self.exons_data = [[e1,e2]]+list(self.counts)+list(self.rpkms)+\
-               [[26978510,26976592],[26977970,26975609],[g1]*2,[gname]*2,[c]*2]
+               [[26978510,26976592],[26977970,26975609],[g1]*2,[gname]*2,[1]*2,[c]*2]
         self.transcript_mapping = {t1:(g1,26975609,26978510,1525.,1,c)}
         self.gene_mapping = {g1:(gname,26975609,26978510,2901.,1,c)}
         self.exon_lengths = {e1:541., e2:984.}
