@@ -69,6 +69,7 @@ def macs( read_length, genome_size, bamfile, ctrlbam=None, args=None ):
         macs_args += ["-n",outname]
     if not("-s" in macs_args): macs_args += ["-s",str(read_length)]
     if not("--verbose" in macs_args): macs_args += ["--verbose","1"]
+    if not("--keep-dup" in macs_args): macs_args += ["--keep-dup","all"]
     return {"arguments": macs_args, "return_value": outname}
 
 def add_macs_results( ex, read_length, genome_size, bamfile,
@@ -265,7 +266,7 @@ def workflow_groups( ex, job_or_dict, mapseq_files, assembly, script_path='',
     run_meme = options.get('run_meme',False)
     if isinstance(run_meme,basestring):
         run_meme = run_meme.lower() in ['1','true','t']
-    macs_args = options.get('macs_args',["--bw=200"])
+    macs_args = options.get('macs_args',["--bw","200"])
     b2w_args = options.get('b2w_args',[])
     if not(isinstance(mapseq_files,dict)):
         raise TypeError("Mapseq_files must be a dictionary.")
@@ -334,7 +335,7 @@ def workflow_groups( ex, job_or_dict, mapseq_files, assembly, script_path='',
         macs_final = track.track( peak_list[name], chrmeta=chrlist,
                                   info={'datatype':'qualitative'},
                                   fields=['start','end','name','score'] )
-        macs_final.write(gm_common.fusion(macs_neighb))
+        macs_final.write(gm_common.fusion(macs_neighb),clip=True)
         macs_final.close()
         ##############################
     if peak_deconvolution:

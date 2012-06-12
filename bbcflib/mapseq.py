@@ -923,7 +923,6 @@ def map_groups( ex, job_or_dict, assembly_or_dict, map_args=None ):
 def bam_to_density( bamfile, output, chromosome_accession=None, chromosome_name=None,
                     nreads=-1, merge=-1, read_extension=-1, convert=True, sql=False,
                     args=None ):
-
     """
     input parameters:
     bamfile = input BAM file
