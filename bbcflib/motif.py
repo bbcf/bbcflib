@@ -104,14 +104,30 @@ def parallel_meme( ex, assembly, regions, name=None, meme_args=None, via='lsf' )
         meme_res = parse_meme_xml( ex, os.path.join(meme_out, "meme.xml"), assembly.chrmeta )
         if os.path.exists(os.path.join(meme_out, "meme.html")):
             ex.add( os.path.join(meme_out, "meme.html"),
-                    description=set_file_descr(n+"_meme.html",step='meme',type='html',group=n) )
-        ex.add( meme_res['sql'], description=set_file_descr(n+"_meme_sites.sql",step='meme',type='sql',group=n) )
-        ex.add( archive, description=set_file_descr(n+"_meme.tgz",step='meme',type='tar',group=n) )
+                    description=set_file_descr(n[1]+"_meme.html",
+                                               step='meme', type='html',
+                                               groupId=n[0]) )
+        ex.add( meme_res['sql'], 
+                description=set_file_descr(n[1]+"_meme_sites.sql",
+                                           step='meme', type='sql',
+                                           groupId=n[0]) )
+        ex.add( archive, description=set_file_descr(n[1]+"_meme.tgz",
+                                                    step='meme', type='tar',
+                                                    groupId=n[0]) )
         gzipfile(ex,fasta_files[n])
-        ex.add( fasta_files[n]+".gz", description=set_file_descr(n+"_sites.fa.gz",step='meme',type='fasta',group=n) )
+        ex.add( fasta_files[n]+".gz", 
+                description=set_file_descr(n[1]+"_sites.fa.gz",
+                                           step='meme', type='fasta',
+                                           groupId=n[0]) )
         for i,motif in enumerate(meme_res['matrices'].keys()):
-            ex.add( meme_res['matrices'][motif], description=set_file_descr(n+"_meme_"+motif+".txt",step='meme',type='txt',group=n) )
-            ex.add( os.path.join(meme_out, "logo"+str(i+1)+".png"), description=set_file_descr(n+"_meme_"+motif+".png",step='meme',type='png',group=n) )
+            ex.add( meme_res['matrices'][motif],
+                    description=set_file_descr(n[1]+"_meme_"+motif+".txt",
+                                               step='meme', type='txt',
+                                               groupId=n[0]) )
+            ex.add( os.path.join(meme_out, "logo"+str(i+1)+".png"), 
+                    description=set_file_descr(n[1]+"_meme_"+motif+".png",
+                                               step='meme', type='png',
+                                               groupId=n[0]) )
         all_res[n] = meme_res
     return all_res
 

@@ -223,13 +223,13 @@ class Track(object):
         self.info = self._get_info(info=kwargs.get('info'))
 
     def _get_chrmeta(self,chrmeta=None):
-        from bbcflib import genrep
         if isinstance(chrmeta,dict):
             return chrmeta
         if isinstance(chrmeta,basestring):
             self.assembly = chrmeta
         if self.assembly is None:
             return {}
+        from bbcflib import genrep
         return genrep.Assembly(self.assembly).chrmeta
 
     def _get_info(self,info=None):

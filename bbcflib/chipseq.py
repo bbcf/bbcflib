@@ -195,20 +195,20 @@ def run_deconv(ex, sql, peaks, chromosomes, read_extension, script_path, via = '
     chrlist = dict((v['name'], {'length': v['length']}) for v in chromosomes.values())
     output = common.unique_filename_in()
     outfiles = {}
-    outfiles['bed'] = output+"_peaks.sql"
-    outfiles['sql'] = output+"_deconv.sql"
-    outbed = track.track(outfiles['bed'], chrmeta=chrlist,
+    outfiles['peaks'] = output+"_peaks.sql"
+    outfiles['profile'] = output+"_deconv.sql"
+    outbed = track.track(outfiles['peaks'], chrmeta=chrlist,
                          fields=["start","end","score","name"],
                          info={'datatype':'qualitative'})
-    outwig = track.track(outfiles['sql'], chrmeta=chrlist,
+    outwig = track.track(outfiles['profile'], chrmeta=chrlist,
                          fields=["start","end","score"],                         
                          info={'datatype':'quantitative'})
     outbed.open()
     outwig.open()
     for c,fout in deconv_out.iteritems():
         if len(fout) < 3: continue
-        outbed.write(track.track(fout[1]).read())
-        outwig.write(track.track(fout[2]).read())
+        outbed.write(track.track(fout[1],chrmeta=chrlist).read())
+        outwig.write(track.track(fout[2],chrmeta=chrlist).read())
     outbed.close()
     outwig.close()
     if len(deconv_out)>0:
@@ -385,22 +385,24 @@ def workflow_groups( ex, job_or_dict, mapseq_files, assembly, script_path='',
             peak_list[name] = common.unique_filename_in()+".bed"
             bedfile = track.track(peak_list[name], chrmeta=chrlist,
                                   fields=["chr","start","end","name","score"])
-            trbed = track.track(deconv['bed'])
+            trbed = track.track(deconv['peaks'])
             trfields = ['chr']+trbed.fields
             bedfile.write(track.FeatureStream(
                 _filter_deconv(trbed.read(fields=trfields),0.65),fields=trfields))
             bedfile.close()
             ex.add(deconv.pop('bed'), description=common.set_file_descr(name[1]+'_peaks.sql',type='sql',
                                                                         step='deconvolution',groupId=name[0]))
-            [ex.add(v, description=common.set_file_descr(name[1]+'_deconv.'+k,type=k,
-                                                         step='deconvolution',groupId=name[0]))
+            [ex.add(v, description=common.set_file_descr(name[1]+'_deconv.'+k,
+                                                         type=k,
+                                                         step='deconvolution',
+                                                         groupId=name[0]))
              for k,v in deconv.iteritems()]
             processed['deconv'][name] = deconv
     for name, plist in peak_list.iteritems():
-        ptrack = track.track(plist)
+        ptrack = track.track(plist,chrmeta=chrlist)
         peakfile = common.unique_filename_in()
         touch(ex,peakfile)
-        peakout = track.track(peakfile, format='txt', 
+        peakout = track.track(peakfile, format='txt', chrmeta=chrlist, 
                               fields=['chr','start','end','name','strand',
                                       'gene','location_type','distance'])
         for chrom in assembly.chrnames:

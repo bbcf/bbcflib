@@ -35,6 +35,17 @@ class TextTrack(Track):
         self.filehandle = None
         self.separator = kwargs.get('separator',"\t")
 
+    def _get_chrmeta(self,chrmeta=None):
+        _chrmeta = Track._get_chrmeta(self,chrmeta)
+        if _chrmeta: return _chrmeta
+        if chrmeta is None and 'chr' in self.fields and 'end' in self.fields:
+            for row in self.read(fields=['chr','end']):
+                if not(row[0] in _chrmeta): 
+                    _chrmeta[row[0]] = {'length': row[1]}
+                elif row[1] > _chrmeta[row[0]]['length']: 
+                    _chrmeta[row[0]]['length'] = row[1]
+        return _chrmeta
+
     def _get_info(self,info=None):
         if info: return info
         if not(os.path.exists(self.path)): return

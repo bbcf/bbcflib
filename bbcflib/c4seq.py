@@ -109,7 +109,7 @@ def density_to_countsPerFrag( ex, file_dict, groups, assembly, regToExclude, scr
         for n,f in enumerate(gm_futures):
             fout = f.wait()[0]
             outbed_all.append(fout)
-            outbed = track.track(fout)
+            outbed = track.track(fout, chrmeta=assembly.chrmeta)
             sqlouttr.write( outbed.read(fields=['start', 'end', 'score'],
                                         selection={'score':(0.01,sys.maxint)}),
                             chrom=assembly.chrnames[n] )
