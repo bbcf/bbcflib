@@ -78,7 +78,7 @@ def sam_pileup(assembly,bamfile,refGenome,via='lsf'):
     return {"arguments": ["samtools","pileup","-B","-cvsf",refGenome,"-N",str(ploidy),bamfile],
             "return_value": [minCoverage,minSNP]}
 
-def parse_pileupFile(samples,allSNPpos,chrom,minCoverage=80,minSNP=10):
+def write_pileupFile(samples,allSNPpos,chrom,minCoverage=80,minSNP=10):
     """For a given chromosome, returns a summary file containing all SNPs identified 
     in at least one of the samples from *samples*.
     Each row contains: chromosome id, SNP position, reference base, SNP base (with proportions)
@@ -95,17 +95,17 @@ def parse_pileupFile(samples,allSNPpos,chrom,minCoverage=80,minSNP=10):
     iupac = {'M':['A','a','C','c'],'Y':['T','t','C','c'],'R':['A','a','G','g'],
              'S':['G','g','C','c'],'W':['A','a','T','t'],'K':['T','t','G','g']}
 
-    for chr_filename,sname in samples.iteritems():
+    for pileup_filename,sname in samples.iteritems():
         allpos = sorted(allSNPpos.keys(),reverse=True) # list of positions [int] with an SNP
         position = -1
         allSamples[sname] = {}
-        with open(chr_filename) as sample:
+        with open(pileup_filename) as sample:
             for line in sample:
                 info = line.split("\t")
                 ref = info[2]; cons = info[3]; nreads = info[7];
                 # info = ['chrV', '91668', 'G', 'R', '4', '4', '60', '4', 'a,.^~.', 'LLLL', '~~~~\n']
                 # info = [chr, pos, ref, consensus, cons_qual, snp_qual, max_map_qual, nreads, 'a,.^~.', 'LLLL', '~~~~\n']
-                #          0    1    2     3       4         5           6           7       8         9       10
+                #          0    1    2       3          4         5           6           7       8         9       10
                 while int(info[1]) > position:
                     if len(allpos) == 0: break
                     position = allpos.pop()
@@ -156,6 +156,8 @@ def annotate_snps( filedict, sample_names, assembly ):
     Adds columns 'gene', 'location_type' and 'distance' to the output of parse_pileupFile.
     Returns two files: the first contains all SNPs annotated with their position respective to genes in
     the specified assembly, and the second contains only SNPs found within CDS regions.
+
+    :param filedict: {chr: formattedPileupFilename}
     """
     def _process_annot(stream, fname):
         """Write (append) features from the *stream* in a file *fname*."""
@@ -176,18 +178,15 @@ def annotate_snps( filedict, sample_names, assembly ):
     outall = output+"_all_snps.txt"
     outexons = output+"_exon_snps.txt"
     outex = open(outexons,"w")
-    nsamples = len(sample_names)
-    # Complete the header
     with open(outall,"w") as fout:
-        newcols = sample_names + ['gene','location_type','distance']
-        fout.write("\t".join(['chromosome','position','reference']+newcols)+"\n")
-    outex.write("\t".join(['chromosome','position','reference','snp','exon','reference_codon','new_codon'])+"\n")
-    # For each chromosome, read the result of parse_pileupFile and make a track
+        fout.write("\t".join(['chromosome','position','reference','snp','gene','location_type','distance'])+"\n")
+    outex.write("\t".join(['chromosome','position','reference -> snp','exon', 'strand', 'ref_codon -> new_codon',
+                           'ref_aminoacid -> new_aminoacid'])+"\n")
+
     for chrom, filename in filedict.iteritems():
+        # For each chromosome, read the result of parse_pileupFile and make a track
         snp_file = track.track( filename, format='text',
                                 fields=['chr','end','name',sample_names[0]], chrmeta=assembly.chrmeta )
-                                #fields=['chr','end','name']+sample_names, chrmeta=assembly.chrmeta )
-                                # samples??
         # snp_file.read() is an iterator on the track features: ('chrV', 1607, 'T', '43.48% C / 56.52% T') 
         # Add a 'start' using end-1 and remake the track 
         snp_read = track.FeatureStream( ((y[0],y[1]-1)+y[1:] for y in snp_file.read(chrom)),
@@ -200,7 +199,6 @@ def annotate_snps( filedict, sample_names, assembly ):
         inclstream = track.concat_fields(track.FeatureStream(_process_annot(fstream, outall),
                                                              fields=snp_read.fields),
                                          infields=['name',sample_names[0]], as_tuple=True)
-                                         #infields=['name']+sample_names, as_tuple=True)
         # import existing CDS annotation from genrep as a track, and join some fields
         annotstream = track.concat_fields(assembly.annot_track('CDS',chrom),
                                           infields=['name','strand','frame'], as_tuple=True)
@@ -230,7 +228,6 @@ def annotate_snps( filedict, sample_names, assembly ):
                 if exons:
                     for e in exons:
                         es, ee = exon_mapping[e][2:4]
-                        #es = es+1 # Ensembl ???
                         if es <= pos and pos <= ee:
                             exon_id = e
                             break
@@ -279,3 +276,4 @@ def posAllUniqSNP(PileupDict):
                 if cpt*100 < int(data[7]) * int(minCoverage) and int(data[7]) >= minSNP:
                     d[int(data[1])] = data[2]
     return (d,parameters)
+
