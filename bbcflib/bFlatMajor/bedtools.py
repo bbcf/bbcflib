@@ -5,7 +5,7 @@ from bbcflib.common import unique_filename_in
 def bedtools(tool, args=None):
     if args is None: args = []
     if isinstance(args,basestring):
-        args = args.split(" ")
+        args = args.split()
     if isinstance(args,dict):
         args2 = []
         for k,v in args.iteritems():

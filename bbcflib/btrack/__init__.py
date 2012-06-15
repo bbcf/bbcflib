@@ -3,7 +3,7 @@ Examples::
 
     import track
 
-    track.convert("data/test.bed","test0.sql",assembly='mm9')
+    track.convert("data/test.bed","test0.sql",chrmeta='mm9')
 
     chrmeta = {'chr2':{'length':4000000}}
     info = {'datatype':'features'}
@@ -93,16 +93,16 @@ def track(path, format=None, **kwargs):
     return getattr(sys.modules[_track_map[format][0]],
                    _track_map[format][1])(path,**kwargs)
 
-def convert( source, target, assembly=None, chrmeta=None, info=None ):
+def convert( source, target, chrmeta=None, info=None ):
     if isinstance(source, tuple):
-        tsrc = track(source[0], format=source[1], assembly=assembly, chrmeta=chrmeta)
+        tsrc = track(source[0], format=source[1], chrmeta=chrmeta)
     else:
-        tsrc = track(source, assembly=assembly, chrmeta=chrmeta)
+        tsrc = track(source, chrmeta=chrmeta)
     if isinstance(target, tuple):
-        ttrg = track(target[0], format=target[1], assembly=assembly, 
+        ttrg = track(target[0], format=target[1], 
                      chrmeta=tsrc.chrmeta, fields=tsrc.fields, info=info)
     else:
-        ttrg = track(target, assembly=assembly, chrmeta=tsrc.chrmeta, fields=tsrc.fields, info=info)
+        ttrg = track(target, chrmeta=tsrc.chrmeta, fields=tsrc.fields, info=info)
     ttrg.write( tsrc.read() )
     ttrg.close()
     tsrc.close()
@@ -212,7 +212,7 @@ def ensembl_to_ucsc(start):
 ################################################################################
 
 class Track(object):
-    def __init__(self, path,**kwargs):
+    def __init__(self, path, **kwargs):
         self.path = path
         self.filehandle = None
         self.format = None
