@@ -26,10 +26,10 @@ def _wait(wait,outfile,future):
     else:
         return (future,outfile)
 
-def annotateBed(ex,intervals,files,wait=True,via='local',**kw):
+def annotateBed(ex,bedfile,files,wait=True,via='local',**kw):
     outfile = _outfile(kw)
     if not(isinstance(files,(list,tuple))): files = [files]
-    kw.update({"-i":intervals,"-files": list(files)})
+    kw.update({"-i":bedfile,"-files": list(files)})
     return _wait(wait,outfile,
                  bedtools.nonblocking(ex,"annotate",kw,via=via,stdout=outfile))
 
@@ -99,9 +99,9 @@ def coverageBed(ex,bfile,afile=None,bamfile=None,wait=True,via='local',**kw):
     return _wait(wait,outfile,
                  bedtools.nonblocking(ex,"coverage",kw,via=via,stdout=outfile))
 
-def expandCols(ex,infile,column,wait=True,via='local',**kw):
+def expandCols(ex,bedfile,column,wait=True,via='local',**kw):
     outfile = _outfile(kw)
-    kw.update({"-i":infile,"-c":str(column)})
+    kw.update({"-i":bedfile,"-c":str(column)})
     return _wait(wait,outfile,
                  bedtools.nonblocking(ex,"expand",kw,via=via,stdout=outfile))
  
@@ -261,11 +261,11 @@ def tagBam(ex,bedfiles,labels,bamfile,wait=True,via='local',**kw):
     return _wait(wait,outfile,
                  bedtools.nonblocking(ex,"tag",kw,via=via,stdout=outfile))
  
-def unionBedGraphs(ex,bgfiles,wait=True,via='local',**kw):
+def unionBedGraphs(ex,files,wait=True,via='local',**kw):
     outfile = _outfile(kw)
-    if not(isinstance(bgfiles,(list,tuple))):
-        bgfiles = [bgfiles]
-    kw["-i"] = list(bgfiles)
+    if not(isinstance(files,(list,tuple))):
+        files = [files]
+    kw["-i"] = list(files)
     return _wait(wait,outfile,
                  bedtools.nonblocking(ex,"unionbedg",kw,via=via,stdout=outfile))
  
