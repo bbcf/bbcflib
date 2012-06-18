@@ -373,7 +373,6 @@ def workflow_groups( ex, job_or_dict, mapseq_files, assembly, script_path='',
             else:
                 macsbed = common.intersect_many_bed( ex, [processed['macs'][(name,x)]+"_peaks.bed"
                                                           for x in names['controls']], via=via )
-            
             deconv = run_deconv( ex, merged_wig[name[1]], macsbed, assembly.chromosomes,
                                  options['read_extension'], script_path, via=via )
             ##############################
@@ -390,13 +389,21 @@ def workflow_groups( ex, job_or_dict, mapseq_files, assembly, script_path='',
             bedfile.write(track.FeatureStream(
                 _filter_deconv(trbed.read(fields=trfields),0.65),fields=trfields))
             bedfile.close()
-            ex.add(deconv.pop('bed'), description=common.set_file_descr(name[1]+'_peaks.sql',type='sql',
-                                                                        step='deconvolution',groupId=name[0]))
-            [ex.add(v, description=common.set_file_descr(name[1]+'_deconv.'+k,
-                                                         type=k,
-                                                         step='deconvolution',
-                                                         groupId=name[0]))
-             for k,v in deconv.iteritems()]
+            ex.add(deconv['peaks'], 
+                   description=common.set_file_descr(name[1]+'_peaks.sql',
+                                                     type='sql',
+                                                     step='deconvolution',
+                                                     groupId=name[0]))
+            ex.add(deconv['profile'], 
+                   description=common.set_file_descr(name[1]+'_deconv.sql',
+                                                     type='sql',
+                                                     step='deconvolution',
+                                                     groupId=name[0]))
+            ex.add(deconv['pdf'], 
+                   description=common.set_file_descr(name[1]+'_deconv.pdf',
+                                                     type='pdf',
+                                                     step='deconvolution',
+                                                     groupId=name[0]))
             processed['deconv'][name] = deconv
     for name, plist in peak_list.iteritems():
         ptrack = track.track(plist,chrmeta=chrlist)
