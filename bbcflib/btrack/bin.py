@@ -107,6 +107,8 @@ try:
 
         def read(self, selection=None, fields=None, **kw):
             self.open()
+            if not(os.path.exists(self.path+".bai")):
+                self._run_tool('samtools', ["index",self.path])
             if not(isinstance(selection,(list,tuple))):
                 selection = [selection]
             if fields is None: fields = self.fields
