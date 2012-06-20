@@ -11,6 +11,7 @@ def getNearestFeature(features, annotations,
             distMinBefore = distMinAfter = thresholdInter+1
             gene = dist = typeLoc = ""
             geneBefore = geneAfter = None
+            strandBefore = strandAfter = None
             included=0
             for x in _a:
                 F.append(x)
@@ -24,7 +25,7 @@ def getNearestFeature(features, annotations,
                 # if the peak is totaly included in the gene
                 if (peak[0]>annot[0]) and (annot[1]>peak[1]):
                     includedGene = annot[2]
-                    includedDist = peak[0]-annot[1]
+                    includedDist = (annot[3] == -1) and annot[1]-peak[1] or peak[0]-annot[0]
                     included = 1
                 # if the gene is totaly included in the peak
                 elif (annot[0]>peak[0]) and (peak[1]>annot[1]): 
@@ -51,18 +52,20 @@ def getNearestFeature(features, annotations,
                         strandAfter = annot[3]
                     #print "gene %s overlap end of peak %s" % (geneAfter,peakName)
                     # detect intergenic peak
-            if distMinBefore>thresholdInter and distMinAfter>thresholdInter:
+            if not(included) and distMinBefore>thresholdInter and distMinAfter>thresholdInter:
                 yield peak+('','Intergenic',thresholdInter)
                 continue
             # detect peak before the first chromosome gene or after the last chromosome gene
             if geneBefore == None:
-                gene = geneAfter
-                dist = distMinAfter
-                typeLoc = (strandAfter == 1) and  "Upstream" or "Downstream" 
+                if distMinAfter<=thresholdInter:
+                    gene = geneAfter
+                    dist = distMinAfter
+                    typeLoc = (strandAfter == 1) and  "Upstream" or "Downstream" 
             elif geneAfter == None:
-                gene = geneBefore
-                dist = distMinBefore
-                typeLoc = (strandBefore == -1) and  "Upstream" or "Downstream" 
+                if distMinBefore<=thresholdInter:
+                    gene = geneBefore
+                    dist = distMinBefore
+                    typeLoc = (strandBefore == -1) and  "Upstream" or "Downstream" 
             # detect peak between two genes on the same strand
             elif strandBefore == strandAfter:
                 if strandBefore == 1:
@@ -116,9 +119,9 @@ def getNearestFeature(features, annotations,
                         dist = distMinAfter
             if included == 1:
                 included = 0
-                gene = gene+"_"+includedGene
-                dist = str(dist)+"_"+str(includedDist)
-                typeLoc = typeLoc+"_Included"
+                gene = gene and gene+"_"+includedGene or includedGene
+                dist = dist and str(dist)+"_"+str(includedDist) or str(includedDist)
+                typeLoc = typeLoc and typeLoc+"_Included" or "Included"
             yield peak+(gene,typeLoc,dist)
     if isinstance(features,(tuple,list)): features = features[0]
     if isinstance(annotations,(tuple,list)): annotations = annotations[0]
