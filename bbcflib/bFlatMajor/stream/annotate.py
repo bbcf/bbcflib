@@ -4,6 +4,39 @@ from bbcflib import btrack as track
 
 def getNearestFeature(features, annotations,
                       thresholdPromot=2000, thresholdInter=100000, thresholdUTR=10):
+    """
+    For each element of *features*, founds the nearest element of *annotations* and returns
+    a track similar to *features*, plus the annotation information:
+    ('chr5',12,14) -> ('chr5',12,14,'gene_id|gene_name','location_type','dist'),
+    where location_type is one of "Promot", "3UTR", with the suffix "_Included" if the feature
+    is located inside the gene; dist (str) is the distance to either the promoter or the 3'UTR.
+
+    :param features: (bbcflib.btrack.FeatureStream) features track
+    :param annotations: (bbcflib.btrack.FeatureStream) gene annotation track
+        (e.g. as obtained with assembly.gene_track())
+    :param thresholdPromot: (int) associates the promoter of each gene which promoter is within
+        this distance of the feature. Above the threshold, associates only the closest. [2000]
+    :param thresholdInter: (int) no gene beyond this distance will be considered. [100000]
+    :param thresholdUTR: (int) in case the feature is surrounded by two eligible genes on the
+        same strand: if distance to gene1's 3'UTR upstream is less than *thresholdUTR*% of the distance
+        between gene1 and gene2, associated to 3'UTR of gene1, else to promoter of gene2. [10]
+
+                      <--                   feat                    -->
+                  ______| thresholdPromot  ++++++   thresholdPromot |______
+        ---------|______|-------------------------------------------|______|-------------
+                  gene 1                       gene 2
+
+                                              feat
+                  ______  thresholdInter     ++++++        thresholdInter   ______
+        ---------|______|----------...------------------...----------------|______|------
+                  gene 1                                         gene 2
+
+                              feat
+                 -->         ++++++           -->
+                 |______  10%         90%     |______
+        ---------|______|-----|---------------|______|-----------   (attributed to gene1)
+                  gene 1      thresholdUTR     gene 2
+    """
     def _get_feature(_t,_a):
         F = []
         _a = common.sentinelize(_a, [sys.maxint]*len(_a.fields))
@@ -28,7 +61,7 @@ def getNearestFeature(features, annotations,
                     includedDist = (annot[3] == -1) and annot[1]-peak[1] or peak[0]-annot[0]
                     included = 1
                 # if the gene is totaly included in the peak
-                elif (annot[0]>peak[0]) and (peak[1]>annot[1]): 
+                elif (annot[0]>peak[0]) and (peak[1]>annot[1]):
                     includedGene = annot[2]
                     includedDist = 0
                     included = 1
