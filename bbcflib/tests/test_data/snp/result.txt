@@ -1,0 +1,27 @@
+chromosome      position        reference       5-6     3-32    gene    location_type   distance
+chrV    17008   C       * A (62.5%)     0       YEL070W|DSF1_YEL071W|DLD3       Promot_Included 2580_653
+chrV    20676   A       * G (62.5%)     0       YEL069C|HXT13_YEL070W|DSF1      3UTR_Included   860_1087
+chrV    20858   C       * T (77.78%)    0       YEL069C|HXT13_YEL070W|DSF1      Downstream_Included     678_1269
+chrV    53199   G       0       C (54.55%)      YEL055C|POL5_YEL053W-A|YEL053W-A        Promot_Included 1659_291
+chrV    59372   C       T (54.55%)      0       YEL050W-A|YEL050W-A     Promot  176
+chrV    62154   G       0       C (55.56%)      YEL050C|RML2_YEL049W|PAU2       Promot_Promot   1302_1573
+chrV    62719   G       0       T (63.64%),C (27.27%)   YEL050C|RML2_YEL049W|PAU2       Promot_Promot   1867_1008
+chrV    63931   G       0       A (43.75%),T (37.5%)    YEL048C|TCA17_YEL049W|PAU2      Downstream_Included     777_203
+chrV    152180  A       0       C (54.55%)      YEL001C|IRC22_YER001W|MNN1      Promot_Promot   1202_1338
+chrV    154530  T       A       * A     YER002W|NOP16_YER001W|MNN1      Upstream_Included       2271_1011
+chrV    159824  T       * G (62.5%)     0       YER003C|PMI40_YER005W|YND1_YER004W|FMP52        Promot_Promot_Included  706_724_245
+chrV    172691  C       0       * G (62.5%)     YER009W|NTF2_YER010C|YER010C    3UTR_Included   199_646
+chrV    172692  C       0       * T (55.56%)    YER009W|NTF2_YER010C|YER010C    3UTR_Included   200_645
+
+
+chromosome      position        reference       3-32    5-6     exon    strand  ref_aminoacid -> new_aminoacid
+chrV    C       0       * A (62.5%)     YEL071W.1|YEL071W|DLD3  1       D       D       E
+chrV    A       0       * G (62.5%)     YEL070W.1|YEL070W|DSF1  1       Y       Y       C
+chrV    C       0       * T (77.78%)    YEL070W.1|YEL070W|DSF1  1       L       L       L/START
+chrV    G       C (54.55%)      0       YEL054C.1|YEL054C|RPL12A        -1      G       R       G
+chrV    G       C (54.55%)      0       YEL053W-A.1|YEL053W-A|YEL053W-A 1       G       R       G
+chrV    G       A (43.75%),T (37.5%)    0       YEL049W.1|YEL049W|PAU2  1       E       E       E
+chrV    T       * A     A       -|YER001W|MNN1  1       S       T       T
+chrV    T       0       * G (62.5%)     -|YER004W|FMP52 1       G       G       G
+chrV    C       * G (62.5%)     0       -|YER010C|YER010C       -1      T       S       T
+chrV    C       * T (55.56%)    0       -|YER010C|YER010C       -1      T       T       T
