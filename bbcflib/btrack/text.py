@@ -19,6 +19,9 @@ _out_types = {'start':  format_int,
 
 class TextTrack(Track):
     def __init__(self,path,**kwargs):
+        kwargs['format'] = kwargs.get("format",'txt')
+        kwargs['fields'] = kwargs.get("fields",['chr','start','end'])
+        self.separator = kwargs.get('separator',"\t")
         Track.__init__(self,path,**kwargs)
         if kwargs.get('ucsc_to_ensembl',False):
             if not('outtypes' in kwargs): kwargs['outtypes'] = {}
@@ -26,19 +29,16 @@ class TextTrack(Track):
         if kwargs.get('ensembl_to_ucsc',False):
             if not('outtypes' in kwargs): kwargs['outtypes'] = {}
             kwargs['outtypes']['start'] = ensembl_to_ucsc
-        self.format = kwargs.get("format",'txt')
-        self.fields = kwargs.get("fields",['chr','start','end'])
         self.intypes = dict((k,v) for k,v in _in_types.iteritems() if k in self.fields)
         if isinstance(kwargs.get('intypes'),dict): self.intypes.update(kwargs["intypes"])
         self.outtypes = dict((k,v) for k,v in _out_types.iteritems() if k in self.fields)
         if isinstance(kwargs.get('outtypes'),dict): self.outtypes.update(kwargs["outtypes"])
-        self.filehandle = None
-        self.separator = kwargs.get('separator',"\t")
 
     def _get_chrmeta(self,chrmeta=None):
         _chrmeta = Track._get_chrmeta(self,chrmeta)
         if _chrmeta: return _chrmeta
         if chrmeta is None and 'chr' in self.fields and 'end' in self.fields:
+            self.intypes = {'end': int}
             for row in self.read(fields=['chr','end']):
                 if not(row[0] in _chrmeta): 
                     _chrmeta[row[0]] = {'length': row[1]}

@@ -215,8 +215,8 @@ class Track(object):
     def __init__(self, path, **kwargs):
         self.path = path
         self.filehandle = None
-        self.format = None
-        self.fields = []
+        self.format = kwargs.get("format")
+        self.fields = kwargs.get("fields",[])
         self.types = {}
         self.assembly = kwargs.get('assembly')
         self.chrmeta = self._get_chrmeta(kwargs.get('chrmeta'))

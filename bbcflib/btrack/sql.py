@@ -16,9 +16,9 @@ class SqlTrack(Track):
         self.connection = sqlite3.connect(path)
 #        self.connection.row_factory = sqlite3.Row
         self.cursor = self.connection.cursor()
+        kwargs['format'] = 'sql'
         Track.__init__(self,path,**kwargs)
-        self.format = 'sql'
-        self.fields = self._get_fields(fields=kwargs.get('fields'))
+        self.fields = self._get_fields(fields=self.fields)
         self.types = dict((k,v) for k,v in _sql_types.iteritems() if k in self.fields)
         if isinstance(kwargs.get('types'),dict): self.types.update(kwargs["types"])
 
