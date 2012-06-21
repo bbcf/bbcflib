@@ -1,5 +1,5 @@
 # Built-in modules #
-import re, tarfile, os
+import re, tarfile, os, sys
 
 # Internal modules #
 from bbcflib.common import unique_filename_in
@@ -60,7 +60,7 @@ def untar_genome_fasta(assembly, path_to_ref=None, convert=True):
     return genomeRef
 
 @program
-def sam_pileup(assembly,bamfile,refGenome,via='lsf'):
+def sam_pileup(assembly,bamfile,refGenome,via='lsf',minSNP=10,minCoverage=80):
     """Binds 'samtools pileup'.
 
     :param assembly: Genrep.Assembly object.
@@ -69,16 +69,16 @@ def sam_pileup(assembly,bamfile,refGenome,via='lsf'):
     """
     if str(assembly.name) in ['MLeprae_TN','MSmeg_MC2_155','MTb_H37Rv','NA1000','TB40-BAC4']:
         ploidy=1
-        minSNP=10
+        minSNP=5 #10
         minCoverage=80
     else:
         ploidy=2
-        minSNP=20
+        minSNP=10 #20
         minCoverage=40
     return {"arguments": ["samtools","pileup","-B","-cvsf",refGenome,"-N",str(ploidy),bamfile],
             "return_value": [minCoverage,minSNP]}
 
-def parse_pileupFile(samples,allSNPpos,chrom,minCoverage=80,minSNP=10):
+def write_pileupFile(samples,allSNPpos,chrom,minCoverage=80,minSNP=10):
     """For a given chromosome, returns a summary file containing all SNPs identified 
     in at least one of the samples from *samples*.
     Each row contains: chromosome id, SNP position, reference base, SNP base (with proportions)
@@ -95,29 +95,33 @@ def parse_pileupFile(samples,allSNPpos,chrom,minCoverage=80,minSNP=10):
     iupac = {'M':['A','a','C','c'],'Y':['T','t','C','c'],'R':['A','a','G','g'],
              'S':['G','g','C','c'],'W':['A','a','T','t'],'K':['T','t','G','g']}
 
-    for chr_filename,sname in samples.iteritems():
-        allpos = sorted(allSNPpos.keys(),reverse=True) # list of positions [int] with an SNP
-        position = -1
-        allSamples[sname] = {}
-        with open(chr_filename) as sample:
+    for pileup_filename,sname in samples.iteritems():
+        allpos = sorted(allSNPpos.keys(),reverse=True) # list of positions [int] with an SNP across all groups
+        with open(pileup_filename) as sample:
+            pos = -1
+            allSamples[sname] = {}
             for line in sample:
                 info = line.split("\t")
-                ref = info[2]; cons = info[3]; nreads = info[7];
+                ref = info[2].upper() # reference base
+                cons = info[3].upper() # consensus base
+                nreads = info[7]; # coverage at this position
                 # info = ['chrV', '91668', 'G', 'R', '4', '4', '60', '4', 'a,.^~.', 'LLLL', '~~~~\n']
                 # info = [chr, pos, ref, consensus, cons_qual, snp_qual, max_map_qual, nreads, 'a,.^~.', 'LLLL', '~~~~\n']
-                #          0    1    2     3       4         5           6           7       8         9       10
-                while int(info[1]) > position:
-                    if len(allpos) == 0: break
-                    position = allpos.pop()
-                    allSamples[sname][position] = "-"
-                if not(int(info[1]) == position): continue
-                if int(nreads) < minSNP:
+                #          0    1    2       3          4         5           6           7       8         9       10
+                while int(info[1]) > pos and len(allpos) > 0: # write '0' for all pos until the one on this line of the sample
+                    pos = allpos.pop()
+                    allSamples[sname][pos] = "0"
+                if not(int(info[1]) == pos): continue
+                # SNP found in allpos, treat
+                if int(nreads) == 0:
+                    allSamples[sname][pos] = "0"
+                elif int(nreads) < minSNP:
                     star = "* " # add a star *A if the snp is supported by less than minSNP reads
                 else:
                     star = ""
                 if re.search(r'[ACGT]',cons): # if bases are encoded normally (~100% replacement?)
                     star += cons
-                    allSamples[sname][position] = star
+                    allSamples[sname][pos] = star
                 else:
                     snp = info[8].count(iupac[cons][0]) + info[8].count(iupac[cons][1]) # nreads with one variant
                     snp2 = info[8].count(iupac[cons][2]) + info[8].count(iupac[cons][3]) # nreads with the other
@@ -125,28 +129,28 @@ def parse_pileupFile(samples,allSNPpos,chrom,minCoverage=80,minSNP=10):
                     if (snp+snp2)*100 > minCoverage*int(nreads):
                         cov = 100 / float(nreads)
                         if ref == iupac[cons][0]:   # if ref base == first variant
-                            allSamples[sname][position] = star+"%.4g%% %s / %.4g%% %s" \
-                                    % (snp2*cov, iupac[cons][2], 100-snp2*cov, iupac[cons][0])
+                            allSamples[sname][pos] = star+"%s (%.4g%%)" % (iupac[cons][2], snp2*cov)
                         elif ref == iupac[cons][2]: # if ref base == second variant
-                            allSamples[sname][position] = star+"%.4g%% %s / %.4g%% %s" \
-                                    % (snp*cov, iupac[cons][0], 100-snp*cov, iupac[cons][2])
-                        else:                       # if third allele (?)
-                            allSamples[sname][position] = star+"%.4g%% %s / %.4g%% %s" \
-                                    % (snp*cov, iupac[cons][0], snp2*cov, iupac[cons][2])
-            while allpos:  # if something remains (?)
-                position = allpos.pop()
-                allSamples[sname][position] = "-"
+                            allSamples[sname][pos] = star+"%s (%.4g%%)" % (iupac[cons][0], snp*cov)
+                        else:                       # if third allele
+                            allSamples[sname][pos] = star+"%s (%.4g%%),%s (%.4g%%)" \
+                                    % (iupac[cons][0], snp*cov, iupac[cons][2], snp2*cov)
+            while allpos:  # write '0' for all pos after the last one of this sample
+                pos = allpos.pop()
+                allSamples[sname][pos] = "0"
 
-    firstSample = allSamples.itervalues().next()
+    #firstSample = allSamples.itervalues().next()
+    allpos = sorted(allSNPpos.keys(),reverse=False) # list of positions [int] with an SNP across all groups
     with open(formattedPileupFilename,'wb') as outfile:
-        for pos in sorted(firstSample):
-            nbNoSnp = 0
-            for sname in allSamples:
-                nbNoSnp += allSamples[sname][pos].count("-")
+        for pos in allpos:
+            nbNoSnp = 0 # Check if at least one sample had the SNP (??)
+            for sname in allSamples: 
+                nbNoSnp += allSamples[sname][pos].count("0")
             if nbNoSnp != len(allSamples):
-                outfile.write("\t".join([chrom,str(pos),allSNPpos[pos]] + [allSamples[sname][pos] for s in allSamples])+"\n")
+                refbase = allSNPpos[pos]
+                outfile.write("\t".join([chrom,str(pos),refbase] + [allSamples[s][pos] for s in allSamples])+"\n")
                 # Write: chr    pos    ref_base    sample1 ... sampleN
-                # sampleX is one of '-', 'A', '12% A / 88% T', with or wothout star
+                # sampleX is one of '0', 'A', 'T (28%)', 'T (28%),G (13%)', with or without star
 
     return formattedPileupFilename
 
@@ -156,6 +160,10 @@ def annotate_snps( filedict, sample_names, assembly ):
     Adds columns 'gene', 'location_type' and 'distance' to the output of parse_pileupFile.
     Returns two files: the first contains all SNPs annotated with their position respective to genes in
     the specified assembly, and the second contains only SNPs found within CDS regions.
+
+    :param filedict: {chr: formattedPileupFilename}
+    :sample_names: list of sample names
+    :assembly: genrep.Assembly object
     """
     def _process_annot(stream, fname):
         """Write (append) features from the *stream* in a file *fname*."""
@@ -165,7 +173,7 @@ def annotate_snps( filedict, sample_names, assembly ):
                 # chrV  1606    T   43.48% C / 56.52% T YEL077W-A|YEL077W-A_YEL077C|YEL077C 3UTR_Included   494_-2491
                 if "Included" in snp[-2].split("_"):
                     yield (snp[2],int(snp[0]),int(snp[1]))+snp[3:-3]
-                    # ('chrV', 1606, 1607, 'T', '43.48% C / 56.52% T')
+                    # ('chrV', 1606, 1607, 'T', 'C (43%)')
 
     trans_in_gene = assembly.get_trans_in_gene() # {gene_id: [transcript_ids]}
     exons_in_trans = assembly.get_exons_in_trans() # {transcript_id: [exon_ids]}
@@ -176,47 +184,47 @@ def annotate_snps( filedict, sample_names, assembly ):
     outall = output+"_all_snps.txt"
     outexons = output+"_exon_snps.txt"
     outex = open(outexons,"w")
-    nsamples = len(sample_names)
-    # Complete the header
     with open(outall,"w") as fout:
-        newcols = sample_names + ['gene','location_type','distance']
-        fout.write("\t".join(['chromosome','position','reference']+newcols)+"\n")
-    outex.write("\t".join(['chromosome','position','reference','snp','exon','reference_codon','new_codon'])+"\n")
-    # For each chromosome, read the result of parse_pileupFile and make a track
+        fout.write("\t".join(['chromosome','position','reference'] + sample_names
+                             + ['gene','location_type','distance']) + "\n")
+    outex.write("\t".join(['chromosome','position','reference'] + sample_names + ['exon','strand','ref_aa'] \
+                          + ['new_aa_'+s for s in sample_names])+"\n")
+
     for chrom, filename in filedict.iteritems():
+        # For each chromosome, read the result of parse_pileupFile and make a track
         snp_file = track.track( filename, format='text',
-                                fields=['chr','end','name',sample_names[0]], chrmeta=assembly.chrmeta )
-                                #fields=['chr','end','name']+sample_names, chrmeta=assembly.chrmeta )
-                                # samples??
-        # snp_file.read() is an iterator on the track features: ('chrV', 1607, 'T', '43.48% C / 56.52% T') 
-        # Add a 'start' using end-1 and remake the track 
+                                fields=['chr','end','name']+sample_names, chrmeta=assembly.chrmeta )
+        # Add a 'start' using end-1 and make an iterator from the track
         snp_read = track.FeatureStream( ((y[0],y[1]-1)+y[1:] for y in snp_file.read(chrom)),
-                                        fields=['chr','start','end']+snp_file.fields[2:])
-        annotations = assembly.gene_track(chrom) # gene annotation from genrep
+                                        fields=['chr','start','end','name']+sample_names)
+        annotation = assembly.gene_track(chrom) # gene annotation from genrep, FeatureStream instance
         # Find the nearest gene from each snp
-        fstream = gm_stream.getNearestFeature(snp_read, annotations, 3000, 3000)
+        annotated_stream = gm_stream.getNearestFeature(snp_read, annotation,
+                                thresholdPromot=3000, thresholdInter=3000, thresholdUTR=10)
         # Put together in a tuple the reference base and the base of every sample
         # Write a line in outall at each iteration; yield if the snp is in a CDS only
-        inclstream = track.concat_fields(track.FeatureStream(_process_annot(fstream, outall),
-                                                             fields=snp_read.fields),
-                                         infields=['name',sample_names[0]], as_tuple=True)
-                                         #infields=['name']+sample_names, as_tuple=True)
+        inclstream = track.concat_fields(track.FeatureStream(_process_annot(annotated_stream, outall),
+                                                                 fields=snp_read.fields),
+                                         infields=['name']+sample_names, as_tuple=True)
         # import existing CDS annotation from genrep as a track, and join some fields
         annotstream = track.concat_fields(assembly.annot_track('CDS',chrom),
                                           infields=['name','strand','frame'], as_tuple=True)
         for x in gm_stream.combine([inclstream, annotstream], gm_stream.intersection):
             # x = (1606, 1607, 'chrV', ('T', '43.48% C / 56.52% T', 'YEL077C|YEL077C', -1, 0, 'YEL077W-A|YEL077W-A', 1, 0))
-            #print 'x =',x
+            nsamples = len(sample_names)
             pos = x[0]; chr = x[2]; rest = x[3]
             refbase = rest[0]
-            variant = rest[1].strip('* ')
-            if len(variant.split()) > 1: # 43% C / 57% T
-                replaced = variant.split()[1]
-            elif variant == '-':
-                replaced = refbase
-            else:
-                replaced = variant
-            annot = [rest[3*i+2:3*i+3+2] for i in range(len(rest[2:])/3)] # list of (cds,strand,phase)
+            varbase = [r.strip('* ') for r in rest[1:1+nsamples]]
+            variants = []
+            for variant in varbase:
+                if variant == '0':
+                    variants.append(refbase)
+                elif len(variant.split(',')) > 1: # 'C (43%),G (12%)'
+                    variants.append(variant.split()[0])
+                else:                             # 'C (43%)' or 'C'
+                    variants.append(variant.split()[0])
+            annot = [rest[3*i+nsamples+1 : 3*i+3+nsamples+1] 
+                     for i in range(len(rest[nsamples+1:])/3)] # list of [cds,strand,phase]
             for cds,strand,phase in annot:
                 exon_id, gene_id, gene_name = cds.split('|')
                 # If no exon_id, let's find one (sometimes)
@@ -230,7 +238,6 @@ def annotate_snps( filedict, sample_names, assembly ):
                 if exons:
                     for e in exons:
                         es, ee = exon_mapping[e][2:4]
-                        #es = es+1 # Ensembl ???
                         if es <= pos and pos <= ee:
                             exon_id = e
                             break
@@ -243,18 +250,19 @@ def annotate_snps( filedict, sample_names, assembly ):
                     shift = (ee - phase - pos) % 3
                     codon_start = pos + shift - 2
                 ref_codon = assembly.fasta_from_regions({chr: [[codon_start,codon_start+3]]}, out={})[0][chr][0]
-                new_codon = list(ref_codon)
-                if strand == 1:
-                    new_codon[shift] = replaced
-                    assert ref_codon[shift] == refbase, "bug with shift within codon"
-                elif strand == -1:
-                    new_codon[2-shift] = replaced
-                    assert ref_codon[2-shift] == refbase, "bug with shift within codon"
-                new_codon = "".join(new_codon)
-                result = (rest[0]+' -> '+rest[1], exon_id+'|'+gene_id+'|'+gene_name, strand, \
-                        ref_codon+' -> '+new_codon, translate[ref_codon]+' -> '+translate[new_codon])
+                new_codon = [list(ref_codon) for v in variants]
+                for k in range(nsamples):
+                    if strand == 1:
+                        new_codon[k][shift] = variants[k]
+                        assert ref_codon[shift] == refbase, "bug with shift within codon"
+                    elif strand == -1:
+                        new_codon[k][2-shift] = variants[k]
+                        assert ref_codon[2-shift] == refbase, "bug with shift within codon"
+                    new_codon[k] = "".join(new_codon[k])
+                result = [x[2], refbase] + list(rest[1:1+nsamples]) + [exon_id+'|'+gene_id+'|'+gene_name, strand] \
+                          + [translate[ref_codon]] + [translate[n] for n in new_codon]
                 #print result,'\n'
-                outex.write("\t".join([str(y) for y in (x[2],x[1])+result])+"\n")
+                outex.write("\t".join([str(y) for y in result])+"\n")
     outex.close()
     return (outall, outexons)
 
@@ -265,17 +273,17 @@ def posAllUniqSNP(PileupDict):
     ({3021: 'A'}, (minCoverage, minSNP))
 
     :param PileupDict: (dict) dictionary of the form {filename: bein.Future}
-    :param minCoverage: (int)
     """
     d={}
     for filename,future in PileupDict.iteritems():
         parameters = future.wait() #file p is created and samtools pileup returns its own parameters
         minCoverage = parameters[0]
         minSNP = parameters[1]
-        with open(filename) as f:
+        with open(filename,'rb') as f:
             for l in f:
                 data = l.split("\t")
                 cpt = data[8].count(".") + data[8].count(",")
-                if cpt*100 < int(data[7]) * int(minCoverage) and int(data[7]) >= minSNP:
-                    d[int(data[1])] = data[2]
+                if cpt*100 < int(data[7]) * int(minCoverage) and int(data[7]) >= 8:
+                    d[int(data[1])] = data[2].upper()
     return (d,parameters)
+
