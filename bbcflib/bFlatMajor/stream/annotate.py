@@ -50,13 +50,13 @@ def getNearestFeature(features, annotations,
             strandBefore = None; strandAfter = None
             included = 0
             # keep only genes which don't start too far
-            for x in _a:
-                F.append(x)
-                if x[0] > peak[1]+thresholdInter: break
+            for annot in _a:
+                F.append(annot)
+                if annot[0] > peak[1]+thresholdInter: break
             # remove genes that end too far
             fpop = -1 # always keep one gene before
-            for x in F:
-                if x[1] > peak[0]-thresholdInter: break
+            for annot in F:
+                if annot[1] > peak[0]-thresholdInter: break
                 fpop += 1
             if fpop>0: F = F[fpop:]
             for annot in F:
