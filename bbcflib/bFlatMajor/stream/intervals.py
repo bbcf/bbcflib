@@ -177,9 +177,6 @@ def union(x):
 
 ###############################################################################
 def segment_features(trackList,nbins=10,upstream=None,downstream=None):
-    """
-    The features plus their upstream and downstream flanks must not overlap.
-    """
     def _split_feat(_t):
         starti = _t.fields.index('start')
         endi   = _t.fields.index('end')
@@ -191,47 +188,46 @@ def segment_features(trackList,nbins=10,upstream=None,downstream=None):
         downrel = False
         if upstream is None:
             updist = 0
-            upstep = 1
+            upbins = 0
         elif upstream[0] > 1:
             updist = upstream[0]
-            upstep = updist/upstream[1]
+            upbins = upstream[1]
         else:
             uprel = True
+            upbins = upstream[1]
         if downstream is None:
             downdist = 0
-            downstep = 1
+            downbins = 0
         elif downstream[0] > 1:
             downdist = downstream[0]
-            downstep = downdist/downstream[1]
+            downbins = downstream[1]
         else:
             downrel = True
+            downbins = downstream[1]
         for x in _t:
             xs = list(x)
             xlen = (xs[endi]-xs[starti])
-            xstep = xlen/nbins
             if uprel:
                 updist = int(.5+upstream[0]*xlen)
-                upstep = updist/upstream[1]
             if downrel:
                 downdist = int(.5+downstream[0]*xlen)
-                downstep = downdist/downstream[1]
             if strandi >= 0 and xs[strandi] > 0:
-                allsteps = range(x[starti]-updist,x[starti],upstep)
-                allsteps += range(x[starti],x[endi],xstep)
-                allsteps += range(x[endi],x[endi]+downdist,downstep)
+                allsteps = [x[starti]-updist*k/upbins for k in range(upbins,0,-1)]\
+                           +[x[starti]+xlen*k/nbins for k in range(nbins+1)]\
+                           +[x[endi]+downdist*(k+1)/downbins for k in range(downbins)]
                 start = allsteps[0]
-                for s,n in enumerate(allsteps[1:]):
+                for n,s in enumerate(allsteps[1:]):
                     xs[starti] = start
                     xs[endi] = s
                     start = s
                     yield tuple(xs)+(n,)
             else:
-                allsteps = range(x[starti]-downdist,x[starti],downstep)
-                allsteps += range(x[endi],x[starti],xstep)
-                allsteps += range(x[endi],x[endi]+updist,upstep)
+                allsteps = [x[starti]-downdist*k/downbins for k in range(downbins,0,-1)]\
+                           +[x[starti]+xlen*k/nbins for k in range(nbins+1)]\
+                           +[x[endi]+updist*(k+1)/upbins for k in range(upbins)]
                 start = allsteps[0]
-                ntot = len(allstart)-1
-                for s,n in enumerate(allsteps[1:]):
+                ntot = len(allsteps)-2
+                for n,s in enumerate(allsteps[1:]):
                     xs[starti] = start
                     xs[endi] = s
                     start = s

@@ -40,7 +40,7 @@ def unroll( stream, start, end, fields=['score'] ):
     return track.FeatureStream(_unr(s),fields=s.fields[2:])
 
 ####################################################################
-def sorted_stream(stream,chrnames,fields=['chr','start','end']):
+def sorted_stream(stream,chrnames=[],fields=['chr','start','end']):
     s = reorder(stream,fields)
     sort_list = []
     feature_list = []
