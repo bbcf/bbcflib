@@ -209,6 +209,8 @@ def annotate_snps( filedict, sample_names, assembly ):
         # import existing CDS annotation from genrep as a track, and join some fields
         annotstream = track.concat_fields(assembly.annot_track('CDS',chrom),
                                           infields=['name','strand','frame'], as_tuple=True)
+
+        buffer = {1:{}, -1:{}}
         for x in gm_stream.combine([inclstream, annotstream], gm_stream.intersection):
             # x = (1606, 1607, 'chrV', ('T', '43.48% C / 56.52% T', 'YEL077C|YEL077C', -1, 0, 'YEL077W-A|YEL077W-A', 1, 0))
             nsamples = len(sample_names)
@@ -261,8 +263,27 @@ def annotate_snps( filedict, sample_names, assembly ):
                     new_codon[k] = "".join(new_codon[k])
                 result = [x[2], refbase] + list(rest[1:1+nsamples]) + [exon_id+'|'+gene_id+'|'+gene_name, strand] \
                           + [translate[ref_codon]] + [translate[n] for n in new_codon]
+
+                #print strand, "buffer in", buffer[strand]
+                if codon_start in buffer[strand]:
+                    #print "add to existing buffer:", result[:4], strand, pos, codon_start
+                    buffer[strand][codon_start].append(result)
+                else:
+                    for c,x in buffer[strand].iteritems():
+                        for res in x:
+                            outex.write("\t".join([str(r) for r in res])+"\n")
+                    buffer[strand].clear()
+                    buffer[strand][codon_start] = [result]
+                    #print "add new to buffer:", result[:4], strand, pos, codon_start
+                #print strand,"buffer out", buffer[strand],"\n"
+                
                 #print result,'\n'
-                outex.write("\t".join([str(y) for y in result])+"\n")
+        for strand in [1,-1]:
+            for start, x in buffer[strand].iteritems():
+                for res in x:
+                    outex.write("\t".join([str(r) for r in res])+"\n")
+        print "\n\n"
+
     outex.close()
     return (outall, outexons)
 
