@@ -261,7 +261,7 @@ def annotate_snps( filedict, sample_names, assembly ):
                         new_codon[k][2-shift] = variants[k]
                         assert ref_codon[2-shift] == refbase, "bug with shift within codon"
                     new_codon[k] = "".join(new_codon[k])
-                result = [x[2], refbase] + list(rest[1:1+nsamples]) + [exon_id+'|'+gene_id+'|'+gene_name, strand] \
+                result = [x[2], str(x[0]), refbase] + list(rest[1:1+nsamples]) + [exon_id+'|'+gene_id+'|'+gene_name, strand] \
                           + [translate[ref_codon]] + [translate[n] for n in new_codon]
 
                 #print strand, "buffer in", buffer[strand]
