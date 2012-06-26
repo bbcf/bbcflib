@@ -53,7 +53,7 @@ def sorted_stream(stream,chrnames=[],fields=['chr','start','end']):
         sort_list.append((fi1,f[1],f[2],n))
         feature_list.append(f)
     sort_list.sort()
-    def _sorted_stream(l1,l2,n):
+    def _sorted_stream(l1,l2):
         for t in l1:
             yield l2[t[-1]]
     return FeatureStream(_sorted_stream(sort_list,feature_list), stream.fields)
@@ -64,8 +64,8 @@ def shuffled(stream, chrlen=sys.maxint, repeat_number=1, sorted=True):
     import random
     _f = ['start','end']
     features = reorder(stream,_f)
-    randpos = []
     def _shuffled(_s):
+        randpos = []
         for feat in _s:
             feat_len = feat[1]-feat[0]
             for s in xrange(repeat_number):
