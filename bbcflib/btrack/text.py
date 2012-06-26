@@ -36,7 +36,7 @@ class TextTrack(Track):
 
     def _get_chrmeta(self,chrmeta=None):
         _chrmeta = Track._get_chrmeta(self,chrmeta)
-        if _chrmeta: return _chrmeta
+        if _chrmeta or not(os.path.exists(self.path)): return _chrmeta
         if chrmeta is None and 'chr' in self.fields and 'end' in self.fields:
             self.intypes = {'end': int}
             for row in self.read(fields=['chr','end']):

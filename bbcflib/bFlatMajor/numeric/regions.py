@@ -1,27 +1,51 @@
 from bbcflib.bFlatMajor.stream import mean_score_by_feature, segment_features
+from bbcflib.bFlatMajor.common import sorted_stream
 import numpy
 
-def feature_matrix(trackScores,trackFeatures):
+def feature_matrix(trackScores,trackFeatures,segment=False,**kw):
+    nbins = 1
+    nscores = 1
+    if segment: 
+        trackFeatures = sorted_stream(segment_features(trackFeatures,**kw))
+        nbins = kw.get('nbins',segment_features.__defaults__[0])\
+                +kw.get('upstream',(0,0))[1]\
+                +kw.get('downstream',(0,0))[1]
     all_means = mean_score_by_feature(trackScores,trackFeatures)
     nfields = len(trackFeatures.fields)
-    if 'name' in all_means.fields:
-        name_field = all_means.fields.index('name')
+    if isinstance(trackScores,(list,tuple)):
+        nscores = len(trackScores)
+    scores_dict = {}
+    if segment:
+        empty_mat = numpy.zeros(shape=(nbins,nscores))
     else:
-        name_field = all_means.fields.index('start')
-    scores_dict = dict((str(x[name_field]),x[nfields:]) for x in all_means)
+        empty_mat = numpy.zeros(nscores)
+    name_idx = all_means.fields.index('name')
+    for t in all_means:
+        _n = t[name_idx]
+        if not(_n in scores_dict): scores_dict[_n] = empty_mat.copy()
+        if segment:
+            scores_dict[_n][t[nfields-1]] = t[nfields:]
+        else:
+            scores_dict[_n] = t[nfields:]
     feat_names = numpy.array(scores_dict.keys())
     scores_mat = numpy.array(scores_dict.values())
     return (feat_names,scores_mat)
 
-def average_feature_matrix(trackScores,trackFeatures,nbins=20,):
-    nfields = len(trackFeatures.fields)
-    trackFeatures = segment_features(trackFeatures,nbins=nbins)
+def average_feature_matrix(trackScores,trackFeatures,**kw):
+    trackFeatures = sorted_stream(segment_features(trackFeatures,**kw))
     all_means = mean_score_by_feature(trackScores,trackFeatures)
-    nscores = len(trackScores)
+    if isinstance(trackScores,(list,tuple)):
+        nscores = len(trackScores)
+    else:
+        nscores = 1
+    nfields = len(trackFeatures.fields)
+    nbins = kw.get('nbins',segment_features.__defaults__[0])\
+            +kw.get('upstream',(0,0))[1]\
+            +kw.get('downstream',(0,0))[1]
     averages = numpy.zeros(shape=(nbins,nscores))
     for ntot,x in enumerate(all_means):
-        averages[x[-1]] += x[nfields:-1]
-    averages *= 1.0/(ntot+1)
+        averages[x[nfields]] += x[(nfields+1):]
+    averages *= 1.0*(nbins/(ntot+1))
     return averages
     
     

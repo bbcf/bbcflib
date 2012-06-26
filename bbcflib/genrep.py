@@ -34,6 +34,7 @@ from operator import itemgetter
 # Internal modules #
 from bbcflib.common import normalize_url, unique_filename_in
 from bbcflib import btrack as track
+from bbcflib.bFlatMajor.common import shuffled as track_shuffle
 
 # Other modules #
 import sqlite3
@@ -222,7 +223,6 @@ class Assembly(object):
                 out[chrn].extend([s for s in self.genrep.get_sequence(chrid,coord)])
             return {'coord':[],'names':[]}
         slices = {'coord':[],'names':[]}
-        chrlist = dict((v['name'], {'length': v['length']}) for v in self.chromosomes.values())
         size = 0
         if isinstance(regions,list):
             reg_dict = {}
@@ -248,13 +248,14 @@ class Assembly(object):
                 size += cur_chunk
                 slices = _flush_slices(slices,cid[0],chrom['name'],out)
         else:
-            with track.track(regions, chrmeta=chrlist) as t:
+            with track.track(regions, chrmeta=self.chrmeta) as t:
                 cur_chunk = 0
                 for cid,chrom in self.chromosomes.iteritems():
+                    features = t.read(selection=chrom['name'], 
+                                      fields=["start","end","name"])
                     if shuffled:
-                        features = t.read_shuffled(repeat_number=1, selection=chrom['name'], fields=["start","end","name"])
-                    else:
-                        features = t.read(selection=chrom['name'], fields=["start","end","name"])
+                        features = track_shuffle( features, chrlen=chrom['length'], 
+                                                  repeat_number=1, sorted=False )
                     for row in features:
                         s = max(row[0],0)
                         e = min(row[1],chrom['length'])
@@ -354,7 +355,7 @@ class Assembly(object):
         root = os.path.join(self.genrep.root,"nr_assemblies/annot_tracks")
         return os.path.join(root,self.md5+".sql")
 
-    def get_features_from_gtf(self,h,chr=None):
+    def get_features_from_gtf(self,h,chr=None,method="dico"):
         '''
         Return a dictionary *data* of the form
         {key:[[values],[values],...]} containing the result of an SQL request which
@@ -378,14 +379,14 @@ class Assembly(object):
         The corresponding keys of *data* are a concatenation (by ';') of these fields.
         '''
         data = {}
-        if not chr: chromosomes = self.chrnames
-        elif isinstance(chr,list): chromosomes = chr
+        if isinstance(chr,list): chromosomes = chr
         elif isinstance(chr,str): chromosomes = chr.split(',')
+        else: chromosomes = [None]
+        if not(method in ["dico","boundaries"]): return data
         for chr_name in chromosomes:
-            request = self.genrep.url+"/nr_assemblies/get_dico?md5="+self.md5
-            for k,v in h.iteritems():
-                request += "&"+k+"="+v
-            request += "&chr_name="+chr_name
+            request = self.genrep.url+"/nr_assemblies/get_%s?md5=%s" %(method,self.md5)
+            request += "&".join(['']+["%s=%s" %(k,v) for k,v in h.iteritems()])
+            if chr_name: request += "&chr_name="+chr_name
 	    data.update(json.load(urllib2.urlopen(request)))
         return data
 
@@ -559,6 +560,47 @@ class Assembly(object):
                 trans_in_gene[str(k)] = [str(x[0]) for x in v]
 
         return trans_in_gene
+
+    def gene_coordinates(self,id_list):
+        """
+        Creates a BED-style stream from a list of gene ids.
+        """
+        dbpath = self.sqlite_path()
+        chromlist = self.chrnames
+        _fields = ['chr','start','end','name','strand']
+        def _sql_query():
+            _ids = "','".join(id_list)
+            sql1 = "SELECT DISTINCT MIN(start) AS gstart,MAX(end) AS gend,gene_id,gene_name,strand FROM '"
+            sql2 = "' WHERE gene_id IN ('%s') GROUP BY gene_id ORDER BY gstart,gend,gene_id" %_ids
+            db = sqlite3.connect(dbpath)
+            cursor = db.cursor()
+            for chrom in chromlist:
+                cursor.execute(sql1+chrom+sql2)
+                for x in cursor:
+                    name = "%s|%s" %x[2:4]
+                    yield (chrom,int(x[0]),int(x[1]),str(name))+tuple(x[4:])
+
+        def _web_query():
+            _ids = "|".join(id_list)
+            sort_list = []
+            webh = { "names": "gene_id,gene_name,strand,chr_name",
+                     "conditions": "gene_id:%s" %_ids,
+                     "uniq":"1" }
+            resp = self.get_features_from_gtf(webh,method='boundaries')
+            for k,v in resp.iteritems():
+                if not(v): continue
+                start,end = v
+                gene_id,gene_name,strand,chr_name = [str(y).strip() for y in k.split('; ')]
+                name = "%s|%s" %(gene_id,gene_name)
+                sort_list.append((chr_name,start,end,name,int(strand)))
+            sort_list.sort()
+            for k in sort_list: yield k
+        if os.path.exists(dbpath):
+            _db_call = _sql_query
+        else:
+            _db_call = _web_query
+        return track.FeatureStream(_db_call(),fields=_fields)
+
 
     def annot_track(self,annot_type='gene',chromlist=None,biotype=["protein_coding"]):
         if chromlist is None: chromlist = self.chrnames

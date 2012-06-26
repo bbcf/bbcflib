@@ -1,17 +1,14 @@
-from bbcflib import btrack as track
+from bbcflib.btrack import FeatureStream
+import sys
 ####################################################################
 def sentinelize(iterable, sentinel):
-    '''
-    Add an item to the end of an iterable
-
-    >>> list(sentinelize(range(4), 99))
-    [0, 1, 2, 3, 99]
-    '''
+    """Append *sentinel* at the end of *iterable*."""
     for item in iterable: yield item
     yield sentinel
 
 ####################################################################
 def reorder(stream,fields):
+    """Reorders *stream.fields* so that *fields* come first."""
     if not(hasattr(stream, 'fields')) or stream.fields is None:
         return stream 
     if not(all([f in stream.fields for f in fields])):
@@ -20,10 +17,13 @@ def reorder(stream,fields):
         return stream
     _inds = [stream.fields.index(f) for f in fields]+[n for n,f in enumerate(stream.fields) if f not in fields]
     _flds = [stream.fields[n] for n in _inds]
-    return track.FeatureStream((tuple(x[n] for n in _inds) for x in stream), fields=_flds)
+    return FeatureStream((tuple(x[n] for n in _inds) for x in stream), fields=_flds)
 
 ####################################################################
 def unroll( stream, start, end, fields=['score'] ):
+    """Creates a stream of *end*-*start* items with appropriate *fields* values at every position.
+    For example, [(10,12,0.5), (14,15,1.2)] with *start*=9 and *end*=16 yields [0,0.5,0.5,0,0,1.2,0]
+    """
     if not(isinstance(fields,(list,tuple))): fields = [fields]
     s = reorder(stream,['start','end']+fields)
     def _unr(s):
@@ -37,10 +37,13 @@ def unroll( stream, start, end, fields=['score'] ):
                 yield x[2:]
                 pos+=1
             if pos>=end: break
-    return track.FeatureStream(_unr(s),fields=s.fields[2:])
+    return FeatureStream(_unr(s),fields=s.fields[2:])
 
 ####################################################################
-def sorted_stream(stream,chrnames,fields=['chr','start','end']):
+def sorted_stream(stream,chrnames=[],fields=['chr','start','end']):
+    """Sorts a stream according to *fields* values. Will load the entire stream in memory.
+    The order of names in *chrnames* is used to to sort the 'chr' field if available.
+    """
     s = reorder(stream,fields)
     sort_list = []
     feature_list = []
@@ -50,11 +53,31 @@ def sorted_stream(stream,chrnames,fields=['chr','start','end']):
         sort_list.append((fi1,f[1],f[2],n))
         feature_list.append(f)
     sort_list.sort()
-    def _sorted_stream(l1,l2,n):
+    def _sorted_stream(l1,l2):
         for t in l1:
-            yield l2[t[n]]
-    return track.FeatureStream(_sorted_stream(sort_list,feature_list,len(fields)), 
-                               stream.fields)
+            yield l2[t[-1]]
+    return FeatureStream(_sorted_stream(sort_list,feature_list), stream.fields)
+
+####################################################################
+def shuffled(stream, chrlen=sys.maxint, repeat_number=1, sorted=True):
+    '''Yields randomly located features of the same length as the original track.'''
+    import random
+    _f = ['start','end']
+    features = reorder(stream,_f)
+    def _shuffled(_s):
+        randpos = []
+        for feat in _s:
+            feat_len = feat[1]-feat[0]
+            for s in xrange(repeat_number):
+                if len(randpos) == 0:
+                    randpos = [random.randint(0, chrlen-feat_len) for i in xrange(10000)]
+                start = randpos.pop()
+                yield (start,start+feat_len)+feat[2:]
+    if sorted:
+        return sorted_stream(FeatureStream(_shuffled(features),features.fields),fields=_f)
+    else:
+        return FeatureStream(_shuffled(features),features.fields)
+
 ####################################################################
 def strand_merge(x): 
     return all(x[0]==y for y in x[1:]) and x[0] or 0
@@ -76,6 +99,11 @@ def generic_merge(x):
 aggreg_functions = {'strand': strand_merge, 'chr': no_merge}
 
 def fusion(stream,aggregate=aggreg_functions):
+    """Fuses overlapping features in *stream* and applies *aggregate[f]* function to each field $f$.
+    Example: [('chr1',10,15,'A',1),('chr1',13,18,'B',-1),('chr1',18,25,'C',-1)] yields
+    (10, 18, 'chr1', 'A|B', 0)
+    (18, 25, 'chr1', 'C', -1)
+    """
     def _fuse(s):
         try:
             x = list(s.next())
@@ -94,6 +122,6 @@ def fusion(stream,aggregate=aggreg_functions):
                 x = list(y)
         yield tuple(x)
     _s = reorder(stream,['start','end'])
-    return track.FeatureStream( _fuse(_s), _s.fields )
+    return FeatureStream( _fuse(_s), _s.fields )
 
 ####################################################################
