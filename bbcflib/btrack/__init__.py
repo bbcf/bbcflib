@@ -1,7 +1,7 @@
 """
 Examples::
 
-    import track
+    import btrack as track
 
     track.convert("data/test.bed","test0.sql",chrmeta='mm9')
 
@@ -29,7 +29,8 @@ Examples::
         print x #['chr2', 3030497, 3032496, 'ENSMUST00000072955', 'txS']
         break
 
-    for n,x in enumerate(bFlatMajor.common.sorted_stream(track_in.read_shuffled()),track_in.chrmeta.keys()):
+    from bFlatMajor.common import shuffled
+    for n,x in enumerate(shuffled(track_in.read('chr2'),chrlen=chrmeta['chr2']['length'])):
         print x
         if n>10: break
 
@@ -334,41 +335,6 @@ class Track(object):
 
     def write(self, **kw):
         pass
-
-    def read_shuffled(self, repeat_number=1, **kwargs):
-        """
-        Return a stream of randomly located features, of the same length as the original track.
-
-        :param repeat_number: (int) ?
-        :rtype: FeatureStream object.
-        """
-        import random
-        feat_iter = self.read(**kwargs)
-        try:
-            chri = feat_iter.fields.index('chr')
-            starti = feat_iter.fields.index('start')
-            endi = feat_iter.fields.index('end')
-        except:
-            raise ValueError("Need chr, start and end fields.")
-        def _shuffled(iter):
-            chr_cur = None
-            for feat in iter:
-                chr_len = self.chrmeta[feat[chri]]['length']
-                if chr_cur != feat[chri]:
-                    randpos = []
-                    chr_cur = feat[chri]
-                feat_len = feat[endi]-feat[starti]
-                featnew = list(feat)
-                for s in range(repeat_number):
-                    if len(randpos) == 0:
-                        randpos = [random.randint(0, chr_len-feat_len)
-                                   for i in range(10000)]
-                    featnew[starti] = randpos.pop()
-                    featnew[endi] = featnew[starti]+feat_len
-                    yield tuple(featnew)
-        return FeatureStream(_shuffled(feat_iter),feat_iter.fields)
-
-
 
 ################################################################################
 class FeatureStream(object):
