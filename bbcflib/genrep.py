@@ -379,6 +379,10 @@ class Assembly(object):
         '''
         data = {}
         if not chr: chromosomes = self.chrnames
+        if not h.get("values"):
+            raise ValueError("Must specify 'values' in *h*.")
+        if not h.get("keys"):
+            raise ValueError("Must specify 'keys' in *h*.")
         elif isinstance(chr,list): chromosomes = chr
         elif isinstance(chr,str): chromosomes = chr.split(',')
         for chr_name in chromosomes:
@@ -386,7 +390,7 @@ class Assembly(object):
             for k,v in h.iteritems():
                 request += "&"+k+"="+v
             request += "&chr_name="+chr_name
-	    data.update(json.load(urllib2.urlopen(request)))
+            data.update(json.load(urllib2.urlopen(request)))
         return data
 
     def get_gene_mapping(self):
@@ -443,14 +447,12 @@ class Assembly(object):
                 resp_iter = resp.iteritems()
                 try: fg,init = resp_iter.next() # initialize
                 except StopIteration: continue
-                name,start,fend,strand = init[0]
-                #start+=1
+                name,start,fend,strand,chr = init[0]
                 length = fend-start
                 for g,v in resp_iter:
                     v.sort(key=itemgetter(1,2)) # sort w.r.t. start, then end
                     for x in v:
                         start = x[1]; end = x[2]
-                        #start+=1
                         if start >= fend:
                             length += end-start # new exon
                             fend = end
