@@ -387,7 +387,7 @@ class Assembly(object):
             request = self.genrep.url+"/nr_assemblies/get_%s?md5=%s" %(method,self.md5)
             request += "&".join(['']+["%s=%s" %(k,v) for k,v in h.iteritems()])
             if chr_name: request += "&chr_name="+chr_name
-	    data.update(json.load(urllib2.urlopen(request)))
+            data.update(json.load(urllib2.urlopen(request)))
         return data
 
     def get_gene_mapping(self):
