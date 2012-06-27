@@ -251,10 +251,10 @@ class Assembly(object):
             with track.track(regions, chrmeta=self.chrmeta) as t:
                 cur_chunk = 0
                 for cid,chrom in self.chromosomes.iteritems():
-                    features = t.read(selection=chrom['name'],
+                    features = t.read(selection=chrom['name'], 
                                       fields=["start","end","name"])
                     if shuffled:
-                        features = track_shuffle( features, chrlen=chrom['length'],
+                        features = track_shuffle( features, chrlen=chrom['length'], 
                                                   repeat_number=1, sorted=False )
                     for row in features:
                         s = max(row[0],0)
@@ -356,7 +356,7 @@ class Assembly(object):
         return os.path.join(root,self.md5+".sql")
 
     def get_features_from_gtf(self,h,chr=None,method="dico"):
-        """
+        '''
         Return a dictionary *data* of the form
         {key:[[values],[values],...]} containing the result of an SQL request which
         parameters are given as a dictionary *h*. All [values] correspond to a line in the SQL.
@@ -377,12 +377,8 @@ class Assembly(object):
 
         Note: giving several field names to "keys" permits to select unique combinations of these fields.
         The corresponding keys of *data* are a concatenation (by ';') of these fields.
-        """
+        '''
         data = {}
-        if not h.get("values"):
-            raise ValueError("Must specify 'values' in *h*.")
-        if not h.get("keys"):
-            raise ValueError("Must specify 'keys' in *h*.")
         if isinstance(chr,list): chromosomes = chr
         elif isinstance(chr,str): chromosomes = chr.split(',')
         else: chromosomes = [None]
@@ -391,7 +387,7 @@ class Assembly(object):
             request = self.genrep.url+"/nr_assemblies/get_%s?md5=%s" %(method,self.md5)
             request += "&".join(['']+["%s=%s" %(k,v) for k,v in h.iteritems()])
             if chr_name: request += "&chr_name="+chr_name
-            data.update(json.load(urllib2.urlopen(request)))
+	    data.update(json.load(urllib2.urlopen(request)))
         return data
 
     def get_gene_mapping(self):
@@ -448,12 +444,14 @@ class Assembly(object):
                 resp_iter = resp.iteritems()
                 try: fg,init = resp_iter.next() # initialize
                 except StopIteration: continue
-                name,start,fend,strand,chr = init[0]
+                name,start,fend,strand = init[0]
+                #start+=1
                 length = fend-start
                 for g,v in resp_iter:
                     v.sort(key=itemgetter(1,2)) # sort w.r.t. start, then end
                     for x in v:
                         start = x[1]; end = x[2]
+                        #start+=1
                         if start >= fend:
                             length += end-start # new exon
                             fend = end
