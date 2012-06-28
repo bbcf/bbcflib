@@ -95,7 +95,7 @@ def write_pileupFile(pileup_dict,sample_names,allSNPpos,chrom,minCoverage=80,min
     iupac = {'M':['A','a','C','c'],'Y':['T','t','C','c'],'R':['A','a','G','g'],
              'S':['G','g','C','c'],'W':['A','a','T','t'],'K':['T','t','G','g']}
 
-    for pileup_filename,pair in pileup_dict:
+    for pileup_filename,pair in pileup_dict.iteritems():
         allpos = sorted(allSNPpos.keys(),reverse=True) # list of positions [int] with an SNP across all groups
         sname = pair[1]
         with open(pileup_filename) as sample:
@@ -254,7 +254,7 @@ def annotate_snps( filedict, sample_names, assembly ):
                                 thresholdPromot=3000, thresholdInter=3000, thresholdUTR=10)
         # Write a line in outall at each iteration; yield if the snp is in a CDS only
         inclstream = track.concat_fields(track.FeatureStream(_process_annot(annotated_stream, outall),
-                                                                 fields=snp_read.fields),
+                                                             fields=snp_read.fields),
                                          infields=['name']+sample_names, as_tuple=True)
         # import existing CDS annotation from genrep as a track, and join some fields
         annotstream = track.concat_fields(assembly.annot_track('CDS',chrom),
