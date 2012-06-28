@@ -261,7 +261,6 @@ def annotate_snps( filedict, sample_names, assembly ):
         annotstream = track.concat_fields(assembly.annot_track('CDS',chrom),
                                           infields=['name','strand','frame'], as_tuple=True)
         buffer = {1:{}, -1:{}}
-        print annotated_stream.next()
         for x in gm_stream.combine([inclstream, annotstream], gm_stream.intersection):
             # x = (1606, 1607, 'chrV', ('T', '43.48% C / 56.52% T', 'YEL077C|YEL077C', -1, 0, 'YEL077W-A|YEL077W-A', 1, 0))
             nsamples = len(sample_names)
