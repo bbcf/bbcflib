@@ -22,11 +22,11 @@ class Test_SNP(unittest.TestCase):
     def test_annotate_snps(self):
         filedict = {'chrV':path+"chrV"}
         outall, outexons = annotate_snps(filedict, self.sample_names, self.assembly)
-        #with open(outall,'r') as f: print 'outall\n',f.read()
-        #with open(outexons,'r') as g: print 'outexons\n',g.read()
+        with open(outall,'r') as f: print '\noutall\n',f.read()
+        with open(outexons,'r') as g: print '\noutexons\n',g.read()
         os.remove(outall)
         os.remove(outexons)
-        #raise
+        raise
 
 
 #-----------------------------------#
