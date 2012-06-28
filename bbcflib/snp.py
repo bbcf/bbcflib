@@ -230,11 +230,6 @@ def annotate_snps( filedict, sample_names, assembly ):
                          + [translate[ref_codon]] + [translate[n] for n in new_codon]
                 outex.write("\t".join([str(r) for r in result])+"\n")
 
-    trans_in_gene = assembly.get_trans_in_gene() # {gene_id: [transcript_ids]}
-    exons_in_trans = assembly.get_exons_in_trans() # {transcript_id: [exon_ids]}
-    transcript_mapping = assembly.get_transcript_mapping() # {transcript_id: (gene_id,start,end,length,strand,chromosome)}
-    exon_mapping = assembly.get_exon_mapping() # {exon_id: ([transcript_ids],gene_id,start,end,strand,chromosome)}
-
     output = unique_filename_in()
     outall = output+"_all_snps.txt"
     outexons = output+"_exon_snps.txt"
