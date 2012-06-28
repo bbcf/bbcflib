@@ -251,10 +251,10 @@ class Assembly(object):
             with track.track(regions, chrmeta=self.chrmeta) as t:
                 cur_chunk = 0
                 for cid,chrom in self.chromosomes.iteritems():
-                    features = t.read(selection=chrom['name'], 
+                    features = t.read(selection=chrom['name'],
                                       fields=["start","end","name"])
                     if shuffled:
-                        features = track_shuffle( features, chrlen=chrom['length'], 
+                        features = track_shuffle( features, chrlen=chrom['length'],
                                                   repeat_number=1, sorted=False )
                     for row in features:
                         s = max(row[0],0)
@@ -387,7 +387,7 @@ class Assembly(object):
             request = self.genrep.url+"/nr_assemblies/get_%s?md5=%s" %(method,self.md5)
             request += "&".join(['']+["%s=%s" %(k,v) for k,v in h.iteritems()])
             if chr_name: request += "&chr_name="+chr_name
-	    data.update(json.load(urllib2.urlopen(request)))
+            data.update(json.load(urllib2.urlopen(request)))
         return data
 
     def get_gene_mapping(self):
@@ -444,7 +444,7 @@ class Assembly(object):
                 resp_iter = resp.iteritems()
                 try: fg,init = resp_iter.next() # initialize
                 except StopIteration: continue
-                name,start,fend,strand = init[0]
+                name,start,fend,strand,chr = init[0]
                 #start+=1
                 length = fend-start
                 for g,v in resp_iter:
