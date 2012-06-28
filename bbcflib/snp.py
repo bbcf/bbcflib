@@ -78,7 +78,7 @@ def sam_pileup(assembly,bamfile,refGenome,via='lsf',minSNP=10,minCoverage=80):
     return {"arguments": ["samtools","pileup","-B","-cvsf",refGenome,"-N",str(ploidy),bamfile],
             "return_value": [minCoverage,minSNP]}
 
-def write_pileupFile(samples,allSNPpos,chrom,minCoverage=80,minSNP=10):
+def write_pileupFile(pileup_dict,sample_names,allSNPpos,chrom,minCoverage=80,minSNP=10):
     """For a given chromosome, returns a summary file containing all SNPs identified 
     in at least one of the samples from *samples*.
     Each row contains: chromosome id, SNP position, reference base, SNP base (with proportions)
@@ -95,8 +95,9 @@ def write_pileupFile(samples,allSNPpos,chrom,minCoverage=80,minSNP=10):
     iupac = {'M':['A','a','C','c'],'Y':['T','t','C','c'],'R':['A','a','G','g'],
              'S':['G','g','C','c'],'W':['A','a','T','t'],'K':['T','t','G','g']}
 
-    for pileup_filename,sname in samples.iteritems():
+    for pileup_filename,pair in pileup_dict:
         allpos = sorted(allSNPpos.keys(),reverse=True) # list of positions [int] with an SNP across all groups
+        sname = pair[1]
         with open(pileup_filename) as sample:
             pos = -1
             allSamples[sname] = {}
@@ -144,11 +145,11 @@ def write_pileupFile(samples,allSNPpos,chrom,minCoverage=80,minSNP=10):
     with open(formattedPileupFilename,'wb') as outfile:
         for pos in allpos:
             nbNoSnp = 0 # Check if at least one sample had the SNP (??)
-            for sname in allSamples: 
+            for sname in sample_names: 
                 nbNoSnp += allSamples[sname][pos].count("0")
             if nbNoSnp != len(allSamples):
                 refbase = allSNPpos[pos]
-                outfile.write("\t".join([chrom,str(pos),refbase] + [allSamples[s][pos] for s in allSamples])+"\n")
+                outfile.write("\t".join([chrom,str(pos),refbase] + [allSamples[s][pos] for s in sample_names])+"\n")
                 # Write: chr    pos    ref_base    sample1 ... sampleN
                 # sampleX is one of '0', 'A', 'T (28%)', 'T (28%),G (13%)', with or without star
 
@@ -312,8 +313,8 @@ def posAllUniqSNP(PileupDict):
     :param PileupDict: (dict) dictionary of the form {filename: bein.Future}
     """
     d={}
-    for filename,future in PileupDict.iteritems():
-        parameters = future.wait() #file p is created and samtools pileup returns its own parameters
+    for filename,pair in PileupDict.iteritems():
+        parameters = pair[0].wait() #file p is created and samtools pileup returns its own parameters
         minCoverage = parameters[0]
         minSNP = parameters[1]
         with open(filename,'rb') as f:
