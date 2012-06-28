@@ -383,11 +383,36 @@ class Assembly(object):
         elif isinstance(chr,str): chromosomes = chr.split(',')
         else: chromosomes = [None]
         if not(method in ["dico","boundaries"]): return data
-        for chr_name in chromosomes:
-            request = self.genrep.url+"/nr_assemblies/get_%s?md5=%s" %(method,self.md5)
-            request += "&".join(['']+["%s=%s" %(k,v) for k,v in h.iteritems()])
-            if chr_name: request += "&chr_name="+chr_name
-            data.update(json.load(urllib2.urlopen(request)))
+        # Sqlite3 request to /db/
+        dbpath = self.sqlite_path()
+        if os.path.exists(dbpath) and not h.get('at_pos'):
+            if chromosomes == [None]: chromosomes = self.chrnames
+            db = sqlite3.connect(dbpath)
+            cursor = db.cursor()
+            dist = h.get('uniq','') and "DISTINCT"
+            for chr in chromosomes:
+                sql = "SELECT " + dist + " " + ",".join(h['keys'].split(',')+h['values'].split(','))
+                sql += " FROM " + chr
+                if h.get('conditions'):
+                    sql += " WHERE "
+                    hconds = dict([c.split(':') for c in h['conditions'].split(',')])
+                    conditions = []
+                    for k,v in hconds.iteritems():
+                        conditions.append( "(" + k + "='" + v + "')" )
+                    sql += " AND ".join(conditions)
+                cursor.execute(sql)
+                for x in cursor:
+                    nkeys = len(h['keys'].split(','))
+                    key = ';'.join([str(_) for _ in x[:nkeys]])
+                    values = list(x[nkeys:]+(chr,))
+                    data.setdefault(key,[]).append(values)
+        # Genrep url request
+        else:
+            for chr_name in chromosomes:
+                request = self.genrep.url+"/nr_assemblies/get_%s?md5=%s" %(method,self.md5)
+                request += "&".join(['']+["%s=%s" %(k,v) for k,v in h.iteritems()])
+                if chr_name: request += "&chr_name="+chr_name
+                data.update(json.load(urllib2.urlopen(request)))
         return data
 
     def get_gene_mapping(self):
