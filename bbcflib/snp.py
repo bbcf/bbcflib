@@ -78,24 +78,25 @@ def sam_pileup(assembly,bamfile,refGenome,via='lsf',minSNP=10,minCoverage=80):
     return {"arguments": ["samtools","pileup","-B","-cvsf",refGenome,"-N",str(ploidy),bamfile],
             "return_value": [minCoverage,minSNP]}
 
-def write_pileupFile(pileup_dict,sample_names,allSNPpos,chrom,minCoverage=80,minSNP=10):
+def write_pileupFile(dictPileup,sample_names,allSNPpos,chrom,minCoverage=80,minSNP=10):
     """For a given chromosome, returns a summary file containing all SNPs identified 
-    in at least one of the samples from *samples*.
+    in at least one of the samples.
     Each row contains: chromosome id, SNP position, reference base, SNP base (with proportions)
 
-    :param ex: a bein.Execution instance.
-    :param samples: (dict) dictionary of the form {filename: sample_name}
+    :param dictPileup: (dict) dictionary of the form {filename: (bein.Future, sample_name)}.
+    :param sample_names: (list of str) list of sample names.
     :param allSNPpos: dict fo the type {3021: 'A'} as returned by posAllUniqSNP(...)[0].
     :param chrom: (str) chromosome name.
     :param minCoverage: (int) the minimal percentage of reads supporting a SNP to reject a sequencing error.
     :param minSNP: (int) the minimal coverage of the SNP position to accept the SNP.
     """
+    # Note: sample_names is redundant with dictPileup, can find a way to get rid of it
     formattedPileupFilename = unique_filename_in()
     allSamples = {}
     iupac = {'M':['A','a','C','c'],'Y':['T','t','C','c'],'R':['A','a','G','g'],
              'S':['G','g','C','c'],'W':['A','a','T','t'],'K':['T','t','G','g']}
 
-    for pileup_filename,pair in pileup_dict:
+    for pileup_filename,pair in dictPileup.iteritems():
         allpos = sorted(allSNPpos.keys(),reverse=True) # list of positions [int] with an SNP across all groups
         sname = pair[1]
         with open(pileup_filename) as sample:
