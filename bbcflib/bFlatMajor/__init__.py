@@ -1,7 +1,7 @@
 __all__ = ['bFlatMajorGroup']
 
 import os, sys
-from bbcflib import btrack as track
+from bbcflib.btrack import  track
 from bbcflib.common import unique_filename_in
 
 _here = 'bbcflib.bFlatMajor.'
@@ -58,7 +58,7 @@ def run(**kwargs):
     smod = sys.modules[_here+module]
     trackSet = {}
     for targ in getattr(smod, module)().loadable(funct):
-        trackSet[targ] = [track.track(t) for t in kwargs[targ].split(",")]
+        trackSet[targ] = [track(t) for t in kwargs[targ].split(",")]
     assembly = None
     if 'assembly' in kwargs:
         assembly = kwargs.pop('assembly')
@@ -82,25 +82,23 @@ def run(**kwargs):
             outf = "%s_%i.%s" %(output.strip(format),n,format)
             files.append(outf)
             fields = stream.fields
-            track.track(outf,chrmeta=chrmeta,fields=fields,
-                        info=info).write(stream,chrom=chr)
+            track(outf,chrmeta=chrmeta,fields=fields,
+                  info=info).write(stream,chrom=chr)
         for chr in chrmeta.keys()[1:]:
             for targ in getattr(smod, module)().loadable(funct):
                 kwargs[targ] = [t.read(selection=chr) for t in trackSet[targ]]
             funct_output = getattr(smod, funct)(**kwargs)
             for n,stream in enumerate(funct_output):
-                track.track(files[n],chrmeta=chrmeta).write(stream,chrom=chr,
-                                                            mode='append')
+                track(files[n],chrmeta=chrmeta).write(stream,chrom=chr,mode='append')
     else:
         files = output
         fields = funct_output.fields
-        track.track(files,chrmeta=chrmeta,fields=fields,
-                    info=info).write(funct_output,chrom=chr)
+        track(files,chrmeta=chrmeta,fields=fields,
+              info=info).write(funct_output,chrom=chr)
         for chr in chrmeta.keys()[1:]:
             for targ in getattr(smod, module)().loadable(funct):
                 kwargs[targ] = [t.read(selection=chr) for t in trackSet[targ]]
             funct_output = getattr(smod, funct)(**kwargs)
-            track.track(files,chrmeta=chrmeta).write(funct_output,chrom=chr,
-                                                     mode='append')
+            track(files,chrmeta=chrmeta).write(funct_output,chrom=chr,mode='append')
     return files
     

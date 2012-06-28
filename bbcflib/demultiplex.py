@@ -155,7 +155,7 @@ def load_paramsFile(paramsfile):
     params={}
     with open(paramsfile) as f:
         for s in f:
-            if re.search('^#',s) or not(re.search('=')): continue
+            if re.search('^#',s) or not(re.search('=',s)): continue
             (k,v)=s.strip().split('=')
             if re.search('Search the primer from base i',k): 
                 params['n']=v
