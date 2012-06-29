@@ -78,24 +78,25 @@ def sam_pileup(assembly,bamfile,refGenome,via='lsf',minSNP=10,minCoverage=80):
     return {"arguments": ["samtools","pileup","-B","-cvsf",refGenome,"-N",str(ploidy),bamfile],
             "return_value": [minCoverage,minSNP]}
 
-def write_pileupFile(pileup_dict,sample_names,allSNPpos,chrom,minCoverage=80,minSNP=10):
+def write_pileupFile(dictPileup,sample_names,allSNPpos,chrom,minCoverage=80,minSNP=10):
     """For a given chromosome, returns a summary file containing all SNPs identified 
-    in at least one of the samples from *samples*.
+    in at least one of the samples.
     Each row contains: chromosome id, SNP position, reference base, SNP base (with proportions)
 
-    :param ex: a bein.Execution instance.
-    :param samples: (dict) dictionary of the form {filename: sample_name}
+    :param dictPileup: (dict) dictionary of the form {filename: (bein.Future, sample_name)}.
+    :param sample_names: (list of str) list of sample names.
     :param allSNPpos: dict fo the type {3021: 'A'} as returned by posAllUniqSNP(...)[0].
     :param chrom: (str) chromosome name.
     :param minCoverage: (int) the minimal percentage of reads supporting a SNP to reject a sequencing error.
     :param minSNP: (int) the minimal coverage of the SNP position to accept the SNP.
     """
+    # Note: sample_names is redundant with dictPileup, can find a way to get rid of it
     formattedPileupFilename = unique_filename_in()
     allSamples = {}
     iupac = {'M':['A','a','C','c'],'Y':['T','t','C','c'],'R':['A','a','G','g'],
              'S':['G','g','C','c'],'W':['A','a','T','t'],'K':['T','t','G','g']}
 
-    for pileup_filename,pair in pileup_dict.iteritems():
+    for pileup_filename,pair in dictPileup.iteritems():
         allpos = sorted(allSNPpos.keys(),reverse=True) # list of positions [int] with an SNP across all groups
         sname = pair[1]
         with open(pileup_filename) as sample:
@@ -176,15 +177,6 @@ def annotate_snps( filedict, sample_names, assembly ):
                     yield (snp[2],int(snp[0]),int(snp[1]))+snp[3:-3]
                     # ('chrV', 1606, 1607, 'T', 'C (43%)')
 
-    def _find_exon_id(gene_id, assembly, chr=None):
-        exons = assembly.get_features_from_gtf({'keys':'exon_id', 'values':'start,end', 
-                    'conditions':'type:exon,gene_id:'+gene_id, 'uniq':'true'}, chr=chr)
-        for e,x in exons.iteritems():
-            es, ee = x[0][:2]
-            if es <= pos and pos <= ee:
-                return e, es, ee
-        return None
-
     def _complement(seq):
         seq = list(seq)
         for x in range(len(seq)):
@@ -259,6 +251,7 @@ def annotate_snps( filedict, sample_names, assembly ):
         # import existing CDS annotation from genrep as a track, and join some fields
         annotstream = track.concat_fields(assembly.annot_track('CDS',chrom),
                                           infields=['name','strand','frame'], as_tuple=True)
+        annotstream = track.FeatureStream((x[:3]+(x[1:3]+x[3],) for x in annotstream),fields=annotstream.fields)
 
         buffer = {1:{}, -1:{}}
         for x in gm_stream.combine([inclstream, annotstream], gm_stream.intersection):
@@ -266,15 +259,9 @@ def annotate_snps( filedict, sample_names, assembly ):
             nsamples = len(sample_names)
             pos = x[0]; chr = x[2]; rest = x[3]
             refbase = rest[0]
-            annot = [rest[3*i+nsamples+1 : 3*i+3+nsamples+1] 
-                     for i in range(len(rest[nsamples+1:])/3)] # list of [cds,strand,phase]
-            for cds,strand,phase in annot:
-                # If no exon_id, let's find one (sometimes)
-                exon_id_0, gene_id, gene_name = cds.split('|')
-                exon_id, es, ee = _find_exon_id(gene_id, assembly, chr=chr)
-                if exon_id is None: continue
-                if exon_id == '': exon_id = '-'
-                # Find the reference codon and where the snp occurs in it
+            annot = [rest[5*i+nsamples+1 : 5*i+5+nsamples+1] 
+                     for i in range(len(rest[nsamples+1:])/5)] # list of [start,end,cds,strand,phase]
+            for es,ee,cds,strand,phase in annot:
                 if strand == 1:
                     shift = (pos - (es + phase)) % 3
                     codon_start = pos - shift
@@ -282,8 +269,7 @@ def annotate_snps( filedict, sample_names, assembly ):
                     shift = (ee - phase - pos) % 3
                     codon_start = pos + shift - 2
                 ref_codon = assembly.fasta_from_regions({chr: [[codon_start,codon_start+3]]}, out={})[0][chr][0]
-                info = [chr, pos, refbase, list(rest[1:1+nsamples]), exon_id+'|'+gene_id+'|'+gene_name, \
-                        strand, ref_codon, shift]
+                info = [chr, pos, refbase, list(rest[1:1+nsamples]), cds, strand, ref_codon, shift]
                 # Either the codon is the same as the previous one on this strand, or it will never be.
                 # Only if one codon is passed, can write its snps to a file.
                 if codon_start in buffer[strand]:
