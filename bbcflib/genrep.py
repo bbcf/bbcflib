@@ -46,7 +46,8 @@ default_root = '/db/genrep'
 ################################################################################
 class Assembly(object):
     def __init__(self, assembly=None, genrep=None, intype=0):
-        """A representation of a GenRep assembly.
+        """
+        A representation of a GenRep assembly.
         To get an assembly from the repository, call the Assembly
         constructor with either the integer assembly ID or the string assembly
         name.  This returns an Assembly object::
@@ -107,8 +108,9 @@ class Assembly(object):
             self.set_assembly(assembly)
 
     def set_assembly(self, assembly):
-        """Reset the Assembly attributes to correspond to *assembly*.
-        *assembly* may be an integer giving the assembly ID, or a string giving the assembly name.
+        """
+        Reset the Assembly attributes to correspond to *assembly*.
+        :param assembly: integer giving the assembly ID, or a string giving the assembly name.
         """
         try:
             assembly = int(assembly)
@@ -325,9 +327,7 @@ class Assembly(object):
             return output
 
     def fasta_path(self, chromosome=None):
-        """
-        Returns the path to the compressed fasta file, for the whole assembly or for a single chromosome.
-        """
+        """Returns the path to the compressed fasta file, for the whole assembly or for a single chromosome."""
         root = os.path.join(self.genrep.root,"nr_assemblies/fasta")
         path = os.path.join(root,self.md5+".tar.gz")
         if chromosome != None:
@@ -343,20 +343,16 @@ class Assembly(object):
         return path
 
     def get_sqlite_url(self):
-        '''
-        Returns the url of the sqlite file containing gene annotations.
-        '''
+        """Returns the url of the sqlite file containing gene annotations."""
         return '%s/data/nr_assemblies/annot_tracks/%s.sql' %(self.genrep.url, self.md5)
 
     def sqlite_path(self):
-        '''
-        Returns the path to the sqlite file containing genes annotations.
-        '''
+        """Returns the path to the sqlite file containing genes annotations."""
         root = os.path.join(self.genrep.root,"nr_assemblies/annot_tracks")
         return os.path.join(root,self.md5+".sql")
 
     def get_features_from_gtf(self,h,chr=None,method="dico"):
-        '''
+        """
         Return a dictionary *data* of the form
         {key:[[values],[values],...]} containing the result of an SQL request which
         parameters are given as a dictionary *h*. All [values] correspond to a line in the SQL.
@@ -377,7 +373,7 @@ class Assembly(object):
 
         Note: giving several field names to "keys" permits to select unique combinations of these fields.
         The corresponding keys of *data* are a concatenation (by ';') of these fields.
-        '''
+        """
         data = {}
         if isinstance(chr,list): chromosomes = chr
         elif isinstance(chr,str): chromosomes = chr.split(',')
@@ -416,8 +412,10 @@ class Assembly(object):
         return data
 
     def get_gene_mapping(self):
-        """Return a dictionary {geneID: (geneName, start, end, length, strand, chromosome)}
-        Note that the gene's length is not the sum of the lengths of its exons."""
+        """
+        Return a dictionary {geneID: (geneName, start, end, length, strand, chromosome)}
+        Note that the gene's length is not the sum of the lengths of its exons.
+        """
         gene_mapping = {}
         h = {"keys":"gene_id", "values":"gene_name,start,end,strand", "conditions":"type:exon", "uniq":"1"}
         for chr in self.chrnames:
@@ -502,9 +500,7 @@ class Assembly(object):
         return trans_in_gene
 
     def gene_coordinates(self,id_list):
-        """
-        Creates a BED-style stream from a list of gene ids.
-        """
+        """Creates a BED-style stream from a list of gene ids."""
         dbpath = self.sqlite_path()
         chromlist = self.chrnames
         _fields = ['chr','start','end','name','strand']
@@ -526,6 +522,14 @@ class Assembly(object):
         return track.FeatureStream(_query(),fields=_fields)
 
     def annot_track(self,annot_type='gene',chromlist=None,biotype=["protein_coding"]):
+        """
+        Return an iterator over all annotations of a given type in the genome.
+
+        :param annot_type: (str) one of 'gene','transcript','exon','CDS'.
+        :chrom_list: (list of str) return only features in the specified chromosomes.
+        :biotype: (list of str, or None) return only features with the specified biotype(s).
+        :rtype: btrack.FeatureStream
+        """
         if chromlist is None: chromlist = self.chrnames
         elif isinstance(chromlist,basestring): chromlist = [chromlist]
         _fields = ['chr','start','end','name','strand']
@@ -557,7 +561,6 @@ class Assembly(object):
                      "uniq":"1" }
         else:
             raise TypeError("Annotation track type %s not implemented." %annot_type)
-
         def _query():
             for chrom in chromlist:
                 sort_list = []
@@ -575,34 +578,36 @@ class Assembly(object):
         return track.FeatureStream(_query(),fields=_fields)
 
     def gene_track(self,chromlist=None,biotype=["protein_coding"]):
+        """Return an iterator over all protein coding genes annotation in the genome."""
         return self.annot_track(annot_type='gene',chromlist=chromlist,biotype=biotype)
 
     def exon_track(self,chromlist=None,biotype=["protein_coding"]):
+        """Return an iterator over all coding exons annotation in the genome"""
         return self.annot_track(annot_type='exon',chromlist=chromlist,biotype=biotype)
 
     def transcript_track(self,chromlist=None,biotype=["protein_coding"]):
+        """Return an iterator over all protein coding transcripts annotation in the genome"""
         return self.annot_track(annot_type='transcript',chromlist=chromlist,biotype=biotype)
 
     @property
     def chrmeta(self):
         """
-        Returns a dictionary of chromosome meta data looking something like:
+        Return a dictionary of chromosome meta data of the type:
         {'chr1': {'length': 249250621},'chr2': {'length': 135534747},'chr3': {'length': 135006516}}
         """
         return dict([(v['name'], dict([('length', v['length'])])) for v in self.chromosomes.values()])
 
     @property
     def chrnames(self):
-        """
-        Returns a list of chromosome names
-        """
+        """Return a list of chromosome names."""
         namelist = [(v['num'],v['name']) for v in self.chromosomes.values()]
         return [x[1] for x in sorted(namelist)]
 
 ################################################################################
 class GenRep(object):
     def __init__(self, url=None, root=None, config=None, section='genrep'):
-        """Create an object to query a GenRep repository.
+        """
+        Create an object to query a GenRep repository.
 
         GenRep is the in-house repository for sequence assemblies for the
         BBCF in Lausanne.  This is an object that wraps its use in Python
@@ -636,11 +641,11 @@ class GenRep(object):
         self.root = os.path.abspath(root)
 
     def assembly(self,assembly,intype=0):
-        """ Backward compatibility """
+        """Backward compatibility"""
         return Assembly( assembly=assembly, genrep=self, intype=intype )
 
     def is_up(self):
-        """ Check if genrep webservice is available """
+        """Check if genrep webservice is available"""
         try:
             urllib2.urlopen(self.url + "/nr_assemblies.json", timeout=2)
         except urllib2.URLError:
@@ -649,8 +654,8 @@ class GenRep(object):
 
     def assemblies_available(self, assembly=None):
         """
-        Returns a list of assemblies available on genrep, or tells if an
-        assembly with name ``assembly`` is available.
+        Return a list of assemblies available on genrep, or tells if an
+        assembly with name *assembly* is available.
         """
         request = urllib2.Request(self.url + "/assemblies.json")
         assembly_list = []
@@ -662,7 +667,7 @@ class GenRep(object):
         if assembly == None: return assembly_list
 
     def get_sequence(self, chr_id, coord_list):
-        """Parses a slice request to the repository."""
+        """Parse a slice request to the repository."""
         if len(coord_list) == 0:
             return []
         slices  = ",".join([",".join([str(y) for y in x]) for x in coord_list])
