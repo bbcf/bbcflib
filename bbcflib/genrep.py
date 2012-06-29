@@ -523,13 +523,11 @@ class Assembly(object):
                 sort_list.append((chr_name,start,end,name,int(strand)))
             sort_list.sort()
             for k in sort_list: yield k
-        _db_call = _query
-        return track.FeatureStream(_db_call(),fields=_fields)
+        return track.FeatureStream(_query(),fields=_fields)
 
     def annot_track(self,annot_type='gene',chromlist=None,biotype=["protein_coding"]):
         if chromlist is None: chromlist = self.chrnames
         elif isinstance(chromlist,basestring): chromlist = [chromlist]
-        dbpath = self.sqlite_path()
         _fields = ['chr','start','end','name','strand']
         nmax = 4
         biosel = ''
@@ -537,17 +535,13 @@ class Assembly(object):
             biosel = "AND biotype IN ('"+"','".join(biotype)+"')"
         if annot_type == 'gene':
             flist = "gene_id,gene_name,strand"
-            sql1 = "SELECT DISTINCT MIN(start) AS gstart,MAX(end) AS gend,"+flist+" FROM '"
-            sql2 = "' WHERE type='exon' %s GROUP BY gene_id ORDER BY gstart,gend,gene_id" %biosel
             webh = { "keys": "gene_id",
                      "values": "start,end,"+flist,
                      "conditions": "type:exon",
                      "uniq":"1" }
         elif annot_type in ['CDS','exon']:
             flist = "exon_id,gene_id,gene_name,strand,frame"
-            sql1 = "SELECT DISTINCT start,end,"+flist+" FROM '"
-            sql2 = "' WHERE type='%s' %s ORDER BY start,end,exon_id" %(annot_type,biosel)
-            webh = { "keys": "exon_id",
+            webh = { "keys": "exon_id,start,end",
                      "values": "start,end,"+flist,
                      "conditions": "type:"+annot_type,
                      "uniq":"1" }
@@ -557,8 +551,6 @@ class Assembly(object):
             if biosel:
                 biosel = "WHERE "+biosel[4:]
             flist = "transcript_id,gene_name,strand"
-            sql1 = "SELECT DISTINCT MIN(start) AS tstart,MAX(end) AS tend,"+flist+" FROM '"
-            sql2 = "' %s GROUP BY transcript_id ORDER BY tstart,tend,transcript_id" %biosel
             webh = { "keys": "transcript_id",
                      "values": "start,end,"+flist,
                      "conditions": "type:exon",
@@ -566,16 +558,7 @@ class Assembly(object):
         else:
             raise TypeError("Annotation track type %s not implemented." %annot_type)
 
-        def _sql_query():
-            db = sqlite3.connect(dbpath)
-            cursor = db.cursor()
-            for chrom in chromlist:
-                cursor.execute(sql1+chrom+sql2)
-                for x in cursor:
-                    name = "|".join([str(y) for y in x[2:nmax]])
-                    yield (chrom,int(x[0]),int(x[1]),name)+tuple(x[nmax:])
-        def _web_query():
-            # Bugged...
+        def _query():
             for chrom in chromlist:
                 sort_list = []
                 for bt in biotype:
@@ -589,11 +572,7 @@ class Assembly(object):
                         sort_list.append((start,end,name)+tuple(v[0][nmax:]))
                 sort_list.sort()
                 for k in sort_list: yield (chrom,)+k
-        if os.path.exists(dbpath):
-            _db_call = _sql_query
-        else:
-            _db_call = _web_query
-        return track.FeatureStream(_db_call(),fields=_fields)
+        return track.FeatureStream(_query(),fields=_fields)
 
     def gene_track(self,chromlist=None,biotype=["protein_coding"]):
         return self.annot_track(annot_type='gene',chromlist=chromlist,biotype=biotype)
