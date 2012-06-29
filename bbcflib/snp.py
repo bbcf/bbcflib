@@ -252,10 +252,9 @@ def annotate_snps( filedict, sample_names, assembly ):
         annotstream = track.concat_fields(assembly.annot_track('CDS',chrom),
                                           infields=['name','strand','frame'], as_tuple=True)
         annotstream = track.FeatureStream((x[:3]+(x[1:3]+x[3],) for x in annotstream),fields=annotstream.fields)
-
         buffer = {1:{}, -1:{}}
         for x in gm_stream.combine([inclstream, annotstream], gm_stream.intersection):
-            # x = (1606, 1607, 'chrV', ('T', '43.48% C / 56.52% T', 'YEL077C|YEL077C', -1, 0, 'YEL077W-A|YEL077W-A', 1, 0))
+            # x = (1606,1607,'chrV', ('T','C (43%), 1612,1724,'YEL077C|YEL077C',-1,0, 1712,1723,'YEL077W-A|YEL077W-A',1,0))
             nsamples = len(sample_names)
             pos = x[0]; chr = x[2]; rest = x[3]
             refbase = rest[0]
@@ -281,10 +280,8 @@ def annotate_snps( filedict, sample_names, assembly ):
         # Write what is left in the buffer
         for strand in [1,-1]:
             _write_buffer(buffer,strand,outex)
-
     outex.close()
     return (outall, outexons)
-
 
 def posAllUniqSNP(PileupDict):
     """
