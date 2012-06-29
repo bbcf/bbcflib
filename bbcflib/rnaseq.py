@@ -634,12 +634,15 @@ def clean_before_deseq(filename):
     with open(filename,"rb") as f:
         with open(filename_clean,"wb") as g:
             header = f.readline()
-            g.write(header)
             ncond = sum([h.split('.').count("counts") for h in header.split('\t')])
+            header = '\t'.join(header.split('\t')[:1+ncond])+'\r'
+            g.write(header)
             for line in f:
-                goodline = line.split("\t")[1:1+ncond]
-                scores = [float(x) for x in goodline]
-                if any(scores):
+                l = line.split('\t')
+                scores = l[1:1+ncond]
+                if any([float(x) for x in scores]):
+                    label = '|'.join([l[0],l[-3],l[-2],l[-1].strip('\r\n')])
+                    line = label + '\t' + '\t'.join(scores) + '\n'
                     g.write(line)
     return filename_clean
 
