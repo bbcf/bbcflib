@@ -16,9 +16,9 @@ class SqlTrack(Track):
         self.connection = sqlite3.connect(path)
 #        self.connection.row_factory = sqlite3.Row
         self.cursor = self.connection.cursor()
+        kwargs['format'] = 'sql'
         Track.__init__(self,path,**kwargs)
-        self.format = 'sql'
-        self.fields = self._get_fields(fields=kwargs.get('fields'))
+        self.fields = self._get_fields(fields=self.fields)
         self.types = dict((k,v) for k,v in _sql_types.iteritems() if k in self.fields)
         if isinstance(kwargs.get('types'),dict): self.types.update(kwargs["types"])
 
@@ -215,6 +215,16 @@ class SqlTrack(Track):
                              _fields)
 
 ################################ Write ##########################################
+    def _clip(self):
+        for chrom,val in self.chrmeta.iteritems():
+            sql_command = "UPDATE '%s' SET start=0 WHERE start<0" %(chrom)
+            self.cursor.execute(sql_command)
+            sql_command = "UPDATE '%s' SET end=%i WHERE end>%i" %(chrom,val['length'],val['length'])
+            self.cursor.execute(sql_command)
+            sql_command = "DELETE FROM '%s' WHERE end<=start" %(chrom)
+            self.cursor.execute(sql_command)
+        self.connection.commit()
+
     def write(self, source, fields=None, chrom=None, **kw):
         if not(self._prepare_db()):
             raise IOError("Cannot write database %s, readonly is %s."%(self.path,self.readonly))
@@ -237,17 +247,16 @@ class SqlTrack(Track):
                 chr_idx = srcfields.index('chr')
             fields_left = [srcfields.index(f) for f in fields if f != 'chr' and f in srcfields]
             fields_list = ','.join([srcfields[n] for n in fields_left])
+            pholders = ','.join(['?' for f in fields_left])
             if chrom is None:
                 if not 'chr' in srcfields:
                     raise Exception("Need a chromosome name in the source fields or in the arguments.")
                 for row in source:
                     chrom = row[chr_idx]
-                    vals = "','".join((str(row[f]) for f in fields_left))
-                    sql_command = "INSERT INTO '%s' (%s) VALUES ('%s')"%(chrom,fields_list,vals)
-                    self.cursor.execute(sql_command)
+                    sql_command = "INSERT INTO '%s' (%s) VALUES (%s)" %(chrom,fields_list,pholders)
+                    self.cursor.execute(sql_command,[str(row[f]) for f in fields_left])
             else:
-                pholders = ','.join(['?' for f in fields_left])
-                sql_command = "INSERT INTO '%s' (%s) VALUES (%s)"%(chrom,fields_list,pholders)
+                sql_command = "INSERT INTO '%s' (%s) VALUES (%s)" %(chrom,fields_list,pholders)
                 if 'chr' in srcfields:
                     def _skip_chrom(src):
                         for row in src:
@@ -257,6 +266,7 @@ class SqlTrack(Track):
                 else:
                     self.cursor.executemany(sql_command, source)
             self.connection.commit()
+            if kw.get('clip'): self._clip()
         except (sqlite3.OperationalError, sqlite3.ProgrammingError) as err:
             raise Exception("Sql error: %s\n on file %s, with\n%s"%(err,self.path,sql_command))
 

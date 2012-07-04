@@ -18,7 +18,7 @@ def _begin(output,format,new,**kwargs):
     opts += ',main="%s"' %kwargs.get('main','')
     opts += ',xlab="%s"' %kwargs.get('xlab','')
     opts += ',ylab="%s"' %kwargs.get('ylab','')
-    pars = "lwd=2,cex=1.1,cex.main=1.5,cex.lab=1.3,cex.axis=1.1,mar=c(1,1,1,.5),oma=c(3,3,0,0),las=1"
+    pars = "lwd=2,cex=1.1,cex.main=1.5,cex.lab=1.3,cex.axis=1.1,mar=c(1,1,1,1),oma=c(3,3,0,3),las=1"
     if len(kwargs.get('mfrow',[])) == 2:
         pars += ",mfrow=c(%i,%i)" %tuple(kwargs['mfrow'])
     robjects.r('par(%s)' %pars)
@@ -77,27 +77,29 @@ def heatmap(M,output=None,format='pdf',new=True,last=True,
             **kwargs):
     plotopt,output = _begin(output=output,format=format,new=new,**kwargs)
     robjects.r.assign('Mdata',numpy2ri.numpy2ri(M))
-    if rows:
+    if not(rows is None):
         robjects.r.assign('labRow',numpy2ri.numpy2ri(rows))
         plotopt += ",labRow=labRow"
-    if columns:
+    if not(columns is None):
         robjects.r.assign('labCol',numpy2ri.numpy2ri(columns))
         plotopt += ",labCol=labCol"
-    if not(orderRows):
-        plotopt += ",Rowv=F"
-    if not(orderCols):
-        plotopt += ",Colv=F"
+    if orderCols and orderRows:
+        plotopt += ",dendrogram='both',lhei=c(2,10,1,2),lwid=c(1,3),mar=c(2,2),lmat=matrix(c(0,2,0,0,3,1,0,4),ncol=2)"
+    elif orderCols:
+        plotopt += ",Rowv=F,dendrogram='column',lhei=c(2,10,1,2),lwid=c(1),mar=c(2,2),lmat=matrix(c(3,1,2,4),ncol=1)"
+    elif orderRows:
+        plotopt += ",Colv=F,dendrogram='row',lhei=c(10,1,2),lwid=c(1,3),mar=c(2,2),lmat=matrix(c(2,0,3,1,0,4),ncol=2)"
+    else:
+        plotopt += ",Colv=F,Rowv=F,dendrogram='none',lhei=c(10,1,1,2),lwid=c(1),mar=c(2,2),lmat=matrix(c(1,2,3,4),ncol=1)"
     robjects.r("""
       library(gplots)
       library(RColorBrewer)
-      myBreaks=seq(floor(min(M,na.rm=T)),ceiling(max(M,na.rm=T)),length.out=15)
+      myBreaks=seq(floor(min(Mdata,na.rm=T)),ceiling(max(Mdata,na.rm=T)),length.out=15)
       myColors=rev(colorRampPalette(brewer.pal(10,"RdYlBu"))(length(myBreaks)-1))
       rcor = function(x) {as.dist(1-cor(t(x),use="pairwise.complete.ob"))}
       heatmap.2(as.matrix(Mdata), 
                 col=myColors, trace="none", breaks=myBreaks, distfun=rcor,
-                dendrogram="column", na.rm=TRUE, density.info='none',
-                lhei=c(2,10,1,2),lwid=c(1),mar=c(2,2),lmat=matrix(c(3,1,2,4),ncol=1)%s)
-    """ %plotopt)
+                na.rm=TRUE, density.info='none'%s)""" %plotopt)
     _end("",last,**kwargs)
     return output
 

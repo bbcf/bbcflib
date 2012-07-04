@@ -1,8 +1,6 @@
 from bbcflib.btrack import *
 import re, urllib2, gzip, os, sys
 
-#### remark: to do ucsc<->ensembl conversion, define _in_type/_out_type for 'start'
-
 _in_types = {'start':        int,
              'end':          int,
              'score':        float,
@@ -21,15 +19,32 @@ _out_types = {'start':  format_int,
 
 class TextTrack(Track):
     def __init__(self,path,**kwargs):
+        kwargs['format'] = kwargs.get("format",'txt')
+        kwargs['fields'] = kwargs.get("fields",['chr','start','end'])
+        self.separator = kwargs.get('separator',"\t")
         Track.__init__(self,path,**kwargs)
-        self.format = kwargs.get("format",'txt')
-        self.fields = kwargs.get("fields",['chr','start','end'])
+        if kwargs.get('ucsc_to_ensembl',False):
+            if not('outtypes' in kwargs): kwargs['outtypes'] = {}
+            kwargs['outtypes']['start'] = ucsc_to_ensembl
+        if kwargs.get('ensembl_to_ucsc',False):
+            if not('outtypes' in kwargs): kwargs['outtypes'] = {}
+            kwargs['outtypes']['start'] = ensembl_to_ucsc
         self.intypes = dict((k,v) for k,v in _in_types.iteritems() if k in self.fields)
         if isinstance(kwargs.get('intypes'),dict): self.intypes.update(kwargs["intypes"])
         self.outtypes = dict((k,v) for k,v in _out_types.iteritems() if k in self.fields)
         if isinstance(kwargs.get('outtypes'),dict): self.outtypes.update(kwargs["outtypes"])
-        self.filehandle = None
-        self.separator = kwargs.get('separator',"\t")
+
+    def _get_chrmeta(self,chrmeta=None):
+        _chrmeta = Track._get_chrmeta(self,chrmeta)
+        if _chrmeta or not(os.path.exists(self.path)): return _chrmeta
+        if chrmeta is None and 'chr' in self.fields and 'end' in self.fields:
+            self.intypes = {'end': int}
+            for row in self.read(fields=['chr','end']):
+                if not(row[0] in _chrmeta): 
+                    _chrmeta[row[0]] = {'length': row[1]}
+                elif row[1] > _chrmeta[row[0]]['length']: 
+                    _chrmeta[row[0]]['length'] = row[1]
+        return _chrmeta
 
     def _get_info(self,info=None):
         if info: return info
@@ -175,7 +190,19 @@ class TextTrack(Track):
         srcl = [srcfields.index(f) for f in fields]
         trgl = [self.fields.index(f) for f in fields]
         self.open(mode)
+        if 'chr' in srcfields: chridx = srcfields.index('chr')
+        else: chridx = 0
+        sidx = srcfields.index('start')
+        eidx = srcfields.index('end')
         for row in source:
+            if kw.get('clip'):
+                chrsize = self.chrmeta.get(chrom,
+                                           self.chrmeta.get(row[chridx],{})).get('length',sys.maxint)
+                start = max(0,row[sidx])
+                end = min(row[eidx],chrsize)
+                if end <= start: continue
+                row = row[:sidx]+(start,)+row[(sidx+1):]
+                row = row[:eidx]+(end,)+row[(eidx+1):]
             self.filehandle.write(self._format_fields(voidvec,row,srcl,trgl)+"\n")
         self.close()
         

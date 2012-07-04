@@ -41,14 +41,23 @@ class BigWigTrack(BinTrack):
         kwargs['fields'] = ['chr','start','end','score']
         BinTrack.__init__(self,path,**kwargs)
         self.bedgraph = None
+        self.chrfile = None
 
     def open(self):
-        tmp = tempfile.NamedTemporaryFile(dir='./')
-        self.bedgraph = tmp.name
-        tmp.close()
+        if self.bedgraph is None:
+            tmp = tempfile.NamedTemporaryFile(dir='./')
+            self.bedgraph = tmp.name
+            tmp.close()
 
     def close(self):
-        if os.path.exists(self.bedgraph): os.remove(self.bedgraph)
+        if self.chrfile and self.bedgraph: 
+            self._run_tool('bedGraphToBigWig', [self.bedgraph, self.chrfile.name, self.path])
+        if not(self.chrfile is None):
+            os.remove(self.chrfile.name)
+            self.chrfile = None
+        if not(self.bedgraph is None): 
+            os.remove(self.bedgraph)
+            self.bedgraph = None
 
     def read(self, selection=None, fields=None, **kw):
         self.open()
@@ -61,30 +70,18 @@ class BigWigTrack(BinTrack):
         if reg[2]: options += ["-end="+reg[2]]
         self._run_tool('bigWigToBedGraph', options+[self.path, self.bedgraph])
         return track(self.bedgraph,format='bedGraph',
-                     chrmeta=self.chrmeta,info=self.info).read(fields=fields)
+                     chrmeta=self.chrmeta,info=self.info).read(fields=fields,**kw)
 
-    def write(self, source, fields=None, **kw):
-        chrfile = tempfile.NamedTemporaryFile(dir='./',delete=False)
-        for c,v in self.chrmeta.iteritems():
-            chrfile.write("%s %i\n"%(c,v['length']))
-        chrfile.close()
-        if fields is None: fields = self.fields
-        if hasattr(source, 'fields'):
-            srcfields = source.fields
-        elif hasattr(source, 'description'):
-            srcfields = [x[0] for x in source.description]
-        elif not(fields is None):
-            srcfields = fields
-        else:
-            srcfields = self.fields
-        srcl = [srcfields.index(f) for f in fields]
+    def write(self, source, **kw):
+        if self.chrfile is None:
+            self.chrfile = tempfile.NamedTemporaryFile(dir='./',delete=False)
+            for c,v in self.chrmeta.iteritems():
+                self.chrfile.write("%s %i\n"%(c,v['length']))
+            self.chrfile.close()
         self.open()
-        with open(self.bedgraph,'w') as f:
-            for x in source:
-                f.write("\t".join([str(x[i]) for i in srcl])+"\n")
-        self._run_tool('bedGraphToBigWig', [self.bedgraph, chrfile.name, self.path])
-        self.close()
-        os.remove(chrfile.name)
+        kw['mode'] = 'append'
+        with track(self.bedgraph,format='bedgraph',chrmeta=self.chrmeta) as f:
+            f.write(source,**kw)
 
 ################################ Bam via pysam ################################
 
@@ -110,6 +107,8 @@ try:
 
         def read(self, selection=None, fields=None, **kw):
             self.open()
+            if not(os.path.exists(self.path+".bai")):
+                self._run_tool('samtools', ["index",self.path])
             if not(isinstance(selection,(list,tuple))):
                 selection = [selection]
             if fields is None: fields = self.fields

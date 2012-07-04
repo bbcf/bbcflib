@@ -923,7 +923,6 @@ def map_groups( ex, job_or_dict, assembly_or_dict, map_args=None ):
 def bam_to_density( bamfile, output, chromosome_accession=None, chromosome_name=None,
                     nreads=-1, merge=-1, read_extension=-1, convert=True, sql=False,
                     args=None ):
-
     """
     input parameters:
     bamfile = input BAM file
@@ -991,7 +990,7 @@ def parallel_density_wig( ex, bamfile, chromosomes,
     futures = [bam_to_density.nonblocking( ex, bamfile, unique_filename_in(),
                                            _compact_chromosome_name(k), v['name'],
                                            nreads, merge, read_extension, convert,
-                                           False, args=b2w_args, via=via, memory=8 )
+                                           False, args=b2w_args, via=via, memory=10 )
                for k,v in chromosomes.iteritems()]
     results = []
     for f in futures:
@@ -1019,7 +1018,7 @@ def parallel_density_sql( ex, bamfile, chromosomes,
         futures[k] = bam_to_density.nonblocking( ex, bamfile, unique_filename_in(),
                                                  _compact_chromosome_name(k), v['name'],
                                                  nreads, merge, read_extension, convert,
-                                                 False, args=b2w_args, via=via, memory=8 )
+                                                 False, args=b2w_args, via=via, memory=10 )
     chrlist = dict((v['name'], {'length': v['length']}) for v in chromosomes.values())
     output = unique_filename_in()
     touch(ex,output)
@@ -1160,7 +1159,9 @@ def get_bam_wig_files( ex, job, minilims=None, hts_url=None, suffix=['fwd','rev'
             p_thresh = None
             fastqfiles = None
             if len(group['runs'])>1:
-                if all([run.get(x) for x in ['machine','run','lane']]):
+                if run.get('sequencing_library'):
+                    name += "_"+str(run['sequencing_library'])
+                elif all([run.get(x) for x in ['machine','run','lane']]):
                     name += "_".join(['',run['machine'],str(run['run']),str(run['lane'])])
                 else:
                     name += "_"+os.path.splitext(file_loc.split("/")[-1])[0]

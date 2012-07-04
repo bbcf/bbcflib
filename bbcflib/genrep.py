@@ -34,6 +34,7 @@ from operator import itemgetter
 # Internal modules #
 from bbcflib.common import normalize_url, unique_filename_in
 from bbcflib import btrack as track
+from bbcflib.bFlatMajor.common import shuffled as track_shuffle
 
 # Other modules #
 import sqlite3
@@ -45,7 +46,8 @@ default_root = '/db/genrep'
 ################################################################################
 class Assembly(object):
     def __init__(self, assembly=None, genrep=None, intype=0):
-        """A representation of a GenRep assembly.
+        """
+        A representation of a GenRep assembly.
         To get an assembly from the repository, call the Assembly
         constructor with either the integer assembly ID or the string assembly
         name.  This returns an Assembly object::
@@ -106,8 +108,9 @@ class Assembly(object):
             self.set_assembly(assembly)
 
     def set_assembly(self, assembly):
-        """Reset the Assembly attributes to correspond to *assembly*.
-        *assembly* may be an integer giving the assembly ID, or a string giving the assembly name.
+        """
+        Reset the Assembly attributes to correspond to *assembly*.
+        :param assembly: integer giving the assembly ID, or a string giving the assembly name.
         """
         try:
             assembly = int(assembly)
@@ -199,7 +202,7 @@ class Assembly(object):
         Returns the name of the file and the total sequence size.
 
         If 'out' is a (possibly empty) dictionary, will return the filled dictionary,
-        if 'regions' is a dictionary {'chr' [[start1,end1],[start2,end2]]}
+        if 'regions' is a dictionary {'chr': [[start1,end1],[start2,end2]]}
         or a list [['chr',start1,end1],['chr',start2,end2]],
         will simply iterate through its items instead of loading a track from file.
         """
@@ -222,7 +225,6 @@ class Assembly(object):
                 out[chrn].extend([s for s in self.genrep.get_sequence(chrid,coord)])
             return {'coord':[],'names':[]}
         slices = {'coord':[],'names':[]}
-        chrlist = dict((v['name'], {'length': v['length']}) for v in self.chromosomes.values())
         size = 0
         if isinstance(regions,list):
             reg_dict = {}
@@ -248,13 +250,14 @@ class Assembly(object):
                 size += cur_chunk
                 slices = _flush_slices(slices,cid[0],chrom['name'],out)
         else:
-            with track.track(regions, chrmeta=chrlist) as t:
+            with track.track(regions, chrmeta=self.chrmeta) as t:
                 cur_chunk = 0
                 for cid,chrom in self.chromosomes.iteritems():
+                    features = t.read(selection=chrom['name'],
+                                      fields=["start","end","name"])
                     if shuffled:
-                        features = t.read_shuffled(repeat_number=1, selection=chrom['name'], fields=["start","end","name"])
-                    else:
-                        features = t.read(selection=chrom['name'], fields=["start","end","name"])
+                        features = track_shuffle( features, chrlen=chrom['length'],
+                                                  repeat_number=1, sorted=False )
                     for row in features:
                         s = max(row[0],0)
                         e = min(row[1],chrom['length'])
@@ -324,9 +327,7 @@ class Assembly(object):
             return output
 
     def fasta_path(self, chromosome=None):
-        """
-        Returns the path to the compressed fasta file, for the whole assembly or for a single chromosome.
-        """
+        """Returns the path to the compressed fasta file, for the whole assembly or for a single chromosome."""
         root = os.path.join(self.genrep.root,"nr_assemblies/fasta")
         path = os.path.join(root,self.md5+".tar.gz")
         if chromosome != None:
@@ -342,25 +343,21 @@ class Assembly(object):
         return path
 
     def get_sqlite_url(self):
-        '''
-        Returns the url of the sqlite file containing gene annotations.
-        '''
+        """Returns the url of the sqlite file containing gene annotations."""
         return '%s/data/nr_assemblies/annot_tracks/%s.sql' %(self.genrep.url, self.md5)
 
     def sqlite_path(self):
-        '''
-        Returns the path to the sqlite file containing genes annotations.
-        '''
+        """Returns the path to the sqlite file containing genes annotations."""
         root = os.path.join(self.genrep.root,"nr_assemblies/annot_tracks")
         return os.path.join(root,self.md5+".sql")
 
-    def get_features_from_gtf(self,h,chr=None):
-        '''
+    def get_features_from_gtf(self,h,chr=None,method="dico"):
+        """
         Return a dictionary *data* of the form
         {key:[[values],[values],...]} containing the result of an SQL request which
         parameters are given as a dictionary *h*. All [values] correspond to a line in the SQL.
 
-        :param chr: (str, or list of str) chromosomes on which to perform the request. By default, 
+        :param chr: (str, or list of str) chromosomes on which to perform the request. By default,
         every chromosome is searched.
 
         Available keys for h, and possible values:
@@ -376,238 +373,200 @@ class Assembly(object):
 
         Note: giving several field names to "keys" permits to select unique combinations of these fields.
         The corresponding keys of *data* are a concatenation (by ';') of these fields.
-        '''
+        """
         data = {}
-        if not chr: chromosomes = self.chrnames
-        elif isinstance(chr,list): chromosomes = chr
+        if isinstance(chr,list): chromosomes = chr
         elif isinstance(chr,str): chromosomes = chr.split(',')
-        for chr_name in chromosomes:
-            request = self.genrep.url+"/nr_assemblies/get_dico?md5="+self.md5
-            for k,v in h.iteritems():
-                request += "&"+k+"="+v
-            request += "&chr_name="+chr_name
-	    data.update(json.load(urllib2.urlopen(request)))
+        else: chromosomes = [None]
+        if not(method in ["dico","boundaries"]): return data
+        # Sqlite3 request to /db/
+        dbpath = self.sqlite_path()
+        if os.path.exists(dbpath) and not h.get('at_pos'):
+            if chromosomes == [None]: chromosomes = self.chrnames
+            db = sqlite3.connect(dbpath)
+            cursor = db.cursor()
+            dist = h.get('uniq','') and "DISTINCT"
+            for chr in chromosomes:
+                sql = "SELECT " + dist + " " + ",".join(h['keys'].split(',')+h['values'].split(','))
+                sql += " FROM " + chr
+                if h.get('conditions'):
+                    sql += " WHERE "
+                    hconds = dict([c.split(':') for c in h['conditions'].split(',')])
+                    conditions = []
+                    for k,v in hconds.iteritems():
+                        conditions.append( "(" + k + "='" + v + "')" )
+                    sql += " AND ".join(conditions)
+                cursor.execute(sql)
+                for x in cursor:
+                    nkeys = len(h['keys'].split(','))
+                    key = ';'.join([str(_) for _ in x[:nkeys]])
+                    values = list(x[nkeys:]+(chr,))
+                    data.setdefault(key,[]).append(values)
+        # Genrep url request
+        else:
+            for chr_name in chromosomes:
+                request = self.genrep.url+"/nr_assemblies/get_%s?md5=%s" %(method,self.md5)
+                request += "&".join(['']+["%s=%s" %(k,v) for k,v in h.iteritems()])
+                if chr_name: request += "&chr_name="+chr_name
+                data.update(json.load(urllib2.urlopen(request)))
         return data
 
     def get_gene_mapping(self):
-        """Return a dictionary {geneID: (geneName, start, end, length, chromosome)}
-        Note that the gene's length is not the sum of the lengths of its exons."""
+        """
+        Return a dictionary {geneID: (geneName, start, end, length, strand, chromosome)}
+        Note that the gene's length is not the sum of the lengths of its exons.
+        """
         gene_mapping = {}
-        dbpath = self.sqlite_path()
-        if os.path.exists(dbpath):
-            db = sqlite3.connect(dbpath)
-            cursor = db.cursor()
-            for chr in self.chrnames:
-                sql = """SELECT DISTINCT gene_id,gene_name,MIN(start),MAX(end)
-                       FROM '%s' WHERE (type='exon') GROUP BY gene_id""" %chr
-                cursor.execute(sql)
-                for g,name,start,end in cursor:
-                    gene_mapping[str(g)] = (str(name),start,end,-1,chr)
-                # Find gene lengths
-                sql = """SELECT DISTINCT gene_id,start,end
-                       FROM '%s' WHERE (type='exon') ORDER BY strand,start,end""" %chr
-                cursor.execute(sql)
-                try: fg,start,fend = cursor.fetchone()  # initialize
-                except TypeError: continue
-                length = fend-start
-                for g,start,end in cursor:
-                    if g == fg:                    # if still in the same gene
-                        if start >= fend:
-                            length += end-start    # new exon
-                            fend = end
-                        elif end <= fend: pass     # embedded exon
-                        else:
-                            length += end-fend     # overlapping exon
-                            fend = end
-                    else:                          # if new gene
-                        gmap = list(gene_mapping[str(fg)])
-                        gmap[3] = length
-                        gene_mapping.update({str(fg):tuple(gmap)})
-                        length = end-start
+        h = {"keys":"gene_id", "values":"gene_name,start,end,strand", "conditions":"type:exon", "uniq":"1"}
+        for chr in self.chrnames:
+            resp = self.get_features_from_gtf(h,chr)
+            for k,v in resp.iteritems():
+                start = min([x[1] for x in v])
+                end = max([x[2] for x in v])
+                name = str(v[0][0])
+                strand = int(v[0][3])
+                gene_mapping[str(k)] = (name,start,end,-1,strand,chr)
+            # Find gene lengths
+            resp_iter = resp.iteritems()
+            try: fg,init = resp_iter.next() # initialize
+            except StopIteration: continue
+            name,start,fend,strand,chr = init[0]
+            length = fend-start
+            for g,v in resp_iter:
+                v.sort(key=itemgetter(1,2)) # sort w.r.t. start, then end
+                for x in v:
+                    start = x[1]; end = x[2]
+                    if start >= fend:
+                        length += end-start # new exon
                         fend = end
-                        fg = g
+                    elif end <= fend: pass  # embedded exon
+                    else:
+                        length += end-fend  # overlapping exon
+                        fend = end
                 gmap = list(gene_mapping[str(g)])
                 gmap[3] = length
+                length = 0
                 gene_mapping.update({str(g):tuple(gmap)})
-        else:
-            h = {"keys":"gene_id", "values":"gene_name,start,end", "conditions":"type:exon", "uniq":"1"}
-            for chr in self.chrnames:
-                resp = self.get_features_from_gtf(h,chr)
-                for k,v in resp.iteritems():
-                    start = min([x[1] for x in v])
-                    end = max([x[2] for x in v])
-                    name = str(v[0][0])
-                    gene_mapping[str(k)] = (name,start,end,-1,chr)
-                # Find gene lengths
-                resp_iter = resp.iteritems()
-                try: fg,init = resp_iter.next() # initialize
-                except StopIteration: continue
-                name,start,fend = init[0]
-                #start+=1
-                length = fend-start
-                for g,v in resp_iter:
-                    v.sort(key=itemgetter(1,2)) # sort w.r.t. start, then end
-                    for x in v:
-                        start = x[1]; end = x[2]
-                        #start+=1
-                        if start >= fend:
-                            length += end-start # new exon
-                            fend = end
-                        elif end <= fend: pass  # embedded exon
-                        else:
-                            length += end-fend  # overlapping exon
-                            fend = end
-                    gmap = list(gene_mapping[str(g)])
-                    gmap[3] = length
-                    length = 0
-                    gene_mapping.update({str(g):tuple(gmap)})
-                    fend = gmap[2]
+                fend = gmap[2]
         return gene_mapping
 
     def get_transcript_mapping(self):
-        """Return a dictionary ``{transcript ID: (gene ID,start,end,length,chromosome)}``"""
+        """Return a dictionary ``{transcript ID: (gene ID,start,end,length,strand,chromosome)}``"""
         transcript_mapping = {}
-        dbpath = self.sqlite_path()
-        if os.path.exists(dbpath):
-            db = sqlite3.connect(dbpath)
-            cursor = db.cursor()
-            for chr in self.chrnames:
-                sql = """SELECT DISTINCT transcript_id,gene_id,MIN(start),MAX(end),SUM(end-start)
-                       FROM '%s' WHERE (type='exon') GROUP BY transcript_id""" %chr
-                cursor.execute(sql)
-                for t,g,start,end,length in cursor:
-                    transcript_mapping[str(t)] = (str(g),start,end,length,chr)
-        else:
-            h = {"keys":"transcript_id", "values":"gene_id,start,end", "conditions":"type:exon", "uniq":"1"}
-            for chr in self.chrnames:
-                resp = self.get_features_from_gtf(h,chr)
-                for k,v in resp.iteritems():
-                    start = min([x[1] for x in v])
-                    end = max([x[2] for x in v])
-                    length = sum([x[2]-x[1] for x in v])
-                    gid = str(v[0][0])
-                    transcript_mapping[str(k)] = (gid,start,end,length,chr)
+        h = {"keys":"transcript_id", "values":"gene_id,start,end,strand", "conditions":"type:exon", "uniq":"1"}
+        for chr in self.chrnames:
+            resp = self.get_features_from_gtf(h,chr)
+            for k,v in resp.iteritems():
+                start = min([x[1] for x in v])
+                end = max([x[2] for x in v])
+                length = sum([x[2]-x[1] for x in v])
+                gid = str(v[0][0])
+                strand = int(v[0][3])
+                transcript_mapping[str(k)] = (gid,start,end,length,strand,chr)
         return transcript_mapping
 
     def get_exon_mapping(self):
-        """Return a dictionary ``{exon ID: ([transcript IDs],gene ID,start,end,chromosome)}``"""
+        """Return a dictionary ``{exon ID: ([transcript IDs],gene ID,start,end,strand,chromosome)}``"""
         exon_mapping = {}
         dbpath = self.sqlite_path()
-        if os.path.exists(dbpath):
-            db = sqlite3.connect(dbpath)
-            cursor = db.cursor()
-            for chr in self.chrnames:
-                sql = """SELECT DISTINCT exon_id,transcript_id FROM '%s' WHERE (type='exon') AND exon_id IS NOT NULL""" %chr
-                cursor.execute(sql)
-                T={}
-                for e,t in cursor:
-                    T.setdefault(str(e),[]).append(str(t))
-                sql = """SELECT DISTINCT exon_id,gene_id,start,end FROM '%s' WHERE (type='exon') AND exon_id IS NOT NULL""" %chr
-                cursor.execute(sql)
-                for e,g,start,end in cursor:
-                    exon_mapping[str(e)] = (T[str(e)],str(g),start,end,chr)
-        else:
-            h = {"keys":"exon_id", "values":"gene_id,transcript_id,start,end", "conditions":"type:exon", "uniq":"1"}
-            for chr in self.chrnames:
-                resp = self.get_features_from_gtf(h,chr)
-                for k,v in resp.iteritems():
-                    start = int(v[0][2])
-                    end = int(v[0][3])
-                    tid = [str(x[1]) for x in v]
-                    gid = str(v[0][0])
-                    exon_mapping[str(k)] = (tid,gid,start,end,chr)
+        h = {"keys":"exon_id", "values":"gene_id,transcript_id,start,end,strand", "conditions":"type:exon", "uniq":"1"}
+        for chr in self.chrnames:
+            resp = self.get_features_from_gtf(h,chr)
+            for k,v in resp.iteritems():
+                start = int(v[0][2])
+                end = int(v[0][3])
+                tid = [str(x[1]) for x in v]
+                gid = str(v[0][0])
+                strand = int(v[0][4])
+                exon_mapping[str(k)] = (tid,gid,start,end,strand,chr)
         return exon_mapping
 
     def get_exons_in_trans(self):
         """Return a dictionary ``{transcript ID: list of exon IDs it contains}``"""
         exons_in_trans = {}
-        dbpath = self.sqlite_path()
-        if os.path.exists(dbpath):
-            db = sqlite3.connect(dbpath)
-            cursor = db.cursor()
-            for chr in self.chrnames:
-                sql = """SELECT DISTINCT transcript_id,exon_id from '%s' WHERE (type='exon') AND exon_id IS NOT NULL""" %chr
-                cursor.execute(sql)
-                for t,e in cursor:
-                    exons_in_trans.setdefault(str(t),[]).append(str(e))
-        else:
-            h = {"keys":"transcript_id", "values":"exon_id", "conditions":"type:exon", "uniq":"1"}
-            data = self.get_features_from_gtf(h)
-            for k,v in data.iteritems():
-                exons_in_trans[str(k)] = [str(x[0]) for x in v]
+        h = {"keys":"transcript_id", "values":"exon_id", "conditions":"type:exon", "uniq":"1"}
+        data = self.get_features_from_gtf(h)
+        for k,v in data.iteritems():
+            exons_in_trans[str(k)] = [str(x[0]) for x in v]
         return exons_in_trans
 
     def get_trans_in_gene(self):
         """Return a dictionary ``{gene ID: list of transcript IDs it contains}``"""
         trans_in_gene = {}
-        dbpath = self.sqlite_path()
-        if os.path.exists(dbpath):
-            db = sqlite3.connect(dbpath)
-            cursor = db.cursor()
-            for chr in self.chrnames:
-                sql = """SELECT DISTINCT gene_id,transcript_id FROM '%s' WHERE (type='exon')""" %chr
-                cursor.execute(sql)
-                for g,t in cursor:
-                    trans_in_gene.setdefault(str(g),[]).append(str(t))
-        else:
-            h = {"keys":"gene_id", "values":"transcript_id", "conditions":"type:exon", "uniq":"1"}
-            data = self.get_features_from_gtf(h) 
-            for k,v in data.iteritems():
-                trans_in_gene[str(k)] = [str(x[0]) for x in v]
-
+        h = {"keys":"gene_id", "values":"transcript_id", "conditions":"type:exon", "uniq":"1"}
+        data = self.get_features_from_gtf(h)
+        for k,v in data.iteritems():
+            trans_in_gene[str(k)] = [str(x[0]) for x in v]
         return trans_in_gene
 
+    def gene_coordinates(self,id_list):
+        """Creates a BED-style stream from a list of gene ids."""
+        dbpath = self.sqlite_path()
+        chromlist = self.chrnames
+        _fields = ['chr','start','end','name','strand']
+        def _query():
+            _ids = "|".join(id_list)
+            sort_list = []
+            webh = { "names": "gene_id,gene_name,strand,chr_name",
+                     "conditions": "gene_id:%s" %_ids,
+                     "uniq":"1" }
+            resp = self.get_features_from_gtf(webh,method='boundaries')
+            for k,v in resp.iteritems():
+                if not(v): continue
+                start,end = v
+                gene_id,gene_name,strand,chr_name = [str(y).strip() for y in k.split('; ')]
+                name = "%s|%s" %(gene_id,gene_name)
+                sort_list.append((chr_name,start,end,name,int(strand)))
+            sort_list.sort()
+            for k in sort_list: yield k
+        return track.FeatureStream(_query(),fields=_fields)
+
     def annot_track(self,annot_type='gene',chromlist=None,biotype=["protein_coding"]):
+        """
+        Return an iterator over all annotations of a given type in the genome.
+
+        :param annot_type: (str) one of 'gene','transcript','exon','CDS'.
+        :chrom_list: (list of str) return only features in the specified chromosomes.
+        :biotype: (list of str, or None) return only features with the specified biotype(s).
+        :rtype: btrack.FeatureStream
+        """
         if chromlist is None: chromlist = self.chrnames
         elif isinstance(chromlist,basestring): chromlist = [chromlist]
-        dbpath = self.sqlite_path()
         _fields = ['chr','start','end','name','strand']
-        nmax = 5
+        nmax = 4
         biosel = ''
         if not(biotype is None):
-            biosel = "AND gene_biotype IN ('"+"','".join(biotype)+"')"
+            biosel = "AND biotype IN ('"+"','".join(biotype)+"')"
         if annot_type == 'gene':
-            sql1 = "SELECT DISTINCT MIN(start) AS gstart,MAX(end) AS gend,gene_id,gene_name,strand FROM '"
-            sql2 = "' WHERE type='exon' %s GROUP BY gene_id ORDER BY gstart,gend,gene_id" %biosel
-            webh = { "keys": "gene_id", 
-                     "values": "start,end,gene_id,gene_name,strand", 
-                     "conditions": "type:exon", 
+            flist = "gene_id,gene_name,strand"
+            webh = { "keys": "gene_id",
+                     "values": "start,end,"+flist,
+                     "conditions": "type:exon",
                      "uniq":"1" }
-            nmax = 4
         elif annot_type in ['CDS','exon']:
-            sql1 = "SELECT DISTINCT start,end,exon_id,gene_id,gene_name,strand,frame FROM '"
-            sql2 = "' WHERE type='%s' %s ORDER BY start,end,exon_id" %(annot_type,biosel)
-            webh = { "keys": "exon_id", 
-                     "values": "start,end,gene_id,gene_name,strand,frame", 
-                     "conditions": "type:"+annot_type, 
+            flist = "exon_id,gene_id,gene_name,strand,frame"
+            webh = { "keys": "exon_id,start,end",
+                     "values": "start,end,"+flist,
+                     "conditions": "type:"+annot_type,
                      "uniq":"1" }
+            nmax = 5
             _fields += ['frame']
         elif annot_type == 'transcript':
             if biosel:
                 biosel = "WHERE "+biosel[4:]
-            sql1 = "SELECT DISTINCT MIN(start) AS tstart,MAX(end) AS tend,transcript_id,gene_name,strand FROM '"
-            sql2 = "' %s GROUP BY transcript_id ORDER BY tstart,tend,transcript_id" %biosel
-            webh = { "keys": "transcript_id", 
-                     "values": "start,end,gene_id,gene_name,strand", 
-                     "conditions": "type:exon", 
+            flist = "transcript_id,gene_name,strand"
+            webh = { "keys": "transcript_id",
+                     "values": "start,end,"+flist,
+                     "conditions": "type:exon",
                      "uniq":"1" }
         else:
             raise TypeError("Annotation track type %s not implemented." %annot_type)
-            
-        def _sql_query():
-            db = sqlite3.connect(dbpath)
-            cursor = db.cursor()
-            for chrom in chromlist:
-                cursor.execute(sql1+chrom+sql2)
-                for x in cursor: 
-                    name = "|".join([str(y) for y in x[2:nmax]])
-                    yield (chrom,int(x[0]),int(x[1]),name)+tuple(x[nmax:])
-        def _web_query():
+        def _query():
             for chrom in chromlist:
                 sort_list = []
                 for bt in biotype:
                     wh = webh.copy()
-                    wh["conditions"]+=",gene_biotype:"+bt
+                    wh["conditions"]+=",biotype:"+bt
                     resp = self.get_features_from_gtf(wh,chrom)
                     for k,v in resp.iteritems():
                         start = min([x[0] for x in v])
@@ -616,41 +575,39 @@ class Assembly(object):
                         sort_list.append((start,end,name)+tuple(v[0][nmax:]))
                 sort_list.sort()
                 for k in sort_list: yield (chrom,)+k
-        if os.path.exists(dbpath):
-            _db_call = _sql_query
-        else:
-            _db_call = _web_query
-        return track.FeatureStream(_db_call(),fields=_fields)
+        return track.FeatureStream(_query(),fields=_fields)
 
     def gene_track(self,chromlist=None,biotype=["protein_coding"]):
+        """Return an iterator over all protein coding genes annotation in the genome."""
         return self.annot_track(annot_type='gene',chromlist=chromlist,biotype=biotype)
 
     def exon_track(self,chromlist=None,biotype=["protein_coding"]):
+        """Return an iterator over all coding exons annotation in the genome"""
         return self.annot_track(annot_type='exon',chromlist=chromlist,biotype=biotype)
 
     def transcript_track(self,chromlist=None,biotype=["protein_coding"]):
+        """Return an iterator over all protein coding transcripts annotation in the genome"""
         return self.annot_track(annot_type='transcript',chromlist=chromlist,biotype=biotype)
 
     @property
     def chrmeta(self):
         """
-        Returns a dictionary of chromosome meta data looking something like:
+        Return a dictionary of chromosome meta data of the type:
         {'chr1': {'length': 249250621},'chr2': {'length': 135534747},'chr3': {'length': 135006516}}
         """
         return dict([(v['name'], dict([('length', v['length'])])) for v in self.chromosomes.values()])
 
     @property
     def chrnames(self):
-        """
-        Returns a list of chromosome names
-        """
+        """Return a list of chromosome names."""
         namelist = [(v['num'],v['name']) for v in self.chromosomes.values()]
         return [x[1] for x in sorted(namelist)]
 
 ################################################################################
 class GenRep(object):
     def __init__(self, url=None, root=None, config=None, section='genrep'):
-        """Create an object to query a GenRep repository.
+        """
+        Create an object to query a GenRep repository.
 
         GenRep is the in-house repository for sequence assemblies for the
         BBCF in Lausanne.  This is an object that wraps its use in Python
@@ -684,11 +641,11 @@ class GenRep(object):
         self.root = os.path.abspath(root)
 
     def assembly(self,assembly,intype=0):
-        """ Backward compatibility """
+        """Backward compatibility"""
         return Assembly( assembly=assembly, genrep=self, intype=intype )
 
     def is_up(self):
-        """ Check if genrep webservice is available """
+        """Check if genrep webservice is available"""
         try:
             urllib2.urlopen(self.url + "/nr_assemblies.json", timeout=2)
         except urllib2.URLError:
@@ -697,8 +654,8 @@ class GenRep(object):
 
     def assemblies_available(self, assembly=None):
         """
-        Returns a list of assemblies available on genrep, or tells if an
-        assembly with name ``assembly`` is available.
+        Return a list of assemblies available on genrep, or tells if an
+        assembly with name *assembly* is available.
         """
         request = urllib2.Request(self.url + "/assemblies.json")
         assembly_list = []
@@ -710,7 +667,7 @@ class GenRep(object):
         if assembly == None: return assembly_list
 
     def get_sequence(self, chr_id, coord_list):
-        """Parses a slice request to the repository."""
+        """Parse a slice request to the repository."""
         if len(coord_list) == 0:
             return []
         slices  = ",".join([",".join([str(y) for y in x]) for x in coord_list])

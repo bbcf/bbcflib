@@ -98,7 +98,7 @@ then start an execution environment in which we
 * launch the bowtie mapping via :func:`bbcflib.mapseq.map_groups`
 * generate a pdf report of the mapping statistics with :func:`bbcflib.mapseq.add_pdf_stats`
 * if requested, make a density profile using :func:`bbcflib.mapseq.densities_groups`
-* create the corresponfing project and tracks in :doc:`GDV <bbcflib_gdv>`.
+* create the corresponding project and tracks in :doc:`GDV <bbcflib_gdv>`.
 
 This corresponds to the code below::
 

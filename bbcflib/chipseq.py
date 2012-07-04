@@ -35,7 +35,7 @@ Below is the script used by the frontend::
 """
 
 # Built-in modules #
-import re, os, gzip, sys
+import re, os, gzip, sys, time
 
 # Internal modules #
 from bbcflib import frontend, mapseq, common
@@ -51,7 +51,7 @@ from bein.util import touch
 # Peaks and annotation #
 
 @program
-def macs( read_length, genome_size, bamfile, ctrlbam = None, args = None ):
+def macs( read_length, genome_size, bamfile, ctrlbam=None, args=None ):
     """Binding for the ``macs`` peak caller.
 
     takes one (optionally two) bam file(s) and
@@ -59,14 +59,18 @@ def macs( read_length, genome_size, bamfile, ctrlbam = None, args = None ):
 
     Returns the file prefix ('-n' option of ``macs``)
     """
-    if args is None:
-        args = []
-    outname = common.unique_filename_in()
-    macs_args = ["macs14","-t",bamfile]
-    if ctrlbam != None:
-        macs_args += ["-c",ctrlbam]
-    macs_args += ["-n",outname,"-f","BAM","-g",str(genome_size),"-s",str(read_length),"--verbose","1"]
-    return {"arguments": macs_args+args, "return_value": outname}
+    macs_args = ["macs14","-t",bamfile,"-f","BAM","-g",str(genome_size)]
+    if isinstance(args,list): macs_args += args
+    if not(ctrlbam is None): macs_args += ["-c",ctrlbam]
+    if "-n" in macs_args: 
+        outname = macs_args[macs_args.index("-n")+1]
+    else:
+        outname = common.unique_filename_in()
+        macs_args += ["-n",outname]
+    if not("-s" in macs_args): macs_args += ["-s",str(read_length)]
+    if not("--verbose" in macs_args): macs_args += ["--verbose","1"]
+    if not("--keep-dup" in macs_args): macs_args += ["--keep-dup","all"]
+    return {"arguments": macs_args, "return_value": outname}
 
 def add_macs_results( ex, read_length, genome_size, bamfile,
                       ctrlbam=None, name=None, poisson_threshold=None,
@@ -98,20 +102,19 @@ def add_macs_results( ex, read_length, genome_size, bamfile,
             enrich_bounds = str(min(30,low))+","+str(10*low)
         else:
             enrich_bounds = "10,100"
-        if isinstance(read_length,list):
-            rl = read_length[i]
+        if not("-m" in macs_args): macs_args += ["-m",enrich_bounds]
+        if isinstance(read_length,list): rl = read_length[i]
         for j,cam in enumerate(ctrlbam):
             m = name['controls'][j]
             nm = (n,m)
             futures[nm] = macs.nonblocking( ex, rl, genome_size, bam, cam,
-                                            args=macs_args+["-m",enrich_bounds],
-                                            via=via )
+                                            args=macs_args, via=via, memory=4 )
     prefixes = dict((n,f.wait()) for n,f in futures.iteritems())
     for n,p in prefixes.iteritems():
         macs_descr0 = {'step':'macs','type':'none','view':'admin'}
-        macs_descr1 = {'step':'macs','type':'xls','group':n[0]}
-        macs_descr2 = {'step':'macs','type':'bed','group':n[0],'ucsc':'1'}
-        filename = "_vs_".join([x for x in n if not(x is None)])
+        macs_descr1 = {'step':'macs','type':'xls','groupId':n[0][0]}
+        macs_descr2 = {'step':'macs','type':'bed','groupId':n[0][0],'ucsc':'1'}
+        filename = "_vs_".join([x[1] for x in n if x[0]])
         touch( ex, p )
         ex.add( p, description=common.set_file_descr(filename,**macs_descr0), 
                 alias=alias )
@@ -134,7 +137,7 @@ def add_macs_results( ex, read_length, genome_size, bamfile,
         ex.add( p+"_summits.bed.gz",
                 description=common.set_file_descr(filename+"_summits.bed.gz",**macs_descr2),
                 associate_to_filename=p, template='%s_summits.bed.gz' )
-        if not(n[1] is None):
+        if n[1][0]:
             ex.add( p+"_negative_peaks.xls",
                     description=common.set_file_descr(filename+"_negative_peaks.xls",**macs_descr1),
                     associate_to_filename=p, template='%s_negative_peaks.xls' )
@@ -152,8 +155,7 @@ def camelPeaks( scores_fwd, scores_rev, peaks, chromosome_name, chromosome_lengt
     output = common.unique_filename_in()
     args = ["-p",peaks,"-f",scores_fwd,"-r",scores_rev,"-o",output,"-c",chromosome_name,
             "-l",str(chromosome_length),"-e",str(read_extension),"-z",script_path,"-s","1500"]
-    return {'arguments': ["camelPeaks.py"]+args,
-            'return_value': None}
+    return {'arguments': ["camelPeaks.py"]+args, 'return_value': None}
 
 def run_deconv(ex, sql, peaks, chromosomes, read_extension, script_path, via = 'lsf'):
     """Runs the complete deconvolution process for a set of sql files and a bed file,
@@ -165,12 +167,14 @@ def run_deconv(ex, sql, peaks, chromosomes, read_extension, script_path, via = '
     """
     deconv_futures = {}
     stdout_files = {}
-    for cid,chr in chromosomes.iteritems():
+    for clen,cid in sorted([(v['length'],k) for k,v in chromosomes.iteritems()],reverse=True):
+        chrom = chromosomes[cid]['name']
         stdout_files[cid] = common.unique_filename_in()
         deconv_futures[cid] = camelPeaks.nonblocking( ex, sql['fwd'], sql['rev'], peaks,
-                                                      chr['name'], chr['length'],
+                                                      chrom, clen,
                                                       read_extension, script_path,
                                                       via=via, stdout=stdout_files[cid] )
+        time.sleep(150) ##avoid too many processes reading same sql 
     deconv_out = {}
     for c,f in deconv_futures.iteritems():
         f.wait()
@@ -191,20 +195,20 @@ def run_deconv(ex, sql, peaks, chromosomes, read_extension, script_path, via = '
     chrlist = dict((v['name'], {'length': v['length']}) for v in chromosomes.values())
     output = common.unique_filename_in()
     outfiles = {}
-    outfiles['bed'] = output+"_peaks.sql"
-    outfiles['sql'] = output+"_deconv.sql"
-    outbed = track.track(outfiles['bed'],
+    outfiles['peaks'] = output+"_peaks.sql"
+    outfiles['profile'] = output+"_deconv.sql"
+    outbed = track.track(outfiles['peaks'], chrmeta=chrlist,
                          fields=["start","end","score","name"],
-                         chrmeta=chrlist,
                          info={'datatype':'qualitative'})
-    outwig = track.track(outfiles['sql'],
-                         fields=["start","end","score"],
-                         chrmeta=chrlist,
+    outwig = track.track(outfiles['profile'], chrmeta=chrlist,
+                         fields=["start","end","score"],                         
                          info={'datatype':'quantitative'})
+    outbed.open()
+    outwig.open()
     for c,fout in deconv_out.iteritems():
         if len(fout) < 3: continue
-        outbed.write(track.track(fout[1]).read())
-        outwig.write(track.track(fout[2]).read())
+        outbed.write(track.track(fout[1],chrmeta=chrlist).read())
+        outwig.write(track.track(fout[2],chrmeta=chrlist).read())
     outbed.close()
     outwig.close()
     if len(deconv_out)>0:
@@ -262,7 +266,7 @@ def workflow_groups( ex, job_or_dict, mapseq_files, assembly, script_path='',
     run_meme = options.get('run_meme',False)
     if isinstance(run_meme,basestring):
         run_meme = run_meme.lower() in ['1','true','t']
-    macs_args = options.get('macs_args',["--bw=200"])
+    macs_args = options.get('macs_args',["--bw","200"])
     b2w_args = options.get('b2w_args',[])
     if not(isinstance(mapseq_files,dict)):
         raise TypeError("Mapseq_files must be a dictionary.")
@@ -296,15 +300,15 @@ def workflow_groups( ex, job_or_dict, mapseq_files, assembly, script_path='',
             bamfile = mapped.values()[0]['bam']
         if groups[gid]['control']:
             controls.append(bamfile)
-            names['controls'].append(group_name)
+            names['controls'].append((gid,group_name))
         else:
             tests.append(bamfile)
-            names['tests'].append(group_name)
+            names['tests'].append((gid,group_name))
             read_length.append(mapped.values()[0]['stats']['read_length'])
     genome_size = mapped.values()[0]['stats']['genome_size']
     if len(controls)<1:
         controls = [None]
-        names['controls'] = [None]
+        names['controls'] = [(0,None)]
     logfile.write("Starting MACS.\n");logfile.flush()
     processed = {'macs': add_macs_results( ex, read_length, genome_size,
                                            tests, ctrlbam=controls, name=names,
@@ -331,7 +335,7 @@ def workflow_groups( ex, job_or_dict, mapseq_files, assembly, script_path='',
         macs_final = track.track( peak_list[name], chrmeta=chrlist,
                                   info={'datatype':'qualitative'},
                                   fields=['start','end','name','score'] )
-        macs_final.write(gm_common.fusion(macs_neighb))
+        macs_final.write(gm_common.fusion(macs_neighb),clip=True)
         macs_final.close()
         ##############################
     if peak_deconvolution:
@@ -362,15 +366,14 @@ def workflow_groups( ex, job_or_dict, mapseq_files, assembly, script_path='',
             else:
                 merged_wig[group_name] = wig[0]
         for name in names['tests']:
-            logfile.write(name+" deconvolution.\n");logfile.flush()
+            logfile.write(name[1]+" deconvolution.\n");logfile.flush()
             if len(names['controls']) < 2:
                 ctrl = (name,names['controls'][0])
                 macsbed = processed['macs'][ctrl]+"_peaks.bed"
             else:
                 macsbed = common.intersect_many_bed( ex, [processed['macs'][(name,x)]+"_peaks.bed"
                                                           for x in names['controls']], via=via )
-            
-            deconv = run_deconv( ex, merged_wig[name], macsbed, assembly.chromosomes,
+            deconv = run_deconv( ex, merged_wig[name[1]], macsbed, assembly.chromosomes,
                                  options['read_extension'], script_path, via=via )
             ##############################
             def _filter_deconv( stream, pval ):
@@ -381,20 +384,32 @@ def workflow_groups( ex, job_or_dict, mapseq_files, assembly, script_path='',
             peak_list[name] = common.unique_filename_in()+".bed"
             bedfile = track.track(peak_list[name], chrmeta=chrlist,
                                   fields=["chr","start","end","name","score"])
-            trbed = track.track(deconv['bed'])
+            trbed = track.track(deconv['peaks'])
             trfields = ['chr']+trbed.fields
             bedfile.write(track.FeatureStream(
                 _filter_deconv(trbed.read(fields=trfields),0.65),fields=trfields))
             bedfile.close()
-            ex.add(deconv.pop('bed'), description=common.set_file_descr(name+'_peaks.sql',type='sql',step='deconvolution',group=name))
-            [ex.add(v, description=common.set_file_descr(name+'_deconv.'+k,type=k,step='deconvolution',group=name))
-             for k,v in deconv.iteritems()]
+            ex.add(deconv['peaks'], 
+                   description=common.set_file_descr(name[1]+'_peaks.sql',
+                                                     type='sql',
+                                                     step='deconvolution',
+                                                     groupId=name[0]))
+            ex.add(deconv['profile'], 
+                   description=common.set_file_descr(name[1]+'_deconv.sql',
+                                                     type='sql',
+                                                     step='deconvolution',
+                                                     groupId=name[0]))
+            ex.add(deconv['pdf'], 
+                   description=common.set_file_descr(name[1]+'_deconv.pdf',
+                                                     type='pdf',
+                                                     step='deconvolution',
+                                                     groupId=name[0]))
             processed['deconv'][name] = deconv
     for name, plist in peak_list.iteritems():
-        ptrack = track.track(plist)
+        ptrack = track.track(plist,chrmeta=chrlist)
         peakfile = common.unique_filename_in()
         touch(ex,peakfile)
-        peakout = track.track(peakfile, format='txt', 
+        peakout = track.track(peakfile, format='txt', chrmeta=chrlist, 
                               fields=['chr','start','end','name','strand',
                                       'gene','location_type','distance'])
         for chrom in assembly.chrnames:
@@ -404,8 +419,8 @@ def workflow_groups( ex, job_or_dict, mapseq_files, assembly, script_path='',
         peakout.close()
         common.gzipfile(ex,peakfile)
         ex.add(peakfile+".gz", 
-               description=common.set_file_descr(name+'_annotated_peaks.txt.gz',type='text',
-                                                 step='annotation',group=name))
+               description=common.set_file_descr(name[1]+'_annotated_peaks.txt.gz',type='text',
+                                                 step='annotation',groupId=name[0]))
     if run_meme:
         from bbcflib.motif import parallel_meme
         logfile.write("Starting MEME.\n");logfile.flush()
