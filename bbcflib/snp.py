@@ -191,7 +191,7 @@ def annotate_snps( filedict, sample_names, assembly ):
         for c,snps in buffer[strand].iteritems():
             chr,pos,refbase,variants,cds,strand,ref_codon,shift = snps[0]
             # Find the new codon
-            new_codon = [ref_codon]*nsamples
+            new_codon = [list(ref_codon) for _ in range(nsamples)]
             for snp in snps:
                 chr,pos,refbase,variants,cds,strand,refcodon,shift = snp
                 varbase = [r.strip('* ') for r in variants]
@@ -200,15 +200,16 @@ def annotate_snps( filedict, sample_names, assembly ):
                     if variant == '0':
                         variants.append(refbase)
                     elif len(variant.split(',')) > 1: # 'C (43%),G (12%)'
-                        variants.append(variant.split()[0])
+                        v = [v.split()[0] for v in variant.split(',')]
+                        variants.append(v[0])  # TO DO ! takes only the first possible variant for the moment
                     else:                             # 'C (43%)' or 'C'
-                        variants.append(variant.split()[0])  # TO DO !
+                        variants.append(variant.split()[0])
                 for k in range(nsamples):
                     if strand == 1:
-                        new_codon[k] = new_codon[k][:shift]+variants[k]+new_codon[k][shift+1:]
+                        new_codon[k][shift] = variants[k]
                         assert ref_codon[shift] == refbase, "bug with shift within codon"
                     elif strand == -1:
-                        new_codon[k] = new_codon[k][:2-shift]+variants[k]+new_codon[k][3-shift:]
+                        new_codon[k][2-shift] = variants[k]
                         assert ref_codon[2-shift] == refbase, "bug with shift within codon"
             new_codon = ["".join(new_codon[k]) for k in range(nsamples)]
             # Complementary strand
