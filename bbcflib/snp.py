@@ -177,24 +177,24 @@ def annotate_snps( filedict, sample_names, assembly ):
                     yield (snp[2],int(snp[0]),int(snp[1]))+snp[3:-3]
                     # ('chrV', 1606, 1607, 'T', 'C (43%)')
 
-    def _complement(seq):
-        seq = list(seq)
-        for x in range(len(seq)):
-            if seq[x].upper() == 'A': seq[x] = 'T'
-            elif seq[x].upper() == 'T': seq[x] = 'A'
-            elif seq[x].upper() == 'G': seq[x] = 'C'
-            elif seq[x].upper() == 'C': seq[x] = 'G'
-        seq.reverse()
-        return "".join(seq)
+    def _revcomp(seq):
+        cmpl = dict((('A','T'),('C','G'),('T','A'),('G','C'),
+                     ('a','t'),('c','g'),('t','a'),('g','c'),
+                     ('M','K'),('K','M'),('Y','R'),('R','Y'),('S','S'),('W','W'),
+                     ('m','k'),('k','m'),('y','r'),('r','y'),('s','s'),('w','w'),
+                     ('B','V'),('D','H'),('H','D'),('V','B'),
+                     ('b','v'),('d','h'),('h','d'),('v','b'),
+                     ('N','N'),('n','n')))
+        return "".join(reversed([cmpl[x] for x in seq]))
 
     def _write_buffer(buffer, strand, outex):
         for c,snps in buffer[strand].iteritems():
             chr,pos,refbase,variants,cds,strand,ref_codon,shift = snps[0]
             # Find the new codon
-            new_codon = [list(ref_codon) for _ in range(nsamples)]
+            new_codon = [ref_codon]*nsamples
             for snp in snps:
-                shift = snp[7]
-                varbase = [r.strip('* ') for r in snp[3]]
+                chr,pos,refbase,variants,cds,strand,refcodon,shift = snp
+                varbase = [r.strip('* ') for r in variants]
                 variants = []
                 for variant in varbase:
                     if variant == '0':
@@ -206,16 +206,16 @@ def annotate_snps( filedict, sample_names, assembly ):
                         variants.append(variant.split()[0])
                 for k in range(nsamples):
                     if strand == 1:
-                        new_codon[k][shift] = variants[k]
+                        new_codon[k] = new_codon[k][:shift]+variants[k]+new_codon[k][shift+1:]
                         assert ref_codon[shift] == refbase, "bug with shift within codon"
                     elif strand == -1:
-                        new_codon[k][2-shift] = variants[k]
+                        new_codon[k] = new_codon[k][:2-shift]+variants[k]+new_codon[k][3-shift:]
                         assert ref_codon[2-shift] == refbase, "bug with shift within codon"
             new_codon = ["".join(new_codon[k]) for k in range(nsamples)]
             # Complementary strand
             if strand == -1: 
-                ref_codon = _complement(ref_codon)
-                new_codon = [_complement(c) for c in new_codon]
+                ref_codon = _revcomp(ref_codon)
+                new_codon = [_revcomp(c) for c in new_codon]
             # Write to a file
             for snp in snps:
                 chr,pos,refbase,variants,cds,strand,refcodon,shift = snp
