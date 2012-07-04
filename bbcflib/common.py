@@ -56,7 +56,7 @@ def cat(files,out=None,skip=0):
             for inf in files:
                 with open(inf,"r") as f2:
                     for i in range(skip):
-                        f2.readline() 
+                        f2.readline()
                     [f1.write(l) for l in f2]
     elif len(files) == 1:
         out = files[0]
@@ -208,7 +208,7 @@ try:
 
         #-------------------------------------------------------------------------#
     @program
-    def track_convert( fileIn, fileOut=None, formatIn=None, formatOut=None, 
+    def track_convert( fileIn, fileOut=None, formatIn=None, formatOut=None,
                        assembly=None, chrmeta=None ):
         if fileOut is None: fileOut = unique_filename_in()
         args = [fileIn,fileOut]

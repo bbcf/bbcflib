@@ -110,6 +110,7 @@ class Assembly(object):
     def set_assembly(self, assembly):
         """
         Reset the Assembly attributes to correspond to *assembly*.
+
         :param assembly: integer giving the assembly ID, or a string giving the assembly name.
         """
         try:
@@ -184,8 +185,8 @@ class Assembly(object):
             assembly.get_links({'name':'ENSMUSG00000085692', 'type':'gene'})
 
         returns the dictionary
-        ``{"Ensembl":"http://ensembl.org/Mus_musculus/Gene/Summary?g=ENSMUSG00000085692"}`
-        If ``params`` is a string, then it is assumed to be the ``name`` parameter with ``type=gene``.
+        ``{"Ensembl":"http://ensembl.org/Mus_musculus/Gene/Summary?g=ENSMUSG00000085692"}``.
+        If *params* is a string, then it is assumed to be the *name* parameter with ``type=gene``.
         """
         if isinstance(params,basestring):
             params = {'name':str(params),'type':'gene'}
@@ -201,8 +202,8 @@ class Assembly(object):
 
         Returns the name of the file and the total sequence size.
 
-        If 'out' is a (possibly empty) dictionary, will return the filled dictionary,
-        if 'regions' is a dictionary {'chr': [[start1,end1],[start2,end2]]}
+        If *out* is a (possibly empty) dictionary, will return the filled dictionary.
+        If *regions* is a dictionary {'chr': [[start1,end1],[start2,end2]]}
         or a list [['chr',start1,end1],['chr',start2,end2]],
         will simply iterate through its items instead of loading a track from file.
         """
@@ -273,36 +274,39 @@ class Assembly(object):
 
     def statistics(self, output=None, frequency=False, matrix_format=False):
         """
-        Return (di-)nucleotide counts or frequencies for an assembly, writes in file ``output`` if provided.
-        Example of result:
-        {
-            "TT": 13574667
-            "GG": 3344762
-            "CC": 3365555
-            "AA": 13571722
-            "A": 32370285
-            "TA": 6362526
-            "GT": 4841536
-            "AC": 4846697
-            "N": 0
-            "C": 17781115
-            "TC": 6228639
-            "GA": 6231575
-            "CG": 3131283
-            "GC: 3340219
-            "CT": 5079814
-            "AG": 5075950
-            "G": 17758095
-            "TG": 6206098
-            "CA": 6204462
-            "AT": 8875914
-            "T": 32371931
-        }
-        Total = A + T + G + C
+        Return (di-)nucleotide counts or frequencies for an assembly, writes in file *output* if provided.
+        Example of result::
 
-        if matrix_format is True output is like:
-         >Assembly: sacCer2
-        1   0.309798640038793   0.308714120881750   0.190593944221299   0.190893294858157
+            {
+                "TT": 13574667
+                "GG": 3344762
+                "CC": 3365555
+                "AA": 13571722
+                "A": 32370285
+                "TA": 6362526
+                "GT": 4841536
+                "AC": 4846697
+                "N": 0
+                "C": 17781115
+                "TC": 6228639
+                "GA": 6231575
+                "CG": 3131283
+                "GC: 3340219
+                "CT": 5079814
+                "AG": 5075950
+                "G": 17758095
+                "TG": 6206098
+                "CA": 6204462
+                "AT": 8875914
+                "T": 32371931
+            }
+
+            Total = A + T + G + C
+
+        If *matrix_format* is True, *output* is like::
+
+             >Assembly: sacCer2
+            1   0.309798640038793   0.308714120881750   0.190593944221299   0.190893294858157
         """
         request = urllib2.Request("%s/nr_assemblies/%d.json?data_type=counts" % (self.genrep.url, self.nr_assembly_id))
         stat    = json.load(urllib2.urlopen(request))
@@ -327,7 +331,7 @@ class Assembly(object):
             return output
 
     def fasta_path(self, chromosome=None):
-        """Returns the path to the compressed fasta file, for the whole assembly or for a single chromosome."""
+        """Return the path to the compressed fasta file, for the whole assembly or for a single chromosome."""
         root = os.path.join(self.genrep.root,"nr_assemblies/fasta")
         path = os.path.join(root,self.md5+".tar.gz")
         if chromosome != None:
@@ -343,33 +347,35 @@ class Assembly(object):
         return path
 
     def get_sqlite_url(self):
-        """Returns the url of the sqlite file containing gene annotations."""
+        """Return the url of the sqlite file containing gene annotations."""
         return '%s/data/nr_assemblies/annot_tracks/%s.sql' %(self.genrep.url, self.md5)
 
     def sqlite_path(self):
-        """Returns the path to the sqlite file containing genes annotations."""
+        """Return the path to the sqlite file containing genes annotations."""
         root = os.path.join(self.genrep.root,"nr_assemblies/annot_tracks")
         return os.path.join(root,self.md5+".sql")
 
     def get_features_from_gtf(self,h,chr=None,method="dico"):
         """
         Return a dictionary *data* of the form
-        {key:[[values],[values],...]} containing the result of an SQL request which
+        ``{key:[[values],[values],...]}`` containing the result of an SQL request which
         parameters are given as a dictionary *h*. All [values] correspond to a line in the SQL.
 
         :param chr: (str, or list of str) chromosomes on which to perform the request. By default,
         every chromosome is searched.
 
-        Available keys for h, and possible values:
-        "keys":       "*,*,..."            (fields to SELECT and pass as a key of *data*)
-        "values":     "*,*,..."            (fields to SELECT and pass as respective values of *data*)
-        "conditions": "*:#,*:#,..."        (filter (SQL `WHERE`))
-        "uniq":       "whatever"           (SQL `DISTINCT` if specified, no matter what the -string- value is)
-        "at_pos":     "12,36,45,1124,..."  (to select only features overlapping this list of positions)
+        Available keys for *h*, and possible values:
+
+        * "keys":       "$,$,..."            (fields to `SELECT` and pass as a key of *data*)
+        * "values":     "$,$,..."            (fields to `SELECT` and pass as respective values of *data*)
+        * "conditions": "$:#,$:#,..."        (filter (SQL `WHERE`))
+        * "uniq":       "whatever"           (SQL `DISTINCT` if specified, no matter what the -string- value is)
+        * "at_pos":     "12,36,45,1124,..."  (to select only features overlapping this list of positions)
 
         where
-        * holds for any column name in the database
-        # holds for any value in the database
+
+        * $ holds for any column name in the database
+        * # holds for any value in the database
 
         Note: giving several field names to "keys" permits to select unique combinations of these fields.
         The corresponding keys of *data* are a concatenation (by ';') of these fields.
@@ -413,7 +419,7 @@ class Assembly(object):
 
     def get_gene_mapping(self):
         """
-        Return a dictionary {geneID: (geneName, start, end, length, strand, chromosome)}
+        Return a dictionary ``{geneID: (geneName, start, end, length, strand, chromosome)}``
         Note that the gene's length is not the sum of the lengths of its exons.
         """
         gene_mapping = {}
@@ -468,7 +474,6 @@ class Assembly(object):
     def get_exon_mapping(self):
         """Return a dictionary ``{exon ID: ([transcript IDs],gene ID,start,end,strand,chromosome)}``"""
         exon_mapping = {}
-        dbpath = self.sqlite_path()
         h = {"keys":"exon_id", "values":"gene_id,transcript_id,start,end,strand", "conditions":"type:exon", "uniq":"1"}
         for chr in self.chrnames:
             resp = self.get_features_from_gtf(h,chr)
@@ -501,8 +506,6 @@ class Assembly(object):
 
     def gene_coordinates(self,id_list):
         """Creates a BED-style stream from a list of gene ids."""
-        dbpath = self.sqlite_path()
-        chromlist = self.chrnames
         _fields = ['chr','start','end','name','strand']
         def _query():
             _ids = "|".join(id_list)
@@ -582,18 +585,18 @@ class Assembly(object):
         return self.annot_track(annot_type='gene',chromlist=chromlist,biotype=biotype)
 
     def exon_track(self,chromlist=None,biotype=["protein_coding"]):
-        """Return an iterator over all coding exons annotation in the genome"""
+        """Return an iterator over all coding exons annotation in the genome."""
         return self.annot_track(annot_type='exon',chromlist=chromlist,biotype=biotype)
 
     def transcript_track(self,chromlist=None,biotype=["protein_coding"]):
-        """Return an iterator over all protein coding transcripts annotation in the genome"""
+        """Return an iterator over all protein coding transcripts annotation in the genome."""
         return self.annot_track(annot_type='transcript',chromlist=chromlist,biotype=biotype)
 
     @property
     def chrmeta(self):
         """
         Return a dictionary of chromosome meta data of the type:
-        {'chr1': {'length': 249250621},'chr2': {'length': 135534747},'chr3': {'length': 135006516}}
+        ``{'chr1': {'length': 249250621},'chr2': {'length': 135534747},'chr3': {'length': 135006516}}``
         """
         return dict([(v['name'], dict([('length', v['length'])])) for v in self.chromosomes.values()])
 
@@ -605,6 +608,17 @@ class Assembly(object):
 
 ################################################################################
 class GenRep(object):
+    """
+    Attributes:
+
+    .. attribute:: url
+
+        GenRep url ('genrep.epfl.ch').
+
+    .. attribute:: root
+
+        Path to GenRep indexes.
+    """
     def __init__(self, url=None, root=None, config=None, section='genrep'):
         """
         Create an object to query a GenRep repository.
@@ -677,18 +691,18 @@ class GenRep(object):
 
     def get_genrep_objects(self, url_tag, info_tag, filters = None, params = None):
         """
-        Get a list of GenRep objets
-        ... attribute url_tag: the GenrepObject type (plural)
-        ... attribute info_tag: the GenrepObject type (singular)
-        Optionals attributes:
-        ... attribute filters: a dict that is used to filter the response
-        ... attribute param: to add some parameters to the query
-        from GenRep.
+        Get a list of GenRep objets.
+
+        :param url_tag: the GenrepObject type (plural)
+        :param info_tag: the GenrepObject type (singular)
+        :param filters: a dict that is used to filter the response
+        :param params: to add some parameters to the query from GenRep.
+
         Example:
-        To get the genomes related to 'Mycobacterium leprae' species.
-        First get the species with the right name:
-        species = get_genrep_objects('organisms', 'organism', {'species':'Mycobacterium leprae'})[0]
-        genomes = get_genrep_objects('genomes', 'genome', {'organism_id':species.id})
+        To get the genomes related to 'Mycobacterium leprae' species::
+
+            species = get_genrep_objects('organisms', 'organism', {'species':'Mycobacterium leprae'})[0]
+            genomes = get_genrep_objects('genomes', 'genome', {'organism_id':species.id})
         """
         if not self.is_up(): return []
         if filters is None: filters = {}
@@ -715,6 +729,8 @@ class GenrepObject(object):
     Class wich will reference all different objects used by GenRep
     In general, you should never instanciate GenrepObject directly but
     call a method from the GenRep object.
+
+    .. method:: __repr__()
     """
     def __init__(self, info, key):
         self.__dict__.update(info[key])

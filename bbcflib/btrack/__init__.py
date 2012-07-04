@@ -285,6 +285,15 @@ def ensembl_to_ucsc(start):
 class Track(object):
     """
     Metaclass regrouping the track properties.
+
+    .. attribute:: path
+    .. attribute:: filehandle
+    .. attribute:: format
+    .. attribute:: fields
+    .. attribute:: types
+    .. attribute:: assembly
+    .. attribute:: chrmeta
+    .. attribute:: info
     """
     def __init__(self, path, **kwargs):
         self.path = path
@@ -341,8 +350,16 @@ class FeatureStream(object):
     """
     Contains an iterator yielding features, and an extra fields attribute.
 
-    :param data: an iterator, or cursor.
-    :param fields: (list of str) the list of field names.
+    .. attribute:: data
+
+        An iterator, or cursor.
+
+    .. attribute:: fields
+
+        The list of field names.
+
+    .. method:: __iter__()
+    .. method:: next()
     """
 
     def __init__(self, data, fields=None):
