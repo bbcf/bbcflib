@@ -200,9 +200,10 @@ def annotate_snps( filedict, sample_names, assembly ):
                     if variant == '0':
                         variants.append(refbase)
                     elif len(variant.split(',')) > 1: # 'C (43%),G (12%)'
-                        variants.append(variant.split()[0])
+                        v = [v.split()[0] for v in variant.split(',')]
+                        variants.append(v[0])  # TO DO ! takes only the first possible variant for the moment
                     else:                             # 'C (43%)' or 'C'
-                        variants.append(variant.split()[0])  # TO DO !
+                        variants.append(variant.split()[0])
                 for k in range(nsamples):
                     if strand == 1:
                         new_codon[k][shift] = variants[k]

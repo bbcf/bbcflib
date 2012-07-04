@@ -635,7 +635,7 @@ def clean_before_deseq(filename):
         with open(filename_clean,"wb") as g:
             header = f.readline()
             ncond = sum([h.split('.').count("counts") for h in header.split('\t')])
-            header = '\t'.join(header.split('\t')[:1+ncond])+'\r'
+            header = '\t'.join(header.split('\t')[:1+ncond])+'\n'
             g.write(header)
             for line in f:
                 l = line.split('\t')
