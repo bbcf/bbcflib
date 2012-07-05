@@ -24,13 +24,14 @@ else:
     not_vital_it = True
 
 
+path = "../test_data/mapseq/" # one directory up because of the temp working dir.
 
 class TestBowtie(TestCase):
     @skip("no @SQ line in the header (?)")
     def test_parallel_bowtie_local(self):
         with execution(None) as ex:
-            bam = parallel_bowtie(ex, '../test_data/selected_transcripts',
-                                  '../test_data/reads.raw', n_lines=250,
+            bam = parallel_bowtie(ex, os.path.join(path,'selected_transcripts'),
+                                  os.path.join(path,'reads.raw'), n_lines=250,
                                   via='local')
             sam = bam_to_sam(ex, bam)
             new_sam = remove_lines_matching(ex, '@PG', sam)
@@ -41,8 +42,8 @@ class TestBowtie(TestCase):
     @skipIf(no_pysam, "Test requires pysam to run.")
     def test_parallel_bowtie_local_with_nh_flags(self):
         with execution(None) as ex:
-            bam = parallel_bowtie(ex, '../test_data/selected_transcripts',
-                                  '../test_data/reads.raw', n_lines=250,
+            bam = parallel_bowtie(ex, os.path.join(path,'selected_transcripts'),
+                                  os.path.join(path,'reads.raw'), n_lines=250,
                                   add_nh_flags=True, via='local')
             sam = bam_to_sam(ex, bam)
             new_sam = remove_lines_matching(ex, '@PG', sam)
@@ -52,8 +53,8 @@ class TestBowtie(TestCase):
     @skipIf(not_vital_it, "Not running on VITAL-IT.")
     def test_parallel_bowtie_lsf(self):
         with execution(None) as ex:
-            bam = parallel_bowtie(ex, '../test_data/selected_transcripts',
-                                  '../test_data/reads.raw', n_lines=250,
+            bam = parallel_bowtie(ex, os.path.join(path,'selected_transcripts'),
+                                  os.path.join(path,'reads.raw'), n_lines=250,
                                   via='lsf')
             sam = bam_to_sam(ex, bam)
             new_sam = remove_lines_matching(ex, '@PG', sam)
@@ -65,8 +66,8 @@ class TestBowtie(TestCase):
     @skipIf(not_vital_it, "Not running on VITAL-IT.")
     def test_parallel_bowtie_lsf_with_nh_flags(self):
         with execution(None) as ex:
-            bam = parallel_bowtie(ex, '../test_data/selected_transcripts',
-                                  '../test_data/reads.raw', n_lines=250,
+            bam = parallel_bowtie(ex, os.path.join(path,'selected_transcripts'),
+                                  os.path.join(path,'reads.raw'), n_lines=250,
                                   add_nh_flags=True, via='lsf')
             sam = bam_to_sam(ex, bam)
             new_sam = remove_lines_matching(ex, '@PG', sam)
@@ -80,7 +81,7 @@ class TestAddNhFlag(TestCase):
     @skipIf(no_pysam, "No PySam")
     def test_internal_add_nh_flag(self):
         with execution(None) as ex:
-            f = add_nh_flag('../test_data/mapped.sam')
+            f = add_nh_flag(os.path.join(path,'mapped.sam'))
             m = md5sum(ex, f)
         self.assertEqual(m, '50798b19517575533b8ccae5b1369a3e')
 
@@ -88,8 +89,8 @@ class TestAddNhFlag(TestCase):
     @skipIf(no_pysam, "No PySam")
     def test_external_add_nh_flag(self):
         with execution(None) as ex:
-            f = external_add_nh_flag(ex, '../test_data/mapped.sam')
-            g = add_nh_flag('../test_data/mapped.sam')
+            f = external_add_nh_flag(ex, os.path.join(path,'mapped.sam'))
+            g = add_nh_flag(os.path.join(path,'mapped.sam'))
             m = md5sum(ex, f)
             m2 = md5sum(ex, g)
         self.assertEqual(m, m2)
