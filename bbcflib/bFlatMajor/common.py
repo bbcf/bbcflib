@@ -2,7 +2,7 @@ from bbcflib.btrack import FeatureStream
 import sys
 ####################################################################
 def sentinelize(iterable, sentinel):
-    """Append *sentinel* at the end of *iterable*."""
+    """Append *sentinel* at the end of *iterable* (avoid StopIteration error)."""
     for item in iterable: yield item
     yield sentinel
 
@@ -10,7 +10,7 @@ def sentinelize(iterable, sentinel):
 def reorder(stream,fields):
     """Reorders *stream.fields* so that *fields* come first."""
     if not(hasattr(stream, 'fields')) or stream.fields is None:
-        return stream 
+        return stream
     if not(all([f in stream.fields for f in fields])):
         raise ValueError("Need %s fields in stream."%(", ".join(fields)))
     if all(stream.fields[n] == f for n,f in enumerate(fields)):
@@ -22,7 +22,8 @@ def reorder(stream,fields):
 ####################################################################
 def unroll( stream, start, end, fields=['score'] ):
     """Creates a stream of *end*-*start* items with appropriate *fields* values at every position.
-    For example, [(10,12,0.5), (14,15,1.2)] with *start*=9 and *end*=16 yields [0,0.5,0.5,0,0,1.2,0]
+    For example, [(10,12,0.5), (14,15,1.2)] with *start*=9 and *end*=16 yields [0,0.5,0.5,0,0,1.2,0].
+                                                                                  10  11      14
     """
     if not(isinstance(fields,(list,tuple))): fields = [fields]
     s = reorder(stream,['start','end']+fields)
@@ -60,7 +61,7 @@ def sorted_stream(stream,chrnames=[],fields=['chr','start','end']):
 
 ####################################################################
 def shuffled(stream, chrlen=sys.maxint, repeat_number=1, sorted=True):
-    '''Yields randomly located features of the same length as the original track.'''
+    """Yields randomly located features of the same length as the original stream."""
     import random
     _f = ['start','end']
     features = reorder(stream,_f)
@@ -79,10 +80,10 @@ def shuffled(stream, chrlen=sys.maxint, repeat_number=1, sorted=True):
         return FeatureStream(_shuffled(features),features.fields)
 
 ####################################################################
-def strand_merge(x): 
+def strand_merge(x):
     return all(x[0]==y for y in x[1:]) and x[0] or 0
 
-def no_merge(x): 
+def no_merge(x):
     return x[0]
 
 def generic_merge(x):

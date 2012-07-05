@@ -23,13 +23,14 @@ class bFlatMajorGroup(object):
 ###############################################################################
 def run(**kwargs):
     """
-    Wrapper function to execute any operation contained in this package, directly from 
+    Wrapper function to execute any operation contained in this package, directly from
     file inputs.
     Arguments are:
-    :param operation: the name of the function to be called.
-    :param output: a filename or a directory to write the results into.
-    :param assembly: a genome assembly identifier if needed.    
-    :param chromosome: a chromosome name if operation must be restricted to a single chromsome.    
+
+    :param operation: (str) the name of the function to be called.
+    :param output: (str) a filename or a directory to write the results into.
+    :param assembly: (str) a genome assembly identifier if needed.
+    :param chromosome: (str) a chromosome name if operation must be restricted to a single chromsome.
     :param ...: additional parameters passed to `operation`.
 
     Example::
@@ -41,7 +42,7 @@ def run(**kwargs):
         for module in _module_list:
             __import__(_here+module)
             smod = sys.modules[_here+module]
-            if hasattr(getattr(smod, module)(),fct): return module 
+            if hasattr(getattr(smod, module)(),fct): return module
         return None
     funct = kwargs.pop("operation",'None')
     module = _map(funct)
@@ -101,4 +102,4 @@ def run(**kwargs):
             funct_output = getattr(smod, funct)(**kwargs)
             track(files,chrmeta=chrmeta).write(funct_output,chrom=chr,mode='append')
     return files
-    
+

@@ -2,16 +2,28 @@ import sys
 from bbcflib.bFlatMajor import common
 from bbcflib import btrack as track
 
+# "tracks" refer to FeatureStream objects all over here.
+
 def concatenate(trackList, fields=None):
-###################################
+    """
+    Return a single track from a list of tracks.
+
+    :param trackList: list of FeatureStream objects.
+    :param fields: (list of str) list of fields to keep in the output.
+        If not specified, all common fields are kept.
+    :rtype: FeatureStream
+    """
     if len(trackList) == 1: return trackList[0]
     tracks = [track.FeatureStream(common.sentinelize(x,[sys.maxint]*len(x.fields)),x.fields)
               for x in trackList]
 
-    def _find_min(ftple):
+    def _find_min(feat_tuple):
+        """Return the index of the 'smallest' element amongst a tuple of features from
+        different tracks. Priority is given to the first field; if the first field items
+        are equal amongst several elements, it looks at the second field, a.s.o."""
         nmin = 0
-        xmin = ftple[0]
-        for n,x in enumerate(ftple[1:]):
+        xmin = feat_tuple[0]
+        for n,x in enumerate(feat_tuple[1:]):
             for k in range(len(x)):
                 if cmp(x[k],xmin[k])<0:
                     xmin = x
@@ -22,15 +34,19 @@ def concatenate(trackList, fields=None):
         return nmin
 
     def _knead(_t,N):
-        current = [x.next()[:N] for x in _t]
-        while (1):
+        """Generator yielding all features represented in a list of tracks *_t*,
+        sorted w.r.t the *N* first fields.
+        """
+        current = [x.next()[:N] for x in _t] # init
+        while 1:
             n = _find_min(current)
             if current[n][0] == sys.maxint: return
             yield current[n]
             current[n] = _t[n].next()[:N]
-    
+
     if fields is None:
-        fields = [f for f in tracks[0].fields if all(f in t.fields for t in tracks[1:])]
+        fields = track[0].fields
+    fields = [f for f in fields if all(f in t.fields for t in tracks)]
     _of = ['start','end']
     if 'chr' in fields: _of = ['chr']+_of
     if 'name' in fields: _of += ['name']
@@ -39,9 +55,17 @@ def concatenate(trackList, fields=None):
     return track.FeatureStream(_knead(tl,len(fields)),fields=fields)
 
 ###############################################################################
-def neighborhood(trackList, before_start=None, after_end=None, 
+def neighborhood(trackList, before_start=None, after_end=None,
                  after_start=None, before_end=None, on_strand=False):
-###################################
+    """
+    ???
+
+    :param trackList: list of FeatureStream objects.
+    :param before_start: (int) number of bp after the start of ?
+    :param after_end: (int) number of bp after the end of ?
+    :param after_start: (int) number of bp after the start of ?
+    :param before_end: (int) number of bp before the end of ?
+    """
     def _generate_single(track,a,b,c,d):
         if a:
             for x in track:
@@ -70,7 +94,6 @@ def neighborhood(trackList, before_start=None, after_end=None,
                 else:
                     yield (x[0]-before_start, x[1]+after_end)    + x[2:]
 
-###################################
     _fields = ['start','end']
     if on_strand: _fields += ['strand']
     case1 = True
@@ -89,23 +112,26 @@ def neighborhood(trackList, before_start=None, after_end=None,
         tl = [common.reorder(t,_fields) for t in trackList]
         return [track.FeatureStream(_generate_single(t,case1,case2,case3,case4),
                                     fields=t.fields) for t in tl]
-    else: 
+    else:
         tl = common.reorder(trackList,_fields)
         return track.FeatureStream(_generate_single(tl,case1,case2,case3,case4),
                                    fields=tl.fields)
+
 ###############################################################################
-def _combine(tracks,N,fn,win_size,aggregate):
-    fields = tracks[0].fields
-    tracks = [common.sentinelize(t, [sys.maxint]*len(fields)) for t in tracks]
-    init = [tracks[i].next() for i in range(N)]
+def _combine(trackList,fn,win_size,aggregate):
+    """See function `combine` below."""
+    N = len(trackList)
+    fields = trackList[0].fields
+    trackList = [common.sentinelize(t, [sys.maxint]*len(fields)) for t in trackList]
+    init = [trackList[i].next() for i in range(N)]
     activity = [False]*N
     z = [None]*N
     for i in xrange(N-1,-1,-1):
-        if init[i][0] == sys.maxint: 
+        if init[i][0] == sys.maxint:
             N-=1
-            tracks.pop(i)
+            trackList.pop(i)
             init.pop(i)
-    if N == 0: return 
+    if N == 0: return
     available_tracks = range(N-1,-1,-1)
     current = [(init[i][0],i)+init[i][2:] for i in range(N)]+[(init[i][1],i) for i in range(N)]
     current.sort()
@@ -122,9 +148,9 @@ def _combine(tracks,N,fn,win_size,aggregate):
         to_remove = []
         for i in available_tracks:
             a = [0,0]
-            limit = k*win_size
+            limit = k * win_size
             while a[1] < limit:
-                a = tracks[i].next()
+                a = trackList[i].next()
                 if a[0] == sys.maxint:
                     to_remove.append(i)
                 else:
@@ -138,9 +164,9 @@ def _combine(tracks,N,fn,win_size,aggregate):
         while current and current[0][0] < limit:
             next = current[0][0]
             if fn(activity):
-                feat_aggreg = tuple(aggregate.get(f,common.generic_merge)(tuple(zz[n] for zz in z if zz)) 
+                feat_aggreg = tuple(aggregate.get(f,common.generic_merge)(tuple(zz[n] for zz in z if zz))
                                     for n,f in enumerate(fields[2:]))
-                yield (start,next)+feat_aggreg
+                yield (start,next) + feat_aggreg
             while current and current[0][0] == next:
                 i = current[0][1]
                 activity[i] = not(activity[i])
@@ -149,34 +175,57 @@ def _combine(tracks,N,fn,win_size,aggregate):
             start = next
         k+=1
 
+def combine(trackList, fn, win_size=1000,
+            aggregate={'strand':common.strand_merge, 'chr':common.no_merge}):
+    """
+    Applies a custom function to a list of tracks, such as union, intersection,
+    etc., and return a single result track.
 
-def combine(trackList, fn, win_size=1000, 
-            aggregate={'strand': common.strand_merge, 'chr': common.no_merge}):
-    N = len(trackList)
+    :param trackList: list of FeatureStream objects.
+    :param fn: function to apply, such as bbcflib.bFlatMajor.stream.union.
+    :param win_size: (int) window size, in bp.
+    """
     fields = ['start','end']
-    if N<2: return trackList
-    tracks = [common.fusion(common.reorder(t,fields=fields)) for t in trackList]
-    return common.fusion(track.FeatureStream(_combine(tracks,N,fn,win_size,aggregate),
-                                             fields=tracks[0].fields))
+    if len(trackList) < 2: return trackList
+    trackList = [common.fusion(common.reorder(t,fields=fields)) for t in trackList]
+    return common.fusion(track.FeatureStream(_combine(trackList,fn,win_size,aggregate),
+                                             fields=trackList[0].fields))
 
 def exclude(x,indexList):
-    return any([y for n,y in enumerate(x) if not(n in indexList)]) and all([not(y) for n,y in enumerate(x) if n in indexList])
+    """Return True if x[n] is False for all n in *indexList*
+    and x[n] is True for at least another n; return False otherwise."""
+    return any([y for n,y in enumerate(x) if not(n in indexList)]) \
+       and all([not(y) for n,y in enumerate(x) if n in indexList])
 
 def require(x,indexList):
-    return any([y for n,y in enumerate(x) if not(n in indexList)]) and all([y for n,y in enumerate(x) if n in indexList])
+    """Return True if x[n] is True for all n in *indexList*
+    and x[n] is True for at least another n; return False otherwise."""
+    return any([y for n,y in enumerate(x) if not(n in indexList)]) \
+       and all([y for n,y in enumerate(x) if n in indexList])
 
 def disjunction(x,indexList):
+    """???"""
     complementList = [n for n in range(len(x)) if not(n in indexList)]
     return exclude(x,indexList) or exclude(x,complementList)
 
 def intersection(x):
+    """Boolean 'AND'."""
     return all(x)
 
 def union(x):
+    """Boolean 'OR'."""
     return any(x)
 
 ###############################################################################
 def segment_features(trackList,nbins=10,upstream=None,downstream=None):
+    """
+    ???
+
+    :param trackList: list of FeatureStream objects.
+    :param nbins: (int)  [10]
+    :param upstream: (tuple (int,int)) ?
+    :param downstream: (tuple (int,int)) ?
+    """
     def _split_feat(_t):
         starti = _t.fields.index('start')
         endi   = _t.fields.index('end')

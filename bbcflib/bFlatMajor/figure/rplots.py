@@ -3,6 +3,7 @@ import rpy2.robjects.numpy2ri as numpy2ri
 from bbcflib.common import unique_filename_in
 
 def _begin(output,format,new,**kwargs):
+    """Initialize the figure and axes."""
     if new:
         if output is None:
             output = unique_filename_in()
@@ -25,12 +26,13 @@ def _begin(output,format,new,**kwargs):
     return opts, output
 
 def _end(lopts,last,**kwargs):
+    """Add the legend and close the figure."""
     if not(last): return
     if 'legend' in kwargs:
         names = kwargs['legend']
         robjects.r("legend('topright', c(%s), col=1:%i%s)" %(",".join(names),len(names),lopts))
     robjects.r("dev.off()")
-    
+
 ############################################################
 ############################################################
 def scatterplot(X,Y,output=None,format='pdf',new=True,last=True,**kwargs):
@@ -97,7 +99,7 @@ def heatmap(M,output=None,format='pdf',new=True,last=True,
       myBreaks=seq(floor(min(Mdata,na.rm=T)),ceiling(max(Mdata,na.rm=T)),length.out=15)
       myColors=rev(colorRampPalette(brewer.pal(10,"RdYlBu"))(length(myBreaks)-1))
       rcor = function(x) {as.dist(1-cor(t(x),use="pairwise.complete.ob"))}
-      heatmap.2(as.matrix(Mdata), 
+      heatmap.2(as.matrix(Mdata),
                 col=myColors, trace="none", breaks=myBreaks, distfun=rcor,
                 na.rm=TRUE, density.info='none'%s)""" %plotopt)
     _end("",last,**kwargs)

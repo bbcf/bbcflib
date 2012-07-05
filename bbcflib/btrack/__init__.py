@@ -368,8 +368,10 @@ class FeatureStream(object):
             fields = [x[0] for x in data.description]
         self.fields = fields
 
-    def __iter__(self): return self.data
+    def __iter__(self):
+        return self.data
 
-    def next(self): return self.data.next()
+    def next(self):
+        return self.data.next()
 
 ################################################################################
