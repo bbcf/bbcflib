@@ -58,13 +58,41 @@ def concatenate(trackList, fields=None):
 def neighborhood(trackList, before_start=None, after_end=None,
                  after_start=None, before_end=None, on_strand=False):
     """
-    ???
+    Given a stream of features and four integers *before_start*, *after_end*,
+    *after_start* and *before_end*, this manipulation will output,
+    for every feature in the input stream, one or two features
+    in the neighborhood of the original feature.
+
+    * Only *before_start* and *after_end* are given::
+
+         (start, end, ...) -> (start+before_start, end+after_end, ...)
+
+    * Only *before_start* and *after_start* are given::
+
+         (start, end, ...) -> (start+before_start, start+after_start, ...)
+
+    * Only *after_end* and *before_end* are given::
+
+         (start, end, ...) -> (end+before_end, end+after_end, ...)
+
+    * If all four parameters are given, a pair of features is outputted::
+
+         (start, end, ...) -> (start+before_start, start+after_start, ...)
+                              (end+before_end, end+after_end, ...)
+
+    * If the boolean parameter *on_strand* is set to True,
+      features on the negative strand are inverted as such::
+
+         (start, end, ...) -> (start-after_end, start-before_end, ...)
+                              (end-after_start, end-before_start, ...)
 
     :param trackList: list of FeatureStream objects.
-    :param before_start: (int) number of bp after the start of ?
-    :param after_end: (int) number of bp after the end of ?
-    :param after_start: (int) number of bp after the start of ?
-    :param before_end: (int) number of bp before the end of ?
+    :param before_start: (int) number of bp after the feature start.
+    :param after_end: (int) number of bp after feature end.
+    :param after_start: (int) number of bp after the feature start.
+    :param before_end: (int) number of bp before the feature end.
+    :param on_strand: (bool) True to reverse coordinates on the reverse strand [False]
+    :rtype: FeatureStream
     """
     def _generate_single(track,a,b,c,d):
         if a:
@@ -119,7 +147,7 @@ def neighborhood(trackList, before_start=None, after_end=None,
 
 ###############################################################################
 def _combine(trackList,fn,win_size,aggregate):
-    """See function `combine` below."""
+    """Generator - see function `combine` below."""
     N = len(trackList)
     fields = trackList[0].fields
     trackList = [common.sentinelize(t, [sys.maxint]*len(fields)) for t in trackList]
@@ -184,6 +212,7 @@ def combine(trackList, fn, win_size=1000,
     :param trackList: list of FeatureStream objects.
     :param fn: function to apply, such as bbcflib.bFlatMajor.stream.union.
     :param win_size: (int) window size, in bp.
+    :rtype: FeatureStream
     """
     fields = ['start','end']
     if len(trackList) < 2: return trackList
@@ -225,6 +254,7 @@ def segment_features(trackList,nbins=10,upstream=None,downstream=None):
     :param nbins: (int)  [10]
     :param upstream: (tuple (int,int)) ?
     :param downstream: (tuple (int,int)) ?
+    :rtype: FeatureStream
     """
     def _split_feat(_t):
         starti = _t.fields.index('start')

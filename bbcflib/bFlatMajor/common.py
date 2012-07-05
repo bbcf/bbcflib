@@ -1,5 +1,6 @@
 from bbcflib.btrack import FeatureStream
 import sys
+
 ####################################################################
 def sentinelize(iterable, sentinel):
     """Append *sentinel* at the end of *iterable* (avoid StopIteration error)."""
@@ -8,7 +9,12 @@ def sentinelize(iterable, sentinel):
 
 ####################################################################
 def reorder(stream,fields):
-    """Reorders *stream.fields* so that *fields* come first."""
+    """Reorders *stream.fields* so that *fields* come first.
+
+    :param stream: FeatureStream object.
+    :param fields: list of field names.
+    :rtype: FeatureStream
+    """
     if not(hasattr(stream, 'fields')) or stream.fields is None:
         return stream
     if not(all([f in stream.fields for f in fields])):
@@ -22,8 +28,13 @@ def reorder(stream,fields):
 ####################################################################
 def unroll( stream, start, end, fields=['score'] ):
     """Creates a stream of *end*-*start* items with appropriate *fields* values at every position.
-    For example, [(10,12,0.5), (14,15,1.2)] with *start*=9 and *end*=16 yields [0,0.5,0.5,0,0,1.2,0].
-                                                                                  10  11      14
+    For example, [(10,12,0.5), (14,15,1.2)] with *start*=9 and *end*=16 returns
+    [(9,10,0),(10,11,0,5),(11,12,0.5),(12,13,0),(13,14,0),(14,15,1.2),(15,16,0)]
+
+    :param stream: FeatureStream object.
+    :param start, end: (int) bounds of the region to return.
+    :param fields: list of field names. [['score']]
+    :rtype: FeatureStream
     """
     if not(isinstance(fields,(list,tuple))): fields = [fields]
     s = reorder(stream,['start','end']+fields)
@@ -44,6 +55,11 @@ def unroll( stream, start, end, fields=['score'] ):
 def sorted_stream(stream,chrnames=[],fields=['chr','start','end']):
     """Sorts a stream according to *fields* values. Will load the entire stream in memory.
     The order of names in *chrnames* is used to to sort the 'chr' field if available.
+
+    :param stream: FeatureStream object.
+    :param chrnames: list of chrmosome names.
+    :param fields: list of field names. [['chr','start','end']]
+    :rtype: FeatureStream
     """
     s = reorder(stream,fields)
     sort_list = []
@@ -61,7 +77,13 @@ def sorted_stream(stream,chrnames=[],fields=['chr','start','end']):
 
 ####################################################################
 def shuffled(stream, chrlen=sys.maxint, repeat_number=1, sorted=True):
-    """Yields randomly located features of the same length as the original stream."""
+    """Yields randomly located features of the same length as the original stream.
+
+    :param stream: FeatureStream object.
+    :param chrlen: (int) chromosome length.
+    :param repeat_number: (int) ??? [1]
+    :rtype: FeatureStream
+    """
     import random
     _f = ['start','end']
     features = reorder(stream,_f)
@@ -104,6 +126,9 @@ def fusion(stream,aggregate=aggreg_functions):
     Example: [('chr1',10,15,'A',1),('chr1',13,18,'B',-1),('chr1',18,25,'C',-1)] yields
     (10, 18, 'chr1', 'A|B', 0)
     (18, 25, 'chr1', 'C', -1)
+
+    :param stream: FeatureStream object.
+    :rtype: FeatureStream
     """
     def _fuse(s):
         try:
