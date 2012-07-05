@@ -2,7 +2,7 @@
 import datetime, ConfigParser, cStringIO
 
 # Internal modules #
-from ..genrep import Assembly, GenRep
+from bbcflib.genrep import Assembly, GenRep
 
 # Unitesting module #
 try:
@@ -32,11 +32,11 @@ class Test_Assembly(unittest.TestCase):
         2863   =   107        +     194       +     333        +       708       +       1461
         """
     def test_get_features_from_gtf(self):
-        expected = {'eif-3.B': [[14795327, 14795434, 1, 'chrII'], [14795331, 14795434, 1, 'chrII'], 
-                                [14795333, 14795434, 1, 'chrII'], [14795503, 14795697, 1, 'chrII'], 
-                                [14795742, 14795907, 1, 'chrII'], [14795742, 14796075, 1, 'chrII'], 
-                                [14796128, 14796836, 1, 'chrII'], [14796213, 14796354, 1, 'chrII'], 
-                                [14796213, 14796836, 1, 'chrII'], [14796906, 14797767, 1, 'chrII'], 
+        expected = {'eif-3.B': [[14795327, 14795434, 1, 'chrII'], [14795331, 14795434, 1, 'chrII'],
+                                [14795333, 14795434, 1, 'chrII'], [14795503, 14795697, 1, 'chrII'],
+                                [14795742, 14795907, 1, 'chrII'], [14795742, 14796075, 1, 'chrII'],
+                                [14796128, 14796836, 1, 'chrII'], [14796213, 14796354, 1, 'chrII'],
+                                [14796213, 14796836, 1, 'chrII'], [14796906, 14797767, 1, 'chrII'],
                                 [14796906, 14798367, 1, 'chrII']]}
         h = {'keys':'gene_name', 'values':'start,end,strand',
              'conditions':'gene_id:Y54E2A.11,type:exon', 'uniq':'1'}
