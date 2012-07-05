@@ -3,6 +3,16 @@ from bbcflib.bFlatMajor import common
 from bbcflib import btrack as track
 
 def merge_scores(trackList, geometric=False):
+    """
+    Average several score tracks.
+
+    X1: ▁▁▁▁▁▁▁▁▁▁█████████▁▁▁▁▁▁
+    X2: ▁▁▁▁▁▅▅▅▅▅▅▅▅▅▅▁▁▁▁▁▁▁▁▁▁
+    R:  ▁▁▁▁▁▂▂▂▂▂▇▇▇▇▇▅▅▅▅▁▁▁▁▁▁
+
+    :param trackList: list of FeatureStream objects.
+    :param geometric: (bool) set True to use the geometric mean instead of arithmetic.
+    """
     tracks = [track.FeatureStream(common.sentinelize(x,[sys.maxint]*len(x.fields)), x.fields)
               for x in trackList]
     _fields = ['start','end','score']
@@ -10,8 +20,8 @@ def merge_scores(trackList, geometric=False):
     tracks = [common.reorder(t,_fields) for t in tracks]
     elements = [list(x.next()) for x in tracks]
     track_denom = 1.0/len(trackList)
-######
-    def arithmetic_mean(scores,denom): 
+
+    def arithmetic_mean(scores,denom):
         return sum(scores)*denom
     def geometric_mean(scores,denom):
         return (reduce(lambda x, y: x*y, scores))**denom
@@ -29,7 +39,7 @@ def merge_scores(trackList, geometric=False):
             if 'name' in _fields:
                 name = "|".join([x[3] for x in elements if not(x[3] is None) and x[1]>start and x[0]<end])
                 yield (start, end, mean_fn(scores,track_denom), name)
-            else: 
+            else:
                 yield (start, end, mean_fn(scores,track_denom))
             for i in xrange(len(tracks)-1, -1, -1):
                 if elements[i][0] < end:
@@ -39,12 +49,23 @@ def merge_scores(trackList, geometric=False):
                 if elements[i][0] == sys.maxint:
                     tracks.pop(i)
                     elements.pop(i)
-#########
+
     return track.FeatureStream(_stream(tracks),_fields)
 
 ###############################################################################
 def mean_score_by_feature(trackScores,trackFeatures):
-#########
+    """
+    Given a score track X and a feature track Y, compute the mean of scores of
+    every of Y's features in X. The output consists of a feature track
+    similar to ``Y`` but with a new score value property for every feature.
+
+    X: ──────▤▤▤▤▤▤▤▤▤▤──────────────▤▤▤▤▤▤▤▤▤▤──────
+    Y: ▁▁▁▁▁▁▁▁▁▁▁█████████▁▁▁▁▁▁▁▁▁▁██████████▁▁▁▁▁▁
+    R: ▁▁▁▁▁▁▅▅▅▅▅▅▅▅▅▅▁▁▁▁▁▁▁▁▁▁▁▁▁▁██████████▁▁▁▁▁▁
+
+    :param trackScores: (FeatureStream) score track.
+    :param trackFeatures: (FeatureStream) feature track.
+    """
     def _stream(ts,tf):
         X = [common.sentinelize(x, [sys.maxint]*len(x.fields)) for x in ts]
         F = [[(-sys.maxint,-sys.maxint,0.0)] for t in ts]
@@ -54,7 +75,7 @@ def mean_score_by_feature(trackScores,trackFeatures):
             scores = ()
             for i in range(len(ts)):
                 xnext = F[i][-1]
-                while xnext[0] < yend: 
+                while xnext[0] < yend:
                     xnext = X[i].next()
                     if xnext[1] > ystart: F[i].append(xnext)
                 n = 0
@@ -70,8 +91,8 @@ def mean_score_by_feature(trackScores,trackFeatures):
                     score += (end-start)*f[2]
                 scores += (score/(yend-ystart),)
             yield tuple(y)+scores
-#########
     if not(isinstance(trackScores,(list,tuple))): trackScores = [trackScores]
+
     if isinstance(trackFeatures,(list,tuple)): trackFeatures = trackFeatures[0]
     if len(trackScores)>1:
         _fields = ["score"+str(i) for i in range(len(trackScores))]
@@ -84,10 +105,22 @@ def mean_score_by_feature(trackScores,trackFeatures):
 def window_smoothing( trackList, window_size, step_size=1, stop_val=sys.maxint,
                       featurewise=False ):
     """
+    Given a signal track X and a window size in base pairs, return a new signal
+    track with, at each position p, the mean of the scores in the window [p-L, p+L].
+    Border cases are handled by zero padding and the signal's support is invariant.
+
+    X: ▁▁▁▁▁▁▁▁▁▁████████████▁▁▁▁▁▁▁▁▁▁▁▁
+    R: ▁▁▁▁▁▁▂▄▅▇████████████▇▅▄▂▁▁▁▁▁▁▁▁
+
+    :param trackList: FeatureStream, or list of FeatureStream objects.
+    :param window_size: (int) window size in bp.
+    :param step_size: (int)  [1]
+    :param stop_val: (int)  [sys.maxint]
+    :param featurewise: (bool)  [False]
+
     Example of windows, window_size=9, step_size=3
     [0,1,2,3,4,5,6,7,8,9), [3,4,5,6,7,8,9,10,11,12), ...
     """
-#####################
     def _stepping_mean(track,score,denom):
         score = 0.0
         F = []
@@ -101,7 +134,7 @@ def window_smoothing( trackList, window_size, step_size=1, stop_val=sys.maxint,
             yield (F[nmid][0],F[nmid][1],score*denom)+F[nmid][3:]
             for shift in xrange(2,step_size):
                 score -= F.pop(0)[2]
-#####################
+
     def _running_mean(track,win_start,denom):
         score = 0.0
         F = []
@@ -137,9 +170,9 @@ def window_smoothing( trackList, window_size, step_size=1, stop_val=sys.maxint,
                         yield (win_center+sst,win_center+sen+nsteps,score)
                 win_start += nsteps
                 win_end += nsteps
-                if fend <= win_start: 
+                if fend <= win_start:
                     F.pop(0)
-                    if F: 
+                    if F:
                         fstart = F[0][0]
                         fend = F[0][1]
                         win_start = max(win_start,fstart-window_size)
@@ -167,15 +200,15 @@ def window_smoothing( trackList, window_size, step_size=1, stop_val=sys.maxint,
                         yield (win_center+sst,win_center+sen+nsteps,score)
                 win_start += nsteps
                 win_end += nsteps
-                if fend <= win_start: 
+                if fend <= win_start:
                     F.pop(0)
-                    if F: 
+                    if F:
                         fstart = F[0][0]
                         fend = F[0][1]
                         win_start = max(win_start,fstart-window_size)
                         win_end = win_start+window_size
                         if win_end > stop_val: break
-#####################
+
     denom = 1.0/window_size
     win_start = -window_size
     _f = ['start','end','score']
