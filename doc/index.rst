@@ -18,6 +18,7 @@ Tutorials
    tutorial_chipseq
    tutorial_4cseq
    tutorial_rnaseq
+   tutorial_snp
    tutorial_config_files
 
 Methods description
@@ -30,6 +31,7 @@ Methods description
    methods_chipseq
    methods_4cseq
    methods_rnaseq
+   methods_snp
 
 Library guide
 '''''''''''''
@@ -50,5 +52,7 @@ Library guide
    bbcflib_rnaseq
    bbcflib_c4seq
    bbcflib_gdv
+   bbcflib_btrack
+   bbcflib_bFlatMajor
 
 Also see the `developer documentation <http://bbcf.github.com/bbcflib/>`_.
