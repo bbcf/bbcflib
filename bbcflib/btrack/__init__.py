@@ -5,6 +5,7 @@ Examples::
 
     track.convert("data/test.bed","test0.sql",chrmeta='mm9')
 
+    # Open a bed track & copy its info into another sql track.
     chrmeta = {'chr2':{'length':4000000}}
     info = {'datatype':'features'}
     track_in = track.track("data/test.bed",chrmeta=chrmeta)
@@ -13,6 +14,7 @@ Examples::
     track_out.close()
     track_in.close()
 
+    # Copy a selection of a bed track into a wig track.
     track_in = track.track("data/HoxD13_4C_FB.sql")
     track_out = track.track("test2.wig")
     selection = [{'chr':'chr1','start':(7568000,9607000)},{'chr':'chr2','end':(3907400,4302000)}]
@@ -20,20 +22,25 @@ Examples::
     track_out.close()
     track_in.close()
 
+    # Read a track (see FeatureStream)
     track_in = track.track("data/Gene_TxS_chr2.bed.gz",chrmeta='mm9',format='bed')
     for x in track_in.read():
-        print x #('chr2', 3030497, 3032496, 'ENSMUST00000072955_txS')
+        print x  #('chr2', 3030497, 3032496, 'ENSMUST00000072955_txS')
         break
 
+    # Split field
     for x in track.split_field(track_in.read(),['name','extension'],'name','_'):
-        print x #['chr2', 3030497, 3032496, 'ENSMUST00000072955', 'txS']
+        print x  #['chr2', 3030497, 3032496, 'ENSMUST00000072955', 'txS']
         break
 
+    # Random track
     from bFlatMajor.common import shuffled
     for n,x in enumerate(shuffled(track_in.read('chr2'),chrlen=chrmeta['chr2']['length'])):
         print x
         if n>10: break
 
+    # Do something with the scores of a signal track only if the location is
+    # present in another features track.
     selection = {'chr':'chr2','start':(7540000,75650000)}
     track_features = track.track("data/Bricks_HoxD4_FB_05_chr2.bed")
     track_scores = track.track("data/HoxD13_4C_FB.sql",readonly=True)
@@ -265,11 +272,12 @@ def int_to_strand(num=0):
     return '.'
 
 def format_float(f=float()):
-    """Limit printing of a float to 4 decimals after the comma. :rtype: (str)"""
+    """Return a formatted string from a float or a string representing a float.
+    Limit to 4 decimals after the comma."""
     return '%.4g' % float(f)
 
 def format_int(i=int()):
-    """:rtype: (str)"""
+    """Return a formatted string from an integer or a string representing an integer."""
     return '%i' % int(i)
 
 def ucsc_to_ensembl(start):
@@ -285,7 +293,7 @@ def ensembl_to_ucsc(start):
 class Track(object):
     """
     Metaclass regrouping the track properties. Subclasses for each specific format
-    are in btrack/text.py and are instanciated when btrack.track() is called on a file.
+    are in `btrack/text.py` and are instanciated when ``btrack.track()`` is called on a file.
 
     .. attribute:: path
 
@@ -293,7 +301,7 @@ class Track(object):
 
     .. attribute:: filehandle
 
-        ?
+        The Python opened file object from the file found in *self.path*. Can read() and write() it.
 
     .. attribute:: format
 
@@ -305,7 +313,7 @@ class Track(object):
 
     .. attribute:: types
 
-        ?
+        Respective types of the fields items.
 
     .. attribute:: assembly
 
@@ -374,6 +382,34 @@ class Track(object):
 class FeatureStream(object):
     """
     Contains an iterator yielding features, and an extra fields attribute.
+    It can be constructed from either an iterator, a cursor, a list or a tuple.
+
+    Example::
+
+        stream = FeatureStream([('chr',1,2),('chr',3,4)])
+        stream = FeatureStream((('chr',1,2),('chr',3,4)))
+        stream = FeatureStream(iter([('chr',1,2),('chr',3,4)]))
+
+        def gen():
+            for k in range(2):
+                yield ('chr',2*k+1,2*k+2)
+
+        stream = FeatureStream(gen())
+
+    Example of usage::
+
+        >>> stream = FeatureStream([('chr',1,2),('chr',3,4)], fields=['chromosome','start','end'])
+        >>> stream.next()
+        ('chr', 1, 2)
+        >>> stream.next()
+        ('chr', 3, 4)
+        >>> stream.data
+        <listiterator object at 0x10183b650>
+
+        >>> stream = FeatureStream([('chr',1,2),('chr',3,4)], fields=['chromosome','start','end'])
+        >>> for s in stream: print s
+        ('chr', 1, 2)
+        ('chr', 3, 4)
 
     .. attribute:: data
 
@@ -384,7 +420,13 @@ class FeatureStream(object):
         The list of field names.
 
     .. method:: __iter__()
+
+        ``iter(self)`` returns self.data, which is an iterator itself.
+
     .. method:: next()
+
+        Iterating over the stream is iterating over its data.
+
     """
 
     def __init__(self, data, fields=None):
