@@ -19,16 +19,16 @@ def getNearestFeature(features, annotations,
     If it is after the last gene of the chromosome, location_type is 'Downstream'.
     The distance to each gene is negative if the feature is included, positive else.
 
-    :param features: (bbcflib.btrack.FeatureStream) features track
+    :param features: (bbcflib.btrack.FeatureStream) features track.
     :param annotations: (bbcflib.btrack.FeatureStream) gene annotation track
-        (e.g. as obtained with assembly.gene_track())
+        (e.g. as obtained with assembly.gene_track()).
     :param thresholdPromot: (int) associates the promoter of each gene which promoter is within
         this distance of the feature. Above the threshold, associates only the closest. [2000]
     :param thresholdInter: (int) no gene beyond this distance will be considered. [100000]
     :param thresholdUTR: (int) in case the feature is surrounded by two eligible genes on the
         same strand: if distance to gene1's 3'UTR upstream is less than *thresholdUTR*% of the distance
         between gene1 and gene2, associated to 3'UTR of gene1, else to promoter of gene2. [10]
-    :rtype: bbcflib.btrack.FeatureStream (..., str, str, str)
+    :rtype: bbcflib.btrack.FeatureStream (..., str, str, str).
 
                       <--                   feat                    -->
                   ______| thresholdPromot  ++++++   thresholdPromot |______
@@ -67,7 +67,8 @@ def getNearestFeature(features, annotations,
             if fpop>0: F = F[fpop:]
             for annot in F:
                 # if the peak is totally included in the gene
-                if (peak[0]>annot[0]) and (annot[1]>peak[1]):
+                print annot[2], peak[0]-annot[0], annot[1]-peak[1]
+                if (peak[0]>=annot[0]) and (annot[1]>=peak[1]):
                     includedGene = annot[2]
                     includedDist = (annot[3] == -1) and annot[1]-peak[1] or peak[0]-annot[0]
                     included = 1
@@ -87,7 +88,7 @@ def getNearestFeature(features, annotations,
                         distMinBefore = 0
                         geneBefore = annot[2]
                         strandBefore = annot[3]
-                        #print "gene %s overlap begin of peak %s" % (geneBefore,peakName)
+                        #print "gene %s overlaps begin of peak %s" % (geneBefore,peakName)
                     # if annot is not too far 5' and no intersection
                     if (annot[0]-peak[1]<distMinAfter) and (annot[0]-peak[1]>0):
                         distMinAfter = annot[0]-peak[1]
@@ -98,7 +99,7 @@ def getNearestFeature(features, annotations,
                         distMinAfter = 0
                         geneAfter = annot[2]
                         strandAfter = annot[3]
-                        #print "gene %s overlap end of peak %s" % (geneAfter,peakName)
+                        #print "gene %s overlaps end of peak %s" % (geneAfter,peakName)
             # detect intergenic peak
             if not(included) and distMinBefore>thresholdInter and distMinAfter>thresholdInter:
                 yield peak+('','Intergenic',thresholdInter)
