@@ -67,7 +67,6 @@ def getNearestFeature(features, annotations,
             if fpop>0: F = F[fpop:]
             for annot in F:
                 # if the peak is totally included in the gene
-                print annot[2], peak[0]-annot[0], annot[1]-peak[1]
                 if (peak[0]>=annot[0]) and (annot[1]>=peak[1]):
                     includedGene = annot[2]
                     includedDist = (annot[3] == -1) and annot[1]-peak[1] or peak[0]-annot[0]
