@@ -1,3 +1,5 @@
+# coding: utf-8
+
 import sys
 from bbcflib.bFlatMajor import common
 from bbcflib import btrack as track

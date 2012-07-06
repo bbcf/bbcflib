@@ -23,8 +23,9 @@ if hostname_contains('vital-it.ch'):
 else:
     not_vital_it = True
 
-
+#Path to testing files
 path = "../test_data/mapseq/" # one directory up because of the temp working dir.
+
 
 class TestBowtie(TestCase):
     @skip("no @SQ line in the header (?)")

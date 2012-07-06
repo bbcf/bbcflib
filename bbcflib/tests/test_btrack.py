@@ -1,5 +1,5 @@
 # Built-in modules #
-import datetime, ConfigParser, cStringIO
+import cStringIO
 
 # Internal modules #
 from bbcflib.genrep import Assembly
@@ -14,7 +14,9 @@ except ImportError:
 # Nosetest flag #
 __test__ = True
 
-###################################################################################
+# Path to testing files
+path = "test_data/btrack/"
+
 
 class Test_Btrack(unittest.TestCase):
     def setUp(self):

@@ -284,16 +284,41 @@ def ensembl_to_ucsc(start):
 
 class Track(object):
     """
-    Metaclass regrouping the track properties.
+    Metaclass regrouping the track properties. Subclasses for each specific format
+    are in btrack/text.py and are instanciated when btrack.track() is called on a file.
 
     .. attribute:: path
+
+        Path to the file the Track was generated from.
+
     .. attribute:: filehandle
+
+        ?
+
     .. attribute:: format
+
+        Format of the file the track was generated from.
+
     .. attribute:: fields
+
+        Fields defining the info contained in the track items.
+
     .. attribute:: types
+
+        ?
+
     .. attribute:: assembly
+
+        GenRep assembly ID.
+
     .. attribute:: chrmeta
+
+        A dictionary with information about the species' chromosomes.
+
     .. attribute:: info
+
+        A dictionary with a lot of information about the species.
+
     """
     def __init__(self, path, **kwargs):
         self.path = path
@@ -363,6 +388,8 @@ class FeatureStream(object):
     """
 
     def __init__(self, data, fields=None):
+        if isinstance(data,list) or isinstance(data,tuple):
+            data = iter(data)
         self.data = data
         if not fields and hasattr(data, 'description'):
             fields = [x[0] for x in data.description]

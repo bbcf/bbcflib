@@ -11,8 +11,9 @@ except ImportError:
 # Nosetest flag #
 __test__ = True
 
-#Path tpo testing files
+#Path to testing files
 path = "test_data/snp/"
+
 
 class Test_SNP(unittest.TestCase):
     def setUp(self):

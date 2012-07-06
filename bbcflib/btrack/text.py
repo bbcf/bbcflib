@@ -40,9 +40,9 @@ class TextTrack(Track):
         if chrmeta is None and 'chr' in self.fields and 'end' in self.fields:
             self.intypes = {'end': int}
             for row in self.read(fields=['chr','end']):
-                if not(row[0] in _chrmeta): 
+                if not(row[0] in _chrmeta):
                     _chrmeta[row[0]] = {'length': row[1]}
-                elif row[1] > _chrmeta[row[0]]['length']: 
+                elif row[1] > _chrmeta[row[0]]['length']:
                     _chrmeta[row[0]]['length'] = row[1]
         return _chrmeta
 
@@ -63,7 +63,7 @@ class TextTrack(Track):
         return _info
 
     def _check_type(self,val,field):
-        if field in self.intypes: 
+        if field in self.intypes:
             return self.intypes[field](val)
         else:
             return val
@@ -85,7 +85,7 @@ class TextTrack(Track):
     def open(self,mode='read'):
         isgzip = False
         if self.path.endswith(".gz") or self.path.endswith(".gzip"):
-            isgzip = True            
+            isgzip = True
         if mode == 'read':
             if os.path.exists(self.path):
                 if isgzip:
@@ -96,7 +96,7 @@ class TextTrack(Track):
                     self.path.startswith("https://") or \
                     self.path.startswith("ftp://"):
                 self.filehandle = urllib2.urlropen(self.path)
-            else: 
+            else:
                 raise ValueError("Couldn't find the file %s."%self.path)
         elif mode in ['write','overwrite','append']:
             if mode == 'write' and os.path.exists(self.path):
@@ -126,14 +126,14 @@ class TextTrack(Track):
                         row.startswith("track") or \
                         row.startswith("#"): continue
                 splitrow = row.strip().split(self.separator)
-                if selection and not(any(self._select_values(splitrow,s) for s in selection)): 
+                if selection and not(any(self._select_values(splitrow,s) for s in selection)):
                     continue
-                yield tuple(self._check_type(splitrow[index_list[n]],f) 
+                yield tuple(self._check_type(splitrow[index_list[n]],f)
                             for n,f in enumerate(fields))
         except ValueError:
             raise ValueError("Bad line in file %s:\n %s\n"%(self.path,row))
         self.close()
-                
+
     def read(self, selection=None, fields=None, **kw):
         if fields is None:
             fields = self.fields
@@ -145,7 +145,7 @@ class TextTrack(Track):
                 raise ValueError("No such field %s in %s."%(f,self.path))
         if isinstance(selection,basestring):
             selection = [selection]
-        if isinstance(selection,(list,tuple)) and isinstance(selection[0],basestring): 
+        if isinstance(selection,(list,tuple)) and isinstance(selection[0],basestring):
             selection = {'chr': [str(x) for x in selection]}
         if isinstance(selection,dict):
             selection = [selection]
@@ -167,6 +167,16 @@ class TextTrack(Track):
         return self.separator.join(vec)
 
     def write(self, source, fields=None, mode='write', chrom=None, **kw):
+        """
+        Add data to the track. Effectively writes in the related file.
+
+        :param source: (FeatureStream) data to be added to the track.
+        :param fields: list of field names.
+        :param mode: (str) file opening mode - one of 'write','overwrite','append'. ['write']
+        :param chrom: (str) a chromosome name.
+        """
+        print source
+        print fields
         if self.separator is None:
             self.separator = "\t"
         if hasattr(source, 'fields'):
@@ -205,7 +215,7 @@ class TextTrack(Track):
                 row = row[:eidx]+(end,)+row[(eidx+1):]
             self.filehandle.write(self._format_fields(voidvec,row,srcl,trgl)+"\n")
         self.close()
-        
+
 ################################ Bed ##########################################
 
 class BedTrack(TextTrack):
@@ -231,7 +241,7 @@ class BedTrack(TextTrack):
         [self.intypes.pop(f) for f in self.fields[rowlen:] if f in self.intypes]
         [self.outtypes.pop(f) for f in self.fields[rowlen:] if f in self.outtypes]
         self.fields = self.fields[:rowlen]
-        
+
 
 ################################ BedGraph ##########################################
 
@@ -260,8 +270,8 @@ class SgaTrack(TextTrack):
         if self.assembly:
             from bbcflib import genrep
             chdict = genrep.Assembly(self.assembly).chromosomes
-            self.chromosomes = dict((v['name'],str(k[1])+"."+str(k[2])) 
-                                    for k,v in chdict.iteritems()) 
+            self.chromosomes = dict((v['name'],str(k[1])+"."+str(k[2]))
+                                    for k,v in chdict.iteritems())
 
     def _read(self, fields, index_list, selection=None):
         self.open('read')
@@ -287,7 +297,7 @@ class SgaTrack(TextTrack):
                 continue
             if not(yieldit): continue
             if rowdata[strand][1]>=0:
-                yield tuple(self._check_type(rowdata[strand][index_list[n]],f) 
+                yield tuple(self._check_type(rowdata[strand][index_list[n]],f)
                             for n,f in enumerate(fields))
             rowdata[strand][1] = start-1
             rowdata[strand][2] = start
@@ -295,7 +305,7 @@ class SgaTrack(TextTrack):
             rowdata[strand][5] = counts
         for rd in rowdata.values():
             if rd[1]>=0:
-                yield tuple(self._check_type(rd[index_list[n]],f) 
+                yield tuple(self._check_type(rd[index_list[n]],f)
                             for n,f in enumerate(fields))
 
 
@@ -307,7 +317,7 @@ class SgaTrack(TextTrack):
         TextTrack.write(self,source,**kw)
         if sidx > -1:
             source.fields[sidx] = 'score'
-           
+
 
     def _format_fields(self,vec,row,source_list,target_list):
         rowres = ['',0,0,'',0,0]
@@ -346,7 +356,7 @@ class WigTrack(TextTrack):
                 row = row.strip()
                 if not(row) or row.startswith("#"): continue
                 if row.startswith("browser") or \
-                        row.startswith("track"): 
+                        row.startswith("track"):
                     fixedStep = None
                     chrom = None
                     span = 1
@@ -369,8 +379,8 @@ class WigTrack(TextTrack):
                     end = -1
                     start -= step
                     continue
-                if row.startswith("variableStep"): 
-                    fixedStep = False 
+                if row.startswith("variableStep"):
+                    fixedStep = False
                     chrom = re.search(r'chrom=(\S+)',row).groups()[0]
                     rowdata[0] = chrom
                     rowdata[1] = -1
@@ -388,27 +398,27 @@ class WigTrack(TextTrack):
                     score = splitrow[0]
                     start += step
                     end = start+span
-                    if start == rowdata[2] and score == rowdata[3]: 
+                    if start == rowdata[2] and score == rowdata[3]:
                         yieldit = False
                         rowdata[2] = end
                 else:
                     score = splitrow[1]
                     start = int(splitrow[0])
                     end = start+span
-                    if start == rowdata[2] and score == rowdata[3]: 
+                    if start == rowdata[2] and score == rowdata[3]:
                         yieldit = False
                         rowdata[2] = end
                 if not(yieldit): continue
-                if selection and not(self._select_values(rowdata,selection)): 
+                if selection and not(self._select_values(rowdata,selection)):
                     continue
                 if rowdata[1]>=0:
-                    yield tuple(self._check_type(rowdata[index_list[n]],f) 
+                    yield tuple(self._check_type(rowdata[index_list[n]],f)
                                 for n,f in enumerate(fields))
                 rowdata[1] = start
                 rowdata[2] = end
                 rowdata[3] = score
             if rowdata[1]>=0:
-                yield tuple(self._check_type(rowdata[index_list[n]],f) 
+                yield tuple(self._check_type(rowdata[index_list[n]],f)
                             for n,f in enumerate(fields))
         except ValueError:
             raise ValueError("Bad line in file %s:\n %s\n"%(self.path,row))
