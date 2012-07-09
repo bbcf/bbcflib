@@ -40,7 +40,7 @@ from bbcflib.bFlatMajor.common import shuffled as track_shuffle
 import sqlite3
 
 # Constants #
-default_url = 'http://bbcftools.vital-it.ch/genrep/'
+default_url = 'http://bbcf-serv01.epfl.ch/genrep/'
 default_root = '/db/genrep'
 
 ################################################################################

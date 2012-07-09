@@ -1232,10 +1232,10 @@ def get_bam_wig_files( ex, job, minilims=None, hts_url=None, suffix=['fwd','rev'
                         read_exts[rid] = stats.get('read_length',50)
                 else:
                     ms_job = job
-                if ms_job.options.get('compute_densities'):
+                if str(ms_job.options.get('compute_densities','False')).lower() in ['1','true','t']:
                     job.options['merge_strands'] = int(ms_job.options.get('merge_strands',-1))
-                    if ((ms_job.options.get('merge_strands')<0 and len(suffix)>1) or
-                        (ms_job.options.get('merge_strands')>-1 and len(suffix)==1)):
+                    if ((job.options['merge_strands']<0 and len(suffix)>1) or
+                        (job.options['merge_strands']>-1 and len(suffix)==1)):
                         wigfile = unique_filename_in()
                         wig_ids = dict(((allfiles[name+'_'+s+'.sql'],s),
                                         wigfile+'_'+s+'.sql') for s in suffix)
