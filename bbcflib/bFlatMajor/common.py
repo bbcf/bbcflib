@@ -28,8 +28,10 @@ def reorder(stream,fields):
 ####################################################################
 def unroll( stream, start, end, fields=['score'] ):
     """Creates a stream of *end*-*start* items with appropriate *fields* values at every base position.
-    For example, ``[(10,12,0.5), (14,15,1.2)]`` with *start*=9 and *end*=16 returns
-    ``[(0,),(0.5,),(0.5,),(0,),(0,),(1.2,),(0,),(0,)]``
+    For example, ``unroll([(10,12,0.5), (14,15,1.2)], start=9, end=16)`` returns::
+
+        FeatureStream([(0,),(0.5,),(0.5,),(0,),(0,),(1.2,),(0,),(0,)])
+                        9     10     11    12   13    14    15   16
 
     :param stream: FeatureStream object.
     :param start, end: (int) bounds of the region to return.
@@ -38,7 +40,6 @@ def unroll( stream, start, end, fields=['score'] ):
     """
     if not(isinstance(fields,(list,tuple))): fields = [fields]
     s = reorder(stream,['start','end']+fields)
-    #for w in s: print w
     def _unr(s):
         pos = start
         for x in s:
@@ -51,7 +52,7 @@ def unroll( stream, start, end, fields=['score'] ):
                 pos+=1
             if pos > end: break
         while pos <= end:
-            yield (0,)
+            yield (0,)+x[3:]
             pos+=1
     return FeatureStream(_unr(s),fields=s.fields[2:])
 
