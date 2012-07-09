@@ -46,18 +46,14 @@ class Test_Common(unittest.TestCase):
         self.assertListEqual(rstream,expected)
 
     def test_unroll(self):
-        expected = [(0,),(0.5,),(0.5,),(0,),(0,),(1.2,),(0,),(0,)]
+        expected = [(0,),(0.5,),(0.5,),(0,),(0,),(1.2,),(0,)]
         stream = fstream([(10,12,0.5), (14,15,1.2)], fields=['start','end','score'])
         ustream = list(unroll(stream,9,16))
-        print 'u',ustream
-        print 'e',expected
         self.assertListEqual(ustream, expected)
 
-        expected = [(5,),(9,),(0,)]
+        expected = [(5,),(9,),(11,)]
         stream = fstream([(0,1,5),(1,2,9),(2,3,11)], fields=['start','end','score'])
-        ustream = list(unroll(stream,0,2))
-        print 'u',ustream
-        print 'e',expected
+        ustream = list(unroll(stream,0,3))
         self.assertListEqual(ustream, expected)
 
     def test_sorted_stream(self):
