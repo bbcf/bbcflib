@@ -46,7 +46,6 @@ class Test_Common(unittest.TestCase):
         rstream = list(reorder(stream,['end','score','start']))
         self.assertListEqual(rstream,expected)
 
-    #@unittest.skip("")
     def test_unroll(self):
         expected = [(0,),(0.5,),(0.5,),(0,),(0,),(1.2,),(0,),(0,)]
         stream = fstream([(10,12,0.5), (14,15,1.2)], fields=['start','end','score'])

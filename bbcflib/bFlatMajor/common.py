@@ -42,14 +42,11 @@ def unroll( stream, start, end, fields=['score'] ):
     def _unr(s):
         pos = start
         for x in s:
-            print x
             if x[1] < pos: next
             while pos < min(x[0],end):
-                print 'aaa',pos,'/',x[0],x[3:]
                 yield (0,)+x[3:]
                 pos+=1
             while pos < min(x[1],end):
-                print 'bbb',pos,'/',x[1],x[2:]
                 yield x[2:]
                 pos+=1
             if pos > end: break
