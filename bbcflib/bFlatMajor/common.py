@@ -27,28 +27,35 @@ def reorder(stream,fields):
 
 ####################################################################
 def unroll( stream, start, end, fields=['score'] ):
-    """Creates a stream of *end*-*start* items with appropriate *fields* values at every position.
-    For example, [(10,12,0.5), (14,15,1.2)] with *start*=9 and *end*=16 returns
-    [(9,10,0),(10,11,0,5),(11,12,0.5),(12,13,0),(13,14,0),(14,15,1.2),(15,16,0)]
+    """Creates a stream of *end*-*start* items with appropriate *fields* values at every base position.
+    For example, ``[(10,12,0.5), (14,15,1.2)]`` with *start*=9 and *end*=16 returns
+    ``[(0,),(0.5,),(0.5,),(0,),(0,),(1.2,),(0,),(0,)]``
 
     :param stream: FeatureStream object.
     :param start, end: (int) bounds of the region to return.
-    :param fields: list of field names. [['score']]
+    :param fields: list of field names **in addition to 'start','end'**. [['score']]
     :rtype: FeatureStream
     """
     if not(isinstance(fields,(list,tuple))): fields = [fields]
     s = reorder(stream,['start','end']+fields)
+    #for w in s: print w
     def _unr(s):
         pos = start
         for x in s:
-            if x[1]<=pos: next
-            while pos<min(x[0],end):
+            print x
+            if x[1] < pos: next
+            while pos < min(x[0],end):
+                print 'aaa',pos,'/',x[0],x[3:]
                 yield (0,)+x[3:]
                 pos+=1
-            while pos<min(x[1],end):
+            while pos < min(x[1],end):
+                print 'bbb',pos,'/',x[1],x[2:]
                 yield x[2:]
                 pos+=1
-            if pos>=end: break
+            if pos > end: break
+        while pos <= end:
+            yield (0,)
+            pos+=1
     return FeatureStream(_unr(s),fields=s.fields[2:])
 
 ####################################################################

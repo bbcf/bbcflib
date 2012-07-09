@@ -3,8 +3,9 @@ import cStringIO
 import os, sys
 
 # Internal modules #
-from bbcflib import btrack
-from bbcflib.genrep import Assembly
+from bbcflib import btrack, genrep
+from bbcflib.btrack import FeatureStream as fstream
+from bbcflib.bFlatMajor.common import sentinelize, reorder, unroll, sorted_stream, shuffled, fusion
 from bbcflib.bFlatMajor.stream.annotate import getNearestFeature
 from bbcflib.bFlatMajor.stream.intervals import concatenate, neighborhood, combine, segment_features
 from bbcflib.bFlatMajor.stream.intervals import exclude, require, disjunction, intersection, union
@@ -33,15 +34,47 @@ path = "test_data/bFlatMajor/"
 # Numpy print options #
 numpy.set_printoptions(precision=3,suppress=True)
 
+
+
+class Test_Common(unittest.TestCase):
+    def setUp(self):
+        pass
+
+    def test_reorder(self):
+        expected = [(12,0.5,10), (15,1.2,14)]
+        stream = fstream([(10,12,0.5), (14,15,1.2)], fields=['start','end','score'])
+        rstream = list(reorder(stream,['end','score','start']))
+        self.assertListEqual(rstream,expected)
+
+    #@unittest.skip("")
+    def test_unroll(self):
+        expected = [(0,),(0.5,),(0.5,),(0,),(0,),(1.2,),(0,),(0,)]
+        stream = fstream([(10,12,0.5), (14,15,1.2)], fields=['start','end','score'])
+        ustream = list(unroll(stream,9,16))
+        print 'u',ustream
+        print 'e',expected
+        self.assertListEqual(ustream, expected)
+
+
+
 ################### STREAM ######################
 
 
 class Test_Annotate(unittest.TestCase):
     def setUp(self):
-        pass
+        self.assembly = genrep.Assembly('ce6')
+        """
+        ----- 14,795,328 ---- 14,798,158 - 14,798,396 ---- 14,800,829 -----
+              |                            |
+               ->     Y54E2A.11             ->     Y54E2A.12
+        """
 
     def test_getNearestFeature(self):
-        pass
+        features = fstream([('chrII',14795327,14798367)], fields=['chr','start','end'])
+        expected = [(14795327, 14798367, 'chrII', 'Y54E2A.12|tbc-20_Y54E2A.11|eif-3.B', 'Promot_Included', '28_0')]
+        annotations = self.assembly.gene_track(chromlist=['chrII'])
+        result = list(getNearestFeature(features,annotations))
+        self.assertItemsEqual(result,expected)
 
 class Test_Intervals(unittest.TestCase):
     def setUp(self):
@@ -106,6 +139,7 @@ class Test_Signal(unittest.TestCase):
     def test_normalize(self):
         pass
 
+    @unittest.skip("")
     def test_correlation(self):
         # Create 2 vectors of scores, zero everywhere except a random position
         N = 10
@@ -117,23 +151,15 @@ class Test_Signal(unittest.TestCase):
         y[ypeak] = 10
         x = (x-numpy.mean(x))/numpy.std(x)
         y = (y-numpy.mean(y))/numpy.std(y)
+        print 'x',x
+        print 'y',y
 
         # Make tracks out of them and compute cross-correlation with our own function
-        Q1 = 'track1.bed'
-        Q2 = 'track2.bed'
-        if os.path.exists(Q1): os.remove(Q1)
-        if os.path.exists(Q2): os.remove(Q2)
-        X = btrack.FeatureStream(iter(x),fields=['chr','start','end','score'])
-        Y = btrack.FeatureStream(iter(y),fields=['chr','start','end','score'])
-        with btrack.track(Q1, assembly='sacCer2', fields=['chr','start','end','score']) as q1:
-            for k in range(N):
-                q1.write(X,fields=['chr','start','end','score'])
-                #q1.write('chrI', [(k,k+1,'',x[k],0)])
-        with btrack.track(Q2, assembly='sacCer2', fields=['chr','start','end','score']) as q2:
-            for k in range(N):
-                q2.write(Y,fields=['chr','start','end','score'])
-                #q2.write('chrI', [(k,k+1,'',y[k],0)])
-        fig, corr = correlation()(Q1, Q2, 'chrI')
+        X = [('chr',3*k,3*(k+1),s) for k,s in enumerate(x)]
+        Y = [('chr',3*k,3*(k+1),s) for k,s in enumerate(y)]
+        X = btrack.FeatureStream(iter(X),fields=['chr','start','end','score'])
+        Y = btrack.FeatureStream(iter(Y),fields=['chr','start','end','score'])
+        corr = correlation([X,Y], start=0, end=N)
 
         # Compute cross-correlation "by hand" and using numpy.correlate(mode='valid')
         raw = []; np_corr_valid = []
@@ -157,6 +183,9 @@ class Test_Signal(unittest.TestCase):
             """
             raw.append(numpy.dot(x[:k],y[-k:]))
             np_corr_valid.extend(numpy.correlate(x[:k],y[-k:],mode='valid'))
+
+        print 'raw',raw
+        print 'corr',corr
 
         # Compute cross-correlation using numpy.correlate(mode='full')
         np_corr_full = numpy.correlate(x,y,mode="full")[::-1]

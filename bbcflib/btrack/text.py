@@ -22,7 +22,7 @@ class TextTrack(Track):
         kwargs['format'] = kwargs.get("format",'txt')
         kwargs['fields'] = kwargs.get("fields",['chr','start','end'])
         self.separator = kwargs.get('separator',"\t")
-        Track.__init__(self,path,**kwargs)
+        Track.__init__(self,path,**kwargs) # super(TextTrack, self).__init__(self,path,**kwargs)
         if kwargs.get('ucsc_to_ensembl',False):
             if not('outtypes' in kwargs): kwargs['outtypes'] = {}
             kwargs['outtypes']['start'] = ucsc_to_ensembl
@@ -175,8 +175,6 @@ class TextTrack(Track):
         :param mode: (str) file opening mode - one of 'write','overwrite','append'. ['write']
         :param chrom: (str) a chromosome name.
         """
-        print source
-        print fields
         if self.separator is None:
             self.separator = "\t"
         if hasattr(source, 'fields'):

@@ -21,5 +21,24 @@ path = "test_data/btrack/"
 class Test_Btrack(unittest.TestCase):
     def setUp(self):
         pass
-    def test_(self):
+
+    def test_track(self):
+        pass
+
+    def test_convert(self):
+        pass
+
+    def test_concat_fields(self):
+        pass
+
+    def test_map_chromosomes(self):
+        pass
+
+    def test_split_field(self):
+        pass
+
+    def test_score_threshold(self):
+        pass
+
+    def test_map_chromosomes(self):
         pass
