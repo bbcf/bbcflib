@@ -194,9 +194,9 @@ class Test_Signal(unittest.TestCase):
             np_corr_valid.extend(numpy.correlate(x[:k],y[-k:],mode='valid'))
 
         # Compute cross-correlation using numpy.correlate(mode='full')
-        np_corr_full = numpy.correlate(x,y,mode="full") / N
-        np_corr_valid = numpy.asarray(np_corr_valid[::-1]) / N
-        raw = numpy.asarray(raw[::-1])
+        np_corr_full = numpy.correlate(x,y,mode="full")[::-1] / N
+        np_corr_valid = numpy.asarray(np_corr_valid) / N #[::-1]) / N
+        raw = numpy.asarray(raw)#[::-1])
 
         # Test if all methods yield the same result
         assert_almost_equal(corr, raw)
@@ -204,13 +204,13 @@ class Test_Signal(unittest.TestCase):
         assert_almost_equal(corr, np_corr_valid)
 
         # Test if the lag between the two tracks is correcty detected
-        self.assertEqual(numpy.argmax(corr)-(N-1), xpeak-ypeak)
+        self.assertEqual(numpy.argmax(corr)-(N-1), ypeak-xpeak)
 
         #print 'x = ',x
         #print 'y = ',y
         #print 'corr', corr
         #print 'raw ', raw
-        #print 'lag      :',xpeak-ypeak
+        #print 'lag      :',ypeak-xpeak
         #print 'Py idx   :',numpy.argmax(corr)
         #print 'human idx:',numpy.argmax(corr)+1
         #raise
