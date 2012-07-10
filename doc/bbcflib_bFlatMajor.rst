@@ -18,12 +18,15 @@ Submodule: bbcflib.bFlatMajor.stream
 
 .. automodule:: bbcflib.bFlatMajor.stream.intervals
     :members:
+    :member-order: bysource
 
 .. automodule:: bbcflib.bFlatMajor.stream.scores
     :members:
+    :member-order: bysource
 
 .. automodule:: bbcflib.bFlatMajor.stream.annotate
     :members:
+    :member-order: bysource
 
 =====================================
 Submodule: bbcflib.bFlatMajor.numeric
@@ -34,9 +37,11 @@ Submodule: bbcflib.bFlatMajor.numeric
 
 .. automodule:: bbcflib.bFlatMajor.numeric.signal
     :members:
+    :member-order: bysource
 
 .. automodule:: bbcflib.bFlatMajor.numeric.regions
     :members:
+    :member-order: bysource
 
 ====================================
 Submodule: bbcflib.bFlatMajor.figure
@@ -47,5 +52,6 @@ Submodule: bbcflib.bFlatMajor.figure
 
 .. automodule:: bbcflib.bFlatMajor.figure.rplots
     :members:
+    :member-order: bysource
 
 
