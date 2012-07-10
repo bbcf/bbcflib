@@ -195,11 +195,10 @@ class Test_Signal(unittest.TestCase):
 
         # Compute cross-correlation using numpy.correlate(mode='full')
         np_corr_full = numpy.correlate(x,y,mode="full")[::-1] / N
-        np_corr_valid = numpy.asarray(np_corr_valid) / N #[::-1]) / N
-        raw = numpy.asarray(raw)#[::-1])
+        np_corr_valid = numpy.asarray(np_corr_valid) / N
 
         # Test if all methods yield the same result
-        assert_almost_equal(corr, raw)
+        assert_almost_equal(corr, numpy.asarray(raw))
         assert_almost_equal(corr, np_corr_full)
         assert_almost_equal(corr, np_corr_valid)
 
