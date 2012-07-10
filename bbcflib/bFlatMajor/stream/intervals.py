@@ -87,11 +87,11 @@ def neighborhood(trackList, before_start=None, after_end=None,
                                   (end-before_end, end+after_end, +1, ...)
 
     :param trackList: list of FeatureStream objects.
-    :param before_start: (int) number of bp after the feature start.
+    :param before_start: (int) number of bp before the feature start.
     :param after_end: (int) number of bp after feature end.
     :param after_start: (int) number of bp after the feature start.
     :param before_end: (int) number of bp before the feature end.
-    :param on_strand: (bool) True to reverse coordinates on the reverse strand [False]
+    :param on_strand: (bool) True to respect strand orientation [False]
     :rtype: FeatureStream
     """
     def _generate_single(track,a,b,c,d):
