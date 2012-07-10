@@ -41,10 +41,9 @@ def split_exonerate(filename,minScore,l=30):
         if len(line_buffer) == 1:
             files[line_buffer[0][3]].write(line_buffer[0][1])
         elif len(line_buffer)>1:
-            for buf in sorted(line_buffer)[0]:
+            for buf in sorted(line_buffer):
                 files["ambiguous"].write(" ".join(buf[2])+"\n")
             files[buf[3]].write(buf[1])
-
 
     with open(filename,"r") as f:
         for s in f:
