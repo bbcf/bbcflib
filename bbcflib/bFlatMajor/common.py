@@ -43,14 +43,14 @@ def unroll( stream, start, end, fields=['score'] ):
     def _unr(s):
         pos = start
         for x in s:
-            if x[1] < pos: next
+            if x[1] <= pos: next
             while pos < min(x[0],end):
                 yield (0,)+x[3:]
                 pos+=1
             while pos < min(x[1],end):
                 yield x[2:]
                 pos+=1
-            if pos > end: break
+            if pos >= end: break
         while pos < end:
             yield (0,)+x[3:]
             pos+=1

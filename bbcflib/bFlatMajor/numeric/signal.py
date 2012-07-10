@@ -14,16 +14,18 @@ def normalize(x):
 
 def correlation(trackList, start, end, limits=(-1000,1000)):
     """
-    Calculates the cross-correlation between two tracks Q1,Q2. Returns a vector
-    containing the correlation at each lag in this order (L/R for resp. min/max lag value):
-    [-L,-L+1,...-1,0,1,...,R-1,R]. If more than two tracks are given in *trackList*,
+    Calculates the cross-correlation between two streams and
+    returns a vector containing the correlation at each lag in this order 
+    (L/R for resp. limits[0], limits[1]):
+    [L,L+1,...,R-1,R]. 
+    If more than two tracks are given in *trackList*,
     returns a list of correlation vectors, one for every distinct pair of tracks.
 
-    A negative lag indicates that Q2 is shifted to the right w.r.t Q1,
+    A negative lag indicates that track 2 is shifted to the right w.r.t track 1,
     a positive lag - to the left.
-    So to get the correlation at lag +4, one has to look at the L+4 th
-    element of the array (in Python notation - or L+5 counting from 1);
-    for lag -4, at the L-4 rd element (in Python notation - or L-3 counting from 1).
+    So to get the correlation at lag +4, one has to look at the 4-L th
+    element of the array;
+    for lag -4, at the -4-L th element.
 
     Example::
 
@@ -38,7 +40,7 @@ def correlation(trackList, start, end, limits=(-1000,1000)):
                 |_____ /^\ _________| lag +8
         |______________/^\__|  <-
 
-    :param trackList: list of FeatureStream objects of the same size.
+    :param trackList: list of FeatureStream objects
     :param start,end: (int) bounds of the region to consider, in bp.
     :param limits: (tuple (int,int)) maximum lag to consider. [-1000,1000]
     :rtype: list of floats, or list of lists of floats.
@@ -47,7 +49,7 @@ def correlation(trackList, start, end, limits=(-1000,1000)):
     ##### storing these - long - arrays ('dtype' is float64 by default).
     x = [numpy.array([s[0] for s in common.unroll(t,start,end)]) for t in trackList]
     x = [normalize(t) for t in x]
-    if limits[1]-limits[0] > len(x[0]):
+    if limits[1]-limits[0] > 2*len(x[0]):
         limits = (-len(x[0])+1,len(x[0])-1)
     N = len(x[0])+limits[1]-limits[0]-1
     ##### convert to nearest power of 2, fft gets orders of magnitude faster...
