@@ -195,39 +195,48 @@ class Assembly(object):
                 """%s/nr_assemblies/get_links/%s.json?%s""" %(self.genrep.url,self.nr_assembly_id,request)))
         return url.read()
 
-    def fasta_from_regions(self, regions, out=None, chunk=50000, shuffled=False):
+    def fasta_from_regions(self, regions, out=None, path_to_ref=None, chunk=50000, shuffled=False):
         """
         Get a fasta file with sequences corresponding to the features in the
         bed or sqlite file.
 
-        Returns the name of the file and the total sequence size.
+        Returns the name of the output file and the total size of the extracted sequence.
 
-        If *out* is a (possibly empty) dictionary, will return the filled dictionary.
-        If *regions* is a dictionary {'chr': [[start1,end1],[start2,end2]]}
-        or a list [['chr',start1,end1],['chr',start2,end2]],
-        will simply iterate through its items instead of loading a track from file.
+        :param regions: (str or dict or list) bed or sqlite file name, or sequence of features.
+            If *regions* is a dictionary {'chr': [[start1,end1],[start2,end2]]}
+            or a list [['chr',start1,end1],['chr',start2,end2]],
+            will simply iterate through its items instead of loading a track from file.
+        :param out: (str or dict) output file name. If *out* is a (possibly empty) dictionary,
+            will return the filled dictionary.
+        :param path_to_ref: (str) path to a fasta file containing the whole reference sequence.
+        :rtype: (str,int)
         """
         if out == None:
             out = unique_filename_in()
+
         def _push_slices(slices,start,end,name,cur_chunk):
+            """Add a feature to *slices*, and increment the buffer size *cur_chunk* by the feature's size."""
             if end>start:
                 slices['coord'].append([start,end])
                 slices['names'].append(name)
                 cur_chunk += end-start
             return slices,cur_chunk
+
         def _flush_slices(slices,chrid,chrn,out):
+            """Write the content of *slices* to *out*."""
             names = slices['names']
             coord = slices['coord']
             if isinstance(out,str):
                 with open(out,"a") as f:
-                    for i,s in enumerate(self.genrep.get_sequence(chrid,coord)):
+                    for i,s in enumerate(self.genrep.get_sequence(chrid,coord,path_to_ref=path_to_ref)):
                         f.write(">"+names[i]+"|"+chrn+":"+str(coord[i][0])+"-"+str(coord[i][1])+"\n"+s+"\n")
             else:
-                out[chrn].extend([s for s in self.genrep.get_sequence(chrid,coord)])
+                out[chrn].extend([s for s in self.genrep.get_sequence(chrid,coord,path_to_ref=path_to_ref)])
             return {'coord':[],'names':[]}
+
         slices = {'coord':[],'names':[]}
         size = 0
-        if isinstance(regions,list):
+        if isinstance(regions,list): # convert to a dict
             reg_dict = {}
             for reg in regions:
                 chrom = reg[0]
@@ -264,7 +273,7 @@ class Assembly(object):
                         e = min(row[1],chrom['length'])
                         name = re.sub('\s+','_',row[2])
                         slices,cur_chunk = _push_slices(slices,s,e,name,cur_chunk)
-                        if cur_chunk > chunk:
+                        if cur_chunk > chunk: # buffer is full, write
                             size += cur_chunk
                             slices = _flush_slices(slices,cid[0],chrom['name'],out)
                             cur_chunk = 0
@@ -680,14 +689,44 @@ class GenRep(object):
             assembly_list.append(name)
         if assembly == None: return assembly_list
 
-    def get_sequence(self, chr_id, coord_list):
-        """Parse a slice request to the repository."""
+    def get_sequence(self, chr_id, coord_list, path_to_ref=None):
+        """Parse a slice request to the repository.
+
+        :param chr_id: (int) chromosome number (keys of Assembly.chromosomes).
+        :param coord_list: (list of (int,int)) sequences' (start,end) coordinates.
+        :param path_to_ref: (str) path to a fasta file containing the whole reference sequence.
+        """
         if len(coord_list) == 0:
             return []
-        slices  = ",".join([",".join([str(y) for y in x]) for x in coord_list])
-        url     = """%s/chromosomes/%i/get_sequence_part?slices=%s""" % (self.url, chr_id, slices)
-        request = urllib2.Request(url)
-        return urllib2.urlopen(request).read().split(',')
+        coord_list = sorted(coord_list)
+        # make it work with gzip + tar files > 'decompress' function to bbcflib.common
+        if path_to_ref and os.path.exists(path_to_ref):
+            a = 0
+            f = open(path_to_ref)
+            sequences = []
+            for start,end in coord_list:
+                seq = ''
+                while 1:
+                    line = f.readline().strip(' \t\r\n')
+                    if line.startswith('>'): continue
+                    b = a+len(line)
+                    if start <= b:
+                        if start < a:
+                            start = a
+                        if end <= b:
+                            seq += line[start-a:end-a]
+                            break
+                        elif end > b:
+                            seq += line[start-a:]
+                    a = b
+                sequences.append(seq)
+            f.close()
+            return sequences
+        else:
+            slices  = ','.join([','.join([str(y) for y in x]) for x in coord_list])
+            url     = """%s/chromosomes/%i/get_sequence_part?slices=%s""" % (self.url, chr_id, slices)
+            request = urllib2.Request(url)
+            return urllib2.urlopen(request).read().split(',')
 
     def get_genrep_objects(self, url_tag, info_tag, filters = None, params = None):
         """
