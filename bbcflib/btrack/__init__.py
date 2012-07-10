@@ -5,7 +5,8 @@ Examples::
 
     track.convert("data/test.bed","test0.sql",chrmeta='mm9')
 
-    # Open a bed track & copy its info into another sql track.
+Open a bed track & copy its info into another sql track::
+
     chrmeta = {'chr2':{'length':4000000}}
     info = {'datatype':'features'}
     track_in = track.track("data/test.bed",chrmeta=chrmeta)
@@ -14,7 +15,8 @@ Examples::
     track_out.close()
     track_in.close()
 
-    # Copy a selection of a bed track into a wig track.
+Copy a selection of a bed track into a wig track::
+
     track_in = track.track("data/HoxD13_4C_FB.sql")
     track_out = track.track("test2.wig")
     selection = [{'chr':'chr1','start':(7568000,9607000)},{'chr':'chr2','end':(3907400,4302000)}]
@@ -22,25 +24,28 @@ Examples::
     track_out.close()
     track_in.close()
 
-    # Read a track (see FeatureStream)
+Read a track (see :func:`FeatureStream <bbcflib.btrack.FeatureStream>`)::
+
     track_in = track.track("data/Gene_TxS_chr2.bed.gz",chrmeta='mm9',format='bed')
     for x in track_in.read():
         print x  #('chr2', 3030497, 3032496, 'ENSMUST00000072955_txS')
         break
 
-    # Split field
+Split field::
+
     for x in track.split_field(track_in.read(),['name','extension'],'name','_'):
         print x  #['chr2', 3030497, 3032496, 'ENSMUST00000072955', 'txS']
         break
 
-    # Random track
+Random track::
+
     from bFlatMajor.common import shuffled
     for n,x in enumerate(shuffled(track_in.read('chr2'),chrlen=chrmeta['chr2']['length'])):
         print x
         if n>10: break
 
-    # Do something with the scores of a signal track only if the location is
-    # present in another features track.
+Do something with the scores of a signal track only if the location is present in another features track::
+
     selection = {'chr':'chr2','start':(7540000,75650000)}
     track_features = track.track("data/Bricks_HoxD4_FB_05_chr2.bed")
     track_scores = track.track("data/HoxD13_4C_FB.sql",readonly=True)
@@ -430,7 +435,7 @@ class FeatureStream(object):
     """
 
     def __init__(self, data, fields=None):
-        if isinstance(data,list) or isinstance(data,tuple):
+        if isinstance(data,(list,tuple)):
             data = iter(data)
         self.data = data
         if not fields and hasattr(data, 'description'):

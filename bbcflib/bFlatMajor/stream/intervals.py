@@ -6,7 +6,7 @@ from bbcflib import btrack as track
 
 def concatenate(trackList, fields=None):
     """
-    Return a single track from a list of tracks.
+    Returns a stream containing all features from a list of tracks ordered by `start` and `end`.
 
     :param trackList: list of FeatureStream objects.
     :param fields: (list of str) list of fields to keep in the output.
@@ -35,8 +35,7 @@ def concatenate(trackList, fields=None):
 
     def _knead(_t,N):
         """Generator yielding all features represented in a list of tracks *_t*,
-        sorted w.r.t the *N* first fields.
-        """
+        sorted w.r.t the *N* first fields."""
         current = [x.next()[:N] for x in _t] # init
         while 1:
             n = _find_min(current)
@@ -58,40 +57,41 @@ def concatenate(trackList, fields=None):
 def neighborhood(trackList, before_start=None, after_end=None,
                  after_start=None, before_end=None, on_strand=False):
     """
-    Given a stream of features and four integers *before_start*, *after_end*,
-    *after_start* and *before_end*, this manipulation will output,
-    for every feature in the input stream, one or two features
-    in the neighborhood of the original feature.
+    Given streams of features and four integers *before_start*, *after_end*,
+    *after_start* and *before_end*, this will return one or two features
+    for every input feature:
 
     * Only *before_start* and *after_end* are given::
 
-         (start, end, ...) -> (start+before_start, end+after_end, ...)
+         (start, end, ...) -> (start-before_start, end+after_end, ...)
 
     * Only *before_start* and *after_start* are given::
 
-         (start, end, ...) -> (start+before_start, start+after_start, ...)
+         (start, end, ...) -> (start-before_start, start+after_start, ...)
 
     * Only *after_end* and *before_end* are given::
 
-         (start, end, ...) -> (end+before_end, end+after_end, ...)
+         (start, end, ...) -> (end-before_end, end+after_end, ...)
 
-    * If all four parameters are given, a pair of features is outputted::
+    * If all four parameters are given, a pair of features is generated::
 
-         (start, end, ...) -> (start+before_start, start+after_start, ...)
-                              (end+before_end, end+after_end, ...)
+         (start, end, ...) -> (start-before_start, start+after_start, ...)
+                              (end-before_end, end+after_end, ...)
 
     * If the boolean parameter *on_strand* is set to True,
-      features on the negative strand are inverted as such::
+      then `start` and `end` are understood relative to orientation::
 
-         (start, end, ...) -> (start-after_end, start-before_end, ...)
-                              (end-after_start, end-before_start, ...)
+         (start, end, -1, ...) -> (start-after_end, start+before_end, -1, ...)
+                                  (end-after_start, end+before_start, -1, ...)
+         (start, end, +1, ...) -> (start-before_start, start+after_start, +1, ...)
+                                  (end-before_end, end+after_end, +1, ...)
 
     :param trackList: list of FeatureStream objects.
-    :param before_start: (int) number of bp after the feature start.
+    :param before_start: (int) number of bp before the feature start.
     :param after_end: (int) number of bp after feature end.
     :param after_start: (int) number of bp after the feature start.
     :param before_end: (int) number of bp before the feature end.
-    :param on_strand: (bool) True to reverse coordinates on the reverse strand [False]
+    :param on_strand: (bool) True to respect strand orientation [False]
     :rtype: FeatureStream
     """
     def _generate_single(track,a,b,c,d):
@@ -221,19 +221,19 @@ def combine(trackList, fn, win_size=1000,
                                              fields=trackList[0].fields))
 
 def exclude(x,indexList):
-    """Return True if x[n] is False for all n in *indexList*
+    """Returns True if x[n] is False for all n in *indexList*
     and x[n] is True for at least another n; return False otherwise."""
     return any([y for n,y in enumerate(x) if not(n in indexList)]) \
        and all([not(y) for n,y in enumerate(x) if n in indexList])
 
 def require(x,indexList):
-    """Return True if x[n] is True for all n in *indexList*
-    and x[n] is True for at least another n; return False otherwise."""
+    """Returns True if x[n] is True for all n in *indexList*
+    and x[n] is True for at least another n; returns False otherwise."""
     return any([y for n,y in enumerate(x) if not(n in indexList)]) \
        and all([y for n,y in enumerate(x) if n in indexList])
 
 def disjunction(x,indexList):
-    """???"""
+    """Returns True if either all True elements of x are from *indexList* or none of them."""
     complementList = [n for n in range(len(x)) if not(n in indexList)]
     return exclude(x,indexList) or exclude(x,complementList)
 
@@ -248,12 +248,13 @@ def union(x):
 ###############################################################################
 def segment_features(trackList,nbins=10,upstream=None,downstream=None):
     """
-    ???
+    Splits every feature from `trackList` into `nbins` equal segments, and optionally adds `upstream`and `downstream` flanks. 
+    Flanks are specified as a pair (distance, number_of_bins). If the distance is < 1 it is interpreted as a fraction of the feature length.
 
     :param trackList: list of FeatureStream objects.
     :param nbins: (int)  [10]
-    :param upstream: (tuple (int,int)) ?
-    :param downstream: (tuple (int,int)) ?
+    :param upstream: (tuple (int,float))
+    :param downstream: (tuple (int,float))
     :rtype: FeatureStream
     """
     def _split_feat(_t):

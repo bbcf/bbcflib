@@ -36,6 +36,8 @@ def _end(lopts,last,**kwargs):
 ############################################################
 ############################################################
 def scatterplot(X,Y,output=None,format='pdf',new=True,last=True,**kwargs):
+    """Creates a scatter plot of X vs Y. 
+     If Y is a list of arrays, a different color will be used for each of them."""
     plotopt,output = _begin(output=output,format=format,new=new,**kwargs)
     robjects.r.assign('xdata',numpy2ri.numpy2ri(X))
     if not(isinstance(Y,(list,tuple))):
@@ -51,6 +53,8 @@ def scatterplot(X,Y,output=None,format='pdf',new=True,last=True,**kwargs):
 ############################################################
 ############################################################
 def lineplot(X,Y,output=None,format='pdf',new=True,last=True,**kwargs):
+    """Creates a line plot of X vs Y. 
+     If Y is a list of arrays, a different color will be used for each of them."""
     plotopt,output = _begin(output=output,format=format,new=new,**kwargs)
     robjects.r.assign('xdata',numpy2ri.numpy2ri(X))
     if not(isinstance(Y,(list,tuple))): Y = [Y]
@@ -65,6 +69,7 @@ def lineplot(X,Y,output=None,format='pdf',new=True,last=True,**kwargs):
 ############################################################
 ############################################################
 def boxplot(values,labels,output=None,format='pdf',new=True,last=True,**kwargs):
+    """Creates a box-and-whiskers plot of `values` split by `labels`."""
     plotopt,output = _begin(output=output,format=format,new=new,**kwargs)
     robjects.r.assign('values',numpy2ri.numpy2ri(values))
     robjects.r.assign('labels',numpy2ri.numpy2ri(labels))
@@ -77,6 +82,8 @@ def boxplot(values,labels,output=None,format='pdf',new=True,last=True,**kwargs):
 def heatmap(M,output=None,format='pdf',new=True,last=True,
             rows=None,columns=None,orderRows=True,orderCols=True,
             **kwargs):
+    """Creates a heatmap of the matrix `M` using `rows` as row labels and `columns` as column labels
+    If either `orderRows` or `orderCols` is True, will cluster accordingly and display a dendrogram."""
     plotopt,output = _begin(output=output,format=format,new=new,**kwargs)
     robjects.r.assign('Mdata',numpy2ri.numpy2ri(M))
     if not(rows is None):

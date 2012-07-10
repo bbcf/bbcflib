@@ -1,7 +1,27 @@
+"""
+This packages provides algorithms working on :func:`FeatureStream <bbcflib.btrack.FeatureStream>`.
+It is divided into three major groups depending on the algorithm's return type:
+
+* :mod:`bbcflib.bFlatMajor:stream` returns :func:`FeatureStream <bbcflib.btrack.FeatureStream>` objects,
+* :mod:`bbcflib.bFlatMajor:numeric` returns numeric arrays or matrices,
+* :mod:`bbcflib.bFlatMajor:figure` returns figure files (pdf, png, etc.).
+
+Algorithms can be used via a direct import::
+    
+    from bbcflib.bFlatMajor import stream
+    for chrom in track1.chrmeta.keys():
+        catstream = stream.concatenate([track1.read(chrom),track2.read(chrom)])
+
+or via the global :func:`run <bbcflib.bFlatMajor.run>` function. The latter will take file names as input parameters, while a direct call requires :func:`FeatureStream <bbcflib.btrack.FeatureStream>` to be created beforehands.
+
+Most functions in :mod:`bFlatMajor <bbcflib.bFlatMajor>` take one or more lists of :func:`FeatureStream <bbcflib.btrack.FeatureStream>` as parameters, plus additional algorithm-specific parameters.
+
+"""
+
 __all__ = ['bFlatMajorGroup']
 
 import os, sys
-from bbcflib.btrack import  track
+from bbcflib.btrack import track
 from bbcflib.common import unique_filename_in
 
 _here = 'bbcflib.bFlatMajor.'
@@ -34,6 +54,7 @@ def run(**kwargs):
     :param ...: additional parameters passed to `operation`.
 
     Example::
+
         run(operation="mean_score_by_feature", output="score_output.bed",
             chromosome="chr1", trackScores="density_file.sql", trackFeatures="genes.sql")
     """
