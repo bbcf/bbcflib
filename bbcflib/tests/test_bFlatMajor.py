@@ -16,7 +16,6 @@ from bbcflib.bFlatMajor.numeric.signal import normalize, correlation
 
 # Other modules #
 import numpy
-from numpy.random import randint
 
 # Unitesting modules #
 try:
@@ -161,17 +160,13 @@ class Test_Signal(unittest.TestCase):
         y[ypeak] = 10
         x = (x-numpy.mean(x))/numpy.std(x)
         y = (y-numpy.mean(y))/numpy.std(y)
-        print 'x = ',x
-        print 'y = ',y
 
         # Make tracks out of them and compute cross-correlation with our own function
         X = [('chr',k,k+1,s) for k,s in enumerate(x)]
         Y = [('chr',k,k+1,s) for k,s in enumerate(y)]
-        #print 'X',numpy.array(X)
-        #print 'Y',numpy.array(Y)
         X = btrack.FeatureStream(iter(X),fields=['chr','start','end','score'])
         Y = btrack.FeatureStream(iter(Y),fields=['chr','start','end','score'])
-        corr = correlation([X,Y], start=0, end=N, limits=[-N+1,N-1], force_2n=False)
+        corr = correlation([X,Y], start=0, end=N)#, limits=[-N+1,N-1])
 
         # Compute cross-correlation "by hand" and using numpy.correlate(mode='valid')
         raw = []; np_corr_valid = []
@@ -183,7 +178,7 @@ class Test_Signal(unittest.TestCase):
             X         |- - - - -|          k=4
             Y         |- - - - -|
             """
-            raw.append(numpy.dot(x[-k-1:],y[:k+1]) / (k+1))
+            raw.append(numpy.dot(x[-k-1:],y[:k+1]))# / (k+1))
             np_corr_valid.extend(numpy.correlate(x[-k-1:],y[:k+1],mode='valid'))
         for k in range(N-1,0,-1):
             """
@@ -193,24 +188,29 @@ class Test_Signal(unittest.TestCase):
             X         |- - - - -|          k=1
             Y |- - - - -|
             """
-            raw.append(numpy.dot(x[:k],y[-k:]) / k)
+            raw.append(numpy.dot(x[:k],y[-k:]))# / k)
             np_corr_valid.extend(numpy.correlate(x[:k],y[-k:],mode='valid'))
 
         # Compute cross-correlation using numpy.correlate(mode='full')
-        np_corr_full = numpy.correlate(x,y,mode="full")[::-1]
-        np_corr_valid = numpy.asarray(np_corr_valid)
-
-        print 'corr ',corr
-        print 'raw  ',numpy.array(raw)
-        #print 'valid',np_corr_valid
-        #print 'full ',np_corr_full
+        np_corr_full = numpy.correlate(x,y,mode="full")#[::-1]
+        np_corr_valid = numpy.asarray(np_corr_valid[::-1])
+        raw = numpy.asarray(raw[::-1])
 
         # Test if all methods yield the same result
-        assert_almost_equal(corr, numpy.array(raw))
-        #assert_almost_equal(corr, np_corr_full)
-        #assert_almost_equal(corr, np_corr_valid)
+        assert_almost_equal(corr, numpy.asarray(raw))
+        assert_almost_equal(corr, np_corr_full)
+        assert_almost_equal(corr, np_corr_valid)
+
         # Test if the lag between the two tracks is correcty detected
-        self.assertEqual(numpy.argmax(corr)-(N-1), ypeak-xpeak)
+        self.assertEqual(numpy.argmax(corr)-(N-1), xpeak-ypeak)
+
+        #print 'x = ',x
+        #print 'y = ',y
+        #print corr
+        #print 'lag      :',xpeak-ypeak
+        #print 'Py idx   :',numpy.argmax(corr)
+        #print 'human idx:',numpy.argmax(corr)+1
+        #raise
 
 
 ################### FIGURE ######################
