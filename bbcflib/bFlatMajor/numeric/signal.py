@@ -42,8 +42,8 @@ def correlation(trackList, start, end, limits=None):
     :param limits: (tuple (int,int)) maximum lag to consider. [(-len(Q1)+1,len(Q1)-1)]
     :rtype: list of floats, or list of lists of floats.
     """
-    # One could profit from numpy to reduce the memory space used for
-    # storing these - long - arrays ('dtype')
+    ##### One could profit from numpy to reduce the memory space used for
+    ##### storing these - long - arrays ('dtype' is float64 by default).
     x = [numpy.array([s[0] for s in common.unroll(t,start,end)]) for t in trackList]
     x = [normalize(t) for t in x]
     if not limits:

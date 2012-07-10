@@ -197,7 +197,7 @@ class Test_Signal(unittest.TestCase):
         raw = numpy.asarray(raw[::-1])
 
         # Test if all methods yield the same result
-        assert_almost_equal(corr, numpy.asarray(raw))
+        assert_almost_equal(corr, raw)
         assert_almost_equal(corr, np_corr_full)
         assert_almost_equal(corr, np_corr_valid)
 
@@ -210,7 +210,7 @@ class Test_Signal(unittest.TestCase):
         #print 'lag      :',xpeak-ypeak
         #print 'Py idx   :',numpy.argmax(corr)
         #print 'human idx:',numpy.argmax(corr)+1
-        #raise
+        raise
 
 
 ################### FIGURE ######################
