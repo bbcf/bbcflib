@@ -6,7 +6,7 @@ from bbcflib import btrack as track
 
 def merge_scores(trackList, geometric=False):
     """
-    Average several score tracks.
+    Creates a stream with per-base average of several score tracks.
 
     X1: ▁▁▁▁▁▁▁▁▁▁█████████▁▁▁▁▁▁
     X2: ▁▁▁▁▁▅▅▅▅▅▅▅▅▅▅▁▁▁▁▁▁▁▁▁▁
@@ -58,15 +58,15 @@ def merge_scores(trackList, geometric=False):
 ###############################################################################
 def mean_score_by_feature(trackScores,trackFeatures):
     """
-    Given a score track X and a feature track Y, compute the mean of scores of
-    every of Y's features in X. The output consists of a feature track
-    similar to ``Y`` but with a new score value property for every feature.
+    Computes the average of scores from each stream in `trackScores`
+    within every feature from `trackFeatures`. The output is a stream 
+    similar to `trackFeatures` but with an additional `score` field  for each stream in `trackScores`.
 
     X: ──────▤▤▤▤▤▤▤▤▤▤──────────────▤▤▤▤▤▤▤▤▤▤──────
     Y: ▁▁▁▁▁▁▁▁▁▁▁█████████▁▁▁▁▁▁▁▁▁▁██████████▁▁▁▁▁▁
     R: ▁▁▁▁▁▁▅▅▅▅▅▅▅▅▅▅▁▁▁▁▁▁▁▁▁▁▁▁▁▁██████████▁▁▁▁▁▁
 
-    :param trackScores: (FeatureStream) score track.
+    :param trackScores: (list of) score track(s) (FeatureStream).
     :param trackFeatures: (FeatureStream) feature track.
     :rtype: FeatureStream
     """
@@ -109,9 +109,8 @@ def mean_score_by_feature(trackScores,trackFeatures):
 def window_smoothing( trackList, window_size, step_size=1, stop_val=sys.maxint,
                       featurewise=False ):
     """
-    Given a signal track X and a window size in base pairs, return a new signal
-    track with, at each position p, the mean of the scores in the window [p-L, p+L].
-    Border cases are handled by zero padding and the signal's support is invariant.
+    Given a (list of) signal track(s) `trackList`, a `window_size` (in base pairs by default, or in number of feature if `featurewise` is True),  and a `sindow_step`,
+    returns new signal tracks with, at each position p (multiples of `step_size`), the average score in the window [p-L, p+L].
 
     X: ▁▁▁▁▁▁▁▁▁▁████████████▁▁▁▁▁▁▁▁▁▁▁▁
     R: ▁▁▁▁▁▁▂▄▅▇████████████▇▅▄▂▁▁▁▁▁▁▁▁

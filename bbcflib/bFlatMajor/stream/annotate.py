@@ -5,19 +5,21 @@ from bbcflib import btrack as track
 def getNearestFeature(features, annotations,
                       thresholdPromot=2000, thresholdInter=100000, thresholdUTR=10):
     """
-    For each element of *features*, founds the nearest element of *annotations* and returns
-    a track similar to *features*, plus the annotation information:
-    ('chr5',12,14) -> ('chr5',12,14,'geneId|geneName','location_type','distance').
+    For each element of *features*, searches the nearest element of *annotations* and returns
+    a stream similar to *features*, with additional annotation fields, e.g.::
+
+        ('chr5',12,14) -> ('chr5',12,14,'geneId|geneName','location_type','distance').
+    
     If there are several genes, they are separated by '_': geneId1|geneName1_geneId2|geneName2.
-    For each gene, location_type is one of 'Intergenic', 'Included', 'Promot', '3UTR', 'Upstream'
-    or 'Downstream', separated by '_' as well.
-    If no genes are found, location_type is 'Intergenic'.
-    If the feature is embedded in the gene, location_type is 'Included'.
-    If it faces the promoter of the closest gene (on this strand), location_type is 'Promot'.
-    If it faces the 3'UTR, location_type is '3UTR'.
-    If it is before the first gene of the chromosome, location_type is 'Upstream'.
-    If it is after the last gene of the chromosome, location_type is 'Downstream'.
-    The distance to each gene is negative if the feature is included, positive else.
+    For each gene, `location_type` is one of: 
+    * 'Intergenic' if there are no genes within a distance `thresholdInter`,
+    * 'Included' if the feature is included in the gene,
+    * 'Promot' if the feature is upstream and within `thresholdInter` of the gene start,
+    * 'Upstream' if the feature is upstream and beyond the promoter of the gene,
+    * '3UTR' if the feature is downstream and within `thresholdUTR`% of the distance to the next downstream gene,
+    * 'Downstream' otherwise.
+    These annotations can be concatenated with '_' as well.
+    The distance to each gene is negative if the feature is included, positive otherwise.
 
     :param features: (bbcflib.btrack.FeatureStream) features track.
     :param annotations: (bbcflib.btrack.FeatureStream) gene annotation track

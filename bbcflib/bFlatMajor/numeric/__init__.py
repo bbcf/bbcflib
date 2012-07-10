@@ -1,3 +1,6 @@
+"""
+The *numeric* module contains algorithms which return numeric objects (typically `numpy.arrays`) from one or more :func:`FeatureStream <bbcflib.btrack.FeatureStream>` objects.
+"""
 from bbcflib.bFlatMajor import *
 
 ###############################################################################

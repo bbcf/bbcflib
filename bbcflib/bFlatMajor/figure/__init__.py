@@ -1,3 +1,6 @@
+"""
+The *figure* module contains algorithms which produce figure files (such as PDF or PNG) from one or more :func:`FeatureStream <bbcflib.btrack.FeatureStream>` objects.
+"""
 from bbcflib.bFlatMajor import *
 ###############################################################################
 _members = {}
