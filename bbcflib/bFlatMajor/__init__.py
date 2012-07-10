@@ -7,7 +7,7 @@ It is divided into three major groups depending on the algorithm's return type:
 * :mod:`bbcflib.bFlatMajor:figure` returns figure files (pdf, png, etc.).
 
 Algorithms can be used via a direct import::
-    
+
     from bbcflib.bFlatMajor import stream
     for chrom in track1.chrmeta.keys():
         catstream = stream.concatenate([track1.read(chrom),track2.read(chrom)])
@@ -44,8 +44,7 @@ class bFlatMajorGroup(object):
 def run(**kwargs):
     """
     Wrapper function to execute any operation contained in this package, directly from
-    file inputs.
-    Arguments are:
+    file inputs. Arguments are:
 
     :param operation: (str) the name of the function to be called.
     :param output: (str) a filename or a directory to write the results into.
@@ -55,8 +54,9 @@ def run(**kwargs):
 
     Example::
 
-        run(operation="mean_score_by_feature", output="score_output.bed",
-            chromosome="chr1", trackScores="density_file.sql", trackFeatures="genes.sql")
+        run(operation="mean_score_by_feature",
+            output="score_output.bed", chromosome="chr1",
+            trackScores="density_file.sql", trackFeatures="genes.sql")
     """
     from bbcflib import genrep
     def _map(fct):

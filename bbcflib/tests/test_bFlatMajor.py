@@ -148,7 +148,7 @@ class Test_Signal(unittest.TestCase):
     def test_normalize(self):
         pass
 
-    @unittest.skip("")
+    #@unittest.skip("")
     def test_correlation(self):
         numpy.set_printoptions(precision=3,suppress=True)
         # Create 2 vectors of scores, zero everywhere except a random position
@@ -161,48 +161,54 @@ class Test_Signal(unittest.TestCase):
         y[ypeak] = 10
         x = (x-numpy.mean(x))/numpy.std(x)
         y = (y-numpy.mean(y))/numpy.std(y)
+        print 'x = ',x
+        print 'y = ',y
 
         # Make tracks out of them and compute cross-correlation with our own function
         X = [('chr',k,k+1,s) for k,s in enumerate(x)]
         Y = [('chr',k,k+1,s) for k,s in enumerate(y)]
-        print numpy.array(X)
-        print numpy.array(Y)
+        #print 'X',numpy.array(X)
+        #print 'Y',numpy.array(Y)
         X = btrack.FeatureStream(iter(X),fields=['chr','start','end','score'])
         Y = btrack.FeatureStream(iter(Y),fields=['chr','start','end','score'])
-        corr = correlation([X,Y], start=0, end=N-1)
+        corr = correlation([X,Y], start=0, end=N, limits=[-N+1,N-1], force_2n=False)
 
         # Compute cross-correlation "by hand" and using numpy.correlate(mode='valid')
         raw = []; np_corr_valid = []
         for k in range(N):
             """
-            X         |- - - - -|
+            X         |- - - - -|          k=0
             Y              <- |- - - - -|
             up to
-            X         |- - - - -|
+            X         |- - - - -|          k=4
             Y         |- - - - -|
             """
-            raw.append(numpy.dot(x[-k-1:],y[:k+1]))
+            raw.append(numpy.dot(x[-k-1:],y[:k+1]) / (k+1))
             np_corr_valid.extend(numpy.correlate(x[-k-1:],y[:k+1],mode='valid'))
         for k in range(N-1,0,-1):
             """
-            X         |- - - - -|
-            Y      <- |- - - - -|
+            X         |- - - - -|          k=4
+            Y    <- |- - - - -|
             up to
-            X         |- - - - -|
+            X         |- - - - -|          k=1
             Y |- - - - -|
             """
-            raw.append(numpy.dot(x[:k],y[-k:]))
+            raw.append(numpy.dot(x[:k],y[-k:]) / k)
             np_corr_valid.extend(numpy.correlate(x[:k],y[-k:],mode='valid'))
-
-        print 'raw',numpy.array(raw)
-        print 'corr',corr
 
         # Compute cross-correlation using numpy.correlate(mode='full')
         np_corr_full = numpy.correlate(x,y,mode="full")[::-1]
+        np_corr_valid = numpy.asarray(np_corr_valid)
+
+        print 'corr ',corr
+        print 'raw  ',numpy.array(raw)
+        #print 'valid',np_corr_valid
+        #print 'full ',np_corr_full
 
         # Test if all methods yield the same result
         assert_almost_equal(corr, numpy.array(raw))
-        assert_almost_equal(corr, np_corr_full)
+        #assert_almost_equal(corr, np_corr_full)
+        #assert_almost_equal(corr, np_corr_valid)
         # Test if the lag between the two tracks is correcty detected
         self.assertEqual(numpy.argmax(corr)-(N-1), ypeak-xpeak)
 

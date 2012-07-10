@@ -1,6 +1,7 @@
 from bbcflib.bFlatMajor import common
 import numpy
-from scipy.fftpack import fft, ifft
+#from scipy.fftpack import fft, ifft
+from numpy.fft import fft, ifft
 from numpy import conjugate
 from math import log
 
@@ -10,7 +11,7 @@ def normalize(x):
     isigma = 1.0/numpy.sqrt((x*x).mean()-mu*mu)
     return (x-mu)*isigma
 
-def correlation(trackList, start, end, limits=(-1000,1000)):
+def correlation(trackList, start, end, limits=(-1000,1000), force_2n=True):
     """
     Calculates the cross-correlation between two tracks Q1,Q2. Returns a vector
     containing the correlation at each lag in this order (L for max lag value):
@@ -23,18 +24,18 @@ def correlation(trackList, start, end, limits=(-1000,1000)):
     So to get the correlation at lag +4, one has to look at the -L+5 th
     element of the array.
 
-    Example:
+    Example::
 
-    |_____ /^\ _________|         lag 0
-    |______________/^\__|
-
-
-    |_____ /^\ _________|         lag -8
-       ->   |______________/^\__|
+        |_____ /^\ _________|         lag 0
+        |______________/^\__|
 
 
-            |_____ /^\ _________| lag +8
-    |______________/^\__|  <-
+        |_____ /^\ _________|         lag -8
+           ->   |______________/^\__|
+
+
+                |_____ /^\ _________| lag +8
+        |______________/^\__|  <-
 
     :param trackList: list of **two** FeatureStream objects.
     :param start,end: (int) bounds of the region to consider, in bp.
@@ -45,12 +46,17 @@ def correlation(trackList, start, end, limits=(-1000,1000)):
     # storing these - long - arrays ('dtype')
     x = [numpy.array([s[0] for s in common.unroll(t,start,end)]) for t in trackList]
     x = [normalize(t) for t in x]
-    N = len(x[0])+limits[1]-limits[0]-1
+    N = len(x[0])+limits[1]+limits[0]-1
     ##### convert to nearest power of 2, fft gets orders of magnitude faster...
-    N = 2**int(log(2+N,2)+.5)
+    if force_2n:
+        N = 2**int(log(2+N,2)+.5)
     def _corr(x1,x2,N):
-        corr = ifft(conjugate(fft(x1,N))*fft(x2,N))/len(x1)
-        corr = numpy.concatenate((corr[N+limits[0]:], corr[:limits[1]+1]))
+        print fft(x1,N)
+        print fft(x2,N)
+        print fft(x2,N)*conjugate(fft(x2,N))
+        corr = ifft(fft(x1,N)*conjugate(fft(x2,N)))/len(x1)
+        #print 'left',corr[(N+limits[0]):]
+        #print 'right',corr[:limits[1]+1],'\n'
         return numpy.real(corr)
     return [_corr(x1,x2,N) for n,x1 in enumerate(x) for x2 in x[n+1:]]
 

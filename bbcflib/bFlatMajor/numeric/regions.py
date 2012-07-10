@@ -4,15 +4,16 @@ import numpy
 
 def feature_matrix(trackScores,trackFeatures,segment=False,**kw):
     """
-    Creates a matrix with a row for each feature in `trackFeatures`. 
-    If `segment` is True, each feature will be segmented into bins using bbcflib.bFlatMajor.stream.segment_features (additional parameters in `**kw` will be passed to this function).
+    Creates a matrix with a row for each feature in *trackFeatures*.
+    If *segment* is True, each feature will be segmented into bins using
+    bbcflib.bFlatMajor.stream.segment_features (additional parameters in *\*\*kw* will be passed to this function).
     The number of columns in the return matrix will be the number of bins (or 1).
-    The values in the matrix are vectors containing the average score for each bin and each track in `trackScores`.
+    The values in the matrix are vectors containing the average score for each bin and each track in *trackScores*.
 
     :param trackScores: (FeatureStream) score track.
     :param trackFeatures: (FeatureStream) feature track.
     :param segment: (bool) segment each feature into bins.[False]
-    :rtype: tuple (numpy.array of strings, numpy.array of floats)
+    :rtype: tuple (numpy.ndarray of strings, numpy.ndarray of floats)
     """
     nbins = 1
     nscores = 1
@@ -44,13 +45,14 @@ def feature_matrix(trackScores,trackFeatures,segment=False,**kw):
 
 def average_feature_matrix(trackScores,trackFeatures,**kw):
     """
-    Each feature in `trackFeatures` is segmented into bins using bbcflib.bFlatMajor.stream.segment_features (with parameters passed from `**kw`).
-    This creates a matrix with a row for each track in `trackScores` and a column for each bin in the segmented features.
-    The values of a matrix entry is the score form one track in `trackScores` in one bin averaged over all features.
+    Each feature in *trackFeatures* is segmented into bins using bbcflib.bFlatMajor.stream.segment_features
+    (with parameters passed from *\*\*kw*).
+    This creates a matrix with a row for each track in *trackScores* and a column for each bin in the segmented features.
+    The values of a matrix entry is the score form one track in *trackScores* in one bin averaged over all features.
 
     :param trackScores: (FeatureStream) score track.
     :param trackFeatures: (FeatureStream) feature track.
-    :rtype: numpy.array
+    :rtype: numpy.ndarray
     """
     trackFeatures = sorted_stream(segment_features(trackFeatures,**kw))
     all_means = mean_score_by_feature(trackScores,trackFeatures)

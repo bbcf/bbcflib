@@ -9,9 +9,9 @@ def getNearestFeature(features, annotations,
     a stream similar to *features*, with additional annotation fields, e.g.::
 
         ('chr5',12,14) -> ('chr5',12,14,'geneId|geneName','location_type','distance').
-    
+
     If there are several genes, they are separated by '_': geneId1|geneName1_geneId2|geneName2.
-    For each gene, `location_type` is one of: 
+    For each gene, `location_type` is one of:
     * 'Intergenic' if there are no genes within a distance `thresholdInter`,
     * 'Included' if the feature is included in the gene,
     * 'Promot' if the feature is upstream and within `thresholdInter` of the gene start,
@@ -32,21 +32,23 @@ def getNearestFeature(features, annotations,
         between gene1 and gene2, associated to 3'UTR of gene1, else to promoter of gene2. [10]
     :rtype: bbcflib.btrack.FeatureStream (..., str, str, str).
 
-                      <--                   feat                    -->
-                  ______| thresholdPromot  ++++++   thresholdPromot |______
-        ---------|______|-------------------------------------------|______|-------------
-                  gene 1                       gene 2
+    ::
 
-                                              feat
-                  ______  thresholdInter     ++++++        thresholdInter   ______
-        ---------|______|----------...------------------...----------------|______|------
-                  gene 1                                         gene 2
+                 <--                   feat                    -->
+             ______| thresholdPromot  ++++++   thresholdPromot |______
+       -----|______|-------------------------------------------|______|----------
+             gene 1                       gene 2
 
-                              feat
-                 -->         ++++++           -->
-                 |______  10%         90%     |______
-        ---------|______|-----|---------------|______|-----------   (attributed to gene1)
-                  gene 1      thresholdUTR     gene 2
+                                         feat
+             ______  thresholdInter     ++++++        thresholdInter   ______
+       -----|______|----------...------------------...----------------|______|---
+             gene 1                                         gene 2
+
+                          feat
+            -->          ++++++               -->
+            |______  10%             90%     |______
+       -----|______|------|------------------|______|-----  (attributed to gene1)
+             gene 1      thresholdUTR     gene 2
     """
     def _get_feature(_t,_a):
         F = []

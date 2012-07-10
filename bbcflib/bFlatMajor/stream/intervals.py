@@ -6,7 +6,7 @@ from bbcflib import btrack as track
 
 def concatenate(trackList, fields=None):
     """
-    Returns a stream containing all features from a list of tracks ordered by `start` and `end`.
+    Returns a stream containing all features from a list of tracks ordered by *start* and *end*.
 
     :param trackList: list of FeatureStream objects.
     :param fields: (list of str) list of fields to keep in the output.
@@ -248,13 +248,14 @@ def union(x):
 ###############################################################################
 def segment_features(trackList,nbins=10,upstream=None,downstream=None):
     """
-    Splits every feature from `trackList` into `nbins` equal segments, and optionally adds `upstream`and `downstream` flanks. 
-    Flanks are specified as a pair (distance, number_of_bins). If the distance is < 1 it is interpreted as a fraction of the feature length.
+    Splits every feature from *trackList* into *nbins* equal segments, and optionally adds
+    *upstream* and *downstream* flanks. Flanks are specified as a pair (distance, number_of_bins).
+    If the distance is < 1, it is interpreted as a fraction of the feature length.
 
     :param trackList: list of FeatureStream objects.
-    :param nbins: (int)  [10]
-    :param upstream: (tuple (int,float))
-    :param downstream: (tuple (int,float))
+    :param nbins: (int) number of bins. [10]
+    :param upstream: (tuple (int,float)) upstream flank.
+    :param downstream: (tuple (int,float)) downstream flank.
     :rtype: FeatureStream
     """
     def _split_feat(_t):

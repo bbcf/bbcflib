@@ -6,11 +6,11 @@ from bbcflib import btrack as track
 
 def merge_scores(trackList, geometric=False):
     """
-    Creates a stream with per-base average of several score tracks.
+    Creates a stream with per-base average of several score tracks::
 
-    X1: ▁▁▁▁▁▁▁▁▁▁█████████▁▁▁▁▁▁
-    X2: ▁▁▁▁▁▅▅▅▅▅▅▅▅▅▅▁▁▁▁▁▁▁▁▁▁
-    R:  ▁▁▁▁▁▂▂▂▂▂▇▇▇▇▇▅▅▅▅▁▁▁▁▁▁
+        X1: __________666666666______
+        X2: _____2222222222__________
+        R:  _____11111444443333______
 
     :param trackList: list of FeatureStream objects.
     :param geometric: (bool) set True to use the geometric mean instead of arithmetic.
@@ -28,7 +28,7 @@ def merge_scores(trackList, geometric=False):
         return sum(scores)*denom
     def geometric_mean(scores,denom):
         return (reduce(lambda x, y: x*y, scores))**denom
-## more precise/less efficient: exp(sum([log(x) for x in scores])*denom)
+    ## more precise/less efficient: exp(sum([log(x) for x in scores])*denom)
     mean_fn = (geometric and geometric_mean) or arithmetic_mean
     for i in xrange(len(tracks)-1, -1, -1):
         if elements[i][0] == sys.maxint:
@@ -58,13 +58,13 @@ def merge_scores(trackList, geometric=False):
 ###############################################################################
 def mean_score_by_feature(trackScores,trackFeatures):
     """
-    Computes the average of scores from each stream in `trackScores`
-    within every feature from `trackFeatures`. The output is a stream 
-    similar to `trackFeatures` but with an additional `score` field  for each stream in `trackScores`.
+    Computes the average of scores from each stream in *trackScores*
+    within every feature from *trackFeatures*. The output is a stream
+    similar to *trackFeatures* but with an additional `score` field  for each stream in *trackScores*::
 
-    X: ──────▤▤▤▤▤▤▤▤▤▤──────────────▤▤▤▤▤▤▤▤▤▤──────
-    Y: ▁▁▁▁▁▁▁▁▁▁▁█████████▁▁▁▁▁▁▁▁▁▁██████████▁▁▁▁▁▁
-    R: ▁▁▁▁▁▁▅▅▅▅▅▅▅▅▅▅▁▁▁▁▁▁▁▁▁▁▁▁▁▁██████████▁▁▁▁▁▁
+        X: ------##########--------------##########------
+        Y: ___________666666666__________6666666666______
+        R: ______3333333333______________6666666666______
 
     :param trackScores: (list of) score track(s) (FeatureStream).
     :param trackFeatures: (FeatureStream) feature track.
@@ -109,20 +109,23 @@ def mean_score_by_feature(trackScores,trackFeatures):
 def window_smoothing( trackList, window_size, step_size=1, stop_val=sys.maxint,
                       featurewise=False ):
     """
-    Given a (list of) signal track(s) `trackList`, a `window_size` (in base pairs by default, or in number of feature if `featurewise` is True),  and a `sindow_step`,
-    returns new signal tracks with, at each position p (multiples of `step_size`), the average score in the window [p-L, p+L].
+    Given a (list of) signal track(s) *trackList*, a *window_size* (in base pairs by default,
+    or in number of feature if *featurewise* is True),  and a *window_step*,
+    returns new signal tracks with, at each position p (multiples of *step_size*),
+    the average score in the window [p-L, p+L]::
 
-    X: ▁▁▁▁▁▁▁▁▁▁████████████▁▁▁▁▁▁▁▁▁▁▁▁
-    R: ▁▁▁▁▁▁▂▄▅▇████████████▇▅▄▂▁▁▁▁▁▁▁▁
+        X: __________666666666666____________
+        R: ______12346666666666664321________
 
     :param trackList: FeatureStream, or list of FeatureStream objects.
     :param window_size: (int) window size in bp.
-    :param step_size: (int)  [1]
-    :param stop_val: (int)  [sys.maxint]
-    :param featurewise: (bool)  [False]
+    :param step_size: (int) step length [1]
+    :param stop_val: (int) ? [sys.maxint]
+    :param featurewise: (bool) bp (False), or number of features (True). [False]
     :rtype: FeatureStream
 
-    Example of windows, window_size=9, step_size=3
+    Example of windows, window_size=9, step_size=3:
+
     [0,1,2,3,4,5,6,7,8,9), [3,4,5,6,7,8,9,10,11,12), ...
     """
     def _stepping_mean(track,score,denom):
