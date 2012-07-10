@@ -1,6 +1,6 @@
 # Built-in modules #
 import cStringIO
-import os, sys
+import os, sys, math
 
 # Internal modules #
 from bbcflib import btrack, genrep
@@ -145,7 +145,8 @@ class Test_Signal(unittest.TestCase):
         pass
 
     def test_normalize(self):
-        pass
+        x = [1,2,3,4,5] # mean=15/5=3, var=(1/5)*(4+1+0+1+4)=2
+        assert_almost_equal(normalize(x), numpy.array([-2,-1,0,1,2])*(1/math.sqrt(2)))
 
     #@unittest.skip("")
     def test_correlation(self):
@@ -169,7 +170,8 @@ class Test_Signal(unittest.TestCase):
         corr = correlation([X,Y], start=0, end=N)#, limits=[-N+1,N-1])
 
         # Compute cross-correlation "by hand" and using numpy.correlate(mode='valid')
-        raw = []; np_corr_valid = []
+        raw = []
+        np_corr_valid = []
         for k in range(N):
             """
             X         |- - - - -|          k=0
@@ -178,7 +180,7 @@ class Test_Signal(unittest.TestCase):
             X         |- - - - -|          k=4
             Y         |- - - - -|
             """
-            raw.append(numpy.dot(x[-k-1:],y[:k+1]))# / (k+1))
+            raw.append(numpy.dot(x[-k-1:],y[:k+1]) / N)
             np_corr_valid.extend(numpy.correlate(x[-k-1:],y[:k+1],mode='valid'))
         for k in range(N-1,0,-1):
             """
@@ -188,12 +190,12 @@ class Test_Signal(unittest.TestCase):
             X         |- - - - -|          k=1
             Y |- - - - -|
             """
-            raw.append(numpy.dot(x[:k],y[-k:]))# / k)
+            raw.append(numpy.dot(x[:k],y[-k:]) / N)
             np_corr_valid.extend(numpy.correlate(x[:k],y[-k:],mode='valid'))
 
         # Compute cross-correlation using numpy.correlate(mode='full')
-        np_corr_full = numpy.correlate(x,y,mode="full")#[::-1]
-        np_corr_valid = numpy.asarray(np_corr_valid[::-1])
+        np_corr_full = numpy.correlate(x,y,mode="full") / N
+        np_corr_valid = numpy.asarray(np_corr_valid[::-1]) / N
         raw = numpy.asarray(raw[::-1])
 
         # Test if all methods yield the same result
@@ -206,11 +208,12 @@ class Test_Signal(unittest.TestCase):
 
         #print 'x = ',x
         #print 'y = ',y
-        #print corr
+        #print 'corr', corr
+        #print 'raw ', raw
         #print 'lag      :',xpeak-ypeak
         #print 'Py idx   :',numpy.argmax(corr)
         #print 'human idx:',numpy.argmax(corr)+1
-        raise
+        #raise
 
 
 ################### FIGURE ######################

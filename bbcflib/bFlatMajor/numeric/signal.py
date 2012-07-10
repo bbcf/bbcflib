@@ -7,6 +7,7 @@ from math import log
 
 def normalize(x):
     """Substracts the average and divides by the standard deviation."""
+    x = numpy.asarray(x)
     mu = numpy.mean(x)
     isigma = 1.0/numpy.sqrt((x*x).mean()-mu*mu)
     return (x-mu)*isigma
@@ -52,7 +53,7 @@ def correlation(trackList, start, end, limits=None):
     ##### convert to nearest power of 2, fft gets orders of magnitude faster...
     N = 2**int(log(2+N,2)+.5)
     def _corr(x1,x2,N):
-        corr = ifft(fft(x1,N)*conjugate(fft(x2,N)))#/len(x1)
+        corr = ifft(fft(x1,N)*conjugate(fft(x2,N)))/len(x1)
         corr = numpy.concatenate((corr[N+limits[0]:], corr[:limits[1]+1]))
         return numpy.real(corr)
     if len(trackList) == 2:
