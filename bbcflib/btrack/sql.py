@@ -184,8 +184,8 @@ class SqlTrack(Track):
             selection = sorted(self.chrmeta.keys())
         if isinstance(selection, (basestring,dict)): 
             selection = [selection]
-        sel2 = []
         if isinstance(selection, (list, tuple)):
+            sel2 = []
             for x in selection:
                 if isinstance(x,basestring):
                     sel2.append( (str(x),{}) )
@@ -195,9 +195,9 @@ class SqlTrack(Track):
                                                     if not(k=='chr')) ) )
                     else:
                         sel2.extend([(chrom,x) for chrom in sorted(self.chrmeta.keys())])
+            selection = sel2
         elif not(selection is None or isinstance(selection,FeatureStream)): 
             raise TypeError("Bad selection %s."%selection)
-        selection = sel2
         if fields: 
             add_chr = 'chr' in fields
             _fields = [f for f in fields if f in self.fields and f != 'chr']
