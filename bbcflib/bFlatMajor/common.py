@@ -40,16 +40,16 @@ def unroll( stream, regions, fields=['score'] ):
     """
     if not(isinstance(fields,(list,tuple))): fields = [fields]
     with_chrom = False
-    if isinstance(regions,(list,tuple)): 
+    if isinstance(regions,(list,tuple)):
         if len(regions) > 2: with_chrom = True
         regions = iter([regions])
     else:
         _f = ['start','end']
-        if 'chr' in regions.fields: 
+        if 'chr' in regions.fields:
             _f = ['chr']+_f
             with_chrom = True
         regions = reorder(regions,_f)
-    if with_chrom: 
+    if with_chrom:
         s = reorder(stream,['start','end','chr']+fields)
         nf = 3
     else:

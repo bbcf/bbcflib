@@ -17,9 +17,9 @@ def normalize(x):
 def correlation(trackList, regions, limits=(-1000,1000), with_acf=False):
     """
     Calculates the cross-correlation between two streams and
-    returns a vector containing the correlation at each lag in this order 
+    returns a vector containing the correlation at each lag in this order
     (L/R for resp. limits[0], limits[1]):
-    [L,L+1,...,R-1,R]. 
+    [L,L+1,...,R-1,R].
     If more than two tracks are given in *trackList*,
     returns a list of correlation vectors, one for every distinct pair of tracks.
     If `with_acf` is True, self-correlations will also be included in the list.

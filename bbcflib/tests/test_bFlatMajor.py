@@ -47,12 +47,12 @@ class Test_Common(unittest.TestCase):
     def test_unroll(self):
         expected = [(0,),(0.5,),(0.5,),(0,),(0,),(1.2,),(0,)]
         stream = fstream([(10,12,0.5), (14,15,1.2)], fields=['start','end','score'])
-        ustream = list(unroll(stream,9,16))
+        ustream = list(unroll(stream,(9,16)))
         self.assertListEqual(ustream, expected)
 
         expected = [(5,),(9,),(11,)]
         stream = fstream([(0,1,5),(1,2,9),(2,3,11)], fields=['start','end','score'])
-        ustream = list(unroll(stream,0,3))
+        ustream = list(unroll(stream,(0,3)))
         self.assertListEqual(ustream, expected)
 
     def test_sorted_stream(self):
@@ -175,7 +175,7 @@ class Test_Signal(unittest.TestCase):
         Y = [('chr',k,k+1,s) for k,s in enumerate(y)]
         X = btrack.FeatureStream(iter(X),fields=['chr','start','end','score'])
         Y = btrack.FeatureStream(iter(Y),fields=['chr','start','end','score'])
-        corr = correlation([X,Y], start=0, end=N)#, limits=[-N+1,N-1])
+        corr = correlation([X,Y], regions=(0,N))#, limits=[-N+1,N-1])
 
         # Compute cross-correlation "by hand" and using numpy.correlate(mode='valid')
         raw = []
