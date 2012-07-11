@@ -35,7 +35,15 @@ class Test_Assembly(unittest.TestCase):
         2863   =   107        +     194       +     333        +       708       +       1461
         """
     def test_fasta_from_regions(self):
-        pass
+        expected = ({'chrI':['G','C','AAGCCTAAGCCTAAGCCTAA','TTTTTGAAAT']}, 32)
+        regions = [('chrI',0,1),('chrI',1,2),('chrI',10,30),('chrI',1010,1020)]
+        url_seq = self.assembly.fasta_from_regions(regions=regions,out={})
+        self.assertEqual(url_seq, expected)
+
+        regions = {'chrI':[(0,1),(1,2),(10,30),(1010,1020)]}
+        custom_seq = self.assembly.fasta_from_regions(regions=regions,out={},
+                            path_to_ref=os.path.join(path,"chrI_ce6_30lines.fa"))
+        self.assertEqual(custom_seq, expected)
 
     def test_get_features_from_gtf(self):
         expected = {'eif-3.B': [[14795327, 14795434, 1, 'chrII'], [14795331, 14795434, 1, 'chrII'],
