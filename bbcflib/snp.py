@@ -79,7 +79,7 @@ def sam_pileup(assembly,bamfile,refGenome,via='lsf',minSNP=10,minCoverage=80):
             "return_value": [minCoverage,minSNP]}
 
 def write_pileupFile(dictPileup,sample_names,allSNPpos,chrom,minCoverage=80,minSNP=10):
-    """For a given chromosome, returns a summary file containing all SNPs identified 
+    """For a given chromosome, returns a summary file containing all SNPs identified
     in at least one of the samples.
     Each row contains: chromosome id, SNP position, reference base, SNP base (with proportions)
 
@@ -146,7 +146,7 @@ def write_pileupFile(dictPileup,sample_names,allSNPpos,chrom,minCoverage=80,minS
     with open(formattedPileupFilename,'wb') as outfile:
         for pos in allpos:
             nbNoSnp = 0 # Check if at least one sample had the SNP (??)
-            for sname in sample_names: 
+            for sname in sample_names:
                 nbNoSnp += allSamples[sname][pos].count("0")
             if nbNoSnp != len(allSamples):
                 refbase = allSNPpos[pos]
@@ -156,7 +156,7 @@ def write_pileupFile(dictPileup,sample_names,allSNPpos,chrom,minCoverage=80,minS
 
     return formattedPileupFilename
 
-def annotate_snps( filedict, sample_names, assembly ):
+def annotate_snps( filedict, sample_names, assembly, genomeRef=None ):
     """Annotates SNPs described in `filedict` (a dictionary of the form {chromosome: filename}
     where `filename` is an output of parse_pileupFile).
     Adds columns 'gene', 'location_type' and 'distance' to the output of parse_pileupFile.
@@ -164,8 +164,10 @@ def annotate_snps( filedict, sample_names, assembly ):
     the specified assembly, and the second contains only SNPs found within CDS regions.
 
     :param filedict: {chr: formattedPileupFilename}
-    :sample_names: list of sample names
-    :assembly: genrep.Assembly object
+    :param sample_names: list of sample names
+    :param assembly: genrep.Assembly object
+    :param genomeRef: dict of the form {'chr1': filename}, where filename is the name of a fasta file
+        containing the reference sequence for the chromosome.
     """
     def _process_annot(stream, fname):
         """Write (append) features from the *stream* in a file *fname*."""
@@ -213,7 +215,7 @@ def annotate_snps( filedict, sample_names, assembly ):
                         assert ref_codon[2-shift] == refbase, "bug with shift within codon"
             new_codon = ["".join(new_codon[k]) for k in range(nsamples)]
             # Complementary strand
-            if strand == -1: 
+            if strand == -1:
                 ref_codon = _revcomp(ref_codon)
                 new_codon = [_revcomp(c) for c in new_codon]
             # Write to a file
@@ -259,7 +261,7 @@ def annotate_snps( filedict, sample_names, assembly ):
             nsamples = len(sample_names)
             pos = x[0]; chr = x[2]; rest = x[3]
             refbase = rest[0]
-            annot = [rest[5*i+nsamples+1 : 5*i+5+nsamples+1] 
+            annot = [rest[5*i+nsamples+1 : 5*i+5+nsamples+1]
                      for i in range(len(rest[nsamples+1:])/5)] # list of [start,end,cds,strand,phase]
             for es,ee,cds,strand,phase in annot:
                 if strand == 1:
@@ -268,7 +270,12 @@ def annotate_snps( filedict, sample_names, assembly ):
                 elif strand == -1:
                     shift = (ee - phase - pos) % 3
                     codon_start = pos + shift - 2
-                ref_codon = assembly.fasta_from_regions({chr: [[codon_start,codon_start+3]]}, out={})[0][chr][0]
+                if genomeRef:
+                    print "Test with custom ref"
+                    ref_codon = assembly.fasta_from_regions({chr: [[codon_start,codon_start+3]]}, out={},
+                                                            path_to_ref=genomeRef[chr])[0][chr][0]
+                else:
+                    ref_codon = assembly.fasta_from_regions({chr: [[codon_start,codon_start+3]]}, out={})[0][chr][0]
                 info = [chr, pos, refbase, list(rest[1:1+nsamples]), cds, strand, ref_codon, shift]
                 # Either the codon is the same as the previous one on this strand, or it will never be.
                 # Only if one codon is passed, can write its snps to a file.
