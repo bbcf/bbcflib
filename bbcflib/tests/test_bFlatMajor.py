@@ -5,7 +5,7 @@ import os, sys, math
 # Internal modules #
 from bbcflib import btrack, genrep
 from bbcflib.btrack import FeatureStream as fstream
-from bbcflib.bFlatMajor.common import sentinelize, reorder, unroll, sorted_stream, shuffled, fusion
+from bbcflib.bFlatMajor.common import sentinelize, reorder, unroll, sorted_stream, shuffled, fusion, cobble
 from bbcflib.bFlatMajor.stream.annotate import getNearestFeature
 from bbcflib.bFlatMajor.stream.intervals import concatenate, neighborhood, combine, segment_features
 from bbcflib.bFlatMajor.stream.intervals import exclude, require, disjunction, intersection, union
@@ -64,6 +64,8 @@ class Test_Common(unittest.TestCase):
     def test_fusion(self):
         pass
 
+    def test_cobble(self):
+        pass
 
 
 ################### STREAM ######################
@@ -77,6 +79,7 @@ class Test_Annotate(unittest.TestCase):
               |                            |
                ->     Y54E2A.11             ->     Y54E2A.12
         """
+
     def test_getNearestFeature(self):
         features = fstream([('chrII',14795327,14798367)], fields=['chr','start','end'])
         expected = [(14795327, 14798367, 'chrII', 'Y54E2A.12|tbc-20_Y54E2A.11|eif-3.B', 'Promot_Included', '28_0')]
@@ -107,7 +110,12 @@ class Test_Intervals(unittest.TestCase):
         pass
 
     def test_intersection(self):
-        pass
+        expected = (91143, 91144,'chr', ('C','*A','0','|EBMYCG00000002479|Rv0083',1,0))
+        a = genrep.Assembly('mycoTube_H37RV')
+        c = btrack.concat_fields(a.annot_track('CDS','chr'),infields=['name','strand','frame'], as_tuple=True)
+        feat = btrack.FeatureStream(iter([('chr',91143,91144,('C','*A','0'))]), fields=['chr','start','end','rest'])
+        g = combine([feat,c], intersection, win_size=10000)
+        self.assertEqual(g.next(),expected)
 
     def test_union(self):
         pass
