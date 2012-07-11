@@ -704,22 +704,34 @@ class GenRep(object):
             a = 0
             f = open(path_to_ref)
             sequences = []
-            for start,end in coord_list:
-                seq = ''
-                while 1:
-                    line = f.readline().strip(' \t\r\n')
-                    if line.startswith('>'): continue
-                    b = a+len(line)
-                    if start <= b:
-                        if start < a:
-                            start = a
-                        if end <= b:
-                            seq += line[start-a:end-a]
-                            break
-                        elif end > b:
-                            seq += line[start-a:]
-                    a = b
-                sequences.append(seq)
+            coord_list = iter(coord_list)
+            start,end = coord_list.next()
+            seq = ''
+            line = True
+            for i,line in enumerate(f):
+                line = line.strip(' \t\r\n')
+                if line.startswith('>'): continue
+                print '>>>LINE'+str(i)+'>>>',line
+                b = a+len(line)
+                while start <= b:
+                    start = max(a,start)
+                    if end <= b:
+                        print line[start-a:end-a]
+                        seq += line[start-a:end-a]
+                        sequences.append(seq.upper())
+                        print 'seq',seq.upper()
+                        seq = ''
+                        try:
+                            start,end = coord_list.next()
+                        except StopIteration:
+                            f.close()
+                            return sequences
+                    elif end > b:
+                        print line[start-a:]
+                        seq += line[start-a:]
+                        a = b
+                        break
+                a = b
             f.close()
             return sequences
         else:
@@ -738,6 +750,7 @@ class GenRep(object):
         :param params: to add some parameters to the query from GenRep.
 
         Example:
+
         To get the genomes related to 'Mycobacterium leprae' species::
 
             species = get_genrep_objects('organisms', 'organism', {'species':'Mycobacterium leprae'})[0]

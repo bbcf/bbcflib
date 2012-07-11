@@ -1,5 +1,5 @@
 # Built-in modules #
-import cStringIO
+import cStringIO, os
 
 # Internal modules #
 from bbcflib.genrep import Assembly, GenRep
@@ -12,6 +12,9 @@ except ImportError:
 
 # Nosetest flag #
 __test__ = True
+
+# Path to testing files
+path = "test_data/genrep/"
 
 ###################################################################################
 
@@ -128,23 +131,33 @@ class Test_Assembly(unittest.TestCase):
 
 class Test_GenRep(unittest.TestCase):
     def setUp(self):
-        self.genrep = GenRep('http://bbcftools.vital-it.ch/genrep/','/db/genrep')
-        self.ce6 = Assembly('ce6')
-        self.ce6.chromosomes = {(3067, u'NC_003280', 7): {'length': 15279323, 'name': u'chrII'},
-                   (3069, u'NC_003282', 5): {'length': 17493785, 'name': u'chrIV'},
-                   (3068, u'NC_003281', 8): {'length': 13783681, 'name': u'chrIII'},
-                   (3070, u'NC_003283', 8): {'length': 20919568, 'name': u'chrV'},
-                   (3071, u'NC_003284', 7): {'length': 17718854, 'name': u'chrX'},
-                   (3066, u'NC_003279', 6): {'length': 15072421, 'name': u'chrI'},
-                   (2948, u'NC_001328', 1): {'length': 13794, 'name': u'chrM'}}
+        self.assembly = Assembly('ce6')
+        self.assembly.genrep = GenRep('http://bbcftools.vital-it.ch/genrep/','/db/genrep')
+        self.assembly.intype = '0'
+        self.chromosomes = {(3066, u'NC_003279', 6): {'length': 15072421, 'name': u'chrI'},
+                            (3067, u'NC_003280', 7): {'length': 15279323, 'name': u'chrII'},
+                            (3068, u'NC_003281', 8): {'length': 13783681, 'name': u'chrIII'},
+                            (3069, u'NC_003282', 5): {'length': 17493785, 'name': u'chrIV'},
+                            (3070, u'NC_003283', 8): {'length': 20919568, 'name': u'chrV'},
+                            (3071, u'NC_003284', 7): {'length': 17718854, 'name': u'chrX'},
+                            (2948, u'NC_001328', 1): {'length': 13794,    'name': u'chrM'}}
 
-    #@unittest.skip("These tests don't pass anymore. Delete this line once they are fixed.")
+    def test_attributes(self):
+        self.assertItemsEqual(self.assembly.chromosomes,self.chromosomes)
+        self.assertEqual(self.assembly.id,14)
+
     def test_config_correctly_loaded(self):
-        self.assertEqual(self.genrep.url, 'http://bbcftools.vital-it.ch/genrep')
-        self.assertEqual(self.genrep.root, '/db/genrep')
+        self.assertEqual(self.assembly.genrep.url, 'http://bbcftools.vital-it.ch/genrep')
+        self.assertEqual(self.assembly.genrep.root, '/db/genrep')
 
     def test_get_sequence(self):
-        pass
+        expected = ['G','C','AAGCCTAAGCCTAAGCCTAA','TTTTTGAAAT']
+        coord_list = [(0,1),(1,2),(10,30),(1010,1020)]
+        url_seq = self.assembly.genrep.get_sequence(chr_id=3066, coord_list=coord_list)
+        custom_seq = self.assembly.genrep.get_sequence(chr_id=0, coord_list=coord_list,
+                                              path_to_ref=os.path.join(path,"chrI_ce6_30lines.fa"))
+        self.assertEqual(url_seq,expected)
+        self.assertEqual(custom_seq,expected)
 
 
 #-----------------------------------#
