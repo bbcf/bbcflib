@@ -152,7 +152,7 @@ def _combine(trackList,fn,win_size,aggregate):
     fields = trackList[0].fields
     trackList = [common.sentinelize(t, [sys.maxint]*len(fields)) for t in trackList]
     init = [trackList[i].next() for i in range(N)]
-    activity = [False]*N
+    activity = [False]*N # a vector of boolean values for the N tracks at a given position
     z = [None]*N
     for i in xrange(N-1,-1,-1):
         if init[i][0] == sys.maxint:
