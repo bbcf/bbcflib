@@ -185,7 +185,8 @@ def fusion(stream,aggregate=aggreg_functions):
     return FeatureStream( _fuse(_s), _s.fields )
 
 def cobble(stream,aggregate=aggreg_functions):
-    """Fuses overlapping features in *stream* and applies `aggregate[f]` function to each field `f`.
+    """Fragments overlapping features in *stream* and applies `aggregate[f]` function
+    to each field `f` in common fragments.
 
     Example::
 
@@ -194,7 +195,7 @@ def cobble(stream,aggregate=aggreg_functions):
         yields
 
         (10, 13, 'chr1', 'A', 1)
-        (13, 15, 'chr1', 'AB', 0)
+        (13, 15, 'chr1', 'A|B', 0)
         (15, 18, 'chr1', 'B', -1)
         (18, 25, 'chr1', 'C', -1)
 
@@ -208,36 +209,43 @@ def cobble(stream,aggregate=aggreg_functions):
         """Return *z*, the part that must replace A in *toyield*, and
         *rest*, that must reenter the loop instead of B."""
         rest = None
-        if B[1] < A[2]:           # has an intersection
-            if B[2] < A[2]:
-                if B[1] == A[1]:  # same left border, A is bigger
-                    z = [(A[0],B[1],B[2],A[3]+B[3]), (A[0],B[2],A[2],A[3])]
-                elif B[1] < A[1]: # B shifted to the left wrt A
-                    z = [(A[0],B[1],A[1],B[3]), (A[0],A[1],B[2],A[3]+B[3]), (A[0],B[2],A[2],A[3])]
+        a = A[2:]
+        b = B[2:]
+        ab = [aggregate.get(f,generic_merge)(A[k],B[k]) for k,f in enumerate(stream.fields[2:])]
+        if B[0] < A[1]:           # has an intersection
+            if B[1] < A[1]:
+                if B[0] == A[0]:  # same left border, A is bigger
+                    z = [(B[0],B[1])+ab, (B[1],A[1])+a]
+                elif B[0] < A[0]: # B shifted to the left wrt A
+                    z = [(B[0],A[0])+b, (A[0],B[1])+ab, (B[1],A[1])+a]
                 else:             # B embedded in A
-                    z = [(A[0],A[1],B[1],A[3]), (A[0],B[1],B[2],A[3]+B[3]), (A[0],B[2],A[2],A[3])]
-            elif B[2] == A[2]:
-                if B[1] == A[1]:  # identical
-                    z = [(A[0],A[1],A[2],A[3]+B[3])]
-                elif B[1] < A[1]: # same right border, B is bigger
-                    z = [(A[0],B[1],A[1],B[3]), (A[0],A[1],B[2],A[3]+B[3])]
+                    z = [(A[0],B[0])+a, (B[0],B[1])+ab, (B[1],A[1])+a]
+            elif B[1] == A[1]:
+                if B[0] == A[0]:  # identical
+                    z = [(A[0],A[1])+ab]
+                elif B[0] < A[0]: # same right border, B is bigger
+                    z = [(B[0],A[0])+b, (A[0],B[1])+ab]
                 else:             # same right border, A is bigger
-                    z = [(A[0],A[1],B[1],A[3]), (A[0],B[1],B[2],A[3]+B[3])]
+                    z = [(A[0],B[0])+a, (B[0],B[1])+ab]
             else:
-                if B[1] == A[1]:  # same left border, B is bigger
-                    z = [(A[0],A[1],A[2],A[3]+B[3])]
-                    rest = (A[0],A[2],B[2],B[3])
-                elif B[1] < A[1]: # B contains A
-                    z = [(A[0],B[1],A[1],B[3]), (A[0],A[1],A[2],A[3]+B[3])]
-                    rest = (A[0],A[2],B[2],B[3])
+                if B[0] == A[0]:  # same left border, B is bigger
+                    z = [(A[0],A[1])+ab]
+                    rest = (A[1],B[1])+b
+                elif B[0] < A[0]: # B contains A
+                    z = [(B[0],A[0])+b, (A[0],A[1])+ab]
+                    rest = (A[1],B[1])+b
                 else:             # B shifted to the right wrt A
-                    z = [(A[0],A[1],B[1],A[3]), (A[0],B[1],A[2],A[3]+B[3])]
-                    rest = (A[0],A[2],B[2],B[3])
+                    z = [(A[0],B[0])+a, (B[0],A[1])+ab]
+                    rest = (A[1],B[1])+b
         else: z = None            # no intersection
         return z, rest
 
     def _fuse(stream):
-        x = stream.next()
+        stream = reorder(stream,['start','end'])
+        try:
+            x = stream.next()
+        except StopIteration:
+            return
         toyield = [x]
         while 1:
             try:
@@ -266,7 +274,6 @@ def cobble(stream,aggregate=aggreg_functions):
                     yield tuple(y)
                 break
 
-    _s = reorder(stream,['start','end'])
     return FeatureStream( _fuse(_s), _s.fields )
 
 ####################################################################

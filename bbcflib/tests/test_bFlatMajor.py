@@ -62,10 +62,17 @@ class Test_Common(unittest.TestCase):
         pass
 
     def test_fusion(self):
-        pass
+        expected = [(10, 18, 'chr1', 'A|B', 0),(18, 25, 'chr1', 'C', -1)]
+        stream = fstream([('chr1',10,15,'A',1),('chr1',13,18,'B',-1),('chr1',18,25,'C',-1)],
+                         fields = ['chr','start','end','name','score'])
 
     def test_cobble(self):
-        pass
+        expected = [(10, 13, 'chr1', 'A',   1),
+                    (13, 15, 'chr1', 'A|B', 0),
+                    (15, 18, 'chr1', 'B',  -1),
+                    (18, 25, 'chr1', 'C',  -1)]
+        stream = fstream([('chr1',10,15,'A',1),('chr1',13,18,'B',-1),('chr1',18,25,'C',-1)],
+                         fields = ['chr','start','end','name','score'])
 
 
 ################### STREAM ######################
@@ -79,7 +86,6 @@ class Test_Annotate(unittest.TestCase):
               |                            |
                ->     Y54E2A.11             ->     Y54E2A.12
         """
-
     def test_getNearestFeature(self):
         features = fstream([('chrII',14795327,14798367)], fields=['chr','start','end'])
         expected = [(14795327, 14798367, 'chrII', 'Y54E2A.12|tbc-20_Y54E2A.11|eif-3.B', 'Promot_Included', '28_0')]
