@@ -711,15 +711,12 @@ class GenRep(object):
             for i,line in enumerate(f):
                 line = line.strip(' \t\r\n')
                 if line.startswith('>'): continue
-                print '>>>LINE'+str(i)+'>>>',line
                 b = a+len(line)
                 while start <= b:
                     start = max(a,start)
                     if end <= b:
-                        print line[start-a:end-a]
                         seq += line[start-a:end-a]
                         sequences.append(seq.upper())
-                        print 'seq',seq.upper()
                         seq = ''
                         try:
                             start,end = coord_list.next()
@@ -727,7 +724,6 @@ class GenRep(object):
                             f.close()
                             return sequences
                     elif end > b:
-                        print line[start-a:]
                         seq += line[start-a:]
                         a = b
                         break
