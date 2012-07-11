@@ -36,10 +36,11 @@ class Test_Assembly(unittest.TestCase):
         """
     def test_fasta_from_regions(self):
         expected = ({'chrI':['G','C','AAGCCTAAGCCTAAGCCTAA','TTTTTGAAAT']}, 32)
+        # GenRep request, list form
         regions = [('chrI',0,1),('chrI',1,2),('chrI',10,30),('chrI',1010,1020)]
         url_seq = self.assembly.fasta_from_regions(regions=regions,out={})
         self.assertEqual(url_seq, expected)
-
+        # Custom fasta file, dict form
         regions = {'chrI':[(0,1),(1,2),(10,30),(1010,1020)]}
         custom_seq = self.assembly.fasta_from_regions(regions=regions,out={},
                             path_to_ref=os.path.join(path,"chrI_ce6_30lines.fa"))
