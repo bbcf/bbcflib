@@ -128,9 +128,15 @@ aggreg_functions = {'strand': strand_merge, 'chr': no_merge}
 
 def fusion(stream,aggregate=aggreg_functions):
     """Fuses overlapping features in *stream* and applies *aggregate[f]* function to each field $f$.
-    Example: [('chr1',10,15,'A',1),('chr1',13,18,'B',-1),('chr1',18,25,'C',-1)] yields
-    (10, 18, 'chr1', 'A|B', 0)
-    (18, 25, 'chr1', 'C', -1)
+
+    Example::
+
+        [('chr1',10,15,'A',1),('chr1',13,18,'B',-1),('chr1',18,25,'C',-1)]
+
+        yields
+
+        (10, 18, 'chr1', 'A|B', 0)
+        (18, 25, 'chr1', 'C', -1)
 
     :param stream: FeatureStream object.
     :rtype: FeatureStream
@@ -152,6 +158,92 @@ def fusion(stream,aggregate=aggreg_functions):
                 yield tuple(x)
                 x = list(y)
         yield tuple(x)
+
+    _s = reorder(stream,['start','end'])
+    return FeatureStream( _fuse(_s), _s.fields )
+
+def cobble(stream,aggregate=aggreg_functions):
+    """Fuses overlapping features in *stream* and applies `aggregate[f]` function to each field `f`.
+
+    Example::
+
+        [('chr1',10,15,'A',1),('chr1',13,18,'B',-1),('chr1',18,25,'C',-1)]
+
+        yields
+
+        (10, 13, 'chr1', 'A', 1)
+        (13, 15, 'chr1', 'AB', 0)
+        (15, 18, 'chr1', 'B', -1)
+        (18, 25, 'chr1', 'C', -1)
+
+    This is to avoid having overlapping coordinates of features from both DNA strands,
+    which some genome browsers cannot handle for quantitative tracks.
+
+    :param stream: FeatureStream object.
+    :rtype: FeatureStream
+    """
+    def _intersect(A,B):
+        """Return *z*, the part that must replace A in *toyield*, and
+        *rest*, that must reenter the loop instead of B."""
+        rest = None
+        if B[1] < A[2]:           # has an intersection
+            if B[2] < A[2]:
+                if B[1] == A[1]:  # same left border, A is bigger
+                    z = [(A[0],B[1],B[2],A[3]+B[3]), (A[0],B[2],A[2],A[3])]
+                elif B[1] < A[1]: # B shifted to the left wrt A
+                    z = [(A[0],B[1],A[1],B[3]), (A[0],A[1],B[2],A[3]+B[3]), (A[0],B[2],A[2],A[3])]
+                else:             # B embedded in A
+                    z = [(A[0],A[1],B[1],A[3]), (A[0],B[1],B[2],A[3]+B[3]), (A[0],B[2],A[2],A[3])]
+            elif B[2] == A[2]:
+                if B[1] == A[1]:  # identical
+                    z = [(A[0],A[1],A[2],A[3]+B[3])]
+                elif B[1] < A[1]: # same right border, B is bigger
+                    z = [(A[0],B[1],A[1],B[3]), (A[0],A[1],B[2],A[3]+B[3])]
+                else:             # same right border, A is bigger
+                    z = [(A[0],A[1],B[1],A[3]), (A[0],B[1],B[2],A[3]+B[3])]
+            else:
+                if B[1] == A[1]:  # same left border, B is bigger
+                    z = [(A[0],A[1],A[2],A[3]+B[3])]
+                    rest = (A[0],A[2],B[2],B[3])
+                elif B[1] < A[1]: # B contains A
+                    z = [(A[0],B[1],A[1],B[3]), (A[0],A[1],A[2],A[3]+B[3])]
+                    rest = (A[0],A[2],B[2],B[3])
+                else:             # B shifted to the right wrt A
+                    z = [(A[0],A[1],B[1],A[3]), (A[0],B[1],A[2],A[3]+B[3])]
+                    rest = (A[0],A[2],B[2],B[3])
+        else: z = None            # no intersection
+        return z, rest
+
+    def _fuse(stream):
+        x = stream.next()
+        toyield = [x]
+        while 1:
+            try:
+                x = stream.next()
+                intersected = False
+                for y in toyield:
+                    replace, rest = _intersect(y,x)
+                    if replace:
+                        intersected = True
+                        iy = toyield.index(y)
+                        y = toyield.pop(iy)
+                        for k in range(len(replace)):
+                            toyield.insert(iy+k, replace[k])
+                        x = rest
+                        if not x: break
+                if not intersected:
+                    while toyield:
+                        y = toyield.pop(0)
+                        yield tuple(y)
+                    toyield = [x]
+                elif x:
+                    toyield.append(x)
+            except StopIteration:
+                while toyield:
+                    y = toyield.pop(0)
+                    yield tuple(y)
+                break
+
     _s = reorder(stream,['start','end'])
     return FeatureStream( _fuse(_s), _s.fields )
 
