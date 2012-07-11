@@ -1,7 +1,9 @@
 from bbcflib.bFlatMajor import common
 import numpy
-from scipy.fftpack import fft, ifft
-#from numpy.fft import fft, ifft
+try:
+    from scipy.fftpack import fft, ifft
+except ImportError:
+    from numpy.fft import fft, ifft
 from numpy import conjugate
 from math import log
 
@@ -12,7 +14,7 @@ def normalize(x):
     isigma = 1.0/numpy.sqrt((x*x).mean()-mu*mu)
     return (x-mu)*isigma
 
-def correlation(trackList, start, end, limits=(-1000,1000)):
+def correlation(trackList, start, end, limits=(-1000,1000), with_acf=False):
     """
     Calculates the cross-correlation between two streams and
     returns a vector containing the correlation at each lag in this order 
@@ -20,6 +22,7 @@ def correlation(trackList, start, end, limits=(-1000,1000)):
     [L,L+1,...,R-1,R]. 
     If more than two tracks are given in *trackList*,
     returns a list of correlation vectors, one for every distinct pair of tracks.
+    If `with_acf` is True, self-correlations will also be included in the list.
 
     A negative lag indicates that track 2 is shifted to the right w.r.t track 1,
     a positive lag - to the left.
@@ -43,6 +46,7 @@ def correlation(trackList, start, end, limits=(-1000,1000)):
     :param trackList: list of FeatureStream objects
     :param start,end: (int) bounds of the region to consider, in bp.
     :param limits: (tuple (int,int)) maximum lag to consider. [-1000,1000]
+    :param with_acf: (bool) include auto-correlations. [False]
     :rtype: list of floats, or list of lists of floats.
     """
     ##### One could profit from numpy to reduce the memory space used for
@@ -58,9 +62,11 @@ def correlation(trackList, start, end, limits=(-1000,1000)):
         corr = ifft(fft(x1,N)*conjugate(fft(x2,N)))/len(x1)
         corr = numpy.concatenate((corr[N+limits[0]:], corr[:limits[1]+1]))
         return numpy.real(corr)[::-1]
-    if len(trackList) == 2:
+    if with_acf:
+        return [[_corr(x1,x2,N) for x2 in x[n:]] for n,x1 in enumerate(x)]
+    elif len(trackList) == 2:
         return _corr(x[0],x[1],N)
     else:
-        return [_corr(x1,x2,N) for n,x1 in enumerate(x) for x2 in x[n+1:]]
+        return [[_corr(x1,x2,N) for x2 in x[n+1:]] for n,x1 in enumerate(x[:-1])]
 
 ################################################################################
