@@ -271,10 +271,9 @@ def annotate_snps( filedict, sample_names, assembly, genomeRef=None ):
                     shift = (ee - phase - pos) % 3
                     codon_start = pos + shift - 2
                 if genomeRef:
-                    print "Test with custom ref"
                     ref_codon = assembly.fasta_from_regions({chr: [[codon_start,codon_start+3]]}, out={},
                                                             path_to_ref=genomeRef[chr])[0][chr][0]
-                else:
+                else: # from GenRep. The real workflow should not go through it.
                     ref_codon = assembly.fasta_from_regions({chr: [[codon_start,codon_start+3]]}, out={})[0][chr][0]
                 info = [chr, pos, refbase, list(rest[1:1+nsamples]), cds, strand, ref_codon, shift]
                 # Either the codon is the same as the previous one on this strand, or it will never be.
