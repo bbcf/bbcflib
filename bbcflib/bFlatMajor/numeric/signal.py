@@ -14,7 +14,7 @@ def normalize(x):
     isigma = 1.0/numpy.sqrt((x*x).mean()-mu*mu)
     return (x-mu)*isigma
 
-def correlation(trackList, start, end, limits=(-1000,1000), with_acf=False):
+def correlation(trackList, regions, limits=(-1000,1000), with_acf=False):
     """
     Calculates the cross-correlation between two streams and
     returns a vector containing the correlation at each lag in this order 
@@ -44,14 +44,14 @@ def correlation(trackList, start, end, limits=(-1000,1000), with_acf=False):
         |______________/^\__|  <-
 
     :param trackList: list of FeatureStream objects
-    :param start,end: (int) bounds of the region to consider, in bp.
+    :param regions: a tuple (start,end) or a FeatureStream with the bounds of the regions to consider (see `unroll`).
     :param limits: (tuple (int,int)) maximum lag to consider. [-1000,1000]
     :param with_acf: (bool) include auto-correlations. [False]
     :rtype: list of floats, or list of lists of floats.
     """
     ##### One could profit from numpy to reduce the memory space used for
     ##### storing these - long - arrays ('dtype' is float64 by default).
-    x = [numpy.array([s[0] for s in common.unroll(t,start,end)]) for t in trackList]
+    x = [numpy.array([s[0] for s in common.unroll(t,regions)]) for t in trackList]
     x = [normalize(t) for t in x]
     if limits[1]-limits[0] > 2*len(x[0]):
         limits = (-len(x[0])+1,len(x[0])-1)

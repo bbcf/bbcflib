@@ -26,7 +26,7 @@ def reorder(stream,fields):
     return FeatureStream((tuple(x[n] for n in _inds) for x in stream), fields=_flds)
 
 ####################################################################
-def unroll( stream, start, end, fields=['score'] ):
+def unroll( stream, regions, fields=['score'] ):
     """Creates a stream of *end*-*start* items with appropriate *fields* values at every base position.
     For example, ``unroll([(10,12,0.5), (14,15,1.2)], start=9, end=16)`` returns::
 
@@ -34,27 +34,49 @@ def unroll( stream, start, end, fields=['score'] ):
                         9     10     11    12   13    14    15
 
     :param stream: FeatureStream object.
-    :param start, end: (int) bounds of the region to return.
+    :param regions: either a pair (start,end) or a FeatureStream interpreted as bounds of the region(s) to return.
     :param fields: list of field names **in addition to 'start','end'**. [['score']]
     :rtype: FeatureStream
     """
     if not(isinstance(fields,(list,tuple))): fields = [fields]
-    s = reorder(stream,['start','end']+fields)
+    with_chrom = False
+    if isinstance(regions,(list,tuple)): 
+        if len(regions) > 2: with_chrom = True
+        regions = iter([regions])
+    else:
+        _f = ['start','end']
+        if 'chr' in regions.fields: 
+            _f = ['chr']+_f
+            with_chrom = True
+        regions = reorder(regions,_f)
+    if with_chrom: 
+        s = reorder(stream,['start','end','chr']+fields)
+        nf = 3
+    else:
+        s = reorder(stream,['start','end']+fields)
+        nf = 2
+    item0 = (0,)+(None,)*(len(fields)-1)
     def _unr(s):
-        pos = start
-        for x in s:
-            if x[1] <= pos: next
-            while pos < min(x[0],end):
-                yield (0,)+x[3:]
+        for reg in regions:
+            if with_chrom:
+                chrom,pos,end = reg[:3]
+            else:
+                chrom = None
+                pos,end = reg[:2]
+            for x in s:
+                if chrom and not(x[2] == chrom): continue
+                if x[1] <= pos: continue
+                while pos < min(x[0],end):
+                    yield item0
+                    pos+=1
+                while pos < min(x[1],end):
+                    yield x[nf:]
+                    pos+=1
+                if pos >= end: break
+            while pos < end:
+                yield item0
                 pos+=1
-            while pos < min(x[1],end):
-                yield x[2:]
-                pos+=1
-            if pos >= end: break
-        while pos < end:
-            yield (0,)+x[3:]
-            pos+=1
-    return FeatureStream(_unr(s),fields=s.fields[2:])
+    return FeatureStream(_unr(s),fields=s.fields[nf:])
 
 ####################################################################
 def sorted_stream(stream,chrnames=[],fields=['chr','start','end']):
