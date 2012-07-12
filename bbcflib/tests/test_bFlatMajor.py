@@ -145,20 +145,40 @@ class Test_Intervals(unittest.TestCase):
     def test_neighborhood(self):
         pass
 
+    def test_segment_features(self):
+        pass
+
     def test_combine(self):
         # With custom boolean function
         pass
 
     def test_exclude(self):
         # combine( ... , fn=exclude)
-        pass
+        self.assertEqual(exclude([True,True,False,False,False],[2,3,4]), True)
+        self.assertEqual(exclude([True,True,False,False,False],[0,1]), False)
+        self.assertEqual(exclude([True,True,False,False,False],[1,2,3]), False)
+
+    def test_require(self):
+        # combine( ... , fn=require)
+        self.assertEqual(require([True,True,False,False,False],[2,3,4]), False)
+        self.assertEqual(require([True,True,False,False,False],[0,1]), False) # !?
+        self.assertEqual(require([True,True,False,True, False],[0,1]), True)
+        self.assertEqual(require([True,True,False,False,False],[1,2,3]), False)
 
     def test_disjunction(self):
         # combine( ... , fn=disjunction)
-        pass
+        self.assertEqual(disjunction([True,True,False,False,False],[0,1]), True)
+        self.assertEqual(disjunction([True,True,False,False,False],[0]), False)
+        self.assertEqual(disjunction([True,True,False,False,False],[0,1,2]), True)
+        self.assertEqual(disjunction([True,True,False,False,False],[2,3,4]), True)
+        self.assertEqual(disjunction([True,True,False,False,False],[1,2,3]), False)
 
     def test_intersection(self):
-        # combine( ... , fn=intersection)
+        # combine( ... , fn=intersection).
+        self.assertEqual(intersection([True,True,True]), True)
+        self.assertEqual(intersection([True,False,True]), False)
+
+        # Test from the snp workflow.
         expected = (91143,91144,'chr', ('C','*A','0','|EBMYCG00000002479|Rv0083',1,0))
         a = genrep.Assembly('mycoTube_H37RV')
         c = btrack.concat_fields(a.annot_track('CDS','chr'), infields=['name','strand','frame'], as_tuple=True)
@@ -168,10 +188,8 @@ class Test_Intervals(unittest.TestCase):
 
     def test_union(self):
         # combine( ... , fn=union)
-        pass
-
-    def test_segment_features(self):
-        pass
+        self.assertEqual(union([True,False,True]), True)
+        self.assertEqual(union([False,False,False]), False)
 
 
 class Test_Scores(unittest.TestCase):

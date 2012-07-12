@@ -231,7 +231,7 @@ def require(x,indexList):
        and all([y for n,y in enumerate(x) if n in indexList])
 
 def disjunction(x,indexList):
-    """Returns True if either all True elements of x are from *indexList* or none of them."""
+    """Returns True if either all True elements of x are in *indexList* or none of them."""
     complementList = [n for n in range(len(x)) if not(n in indexList)]
     return exclude(x,indexList) or exclude(x,complementList)
 
