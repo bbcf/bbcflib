@@ -28,9 +28,9 @@ def reorder(stream,fields):
 ####################################################################
 def unroll( stream, regions, fields=['score'] ):
     """Creates a stream of *end*-*start* items with appropriate *fields* values at every base position.
-    For example, ``unroll([(10,12,0.5), (14,15,1.2)], start=9, end=16)`` returns::
+    For example, ``unroll([(10,12,0.5,'a'), (14,15,1.2,'b')], start=9, end=16)`` returns::
 
-        FeatureStream([(0,),(0.5,),(0.5,),(0,),(0,),(1.2,),(0,)])
+        FeatureStream([(0,),(0.5,'a'),(0.5,'a'),(0,),(0,),(1.2,'b'),(0,)])
                         9     10     11    12   13    14    15
 
     :param stream: FeatureStream object.
