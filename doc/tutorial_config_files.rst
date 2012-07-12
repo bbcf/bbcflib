@@ -6,16 +6,16 @@ Each of our pipieline can be run on the command-line using the scripts provided 
 Here is a typical workflow that uses both ``mapseq`` and ``chipseq``. The configuration file will contain the following sections: first a ``Global variables`` section that defines the local environment for the pipelines::
 
     [Global variables]
-    genrep_url='http://bbcftools.vital-it.ch/genrep/'
+    genrep_url='http://bbcf-serv01.epfl.ch/genrep/'
     bwt_root='/db/genrep'
     fastq_root='/scratch/cluster/daily/htsstation/mapseq/'
     script_path='/archive/epfl/bbcf/share'
     [[hts_chipseq]]
-    url='http://htsstation.vital-it.ch/chipseq/'
-    download='http://htsstation.vital-it.ch/lims/chipseq/chipseq_minilims.files/'
+    url='http://htsstation.epfl.ch/chipseq/'
+    download='http://htsstation.epfl.ch/lims/chipseq/chipseq_minilims.files/'
     [[hts_mapseq]]
-    url='http://htsstation.vital-it.ch/mapseq/'
-    download='http://htsstation.vital-it.ch/lims/mapseq/mapseq_minilims.files/'
+    url='http://htsstation.epfl.ch/mapseq/'
+    download='http://htsstation.epfl.ch/lims/mapseq/mapseq_minilims.files/'
     [[gdv]] 
     url='http://gdv.epfl.ch/pygdv'
     email='your.email@yourplace.org'
@@ -145,7 +145,7 @@ Parameters common to all modules
 The following sections will be needed in all modules::
 
     [Global variables]
-    genrep_url='http://bbcftools.vital-it.ch/genrep/'
+    genrep_url='http://bbcf-serv01.epfl.ch/genrep/'
     script_path='/archive/epfl/bbcf/share'
 
     [Job]

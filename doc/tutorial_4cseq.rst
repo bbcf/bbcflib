@@ -1,7 +1,7 @@
 4C-seq
 ======
 
-Here is a short tutorial showing how to launch a 4c-seq analysis from the interface http://htsstation.vital-it.ch/4cseq/.
+Here is a short tutorial showing how to launch a 4c-seq analysis from the interface http://htsstation.epfl.ch/4cseq/.
 
 For details about the underlying method, please refer to the following paper:
 
@@ -12,7 +12,7 @@ Noordermeer et al., The dynamic architecture of Hox gene clusters, `Science, 334
 Get aligned data?
 -----------------
 A 4C-seq analysis works from aligned data, given as BAM file(s) through the URL field (there is one BAM file per run).
-The URL can be given directly (as a http:// or ftp:// address accessible from outside) or retrieved by using the `Mapping key` obtained when running the `mapping module <http://htsstation.vital-it.ch/mapseq/>`_. In such case, fields related to the sequencing facility (`#Run, Facility, Machine, Run number and Lane number`) might be automatically filled in if relevant (see tutorial of mapseq for more details about those fields).
+The URL can be given directly (as a http:// or ftp:// address accessible from outside) or retrieved by using the `Mapping key` obtained when running the `mapping module <http://htsstation.epfl.ch/mapseq/>`_. In such case, fields related to the sequencing facility (`#Run, Facility, Machine, Run number and Lane number`) might be automatically filled in if relevant (see tutorial of mapseq for more details about those fields).
 The image below shows how such key can be used. In this example, data were not coming directly from a sequencing facility, so the corresponding fields are left empty.
 
 .. image:: images/4Cseq_newJob1.png

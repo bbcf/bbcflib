@@ -11,7 +11,7 @@ A manuscript about the HTSstation is in preparation.
 
 For now, please refer to us with the URL below:
 
-http://htsstation.vital-it.ch/
+http://htsstation.epfl.ch/
 
 
 Map-seq
