@@ -216,7 +216,7 @@ def combine(trackList, fn, win_size=1000,
     """
     fields = ['start','end']
     if len(trackList) < 2: return trackList
-    trackList = [common.fusion(common.reorder(t,fields=fields)) for t in trackList]
+    trackList = [common.cobble(common.reorder(t,fields=fields)) for t in trackList]
     return common.fusion(track.FeatureStream(_combine(trackList,fn,win_size,aggregate),
                                              fields=trackList[0].fields))
 

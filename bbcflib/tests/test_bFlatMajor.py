@@ -140,12 +140,11 @@ class Test_Intervals(unittest.TestCase):
     def test_disjunction(self):
         pass
 
-    @unittest.skip("fix the deal with fusion and cobble first")
     def test_intersection(self):
-        expected = (91143, 91144,'chr', ('C','*A','0','|EBMYCG00000002479|Rv0083',1,0))
+        expected = (91143,91144,'chr', ('C','*A','0','|EBMYCG00000002479|Rv0083',1,0))
         a = genrep.Assembly('mycoTube_H37RV')
-        c = btrack.concat_fields(a.annot_track('CDS','chr'),infields=['name','strand','frame'], as_tuple=True)
-        feat = btrack.FeatureStream(iter([('chr',91143,91144,('C','*A','0'))]), fields=['chr','start','end','rest'])
+        c = btrack.concat_fields(a.annot_track('CDS','chr'), infields=['name','strand','frame'], as_tuple=True)
+        feat = fstream([('chr',91143,91144,('C','*A','0'))], fields=['chr','start','end','rest'])
         g = combine([feat,c], intersection, win_size=10000)
         self.assertEqual(g.next(),expected)
 
@@ -189,7 +188,6 @@ class Test_Signal(unittest.TestCase):
         x = [1,2,3,4,5] # mean=15/5=3, var=(1/5)*(4+1+0+1+4)=2
         assert_almost_equal(normalize(x), numpy.array([-2,-1,0,1,2])*(1/math.sqrt(2)))
 
-    #@unittest.skip("")
     def test_correlation(self):
         numpy.set_printoptions(precision=3,suppress=True)
         # Create 2 vectors of scores, zero everywhere except a random position
