@@ -38,6 +38,12 @@ class Test_Common(unittest.TestCase):
     def setUp(self):
         self.a = genrep.Assembly('sacCer2')
 
+    def test_sentinelize(self):
+        stream = fstream([(10,12,0.5), (14,15,1.2)], fields=['start','end','score'])
+        stream = sentinelize(stream,'Z')
+        for y in stream: x = y
+        self.assertEqual(x,'Z')
+
     def test_reorder(self):
         stream = fstream([(10,12,0.5), (14,15,1.2)], fields=['start','end','score'])
         expected = [(12,0.5,10), (15,1.2,14)]
@@ -56,30 +62,35 @@ class Test_Common(unittest.TestCase):
         self.assertListEqual(ustream, expected)
 
     def test_sorted_stream(self):
-        stream = fstream([(10,0.8),(15,2.8),(12,19.5),(12,1.4),(13,0.1)], fields=['start','score'])
+        s = [(10,0.8),(15,2.8),(12,19.5),(12,1.4),(13,0.1)]
+
+        stream = fstream(s, fields=['start','score'])
         sstream = list(sorted_stream(stream,fields=['start']))
         expected = [(10,0.8),(12,19.5),(12,1.4),(13,0.1),(15,2.8)]
         self.assertListEqual(sstream,expected)
 
-        stream = fstream([(10,0.8),(15,2.8),(12,1.4),(13,0.1),(12,19.5)], fields=['start','score'])
+        stream = fstream(s, fields=['start','score'])
         sstream = list(sorted_stream(stream,fields=['start','score']))
         expected = [(10,0.8),(12,1.4),(12,19.5),(13,0.1),(15,2.8)]
         self.assertListEqual(sstream,expected)
 
-        stream = fstream([('chrX',0,1,0.8),('chrIX',3,5,2.8),('chrIX',3,9,1.4),('chrIX',2,10,0.1),('chrIX',7,10,0.8)],
-                         fields=['chr','start','end','score'])
+        s = [('chrX',0,1,0.8),('chrIX',3,5,2.8),('chrIX',3,9,1.4),('chrIX',2,10,0.1),('chrIX',7,10,0.8)]
+        stream = fstream(s, fields=['chr','start','end','score'])
         sstream = list(sorted_stream(stream, fields=['start','chr']))
         expected = [('chrX',0,1,0.8),('chrIX',2,10,0.1),('chrIX',3,5,2.8),('chrIX',3,9,1.4),('chrIX',7,10,0.8)]
         self.assertListEqual(sstream,expected)
 
-        stream = fstream([('chrX',0,1,0.8),('chrIX',3,5,2.8),('chrIX',3,9,1.4),('chrIX',2,10,0.1),('chrIX',7,10,0.8)],
-                         fields=['chr','start','end','score'])
+        stream = fstream(s, fields=['chr','start','end','score'])
         sstream = list(sorted_stream(stream, fields=['chr','start','score'], chrnames=self.a.chrnames))
         expected = [('chrIX',2,10,0.1),('chrIX',3,9,1.4),('chrIX',3,5,2.8),('chrIX',7,10,0.8),('chrX',0,1,0.8)]
         self.assertListEqual(sstream,expected)
 
     def test_shuffled(self):
-        pass
+        stream = fstream([(10,12,0.5), (14,15,1.2)], fields=['start','end','score'])
+        shstream = list(shuffled(stream, chrlen=25))
+        for f in shstream:
+            self.assertItemsEqual([x[2] for x in shstream],[0.5,1.2])
+            self.assertItemsEqual([x[1]-x[0] for x in shstream],[2,1])
 
     def test_fusion(self):
         stream = fstream([('chr1',10,15,'A',1),('chr1',13,18,'B',-1),('chr1',18,25,'C',-1)],
@@ -88,7 +99,7 @@ class Test_Common(unittest.TestCase):
         fused = list(fusion(stream))
         self.assertEqual(fused,expected)
 
-    def test_cobble(self):
+    def test_cobble(self): # more tests below
         stream = fstream([('chr1',10,15,'A',1),('chr1',13,18,'B',-1),('chr1',18,25,'C',-1)],
                          fields = ['chr','start','end','name','score'])
         expected = [('chr1',10,13,'A',  1),
@@ -129,18 +140,19 @@ class Test_Intervals(unittest.TestCase):
         pass
 
     def test_combine(self):
-        pass
-
-    def test_segment_features(self):
+        # With custom boolean function
         pass
 
     def test_exclude(self):
+        # combine( ... , fn=exclude)
         pass
 
     def test_disjunction(self):
+        # combine( ... , fn=disjunction)
         pass
 
     def test_intersection(self):
+        # combine( ... , fn=intersection)
         expected = (91143,91144,'chr', ('C','*A','0','|EBMYCG00000002479|Rv0083',1,0))
         a = genrep.Assembly('mycoTube_H37RV')
         c = btrack.concat_fields(a.annot_track('CDS','chr'), infields=['name','strand','frame'], as_tuple=True)
@@ -149,6 +161,10 @@ class Test_Intervals(unittest.TestCase):
         self.assertEqual(g.next(),expected)
 
     def test_union(self):
+        # combine( ... , fn=union)
+        pass
+
+    def test_segment_features(self):
         pass
 
 
