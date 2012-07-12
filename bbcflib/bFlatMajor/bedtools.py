@@ -1,4 +1,7 @@
 """
+========
+BedTools
+========
 Binding of the entire collection of `BedTools <http://code.google.com/p/bedtools/>`_.
 
 The generic binding is::

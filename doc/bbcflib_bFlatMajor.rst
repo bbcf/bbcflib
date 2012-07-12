@@ -14,6 +14,7 @@ Subpackage: bbcflib.bFlatMajor
 
 .. automodule:: bbcflib.bFlatMajor.bedtools
     :members:
+    :undoc-members:
 
 ====================================
 Submodule: bbcflib.bFlatMajor.stream
