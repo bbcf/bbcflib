@@ -3,6 +3,9 @@ import subprocess, tempfile, os
 
 
 class BinTrack(Track):
+    """
+    Generic Track class for binary files.
+    """
     def __init__(self,path,**kwargs):
         Track.__init__(self,path,**kwargs)
         self.format = kwargs.get("format",'bin')
@@ -36,6 +39,16 @@ class BinTrack(Track):
 ############################# BigWig via UCSC tools ##############################
 
 class BigWigTrack(BinTrack):
+    """
+    BinTrack class for BigWig files (extension ".bigWig", ".bigwig" or ".bw"). 
+
+    Fields are::
+
+        ['chr','start','end','score']
+
+    will use *bedGraphToBigWig* (write) and *bigWigToBedGraph* (read) and use 
+    the BedGraphTrack class.
+    """
     def __init__(self,path,**kwargs):
         kwargs['format'] = 'bigWig'
         kwargs['fields'] = ['chr','start','end','score']
@@ -88,6 +101,16 @@ class BigWigTrack(BinTrack):
 try:
     import pysam
     class BamTrack(BinTrack):
+        """
+        BinTrack class for Bam files (extension ".bam"). 
+
+        Fields are::
+
+            ['chr','start','end','score','name','strand','flag','qual','tags']
+
+        uses *pysam* to read the binary bam file and extract the relevant fields.
+        Write is not implemented in this class.
+        """
         def __init__(self,path,**kwargs):
             kwargs['format'] = 'bam'
             kwargs['fields'] = ['chr','start','end','score','name','strand',

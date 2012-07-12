@@ -9,16 +9,8 @@ Subpackage: bbcflib.bFlatMajor
 
 .. autofunction:: run
 
-====================================
-Submodule: bbcflib.bFlatMajor.common
-====================================
-
 .. automodule:: bbcflib.bFlatMajor.common
     :members:
-
-======================================
-Submodule: bbcflib.bFlatMajor.bedtools
-======================================
 
 .. automodule:: bbcflib.bFlatMajor.bedtools
     :members:

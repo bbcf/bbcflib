@@ -18,6 +18,27 @@ _out_types = {'start':  format_int,
 ################################ GENERIC TEXT ####################################
 
 class TextTrack(Track):
+    """
+    Generic Track class for text files (extension ".txt" or ".text"). 
+    Additional attributes:
+
+    .. attribute:: separator
+
+       character separating fields in the file (default "\t").
+
+    .. attribute:: intypes
+
+       Dictionary with keys field names and values functions that will be called on each item when reading the file.
+
+    .. attribute:: outtypes
+
+       Dictionary with keys field names and values functions that will be called on each item when writing the file.
+
+    When reading a file, lines beginning with "browser", "track" or "#" are skipped.
+    The *info* attribute will be filled with "key=value" pairs found on a "track" line at the top of the file.
+    The *open" method takes the argument *mode" which can be *read* (default), *write*, *append* or *overwrite*.
+    Path can be a url, or a gzipped file.
+    """
     def __init__(self,path,**kwargs):
         kwargs['format'] = kwargs.get("format",'txt')
         kwargs['fields'] = kwargs.get("fields",['chr','start','end'])
@@ -217,6 +238,17 @@ class TextTrack(Track):
 ################################ Bed ##########################################
 
 class BedTrack(TextTrack):
+    """
+    TextTrack class for Bed files (extension ".bed"). 
+
+    Default fields are::
+
+        ['chr','start','end','name','score','strand',
+        'thick_start','thick_end','item_rgb',
+        'block_count','block_sizes','block_starts']
+
+    This list will be shortened depending on the number of items found in the first line of the file.
+    """
     def __init__(self,path,**kwargs):
         kwargs['format'] = 'bed'
         kwargs['fields'] = kwargs.get('fields',
@@ -244,6 +276,14 @@ class BedTrack(TextTrack):
 ################################ BedGraph ##########################################
 
 class BedGraphTrack(TextTrack):
+    """
+    TextTrack class for BedGraph files (extension ".bedGraph" or ".bedgraph"). 
+
+    Fields are::
+
+        ['chr','start','end','score']
+
+    """
     def __init__(self,path,**kwargs):
         kwargs['format'] = 'bedGraph'
         kwargs['fields'] = ['chr','start','end','score']
@@ -252,6 +292,15 @@ class BedGraphTrack(TextTrack):
 ################################### Sga ############################################
 
 class SgaTrack(TextTrack):
+    """
+    TextTrack class for `SGA <http://ccg.vital-it.ch/chipseq/sga_specs.html>`_ files (extension ".sga"). 
+
+    Fields are::
+
+        ['chr','start','end','name','strand','counts']
+
+    Chromosome names are automatically converted to refseq ids if the assembly attribute is specified.
+    """
     def __init__(self,path,**kwargs):
         kwargs['format'] = 'sga'
         kwargs['fields'] = ['chr','start','end','name','strand','counts']
@@ -334,6 +383,14 @@ class SgaTrack(TextTrack):
 ################################### Wig ############################################
 
 class WigTrack(TextTrack):
+    """
+    TextTrack class for Wig files (extension ".wig"). 
+
+    Fields are::
+
+        ['chr','start','end','score']
+
+    """
     def __init__(self,path,**kwargs):
         kwargs['format'] = 'wig'
         kwargs['fields'] = ['chr','start','end','score']
@@ -439,6 +496,15 @@ class WigTrack(TextTrack):
 
 ################################ GFF ##########################################
 class GffTrack(TextTrack):
+    """
+    TextTrack class for GFF files (extension ".gff" or ".gtf"). 
+
+    Fields are::
+
+        ['chr','source','name','start','end','score','strand','frame','attributes']
+
+    with 9th field optional.
+    """
     def __init__(self,path,**kwargs):
         kwargs['format'] = 'gff'
         kwargs['fields'] = ['chr','source','name','start','end','score','strand','frame','attributes']
