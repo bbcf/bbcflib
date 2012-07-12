@@ -205,13 +205,13 @@ def cobble(stream,aggregate=aggreg_functions):
     :param stream: FeatureStream object.
     :rtype: FeatureStream
     """
-    def _intersect(A,B):
+    def _intersect(A,B,fields):
         """Return *z*, the part that must replace A in *toyield*, and
         *rest*, that must reenter the loop instead of B."""
         rest = None
-        a = A[2:]
-        b = B[2:]
-        ab = [aggregate.get(f,generic_merge)(A[k],B[k]) for k,f in enumerate(stream.fields[2:])]
+        a = tuple(A[2:])
+        b = tuple(B[2:])
+        ab = tuple([aggregate.get(f,generic_merge)((A[k+2],B[k+2])) for k,f in enumerate(fields[2:])])
         if B[0] < A[1]:           # has an intersection
             if B[1] < A[1]:
                 if B[0] == A[0]:  # same left border, A is bigger
@@ -252,7 +252,8 @@ def cobble(stream,aggregate=aggreg_functions):
                 x = stream.next()
                 intersected = False
                 for y in toyield:
-                    replace, rest = _intersect(y,x)
+                    replace, rest = _intersect(y,x,stream.fields)
+                    print x,replace,rest
                     if replace:
                         intersected = True
                         iy = toyield.index(y)
@@ -274,6 +275,6 @@ def cobble(stream,aggregate=aggreg_functions):
                     yield tuple(y)
                 break
 
-    return FeatureStream( _fuse(_s), _s.fields )
+    return FeatureStream( _fuse(stream), stream.fields )
 
 ####################################################################

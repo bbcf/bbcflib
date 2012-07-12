@@ -6,8 +6,7 @@ Module: bbcflib.rnaseq
 Methods of the bbcflib's RNA-seq worflow. The main function is ``rnaseq_workflow()``,
 and is usually called by bbcfutils' ``run_rnaseq.py``, e.g. command-line:
 
-``python run_rnaseq.py -v lsf -c config_files/gapkowt.txt -d rnaseq -p transcripts,genes``
-``python run_rnaseq.py -v lsf -c config_files/rnaseq2.txt -d rnaseq -p transcripts -m ../mapseq2``
+``python run_rnaseq.py -v local -c gapkowt.txt -d rnaseq -p transcripts,genes``
 
 From a BAM file produced by an alignement on the **exonome**, gets counts of reads
 on the exons, add them to get counts on genes, and uses least-squares to infer
@@ -23,6 +22,8 @@ from operator import itemgetter
 # Internal modules #
 from bbcflib.common import writecols, set_file_descr, unique_filename_in
 from bbcflib import mapseq, genrep
+from bbcflib import bFlatMajor
+from bbcflib import btrack
 import track
 from bein import program
 
@@ -288,6 +289,16 @@ def save_results(ex, cols, conditions, group_ids, assembly, header=[], feature_t
         for group,filename in output_sql.iteritems():
             lines = zip(*[chromosomes,start,end,rpkm[group]])
             # SQL track
+            #tr = btrack.track(filename+'.sql', fields=['chr','start','end','score'], chrmeta=assembly.chrmeta)
+            #for chr in tr.chrmeta:
+            #    chrlines = [l for l in lines if l[0]==chr]
+            #    goodlines = [l for l in chrlines if l[3]!=0.0]
+            #    [lines.remove(l) for l in chrlines]
+            #    if goodlines:
+            #        goodlines.sort(key=itemgetter(1,2)) # sort w.r.t start, then end
+            #        goodlines = btrack.FeatureStream(goodlines, fields = ['chr','start','end','score'])
+            #        goodlines = bFlatMajor.common.cobble(goodlines)
+            #        tr.write(goodlines)
             with track.new(filename+'.sql') as t:
                 t.chrmeta = assembly.chrmeta
                 t.datatype = 'signal'
