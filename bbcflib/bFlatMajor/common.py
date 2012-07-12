@@ -79,28 +79,28 @@ def unroll( stream, regions, fields=['score'] ):
     return FeatureStream(_unr(s),fields=s.fields[nf:])
 
 ####################################################################
-def sorted_stream(stream,chrnames=[],fields=['chr','start','end']):
+def sorted_stream(stream,chrnames=[],fields=['chr','start','end'],reverse=False):
     """Sorts a stream according to *fields* values. Will load the entire stream in memory.
-    The order of names in *chrnames* is used to to sort the 'chr' field if available.
+    The order of names in *chrnames* is used to sort the 'chr' field if available.
 
     :param stream: FeatureStream object.
     :param chrnames: list of chrmosome names.
     :param fields: list of field names. [['chr','start','end']]
+    :param reverse: reverse order. [False]
     :rtype: FeatureStream
     """
-    s = reorder(stream,fields)
+    fidx = [stream.fields.index(f) for f in fields]
+    chri = -1
+    if 'chr' in fields: chri = fields.index('chr')
+    feature_list = list(stream)
     sort_list = []
-    feature_list = []
-    for n,f in enumerate(s):
-        if f[0] in chrnames: fi1 = chrnames.index(f[0])
-        else: fi1 = f[0]
-        sort_list.append((fi1,f[1],f[2],n))
-        feature_list.append(f)
-    sort_list.sort()
-    def _sorted_stream(l1,l2):
-        for t in l1:
-            yield l2[t[-1]]
-    return FeatureStream(_sorted_stream(sort_list,feature_list), stream.fields)
+    for n,f in enumerate(feature_list):
+        if chri>=0 and f[fidx[chri]] in chrnames: fchr = chrnames.index(f[fidx[chri]])
+        else: fchr = f[fidx[chri]]
+        x = tuple(f[i] for i in fidx[:chri])+(fchr,)+tuple(f[i] for i in fidx[chri+1:])+(n,)
+        sort_list.append(x)
+    sort_list.sort(reverse=reverse)
+    return FeatureStream((feature_list[t[-1]] for t in sort_list), stream.fields)
 
 ####################################################################
 def shuffled(stream, chrlen=sys.maxint, repeat_number=1, sorted=True):
