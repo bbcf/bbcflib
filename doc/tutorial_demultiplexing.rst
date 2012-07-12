@@ -1,7 +1,7 @@
 Demultiplexing
 ==============
 
-Here is a short tutorial showing how to demultiplex barcoded reads with the `demultiplexing interface <http://htsstation.vital-it.ch/demultiplexing/>`_ of `htsstation <http://htsstation.vital-it.ch/>`_.
+Here is a short tutorial showing how to demultiplex barcoded reads with the `demultiplexing interface <http://htsstation.epfl.ch/demultiplexing/>`_ of `htsstation <http://htsstation.epfl.ch/>`_.
 
 This module will separate barcoded reads into individual files and prepare the reads for further analysis (e.g., remove barcode and truncate the reads up to a given length). This version works for single-end data in fastq format. 
 

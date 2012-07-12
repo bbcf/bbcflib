@@ -1,7 +1,7 @@
 ChIP-seq
 ========
 
-In this short tutorial we explain the ChIP-seq analysis workflow behind the interface `ChIP-seq <http://htsstation.vital-it.ch/chipseq/>`_ interface.
+In this short tutorial we explain the ChIP-seq analysis workflow behind the interface `ChIP-seq <http://htsstation.epfl.ch/chipseq/>`_ interface.
 
 For details about the underlying methods, please refer to the following paper: `Rey G, et al., PLoS Biol., 2011 <http://www.ncbi.nlm.nih.gov/pubmed/21364973>`_.
 
@@ -9,7 +9,7 @@ For details about the underlying methods, please refer to the following paper: `
 Import aligned data
 -------------------
 
-Aligned data in `BAM <http://samtools.sourceforge.net/>`_  can be obtained directly from the output of a `Mapping <http://htsstation.vital-it.ch/mapseq/>`_ job or via a URL or a file path.
+Aligned data in `BAM <http://samtools.sourceforge.net/>`_  can be obtained directly from the output of a `Mapping <http://htsstation.epfl.ch/mapseq/>`_ job or via a URL or a file path.
 
 .. image:: images/chipseq_newjob.png
 

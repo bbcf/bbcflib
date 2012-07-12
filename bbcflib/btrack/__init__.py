@@ -61,7 +61,8 @@ Do something with the scores of a signal track only if the location is present i
 
 """
 
-__all__ = ['Track','track','FeatureStream','strand_to_int','int_to_strand','format_float','format_int',
+__all__ = ['Track','track','FeatureStream','convert',
+           'strand_to_int','int_to_strand','format_float','format_int',
            'ucsc_to_ensembl','ensembl_to_ucsc',]
 
 import sys, os, re
@@ -74,10 +75,10 @@ _track_map = {
     'bed': ('bbcflib.btrack.text','BedTrack'),
     'bedGraph': ('bbcflib.btrack.text','BedGraphTrack'),
     'bedgraph': ('bbcflib.btrack.text','BedGraphTrack'),
+    'sga': ('bbcflib.btrack.text','SgaTrack'),
     'wig': ('bbcflib.btrack.text','WigTrack'),
     'gff': ('bbcflib.btrack.text','GffTrack'),
     'gtf': ('bbcflib.btrack.text','GffTrack'),
-    'sga': ('bbcflib.btrack.text','SgaTrack'),
     'bigWig': ('bbcflib.btrack.bin','BigWigTrack'),
     'bigwig': ('bbcflib.btrack.bin','BigWigTrack'),
     'bw':  ('bbcflib.btrack.bin','BigWigTrack'),
@@ -316,21 +317,19 @@ class Track(object):
 
         Fields defining the info contained in the track items.
 
-    .. attribute:: types
-
-        Respective types of the fields items.
-
     .. attribute:: assembly
 
         GenRep assembly ID.
 
     .. attribute:: chrmeta
 
-        A dictionary with information about the species' chromosomes.
+        A dictionary with information about the species' chromosomes, or a genrep assembly name.
 
     .. attribute:: info
 
-        A dictionary with a lot of information about the species.
+        A dictionary with meta-data about the track, e.g. data type, such as::
+
+            {'datatype': 'signal'}
 
     """
     def __init__(self, path, **kwargs):
@@ -338,7 +337,7 @@ class Track(object):
         self.filehandle = None
         self.format = kwargs.get("format")
         self.fields = kwargs.get("fields",[])
-        self.types = {}
+#        self.types = {}
         self.assembly = kwargs.get('assembly')
         self.chrmeta = self._get_chrmeta(kwargs.get('chrmeta'))
         self.info = self._get_info(info=kwargs.get('info'))

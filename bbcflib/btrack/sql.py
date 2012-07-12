@@ -11,6 +11,27 @@ _sql_types = {'start':        'integer',
               'frame':        'integer'}
 
 class SqlTrack(Track):
+    """
+    Track class for sqlite3 files (extension ".sql" or ".db"). 
+    Additional attributes:
+
+    .. attribute:: readonly
+
+        If True, tables will not be updated to reflect, e.g. the chrmeta or info attributes.
+
+    .. attribute:: connection
+
+       The sqlite3 file connection.
+
+    .. attribute:: cursor
+
+       The sqlite3 connection cursor.
+
+    .. attribute:: types
+
+       The field types as defined in the sqlite3 tables.
+
+    """
     def __init__(self,path,**kwargs):
         self.readonly = kwargs.get('readonly',False)
         self.connection = sqlite3.connect(path)

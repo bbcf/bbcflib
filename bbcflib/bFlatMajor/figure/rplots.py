@@ -82,7 +82,7 @@ def boxplot(values,labels,output=None,format='pdf',new=True,last=True,**kwargs):
 def heatmap(M,output=None,format='pdf',new=True,last=True,
             rows=None,columns=None,orderRows=True,orderCols=True,
             **kwargs):
-    """Creates a heatmap of the matrix `M` using `rows` as row labels and `columns` as column labels
+    """Creates a heatmap of the matrix `M` using `rows` as row labels and `columns` as column labels.
     If either `orderRows` or `orderCols` is True, will cluster accordingly and display a dendrogram."""
     plotopt,output = _begin(output=output,format=format,new=new,**kwargs)
     robjects.r.assign('Mdata',numpy2ri.numpy2ri(M))
