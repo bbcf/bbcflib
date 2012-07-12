@@ -6,17 +6,13 @@ from bbcflib import btrack as track
 
 def concatenate(trackList, fields=None):
     """
-    Returns a stream containing all features from a list of tracks ordered by *start* and *end*.
+    Returns a stream containing all features from a list of tracks, ordered by *start* and *end*.
 
     :param trackList: list of FeatureStream objects.
-    :param fields: (list of str) list of fields to keep in the output.
+    :param fields: (list of str) list of fields to keep in the output (at least ['start','end']).
         If not specified, all common fields are kept.
     :rtype: FeatureStream
     """
-    if len(trackList) == 1: return trackList[0]
-    tracks = [track.FeatureStream(common.sentinelize(x,[sys.maxint]*len(x.fields)),x.fields)
-              for x in trackList]
-
     def _find_min(feat_tuple):
         """Return the index of the 'smallest' element amongst a tuple of features from
         different tracks. Priority is given to the first field; if the first field items
@@ -43,15 +39,17 @@ def concatenate(trackList, fields=None):
             yield current[n]
             current[n] = _t[n].next()[:N]
 
+    if len(trackList) == 1: return trackList[0]
     if fields is None:
         fields = track[0].fields
-    fields = [f for f in fields if all(f in t.fields for t in tracks)]
+    fields = [f for f in fields if all(f in t.fields for t in trackList)]
     _of = ['start','end']
     if 'chr' in fields: _of = ['chr']+_of
     if 'name' in fields: _of += ['name']
     _of += [f for f in fields if not(f in _of)]
     tl = [common.reorder(t,_of) for t in trackList]
-    return track.FeatureStream(_knead(tl,len(fields)),fields=fields)
+    tl = [track.FeatureStream(common.sentinelize(x,(sys.maxint,)*len(x.fields)),x.fields) for x in tl]
+    return track.FeatureStream(_knead(tl,len(_of)),fields=fields)
 
 ###############################################################################
 def neighborhood(trackList, before_start=None, after_end=None,

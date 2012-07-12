@@ -134,7 +134,13 @@ class Test_Intervals(unittest.TestCase):
         pass
 
     def test_concatenate(self):
-        pass
+        stream1 = fstream([('chr',1,3,0.2,'n'), ('chr',5,9,0.5,'n'), ('chr',11,15,1.2,'n')],
+                          fields=['chr','start','end','score','name'])
+        stream2 = fstream([('chr',1,4,0.6,'m'), ('chr',8,11,0.4,'m'), ('chr',11,12,0.1,'m')],
+                          fields=['chr','start','end','score','name'])
+        cstream = list(concatenate([stream1,stream2], fields=['start','score','name']))
+        expected = [(1,3,'n',0.2),(1,4,'m',0.6),(5,9,'n',0.5),(8,11,'m',0.4),(11,12,'m',0.1),(11,15,'n',1.2)]
+        self.assertListEqual(cstream,expected)
 
     def test_neighborhood(self):
         pass
