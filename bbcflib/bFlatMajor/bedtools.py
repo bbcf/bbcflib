@@ -1,3 +1,21 @@
+"""
+Binding of the entire collection of `BedTools <http://code.google.com/p/bedtools/>`_.
+
+The generic binding is::
+
+    def bedtools(tool, args=None)
+
+with parameters *tool*, the name of the tool, and
+*args*, a string ("-i file"), a list (["-i","file"]) or a dictionary ({"i": "file"}) of command-line options passed to *tool*.
+
+Each individual tool has its own call, like::
+
+    annotateBed(ex,bedfile,files,wait=True,via='local',**kw)
+
+with obligatory arguments *bedfile* and *files* (see the BedTools `documentation <http://code.google.com/p/bedtools/wiki/Usage>`_), and any additional optional arguments via `**kw`.
+If *wait* is True, then the function will wait for completion and return the output filename, otherwise it runs a nonblocking job (with the parameter *via*) and returns a tuple (bein.Future, filename).
+"""
+
 from bein import *
 from bbcflib.common import unique_filename_in
 
