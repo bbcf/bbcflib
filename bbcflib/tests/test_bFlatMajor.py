@@ -36,7 +36,7 @@ numpy.set_printoptions(precision=3,suppress=True)
 
 class Test_Common(unittest.TestCase):
     def setUp(self):
-        pass
+        self.a = genrep.Assembly('sacCer2')
 
     def test_reorder(self):
         stream = fstream([(10,12,0.5), (14,15,1.2)], fields=['start','end','score'])
@@ -50,13 +50,33 @@ class Test_Common(unittest.TestCase):
         ustream = list(unroll(stream,(9,16)))
         self.assertListEqual(ustream, expected)
 
-        stream = fstream([(0,1,5),(1,2,9),(2,3,11)], fields=['start','end','score'])
-        expected = [(5,),(9,),(11,)]
+        stream = fstream([(0,1,5,'n'),(1,2,9,'n'),(2,3,11,'n')], fields=['start','end','score'])
+        expected = [(5,'n'),(9,'n'),(11,'n')]
         ustream = list(unroll(stream,(0,3)))
         self.assertListEqual(ustream, expected)
 
     def test_sorted_stream(self):
-        pass
+        stream = fstream([(10,0.8),(15,2.8),(12,19.5),(12,1.4),(13,0.1)], fields=['start','score'])
+        sstream = list(sorted_stream(stream,fields=['start']))
+        expected = [(10,0.8),(12,19.5),(12,1.4),(13,0.1),(15,2.8)]
+        self.assertListEqual(sstream,expected)
+
+        stream = fstream([(10,0.8),(15,2.8),(12,1.4),(13,0.1),(12,19.5)], fields=['start','score'])
+        sstream = list(sorted_stream(stream,fields=['start','score']))
+        expected = [(10,0.8),(12,1.4),(12,19.5),(13,0.1),(15,2.8)]
+        self.assertListEqual(sstream,expected)
+
+        stream = fstream([('chrX',0,1,0.8),('chrIX',3,5,2.8),('chrIX',3,9,1.4),('chrIX',2,10,0.1),('chrIX',7,10,0.8)],
+                         fields=['chr','start','end','score'])
+        sstream = list(sorted_stream(stream, fields=['start','chr']))
+        expected = [('chrX',0,1,0.8),('chrIX',2,10,0.1),('chrIX',3,5,2.8),('chrIX',3,9,1.4),('chrIX',7,10,0.8)]
+        self.assertListEqual(sstream,expected)
+
+        stream = fstream([('chrX',0,1,0.8),('chrIX',3,5,2.8),('chrIX',3,9,1.4),('chrIX',2,10,0.1),('chrIX',7,10,0.8)],
+                         fields=['chr','start','end','score'])
+        sstream = list(sorted_stream(stream, fields=['chr','start','score'], chrnames=self.a.chrnames))
+        expected = [('chrIX',2,10,0.1),('chrIX',3,9,1.4),('chrIX',3,5,2.8),('chrIX',7,10,0.8),('chrX',0,1,0.8)]
+        self.assertListEqual(sstream,expected)
 
     def test_shuffled(self):
         pass
@@ -97,6 +117,7 @@ class Test_Annotate(unittest.TestCase):
         result = list(getNearestFeature(features,annotations))
         self.assertItemsEqual(result,expected)
 
+
 class Test_Intervals(unittest.TestCase):
     def setUp(self):
         pass
@@ -130,6 +151,7 @@ class Test_Intervals(unittest.TestCase):
 
     def test_union(self):
         pass
+
 
 class Test_Scores(unittest.TestCase):
     def setUp(self):
@@ -223,20 +245,4 @@ class Test_Signal(unittest.TestCase):
 
         # Test if the lag between the two tracks is correcty detected
         self.assertEqual(numpy.argmax(corr)-(N-1), ypeak-xpeak)
-
-        #print 'x = ',x
-        #print 'y = ',y
-        #print 'corr', corr
-        #print 'raw ', raw
-        #print 'lag      :',ypeak-xpeak
-        #print 'Py idx   :',numpy.argmax(corr)
-        #print 'human idx:',numpy.argmax(corr)+1
-        #raise
-
-
-################### FIGURE ######################
-
-
-
-
 

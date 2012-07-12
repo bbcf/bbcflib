@@ -14,6 +14,9 @@ __test__ = True
 #Path to testing files
 path = "test_data/snp/"
 
+# Local test:
+# run_snp.py -v local -c /scratch/cluster/monthly/jdelafon/snp/config/snp.config -d /scratch/cluster/monthly/jdelafon/snp/snp_minilims -w wdir -f /scratch/cluster/monthly/jdelafon/snp/reference/sacCer2/chrV.tar.gz
+
 
 class Test_SNP(unittest.TestCase):
     def setUp(self):
