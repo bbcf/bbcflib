@@ -104,11 +104,12 @@ def sorted_stream(stream,chrnames=[],fields=['chr','start','end'],reverse=False)
 
 ####################################################################
 def shuffled(stream, chrlen=sys.maxint, repeat_number=1, sorted=True):
-    """Yields randomly located features of the same length as the original stream.
+    """Return a stream of randomly located features of the same length and annotation
+    as these of the original stream.
 
     :param stream: FeatureStream object.
-    :param chrlen: (int) chromosome length.
-    :param repeat_number: (int) ??? [1]
+    :param chrlen: (int) chromosome length. [9223372036854775807]
+    :param repeat_number: (int) *repeat_number* random features are yielded per input feature. [1]
     :rtype: FeatureStream
     """
     import random
@@ -130,12 +131,15 @@ def shuffled(stream, chrlen=sys.maxint, repeat_number=1, sorted=True):
 
 ####################################################################
 def strand_merge(x):
+    """Return 1 (resp.-1) if all elements in x are 1 (resp.-1), 0 otherwise."""
     return all(x[0]==y for y in x[1:]) and x[0] or 0
 
 def no_merge(x):
+    """Assuming all elements of x are identical (chr) or irrelevant, return only the first one."""
     return x[0]
 
 def generic_merge(x):
+    """Sum numeric values; concatenate str values; stack tuples."""
     if isinstance(x[0],(int, long, float, complex)):
         return sum(x)
     if isinstance(x[0],basestring):
