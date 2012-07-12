@@ -698,8 +698,11 @@ class GenRep(object):
         """
         if len(coord_list) == 0:
             return []
+        for k,c in enumerate(coord_list):
+            if c[1] < c[0]: coord_list[k] = (c[1],c[0]) # end < start
+            elif c[1] == c[0]: coord_list.pop(k)        # end = start
         coord_list = sorted(coord_list)
-        # make it work with gzip + tar files > 'decompress' function to bbcflib.common
+        # to do += make it work with gzip + tar files > 'decompress' function to bbcflib.common
         if path_to_ref and os.path.exists(path_to_ref):
             a = 0
             f = open(path_to_ref)
