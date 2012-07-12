@@ -39,19 +39,19 @@ class Test_Common(unittest.TestCase):
         pass
 
     def test_reorder(self):
-        expected = [(12,0.5,10), (15,1.2,14)]
         stream = fstream([(10,12,0.5), (14,15,1.2)], fields=['start','end','score'])
+        expected = [(12,0.5,10), (15,1.2,14)]
         rstream = list(reorder(stream,['end','score','start']))
         self.assertListEqual(rstream,expected)
 
     def test_unroll(self):
-        expected = [(0,),(0.5,),(0.5,),(0,),(0,),(1.2,),(0,)]
         stream = fstream([(10,12,0.5), (14,15,1.2)], fields=['start','end','score'])
+        expected = [(0,),(0.5,),(0.5,),(0,),(0,),(1.2,),(0,)]
         ustream = list(unroll(stream,(9,16)))
         self.assertListEqual(ustream, expected)
 
-        expected = [(5,),(9,),(11,)]
         stream = fstream([(0,1,5),(1,2,9),(2,3,11)], fields=['start','end','score'])
+        expected = [(5,),(9,),(11,)]
         ustream = list(unroll(stream,(0,3)))
         self.assertListEqual(ustream, expected)
 
@@ -62,17 +62,21 @@ class Test_Common(unittest.TestCase):
         pass
 
     def test_fusion(self):
-        expected = [(10, 18, 'chr1', 'A|B', 0),(18, 25, 'chr1', 'C', -1)]
         stream = fstream([('chr1',10,15,'A',1),('chr1',13,18,'B',-1),('chr1',18,25,'C',-1)],
                          fields = ['chr','start','end','name','score'])
+        expected = [(10, 18, 'chr1', 'A|B', 0),(18, 25, 'chr1', 'C', -1)]
+        fused = list(fusion(stream))
+        self.assertEqual(fused,expected)
 
     def test_cobble(self):
+        stream = fstream([('chr1',10,15,'A',1),('chr1',13,18,'B',-1),('chr1',18,25,'C',-1)],
+                         fields = ['chr','start','end','name','score'])
         expected = [(10, 13, 'chr1', 'A',   1),
                     (13, 15, 'chr1', 'A|B', 0),
                     (15, 18, 'chr1', 'B',  -1),
                     (18, 25, 'chr1', 'C',  -1)]
-        stream = fstream([('chr1',10,15,'A',1),('chr1',13,18,'B',-1),('chr1',18,25,'C',-1)],
-                         fields = ['chr','start','end','name','score'])
+        cobbled = list(cobble(stream))
+        self.assertEqual(cobbled,expected)
 
 
 ################### STREAM ######################
@@ -115,6 +119,7 @@ class Test_Intervals(unittest.TestCase):
     def test_disjunction(self):
         pass
 
+    @unittest.skip("fix the deal with fusion and cobble first")
     def test_intersection(self):
         expected = (91143, 91144,'chr', ('C','*A','0','|EBMYCG00000002479|Rv0083',1,0))
         a = genrep.Assembly('mycoTube_H37RV')
