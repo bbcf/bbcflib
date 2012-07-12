@@ -164,6 +164,7 @@ def fusion(stream,aggregate=aggreg_functions):
     :rtype: FeatureStream
     """
     def _fuse(s):
+        s = reorder(s,['start','end'])
         try:
             x = list(s.next())
         except StopIteration:
@@ -181,8 +182,8 @@ def fusion(stream,aggregate=aggreg_functions):
                 x = list(y)
         yield tuple(x)
 
-    _s = reorder(stream,['start','end'])
-    return FeatureStream( _fuse(_s), _s.fields )
+    info = [f for f in stream.fields if f not in ['start','end']]
+    return reorder(FeatureStream( _fuse(stream), fields=['start','end']+info), stream.fields )
 
 def cobble(stream,aggregate=aggreg_functions):
     """Fragments overlapping features in *stream* and applies `aggregate[f]` function
@@ -275,6 +276,7 @@ def cobble(stream,aggregate=aggreg_functions):
                     yield tuple(y)
                 break
 
-    return FeatureStream( _fuse(stream), stream.fields )
+    info = [f for f in stream.fields if f not in ['start','end']]
+    return reorder(FeatureStream( _fuse(stream), fields=['start','end']+info), stream.fields )
 
 ####################################################################
