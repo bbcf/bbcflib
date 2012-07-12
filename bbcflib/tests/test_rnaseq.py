@@ -16,6 +16,7 @@ from numpy import array
 # Nosetest flag #
 __test__ = True
 
+# Local test: python run_rnaseq.py -v local -c gapkowt.txt -d rnaseq -p genes
 
 class Assem(object):
     def __init__(self):
@@ -23,6 +24,7 @@ class Assem(object):
 
 c = 'c'
 
+#@unittest.skip("cf. bbcflib.bFlatMajor.common.cobble")
 class Test_Fusion(unittest.TestCase):
     def commonTest(self,X,R):
         T = [s for s in fusion(iter(X))]
