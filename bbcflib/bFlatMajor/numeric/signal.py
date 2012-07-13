@@ -7,7 +7,7 @@ except ImportError:
 from numpy import conjugate
 from math import log
 
-def normalize(x):
+def _normalize(x):
     """Substracts the average and divides by the standard deviation."""
     x = numpy.asarray(x)
     mu = numpy.mean(x)
@@ -52,7 +52,7 @@ def correlation(trackList, regions, limits=(-1000,1000), with_acf=False):
     ##### One could profit from numpy to reduce the memory space used for
     ##### storing these - long - arrays ('dtype' is float64 by default).
     x = [numpy.array([s[0] for s in common.unroll(t,regions)]) for t in trackList]
-    x = [normalize(t) for t in x]
+    x = [_normalize(t) for t in x]
     if limits[1]-limits[0] > 2*len(x[0]):
         limits = (-len(x[0])+1,len(x[0])-1)
     N = len(x[0])+limits[1]-limits[0]-1

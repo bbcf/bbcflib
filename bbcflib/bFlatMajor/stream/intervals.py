@@ -20,7 +20,7 @@ def concatenate(trackList, fields=None):
         nmin = 0
         xmin = feat_tuple[0]
         for n,x in enumerate(feat_tuple[1:]):
-            if x[n] == sys.maxint: continue
+            if x[0] == sys.maxint: continue
             for k in range(len(x)):
                 if cmp(x[k],xmin[k])<0:
                     xmin = x
@@ -221,7 +221,7 @@ def combine(trackList, fn, win_size=1000,
 
 def exclude(x,indexList):
     """Returns True if x[n] is False for all n in *indexList*
-    and x[n] is True for at least another n; return False otherwise."""
+    and x[n] is True for at least another n; returns False otherwise."""
     return any([y for n,y in enumerate(x) if not(n in indexList)]) \
        and all([not(y) for n,y in enumerate(x) if n in indexList])
 
