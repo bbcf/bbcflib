@@ -2,7 +2,7 @@
 <html xmlns="http://www.w3.org/1999/xhtml">
 <head>
 <meta http-equiv="Content-Type" content="text/xhtml;charset=UTF-8"/>
-<title>bbcflib: Main Page</title>
+<title>bbcflib: bbcflib::daflims Namespace Reference</title>
 <link href="tabs.css" rel="stylesheet" type="text/css"/>
 <link href="search/search.css" rel="stylesheet" type="text/css"/>
 <script type="text/javaScript" src="search/search.js"></script>
@@ -16,8 +16,8 @@ var searchBox = new SearchBox("searchBox", "search",false,'Search');
 <div class="navigation" id="top">
   <div class="tabs">
     <ul class="tablist">
-      <li class="current"><a href="index.html"><span>Main&nbsp;Page</span></a></li>
-      <li><a href="namespaces.html"><span>Namespaces</span></a></li>
+      <li><a href="index.html"><span>Main&nbsp;Page</span></a></li>
+      <li class="current"><a href="namespaces.html"><span>Namespaces</span></a></li>
       <li><a href="annotated.html"><span>Classes</span></a></li>
       <li id="searchli">
         <div id="MSearchBox" class="MSearchBoxInactive">
@@ -37,13 +37,79 @@ var searchBox = new SearchBox("searchBox", "search",false,'Search');
       </li>
     </ul>
   </div>
+  <div class="tabs2">
+    <ul class="tablist">
+      <li><a href="namespaces.html"><span>Namespace&nbsp;List</span></a></li>
+      <li><a href="namespacemembers.html"><span>Namespace&nbsp;Members</span></a></li>
+    </ul>
+  </div>
+  <div class="navpath">
+    <ul>
+      <li><a class="el" href="namespacebbcflib.html">bbcflib</a>      </li>
+      <li><a class="el" href="namespacebbcflib_1_1daflims.html">daflims</a>      </li>
+    </ul>
+  </div>
 </div>
 <div class="header">
+  <div class="summary">
+<a href="#nested-classes">Classes</a>  </div>
   <div class="headertitle">
-<h1>bbcflib Documentation</h1>  </div>
+<h1>bbcflib::daflims Namespace Reference</h1>  </div>
 </div>
 <div class="contents">
-</div>
+<table class="memberdecls">
+<tr><td colspan="2"><h2><a name="nested-classes"></a>
+Classes</h2></td></tr>
+<tr><td class="memItemLeft" align="right" valign="top">class &nbsp;</td><td class="memItemRight" valign="bottom"><a class="el" href="classbbcflib_1_1daflims_1_1DAFLIMS.html">DAFLIMS</a></td></tr>
+</table>
+<hr/><a name="_details"></a><h2>Detailed Description</h2>
+<div class="fragment"><pre class="fragment">
+=======================
+Module: bbcflib.daflims
+=======================
+
+The DNA Array Facility at the University of Lausanne provides all
+their data in a LIMS accessible from VITAL-IT.  This module hides the
+details of fetching files from that LIMS.  Files are identified by
+four fields:
+
+  * The facility where they were generated (either ``'lgtf'`` for Lausanne,
+    or ``'gva'`` at the University of Geneva).
+
+  * The machine at the facility on which they were generated (``'R2D2'`` or
+    ``'C3PO'`` in Lausanne, or ``'HWUSI-EAS691'`` in Geneva).
+
+  * The run number on that machine (an integer).
+
+  * The lane in that run (also an integer).
+
+Connecting to the LIMS requires a username and password, and will
+often only be possible from certain hosts.  A connection is
+represented as a DAFLIMS object, which provides methods for fetching
+the three kinds of files stored in the LIMS:
+
+  * ``fetch_fastq``: The FASTQ file of all reads.  You probably want
+    this.
+
+  * ``fetch_export``: The output of aligning all reads against some
+    genome with Eland, a proprietary tool from Illumina.
+
+  * ``fetch_qc``: pdf file of the QC.
+
+For example, to fetch the FASTQ file of run 91, lane 3 sequenced on
+R2D2 in Lausanne, write::
+
+    d = DAFLIMS(username=..., password=...)
+    d.fetch_fastq('lgtf', 'R2D2', 91, 3, '/path/to/save/to.fastq')
+
+The last argument works much like a target given to the Unix command
+``cp``: if it specifies a directory, the file is given a random name
+in that directory.  If it is given a filename, the file is written to
+that name.  If the last argument is omitted, the file is written to a
+random name in the current working irectory.
+
+  .. autoclass:: DAFLIMS
+</pre></div> </div>
 <!--- window showing the filter options -->
 <div id="MSearchSelectWindow"
      onmouseover="return searchBox.OnSearchSelectShow()"
