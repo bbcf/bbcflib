@@ -5,7 +5,8 @@ import os, sys, math
 # Internal modules #
 from bbcflib import btrack, genrep
 from bbcflib.btrack import FeatureStream as fstream
-from bbcflib.bFlatMajor.common import sentinelize, select, reorder, unroll, sorted_stream, shuffled, fusion, cobble
+from bbcflib.bFlatMajor.common import sentinelize, select, reorder, unroll, sorted_stream
+from bbcflib.bFlatMajor.common import shuffled, fusion, cobble, ordered
 from bbcflib.bFlatMajor.stream.annotate import getNearestFeature
 from bbcflib.bFlatMajor.stream.intervals import concatenate, neighborhood, combine, segment_features
 from bbcflib.bFlatMajor.stream.intervals import exclude, require, disjunction, intersection, union
@@ -43,6 +44,14 @@ class Test_Common(unittest.TestCase):
         stream = sentinelize(stream,'Z')
         for y in stream: x = y
         self.assertEqual(x,'Z')
+
+    def test_ordered(self):
+        @ordered
+        def _test(stream):
+            return reorder(stream,fields=['2','1'])
+        stream = fstream([('A','B'),('C','D')], fields=['1','2'])
+        orstream = list(_test(stream))
+        self.assertListEqual(orstream,[('A','B'),('C','D')])
 
     def test_select(self):
         stream = fstream([(10,12,0.5), (14,15,1.2)], fields=['start','end','score'])
@@ -155,11 +164,32 @@ class Test_Intervals(unittest.TestCase):
         expected = [(1,3,0.2),(1,4,0.6),(5,9,0.5),(8,11,0.4),(11,12,0.1),(11,15,1.2)]
         self.assertListEqual(cstream,expected)
 
-    @unittest.skip('')
     def test_neighborhood(self):
-        stream = fstream([(10,16,0.5), (24,36,1.2)], fields=['start','end','score'])
-        nstream = list(neighborhood(stream,before_start=1,after_end=4))
-        expected = [(9,20,0.5),(23,40,1.2)]
+        s = [(10,16,0.5,-1), (24,36,1.2,1)]
+
+        stream = fstream(s, fields=['start','end','score','strand'])
+        nstream = list(neighborhood(stream, before_start=1,after_end=4))
+        expected = [(9,20,0.5,-1), (23,40,1.2,1)]
+        self.assertListEqual(nstream,expected)
+
+        stream = fstream(s, fields=['start','end','score','strand'])
+        nstream = list(neighborhood(stream, before_start=1,after_start=4))
+        expected = [(9,15,0.5,-1), (23,29,1.2,1)]
+        self.assertListEqual(nstream,expected)
+
+        stream = fstream(s, fields=['start','end','score','strand'])
+        nstream = list(neighborhood(stream, before_end=1,after_end=4))
+        expected = [(14,20,0.5,-1), (34,40,1.2,1)] # !
+        self.assertListEqual(nstream,expected)
+
+        stream = fstream(s, fields=['start','end','score','strand'])
+        nstream = list(neighborhood(stream, before_start=1,after_start=2,before_end=3,after_end=4, on_strand=False))
+        expected = [(9,13,0.5,-1),(12,20,0.5,-1), (23,27,1.2,1),(32,40,1.2,1)]
+        self.assertListEqual(nstream,expected)
+
+        stream = fstream(s, fields=['start','end','score','strand'])
+        nstream = list(neighborhood(stream, before_start=1,after_start=2,before_end=3,after_end=4, on_strand=True))
+        expected = [(6,14,0.5,-1),(13,17,0.5,-1), (23,27,1.2,1),(32,40,1.2,1)]
         self.assertListEqual(nstream,expected)
 
     def test_segment_features(self):

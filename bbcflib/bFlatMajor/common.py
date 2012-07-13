@@ -8,6 +8,32 @@ def sentinelize(iterable, sentinel):
     yield sentinel
 
 ####################################################################
+def ordered(fn):
+    """
+    Decorator. Keeps the original order of fields for a stream passing through one of
+    bFlatMajor functions that take and return a FeatureStream, or a list of FeatureStream objects.
+    """
+    def wrapper(*args,**kwargs):
+        tracks = args[0]
+        if not (isinstance(tracks,list) or isinstance(tracks,tuple)):
+            tracks = [tracks]
+        original_fields = dict(zip(tracks,[t.fields for t in tracks]))
+
+        returned = fn(*args,**kwargs) # original function call
+
+        if not (isinstance(returned,list) or isinstance(returned,tuple)):
+            new_fields = returned.fields
+            original_fields = [f for f in original_fields.popitem()[1] if all([f in t.fields for t in tracks])]
+            original_fields = [f for f in original_fields if f in new_fields]
+            return reorder(returned, original_fields)
+        else:
+            new_fields = dict(zip(returned,[r.fields for r in returned]))
+            original_fields = [f for f in original_fields if f in new_fields]
+            return [reorder(r, fields=original_fields[r]) for r in returned]
+
+    return wrapper
+
+####################################################################
 def select(stream, fields):
     """
     Keeps only specified *fields* from a stream.
@@ -121,6 +147,7 @@ def sorted_stream(stream,chrnames=[],fields=['chr','start','end'],reverse=False)
     return FeatureStream((feature_list[t[-1]] for t in sort_list), stream.fields)
 
 ####################################################################
+@ordered
 def shuffled(stream, chrlen=sys.maxint, repeat_number=1, sorted=True):
     """Return a stream of randomly located features of the same length and annotation
     as these of the original stream.
@@ -128,6 +155,7 @@ def shuffled(stream, chrlen=sys.maxint, repeat_number=1, sorted=True):
     :param stream: FeatureStream object.
     :param chrlen: (int) chromosome length. [9223372036854775807]
     :param repeat_number: (int) *repeat_number* random features are yielded per input feature. [1]
+    :param sorted: (bool) whether or not to sort the output stream. [True]
     :rtype: FeatureStream
     """
     import random
@@ -170,6 +198,7 @@ def generic_merge(x):
 
 aggreg_functions = {'strand': strand_merge, 'chr': no_merge}
 
+@ordered
 def fusion(stream,aggregate=aggreg_functions):
     """Fuses overlapping features in *stream* and applies *aggregate[f]* function to each field $f$.
 
@@ -186,7 +215,6 @@ def fusion(stream,aggregate=aggreg_functions):
     :rtype: FeatureStream
     """
     def _fuse(s):
-        s = reorder(s,['start','end'])
         try:
             x = list(s.next())
         except StopIteration:
@@ -204,9 +232,10 @@ def fusion(stream,aggregate=aggreg_functions):
                 x = list(y)
         yield tuple(x)
 
-    info = [f for f in stream.fields if f not in ['start','end']]
-    return reorder(FeatureStream( _fuse(stream), fields=['start','end']+info), stream.fields )
+    stream = reorder(stream,['start','end'])
+    return FeatureStream( _fuse(stream), fields=stream.fields)
 
+@ordered
 def cobble(stream,aggregate=aggreg_functions):
     """Fragments overlapping features in *stream* and applies `aggregate[f]` function
     to each field `f` in common fragments.
@@ -264,7 +293,6 @@ def cobble(stream,aggregate=aggreg_functions):
         return z, rest
 
     def _fuse(stream):
-        stream = reorder(stream,['start','end'])
         try:
             x = stream.next()
         except StopIteration:
@@ -298,7 +326,7 @@ def cobble(stream,aggregate=aggreg_functions):
                     yield tuple(y)
                 break
 
-    info = [f for f in stream.fields if f not in ['start','end']]
-    return reorder(FeatureStream( _fuse(stream), fields=['start','end']+info), stream.fields )
+    stream = reorder(stream,['start','end'])
+    return FeatureStream( _fuse(stream), fields=stream.fields)
 
 ####################################################################

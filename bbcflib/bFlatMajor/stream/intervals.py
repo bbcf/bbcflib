@@ -11,7 +11,7 @@ def concatenate(trackList, fields=None):
 
     :param trackList: list of FeatureStream objects.
     :param fields: (list of str) list of fields to keep in the output (at least ['start','end']).
-        If not specified, all common fields are kept.
+        If not specified, all common fields are kept. (Deprecated, use `common.select` instead).
     :rtype: FeatureStream
     """
     def _find_min(feat_tuple):
@@ -54,6 +54,7 @@ def concatenate(trackList, fields=None):
     return track.FeatureStream(_knead(tl,len(_of)),fields=_of)
 
 ###############################################################################
+@common.ordered
 def neighborhood(trackList, before_start=None, after_end=None,
                  after_start=None, before_end=None, on_strand=False):
     """
