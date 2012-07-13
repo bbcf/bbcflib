@@ -20,6 +20,7 @@ def concatenate(trackList, fields=None):
         nmin = 0
         xmin = feat_tuple[0]
         for n,x in enumerate(feat_tuple[1:]):
+            if x[k] == sys.maxint: continue
             for k in range(len(x)):
                 if cmp(x[k],xmin[k])<0:
                     xmin = x
