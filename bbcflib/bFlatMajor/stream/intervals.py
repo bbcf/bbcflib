@@ -20,6 +20,7 @@ def concatenate(trackList, fields=None):
         nmin = 0
         xmin = feat_tuple[0]
         for n,x in enumerate(feat_tuple[1:]):
+            if x[k] == sys.maxint: continue
             for k in range(len(x)):
                 if cmp(x[k],xmin[k])<0:
                     xmin = x
@@ -41,15 +42,15 @@ def concatenate(trackList, fields=None):
 
     if len(trackList) == 1: return trackList[0]
     if fields is None:
-        fields = track[0].fields
+        fields = trackList[0].fields
     fields = [f for f in fields if all(f in t.fields for t in trackList)]
     _of = ['start','end']
     if 'chr' in fields: _of = ['chr']+_of
     if 'name' in fields: _of += ['name']
-    _of += [f for f in fields if not(f in _of)]
     tl = [common.reorder(t,_of) for t in trackList]
+    _of += [f for f in fields if not(f in _of)]
     tl = [track.FeatureStream(common.sentinelize(x,(sys.maxint,)*len(x.fields)),x.fields) for x in tl]
-    return track.FeatureStream(_knead(tl,len(_of)),fields=fields)
+    return track.FeatureStream(_knead(tl,len(_of)),fields=_of)
 
 ###############################################################################
 def neighborhood(trackList, before_start=None, after_end=None,

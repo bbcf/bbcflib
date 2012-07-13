@@ -2,9 +2,9 @@
 This packages provides algorithms working on :func:`FeatureStream <bbcflib.btrack.FeatureStream>`.
 It is divided into three major groups depending on the algorithm's return type:
 
-* :mod:`bbcflib.bFlatMajor:stream` returns :func:`FeatureStream <bbcflib.btrack.FeatureStream>` objects,
-* :mod:`bbcflib.bFlatMajor:numeric` returns numeric arrays or matrices,
-* :mod:`bbcflib.bFlatMajor:figure` returns figure files (pdf, png, etc.).
+* :mod:`bbcflib.bFlatMajor.stream` returns :func:`FeatureStream <bbcflib.btrack.FeatureStream>` objects,
+* :mod:`bbcflib.bFlatMajor.numeric` returns numeric arrays or matrices,
+* :mod:`bbcflib.bFlatMajor.figure` returns figure files (pdf, png, etc.).
 
 Algorithms can be used via a direct import::
 
