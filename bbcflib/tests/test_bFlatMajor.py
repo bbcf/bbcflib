@@ -146,7 +146,18 @@ class Test_Intervals(unittest.TestCase):
         pass
 
     def test_segment_features(self):
-        pass
+        stream = fstream([(10,16,0.5), (24,36,1.2)], fields=['start','end','score'])
+        sfstream = list(segment_features(stream,nbins=3,upstream=(2,1),downstream=(3,1)))
+        expected = [(8,10,0.5,0), (10,12,0.5,1),(12,14,0.5,2),(14,16,0.5,3), (16,19,0.5,4),
+                    (22,24,1.2,0), (24,28,1.2,1),(28,32,1.2,2),(32,36,1.2,3), (36,39,1.2,4)]
+        self.assertListEqual(sfstream,expected)
+
+        # With negative strand
+        stream = fstream([(10,16,-1), (24,36,1)], fields=['start','end','strand'])
+        sfstream = list(segment_features(stream,nbins=2,upstream=(2,1),downstream=(3,1)))
+        expected = [(7,10,-1,3), (10,13,-1,2),(13,16,-1,1), (16,18,-1,0),
+                    (22,24,1,0), (24,30,1,1),(30,36,1,2), (36,39,1,3)]
+        self.assertListEqual(sfstream,expected)
 
     def test_combine(self):
         # With custom boolean function

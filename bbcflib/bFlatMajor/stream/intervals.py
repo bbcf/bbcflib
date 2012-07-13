@@ -246,15 +246,17 @@ def union(x):
 ###############################################################################
 def segment_features(trackList,nbins=10,upstream=None,downstream=None):
     """
-    Splits every feature from *trackList* into *nbins* equal segments, and optionally adds
-    *upstream* and *downstream* flanks. Flanks are specified as a pair (distance, number_of_bins).
-    If the distance is < 1, it is interpreted as a fraction of the feature length.
+    For every track in *trackList*, split every feature into *nbins* equal segments, and optionally
+    adds *upstream* and *downstream* flanks. Flanks are specified as a pair (distance, number_of_bins).
+    If the distance is < 1, it is interpreted as a fraction of the feature's length. A new field 'bin'
+    giving the index of each fragment produced from a feature is added to the output track. If the
+    track shows no field 'strand', all features are considered as being on the forward strand.
 
-    :param trackList: list of FeatureStream objects.
+    :param trackList: FeatureStream, or list of FeatureStream objects.
     :param nbins: (int) number of bins. [10]
     :param upstream: (tuple (int,float)) upstream flank.
     :param downstream: (tuple (int,float)) downstream flank.
-    :rtype: FeatureStream
+    :rtype: FeatureStream, or list of FeatureStream objects
     """
     def _split_feat(_t):
         starti = _t.fields.index('start')
@@ -266,21 +268,17 @@ def segment_features(trackList,nbins=10,upstream=None,downstream=None):
         uprel = False
         downrel = False
         if upstream is None:
-            updist = 0
-            upbins = 0
-        elif upstream[0] > 1:
-            updist = upstream[0]
-            upbins = upstream[1]
-        else:
+            updist = upbins = 0
+        elif upstream[0] > 1: # given in bp
+            updist,upbins = upstream
+        else:                 # given as a fraction of the feature's length
             uprel = True
             upbins = upstream[1]
         if downstream is None:
-            downdist = 0
-            downbins = 0
-        elif downstream[0] > 1:
-            downdist = downstream[0]
-            downbins = downstream[1]
-        else:
+            downdist = downbins = 0
+        elif downstream[0] > 1: # given in bp
+            downdist,downbins = downstream
+        else:                   # given as a fraction of the feature's length
             downrel = True
             downbins = downstream[1]
         for x in _t:
@@ -290,17 +288,7 @@ def segment_features(trackList,nbins=10,upstream=None,downstream=None):
                 updist = int(.5+upstream[0]*xlen)
             if downrel:
                 downdist = int(.5+downstream[0]*xlen)
-            if strandi >= 0 and xs[strandi] > 0:
-                allsteps = [x[starti]-updist*k/upbins for k in range(upbins,0,-1)]\
-                           +[x[starti]+xlen*k/nbins for k in range(nbins+1)]\
-                           +[x[endi]+downdist*(k+1)/downbins for k in range(downbins)]
-                start = allsteps[0]
-                for n,s in enumerate(allsteps[1:]):
-                    xs[starti] = start
-                    xs[endi] = s
-                    start = s
-                    yield tuple(xs)+(n,)
-            else:
+            if strandi > -1 and xs[strandi] < 0:  # 'strand' field exists and x is on the reverse strand
                 allsteps = [x[starti]-downdist*k/downbins for k in range(downbins,0,-1)]\
                            +[x[starti]+xlen*k/nbins for k in range(nbins+1)]\
                            +[x[endi]+updist*(k+1)/upbins for k in range(upbins)]
@@ -311,6 +299,16 @@ def segment_features(trackList,nbins=10,upstream=None,downstream=None):
                     xs[endi] = s
                     start = s
                     yield tuple(xs)+(ntot-n,)
+            else:                                 # either no 'strand' field, or forward strand
+                allsteps = [x[starti]-updist*k/upbins for k in range(upbins,0,-1)]\
+                           +[x[starti]+xlen*k/nbins for k in range(nbins+1)]\
+                           +[x[endi]+downdist*(k+1)/downbins for k in range(downbins)]
+                start = allsteps[0]
+                for n,s in enumerate(allsteps[1:]):
+                    xs[starti] = start
+                    xs[endi] = s
+                    start = s
+                    yield tuple(xs)+(n,)
     if isinstance(trackList, (list,tuple)):
         return [track.FeatureStream(_split_feat(t), fields=t.fields+['bin'])
                 for t in trackList]
