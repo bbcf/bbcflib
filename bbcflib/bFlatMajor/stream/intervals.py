@@ -20,7 +20,7 @@ def concatenate(trackList, fields=None):
         nmin = 0
         xmin = feat_tuple[0]
         for n,x in enumerate(feat_tuple[1:]):
-            if x[k] == sys.maxint: continue
+            if x[n] == sys.maxint: continue
             for k in range(len(x)):
                 if cmp(x[k],xmin[k])<0:
                     xmin = x
@@ -90,7 +90,7 @@ def neighborhood(trackList, before_start=None, after_end=None,
     :param after_end: (int) number of bp after feature end.
     :param after_start: (int) number of bp after the feature start.
     :param before_end: (int) number of bp before the feature end.
-    :param on_strand: (bool) True to respect strand orientation [False]
+    :param on_strand: (bool) True to respect strand orientation. [False]
     :rtype: FeatureStream
     """
     def _generate_single(track,a,b,c,d):
