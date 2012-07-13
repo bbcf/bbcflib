@@ -11,7 +11,7 @@ from bbcflib.bFlatMajor.stream.intervals import concatenate, neighborhood, combi
 from bbcflib.bFlatMajor.stream.intervals import exclude, require, disjunction, intersection, union
 from bbcflib.bFlatMajor.stream.scores import merge_scores, mean_score_by_feature, window_smoothing
 from bbcflib.bFlatMajor.numeric.regions import feature_matrix, average_feature_matrix
-from bbcflib.bFlatMajor.numeric.signal import normalize, correlation
+from bbcflib.bFlatMajor.numeric.signal import _normalize, correlation
 #from bbcflib.bFlatMajor.figure.rplots import scatterplot, lineplot, boxplot, heatmap
 
 # Other modules #
@@ -254,7 +254,7 @@ class Test_Signal(unittest.TestCase):
 
     def test_normalize(self):
         x = [1,2,3,4,5] # mean=15/5=3, var=(1/5)*(4+1+0+1+4)=2
-        assert_almost_equal(normalize(x), numpy.array([-2,-1,0,1,2])*(1/math.sqrt(2)))
+        assert_almost_equal(_normalize(x), numpy.array([-2,-1,0,1,2])*(1/math.sqrt(2)))
 
     def test_correlation(self):
         numpy.set_printoptions(precision=3,suppress=True)
