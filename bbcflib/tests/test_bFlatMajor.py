@@ -5,7 +5,7 @@ import os, sys, math
 # Internal modules #
 from bbcflib import btrack, genrep
 from bbcflib.btrack import FeatureStream as fstream
-from bbcflib.bFlatMajor.common import sentinelize, reorder, unroll, sorted_stream, shuffled, fusion, cobble
+from bbcflib.bFlatMajor.common import sentinelize, select, reorder, unroll, sorted_stream, shuffled, fusion, cobble
 from bbcflib.bFlatMajor.stream.annotate import getNearestFeature
 from bbcflib.bFlatMajor.stream.intervals import concatenate, neighborhood, combine, segment_features
 from bbcflib.bFlatMajor.stream.intervals import exclude, require, disjunction, intersection, union
@@ -43,6 +43,12 @@ class Test_Common(unittest.TestCase):
         stream = sentinelize(stream,'Z')
         for y in stream: x = y
         self.assertEqual(x,'Z')
+
+    def test_select(self):
+        stream = fstream([(10,12,0.5), (14,15,1.2)], fields=['start','end','score'])
+        substream = list(select(stream,['score','end']))
+        expected = [(0.5,12),(1.2,15)]
+        self.assertEqual(substream,expected)
 
     def test_reorder(self):
         stream = fstream([(10,12,0.5), (14,15,1.2)], fields=['start','end','score'])
@@ -134,16 +140,27 @@ class Test_Intervals(unittest.TestCase):
         pass
 
     def test_concatenate(self):
-        stream1 = fstream([('chr',1,3,0.2,'n'), ('chr',5,9,0.5,'n'), ('chr',11,15,1.2,'n')],
-                          fields=['chr','start','end','score','name'])
-        stream2 = fstream([('chr',1,4,0.6,'m'), ('chr',8,11,0.4,'m'), ('chr',11,12,0.1,'m')],
-                          fields=['chr','start','end','score','name'])
+        s1 = [('chr',1,3,0.2,'n'), ('chr',5,9,0.5,'n'), ('chr',11,15,1.2,'n')]
+        s2 = [('chr',1,4,0.6,'m'), ('chr',8,11,0.4,'m'), ('chr',11,12,0.1,'m')]
+
+        stream1 = fstream(s1, fields=['chr','start','end','score','name'])
+        stream2 = fstream(s2, fields=['chr','start','end','score','name'])
         cstream = list(concatenate([stream1,stream2], fields=['start','score','name']))
         expected = [(1,3,'n',0.2),(1,4,'m',0.6),(5,9,'n',0.5),(8,11,'m',0.4),(11,12,'m',0.1),(11,15,'n',1.2)]
         self.assertListEqual(cstream,expected)
 
+        stream1 = fstream(s1, fields=['chr','start','end','score','name'])
+        stream2 = fstream(s2, fields=['chr','start','end','score','name'])
+        cstream = list(concatenate([stream1,stream2], fields=['start','end','score']))
+        expected = [(1,3,0.2),(1,4,0.6),(5,9,0.5),(8,11,0.4),(11,12,0.1),(11,15,1.2)]
+        self.assertListEqual(cstream,expected)
+
+    @unittest.skip('')
     def test_neighborhood(self):
-        pass
+        stream = fstream([(10,16,0.5), (24,36,1.2)], fields=['start','end','score'])
+        nstream = list(neighborhood(stream,before_start=1,after_end=4))
+        expected = [(9,20,0.5),(23,40,1.2)]
+        self.assertListEqual(nstream,expected)
 
     def test_segment_features(self):
         stream = fstream([(10,16,0.5), (24,36,1.2)], fields=['start','end','score'])

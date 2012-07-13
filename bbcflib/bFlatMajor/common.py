@@ -8,6 +8,24 @@ def sentinelize(iterable, sentinel):
     yield sentinel
 
 ####################################################################
+def select(stream, fields):
+    """
+    Keeps only specified *fields* from a stream.
+
+    :param trackList: FeatureStream, or list of FeatureStream objects.
+    :fields: (list of str) list of fields to keep in the output.
+    :rtype: FeatureStream, or list of FeatureStream objects
+    """
+    def _select(stream,idxs):
+        for x in stream:
+            yield tuple([x[i] for i in idxs])
+
+    idxs = [stream.fields.index(f) for f in fields]
+    assert all([x > -1 for x in idxs]), "Can only select amongst fields %s." % stream.fields
+    assert hasattr(stream,'fields') and stream.fields, "Object %s has no attribute 'fields'." % stream
+    return FeatureStream(_select(stream,idxs), fields=fields)
+
+####################################################################
 def reorder(stream,fields):
     """Reorders *stream.fields* so that *fields* come first.
 

@@ -2,7 +2,8 @@ import sys
 from bbcflib.bFlatMajor import common
 from bbcflib import btrack as track
 
-# "tracks" refer to FeatureStream objects all over here.
+# "tracks" and "streams" refer to FeatureStream objects all over here.
+
 
 def concatenate(trackList, fields=None):
     """
@@ -20,7 +21,7 @@ def concatenate(trackList, fields=None):
         nmin = 0
         xmin = feat_tuple[0]
         for n,x in enumerate(feat_tuple[1:]):
-            if x[n] == sys.maxint: continue
+            if x[0] == sys.maxint: continue
             for k in range(len(x)):
                 if cmp(x[k],xmin[k])<0:
                     xmin = x
@@ -47,8 +48,8 @@ def concatenate(trackList, fields=None):
     _of = ['start','end']
     if 'chr' in fields: _of = ['chr']+_of
     if 'name' in fields: _of += ['name']
-    tl = [common.reorder(t,_of) for t in trackList]
     _of += [f for f in fields if not(f in _of)]
+    tl = [common.reorder(t,_of) for t in trackList]
     tl = [track.FeatureStream(common.sentinelize(x,(sys.maxint,)*len(x.fields)),x.fields) for x in tl]
     return track.FeatureStream(_knead(tl,len(_of)),fields=_of)
 
@@ -247,7 +248,7 @@ def union(x):
 ###############################################################################
 def segment_features(trackList,nbins=10,upstream=None,downstream=None):
     """
-    For every track in *trackList*, split every feature into *nbins* equal segments, and optionally
+    Split every feature of a track into *nbins* equal segments, and optionally
     adds *upstream* and *downstream* flanks. Flanks are specified as a pair (distance, number_of_bins).
     If the distance is < 1, it is interpreted as a fraction of the feature's length. A new field 'bin'
     giving the index of each fragment produced from a feature is added to the output track. If the
