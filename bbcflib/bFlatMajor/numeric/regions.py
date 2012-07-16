@@ -19,7 +19,7 @@ def feature_matrix(trackScores,trackFeatures,segment=False,**kw):
         R: [[[0.],[2.],[6.]],  (gene1)
             [[6.],[6.],[6.]]]  (gene2)
 
-    :param trackScores: (FeatureStream) score track.
+    :param trackScores: (FeatureStream, or list of FeatureStream objects) score track(s).
     :param trackFeatures: (FeatureStream) feature track.
     :param segment: (bool) segment each feature into bins.[False]
     :param **kw: arguments to pass to segment_features (`nbins`,`upstream`,`downstream`).
@@ -44,7 +44,7 @@ def feature_matrix(trackScores,trackFeatures,segment=False,**kw):
     name_idx = all_means.fields.index('name')
     for t in all_means:
         _n = t[name_idx]
-        if not(_n in scores_dict): scores_dict[_n] = empty_mat.copy()
+        scores_dict.setdefault(_n, empty_mat.copy())
         if segment:
             scores_dict[_n][t[nfields-1]] = t[nfields:]
         else:
@@ -60,7 +60,7 @@ def average_feature_matrix(trackScores,trackFeatures,**kw):
     This creates a matrix with a row for each track in *trackScores* and a column for each bin in the segmented features.
     The values of a matrix entry is the score form one track in *trackScores* in one bin averaged over all features.
 
-    :param trackScores: (FeatureStream) score track.
+    :param trackScores: (FeatureStream, or list of FeatureStream objects) score track(s).
     :param trackFeatures: (FeatureStream) feature track.
     :rtype: numpy.ndarray
     """
