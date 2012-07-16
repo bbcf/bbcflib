@@ -290,15 +290,27 @@ class Test_Regions(unittest.TestCase):
         pass
 
     def test_feature_matrix(self):
+        # No segments
         features = fstream([(5,15,'gene1'),(30,40,'gene2')], fields=['start','end','name'])
-        scores = fstream([(10,15,6.),(30,40,6.)], fields=['start','end','score'])
-        feat, res = feature_matrix(scores,features, segment=True, nbins=3)
-        self.assertListEqual(list(feat),['gene1','gene2'])
-        self.assertListEqual(list(res[0]),[0,2,6])
-        self.assertListEqual(list(res[1]),[6,6,6])
+        scores1 = fstream([(10,15,6.),(30,40,6.)], fields=['start','end','score'])
+        scores2 = fstream([(5,15,2.)], fields=['start','end','score'])
+        feat, res = feature_matrix([scores1,scores2],features)
+        self.assertListEqual(feat,['gene1','gene2'])
+        assert_almost_equal(res, numpy.array([[3,2],[6,0]]))
 
+        # Segmenting each feature in 3 parts
+        features = fstream([(5,15,'gene1'),(30,40,'gene2')], fields=['start','end','name'])
+        scores1 = fstream([(10,15,6.),(30,40,6.)], fields=['start','end','score'])
+        scores2 = fstream([(5,15,2.)], fields=['start','end','score'])
+        feat, res = feature_matrix([scores1,scores2],features, segment=True, nbins=3)
+        assert_almost_equal(res, numpy.array([[[0,2],[2,2],[6,2]],
+                                              [[6,0],[6,0],[6,0]]]))
     def test_average_feature_matrix(self):
-        pass
+        features = fstream([(5,15,'gene1'),(30,40,'gene2')], fields=['start','end','name'])
+        scores1 = fstream([(10,15,6.),(30,40,6.)], fields=['start','end','score'])
+        scores2 = fstream([(5,15,2.)], fields=['start','end','score'])
+        res = average_feature_matrix([scores1,scores2],features, nbins=3)
+        assert_almost_equal(res, numpy.array([[3.,1.],[4.,1.],[6.,1.]]))
 
 
 class Test_Signal(unittest.TestCase):
