@@ -14,6 +14,7 @@ def merge_scores(trackList, geometric=False):
 
     :param trackList: list of FeatureStream objects.
     :param geometric: (bool) set True to use the geometric mean instead of arithmetic.
+        If one of the scores is 0, 1 is used instead for calculating the mean.
     :rtype: FeatureStream
     """
     tracks = [track.FeatureStream(common.sentinelize(x,[sys.maxint]*len(x.fields)), x.fields)
@@ -115,12 +116,12 @@ def window_smoothing( trackList, window_size, step_size=1, stop_val=sys.maxint,
     the average score in the window [p-L, p+L]::
 
         X: __________666666666666____________
-        R: ______12346666666666664321________
+        R: ______12345666666666654321________ (not exact scores here)
 
     :param trackList: FeatureStream, or list of FeatureStream objects.
     :param window_size: (int) window size in bp.
-    :param step_size: (int) step length [1]
-    :param stop_val: (int) ? [sys.maxint]
+    :param step_size: (int) step length. [1]
+    :param stop_val: (int) ? . [sys.maxint]
     :param featurewise: (bool) bp (False), or number of features (True). [False]
     :rtype: FeatureStream
 

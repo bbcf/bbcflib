@@ -50,62 +50,62 @@ class Test_Common(unittest.TestCase):
         def _test(stream):
             return reorder(stream,fields=['2','1'])
         stream = fstream([('A','B'),('C','D')], fields=['1','2'])
-        orstream = list(_test(stream))
-        self.assertListEqual(orstream,[('A','B'),('C','D')])
+        res = list(_test(stream))
+        self.assertListEqual(res,[('A','B'),('C','D')])
 
     def test_select(self):
         stream = fstream([(10,12,0.5), (14,15,1.2)], fields=['start','end','score'])
-        substream = list(select(stream,['score','end']))
+        res = list(select(stream,['score','end']))
         expected = [(0.5,12),(1.2,15)]
-        self.assertEqual(substream,expected)
+        self.assertEqual(res,expected)
 
     def test_reorder(self):
         stream = fstream([(10,12,0.5), (14,15,1.2)], fields=['start','end','score'])
         expected = [(12,0.5,10), (15,1.2,14)]
-        rstream = list(reorder(stream,['end','score','start']))
-        self.assertListEqual(rstream,expected)
+        res = list(reorder(stream,['end','score','start']))
+        self.assertListEqual(res,expected)
 
     def test_unroll(self):
         stream = fstream([(10,12,0.5,'a'), (14,15,1.2,'b')], fields=['start','end','score'])
         expected = [(0,),(0.5,'a'),(0.5,'a'),(0,),(0,),(1.2,'b'),(0,)]
-        ustream = list(unroll(stream,(9,16)))
-        self.assertListEqual(ustream, expected)
+        res = list(unroll(stream,(9,16)))
+        self.assertListEqual(res, expected)
 
         stream = fstream([(0,1,5),(1,2,9),(2,3,11)], fields=['start','end','score'])
         expected = [(5,),(9,),(11,)]
-        ustream = list(unroll(stream,(0,3)))
-        self.assertListEqual(ustream, expected)
+        res = list(unroll(stream,(0,3)))
+        self.assertListEqual(res, expected)
 
     def test_sorted_stream(self):
         s = [(10,0.8),(15,2.8),(12,19.5),(12,1.4),(13,0.1)]
 
         stream = fstream(s, fields=['start','score'])
-        sstream = list(sorted_stream(stream,fields=['start']))
+        res = list(sorted_stream(stream,fields=['start']))
         expected = [(10,0.8),(12,19.5),(12,1.4),(13,0.1),(15,2.8)]
-        self.assertListEqual(sstream,expected)
+        self.assertListEqual(res,expected)
 
         stream = fstream(s, fields=['start','score'])
-        sstream = list(sorted_stream(stream,fields=['start','score']))
+        res = list(sorted_stream(stream,fields=['start','score']))
         expected = [(10,0.8),(12,1.4),(12,19.5),(13,0.1),(15,2.8)]
-        self.assertListEqual(sstream,expected)
+        self.assertListEqual(res,expected)
 
         s = [('chrX',0,1,0.8),('chrIX',3,5,2.8),('chrIX',3,9,1.4),('chrIX',2,10,0.1),('chrIX',7,10,0.8)]
         stream = fstream(s, fields=['chr','start','end','score'])
-        sstream = list(sorted_stream(stream, fields=['start','chr']))
+        res = list(sorted_stream(stream, fields=['start','chr']))
         expected = [('chrX',0,1,0.8),('chrIX',2,10,0.1),('chrIX',3,5,2.8),('chrIX',3,9,1.4),('chrIX',7,10,0.8)]
-        self.assertListEqual(sstream,expected)
+        self.assertListEqual(res,expected)
 
         stream = fstream(s, fields=['chr','start','end','score'])
-        sstream = list(sorted_stream(stream, fields=['chr','start','score'], chrnames=self.a.chrnames))
+        res = list(sorted_stream(stream, fields=['chr','start','score'], chrnames=self.a.chrnames))
         expected = [('chrIX',2,10,0.1),('chrIX',3,9,1.4),('chrIX',3,5,2.8),('chrIX',7,10,0.8),('chrX',0,1,0.8)]
-        self.assertListEqual(sstream,expected)
+        self.assertListEqual(res,expected)
 
     def test_shuffled(self):
         stream = fstream([(10,12,0.5), (14,15,1.2)], fields=['start','end','score'])
-        shstream = list(shuffled(stream, chrlen=25))
-        for f in shstream:
-            self.assertItemsEqual([x[2] for x in shstream],[0.5,1.2])
-            self.assertItemsEqual([x[1]-x[0] for x in shstream],[2,1])
+        res = list(shuffled(stream, chrlen=25))
+        for f in res:
+            self.assertItemsEqual([x[2] for x in res],[0.5,1.2])
+            self.assertItemsEqual([x[1]-x[0] for x in res],[2,1])
 
     def test_fusion(self):
         stream = fstream([('chr1',10,15,'A',1),('chr1',13,18,'B',-1),('chr1',18,25,'C',-1)],
@@ -140,8 +140,8 @@ class Test_Annotate(unittest.TestCase):
         features = fstream([('chrII',14795327,14798367)], fields=['chr','start','end'])
         expected = [(14795327, 14798367, 'chrII', 'Y54E2A.12|tbc-20_Y54E2A.11|eif-3.B', 'Promot_Included', '28_0')]
         annotations = self.assembly.gene_track(chromlist=['chrII'])
-        result = list(getNearestFeature(features,annotations))
-        self.assertItemsEqual(result,expected)
+        res = list(getNearestFeature(features,annotations))
+        self.assertItemsEqual(res,expected)
 
 
 class Test_Intervals(unittest.TestCase):
@@ -154,57 +154,57 @@ class Test_Intervals(unittest.TestCase):
 
         stream1 = fstream(s1, fields=['chr','start','end','score','name'])
         stream2 = fstream(s2, fields=['chr','start','end','score','name'])
-        cstream = list(concatenate([stream1,stream2], fields=['start','score','name']))
+        res = list(concatenate([stream1,stream2], fields=['start','score','name']))
         expected = [(1,3,'n',0.2),(1,4,'m',0.6),(5,9,'n',0.5),(8,11,'m',0.4),(11,12,'m',0.1),(11,15,'n',1.2)]
-        self.assertListEqual(cstream,expected)
+        self.assertListEqual(res,expected)
 
         stream1 = fstream(s1, fields=['chr','start','end','score','name'])
         stream2 = fstream(s2, fields=['chr','start','end','score','name'])
-        cstream = list(concatenate([stream1,stream2], fields=['start','end','score']))
+        res = list(concatenate([stream1,stream2], fields=['start','end','score']))
         expected = [(1,3,0.2),(1,4,0.6),(5,9,0.5),(8,11,0.4),(11,12,0.1),(11,15,1.2)]
-        self.assertListEqual(cstream,expected)
+        self.assertListEqual(res,expected)
 
     def test_neighborhood(self):
         s = [(10,16,0.5,-1), (24,36,1.2,1)]
 
         stream = fstream(s, fields=['start','end','score','strand'])
-        nstream = list(neighborhood(stream, before_start=1,after_end=4))
+        res = list(neighborhood(stream, before_start=1,after_end=4))
         expected = [(9,20,0.5,-1), (23,40,1.2,1)]
-        self.assertListEqual(nstream,expected)
+        self.assertListEqual(res,expected)
 
         stream = fstream(s, fields=['start','end','score','strand'])
-        nstream = list(neighborhood(stream, before_start=1,after_start=4))
+        res = list(neighborhood(stream, before_start=1,after_start=4))
         expected = [(9,15,0.5,-1), (23,29,1.2,1)]
-        self.assertListEqual(nstream,expected)
+        self.assertListEqual(res,expected)
 
         stream = fstream(s, fields=['start','end','score','strand'])
-        nstream = list(neighborhood(stream, before_end=1,after_end=4))
+        res = list(neighborhood(stream, before_end=1,after_end=4))
         expected = [(14,20,0.5,-1), (34,40,1.2,1)] # !
-        self.assertListEqual(nstream,expected)
+        self.assertListEqual(res,expected)
 
         stream = fstream(s, fields=['start','end','score','strand'])
-        nstream = list(neighborhood(stream, before_start=1,after_start=2,before_end=3,after_end=4, on_strand=False))
+        res = list(neighborhood(stream, before_start=1,after_start=2,before_end=3,after_end=4, on_strand=False))
         expected = [(9,13,0.5,-1),(12,20,0.5,-1), (23,27,1.2,1),(32,40,1.2,1)]
-        self.assertListEqual(nstream,expected)
+        self.assertListEqual(res,expected)
 
         stream = fstream(s, fields=['start','end','score','strand'])
-        nstream = list(neighborhood(stream, before_start=1,after_start=2,before_end=3,after_end=4, on_strand=True))
+        res = list(neighborhood(stream, before_start=1,after_start=2,before_end=3,after_end=4, on_strand=True))
         expected = [(6,14,0.5,-1),(13,17,0.5,-1), (23,27,1.2,1),(32,40,1.2,1)]
-        self.assertListEqual(nstream,expected)
+        self.assertListEqual(res,expected)
 
     def test_segment_features(self):
         stream = fstream([(10,16,0.5), (24,36,1.2)], fields=['start','end','score'])
-        sfstream = list(segment_features(stream,nbins=3,upstream=(2,1),downstream=(3,1)))
+        res = list(segment_features(stream,nbins=3,upstream=(2,1),downstream=(3,1)))
         expected = [(8,10,0.5,0), (10,12,0.5,1),(12,14,0.5,2),(14,16,0.5,3), (16,19,0.5,4),
                     (22,24,1.2,0), (24,28,1.2,1),(28,32,1.2,2),(32,36,1.2,3), (36,39,1.2,4)]
-        self.assertListEqual(sfstream,expected)
+        self.assertListEqual(res,expected)
 
         # With negative strand
         stream = fstream([(10,16,-1), (24,36,1)], fields=['start','end','strand'])
-        sfstream = list(segment_features(stream,nbins=2,upstream=(2,1),downstream=(3,1)))
+        res = list(segment_features(stream,nbins=2,upstream=(2,1),downstream=(3,1)))
         expected = [(7,10,-1,3), (10,13,-1,2),(13,16,-1,1), (16,18,-1,0),
                     (22,24,1,0), (24,30,1,1),(30,36,1,2), (36,39,1,3)]
-        self.assertListEqual(sfstream,expected)
+        self.assertListEqual(res,expected)
 
     def test_combine(self):
         # With custom boolean function
@@ -255,13 +255,31 @@ class Test_Scores(unittest.TestCase):
         pass
 
     def test_merge_scores(self):
-        pass
+        # Arithmetic mean
+        s1 = fstream([(10,20,6.)], fields=['start','end','score'])
+        s2 = fstream([(5,15,2.)], fields=['start','end','score'])
+        res = list(merge_scores([s1,s2]))
+        expected = [(5,10,1.),(10,15,4.),(15,20,3.)]
+        self.assertListEqual(res,expected)
+        # Geometric mean
+        s1 = fstream([(10,20,6.)], fields=['start','end','score'])
+        s2 = fstream([(5,15,2.)], fields=['start','end','score'])
+        res = list(merge_scores([s1,s2], geometric=True))
+        expected = [(5,10,math.sqrt(2)),(10,15,math.sqrt(12)),(15,20,math.sqrt(6))]
+        self.assertListEqual(res,expected)
 
     def test_mean_score_by_feature(self):
-        pass
+        features = fstream([(5,15,'gene1'),(30,40,'gene2')], fields=['start','end','name'])
+        scores = fstream([(10,20,6.),(30,40,6.)], fields=['start','end','score'])
+        res = list(mean_score_by_feature(scores,features))
+        expected = [(5,15,'gene1',3.),(30,40,'gene2',6.)]
+        self.assertListEqual(res,expected)
 
     def test_window_smoothing(self):
-        pass
+        stream = fstream([(4,5,10.)], fields=['start','end','score'])
+        res = list(window_smoothing(stream, window_size=2, step_size=1))
+        expected = [(4,5,5.),(5,6,5.)]
+        self.assertListEqual(res,expected)
 
 
 ################### NUMERIC ######################
