@@ -59,9 +59,9 @@ def correlation(trackList, regions, limits=(-1000,1000), with_acf=False):
     ##### convert to nearest power of 2, fft gets orders of magnitude faster...
     N = 2**int(log(2+N,2)+.5)
     def _corr(x1,x2,N):
-        corr = ifft(fft(x1,N)*conjugate(fft(x2,N)))/len(x1)
+        corr = ifft(conjugate(fft(x1,N))*fft(x2,N))/len(x1)
         corr = numpy.concatenate((corr[N+limits[0]:], corr[:limits[1]+1]))
-        return numpy.real(corr)[::-1]
+        return numpy.real(corr)
     if with_acf:
         return [[_corr(x1,x2,N) for x2 in x[n:]] for n,x1 in enumerate(x)]
     elif len(trackList) == 2:
