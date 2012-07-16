@@ -1,6 +1,5 @@
 # Built-in modules #
-import cStringIO
-import os, sys, math
+import math
 
 # Internal modules #
 from bbcflib import btrack, genrep
@@ -13,7 +12,6 @@ from bbcflib.bFlatMajor.stream.intervals import exclude, require, disjunction, i
 from bbcflib.bFlatMajor.stream.scores import merge_scores, mean_score_by_feature, window_smoothing
 from bbcflib.bFlatMajor.numeric.regions import feature_matrix, average_feature_matrix
 from bbcflib.bFlatMajor.numeric.signal import _normalize, correlation
-#from bbcflib.bFlatMajor.figure.rplots import scatterplot, lineplot, boxplot, heatmap
 
 # Other modules #
 import numpy
@@ -27,9 +25,6 @@ from numpy.testing import assert_almost_equal
 
 # Nosetest flag #
 __test__ = True
-
-# Path to testing files
-path = "test_data/bFlatMajor/"
 
 # Numpy print options #
 numpy.set_printoptions(precision=3,suppress=True)
