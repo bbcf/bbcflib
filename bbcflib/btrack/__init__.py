@@ -437,8 +437,10 @@ class FeatureStream(object):
         if isinstance(data,(list,tuple)):
             data = iter(data)
         self.data = data
-        if not fields and hasattr(data, 'description'):
-            fields = [x[0] for x in data.description]
+        if not fields:
+            if hasattr(data, 'description'):
+                fields = [x[0] for x in data.description]
+            else: raise ValueError("Must specify a 'fields' attribute for %s." % self.__str__())
         self.fields = fields
 
     def __iter__(self):
