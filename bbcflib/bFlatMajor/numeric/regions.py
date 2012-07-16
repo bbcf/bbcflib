@@ -6,22 +6,32 @@ def feature_matrix(trackScores,trackFeatures,segment=False,**kw):
     """
     Creates a matrix with a row for each feature in *trackFeatures*.
     If *segment* is True, each feature will be segmented into bins using
-    bbcflib.bFlatMajor.stream.segment_features (additional parameters in *\*\*kw* will be passed to this function).
+    bbcflib.bFlatMajor.stream.intervals.segment_features (additional parameters in *\*\*kw* will be passed to this function).
     The number of columns in the return matrix will be the number of bins (or 1).
     The values in the matrix are vectors containing the average score for each bin and each track in *trackScores*.
+
+    Example::
+
+                      gene1                 gene2
+        X: -----#####|#####|#####--------###|###|###-----  (features, segment=True, nbins=3)
+        Y: _____________666|66666________666|666|666_____
+
+        R: [[[0.],[2.],[6.]],  (gene1)
+            [[6.],[6.],[6.]]]  (gene2)
 
     :param trackScores: (FeatureStream) score track.
     :param trackFeatures: (FeatureStream) feature track.
     :param segment: (bool) segment each feature into bins.[False]
+    :param **kw: arguments to pass to segment_features (`nbins`,`upstream`,`downstream`).
     :rtype: tuple (numpy.ndarray of strings, numpy.ndarray of floats)
     """
     nbins = 1
     nscores = 1
     if segment:
         trackFeatures = sorted_stream(segment_features(trackFeatures,**kw))
-        nbins = kw.get('nbins',segment_features.__defaults__[0])\
-                +kw.get('upstream',(0,0))[1]\
-                +kw.get('downstream',(0,0))[1]
+        nbins = kw.get('nbins',segment_features.__defaults__[0]) \
+                + kw.get('upstream',(0,0))[1] \
+                + kw.get('downstream',(0,0))[1]
     all_means = mean_score_by_feature(trackScores,trackFeatures)
     nfields = len(trackFeatures.fields)
     if isinstance(trackScores,(list,tuple)):
@@ -61,9 +71,9 @@ def average_feature_matrix(trackScores,trackFeatures,**kw):
     else:
         nscores = 1
     nfields = len(trackFeatures.fields)
-    nbins = kw.get('nbins',segment_features.__defaults__[0])\
-            +kw.get('upstream',(0,0))[1]\
-            +kw.get('downstream',(0,0))[1]
+    nbins = kw.get('nbins',segment_features.__defaults__[0]) \
+            + kw.get('upstream',(0,0))[1] \
+            + kw.get('downstream',(0,0))[1]
     averages = numpy.zeros(shape=(nbins,nscores))
     for ntot,x in enumerate(all_means):
         averages[x[nfields]] += x[(nfields+1):]

@@ -133,7 +133,7 @@ def sorted_stream(stream,chrnames=[],fields=['chr','start','end'],reverse=False)
     :param reverse: reverse order. [False]
     :rtype: FeatureStream
     """
-    fidx = [stream.fields.index(f) for f in fields]
+    fidx = [stream.fields.index(f) for f in fields if f in stream.fields]
     chri = -1
     if 'chr' in fields: chri = fields.index('chr')
     feature_list = list(stream)

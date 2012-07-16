@@ -290,7 +290,12 @@ class Test_Regions(unittest.TestCase):
         pass
 
     def test_feature_matrix(self):
-        pass
+        features = fstream([(5,15,'gene1'),(30,40,'gene2')], fields=['start','end','name'])
+        scores = fstream([(10,15,6.),(30,40,6.)], fields=['start','end','score'])
+        feat, res = feature_matrix(scores,features, segment=True, nbins=3)
+        self.assertListEqual(list(feat),['gene1','gene2'])
+        self.assertListEqual(list(res[0]),[0,2,6])
+        self.assertListEqual(list(res[1]),[6,6,6])
 
     def test_average_feature_matrix(self):
         pass
