@@ -1,5 +1,5 @@
 # Built-in modules #
-import cStringIO, tempfile, os
+import cStringIO, tempfile, os, shutil
 
 # Internal modules #
 from bbcflib.genrep import Assembly
@@ -45,21 +45,9 @@ class Test_Track(unittest.TestCase):
         content = t.read()
         self.assertIsInstance(content, FeatureStream)
 
-class Test_Convert(unittest.TestCase):
-    def setUp(self):
-        self.assembly_id = 'sacCer2'
-        self.bed = os.path.join(path,"yeast_genes.bed")
-
-    def test_convert(self):
-        t = track(self.bed)
-        print t.fields
-        pass
 
 class Test_Operations(unittest.TestCase):
     def setUp(self):
-        pass
-
-    def test_concat_fields(self):
         pass
 
     def test_map_chromosomes(self):
@@ -76,9 +64,29 @@ class Test_Formats(unittest.TestCase):
 
     def test_bed(self):
         no_extension = self.bed.split('.bed')[0]
-        os.rename(self.bed, no_extension)
+        shutil.copy(self.bed, no_extension)
         t = track(no_extension, format='bed')
-        self.assertEqual(t.format,'bed')
         self.assertIsInstance(t, text.BedTrack)
-        os.rename(no_extension, self.bed)
+        self.assertEqual(t.format,'bed')
+        self.assertListEqual(t.fields, ['chr','start','end','name','score','strand'])
+        os.remove(no_extension)
+
+    def test_bedgraph(self):
+        bg = os.path.join(path,'test.bedgraph')
+        convert(self.bed,bg)
+        print bg
+        os.remove(bg)
+        raise
+
+    def test_wig(self):
+        pass
+
+    def test_bigwig(self):
+        pass
+
+    def test_gff(self):
+        pass
+
+    def test_sga(self):
+        pass
 

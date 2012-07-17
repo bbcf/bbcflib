@@ -141,6 +141,7 @@ def convert( source, target, chrmeta=None, info=None ):
     ttrg.write( tsrc.read() )
     ttrg.close()
     tsrc.close()
+    return ttrg
 
 def map_chromosomes( stream, assembly, keep=False ):
     """

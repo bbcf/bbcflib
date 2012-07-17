@@ -68,6 +68,10 @@ class TextTrack(Track):
         return _chrmeta
 
     def _get_info(self,info=None):
+        """
+        Read the header of *self.filehandle* to gather some information about the track.
+        Update an existing *info* dict, if provided.
+        """
         if info: return info
         if not(os.path.exists(self.path)): return
         self.open()
@@ -90,6 +94,13 @@ class TextTrack(Track):
             return val
 
     def _select_values(self,row,selection):
+        """
+        Check whether all elements in a *row* pass through the *selection* filter.
+
+        :row: (list) spitted row from file - elements correspond to fields items.
+        :param selection: dict of the form {field_name: value} or {field_name: (start,end)}.
+        :rtype: boolean
+        """
         tests = []
         for k,v in selection.iteritems():
             fi = self.fields.index(k)
@@ -148,15 +159,15 @@ class TextTrack(Track):
         try:
             for row in self.filehandle:
                 if row.startswith("browser") or \
-                        row.startswith("track") or \
-                        row.startswith("#"): continue
+                   row.startswith("track") or \
+                   row.startswith("#"): continue
                 splitrow = row.strip().split(self.separator)
                 if selection and not(any(self._select_values(splitrow,s) for s in selection)):
                     continue
                 yield tuple(self._check_type(splitrow[index_list[n]],f)
                             for n,f in enumerate(fields))
-        except ValueError:
-            raise ValueError("Bad line in file %s:\n %s\n" % (self.path,row))
+        except ValueError as ve:
+            raise ValueError("Bad line in file %s:\n %s%s\n" % (self.path,row,ve))
         self.close()
 
     def read(self, selection=None, fields=None, **kw):
