@@ -1,10 +1,8 @@
 # Built-in modules #
-import cStringIO, tempfile, os, shutil
+import os, shutil
 
 # Internal modules #
-from bbcflib.genrep import Assembly
-from bbcflib.btrack import track, convert, map_chromosomes, score_threshold
-from bbcflib.btrack import FeatureStream
+from bbcflib.btrack import track, convert, FeatureStream
 from bbcflib.btrack.text import BedTrack, BedGraphTrack, WigTrack, SgaTrack, GffTrack
 from bbcflib.btrack.bin import BigWigTrack, BamTrack
 from bbcflib.btrack.sql import SqlTrack
@@ -49,24 +47,14 @@ class Test_Track(unittest.TestCase):
         self.assertIsInstance(content, FeatureStream)
 
 
-class Test_Operations(unittest.TestCase):
-    def setUp(self):
-        pass
-
-    def test_map_chromosomes(self):
-        pass
-
-    def test_score_threshold(self):
-        pass
-
-
 class Test_Formats(unittest.TestCase):
+    """Converting from bed to every other available format, using btrack.convert."""
     def setUp(self):
         self.assembly_id = 'sacCer2'
         self.bed = os.path.join(path,"yeast_genes.bed")
 
     def test_bed(self):
-        no_extension = self.bed.split('.bed')[0]
+        no_extension = self.bed.split('.bed')[0] # guess extension from header
         shutil.copy(self.bed, no_extension)
         t = track(no_extension, format='bed')
         self.assertIsInstance(t, BedTrack)
@@ -86,18 +74,32 @@ class Test_Formats(unittest.TestCase):
         self.assertIsInstance(wig_track, WigTrack)
         os.remove(wig)
 
-    #@unittest.skip('Format not implemented yet')
     def test_bigwig(self):
-        bw = os.path.join(path,'test.bw')
-        bw_track = convert(self.bed, bw)
-        self.assertIsInstance(bw_track, BigWigTrack)
-        os.remove(bw)
+        try:
+            bw = os.path.join(path,'test.bw')
+            bw_track = convert(self.bed, bw)
+            self.assertIsInstance(bw_track, BigWigTrack)
+            os.remove(bw)
+        except OSError: pass
+
+    @unittest.skip('Converting to bam is not implemented yet.')
+    def test_bam(self):
+        bam = os.path.join(path,'test.bam')
+        bam_track = convert(self.bed, bam)
+        self.assertIsInstance(bam_track, BamTrack)
+        os.remove(bam)
 
     def test_gff(self):
         gff = os.path.join(path,'test.gff')
         gff_track = convert(self.bed, gff)
         self.assertIsInstance(gff_track, GffTrack)
         os.remove(gff)
+
+    def test_sql(self):
+        sql = os.path.join(path,'test.sql')
+        sql_track = convert(self.bed, sql)
+        self.assertIsInstance(sql_track, SqlTrack)
+        os.remove(sql)
 
     @unittest.skip('Fails')
     def test_sga(self):

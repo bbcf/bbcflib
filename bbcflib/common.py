@@ -28,7 +28,7 @@ def unique_filename_in(path=None):
     return filename
 
 #-------------------------------------------------------------------------#
-def check_program_exists(program):
+def program_exists(program):
     """Check if *program* exists in local $PATH."""
     for path in os.environ["PATH"].split(os.pathsep):
         exe = os.path.join(path, program)

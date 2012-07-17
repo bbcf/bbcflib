@@ -12,7 +12,7 @@ _sql_types = {'start':        'integer',
 
 class SqlTrack(Track):
     """
-    Track class for sqlite3 files (extension ".sql" or ".db"). 
+    Track class for sqlite3 files (extension ".sql" or ".db").
     Additional attributes:
 
     .. attribute:: readonly
@@ -49,7 +49,7 @@ class SqlTrack(Track):
     def close(self):
         self.connection.commit()
         self.cursor.close()
-        
+
     @property
     def tables(self):
         """Returns the complete list of SQL tables."""
@@ -138,7 +138,7 @@ class SqlTrack(Track):
             self.cursor.execute("SELECT key,value FROM 'attributes'")
             return dict((x[0].encode('ascii'),x[1]) for x in self.cursor.fetchall())
         return {}
-        
+
     def _get_fields(self,fields=None):
         if fields: return fields
         for chrom in self.chrmeta.keys():
@@ -146,7 +146,7 @@ class SqlTrack(Track):
                 self.cursor.execute("SELECT * FROM '%s' LIMIT 1" % chrom)
                 return [x[0].encode('ascii') for x in self.cursor.description]
         return ['chr','start','end']
-        
+
     def _get_chrmeta(self,chrmeta=None):
         _chrmeta = Track._get_chrmeta(self,chrmeta)
         if _chrmeta: return _chrmeta
@@ -203,7 +203,7 @@ class SqlTrack(Track):
     def read(self, selection=None, fields=None, order='start,end', cursor=False, **kw):
         if selection is None:
             selection = sorted(self.chrmeta.keys())
-        if isinstance(selection, (basestring,dict)): 
+        if isinstance(selection, (basestring,dict)):
             selection = [selection]
         if isinstance(selection, (list, tuple)):
             sel2 = []
@@ -217,9 +217,9 @@ class SqlTrack(Track):
                     else:
                         sel2.extend([(chrom,x) for chrom in sorted(self.chrmeta.keys())])
             selection = sel2
-        elif not(selection is None or isinstance(selection,FeatureStream)): 
+        elif not(selection is None or isinstance(selection,FeatureStream)):
             raise TypeError("Bad selection %s."%selection)
-        if fields: 
+        if fields:
             add_chr = 'chr' in fields
             _fields = [f for f in fields if f in self.fields and f != 'chr']
             query_fields = ','.join(_fields)
@@ -228,11 +228,11 @@ class SqlTrack(Track):
             query_fields = "*"
             _fields = ['chr']+[f for f in self.fields if f != 'chr']
             add_chr = True
-        if cursor: 
+        if cursor:
             cur = self.connection.cursor()
         else:
             cur = self.cursor
-        return FeatureStream(self._read(cur,query_fields,selection,order,add_chr), 
+        return FeatureStream(self._read(cur,query_fields,selection,order,add_chr),
                              _fields)
 
 ################################ Write ##########################################

@@ -291,7 +291,6 @@ class BedTrack(TextTrack):
         [self.outtypes.pop(f) for f in self.fields[rowlen:] if f in self.outtypes]
         self.fields = self.fields[:rowlen]
 
-
 ################################ BedGraph ##########################################
 
 class BedGraphTrack(TextTrack):
@@ -512,8 +511,8 @@ class WigTrack(TextTrack):
         feat = self.separator.join([start,score])
         return head+feat
 
-
 ################################ GFF ##########################################
+
 class GffTrack(TextTrack):
     """
     TextTrack class for GFF files (extension ".gff" or ".gtf").

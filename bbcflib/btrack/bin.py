@@ -1,4 +1,5 @@
 from bbcflib.btrack import *
+from bbcflib.common import program_exists
 import subprocess, tempfile, os
 
 
@@ -14,7 +15,7 @@ class BinTrack(Track):
     def _run_tool(self, tool_name, args):
         proc = subprocess.Popen([tool_name]+args, stderr=subprocess.PIPE)
         stdout, stderr = proc.communicate()
-        if stderr: raise Exception("%s exited with message: %s"%(tool_name,stderr))
+        if stderr: raise Exception("%s exited with message: %s" % (tool_name,stderr))
 
     def _make_selection(self, selection):
         reg = [None,None,None]
@@ -40,13 +41,13 @@ class BinTrack(Track):
 
 class BigWigTrack(BinTrack):
     """
-    BinTrack class for BigWig files (extension ".bigWig", ".bigwig" or ".bw"). 
+    BinTrack class for BigWig files (extension ".bigWig", ".bigwig" or ".bw").
 
     Fields are::
 
         ['chr','start','end','score']
 
-    will use *bedGraphToBigWig* (write) and *bigWigToBedGraph* (read) and use 
+    will use *bedGraphToBigWig* (write) and *bigWigToBedGraph* (read) and use
     the BedGraphTrack class.
     """
     def __init__(self,path,**kwargs):
@@ -63,16 +64,20 @@ class BigWigTrack(BinTrack):
             tmp.close()
 
     def close(self):
-        if self.chrfile and self.bedgraph: 
+        if self.chrfile and self.bedgraph:
+            if not program_exists('bedGraphToBigWig'):
+                raise OSError("Program not found in $PATH: %s" % 'bedGraphToBigWig')
             self._run_tool('bedGraphToBigWig', [self.bedgraph, self.chrfile.name, self.path])
         if not(self.chrfile is None):
             os.remove(self.chrfile.name)
             self.chrfile = None
-        if not(self.bedgraph is None): 
+        if not(self.bedgraph is None):
             os.remove(self.bedgraph)
             self.bedgraph = None
 
     def read(self, selection=None, fields=None, **kw):
+        if not program_exists('bigWigToBedGraph'):
+            raise OSError("Program not found in $PATH: %s" % 'bigWigToBedGraph')
         self.open()
         if not(fields): fields = self.fields
         fields = [f for f in self.fields if f in fields]
@@ -102,7 +107,7 @@ try:
     import pysam
     class BamTrack(BinTrack):
         """
-        BinTrack class for Bam files (extension ".bam"). 
+        BinTrack class for Bam files (extension ".bam").
 
         Fields are::
 
