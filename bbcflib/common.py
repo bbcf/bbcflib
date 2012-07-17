@@ -28,6 +28,15 @@ def unique_filename_in(path=None):
     return filename
 
 #-------------------------------------------------------------------------#
+def check_program_exists(program):
+    """Check if *program* exists in local $PATH."""
+    for path in os.environ["PATH"].split(os.pathsep):
+        exe = os.path.join(path, program)
+        if os.path.isfile(exe) and os.access(exe, os.X_OK):
+            return True
+    return False
+
+#-------------------------------------------------------------------------#
 def normalize_url(url):
     """Produce a fixed form for an HTTP URL.
 
