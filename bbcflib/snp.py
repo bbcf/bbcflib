@@ -4,6 +4,7 @@ import re, tarfile, os, sys
 # Internal modules #
 from bbcflib.common import unique_filename_in
 from bbcflib import btrack as track
+from bbcflib import bFlatMajor
 from bbcflib.bFlatMajor import stream as gm_stream
 
 # Other modules #
@@ -248,11 +249,11 @@ def annotate_snps( filedict, sample_names, assembly, genomeRef=None ):
         annotated_stream = gm_stream.getNearestFeature(snp_read, annotation,
                                 thresholdPromot=3000, thresholdInter=3000, thresholdUTR=10)
         # Write a line in outall at each iteration; yield if the snp is in a CDS only
-        inclstream = track.concat_fields(track.FeatureStream(_process_annot(annotated_stream, outall),
+        inclstream = bFlatMajor.common.concat_fields(track.FeatureStream(_process_annot(annotated_stream, outall),
                                                              fields=snp_read.fields),
                                          infields=['name']+sample_names, as_tuple=True)
         # import existing CDS annotation from genrep as a track, and join some fields
-        annotstream = track.concat_fields(assembly.annot_track('CDS',chrom),
+        annotstream = bFlatMajor.common.concat_fields(assembly.annot_track('CDS',chrom),
                                           infields=['name','strand','frame'], as_tuple=True)
         annotstream = track.FeatureStream((x[:3]+(x[1:3]+x[3],) for x in annotstream),fields=annotstream.fields)
         buffer = {1:{}, -1:{}}

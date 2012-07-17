@@ -7,7 +7,21 @@ Utility functions common to several pipelines.
 """
 
 # Built-in modules #
-import os, sys, time, csv, string, random, pickle, re, json
+import os, sys, time, csv, string, random, pickle, re, json, cStringIO
+
+class Readable(object):
+    def __init__(self, text):
+        self.text = text
+        self.file = cStringIO.StringIO(text)
+        for method in dir(self.file):
+            try:
+                setattr(self,method,self.file.__getattribute__(method))
+            except TypeError: pass
+    def __open__(self, *args):
+        pass
+    def __write__(self, *args):
+        return self.file.write(*args)
+
 
 #-------------------------------------------------------------------------#
 def unique_filename_in(path=None):

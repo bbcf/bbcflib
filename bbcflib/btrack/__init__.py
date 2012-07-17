@@ -142,40 +142,6 @@ def convert( source, target, chrmeta=None, info=None ):
     ttrg.close()
     tsrc.close()
 
-def concat_fields( stream, infields, outfield='name', separator='|', as_tuple=False ):
-    """
-    Concatenate fields of a stream. Ex.:
-
-    ('chr1', 12, 'aa', 'bb') -> ('chr1', 12, 'aa|bb')     # as_tuple=False
-    ('chr1', 12, 'aa', 'bb') -> ('chr1', 12, ('aa','bb')) # as_tuple=True
-
-    :param stream: FeatureStream object.
-    :param infields: (list of str) list of fields to concatenate.
-    :param outfield: (str) name of the new field created by concatenation of *infields*
-        (can be an already existing one).
-    :param separator: (str) char to add between entries from concatenated fields.
-    :param as_tuple: (bool) join concatenated field entries in a tuple instead of a
-        separator in a single string.
-    :rtype: FeatureStream object.
-    """
-    _infields = [f for f in stream.fields if not(f in infields)] # untouched fields
-    in_out_indx = [stream.fields.index(f) for f in _infields]
-    to_extend = []
-    if not(outfield in _infields):
-        _infields += [outfield]
-        to_extend = [None]
-    out_indx = _infields.index(outfield)
-    in_indx = [stream.fields.index(f) for f in infields]
-    def _concat(stream):
-        for x in stream:
-            y = [x[i] for i in in_out_indx]+to_extend
-            if as_tuple:
-                y[out_indx] = tuple((x[i] for i in in_indx))
-            else:
-                y[out_indx] = separator.join([str(x[i]) for i in in_indx])
-            yield tuple(y)
-    return FeatureStream(_concat(stream),_infields)
-
 def map_chromosomes( stream, assembly, keep=False ):
     """
     Translate the chromosome identifiers in *stream* into chromosome names of the type 'chr5'.
@@ -202,46 +168,6 @@ def map_chromosomes( stream, assembly, keep=False ):
     else:
         return FeatureStream((x[:ic]+(chrom_map[x[ic]],)+x[ic+1:]
                               for x in stream if x[ic] in chrom_map),stream.fields)
-
-def split_field( stream, outfields, infield='name', separator=';',
-                 header_split=None, strip_input=False ):
-    """
-    Split one field of a stream containing multiple information, into multiple fields. Ex.:
-
-    ('chr1', 12, 'aa;bb;cc') -> ('chr1', 12, 'aa', 'bb', 'cc')
-
-    :param stream: FeatureStream object.
-    :param outfields: (list of str) list of new fields to be created.
-    :param infield: (str) name of the field to be splitted.
-    :param separator: (str) char separating the information in *infield*'s entries [';'].
-    :param header_split: ?
-    :param strip_input: (bool) ?
-    """
-    _outfields = stream.fields+[f for f in outfields if not(f in stream.fields)]
-    in_indx = stream.fields.index(infield)
-    in_out = [_outfields.index(f) for f in outfields]
-    more_len = len(_outfields)-len(stream.fields)
-    def _split(stream):
-        for x in stream:
-            y = list(x)+[None for f in range(more_len)]
-            xsplit = x[in_indx].split(separator)
-            if header_split:
-                xmore = dict([re.search(r'\s*(\S+)'+header_split+'(\S*)',v+header_split).groups()
-                              for v in xsplit])
-                for n,f in enumerate(outfields):
-                    y[in_out[n]] = xmore.get(f,'').strip('"')
-                if strip_input:
-                    y[in_indx] = separator.join([str(k)+header_split+str(v)
-                                                 for k,v in xmore.iteritems()
-                                                 if not(k in outfields)])
-            else:
-                for n,v in enumerate(xsplit):
-                    if n >= len(in_out): break
-                    y[in_out[n]] = v
-                if strip_input:
-                    y[in_indx] = separator.join(xsplit[n:])
-            yield tuple(y)
-    return FeatureStream(_split(stream),_outfields)
 
 def score_threshold( source, threshold=0.0, lower=False, fields='score' ):
     """
@@ -343,6 +269,7 @@ class Track(object):
         self.info = self._get_info(info=kwargs.get('info'))
 
     def _get_chrmeta(self,chrmeta=None):
+        """:param chrmeta: (str or dict) assembly name, or dict of the type {chr: {'length': 1234}}."""
         if isinstance(chrmeta,dict):
             return chrmeta
         if isinstance(chrmeta,basestring):

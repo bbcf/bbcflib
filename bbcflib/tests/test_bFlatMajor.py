@@ -5,7 +5,7 @@ import math
 from bbcflib import btrack, genrep
 from bbcflib.btrack import FeatureStream as fstream
 from bbcflib.bFlatMajor.common import sentinelize, select, reorder, unroll, sorted_stream
-from bbcflib.bFlatMajor.common import shuffled, fusion, cobble, ordered
+from bbcflib.bFlatMajor.common import shuffled, fusion, cobble, ordered, concat_fields, split_field
 from bbcflib.bFlatMajor.stream.annotate import getNearestFeature
 from bbcflib.bFlatMajor.stream.intervals import concatenate, neighborhood, combine, segment_features
 from bbcflib.bFlatMajor.stream.intervals import exclude, require, disjunction, intersection, union
@@ -234,7 +234,7 @@ class Test_Intervals(unittest.TestCase):
         # Test from the snp workflow.
         expected = (91143,91144,'chr', ('C','*A','0','|EBMYCG00000002479|Rv0083',1,0))
         a = genrep.Assembly('mycoTube_H37RV')
-        c = btrack.concat_fields(a.annot_track('CDS','chr'), infields=['name','strand','frame'], as_tuple=True)
+        c = concat_fields(a.annot_track('CDS','chr'), infields=['name','strand','frame'], as_tuple=True)
         feat = fstream([('chr',91143,91144,('C','*A','0'))], fields=['chr','start','end','rest'])
         g = combine([feat,c], intersection, win_size=10000)
         self.assertEqual(g.next(),expected)

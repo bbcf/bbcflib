@@ -19,7 +19,7 @@ _out_types = {'start':  format_int,
 
 class TextTrack(Track):
     """
-    Generic Track class for text files (extension ".txt" or ".text"). 
+    Generic Track class for text files (extension ".txt" or ".text").
     Additional attributes:
 
     .. attribute:: separator
@@ -104,6 +104,10 @@ class TextTrack(Track):
         return all(tests)
 
     def open(self,mode='read'):
+        """Unzip (if necessary) and open the file with the given *mode*.
+
+        :param mode: (str) one of 'read', 'write', 'append' or 'overwrite'
+        """
         isgzip = False
         if self.path.endswith(".gz") or self.path.endswith(".gzip"):
             isgzip = True
@@ -152,10 +156,14 @@ class TextTrack(Track):
                 yield tuple(self._check_type(splitrow[index_list[n]],f)
                             for n,f in enumerate(fields))
         except ValueError:
-            raise ValueError("Bad line in file %s:\n %s\n"%(self.path,row))
+            raise ValueError("Bad line in file %s:\n %s\n" % (self.path,row))
         self.close()
 
     def read(self, selection=None, fields=None, **kw):
+        """
+        :param fields: (list of str) list of field names (columns) to read.
+        :param selection: (str or list or tuple or FeatureStream) ?
+        """
         if fields is None:
             fields = self.fields
             ilist = range(len(self.fields))
@@ -239,7 +247,7 @@ class TextTrack(Track):
 
 class BedTrack(TextTrack):
     """
-    TextTrack class for Bed files (extension ".bed"). 
+    TextTrack class for Bed files (extension ".bed").
 
     Default fields are::
 
@@ -277,7 +285,7 @@ class BedTrack(TextTrack):
 
 class BedGraphTrack(TextTrack):
     """
-    TextTrack class for BedGraph files (extension ".bedGraph" or ".bedgraph"). 
+    TextTrack class for BedGraph files (extension ".bedGraph" or ".bedgraph").
 
     Fields are::
 
@@ -293,7 +301,7 @@ class BedGraphTrack(TextTrack):
 
 class SgaTrack(TextTrack):
     """
-    TextTrack class for `SGA <http://ccg.vital-it.ch/chipseq/sga_specs.html>`_ files (extension ".sga"). 
+    TextTrack class for `SGA <http://ccg.vital-it.ch/chipseq/sga_specs.html>`_ files (extension ".sga").
 
     Fields are::
 
@@ -384,7 +392,7 @@ class SgaTrack(TextTrack):
 
 class WigTrack(TextTrack):
     """
-    TextTrack class for Wig files (extension ".wig"). 
+    TextTrack class for Wig files (extension ".wig").
 
     Fields are::
 
@@ -497,7 +505,7 @@ class WigTrack(TextTrack):
 ################################ GFF ##########################################
 class GffTrack(TextTrack):
     """
-    TextTrack class for GFF files (extension ".gff" or ".gtf"). 
+    TextTrack class for GFF files (extension ".gff" or ".gtf").
 
     Fields are::
 
