@@ -327,7 +327,7 @@ class SgaTrack(TextTrack):
             if num > 0: return '+'
             if num < 0: return '-'
             return '0'
-        def _score_to_counts(x=0.0): return "%i"%x
+        def _score_to_counts(x=0.0): return "%i"%float(x)
         kwargs['intypes'] = {'counts': int}
         kwargs['outtypes'] = {'strand': _sga_strand, 'counts': _score_to_counts}
         TextTrack.__init__(self,path,**kwargs)
