@@ -1,9 +1,20 @@
+"""
+These functions use `rpy2` to bind *R* plotting functions with data from numpy arrays. 
+Each function takes the following arguments:
+
+* output: the filename, a random name will be generated if this is None (default None),
+* format: the image format, 'pdf' (default) or 'png',
+* new: boolean indicating if a new figure must be started (default) or if the plot is added to the current figure,
+* last: boolean, if true this is the last plot on this figure, the file will be finalized and close on return.
+* **kwargs: additional parameters for *R*, such as 'xlab', 'ylab', 'main, 'mfrow', 'log', 'legend'.
+"""
+
 import rpy2.robjects as robjects
 import rpy2.robjects.numpy2ri as numpy2ri
 from bbcflib.common import unique_filename_in
 
 def _begin(output,format,new,**kwargs):
-    """Initialize the figure and axes."""
+    """Initializes the plot in *R*."""
     if new:
         if output is None:
             output = unique_filename_in()
@@ -26,7 +37,7 @@ def _begin(output,format,new,**kwargs):
     return opts, output
 
 def _end(lopts,last,**kwargs):
-    """Add the legend and close the figure."""
+    """Adds the legend and closes the figure."""
     if not(last): return
     if 'legend' in kwargs:
         names = kwargs['legend']
@@ -40,14 +51,13 @@ def scatterplot(X,Y,output=None,format='pdf',new=True,last=True,**kwargs):
      If Y is a list of arrays, a different color will be used for each of them."""
     plotopt,output = _begin(output=output,format=format,new=new,**kwargs)
     robjects.r.assign('xdata',numpy2ri.numpy2ri(X))
-    if not(isinstance(Y,(list,tuple))):
-        Y = [Y]
+    if not(isinstance(Y,(list,tuple))): Y = [Y]
     robjects.r.assign('ydata',numpy2ri.numpy2ri(Y[0]))
-    robjects.r("plot(xdata,ydata,pch=19%s)" %plotopt)
+    robjects.r("plot(xdata,ydata,pch=20%s)" %plotopt)
     for n in range(1,len(Y)):
         robjects.r.assign('ydata',numpy2ri.numpy2ri(Y[n]))
-        robjects.r("points(xdata,ydata,pch=19,col=%i)" %n)
-    _end(",pch=19",last,**kwargs)
+        robjects.r("points(xdata,ydata,pch=20,col=%i)" %n)
+    _end(",pch=20",last,**kwargs)
     return output
 
 ############################################################
@@ -73,7 +83,7 @@ def boxplot(values,labels,output=None,format='pdf',new=True,last=True,**kwargs):
     plotopt,output = _begin(output=output,format=format,new=new,**kwargs)
     robjects.r.assign('values',numpy2ri.numpy2ri(values))
     robjects.r.assign('labels',numpy2ri.numpy2ri(labels))
-    robjects.r("boxplot(values ~ labels,lty=1,pch=19,varwidth=T)")
+    robjects.r("boxplot(values ~ labels,lty=1,pch=20,varwidth=T)")
     _end("",last,**kwargs)
     return output
 
@@ -109,6 +119,74 @@ def heatmap(M,output=None,format='pdf',new=True,last=True,
       heatmap.2(as.matrix(Mdata),
                 col=myColors, trace="none", breaks=myBreaks, distfun=rcor,
                 na.rm=TRUE, density.info='none'%s)""" %plotopt)
+    _end("",last,**kwargs)
+    return output
+############################################################
+############################################################
+def pairs(M,X=None,labels=None,
+          output=None,format='pdf',new=True,last=True,**kwargs):
+    """Pairs plot. 
+    If *X* is a vector of length *m*, *M* must be an *n(n+1)/2 x m* matrix and the *(i,j)* plot will show *M[ni+j,] ~ X* as a line plot. 
+    If *X* is `None` then *M* must be an *n x m* matrix and the *(i,j)* plot will show *M[i,] ~ M[j,]* as a density plot.
+    """
+    plotopt,output = _begin(output=output,format=format,new=new,**kwargs)
+    robjects.r.assign('Mdata',numpy2ri.numpy2ri(M))
+    robjects.r("cdim = ncol(Mdata)")
+    if X: 
+        robjects.r.assign('X',numpy2ri.numpy2ri(X))
+        robjects.r("""
+n = as.integer((-1+sqrt(1+8*ncol(Mdata)))/2)  ### ncol(Mdata) = n*(n+1)/2
+rowcol = matrix(0,nrow=n,ncol=n)
+rowcol[lower.tri(rowcol,diag=T)]=1:ncol(Mdata)
+rowcol = rbind(1+1:n,rowcol)
+""")
+    else:
+        robjects.r("n=ncol(Mdata)")
+    if labels:
+        robjects.r.assign('labels',numpy2ri.numpy2ri(labels))
+    else:
+        robjects.r("labels = as.character(1:n)")
+    robjects.r(""" 
+library(RColorBrewer)
+pline1 = function (y, M, X, col, ...) lines(X,M[,y[y[1]]],col=col,...)
+pline2 = function (x, y, M, X, col, ...) lines(X,M[,y[x[1]]],col=col,...)
+pcor = function(x, y, M, X, ...) {
+    usr = par("usr")
+    par(usr=c(0, 1, 0, 1))
+    cmax = max(M[,x[y[1]]])
+    text(0.5, 0.5, paste("corr=",format(cmax, digits=4),sep=''),cex=par('cex')*3*cmax)
+    par(usr=usr)
+}
+ppoints = function (x, y, col, ...) {
+    colramp = colorRampPalette(c("lightgrey",col),interpolate="spline")
+    points(x,y,col=densCols(x,y,colramp=colramp),...)
+    abline(0,1,col='black',lty=2)
+}
+qpoints = function (x, y, col, ...) {
+    colramp = colorRampPalette(c("lightgrey",col),interpolate="spline")
+    qq = qqplot(x,y,plot.it=FALSE)
+    points(qq$x,qq$y,...)
+}
+phist = function (x, col, ...) {
+    h = hist(x, plot=FALSE, br=max(10,length(x)/50))
+    usr = par("usr")
+    ylog = par("ylog")
+    par(ylog=FALSE)
+    par(usr=c(usr[1:2], 0, 1.5*max(h$counts)))
+    rect(h$breaks[-length(h$breaks)], 0, h$breaks[-1], h$counts, col=col, border=NA)
+    par(usr=usr,ylog=ylog)
+}
+
+par(pch=20)
+col = 'red'
+if (exists("X")) {
+    pairs(rowcol, labels, M=Mdata, X=X, xlim=range(X)%s,
+          diag.panel=pline1, lower.panel=pcor, upper.panel=pline2)
+} else {
+    pairs(Mdata, labels%s,
+          diag.panel=phist, lower.panel=qpoints, upper.panel=ppoints)
+}
+""" %(plotopt,plotopt))
     _end("",last,**kwargs)
     return output
 
