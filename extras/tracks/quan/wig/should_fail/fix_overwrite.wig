@@ -1,8 +1,0 @@
-fixedStep chrom=chr1 start=0 step=10
-1
-2
-3
-fixedStep chrom=chr1 start=0
-1
-2
-3
