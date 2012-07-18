@@ -128,6 +128,7 @@ def pairs(M,X=None,labels=None,
     """Pairs plot. 
     If *X* is a vector of length *m*, *M* must be an *n(n+1)/2 x m* matrix and the *(i,j)* plot will show *M[ni+j,] ~ X* as a line plot. 
     If *X* is `None` then *M* must be an *n x m* matrix and the *(i,j)* plot will show *M[i,] ~ M[j,]* as a density plot.
+    *labels* is a vector of *n* strings used to label plots, defaults to *1,...,n*.
     """
     plotopt,output = _begin(output=output,format=format,new=new,**kwargs)
     robjects.r.assign('Mdata',numpy2ri.numpy2ri(M))
