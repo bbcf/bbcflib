@@ -143,54 +143,6 @@ def convert( source, target, chrmeta=None, info=None ):
     tsrc.close()
     return ttrg
 
-def map_chromosomes( stream, assembly, keep=False ):
-    """
-    Translate the chromosome identifiers in *stream* into chromosome names of the type 'chr5'.
-
-    :param stream: FeatureStream object.
-    :param assembly: genrep.Assembly object.
-    :param keep: (bool) keep all features (True) or only those which chromosome identifier
-        is recognized (False) [False].
-    """
-    if not('chr' in stream.fields): return stream
-    ic = stream.fields.index('chr')
-    chrom_map = {}
-    for k,c in assembly.chromosomes.iteritems():
-        cname = c['name']
-        chrom_map[cname] = cname
-        if cname.startswith('chr') and len(cname)>3: chrom_map[cname[3:]] = cname
-        chrom_map[k[0]] = cname
-        chrom_map[str(k[1])+"."+str(k[2])] = cname
-        if c['synonyms']:
-            for s in c['synonyms'].split(','): chrom_map[s] = cname
-    if keep:
-        return FeatureStream((x[:ic]+(chrom_map.get(x[ic],x[0]),)+x[ic+1:]
-                              for x in stream),stream.fields)
-    else:
-        return FeatureStream((x[:ic]+(chrom_map[x[ic]],)+x[ic+1:]
-                              for x in stream if x[ic] in chrom_map),stream.fields)
-
-def score_threshold( source, threshold=0.0, lower=False, fields='score' ):
-    """
-    Filter the features of a track which score is above or below a certain threshold.
-
-    :param source: Track instance (or a subclass), or a list/tuple of them.
-    :param threshold: (float) threshold above which features are not retained (?)
-    :param lower: (bool) higher (False) or lower (True) bound.
-    :param fields: (str or list of str) names of the fields to apply the filter to.
-    """
-    if not(isinstance(fields,(list,tuple))):
-           fields = [fields]
-    if lower:
-        selection = dict((f,(sys.float_info.min,threshold)) for f in fields)
-    else:
-        selection = dict((f,(threshold,sys.float_info.max)) for f in fields)
-    #tsrc = track(source,fields=['chr','start','end','score'])
-    if isinstance(source,(list,tuple)):
-        return [t.read(selection=selection) for t in source]
-    else:
-        return source.read(selection=selection)
-
 def strand_to_int(strand=None):
     """Convert +/- into 1/-1 notation for DNA strands."""
     if strand == '+': return 1

@@ -80,10 +80,10 @@ def concat_fields( stream, infields, outfield='name', separator='|', as_tuple=Fa
     :param stream: FeatureStream object.
     :param infields: (list of str) list of fields to concatenate.
     :param outfield: (str) name of the new field created by concatenation of *infields*
-        (can be an already existing one).
-    :param separator: (str) char to add between entries from concatenated fields.
+        (can be an already existing one). ['name']
+    :param separator: (str) char to add between entries from concatenated fields. ['|']
     :param as_tuple: (bool) join concatenated field entries in a tuple instead of a
-        separator in a single string.
+        separator in a single string. [False]
     :rtype: FeatureStream object.
     """
     _infields = [f for f in stream.fields if not(f in infields)] # untouched fields
@@ -114,36 +114,93 @@ def split_field( stream, outfields, infield='name', separator=';',
 
     :param stream: FeatureStream object.
     :param outfields: (list of str) list of new fields to be created.
-    :param infield: (str) name of the field to be splitted.
-    :param separator: (str) char separating the information in *infield*'s entries [';'].
+    :param infield: (str) name of the field to be splitted. ['name']
+    :param separator: (str) char separating the information in *infield*'s entries. [';']
     :param header_split: ?
     :param strip_input: (bool) ?
     """
     _outfields = stream.fields+[f for f in outfields if not(f in stream.fields)]
     in_indx = stream.fields.index(infield)
-    in_out = [_outfields.index(f) for f in outfields]
+    oud_indx = [_outfields.index(f) for f in outfields]
     more_len = len(_outfields)-len(stream.fields)
     def _split(stream):
         for x in stream:
-            y = list(x)+[None for f in range(more_len)]
+            x = list(x)
+            if isinstance(x[in_indx],(list,tuple)):
+                x[in_indx] = separator.join([str(_) for _ in x[in_indx]])
+            y = x + [None for f in range(more_len)]
             xsplit = x[in_indx].split(separator)
             if header_split:
                 xmore = dict([re.search(r'\s*(\S+)'+header_split+'(\S*)',v+header_split).groups()
                               for v in xsplit])
                 for n,f in enumerate(outfields):
-                    y[in_out[n]] = xmore.get(f,'').strip('"')
+                    y[oud_indx[n]] = xmore.get(f,'').strip('"')
                 if strip_input:
                     y[in_indx] = separator.join([str(k)+header_split+str(v)
                                                  for k,v in xmore.iteritems()
                                                  if not(k in outfields)])
             else:
                 for n,v in enumerate(xsplit):
-                    if n >= len(in_out): break
-                    y[in_out[n]] = v
+                    if n >= len(oud_indx):
+                        raise ValueError("Input has more elements (%s) than the number (%d) of output fields provided:" \
+                                          % (xsplit,len(outfields)))
+                    y[oud_indx[n]] = v
                 if strip_input:
                     y[in_indx] = separator.join(xsplit[n:])
+                else:
+                    y.pop(in_indx)
             yield tuple(y)
     return FeatureStream(_split(stream),_outfields)
+
+####################################################################
+def map_chromosomes( stream, assembly, keep=False ):
+    """
+    Translate the chromosome identifiers in *stream* into chromosome names of the type 'chr5'.
+
+    :param stream: FeatureStream object.
+    :param assembly: genrep.Assembly object.
+    :param keep: (bool) keep all features (True) or only those which chromosome identifier
+        is recognized (False). [False]
+    """
+    if not('chr' in stream.fields): return stream
+    ic = stream.fields.index('chr')
+    chrom_map = {}
+    for k,c in assembly.chromosomes.iteritems():
+        cname = c['name']
+        chrom_map[cname] = cname                                                  # {'chrIV': 'chrIV'}
+        if cname.startswith('chr') and len(cname)>3: chrom_map[cname[3:]] = cname # {'IV': 'chrIV'}
+        chrom_map[k[0]] = cname                                                   # {2780: 'chrIV'}
+        chrom_map[str(k[1])+"."+str(k[2])] = cname                                # {'NC_001136.9': 'chrIV'}
+        if c['synonyms']:
+            for s in c['synonyms'].split(','): chrom_map[s] = cname               # {synonym: 'chrIV'}
+    if keep:
+        return FeatureStream((x[:ic]+(chrom_map.get(x[ic],x[0]),)+x[ic+1:]
+                              for x in stream),stream.fields)
+    else:
+        return FeatureStream((x[:ic]+(chrom_map[x[ic]],)+x[ic+1:]
+                              for x in stream if x[ic] in chrom_map),stream.fields)
+
+####################################################################
+def score_threshold( source, threshold=0.0, lower=False, fields='score' ):
+    """
+    Filter the features of a track which score is above or below a certain threshold.
+
+    :param source: Track instance (or a subclass), or a list/tuple of them.
+    :param threshold: (float) threshold above which features are not retained (?)
+    :param lower: (bool) higher (False) or lower (True) bound.
+    :param fields: (str or list of str) names of the fields to apply the filter to.
+    """
+    if not(isinstance(fields,(list,tuple))):
+           fields = [fields]
+    if lower:
+        selection = dict((f,(sys.float_info.min,threshold)) for f in fields)
+    else:
+        selection = dict((f,(threshold,sys.float_info.max)) for f in fields)
+    #tsrc = track(source,fields=['chr','start','end','score'])
+    if isinstance(source,(list,tuple)):
+        return [t.read(selection=selection) for t in source]
+    else:
+        return source.read(selection=selection)
 
 ####################################################################
 def unroll( stream, regions, fields=['score'] ):

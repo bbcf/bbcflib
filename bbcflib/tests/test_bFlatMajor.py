@@ -5,7 +5,8 @@ import math
 from bbcflib import btrack, genrep
 from bbcflib.btrack import FeatureStream as fstream
 from bbcflib.bFlatMajor.common import sentinelize, select, reorder, unroll, sorted_stream
-from bbcflib.bFlatMajor.common import shuffled, fusion, cobble, ordered, concat_fields, split_field
+from bbcflib.bFlatMajor.common import shuffled, fusion, cobble, ordered
+from bbcflib.bFlatMajor.common import concat_fields, split_field, map_chromosomes, score_threshold
 from bbcflib.bFlatMajor.stream.annotate import getNearestFeature
 from bbcflib.bFlatMajor.stream.intervals import concatenate, neighborhood, combine, segment_features
 from bbcflib.bFlatMajor.stream.intervals import exclude, require, disjunction, intersection, union
@@ -61,7 +62,7 @@ class Test_Common(unittest.TestCase):
         self.assertListEqual(res,expected)
 
     def test_unroll(self):
-        stream = fstream([(10,12,0.5,'a'), (14,15,1.2,'b')], fields=['start','end','score'])
+        stream = fstream([(10,12,0.5,'a'), (14,15,1.2,'b')], fields=['start','end','score','name'])
         expected = [(0,),(0.5,'a'),(0.5,'a'),(0,),(0,),(1.2,'b'),(0,)]
         res = list(unroll(stream,(9,16)))
         self.assertListEqual(res, expected)
@@ -118,6 +119,36 @@ class Test_Common(unittest.TestCase):
                     ('chr1',18,25,'C', -1)]
         cobbled = list(cobble(stream))
         self.assertEqual(cobbled,expected)
+
+    def test_concat_fields(self):
+        # Concatenate fields as strings
+        stream = fstream([(10,12,0.5,'a'), (14,15,1.2,'b')], fields=['start','end','score','name'])
+        res = list(concat_fields(stream,infields=['score','name'],outfield='mix',separator=';'))
+        expected = [(10,12,'0.5;a'), (14,15,'1.2;b')]
+        self.assertListEqual(res,expected)
+
+        # As tuples
+        stream = fstream([(10,12,0.5,'a'), (14,15,1.2,'b')], fields=['start','end','score','name'])
+        res = list(concat_fields(stream,['score','name'],'mix',as_tuple=True))
+        expected = [(10,12,(0.5,'a')), (14,15,(1.2,'b'))]
+        self.assertListEqual(res,expected)
+
+    def test_split_field(self):
+        stream = fstream([(10,12,(0.5,'a')), (14,15,(1.2,'b'))], fields=['start','end','mix'])
+        res = list(split_field(stream,['score','name'],'mix'))
+        expected = [(10,12,'0.5','a'), (14,15,'1.2','b')]
+        self.assertListEqual(res,expected)
+
+        stream = fstream([(10,12,'0.5|a'), (14,15,'1.2|b')], fields=['start','end','mix'])
+        res = list(split_field(stream,['score','name'],'mix',separator='|'))
+        expected = [(10,12,'0.5','a'), (14,15,'1.2','b')]
+        self.assertListEqual(res,expected)
+
+    def test_map_chromosomes(self):
+        pass
+
+    def test_score_threshold(self):
+        pass
 
 
 ################### STREAM ######################
