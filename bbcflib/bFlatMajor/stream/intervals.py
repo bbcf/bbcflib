@@ -31,7 +31,7 @@ def concatenate(trackList, fields=None):
                     break
         return nmin
 
-    def _knead(_t,N):
+    def _weave(_t,N):
         """Generator yielding all features represented in a list of tracks *_t*,
         sorted w.r.t the *N* first fields."""
         current = [x.next()[:N] for x in _t] # init
@@ -51,7 +51,7 @@ def concatenate(trackList, fields=None):
     _of += [f for f in fields if not(f in _of)]
     tl = [common.reorder(t,_of) for t in trackList]
     tl = [track.FeatureStream(common.sentinelize(x,(sys.maxint,)*len(x.fields)),x.fields) for x in tl]
-    return track.FeatureStream(_knead(tl,len(_of)),fields=_of)
+    return track.FeatureStream(_weave(tl,len(_of)),fields=_of)
 
 ###############################################################################
 @common.ordered

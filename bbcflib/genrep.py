@@ -400,29 +400,44 @@ class Assembly(object):
             if chromosomes == [None]: chromosomes = self.chrnames
             db = sqlite3.connect(dbpath)
             cursor = db.cursor()
-            dist = h.get('uniq','') and "DISTINCT"
-            for chr in chromosomes:
-                sql = "SELECT " + dist + " " + ",".join(h['keys'].split(',')+h['values'].split(','))
-                sql += " FROM " + chr
+            dist = h.get('uniq','') and "DISTINCT "
+            for chrom in chromosomes:
+                if method == 'dico':
+                    sql = "SELECT "+dist+",".join(h['keys'].split(',')+h['values'].split(','))
+                    sql += " FROM " + chrom
+                else:
+                    h['names'] = ",".join([x for x in h['names'].split(',') if not(x == 'chr_name')])
+                    sql = "SELECT "+dist+"MIN(start),MAX(end),"+h['names']
+                    sql += " FROM " + chrom
                 if h.get('conditions'):
                     sql += " WHERE "
-                    hconds = dict([c.split(':') for c in h['conditions'].split(',')])
+                    hconds = dict([])
                     conditions = []
-                    for k,v in hconds.iteritems():
-                        conditions.append( "(" + k + "='" + v + "')" )
+                    for c in h['conditions'].split(','):
+                        k,v = c.split(':')
+                        if "|" in v:
+                            conditions.append( "(%s in ('%s'))"%(k,"','".join(v.split("|"))) )
+                        else:
+                            conditions.append( "(%s=%s)"%(k,v) )
                     sql += " AND ".join(conditions)
+                if method == 'boundaries':
+                    sql += " GROUP BY "+h['names']
                 cursor.execute(sql)
                 for x in cursor:
-                    nkeys = len(h['keys'].split(','))
-                    key = ';'.join([str(_) for _ in x[:nkeys]])
-                    values = list(x[nkeys:]+(chr,))
+                    if 'names' in h:
+                        key = ';'.join([str(_) for _ in x[2:]]+[chrom])
+                        values = list(x[:2])
+                    else:
+                        nkeys = len(h['keys'].split(','))
+                        key = ';'.join([str(_) for _ in x[:nkeys]])
+                        values = list(x[nkeys:]+(chrom,))
                     data.setdefault(key,[]).append(values)
         # Genrep url request
         else:
-            for chr_name in chromosomes:
+            for chrom in chromosomes:
                 request = self.genrep.url+"/nr_assemblies/get_%s?md5=%s" %(method,self.md5)
                 request += "&".join(['']+["%s=%s" %(k,v) for k,v in h.iteritems()])
-                if chr_name: request += "&chr_name="+chr_name
+                if chrom: request += "&chr_name="+chrom
                 data.update(json.load(urllib2.urlopen(request)))
         return data
 
@@ -516,22 +531,20 @@ class Assembly(object):
     def gene_coordinates(self,id_list):
         """Creates a BED-style stream from a list of gene ids."""
         _fields = ['chr','start','end','name','strand']
-        def _query():
-            _ids = "|".join(id_list)
-            sort_list = []
-            webh = { "names": "gene_id,gene_name,strand,chr_name",
-                     "conditions": "gene_id:%s" %_ids,
-                     "uniq":"1" }
-            resp = self.get_features_from_gtf(webh,method='boundaries')
-            for k,v in resp.iteritems():
-                if not(v): continue
-                start,end = v
-                gene_id,gene_name,strand,chr_name = [str(y).strip() for y in k.split('; ')]
-                name = "%s|%s" %(gene_id,gene_name)
-                sort_list.append((chr_name,start,end,name,int(strand)))
-            sort_list.sort()
-            for k in sort_list: yield k
-        return track.FeatureStream(_query(),fields=_fields)
+        _ids = "|".join(id_list)
+        sort_list = []
+        webh = { "names": "gene_id,gene_name,strand,chr_name",
+                 "conditions": "gene_id:%s" %_ids,
+                 "uniq":"1" }
+        resp = self.get_features_from_gtf(webh,method='boundaries')
+        for k,v in resp.iteritems():
+            if not(v): continue
+            start,end = v
+            gene_id,gene_name,strand,chr_name = [str(y).strip() for y in k.split(';')]
+            name = "%s|%s" %(gene_id,gene_name)
+            sort_list.append((chr_name,start,end,name,int(strand)))
+        sort_list.sort()
+        return track.FeatureStream(sort_list,fields=_fields)
 
     def annot_track(self,annot_type='gene',chromlist=None,biotype=["protein_coding"]):
         """
