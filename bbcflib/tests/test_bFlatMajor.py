@@ -157,11 +157,13 @@ class Test_Common(unittest.TestCase):
         self.assertListEqual(res, expected[:-1])
 
     def test_score_threshold(self):
+        # Upper bound (lower=True))
         stream = fstream([(1,0.91),(2,0.45),(3,0.01)], fields=['start','score'])
         res = list(score_threshold(stream,threshold=0.05,fields='score',lower=True))
         expected = [(1,0.91),(2,0.45)]
         self.assertListEqual(res,expected)
 
+        # Upper bound (lower=False)
         stream = fstream([(1,0.91),(2,0.45),(3,0.01)], fields=['start','score'])
         res = list(score_threshold(stream,threshold=0.05,fields='score'))
         expected = [(3,0.01)]
