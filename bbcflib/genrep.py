@@ -417,7 +417,7 @@ class Assembly(object):
                         if "|" in v:
                             conditions.append( "(%s in ('%s'))"%(k,"','".join(v.split("|"))) )
                         else:
-                            conditions.append( "(%s=%s)"%(k,v) )
+                            conditions.append( "(%s='%s')"%(k,v) )
                     sql += " AND ".join(conditions)
                 if method == 'boundaries':
                     sql += " GROUP BY "+h['names']

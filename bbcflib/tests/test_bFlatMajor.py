@@ -147,13 +147,13 @@ class Test_Common(unittest.TestCase):
     def test_map_chromosomes(self):
         stream = fstream([('chrIV',1),('IV',2),(2780,3),('NC_001136.9',4),('sth',5)], fields=['chr','start'])
         assembly = genrep.Assembly('sacCer2')
-        res = list(map_chromosomes(stream, assembly, keep=True))
+        res = list(map_chromosomes(stream, assembly.chromosomes, keep=True))
         expected = [('chrIV',1),('chrIV',2),('chrIV',3),('chrIV',4),('sth',5)]
         self.assertListEqual(res, expected)
 
         # keep=False
         stream = fstream([('chrIV',1),('IV',2),(2780,3),('NC_001136.9',4),('sth',5)], fields=['chr','start'])
-        res = list(map_chromosomes(stream, assembly, keep=False))
+        res = list(map_chromosomes(stream, assembly.chromosomes, keep=False))
         self.assertListEqual(res, expected[:-1])
 
     def test_score_threshold(self):

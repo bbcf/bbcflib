@@ -1,17 +1,30 @@
 from bbcflib.bFlatMajor import common
-import numpy
 try:
     from scipy.fftpack import fft, ifft
 except ImportError:
     from numpy.fft import fft, ifft
-from numpy import conjugate
+from numpy import conjugate, array, asarray, mean, sqrt, concatenate as ncat, real, hstack
 from math import log
+
+def score_array(trackList,fields=['score']):
+    """Returns a numeric array with the *fields* columns from each input track
+    and a vector of row labels, taken from the *name* field which must match in all tracks."""
+    if not(isinstance(trackList,(list,tuple))): trackList=[trackList]
+    sidx = [[t.fields.index(f) for f in fields] for t in trackList]
+    nidx = [t.fields.index('name') for t in trackList]
+    dico = dict((k[nidx[0]],[k[i] for i in sidx[0]]) for k in trackList[0])
+    nums = asarray(dico.values())
+    labs = asarray(dico.keys())
+    for n,tn in enumerate(trackList[1:]):
+        dico = dict((k[nidx[n+1]],[k[i] for i in sidx[n+1]]) for k in tn)
+        nums = hstack((nums,[dico[k] for k in labs]))
+    return (nums,labs)
 
 def _normalize(x):
     """Substracts the average and divides by the standard deviation."""
-    x = numpy.asarray(x)
-    mu = numpy.mean(x)
-    isigma = 1.0/numpy.sqrt((x*x).mean()-mu*mu)
+    x = asarray(x)
+    mu = mean(x)
+    isigma = 1.0/sqrt((x*x).mean()-mu*mu)
     return (x-mu)*isigma
 
 def correlation(trackList, regions, limits=(-1000,1000), with_acf=False):
@@ -51,7 +64,7 @@ def correlation(trackList, regions, limits=(-1000,1000), with_acf=False):
     """
     ##### One could profit from numpy to reduce the memory space used for
     ##### storing these - long - arrays ('dtype' is float64 by default).
-    x = [numpy.array([s[0] for s in common.unroll(t,regions)]) for t in trackList]
+    x = [array([s[0] for s in common.unroll(t,regions)]) for t in trackList]
     x = [_normalize(t) for t in x]
     if limits[1]-limits[0] > 2*len(x[0]):
         limits = (-len(x[0])+1,len(x[0])-1)
@@ -60,8 +73,8 @@ def correlation(trackList, regions, limits=(-1000,1000), with_acf=False):
     N = 2**int(log(2+N,2)+.5)
     def _corr(x1,x2,N):
         corr = ifft(conjugate(fft(x1,N))*fft(x2,N))/len(x1)
-        corr = numpy.concatenate((corr[N+limits[0]:], corr[:limits[1]+1]))
-        return numpy.real(corr)
+        corr = ncat((corr[N+limits[0]:], corr[:limits[1]+1]))
+        return real(corr)
     if with_acf:
         return [[_corr(x1,x2,N) for x2 in x[n:]] for n,x1 in enumerate(x)]
     elif len(trackList) == 2:
