@@ -10,7 +10,7 @@ from bbcflib.bFlatMajor import stream as gm_stream
 # Other modules #
 from bein import program
 
-translate = { "TTT": "F", "TTC": "F", "TTA": "L", "TTG": "L/START",
+_translate = {"TTT": "F", "TTC": "F", "TTA": "L", "TTG": "L/START",
               "CTT": "L", "CTC": "L", "CTA": "L", "CTG": "L",
               "ATT": "I", "ATC": "I", "ATA": "I", "ATG": "M & START",
               "GTT": "V", "GTA": "V", "GTC": "V", "GTG": "V/START",
@@ -188,7 +188,7 @@ def annotate_snps( filedict, sample_names, assembly, genomeRef=None ):
                      ('B','V'),('D','H'),('H','D'),('V','B'),
                      ('b','v'),('d','h'),('h','d'),('v','b'),
                      ('N','N'),('n','n')))
-        return "".join(reversed([cmpl[x] for x in seq]))
+        return "".join(reversed([cmpl.get(x,x) for x in seq]))
 
     def _write_buffer(buffer, strand, outex):
         for c,snps in buffer[strand].iteritems():
@@ -202,28 +202,43 @@ def annotate_snps( filedict, sample_names, assembly, genomeRef=None ):
                 for variant in varbase:
                     if variant == '0':
                         variants.append(refbase)
-                    elif len(variant.split(',')) > 1: # 'C (43%),G (12%)'
+                    elif len(variant.split(',')) > 1: # 'C (43%),G (12%)' : heterozygous double snp
                         v = [v.split()[0] for v in variant.split(',')]
-                        variants.append(v[0])  # TO DO ! takes only the first possible variant for the moment
+                        variants.append(v)
                     else:                             # 'C (43%)' or 'C'
                         variants.append(variant.split()[0])
                 for k in range(nsamples):
                     if strand == 1:
-                        new_codon[k][shift] = variants[k]
+                        if isinstance(variants[k],list): # heterozygous double snp
+                            new_codon[k] = [list(''.join(new_codon[k])) for _ in range(len(variants[k]))] # pointers...
+                            for i in range(len(variants[k])):
+                                new_codon[k][i][shift] = variants[k][i]
+                            new_codon[k] = ','.join([''.join(n) for n in new_codon[k]]) # 'CAA,CAG'
+                        else:
+                            new_codon[k][shift] = variants[k]                           # ['C','A','A']
                         assert ref_codon[shift] == refbase, "bug with shift within codon"
+                        new_codon[k] = new_codon[k]
                     elif strand == -1:
-                        new_codon[k][2-shift] = variants[k]
+                        if isinstance(variants[k],list):
+                            new_codon[k] = [list(''.join(new_codon[k])) for _ in range(len(variants[k]))]
+                            for i in range(len(variants[k])):
+                                new_codon[k][i][shift] = variants[k][i]
+                            new_codon[k] = ','.join([''.join(n) for n in new_codon[k]])
+                        else:
+                            new_codon[k][2-shift] = variants[k]
                         assert ref_codon[2-shift] == refbase, "bug with shift within codon"
-            new_codon = ["".join(new_codon[k]) for k in range(nsamples)]
+                        new_codon[k] = new_codon[k]
+            new_codon = ["".join(new_codon[k]) for k in range(nsamples)]                # ['CAA,CAG','CAA']
             # Complementary strand
             if strand == -1:
                 ref_codon = _revcomp(ref_codon)
-                new_codon = [_revcomp(c) for c in new_codon]
+                new_codon = [','.join([_revcomp(s) for s in c.split(',')]) for c in new_codon]
             # Write to a file
             for snp in snps:
                 chr,pos,refbase,variants,cds,strand,refcodon,shift = snp
                 result = [chr, pos+1, refbase] + list(variants) + [cds, strand] \
-                         + [translate[ref_codon]] + [translate[n] for n in new_codon]
+                         + [_translate[ref_codon]] \
+                         + [','.join([_translate[s] for s in c.split(',')]) for c in new_codon]
                 outex.write("\t".join([str(r) for r in result])+"\n")
 
     output = unique_filename_in()
