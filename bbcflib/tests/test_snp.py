@@ -26,11 +26,11 @@ class Test_SNP(unittest.TestCase):
         assembly = genrep.Assembly('sacCer2')
         filedict = {'chrV':path+'chrV'}
         outall, outexons = annotate_snps(filedict, ["s1","s2"], assembly)
-        with open(outall,'r') as f: print '\noutall\n',f.read()
-        with open(outexons,'r') as g: print '\noutexons\n',g.read()
+        with open(outall,'r') as f: print "\nAll SNPs ('outall'):\n",f.read()
+        with open(outexons,'r') as g: print "\nExonic SNPs ('outexons'):\n",g.read()
         os.remove(outall)
         os.remove(outexons)
-        raise
+        raise IOError("Error raised voluntarily to print test outputs.")
 
 #-----------------------------------#
 # This code was written by the BBCF #
