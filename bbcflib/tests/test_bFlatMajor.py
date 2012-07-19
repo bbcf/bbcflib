@@ -8,7 +8,7 @@ from bbcflib.bFlatMajor.common import sentinelize, select, reorder, unroll, sort
 from bbcflib.bFlatMajor.common import shuffled, fusion, cobble, ordered
 from bbcflib.bFlatMajor.common import concat_fields, split_field, map_chromosomes, score_threshold
 from bbcflib.bFlatMajor.stream.annotate import getNearestFeature
-from bbcflib.bFlatMajor.stream.intervals import concatenate, neighborhood, combine, segment_features
+from bbcflib.bFlatMajor.stream.intervals import concatenate, neighborhood, segment_features
 from bbcflib.bFlatMajor.stream.intervals import exclude, require, disjunction, intersection, union
 from bbcflib.bFlatMajor.stream.scores import merge_scores, mean_score_by_feature, window_smoothing
 from bbcflib.bFlatMajor.numeric.regions import feature_matrix, average_feature_matrix
@@ -177,7 +177,8 @@ class Test_Annotate(unittest.TestCase):
     def setUp(self):
         self.assembly = genrep.Assembly('ce6')
         """
-        ----- 14,795,328 ---- 14,798,158 - 14,798,396 ---- 14,800,829 -----
+              |==========================|
+        ----- 14,795,327 ---- 14,798,158 - 14,798,395 ---- 14,800,829 -----
               |                            |
                ->     Y54E2A.11             ->     Y54E2A.12
         """
@@ -250,10 +251,6 @@ class Test_Intervals(unittest.TestCase):
         expected = [(7,10,-1,3), (10,13,-1,2),(13,16,-1,1), (16,18,-1,0),
                     (22,24,1,0), (24,30,1,1),(30,36,1,2), (36,39,1,3)]
         self.assertListEqual(res,expected)
-
-    def test_combine(self):
-        # With custom boolean function
-        pass
 
     def test_exclude(self):
         # combine( ... , fn=exclude)
