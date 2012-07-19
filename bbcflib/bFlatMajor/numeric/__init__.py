@@ -4,7 +4,8 @@ The *numeric* module contains algorithms which return numeric objects (typically
 from bbcflib.bFlatMajor import *
 
 ###############################################################################
-_members = {'correlation': ['trackList'],
+_members = {'score_array': ['trackList'],
+            'correlation': ['trackList'],
             'feature_matrix': ['trackScores','trackFeatures'],
             'scaled_feature_matrix': ['trackScores','trackFeatures']
             }
