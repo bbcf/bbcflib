@@ -145,10 +145,27 @@ class Test_Common(unittest.TestCase):
         self.assertListEqual(res,expected)
 
     def test_map_chromosomes(self):
-        pass
+        stream = fstream([('chrIV',1),('IV',2),(2780,3),('NC_001136.9',4),('sth',5)], fields=['chr','start'])
+        assembly = genrep.Assembly('sacCer2')
+        res = list(map_chromosomes(stream, assembly, keep=True))
+        expected = [('chrIV',1),('chrIV',2),('chrIV',3),('chrIV',4),('sth',5)]
+        self.assertListEqual(res, expected)
+
+        # keep=False
+        stream = fstream([('chrIV',1),('IV',2),(2780,3),('NC_001136.9',4),('sth',5)], fields=['chr','start'])
+        res = list(map_chromosomes(stream, assembly, keep=False))
+        self.assertListEqual(res, expected[:-1])
 
     def test_score_threshold(self):
-        pass
+        stream = fstream([(1,0.91),(2,0.45),(3,0.01)], fields=['start','score'])
+        res = list(score_threshold(stream,threshold=0.05,fields='score',lower=True))
+        expected = [(1,0.91),(2,0.45)]
+        self.assertListEqual(res,expected)
+
+        stream = fstream([(1,0.91),(2,0.45),(3,0.01)], fields=['start','score'])
+        res = list(score_threshold(stream,threshold=0.05,fields='score'))
+        expected = [(3,0.01)]
+        self.assertListEqual(res,expected)
 
 
 ################### STREAM ######################

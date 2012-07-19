@@ -38,7 +38,7 @@ def select(stream, fields):
     """
     Keeps only specified *fields* from a stream.
 
-    :param trackList: FeatureStream, or list of FeatureStream objects.
+    :param stream: FeatureStream, or list of FeatureStream objects.
     :fields: (list of str) list of fields to keep in the output.
     :rtype: FeatureStream, or list of FeatureStream objects
     """
@@ -181,26 +181,29 @@ def map_chromosomes( stream, assembly, keep=False ):
                               for x in stream if x[ic] in chrom_map),stream.fields)
 
 ####################################################################
-def score_threshold( source, threshold=0.0, lower=False, fields='score' ):
+def score_threshold( stream, threshold=0.0, lower=False, fields='score' ):
     """
     Filter the features of a track which score is above or below a certain threshold.
 
-    :param source: Track instance (or a subclass), or a list/tuple of them.
+    :param stream: FeatureStream, or list of FeatureStream objects.
     :param threshold: (float) threshold above which features are not retained (?)
     :param lower: (bool) higher (False) or lower (True) bound.
     :param fields: (str or list of str) names of the fields to apply the filter to.
+    :rtype: FeatureStream, or list of FeatureStream objects
     """
     if not(isinstance(fields,(list,tuple))):
            fields = [fields]
-    if lower:
-        selection = dict((f,(sys.float_info.min,threshold)) for f in fields)
+    def _threshold(stream,th,lower,fields):
+        if not lower: lower = -1
+        else: lower = 1
+        fidx = [stream.fields.index(f) for f in fields]
+        for x in stream:
+            if all([lower*x[k] >= lower*th for k in fidx]):
+                yield x
+    if isinstance(stream,(list,tuple)):
+        return [FeatureStream(_threshold(s,threshold,lower,fields), fields=s.fields) for s in stream]
     else:
-        selection = dict((f,(threshold,sys.float_info.max)) for f in fields)
-    #tsrc = track(source,fields=['chr','start','end','score'])
-    if isinstance(source,(list,tuple)):
-        return [t.read(selection=selection) for t in source]
-    else:
-        return source.read(selection=selection)
+        return FeatureStream(_threshold(stream,threshold,lower,fields), fields=stream.fields)
 
 ####################################################################
 def unroll( stream, regions, fields=['score'] ):
