@@ -153,19 +153,19 @@ def split_field( stream, outfields, infield='name', separator=';',
     return FeatureStream(_split(stream),_outfields)
 
 ####################################################################
-def map_chromosomes( stream, assembly, keep=False ):
+def map_chromosomes( stream, chromosomes, keep=False ):
     """
     Translate the chromosome identifiers in *stream* into chromosome names of the type 'chr5'.
 
     :param stream: FeatureStream object.
-    :param assembly: genrep.Assembly object.
+    :param chromosomes: a dictionary of chromosomes, such as from a genrep.Assembly object.
     :param keep: (bool) keep all features (True) or only those which chromosome identifier
         is recognized (False). [False]
     """
     if not('chr' in stream.fields): return stream
     ic = stream.fields.index('chr')
     chrom_map = {}
-    for k,c in assembly.chromosomes.iteritems():
+    for k,c in chromosomes.iteritems():
         cname = c['name']
         chrom_map[cname] = cname                                                  # {'chrIV': 'chrIV'}
         if cname.startswith('chr') and len(cname)>3: chrom_map[cname[3:]] = cname # {'IV': 'chrIV'}
