@@ -411,7 +411,6 @@ class Assembly(object):
                     sql += " FROM " + chrom
                 if h.get('conditions'):
                     sql += " WHERE "
-                    hconds = dict([])
                     conditions = []
                     for c in h['conditions'].split(','):
                         k,v = c.split(':')

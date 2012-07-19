@@ -121,7 +121,7 @@ def split_field( stream, outfields, infield='name', separator=';',
     """
     _outfields = stream.fields+[f for f in outfields if not(f in stream.fields)]
     in_indx = stream.fields.index(infield)
-    oud_indx = [_outfields.index(f) for f in outfields]
+    out_indx = [_outfields.index(f) for f in outfields]
     more_len = len(_outfields)-len(stream.fields)
     def _split(stream):
         for x in stream:
@@ -134,17 +134,17 @@ def split_field( stream, outfields, infield='name', separator=';',
                 xmore = dict([re.search(r'\s*(\S+)'+header_split+'(\S*)',v+header_split).groups()
                               for v in xsplit])
                 for n,f in enumerate(outfields):
-                    y[oud_indx[n]] = xmore.get(f,'').strip('"')
+                    y[out_indx[n]] = xmore.get(f,'').strip('"')
                 if strip_input:
                     y[in_indx] = separator.join([str(k)+header_split+str(v)
                                                  for k,v in xmore.iteritems()
                                                  if not(k in outfields)])
             else:
                 for n,v in enumerate(xsplit):
-                    if n >= len(oud_indx):
+                    if n >= len(out_indx):
                         raise ValueError("Input has more elements (%s) than the number (%d) of output fields provided:" \
                                           % (xsplit,len(outfields)))
-                    y[oud_indx[n]] = v
+                    y[out_indx[n]] = v
                 if strip_input:
                     y[in_indx] = separator.join(xsplit[n:])
                 else:
