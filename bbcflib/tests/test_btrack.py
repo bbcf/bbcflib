@@ -101,7 +101,6 @@ class Test_Formats(unittest.TestCase):
         self.assertIsInstance(sql_track, SqlTrack)
         os.remove(sql)
 
-    @unittest.skip('Fails')
     def test_sga(self):
         sga = os.path.join(path,'test.sga')
         sga_track = convert(self.bed, sga)
