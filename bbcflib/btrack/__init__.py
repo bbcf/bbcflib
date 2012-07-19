@@ -33,7 +33,8 @@ Read a track (see :func:`FeatureStream <bbcflib.btrack.FeatureStream>`)::
 
 Split field::
 
-    for x in track.split_field(track_in.read(),['name','extension'],'name','_'):
+    from bFlatMajor.common import split_field
+    for x in split_field(track_in.read(),['name','extension'],'name','_'):
         print x  #['chr2', 3030497, 3032496, 'ENSMUST00000072955', 'txS']
         break
 
