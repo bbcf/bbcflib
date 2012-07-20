@@ -65,7 +65,7 @@ def feature_matrix(trackScores,trackFeatures,segment=False,**kw):
             scores_dict[_n][t[nfields-1]] = t[nfields:]
         else:
             scores_dict[_n] = t[nfields:]
-    feat_names = scores_dict.keys()
+    feat_names = numpy.array(scores_dict.keys())
     scores_mat = numpy.array(scores_dict.values())
     return (feat_names,scores_mat)
 
