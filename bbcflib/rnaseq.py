@@ -22,9 +22,8 @@ from operator import itemgetter
 # Internal modules #
 from bbcflib.common import writecols, set_file_descr, unique_filename_in
 from bbcflib import mapseq, genrep
-from bbcflib import bFlatMajor
-from bbcflib import btrack
-import track
+from bbcflib.bFlatMajor.common import cobble
+from bbcflib.btrack import track, FeatureStream, convert
 from bein import program
 
 # Other modules #
@@ -187,74 +186,6 @@ def build_pileup(bamfile, labels):
     sam.close()
     return counts
 
-def fusion(X):
-    """ Takes a track-like generator with items of the form (chromosome,start,end,score)
-    and returns a merged track-like generator with summed scores.
-    This is to avoid having overlapping coordinates of features from both DNA strands,
-    which some genome browsers cannot handle for quantitative tracks.
-    """
-    x = X.next()
-    toyield = [x]
-
-    def _intersect(A,B):
-        """Return *z*, the part that must replace A in *toyield*, and
-        *rest*, that must reenter the loop instead of B."""
-        rest = None
-        if B[1] < A[2]:           # has an intersection
-            if B[2] < A[2]:
-                if B[1] == A[1]:  # same left border, A is bigger
-                    z = [(A[0],B[1],B[2],A[3]+B[3]), (A[0],B[2],A[2],A[3])]
-                elif B[1] < A[1]: # B shifted to the left wrt A
-                    z = [(A[0],B[1],A[1],B[3]), (A[0],A[1],B[2],A[3]+B[3]), (A[0],B[2],A[2],A[3])]
-                else:             # B embedded in A
-                    z = [(A[0],A[1],B[1],A[3]), (A[0],B[1],B[2],A[3]+B[3]), (A[0],B[2],A[2],A[3])]
-            elif B[2] == A[2]:
-                if B[1] == A[1]:  # identical
-                    z = [(A[0],A[1],A[2],A[3]+B[3])]
-                elif B[1] < A[1]: # same right border, B is bigger
-                    z = [(A[0],B[1],A[1],B[3]), (A[0],A[1],B[2],A[3]+B[3])]
-                else:             # same right border, A is bigger
-                    z = [(A[0],A[1],B[1],A[3]), (A[0],B[1],B[2],A[3]+B[3])]
-            else:
-                if B[1] == A[1]:  # same left border, B is bigger
-                    z = [(A[0],A[1],A[2],A[3]+B[3])]
-                    rest = (A[0],A[2],B[2],B[3])
-                elif B[1] < A[1]: # B contains A
-                    z = [(A[0],B[1],A[1],B[3]), (A[0],A[1],A[2],A[3]+B[3])]
-                    rest = (A[0],A[2],B[2],B[3])
-                else:             # B shifted to the right wrt A
-                    z = [(A[0],A[1],B[1],A[3]), (A[0],B[1],A[2],A[3]+B[3])]
-                    rest = (A[0],A[2],B[2],B[3])
-        else: z = None            # no intersection
-        return z, rest
-
-    while 1:
-        try:
-            x = X.next()
-            intersected = False
-            for y in toyield:
-                replace, rest = _intersect(y,x)
-                if replace:
-                    intersected = True
-                    iy = toyield.index(y)
-                    y = toyield.pop(iy)
-                    for k in range(len(replace)):
-                        toyield.insert(iy+k, replace[k])
-                    x = rest
-                    if not x: break
-            if not intersected:
-                while toyield:
-                    y = toyield.pop(0)
-                    yield tuple(y)
-                toyield = [x]
-            elif x:
-                toyield.append(x)
-        except StopIteration:
-            while toyield:
-                y = toyield.pop(0)
-                yield tuple(y)
-            break
-
 def save_results(ex, cols, conditions, group_ids, assembly, header=[], feature_type='features'):
     """Save results in a tab-delimited file, one line per feature, one column per run.
 
@@ -283,39 +214,21 @@ def save_results(ex, cols, conditions, group_ids, assembly, header=[], feature_t
         for i in range(ncond):
             group = conditions[i].split('.')[0]
             nruns = groups.count(group)
-            #mean of all replicates in the group
+            # mean of all replicates in the group
             rpkm[group] = asarray(rpkm.get(group,zeros(len(start)))) + asarray(cols[i+ncond+1]) / nruns
             output_sql[group] = output_sql.get(group,unique_filename_in())
         for group,filename in output_sql.iteritems():
-            lines = zip(*[chromosomes,start,end,rpkm[group]])
             # SQL track
-            #tr = btrack.track(filename+'.sql', fields=['chr','start','end','score'], chrmeta=assembly.chrmeta)
-            #for chr in tr.chrmeta:
-            #    chrlines = [l for l in lines if l[0]==chr]
-            #    goodlines = [l for l in chrlines if l[3]!=0.0]
-            #    [lines.remove(l) for l in chrlines]
-            #    if goodlines:
-            #        goodlines.sort(key=itemgetter(1,2)) # sort w.r.t start, then end
-            #        goodlines = btrack.FeatureStream(goodlines, fields = ['chr','start','end','score'])
-            #        goodlines = bFlatMajor.common.cobble(goodlines)
-            #        tr.write(goodlines)
-            with track.new(filename+'.sql') as t:
-                t.chrmeta = assembly.chrmeta
-                t.datatype = 'signal'
-                for chr in t.chrmeta:
-                    chrlines = [l for l in lines if l[0]==chr]
-                    goodlines = [l for l in chrlines if l[3]!=0.0]
-                    [lines.remove(l) for l in chrlines]
-                    if goodlines:
-                        goodlines.sort(key=itemgetter(1,2)) # sort w.r.t start, then end
-                        goodlines = fusion(iter(goodlines))
-                        for x in goodlines:
-                            t.write(x[0],[(x[1],x[2],x[3])],fields=["start","end","score"])
+            tr = track(filename+'.sql', fields=['chr','start','end','score'], chrmeta=assembly.chrmeta)
+            lines = zip(*[chromosomes,start,end,rpkm[group]])
+            lines = FeatureStream(zip(*[chromosomes,start,end,rpkm[group]]), fields=['chr','start','end','score'])
+            lines = cobble(lines)
+            tr.write(lines)
             description = set_file_descr(feature_type.lower()+"_"+group+".sql", step="pileup", type="sql", \
                                          groupId=group_ids[group], gdv='1')
             ex.add(filename+'.sql', description=description)
             # UCSC-BED track
-            track.convert(filename+'.sql',filename+'.bedGraph')
+            convert(filename+'.sql',filename+'.bedGraph')
             description = set_file_descr(feature_type.lower()+"_"+group+".bedGraph", step="pileup", type="bedGraph", \
                                          groupId=group_ids[group], ucsc='1')
             ex.add(filename+'.bedGraph', description=description)
@@ -471,7 +384,6 @@ def rnaseq_workflow(ex, job, bam_files, pileup_level=["exons","genes","transcrip
     Main function of the workflow.
 
     :rtype: None
-
     :param ex: the bein's execution Id.
     :param job: a Job object (or a dictionary of the same form) as returned from HTSStation's frontend.
     :param bam_files: a complicated dictionary such as returned by mapseq.get_bam_wig_files.
@@ -652,7 +564,7 @@ def clean_before_deseq(filename):
                 l = line.split('\t')
                 scores = l[1:1+ncond]
                 if any([float(x) for x in scores]):
-                    label = '|'.join([l[0],l[-3],l[-2],l[-1].strip('\r\n')])
+                    label = '|'.join([l[0],l[-3],l[-2],l[-1].strip('\r\n')]) # geneID|geneName|strand|chr
                     line = label + '\t' + '\t'.join(scores) + '\n'
                     g.write(line)
     return filename_clean
