@@ -107,6 +107,7 @@ def write_pileupFile(dictPileup,sample_names,allSNPpos,chrom,minCoverage=80,minS
                 info = line.split("\t")
                 ref = info[2].upper() # reference base
                 cons = info[3].upper() # consensus base
+                if cons == 'N': continue
                 nreads = info[7]; # coverage at this position
                 # info = ['chrV', '91668', 'G', 'R', '4', '4', '60', '4', 'a,.^~.', 'LLLL', '~~~~\n']
                 # info = [chr, pos, ref, consensus, cons_qual, snp_qual, max_map_qual, nreads, 'a,.^~.', 'LLLL', '~~~~\n']
