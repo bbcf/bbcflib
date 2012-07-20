@@ -2,9 +2,9 @@
 import re, tarfile, os, sys
 
 # Internal modules #
-from bbcflib.common import unique_filename_in
-from bbcflib import btrack as track
-from bbcflib import bFlatMajor
+from bbcflib.common import unique_filename_in, set_file_descr
+from bbcflib.btrack import FeatureStream, track, convert
+from bbcflib.bFlatMajor.common import select, concat_fields
 from bbcflib.bFlatMajor import stream as gm_stream
 
 # Other modules #
@@ -157,7 +157,7 @@ def write_pileupFile(dictPileup,sample_names,allSNPpos,chrom,minCoverage=80,minS
 
     return formattedPileupFilename
 
-def annotate_snps( filedict, sample_names, assembly, genomeRef=None ):
+def annotate_snps(filedict, sample_names, assembly, genomeRef=None ):
     """Annotates SNPs described in `filedict` (a dictionary of the form {chromosome: filename}
     where `filename` is an output of parse_pileupFile).
     Adds columns 'gene', 'location_type' and 'distance' to the output of parse_pileupFile.
@@ -254,23 +254,24 @@ def annotate_snps( filedict, sample_names, assembly, genomeRef=None ):
 
     for chrom, filename in filedict.iteritems():
         # For each chromosome, read the result of parse_pileupFile and make a track
-        snp_file = track.track( filename, format='text',
+        snp_file = track( filename, format='text',
                                 fields=['chr','end','name']+sample_names, chrmeta=assembly.chrmeta )
         # Add a 'start' using end-1 and make an iterator from the track
-        snp_read = track.FeatureStream( ((y[0],y[1]-1)+y[1:] for y in snp_file.read(chrom)),
+        snp_read = FeatureStream( ((y[0],y[1]-1)+y[1:] for y in snp_file.read(chrom)),
                                         fields=['chr','start','end','name']+sample_names)
-        annotation = assembly.gene_track(chrom) # gene annotation from genrep, FeatureStream instance
+        # Get gene annotation from GenRep
+        annotation = assembly.gene_track(chrom)
         # Find the nearest gene from each snp
         annotated_stream = gm_stream.getNearestFeature(snp_read, annotation,
                                 thresholdPromot=3000, thresholdInter=3000, thresholdUTR=10)
-        # Write a line in outall at each iteration; yield if the snp is in a CDS only
-        inclstream = bFlatMajor.common.concat_fields(track.FeatureStream(_process_annot(annotated_stream, outall),
+        # Write a line in outall at each iteration; yield if the snp is Included in a gene only.
+        inclstream = concat_fields(FeatureStream(_process_annot(annotated_stream, outall),
                                                              fields=snp_read.fields),
                                          infields=['name']+sample_names, as_tuple=True)
-        # import existing CDS annotation from genrep as a track, and join some fields
-        annotstream = bFlatMajor.common.concat_fields(assembly.annot_track('CDS',chrom),
+        # Get CDS annotation from genrep as a track, and join some fields
+        annotstream = concat_fields(assembly.annot_track('CDS',chrom),
                                           infields=['name','strand','frame'], as_tuple=True)
-        annotstream = track.FeatureStream((x[:3]+(x[1:3]+x[3],) for x in annotstream),fields=annotstream.fields)
+        annotstream = FeatureStream((x[:3]+(x[1:3]+x[3],) for x in annotstream),fields=annotstream.fields)
         buffer = {1:{}, -1:{}}
         for x in gm_stream.combine([inclstream, annotstream], gm_stream.intersection):
             # x = (1606,1607,'chrV', ('T','C (43%), 1612,1724,'YEL077C|YEL077C',-1,0, 1712,1723,'YEL077W-A|YEL077W-A',1,0))
@@ -305,6 +306,34 @@ def annotate_snps( filedict, sample_names, assembly, genomeRef=None ):
             _write_buffer(buffer,strand,outex)
     outex.close()
     return (outall, outexons)
+
+
+def create_tracks(ex, filename, sample_names, assembly):
+    with open(filename,'rb') as f:
+        infields = f.readline().split()
+    intrack = track(filename, format='text', fields=infields, chrmeta=assembly.chrmeta)
+    def _add_start(stream):
+        for x in stream:
+            end_idx = stream.fields.index('end')
+            end = int(x[end_idx])
+            yield x[:end_idx]+(end-1,)+x[end_idx:]
+    for sample_name in sample_names:
+        instream = intrack.read(fields=['chromosome','position','reference',sample_name])
+        instream.next() # skip header
+        instream = concat_fields(instream,['reference',sample_name],'snp',separator=' -> ')
+        instream.fields = ['chr','end','snp']
+        instream = FeatureStream(_add_start(instream), fields=['chr','start','end','snp'])
+        # BED track
+        out = unique_filename_in()+'.bed'
+        outtrack = track(out, format='bed', fields=['chr','start','end','snp'], chrmeta=assembly.chrmeta)
+        outtrack.write(instream)
+        description = set_file_descr("allSNP_track_"+sample_name+".bed" ,type='bed',step='SNPs')
+        ex.add(out, description=description)
+        # SQL track
+        convert(out,out+'.sql')
+        description = set_file_descr("allSNP_track_"+sample_name+".sql" ,type='sql',step='SNPs')
+        ex.add(out+'.sql', description=description)
+
 
 def posAllUniqSNP(PileupDict):
     """

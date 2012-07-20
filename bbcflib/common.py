@@ -37,6 +37,34 @@ def program_exists(program):
     return False
 
 #-------------------------------------------------------------------------#
+def set_file_descr(filename,**kwargs):
+    """Implements file naming compatible with the 'get_files' function::
+
+        >>> set_file_descr("toto",**{'tag':'pdf','step':1,'type':'doc','comment':'ahaha'})
+        'pdf:toto[step:1,type:doc] (ahaha)'
+
+    if 'tag' and/or comment are ommitted::
+
+        >>> set_file_descr("toto",step=1,type='doc')
+        'toto[step:1,type:doc]'
+
+    """
+    file_descr = filename
+    argskeys = kwargs.keys()
+    if 'tag' in kwargs:
+        file_descr = kwargs['tag']+":"+filename
+        argskeys.remove('tag')
+    comment = ''
+    if 'comment' in argskeys:
+        comment = " ("+str(kwargs['comment'])+")"
+        argskeys.remove('comment')
+    plst = (",").join([str(k)+":"+str(kwargs[k]) for k in argskeys])
+    file_descr += "["+plst+"]"
+    file_descr += comment
+    return file_descr
+#    tag:filename[group:grpId,step:stepId,type:fileType,view:admin] (comment)
+
+#-------------------------------------------------------------------------#
 def normalize_url(url):
     """Produce a fixed form for an HTTP URL.
 
@@ -263,33 +291,6 @@ try:
             intersectBed.nonblocking( ex, out, f, via=via, stdout=next ).wait()
             out = next
         return out
-
-    def set_file_descr(filename,**kwargs):
-        """Implements file naming compatible with the 'get_files' function::
-
-            >>> set_file_descr("toto",**{'tag':'pdf','step':1,'type':'doc','comment':'ahaha'})
-            'pdf:toto[step:1,type:doc] (ahaha)'
-
-        if 'tag' and/or comment are ommitted::
-
-            >>> set_file_descr("toto",step=1,type='doc')
-            'toto[step:1,type:doc]'
-
-        """
-        file_descr = filename
-        argskeys = kwargs.keys()
-        if 'tag' in kwargs:
-            file_descr = kwargs['tag']+":"+filename
-            argskeys.remove('tag')
-        comment = ''
-        if 'comment' in argskeys:
-            comment = " ("+str(kwargs['comment'])+")"
-            argskeys.remove('comment')
-        plst = (",").join([str(k)+":"+str(kwargs[k]) for k in argskeys])
-        file_descr += "["+plst+"]"
-        file_descr += comment
-        return file_descr
-    #    tag:filename[group:grpId,step:stepId,type:fileType,view:admin] (comment)
 
 #-------------------------------------------------------------------------#
     def get_files( id_or_key, minilims, by_type=True, select_param=None ):
