@@ -7,11 +7,10 @@ from bbcflib import btrack as track
 
 def concatenate(trackList, fields=None):
     """
-    Returns a stream containing all features from a list of tracks, ordered by *start* and *end*.
+    Returns a stream containing all features from a list of tracks, ordered by *fields*.
 
     :param trackList: list of FeatureStream objects.
     :param fields: (list of str) list of fields to keep in the output (at least ['start','end']).
-        If not specified, all common fields are kept. (Deprecated, use `common.select` instead).
     :rtype: FeatureStream
     """
     def _find_min(feat_tuple):

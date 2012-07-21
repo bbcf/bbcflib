@@ -126,9 +126,9 @@ def expandCols(ex,bedfile,column,wait=True,via='local',**kw):
     return _wait(wait,outfile,
                  bedtools.nonblocking(ex,"expand",kw,via=via,stdout=outfile))
  
-def fastaFromBed(ex,bedfile,fasta,wait=True,via='local',**kw):
+def fastaFromBed(ex,bedfile,fastafile,wait=True,via='local',**kw):
     outfile = kw.pop('fo',kw.pop('-fo',_outfile(kw)))
-    kw.update({"-fi": fasta,"-bed": bedfile,"-fo":outfile})
+    kw.update({"-fi": fastafile,"-bed": bedfile,"-fo":outfile})
     return _wait(wait,outfile,
                  bedtools.nonblocking(ex,"getfasta",kw,via=via))
 
@@ -188,9 +188,9 @@ def mapBed(ex,afile,bfile,wait=True,via='local',**kw):
     return _wait(wait,outfile,
                  bedtools.nonblocking(ex,"map",kw,via=via,stdout=outfile))
  
-def maskFastaFromBed(ex,bedfile,fasta,wait=True,via='local',**kw):
+def maskFastaFromBed(ex,bedfile,fastafile,wait=True,via='local',**kw):
     outfile = kw.pop('fo',kw.pop('-fo',_outfile(kw)))
-    kw.update({"-fi":fasta,"-bed":bedfile})
+    kw.update({"-fi":fastafile,"-bed":bedfile})
     return _wait(wait,outfile,
                  bedtools.nonblocking(ex,"maskfasta",kw,via=via))
  
@@ -216,9 +216,9 @@ def multiIntersectBed(ex,bedfiles,wait=True,via='local',**kw):
     return _wait(wait,outfile,
                  bedtools.nonblocking(ex,"multiinter",kw,via=via,stdout=outfile))
  
-def nucBed(ex,bedfile,fasta,wait=True,via='local',**kw):
+def nucBed(ex,bedfile,fastafile,wait=True,via='local',**kw):
     outfile = _outfile(kw)
-    kw.update({"-fi":fasta,"-bed":bedfile})
+    kw.update({"-fi":fastafile,"-bed":bedfile})
     return _wait(wait,outfile,
                  bedtools.nonblocking(ex,"nuc",kw,via=via,stdout=outfile))
  

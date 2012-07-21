@@ -133,7 +133,9 @@ def pairs(M,X=None,labels=None,
     plotopt,output = _begin(output=output,format=format,new=new,**kwargs)
     robjects.r.assign('Mdata',numpy2ri.numpy2ri(M))
     robjects.r("cdim = ncol(Mdata)")
-    if X: 
+    if X is None: 
+        robjects.r("n=ncol(Mdata)")
+    else:
         robjects.r.assign('X',numpy2ri.numpy2ri(X))
         robjects.r("""
 n = as.integer((-1+sqrt(1+8*ncol(Mdata)))/2)  ### ncol(Mdata) = n*(n+1)/2
@@ -141,12 +143,10 @@ rowcol = matrix(0,nrow=n,ncol=n)
 rowcol[lower.tri(rowcol,diag=T)]=1:ncol(Mdata)
 rowcol = rbind(1+1:n,rowcol)
 """)
+    if labels is None:
+        robjects.r("labels=as.character(1:n)")
     else:
-        robjects.r("n=ncol(Mdata)")
-    if labels:
         robjects.r.assign('labels',numpy2ri.numpy2ri(labels))
-    else:
-        robjects.r("labels = as.character(1:n)")
     robjects.r(""" 
 library(RColorBrewer)
 pline1 = function (y, M, X, col, ...) lines(X,M[,y[y[1]]],col=col,...)
