@@ -461,9 +461,17 @@ class Assembly(object):
             except StopIteration: continue
             name,start,fend,strand,chr = init[0]
             length = fend-start
-            for g,v in resp_iter:
-                v.sort(key=itemgetter(1,2)) # sort w.r.t. start, then end
-                for x in v:
+            for g,exons in resp_iter:
+                if g != fg: # new gene
+                    gmap = list(gene_mapping[str(fg)])
+                    gmap[3] = length
+                    gene_mapping.update({str(fg):tuple(gmap)})
+                    length = 0
+                    fend = 0
+                    fg = g
+                exons.sort(key=itemgetter(1,2)) # sort w.r.t. start, then end
+                for x in exons:
+                    name = x[0]
                     start = x[1]; end = x[2]
                     if start >= fend:
                         length += end-start # new exon
@@ -472,11 +480,6 @@ class Assembly(object):
                     else:
                         length += end-fend  # overlapping exon
                         fend = end
-                gmap = list(gene_mapping[str(g)])
-                gmap[3] = length
-                length = 0
-                gene_mapping.update({str(g):tuple(gmap)})
-                fend = gmap[2]
         return gene_mapping
 
     def get_transcript_mapping(self):

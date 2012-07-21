@@ -78,6 +78,34 @@ class Test_Assembly(unittest.TestCase):
         self.assertEqual(zc,expected)
         self.assembly.genrep.root = self.root
 
+    def test_get_gene_mapping_myco(self):
+        expected = ('gdh',2777387,2782262,4875,-1,'chr')
+        assembly = Assembly('mycoTube_H37RV')
+        # Test with local database request
+        map = assembly.get_gene_mapping()
+        zc = map['EBMYCG00000000868']
+        self.assertEqual(zc,expected)
+        # Test with url request via GenRep
+        self.assembly.genrep.root = ''
+        map = assembly.get_gene_mapping()
+        zc = map['EBMYCG00000000868']
+        self.assertEqual(zc,expected)
+        self.assembly.genrep.root = self.root
+
+    def test_get_gene_mapping_myco2(self):
+        expected = ('xseA',1234212,1235460,1248,-1,'chr')
+        assembly = Assembly('mycoTube_H37RV')
+        # Test with local database request
+        map = assembly.get_gene_mapping()
+        zc = map['EBMYCG00000001689']
+        self.assertEqual(zc,expected)
+        # Test with url request via GenRep
+        self.assembly.genrep.root = ''
+        map = assembly.get_gene_mapping()
+        zc = map['EBMYCG00000001689']
+        self.assertEqual(zc,expected)
+        self.assembly.genrep.root = self.root
+
     @unittest.skip('too slow')
     def test_get_transcript_mapping(self):
         expected = ('Y54E2A.11',14795327,14798367,2803,1,'chrII')
