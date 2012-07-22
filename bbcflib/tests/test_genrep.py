@@ -88,21 +88,16 @@ class Test_Assembly(unittest.TestCase):
         # Test with url request via GenRep
         self.assembly.genrep.root = ''
         map = assembly.get_gene_mapping()
+            # First item
         zc = map['EBMYCG00000000868']
         self.assertEqual(zc,expected)
-        self.assembly.genrep.root = self.root
-
-    def test_get_gene_mapping_myco2(self):
+            # Second item
         expected = ('xseA',1234212,1235460,1248,-1,'chr')
-        assembly = Assembly('mycoTube_H37RV')
-        # Test with local database request
-        map = assembly.get_gene_mapping()
         zc = map['EBMYCG00000001689']
         self.assertEqual(zc,expected)
-        # Test with url request via GenRep
-        self.assembly.genrep.root = ''
-        map = assembly.get_gene_mapping()
-        zc = map['EBMYCG00000001689']
+            # Last item
+        expected = ('Rv3085', 3450919, 3451750, 831, 1, 'chr') 
+        zc = map['EBMYCG00000002832']
         self.assertEqual(zc,expected)
         self.assembly.genrep.root = self.root
 

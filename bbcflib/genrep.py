@@ -456,23 +456,12 @@ class Assembly(object):
                 strand = int(v[0][3])
                 gene_mapping[str(k)] = (name,start,end,-1,strand,chr)
             # Find gene lengths
-            resp_iter = resp.iteritems()
-            try: fg,init = resp_iter.next() # initialize
-            except StopIteration: continue
-            name,start,fend,strand,chr = init[0]
-            length = fend-start
-            for g,exons in resp_iter:
-                if g != fg: # new gene
-                    gmap = list(gene_mapping[str(fg)])
-                    gmap[3] = length
-                    gene_mapping.update({str(fg):tuple(gmap)})
-                    length = 0
-                    fend = 0
-                    fg = g
+            length = fend = 0
+            for g,exons in resp.iteritems():
                 exons.sort(key=itemgetter(1,2)) # sort w.r.t. start, then end
                 for x in exons:
-                    name = x[0]
                     start = x[1]; end = x[2]
+                    if x[0] == 'xseA': print start,end,fend
                     if start >= fend:
                         length += end-start # new exon
                         fend = end
@@ -480,6 +469,11 @@ class Assembly(object):
                     else:
                         length += end-fend  # overlapping exon
                         fend = end
+                gmap = list(gene_mapping[str(g)])
+                gmap[3] = length
+                length = 0
+                gene_mapping.update({str(g):tuple(gmap)})
+                fend = 0
         return gene_mapping
 
     def get_transcript_mapping(self):
