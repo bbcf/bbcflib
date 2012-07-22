@@ -100,6 +100,9 @@ class Test_Assembly(unittest.TestCase):
         zc = map['EBMYCG00000002832']
         self.assertEqual(zc,expected)
         self.assembly.genrep.root = self.root
+            # Check all lengths are set
+        for v in map.itervalues():
+            self.assertGreaterEqual(v[3],1)
 
     @unittest.skip('too slow')
     def test_get_transcript_mapping(self):
