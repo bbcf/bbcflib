@@ -13,7 +13,7 @@ def merge_scores(trackList, method='arithmetic'):
         R:  _____11111444443333______
 
     :param trackList: list of FeatureStream objects.
-    :param geometric: (bool) set True to use the geometric mean instead of arithmetic.
+    :param method: (str) type of average: one of 'arithmetic','geometric', or 'sum' (no average).
         If one of the scores is 0, 1 is used instead for calculating the mean.
     :rtype: FeatureStream
     """
