@@ -8,7 +8,7 @@ from bbcflib.bFlatMajor.common import sentinelize, select, reorder, unroll, sort
 from bbcflib.bFlatMajor.common import shuffled, fusion, cobble, ordered
 from bbcflib.bFlatMajor.common import concat_fields, split_field, map_chromosomes, score_threshold
 from bbcflib.bFlatMajor.stream.annotate import getNearestFeature
-from bbcflib.bFlatMajor.stream.intervals import concatenate, neighborhood, segment_features
+from bbcflib.bFlatMajor.stream.intervals import concatenate, neighborhood, segment_features, combine
 from bbcflib.bFlatMajor.stream.intervals import exclude, require, disjunction, intersection, union
 from bbcflib.bFlatMajor.stream.scores import merge_scores, mean_score_by_feature, window_smoothing
 from bbcflib.bFlatMajor.numeric.regions import feature_matrix, average_feature_matrix
@@ -306,8 +306,14 @@ class Test_Scores(unittest.TestCase):
         # Geometric mean
         s1 = fstream([(10,20,6.)], fields=['start','end','score'])
         s2 = fstream([(5,15,2.)], fields=['start','end','score'])
-        res = list(merge_scores([s1,s2], geometric=True))
+        res = list(merge_scores([s1,s2], method='geometric'))
         expected = [(5,10,math.sqrt(2)),(10,15,math.sqrt(12)),(15,20,math.sqrt(6))]
+        self.assertListEqual(res,expected)
+        # Sum
+        s1 = fstream([(10,20,6.)], fields=['start','end','score'])
+        s2 = fstream([(5,15,2.)], fields=['start','end','score'])
+        res = list(merge_scores([s1,s2], method='sum'))
+        expected = [(5,10,2.),(10,15,8.),(15,20,6.)]
         self.assertListEqual(res,expected)
 
     def test_mean_score_by_feature(self):
@@ -337,7 +343,7 @@ class Test_Regions(unittest.TestCase):
         scores1 = fstream([(10,15,6.),(30,40,6.)], fields=['start','end','score'])
         scores2 = fstream([(5,15,2.)], fields=['start','end','score'])
         feat, res = feature_matrix([scores1,scores2],features)
-        self.assertListEqual(feat,['gene1','gene2'])
+        self.assertListEqual(list(feat),['gene1','gene2'])
         assert_almost_equal(res, numpy.array([[3,2],[6,0]]))
 
         # Segmenting each feature in 3 parts

@@ -4,7 +4,7 @@ import sys
 from bbcflib.bFlatMajor import common
 from bbcflib import btrack as track
 
-def merge_scores(trackList, geometric=False):
+def merge_scores(trackList, method='arithmetic'):
     """
     Creates a stream with per-base average of several score tracks::
 
@@ -25,12 +25,15 @@ def merge_scores(trackList, geometric=False):
     elements = [list(x.next()) for x in tracks]
     track_denom = 1.0/len(trackList)
 
-    def arithmetic_mean(scores,denom):
+    def _sum(scores,denom):
+        return sum(scores)
+    def _arithmetic_mean(scores,denom):
         return sum(scores)*denom
-    def geometric_mean(scores,denom):
+    def _geometric_mean(scores,denom):
         return (reduce(lambda x, y: x*y, scores))**denom
-    ## more precise/less efficient: exp(sum([log(x) for x in scores])*denom)
-    mean_fn = (geometric and geometric_mean) or arithmetic_mean
+        ## more precise/less efficient: exp(sum([log(x) for x in scores])*denom)
+    methods = {'arithmetic':_arithmetic_mean, 'geometric':_geometric_mean, 'sum':_sum}
+    mean_fn = methods[method]
     for i in xrange(len(tracks)-1, -1, -1):
         if elements[i][0] == sys.maxint:
             tracks.pop(i)
