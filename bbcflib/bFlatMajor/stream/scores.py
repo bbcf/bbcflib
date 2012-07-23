@@ -4,6 +4,7 @@ import sys
 from bbcflib.bFlatMajor import common
 from bbcflib import btrack as track
 
+@common.ordered
 def merge_scores(trackList, method='arithmetic'):
     """
     Creates a stream with per-base average of several score tracks::
@@ -19,9 +20,8 @@ def merge_scores(trackList, method='arithmetic'):
     """
     tracks = [track.FeatureStream(common.sentinelize(x,[sys.maxint]*len(x.fields)), x.fields)
               for x in trackList]
-    _fields = ['start','end','score']
-    if all(['name' in t.fields for t in trackList]): _fields.append('name')
-    tracks = [common.reorder(t,_fields) for t in tracks]
+    tracks = [common.reorder(t,['start','end','score']) for t in tracks]
+    fields = [f for f in tracks[0].fields if all([f in t.fields for t in tracks])] # common fields
     elements = [list(x.next()) for x in tracks]
     track_denom = 1.0/len(trackList)
 
@@ -43,9 +43,15 @@ def merge_scores(trackList, method='arithmetic'):
             start = min([x[0] for x in elements])
             end = min([x[0] for x in elements if x[0]>start]+[x[1] for x in elements])
             scores = [x[2] for x in elements if x[1]>start and x[0]<end]
-            if 'name' in _fields:
-                name = "|".join([x[3] for x in elements if not(x[3] is None) and x[1]>start and x[0]<end])
-                yield (start, end, mean_fn(scores,track_denom), name)
+            if len(fields) > 3:
+                rest = []
+                for i in range(len(fields[3:])):
+                    r = [str(x[3+i]) for x in elements if not(x[3+i] is None) and x[1]>start and x[0]<end]
+                    if all([x == r[0] for x in r]):
+                        rest.append(r[0])
+                    else:
+                        rest.append( "|".join(r) )
+                yield (start, end, mean_fn(scores,track_denom)) + tuple(rest)
             else:
                 yield (start, end, mean_fn(scores,track_denom))
             for i in xrange(len(tracks)-1, -1, -1):
@@ -56,8 +62,7 @@ def merge_scores(trackList, method='arithmetic'):
                 if elements[i][0] == sys.maxint:
                     tracks.pop(i)
                     elements.pop(i)
-
-    return track.FeatureStream(_stream(tracks),_fields)
+    return track.FeatureStream(_stream(tracks),fields)
 
 ###############################################################################
 def mean_score_by_feature(trackScores,trackFeatures):

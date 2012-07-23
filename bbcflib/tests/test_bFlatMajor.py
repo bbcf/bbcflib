@@ -298,10 +298,10 @@ class Test_Scores(unittest.TestCase):
 
     def test_merge_scores(self):
         # Arithmetic mean
-        s1 = fstream([(10,20,6.)], fields=['start','end','score'])
-        s2 = fstream([(5,15,2.)], fields=['start','end','score'])
+        s1 = fstream([('chr',10,20,6.,'A')], fields=['chr','start','end','score','name'])
+        s2 = fstream([('chr',5,15,2.,'B')], fields=['chr','start','end','score','name'])
         res = list(merge_scores([s1,s2]))
-        expected = [(5,10,1.),(10,15,4.),(15,20,3.)]
+        expected = [('chr',5,10,1.,'B'),('chr',10,15,4.,'A|B'),('chr',15,20,3.,'A')]
         self.assertListEqual(res,expected)
         # Geometric mean
         s1 = fstream([(10,20,6.)], fields=['start','end','score'])
