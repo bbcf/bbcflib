@@ -23,7 +23,8 @@ def unique_filename_in(path=None):
         return "".join([random.choice(string.letters + string.digits) for x in range(20)])
     while True:
         filename = random_string()
-        if not os.path.exists(os.path.join(path,filename)): break
+        files = [f for f in os.listdir(path) if f.startswith(filename)]
+        if files == []: break
     return filename
 
 #-------------------------------------------------------------------------#
