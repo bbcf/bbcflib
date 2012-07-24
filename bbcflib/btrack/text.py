@@ -182,7 +182,7 @@ class TextTrack(Track):
             try:
                 ilist = [self.fields.index(f) for f in fields]
             except ValueError:
-                raise ValueError("No such field %s in %s."%(f,self.path))
+                raise ValueError("No such field '%s' in track %s."%(f,self.path))
         if isinstance(selection,basestring):
             selection = [selection]
         if isinstance(selection,(list,tuple)) and isinstance(selection[0],basestring):
