@@ -25,12 +25,11 @@ def _begin(output,format,new,**kwargs):
         else:
             raise ValueError("Format not supported: %s" %format)
     opts = ''
-    if 'log' in kwargs:
-        opts += ',log="%s"' %kwargs['log']
+    if 'log' in kwargs: opts += ',log="%s"' %kwargs['log']
     opts += ',main="%s"' %kwargs.get('main','')
     opts += ',xlab="%s"' %kwargs.get('xlab','')
     opts += ',ylab="%s"' %kwargs.get('ylab','')
-    pars = "lwd=2,cex=1.1,cex.main=1.5,cex.lab=1.3,cex.axis=1.1,mar=c(1,1,1,1),oma=c(3,3,0,3),las=1"
+    pars = "lwd=2,cex=1.1,cex.main=1.5,cex.lab=1.3,cex.axis=1.1,mar=c(1,1,1,1),oma=c(3,3,0,3),las=1,pch=20"
     if len(kwargs.get('mfrow',[])) == 2:
         pars += ",mfrow=c(%i,%i)" %tuple(kwargs['mfrow'])
     robjects.r('par(%s)' %pars)
@@ -53,10 +52,10 @@ def scatterplot(X,Y,output=None,format='pdf',new=True,last=True,**kwargs):
     robjects.r.assign('xdata',numpy2ri.numpy2ri(X))
     if not(isinstance(Y,(list,tuple))): Y = [Y]
     robjects.r.assign('ydata',numpy2ri.numpy2ri(Y[0]))
-    robjects.r("plot(xdata,ydata,pch=20%s)" %plotopt)
+    robjects.r("plot(xdata,ydata%s)" %plotopt)
     for n in range(1,len(Y)):
         robjects.r.assign('ydata',numpy2ri.numpy2ri(Y[n]))
-        robjects.r("points(xdata,ydata,pch=20,col=%i)" %n)
+        robjects.r("points(xdata,ydata,col=%i)" %n)
     _end(",pch=20",last,**kwargs)
     return output
 
@@ -79,11 +78,11 @@ def lineplot(X,Y,output=None,format='pdf',new=True,last=True,**kwargs):
 ############################################################
 ############################################################
 def boxplot(values,labels,output=None,format='pdf',new=True,last=True,**kwargs):
-    """Creates a box-and-whiskers plot of `values` split by `labels`."""
+    """Creates a box-and-whiskers plot of *values* split by *labels*."""
     plotopt,output = _begin(output=output,format=format,new=new,**kwargs)
     robjects.r.assign('values',numpy2ri.numpy2ri(values))
     robjects.r.assign('labels',numpy2ri.numpy2ri(labels))
-    robjects.r("boxplot(values ~ labels,lty=1,pch=20,varwidth=T)")
+    robjects.r("boxplot(values ~ labels,lty=1,varwidth=T)")
     _end("",last,**kwargs)
     return output
 
@@ -178,16 +177,15 @@ phist = function (x, col, ...) {
     par(usr=usr,ylog=ylog)
 }
 
-par(pch=20)
 col = 'red'
 if (exists("X")) {
-    pairs(rowcol, labels, M=Mdata, X=X, xlim=range(X)%s,
+    pairs(rowcol, labels, M=Mdata, X=X, xlim=range(X), col=col,
           diag.panel=pline1, lower.panel=pcor, upper.panel=pline2)
 } else {
-    pairs(Mdata, labels%s,
+    pairs(Mdata, labels, log='xy', col=col,
           diag.panel=phist, lower.panel=qpoints, upper.panel=ppoints)
 }
-""" %(plotopt,plotopt))
+""")
     _end("",last,**kwargs)
     return output
 

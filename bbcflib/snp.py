@@ -218,7 +218,6 @@ def annotate_snps(filedict, sample_names, assembly, genomeRef=None ):
                         else:
                             new_codon[k][shift] = variants[k]                           # ['C','A','A']
                         assert ref_codon[shift] == refbase, "bug with shift within codon"
-                        new_codon[k] = new_codon[k]
                     elif strand == -1:
                         if isinstance(variants[k],list):
                             new_codon[k] = [list(''.join(new_codon[k])) for _ in range(len(variants[k]))]
@@ -228,7 +227,6 @@ def annotate_snps(filedict, sample_names, assembly, genomeRef=None ):
                         else:
                             new_codon[k][2-shift] = variants[k]
                         assert ref_codon[2-shift] == refbase, "bug with shift within codon"
-                        new_codon[k] = new_codon[k]
             new_codon = ["".join(new_codon[k]) for k in range(nsamples)]                # ['CAA,CAG','CAA']
             # Complementary strand
             if strand == -1:
@@ -271,7 +269,7 @@ def annotate_snps(filedict, sample_names, assembly, genomeRef=None ):
                                          infields=['name']+sample_names, as_tuple=True)
         # Get CDS annotation from genrep as a track, and join some fields
         annotstream = concat_fields(assembly.annot_track('CDS',chrom),
-                                          infields=['name','strand','frame'], as_tuple=True)
+                                    infields=['name','strand','frame'], as_tuple=True)
         annotstream = FeatureStream((x[:3]+(x[1:3]+x[3],) for x in annotstream),fields=annotstream.fields)
         buffer = {1:{}, -1:{}}
         for x in gm_stream.combine([inclstream, annotstream], gm_stream.intersection):
