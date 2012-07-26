@@ -57,7 +57,7 @@ conf_path = os.path.join(home_dir, conf_file)
 
 
 default_conf = {'db_name' : 'genrepcache.sqlite',
-                'time_limit' : 14,
+                'time_limit' : 1,
                 'assembly_cache' : ['chrnames', 'fasta_path', 'get_sqlite_url', 'sqlite_path'],
                 'unique_ids' : ['intype', 'nr_assembly_id', 'source_id'],
                 }

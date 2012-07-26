@@ -30,6 +30,17 @@ def get_project(mail, key, project_key, serv_url=default_url):
     return send_it(query_url, request)
 
 
+def delete_project(mail, key, project_id, serv_url=default_url):
+    query_url = '%s/%s/%s' % (normalize_url(serv_url), 'projects/delete', project_id)
+    request = {'mail':mail,
+               'key':key}
+    return send_it(query_url, request)
+
+def delete_track(mail, key, track_id, serv_url=default_url):
+    query_url = '%s/%s/%s' % (normalize_url(serv_url), 'tracks/delete', track_id)
+    request = {'mail':mail,
+               'key':key}
+    return send_it(query_url, request)
 
 def new_project(mail, key, name, assembly_id, serv_url=default_url):
     '''
