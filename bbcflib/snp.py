@@ -196,7 +196,7 @@ def annotate_snps(filedict, sample_names, assembly, genomeRef=None ):
             chr,pos,refbase,variants,cds,strand,ref_codon,shift = snps[0]
             # Find the new codon
             for snp in snps:
-                new_codon = [list(ref_codon) for _ in range(nsamples)]
+                new_codon = [ref_codon]*nsamples
                 chr,pos,refbase,variants,cds,strand,refcodon,shift = snp
                 varbase = [r.strip('* ') for r in variants]
                 variants = []
@@ -212,21 +212,20 @@ def annotate_snps(filedict, sample_names, assembly, genomeRef=None ):
                     newc = new_codon[k]
                     if strand == 1:
                         if isinstance(variants[k],list): # heterozygous double snp
-                            newc = [list(''.join(newc)) for _ in range(len(variants[k]))] # pointers...
+                            newc = [newc for _ in range(len(variants[k]))]
                             for i in range(len(variants[k])):
-                                newc[i][shift] = variants[k][i]
-                            newc = ','.join([''.join(n) for n in newc])         # 'CAA,CAG'
+                                newc[i] = newc[i][:shift] + variants[k][i] + newc[i][shift+1:]
+                            newc = ','.join([''.join(n) for n in newc])
                         else:
-                            newc[shift] = variants[k]                           # ['C','A','A']
+                            newc = newc[:shift] + variants[k] + newc[shift+1:]
                         assert ref_codon[shift] == refbase, "bug with shift within codon"
                     elif strand == -1:
                         if isinstance(variants[k],list):
-                            newc = [list(''.join(newc)) for _ in range(len(variants[k]))]
                             for i in range(len(variants[k])):
-                                newc[i][shift] = variants[k][i]
+                                newc = newc[:2-shift] + variants[k][i] + newc[3-shift:]
                             newc = ','.join([''.join(n) for n in newc])
                         else:
-                            newc[2-shift] = variants[k]
+                            newc = newc[:2-shift] + variants[k] + newc[3-shift:]
                         assert ref_codon[2-shift] == refbase, "bug with shift within codon"
                     new_codon[k] = newc
             new_codon = ["".join(new_codon[k]) for k in range(nsamples)]        # ['CAA,CAG','CAA']
