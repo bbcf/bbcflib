@@ -65,6 +65,54 @@ def merge_scores(trackList, method='arithmetic'):
     return track.FeatureStream(_stream(tracks),fields)
 
 ###############################################################################
+def score_by_feature(trackScores,trackFeatures):
+    """
+    For each feature in *trackFeatures*, sum all scores from *trackScores* at positions
+    within its range. The output is a stream similar to *trackFeatures* but with an additional
+    `score` field  for each stream in *trackScores*::
+
+        X : ------##########--------------##########------
+        Y1: ___________666666666__________6666666666______
+        Y2: ___222222_____________________333_____________
+        R : ______[   36   ]______________[   69   ]______
+
+    :param trackScores: (list of) one or several score track(s) (FeatureStream).
+    :param trackFeatures: (FeatureStream) one feature track.
+    :rtype: FeatureStream
+    """
+    def _stream(ts,tf):
+        X = common.sentinelize(ts, [sys.maxint]*len(ts.fields))
+        S = [(-sys.maxint,-sys.maxint,0.0)]
+        for y in tf:
+            ystart = y[tf.fields.index('start')]
+            yend   = y[tf.fields.index('end')]
+            score = 0
+            xnext = S[-1]
+            # Load into S all score items which intersect feature y
+            while xnext[0] < yend:
+                xnext = X.next()
+                if xnext[1] > ystart:
+                    S.append(xnext)
+            n = 0
+            while S[n][1] <= ystart: n+=1
+            S = S[n:]
+            for s in S:
+                if yend <= s[0]:   continue
+                if s[0] <  ystart: start = ystart
+                else:              start = s[0]
+                if yend <  s[1]:   end   = yend
+                else:              end   = s[1]
+                score += (end-start)*s[2]
+            yield y+(score,)
+
+    if isinstance(trackScores,(list,tuple)):
+        trackScores = merge_scores(trackScores, method='sum')
+    if isinstance(trackFeatures,(list,tuple)): trackFeatures = trackFeatures[0] # should better merge them
+    _fields = ["score"]
+    trackScores = common.reorder(trackScores,['start','end','score'])
+    return track.FeatureStream(_stream(trackScores,trackFeatures), trackFeatures.fields+_fields)
+
+###############################################################################
 def mean_score_by_feature(trackScores,trackFeatures):
     """
     Computes the average of scores from each stream in *trackScores*
@@ -73,10 +121,10 @@ def mean_score_by_feature(trackScores,trackFeatures):
 
         X: ------##########--------------##########------
         Y: ___________666666666__________6666666666______
-        R: ______3333333333______________6666666666______
+        R: ______[   3.   ]______________[   6.   ]______
 
-    :param trackScores: (list of) score track(s) (FeatureStream).
-    :param trackFeatures: (FeatureStream) feature track.
+    :param trackScores: (list of) one or several score track(s) (FeatureStream).
+    :param trackFeatures: (FeatureStream) one feature track.
     :rtype: FeatureStream
     """
     def _stream(ts,tf):
@@ -88,6 +136,7 @@ def mean_score_by_feature(trackScores,trackFeatures):
             scores = ()
             for i in range(len(ts)):
                 xnext = F[i][-1]
+                # Load into F all score items which intersect feature y
                 while xnext[0] < yend:
                     xnext = X[i].next()
                     if xnext[1] > ystart: F[i].append(xnext)
@@ -104,9 +153,9 @@ def mean_score_by_feature(trackScores,trackFeatures):
                     score += (end-start)*f[2]
                 scores += (score/(yend-ystart),)
             yield tuple(y)+scores
-    if not(isinstance(trackScores,(list,tuple))): trackScores = [trackScores]
 
-    if isinstance(trackFeatures,(list,tuple)): trackFeatures = trackFeatures[0]
+    if not(isinstance(trackScores,(list,tuple))): trackScores = [trackScores]
+    if isinstance(trackFeatures,(list,tuple)): trackFeatures = trackFeatures[0] # should better merge them
     if len(trackScores)>1:
         _fields = ["score"+str(i) for i in range(len(trackScores))]
     else:

@@ -1,4 +1,5 @@
 from bbcflib.bFlatMajor import common
+from bbcflib.btrack import FeatureStream
 try:
     from scipy.fftpack import fft, ifft
 except ImportError:
@@ -64,10 +65,13 @@ def correlation(trackList, regions, limits=(-1000,1000), with_acf=False):
     """
     ##### One could profit from numpy to reduce the memory space used for
     ##### storing these - long - arrays ('dtype' is float64 by default).
-    _reg = list(regions)
-    x = [array([s[0] for s in common.unroll(t,FeatureStream(_reg,fields=regions.fields))]) 
-         for t in trackList]
-    _reg = []
+    if isinstance(regions,FeatureStream):
+        _reg = list(regions)
+        x = [array([s[0] for s in common.unroll(t,FeatureStream(_reg,fields=regions.fields))])
+             for t in trackList]
+        _reg = []
+    else:
+        x = [array([s[0] for s in common.unroll(t,regions)]) for t in trackList]
     x = [_normalize(t) for t in x]
     if limits[1]-limits[0] > 2*len(x[0]):
         limits = (-len(x[0])+1,len(x[0])-1)
