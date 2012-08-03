@@ -99,7 +99,7 @@ def track( path, format=None, **kwargs):
         path2, format = os.path.splitext(path)
         format = format.lstrip('.')
         if format in ['gz','gzip']:
-            format = os.path.splitext(path2)[1][1:]
+            format = os.path.splitext(path2)[1].lstrip('.')
         if format == '':
             with open(path, 'r') as file:
                 rstart = file.read(15)
