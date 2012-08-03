@@ -1,4 +1,5 @@
 from bbcflib.btrack import FeatureStream
+from bbcflib.bFlatMajor import stream
 import sys, re
 
 ####################################################################
@@ -14,11 +15,13 @@ def ordered(fn):
     bFlatMajor functions that take and return a FeatureStream, or a list of FeatureStream objects.
     """
     def wrapper(*args,**kwargs):
+        tracks = None
         if len(args) > 0:
             tracks = args[0]
         elif len(kwargs) > 0:
-            tracks = kwargs.get('trackList',kwargs.get('stream'))
-        assert tracks, "Main argument trackList not found. Check arguments name and order, or remove this wrapper."
+            tracks = kwargs.get(stream.stream().__dict__.get(fn.__name__,["trackList"])[0])
+        if tracks is None:
+            return fn(*args,**kwargs)
         if not (isinstance(tracks,(list,tuple))):
             tracks = [tracks]
         original_fields = dict(zip(tracks,[t.fields for t in tracks]))
