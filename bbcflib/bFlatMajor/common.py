@@ -1,5 +1,4 @@
 from bbcflib.btrack import FeatureStream
-from bbcflib.bFlatMajor import stream
 import sys, re
 
 ####################################################################
@@ -19,6 +18,7 @@ def ordered(fn):
         if len(args) > 0:
             tracks = args[0]
         elif len(kwargs) > 0:
+            from bbcflib.bFlatMajor import stream
             tracks = kwargs.get(stream.stream().loadable(fn.__name__)[0])
         if tracks is None:
             return fn(*args,**kwargs)
