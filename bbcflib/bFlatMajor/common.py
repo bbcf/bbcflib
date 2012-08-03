@@ -19,7 +19,7 @@ def ordered(fn):
         if len(args) > 0:
             tracks = args[0]
         elif len(kwargs) > 0:
-            tracks = kwargs.get(stream.stream().__dict__.get(fn.__name__,["trackList"])[0])
+            tracks = kwargs.get(stream.stream().loadable(fn.__name__)[0])
         if tracks is None:
             return fn(*args,**kwargs)
         if not (isinstance(tracks,(list,tuple))):

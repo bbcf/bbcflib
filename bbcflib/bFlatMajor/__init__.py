@@ -38,7 +38,7 @@ class bFlatMajorGroup(object):
             raise ValueError("No such function in %s: %s." %(self.__module__,fct))
 
     def loadable(self,fct):
-        return self.__dict__.get(fct,'')
+        return self.__dict__.get(fct,["trackList"])
 
 ###############################################################################
 def run(**kwargs):
