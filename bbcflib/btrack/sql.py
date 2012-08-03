@@ -269,23 +269,22 @@ class SqlTrack(Track):
             fields_left = [srcfields.index(f) for f in fields if f != 'chr' and f in srcfields]
             fields_list = ','.join([srcfields[n] for n in fields_left])
             pholders = ','.join(['?' for f in fields_left])
+            def _sub(x): return [str(x[f]) for f in fields_left]
             if chrom is None:
                 if not 'chr' in srcfields:
                     raise Exception("Need a chromosome name in the source fields or in the arguments.")
                 for row in source:
                     chrom = row[chr_idx]
                     sql_command = "INSERT INTO '%s' (%s) VALUES (%s)" %(chrom,fields_list,pholders)
-                    self.cursor.execute(sql_command,[str(row[f]) for f in fields_left])
+                    self.cursor.execute(sql_command, _sub(row))
             else:
                 sql_command = "INSERT INTO '%s' (%s) VALUES (%s)" %(chrom,fields_list,pholders)
                 if 'chr' in srcfields:
-                    def _skip_chrom(src):
-                        for row in src:
-                            if str(row[chr_idx])==chrom:
-                                yield [row[f] for f in fields_left]
-                    self.cursor.executemany(sql_command, _skip_chrom(source))
+                    self.cursor.executemany(sql_command, 
+                                            (_sub(row) for row in source 
+                                             if str(row[chr_idx])==chrom))
                 else:
-                    self.cursor.executemany(sql_command, source)
+                    self.cursor.executemany(sql_command, (_sub(row) for row in source))
             self.connection.commit()
             if kw.get('clip'): self._clip()
         except (sqlite3.OperationalError, sqlite3.ProgrammingError) as err:
