@@ -96,9 +96,10 @@ def track( path, format=None, **kwargs):
     :param **kwargs: (dict) parameters of the Track subclass' constructor.
     """
     if format is None:
-        format = os.path.splitext(path)[1][1:]
+        path2, format = os.path.splitext(path)
+        format = format.lstrip('.')
         if format in ['gz','gzip']:
-            format = os.path.splitext(path.strip("."+format))[1][1:]
+            format = os.path.splitext(path2)[1][1:]
         if format == '':
             with open(path, 'r') as file:
                 rstart = file.read(15)
