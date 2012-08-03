@@ -129,28 +129,28 @@ def mean_score_by_feature(trackScores,trackFeatures):
     """
     def _stream(ts,tf):
         X = [common.sentinelize(x, [sys.maxint]*len(x.fields)) for x in ts]
-        F = [[(-sys.maxint,-sys.maxint,0.0)] for t in ts]
+        S = [[(-sys.maxint,-sys.maxint,0.0)] for t in ts]
         for y in tf:
             ystart = y[tf.fields.index('start')]
             yend = y[tf.fields.index('end')]
             scores = ()
             for i in range(len(ts)):
-                xnext = F[i][-1]
+                xnext = S[i][-1]
                 # Load into F all score items which intersect feature y
                 while xnext[0] < yend:
                     xnext = X[i].next()
-                    if xnext[1] > ystart: F[i].append(xnext)
+                    if xnext[1] > ystart: S[i].append(xnext)
                 n = 0
-                while F[i][n][1] <= ystart: n+=1
-                F[i] = F[i][n:]
+                while S[i][n][1] <= ystart: n+=1
+                S[i] = S[i][n:]
                 score = 0.0
-                for f in F[i]:
-                    if yend <= f[0]:   continue
-                    if f[0] <  ystart: start = ystart
-                    else:              start = f[0]
-                    if yend <  f[1]:   end   = yend
-                    else:              end   = f[1]
-                    score += (end-start)*f[2]
+                for s in S[i]:
+                    if yend <= s[0]:   continue
+                    if s[0] <  ystart: start = ystart
+                    else:              start = s[0]
+                    if yend <  s[1]:   end   = yend
+                    else:              end   = s[1]
+                    score += (end-start)*s[2]
                 scores += (score/(yend-ystart),)
             yield tuple(y)+scores
 
