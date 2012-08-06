@@ -191,61 +191,44 @@ def annotate_snps(filedict, sample_names, assembly, genomeRef=None ):
                      ('N','N'),('n','n')))
         return "".join(reversed([cmpl.get(x,x) for x in seq]))
 
-    def _write_buffer(buffer, strand, outex):
-        for c,snps in buffer[strand].iteritems():
-            chr,pos,refbase,variants,cds,strand,ref_codon,shift = snps[0]
-            # Find the new codon
-            for snp in snps:
-                new_codon = [ref_codon]*nsamples
-                chr,pos,refbase,variants,cds,strand,refcodon,shift = snp
-                varbase = [r.strip('* ') for r in variants]
-                variants = []
-                for variant in varbase:
-                    if variant == '0':
-                        variants.append(refbase)
-                    elif len(variant.split(',')) > 1: # 'C (43%),G (12%)' : heterozygous double snp
-                        v = [v.split()[0] for v in variant.split(',')]
-                        variants.append(v)
-                    else:                             # 'C (43%)' or 'C'
-                        variants.append(variant.split()[0])
-                for k in range(nsamples): # for each possible variant
-                    newc = new_codon[k]
-                    if strand == 1:
-                        if isinstance(variants[k],list): # heterozygous double snp
-                            newc = [newc for _ in range(len(variants[k]))]
-                            for i in range(len(variants[k])):
-                                newc[i] = newc[i][:shift] + variants[k][i] + newc[i][shift+1:]
-                            newc = ','.join([''.join(n) for n in newc])
+    def _write_buffer(buffer, outex):
+        new_codon = None
+        for chr,pos,refbase,variants,cds,strand,refcodon,shift in buffer:
+            varbase = [r.strip('* ') for r in variants]
+            variants = []
+            if new_codon is None: new_codon = [[refcodon] for _ in range(len(variants))]
+            for variant in varbase:
+                if variant == '0': 
+                    variants.append([refbase])
+                else: # 'C (43%),G (12%)' : heterozygous double snp
+                    variants.append([v[0] for v in variant.split(',')])
+            for k,v in enumerate(variants):
+                cnumb = len(new_codon[k])
+                newc = new_codon[k]*len(v)
+                for i,vari in enumerate(v):
+                    for j in range(cnumb):
+                        if strand < 0:
+                            newc[i*cnumb+j] = newc[i*cnumb+j][:2-shift]+vari +newc[i*cnumb+j][3-shift:]
+                            assert ref_codon[2-shift] == refbase, "bug with shift within codon"
                         else:
-                            newc = newc[:shift] + variants[k] + newc[shift+1:]
-                        assert ref_codon[shift] == refbase, "bug with shift within codon"
-                    elif strand == -1:
-                        if isinstance(variants[k],list):
-                            for i in range(len(variants[k])):
-                                newc = newc[:2-shift] + variants[k][i] + newc[3-shift:]
-                            newc = ','.join([''.join(n) for n in newc])
-                        else:
-                            newc = newc[:2-shift] + variants[k] + newc[3-shift:]
-                        assert ref_codon[2-shift] == refbase, "bug with shift within codon"
-                    new_codon[k] = newc
-            new_codon = ["".join(new_codon[k]) for k in range(nsamples)]        # ['CAA,CAG','CAA']
-            # Complementary strand
-            if strand == -1:
-                ref_codon = _revcomp(ref_codon)
-                new_codon = [','.join([_revcomp(s) for s in c.split(',')]) for c in new_codon]
-            # Write to a file
-            for snp in snps:
-                chr,pos,refbase,variants,cds,strand,refcodon,shift = snp
-                result = [chr, pos+1, refbase] + list(variants) + [cds, strand] \
-                         + [_translate[ref_codon]] \
-                         + [','.join([_translate[s] for s in c.split(',')]) for c in new_codon]
-                outex.write("\t".join([str(r) for r in result])+"\n")
+                            newc[i*cnumb+j] = newc[i*cnumb+j][:shift]  +vari +newc[i*cnumb+j][shift+1:]
+                            assert ref_codon[shift] == refbase, "bug with shift within codon"
+                new_codon[k] = newc
+        if new_codon is None: return
+        if strand < 0:
+            ref_codon = _revcomp(ref_codon)
+            new_codon = [[_revcomp(s) for s in c] for c in new_codon]
+        for chr,pos,refbase,variants,cds,strand,refcodon,shift in snps:
+            result = [chr, pos+1, refbase] + list(variants) + [cds, strand] \
+                     + [_translate[ref_codon]] \
+                     + [','.join([_translate[s] for s in c]) for c in new_codon]
+            outex.write("\t".join([str(r) for r in result])+"\n")
 
+    if genomeRef is None: genomeRef = {}
     output = unique_filename_in()
     outall = output+"_all_snps.txt"
     outexons = output+"_exon_snps.txt"
     outex = open(outexons,"w")
-    # Headers
     with open(outall,"w") as fout:
         fout.write("\t".join(['chromosome','position','reference'] + sample_names
                              + ['gene','location_type','distance']) + "\n")
@@ -255,24 +238,22 @@ def annotate_snps(filedict, sample_names, assembly, genomeRef=None ):
     for chrom, filename in filedict.iteritems():
         # For each chromosome, read the result of parse_pileupFile and make a track
         snp_file = track( filename, format='text',
-                                fields=['chr','end','name']+sample_names, chrmeta=assembly.chrmeta )
+                          fields=['chr','end','name']+sample_names, chrmeta=assembly.chrmeta )
         # Add a 'start' using end-1 and make an iterator from the track
         snp_read = FeatureStream( ((y[0],y[1]-1)+y[1:] for y in snp_file.read(chrom)),
                                         fields=['chr','start','end','name']+sample_names)
-        # Get gene annotation from GenRep
         annotation = assembly.gene_track(chrom)
-        # Find the nearest gene from each snp
         annotated_stream = gm_stream.getNearestFeature(snp_read, annotation,
-                                thresholdPromot=3000, thresholdInter=3000, thresholdUTR=10)
+                                                       thresholdPromot=3000, thresholdInter=3000, thresholdUTR=10)
         # Write a line in outall at each iteration; yield if the snp is Included in a gene only.
         inclstream = concat_fields(FeatureStream(_process_annot(annotated_stream, outall),
                                                              fields=snp_read.fields),
                                          infields=['name']+sample_names, as_tuple=True)
-        # Get CDS annotation from genrep as a track, and join some fields
         annotstream = concat_fields(assembly.annot_track('CDS',chrom),
                                     infields=['name','strand','frame'], as_tuple=True)
         annotstream = FeatureStream((x[:3]+(x[1:3]+x[3],) for x in annotstream),fields=annotstream.fields)
-        buffer = {1:{}, -1:{}}
+        buffer = {1:[], -1:[]}
+        last_start = {1:-1, -1:-1}
         for x in gm_stream.combine([inclstream, annotstream], gm_stream.intersection):
             # x = (1606,1607,'chrV', ('T','C (43%), 1612,1724,'YEL077C|YEL077C',-1,0, 1712,1723,'YEL077W-A|YEL077W-A',1,0))
             nsamples = len(sample_names)
@@ -287,23 +268,19 @@ def annotate_snps(filedict, sample_names, assembly, genomeRef=None ):
                 elif strand == -1:
                     shift = (ee - phase - pos) % 3
                     codon_start = pos + shift - 2
-                if genomeRef:
-                    ref_codon = assembly.fasta_from_regions({chr: [[codon_start,codon_start+3]]}, out={},
-                                                            path_to_ref=genomeRef[chr])[0][chr][0]
-                else: # from GenRep. The real workflow should not go through it.
-                    ref_codon = assembly.fasta_from_regions({chr: [[codon_start,codon_start+3]]}, out={})[0][chr][0]
+                ref_codon = assembly.fasta_from_regions({chr: [[codon_start,codon_start+3]]}, out={},
+                                                        path_to_ref=genomeRef.get(chr))[0][chr][0]
                 info = [chr, pos, refbase, list(rest[1:1+nsamples]), cds, strand, ref_codon, shift]
                 # Either the codon is the same as the previous one on this strand, or it will never be.
                 # Only if one codon is passed, can write its snps to a file.
-                if codon_start in buffer[strand]:
-                    buffer[strand][codon_start].append(info)
+                if codon_start == last_start[strand]:
+                    buffer[strand].append(info)
                 else:
-                    _write_buffer(buffer,strand,outex)
-                    buffer[strand].clear()
-                    buffer[strand][codon_start] = [info]
-        # Write what is left in the buffer
+                    _write_buffer(buffer[strand],outex)
+                    buffer[strand] = [info]
+                    last_start[strand] = codon_start
         for strand in [1,-1]:
-            _write_buffer(buffer,strand,outex)
+            _write_buffer(buffer[strand],outex)
     outex.close()
     return (outall, outexons)
 
