@@ -193,12 +193,12 @@ def annotate_snps(filedict, sample_names, assembly, genomeRef=None ):
 
     def _write_buffer(buffer, outex):
         new_codon = None
-        for chr,pos,refbase,variants,cds,strand,refcodon,shift in buffer:
+        for chr,pos,refbase,variants,cds,strand,ref_codon,shift in buffer:
             varbase = [r.strip('* ') for r in variants]
             variants = []
-            if new_codon is None: new_codon = [[refcodon] for _ in range(len(variants))]
+            if new_codon is None: new_codon = [[ref_codon] for _ in range(len(varbase))]
             for variant in varbase:
-                if variant == '0': 
+                if variant == '0':
                     variants.append([refbase])
                 else: # 'C (43%),G (12%)' : heterozygous double snp
                     variants.append([v[0] for v in variant.split(',')])
@@ -218,7 +218,7 @@ def annotate_snps(filedict, sample_names, assembly, genomeRef=None ):
         if strand < 0:
             ref_codon = _revcomp(ref_codon)
             new_codon = [[_revcomp(s) for s in c] for c in new_codon]
-        for chr,pos,refbase,variants,cds,strand,refcodon,shift in snps:
+        for chr,pos,refbase,variants,cds,strand,refcodon,shift in buffer:
             result = [chr, pos+1, refbase] + list(variants) + [cds, strand] \
                      + [_translate[ref_codon]] \
                      + [','.join([_translate[s] for s in c]) for c in new_codon]
