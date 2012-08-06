@@ -218,7 +218,7 @@ def annotate_snps(filedict, sample_names, assembly, genomeRef=None ):
         if strand < 0:
             ref_codon = _revcomp(ref_codon)
             new_codon = [[_revcomp(s) for s in c] for c in new_codon]
-        for chr,pos,refbase,variants,cds,strand,ref_codon,shift in buffer:
+        for chr,pos,refbase,variants,cds,strand,ref_codon,shift in _buffer:
             result = [chr, pos+1, refbase] + list(variants) + [cds, strand] \
                      + [_translate[ref_codon]] \
                      + [','.join([_translate[s] for s in c]) for c in new_codon]
@@ -278,8 +278,7 @@ def annotate_snps(filedict, sample_names, assembly, genomeRef=None ):
                     _write_buffer(_buffer[strand],outex)
                     _buffer[strand] = [info]
                     last_start[strand] = codon_start
-        for strand in [1,-1]:
-            _write_buffer(_buffer[strand],outex)
+        for strand in [1,-1]: _write_buffer(_buffer[strand],outex)
     outex.close()
     return (outall, outexons)
 
