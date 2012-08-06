@@ -534,11 +534,11 @@ class Assembly(object):
                  "uniq":"1" }
         resp = self.get_features_from_gtf(webh,method='boundaries')
         for k,v in resp.iteritems():
-            if not(v): continue
-            start,end = v
-            gene_id,gene_name,strand,chr_name = [str(y).strip() for y in k.split(';')]
-            name = "%s|%s" %(gene_id,gene_name)
-            sort_list.append((chr_name,start,end,name,int(strand)))
+            for vv in v:
+                start,end = vv
+                gene_id,gene_name,strand,chr_name = [str(y).strip() for y in k.split(';')]
+                name = "%s|%s" %(gene_id,gene_name)
+                sort_list.append((chr_name,start,end,name,int(strand)))
         sort_list.sort()
         return track.FeatureStream(sort_list,fields=_fields)
 

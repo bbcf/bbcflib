@@ -117,7 +117,9 @@ def mean_score_by_feature(trackScores,trackFeatures,normalize=True):
             yield tuple(y)+scores
 
     if not(isinstance(trackScores,(list,tuple))): trackScores = [trackScores]
-    if isinstance(trackFeatures,(list,tuple)): trackFeatures = trackFeatures[0] # should better merge them
+    if isinstance(trackFeatures,(list,tuple)): 
+        from .intervals import concatenate
+        trackFeatures = concatenate(trackFeatures)
     if len(trackScores)>1:
         _fields = ["score"+str(i) for i in range(len(trackScores))]
     else:

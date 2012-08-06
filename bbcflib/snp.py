@@ -196,7 +196,8 @@ def annotate_snps(filedict, sample_names, assembly, genomeRef=None ):
         for chr,pos,refbase,variants,cds,strand,ref_codon,shift in _buffer:
             varbase = [r.strip('* ') for r in variants]
             variants = []
-            if new_codon is None: new_codon = [[ref_codon] for _ in range(len(varbase))]
+            if new_codon is None: 
+                new_codon = [[ref_codon] for _ in range(len(varbase))]
             for variant in varbase:
                 if variant == '0':
                     variants.append([refbase])
