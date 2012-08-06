@@ -191,9 +191,9 @@ def annotate_snps(filedict, sample_names, assembly, genomeRef=None ):
                      ('N','N'),('n','n')))
         return "".join(reversed([cmpl.get(x,x) for x in seq]))
 
-    def _write_buffer(buffer, outex):
+    def _write_buffer(_buffer, outex):
         new_codon = None
-        for chr,pos,refbase,variants,cds,strand,ref_codon,shift in buffer:
+        for chr,pos,refbase,variants,cds,strand,ref_codon,shift in _buffer:
             varbase = [r.strip('* ') for r in variants]
             variants = []
             if new_codon is None: new_codon = [[ref_codon] for _ in range(len(varbase))]
@@ -251,7 +251,7 @@ def annotate_snps(filedict, sample_names, assembly, genomeRef=None ):
         annotstream = concat_fields(assembly.annot_track('CDS',chrom),
                                     infields=['name','strand','frame'], as_tuple=True)
         annotstream = FeatureStream((x[:3]+(x[1:3]+x[3],) for x in annotstream),fields=annotstream.fields)
-        buffer = {1:[], -1:[]}
+        _buffer = {1:[], -1:[]}
         last_start = {1:-1, -1:-1}
         for x in gm_stream.combine([inclstream, annotstream], gm_stream.intersection):
             # x = (1606,1607,'chrV', ('T','C (43%), 1612,1724,'YEL077C|YEL077C',-1,0, 1712,1723,'YEL077W-A|YEL077W-A',1,0))
@@ -273,12 +273,13 @@ def annotate_snps(filedict, sample_names, assembly, genomeRef=None ):
                 # Either the codon is the same as the previous one on this strand, or it will never be.
                 # Only if one codon is passed, can write its snps to a file.
                 if codon_start == last_start[strand]:
-                    buffer[strand].append(info)
+                    _buffer[strand].append(info)
                 else:
-                    _write_buffer(buffer[strand],outex)
-                    buffer[strand] = [info]
+                    _write_buffer(_buffer[strand],outex)
+                    _buffer[strand] = [info]
                     last_start[strand] = codon_start
-        for strand in [1,-1]: _write_buffer(buffer[strand],outex)
+        for strand in [1,-1]:
+            _write_buffer(_buffer[strand],outex)
     outex.close()
     return (outall, outexons)
 
