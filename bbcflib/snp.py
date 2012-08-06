@@ -218,7 +218,7 @@ def annotate_snps(filedict, sample_names, assembly, genomeRef=None ):
         if strand < 0:
             ref_codon = _revcomp(ref_codon)
             new_codon = [[_revcomp(s) for s in c] for c in new_codon]
-        for chr,pos,refbase,variants,cds,strand,refcodon,shift in buffer:
+        for chr,pos,refbase,variants,cds,strand,ref_codon,shift in buffer:
             result = [chr, pos+1, refbase] + list(variants) + [cds, strand] \
                      + [_translate[ref_codon]] \
                      + [','.join([_translate[s] for s in c]) for c in new_codon]
@@ -237,18 +237,17 @@ def annotate_snps(filedict, sample_names, assembly, genomeRef=None ):
 
     for chrom, filename in filedict.iteritems():
         # For each chromosome, read the result of parse_pileupFile and make a track
-        snp_file = track( filename, format='text',
-                          fields=['chr','end','name']+sample_names, chrmeta=assembly.chrmeta )
+        snp_file = track( filename, format='text', fields=['chr','end','name']+sample_names, 
+                          chrmeta=assembly.chrmeta )
         # Add a 'start' using end-1 and make an iterator from the track
         snp_read = FeatureStream( ((y[0],y[1]-1)+y[1:] for y in snp_file.read(chrom)),
-                                        fields=['chr','start','end','name']+sample_names)
+                                  fields=['chr','start','end','name']+sample_names )
         annotation = assembly.gene_track(chrom)
         annotated_stream = gm_stream.getNearestFeature(snp_read, annotation,
                                                        thresholdPromot=3000, thresholdInter=3000, thresholdUTR=10)
         # Write a line in outall at each iteration; yield if the snp is Included in a gene only.
-        inclstream = concat_fields(FeatureStream(_process_annot(annotated_stream, outall),
-                                                             fields=snp_read.fields),
-                                         infields=['name']+sample_names, as_tuple=True)
+        inclstream = concat_fields(FeatureStream(_process_annot(annotated_stream, outall), fields=snp_read.fields),
+                                   infields=['name']+sample_names, as_tuple=True)
         annotstream = concat_fields(assembly.annot_track('CDS',chrom),
                                     infields=['name','strand','frame'], as_tuple=True)
         annotstream = FeatureStream((x[:3]+(x[1:3]+x[3],) for x in annotstream),fields=annotstream.fields)
@@ -279,8 +278,7 @@ def annotate_snps(filedict, sample_names, assembly, genomeRef=None ):
                     _write_buffer(buffer[strand],outex)
                     buffer[strand] = [info]
                     last_start[strand] = codon_start
-        for strand in [1,-1]:
-            _write_buffer(buffer[strand],outex)
+        for strand in [1,-1]: _write_buffer(buffer[strand],outex)
     outex.close()
     return (outall, outexons)
 
