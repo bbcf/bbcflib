@@ -68,16 +68,18 @@ def merge_scores(trackList, method='arithmetic'):
 ###############################################################################
 def filter_scores(trackScores,trackFeatures):
     """
-    Extract from each track in trackScores only the regions present in trackFeatures.
+    Extract from *trackScores* only the regions present in *trackFeatures*.
     Example::
 
         F: _____#########__________#############_______
         S: __________666666666___2222776_444___________
         R: __________6666__________22776_444___________
 
-    :param trackScores: FeatureStream, or list of FeatureStream objects.
+    :param trackScores: (FeatureStream) one score track.
+        If a list fo streams is provided, they will be merged (averaged scores).
     :param trackFeatures: (FeatureStream) one feature track.
-    :rtype: FeatureStream, or list of FeatureStream objects
+        If a list fo streams is provided, they will be merged.
+    :rtype: FeatureStream
     """
     def _stream(ts,tf):
         X = common.sentinelize(ts, [sys.maxint]*len(ts.fields))
@@ -101,16 +103,10 @@ def filter_scores(trackScores,trackFeatures):
                 else:              end   = s[1]
                 yield (start,end)+tuple(s[2:])
 
-    if isinstance(trackFeatures,(list,tuple)):
-        trackFeatures = concatenate(trackFeatures)
-    if not isinstance(trackScores,(list,tuple)): trackScores = [trackScores]
-    if isinstance(trackScores,(list,tuple)):
-        _tf = common.copy(trackFeatures,len(trackScores))
-    else: trackFeatures = [trackFeatures]
-    _ts = [common.reorder(t,['start','end']) for t in trackScores]
-    res = [track.FeatureStream(_stream(s,f), s.fields) for s,f in zip(_ts,_tf)]
-    if len(trackScores) > 1: return res
-    else: return res[0]
+    if isinstance(trackFeatures,(list,tuple)): trackFeatures = concatenate(trackFeatures)
+    if isinstance(trackScores,(list,tuple)): trackScores = merge_scores(trackScores)
+    _ts = common.reorder(trackScores,['start','end'])
+    return track.FeatureStream(_stream(_ts,trackFeatures), _ts.fields)
 
 ###############################################################################
 def mean_score_by_feature(trackScores,trackFeatures,normalize=True):

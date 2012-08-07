@@ -331,10 +331,9 @@ class Test_Scores(unittest.TestCase):
 
     def test_filter_scores(self):
         features = fstream([(5,15,'gene1'),(30,40,'gene2')], fields=['start','end','name'])
-        scores1 = fstream([(10,20,6.),(30,40,6.)], fields=['start','end','score'])
-        scores2 = fstream([(35,40,2.)], fields=['start','end','score'])
-        res = [list(x) for x in filter_scores([scores1,scores2],features)]
-        expected = [[(10,15,6.),(30,40,6.)], [(35,40,2.)]]
+        scores = fstream([(10,20,6.),(30,40,6.)], fields=['start','end','score'])
+        res = list(filter_scores(scores,features))
+        expected = [(10,15,6.),(30,40,6.)]
         self.assertListEqual(res,expected)
 
     def test_mean_score_by_feature(self):
