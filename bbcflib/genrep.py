@@ -599,15 +599,15 @@ class Assembly(object):
         return track.FeatureStream(_query(),fields=_fields)
 
     def gene_track(self,chromlist=None,biotype=["protein_coding"]):
-        """Return an iterator over all protein coding genes annotation in the genome."""
+        """Return a FeatureStream over all protein coding genes annotation in the genome."""
         return self.annot_track(annot_type='gene',chromlist=chromlist,biotype=biotype)
 
     def exon_track(self,chromlist=None,biotype=["protein_coding"]):
-        """Return an iterator over all coding exons annotation in the genome."""
+        """Return a FeatureStream over all coding exons annotation in the genome."""
         return self.annot_track(annot_type='exon',chromlist=chromlist,biotype=biotype)
 
     def transcript_track(self,chromlist=None,biotype=["protein_coding"]):
-        """Return an iterator over all protein coding transcripts annotation in the genome."""
+        """Return a FeatureStream over all protein coding transcripts annotation in the genome."""
         return self.annot_track(annot_type='transcript',chromlist=chromlist,biotype=biotype)
 
     @property

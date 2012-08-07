@@ -4,13 +4,13 @@ import math
 # Internal modules #
 from bbcflib import btrack, genrep
 from bbcflib.btrack import FeatureStream as fstream
-from bbcflib.bFlatMajor.common import sentinelize, select, reorder, unroll, sorted_stream
+from bbcflib.bFlatMajor.common import sentinelize, copy, select, reorder, unroll, sorted_stream
 from bbcflib.bFlatMajor.common import shuffled, fusion, cobble, ordered
 from bbcflib.bFlatMajor.common import concat_fields, split_field, map_chromosomes, score_threshold
 from bbcflib.bFlatMajor.stream.annotate import getNearestFeature
 from bbcflib.bFlatMajor.stream.intervals import concatenate, neighborhood, segment_features, combine
 from bbcflib.bFlatMajor.stream.intervals import exclude, require, disjunction, intersection, union
-from bbcflib.bFlatMajor.stream.scores import merge_scores, mean_score_by_feature, window_smoothing
+from bbcflib.bFlatMajor.stream.scores import merge_scores, mean_score_by_feature, window_smoothing, filter_scores
 from bbcflib.bFlatMajor.numeric.regions import feature_matrix, average_feature_matrix
 from bbcflib.bFlatMajor.numeric.signal import _normalize, correlation
 
@@ -40,6 +40,12 @@ class Test_Common(unittest.TestCase):
         stream = sentinelize(stream,'Z')
         for y in stream: x = y
         self.assertEqual(x,'Z')
+
+    def test_copy(self):
+        feats = [(1,2),(3,4)]
+        stream = fstream(feats,fields=['start','end'])
+        res = copy(stream,3)
+        for x in res: self.assertListEqual(list(x),feats)
 
     def test_ordered(self):
         @ordered
@@ -210,6 +216,13 @@ class Test_Intervals(unittest.TestCase):
         expected = [(1,3,0.2),(1,4,0.6),(5,9,0.5),(8,11,0.4),(11,12,0.1),(11,15,1.2)]
         self.assertListEqual(res,expected)
 
+        # Remove duplicates
+        stream1 = fstream([(1,2),(3,4),(5,6)], fields=['start','end'])
+        stream2 = fstream([(3,4),(5,6),(7,8)], fields=['start','end'])
+        res = list(concatenate([stream1,stream2], fields=['start','end'], remove_duplicates=True))
+        expected = [(1,2),(3,4),(5,6),(7,8)]
+        self.assertListEqual(res,expected)
+
     def test_neighborhood(self):
         s = [(10,16,0.5,-1), (24,36,1.2,1)]
 
@@ -314,6 +327,14 @@ class Test_Scores(unittest.TestCase):
         s2 = fstream([(5,15,2.)], fields=['start','end','score'])
         res = list(merge_scores([s1,s2], method='sum'))
         expected = [(5,10,2.),(10,15,8.),(15,20,6.)]
+        self.assertListEqual(res,expected)
+
+    def test_filter_scores(self):
+        features = fstream([(5,15,'gene1'),(30,40,'gene2')], fields=['start','end','name'])
+        scores1 = fstream([(10,20,6.),(30,40,6.)], fields=['start','end','score'])
+        scores2 = fstream([(35,40,2.)], fields=['start','end','score'])
+        res = [list(x) for x in filter_scores([scores1,scores2],features)]
+        expected = [[(10,15,6.),(30,40,6.)], [(35,40,2.)]]
         self.assertListEqual(res,expected)
 
     def test_mean_score_by_feature(self):

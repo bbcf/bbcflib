@@ -5,12 +5,14 @@ from bbcflib import btrack as track
 # "tracks" and "streams" refer to FeatureStream objects all over here.
 
 
-def concatenate(trackList, fields=None):
+def concatenate(trackList, fields=None, remove_duplicates=False):
     """
-    Returns a stream containing all features from a list of tracks, ordered by *fields*.
+    Returns one stream containing all features from a list of tracks, ordered by *fields*.
 
     :param trackList: list of FeatureStream objects.
     :param fields: (list of str) list of fields to keep in the output (at least ['start','end']).
+    :param remove_duplicates: (bool) whether to remove items that are identical in several
+        of the tracks in *trackList*. [False]
     :rtype: FeatureStream
     """
     def _find_min(feat_tuple):
@@ -35,6 +37,12 @@ def concatenate(trackList, fields=None):
         sorted w.r.t the *N* first fields."""
         current = [x.next()[:N] for x in _t] # init
         while 1:
+            # Remove duplicates
+            if remove_duplicates:
+                while not all([current.count(x)==1 for x in current]):
+                    for k in range(len(current)):
+                        if current.count(current[k]) > 1:
+                            current[k] = _t[k].next()[:N]
             n = _find_min(current)
             if current[n][0] == sys.maxint: return
             yield current[n]
@@ -216,6 +224,7 @@ def combine(trackList, fn, win_size=1000,
     """
     fields = ['start','end']
     if len(trackList) < 2: return trackList
+    if isinstance(fn,str): fn = eval(fn) # can type combine(...,fn='intersection')
     trackList = [common.cobble(common.reorder(t,fields=fields)) for t in trackList]
     return common.fusion(track.FeatureStream(_combine(trackList,fn,win_size,aggregate),
                                              fields=trackList[0].fields))

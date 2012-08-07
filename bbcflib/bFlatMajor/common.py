@@ -1,11 +1,16 @@
 from bbcflib.btrack import FeatureStream
-import sys, re
+import sys, re, itertools
 
 ####################################################################
 def sentinelize(iterable, sentinel):
     """Append *sentinel* at the end of *iterable* (avoid StopIteration error)."""
     for item in iterable: yield item
     yield sentinel
+
+def copy(stream,n=2):
+    """Return n independant copies of *stream*. Has to be called before iterating
+    over *stream*, otherwise it will copy only the remaining items of *stream*."""
+    return [FeatureStream(x,stream.fields) for x in itertools.tee(stream)]
 
 ####################################################################
 def ordered(fn):

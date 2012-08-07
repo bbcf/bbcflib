@@ -2,6 +2,7 @@
 
 import sys
 from bbcflib.bFlatMajor import common
+from bbcflib.bFlatMajor.stream import concatenate
 from bbcflib import btrack as track
 
 @common.ordered
@@ -65,6 +66,53 @@ def merge_scores(trackList, method='arithmetic'):
     return track.FeatureStream(_stream(tracks),fields)
 
 ###############################################################################
+def filter_scores(trackScores,trackFeatures):
+    """
+    Extract from each track in trackScores only the regions present in trackFeatures.
+    Example::
+
+        F: _____#########__________#############_______
+        S: __________666666666___2222776_444___________
+        R: __________6666__________22776_444___________
+
+    :param trackScores: FeatureStream, or list of FeatureStream objects.
+    :param trackFeatures: (FeatureStream) one feature track.
+    :rtype: FeatureStream, or list of FeatureStream objects
+    """
+    def _stream(ts,tf):
+        X = common.sentinelize(ts, [sys.maxint]*len(ts.fields))
+        S = [(-sys.maxint,-sys.maxint,0.0)]
+        for y in tf:
+            ystart = y[tf.fields.index('start')]
+            yend = y[tf.fields.index('end')]
+            xnext = S[-1]
+            # Load into F all score items which intersect feature y
+            while xnext[0] < yend:
+                xnext = X.next()
+                if xnext[1] > ystart: S.append(xnext)
+            n = 0
+            while S[n][1] <= ystart: n+=1
+            S = S[n:]
+            for s in S:
+                if yend <= s[0]:   continue
+                if s[0] <  ystart: start = ystart
+                else:              start = s[0]
+                if yend <  s[1]:   end   = yend
+                else:              end   = s[1]
+                yield (start,end)+tuple(s[2:])
+
+    if isinstance(trackFeatures,(list,tuple)):
+        trackFeatures = concatenate(trackFeatures)
+    if not isinstance(trackScores,(list,tuple)): trackScores = [trackScores]
+    if isinstance(trackScores,(list,tuple)):
+        _tf = common.copy(trackFeatures,len(trackScores))
+    else: trackFeatures = [trackFeatures]
+    _ts = [common.reorder(t,['start','end']) for t in trackScores]
+    res = [track.FeatureStream(_stream(s,f), s.fields) for s,f in zip(_ts,_tf)]
+    if len(trackScores) > 1: return res
+    else: return res[0]
+
+###############################################################################
 def mean_score_by_feature(trackScores,trackFeatures,normalize=True):
     """
     Computes the average of scores from each stream in *trackScores*
@@ -117,7 +165,8 @@ def mean_score_by_feature(trackScores,trackFeatures,normalize=True):
             yield tuple(y)+scores
 
     if not(isinstance(trackScores,(list,tuple))): trackScores = [trackScores]
-    if isinstance(trackFeatures,(list,tuple)): trackFeatures = trackFeatures[0] # should better merge them
+    if isinstance(trackFeatures,(list,tuple)):
+        trackFeatures = concatenate(trackFeatures)
     if len(trackScores)>1:
         _fields = ["score"+str(i) for i in range(len(trackScores))]
     else:

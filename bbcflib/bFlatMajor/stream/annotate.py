@@ -12,12 +12,14 @@ def getNearestFeature(features, annotations,
 
     If there are several genes, they are separated by '_': geneId1|geneName1_geneId2|geneName2.
     For each gene, `location_type` is one of:
+
     * 'Intergenic' if there are no genes within a distance `thresholdInter`,
     * 'Included' if the feature is included in the gene,
     * 'Promot' if the feature is upstream and within `thresholdInter` of the gene start,
     * 'Upstream' if the feature is upstream and beyond the promoter of the gene,
     * '3UTR' if the feature is downstream and within `thresholdUTR`% of the distance to the next downstream gene,
     * 'Downstream' otherwise.
+
     These annotations can be concatenated with '_' as well.
     The distance to each gene is negative if the feature is included, positive otherwise.
 
