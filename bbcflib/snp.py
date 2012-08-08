@@ -68,7 +68,7 @@ def sam_pileup(assembly,bamfile,refGenome,via='lsf',minSNP=10,minCoverage=80):
     :param bamfile: path to the BAM file.
     :param refGenome: path to the reference genome fasta file.
     """
-    if str(assembly.name) in ['MLeprae_TN','MSmeg_MC2_155','MTb_H37Rv','NA1000','TB40-BAC4']:
+    if str(assembly.name) in ['MLeprae_TN','MSmeg_MC2_155','mycoSmeg_MC2_155','MTb_H37Rv','NA1000','TB40-BAC4']:
         ploidy=1
         minSNP=5 #10
         minCoverage=80
@@ -320,13 +320,17 @@ def posAllUniqSNP(PileupDict):
     """
     d={}
     for filename,pair in PileupDict.iteritems():
+        #print '\t',filename
         parameters = pair[0].wait() #file p is created and samtools pileup returns its own parameters
-        minCoverage = parameters[0]
+        #minCoverage = parameters[0]
         with open(filename,'rb') as f:
             for l in f:
                 data = l.split("\t")
-                cpt = data[8].count(".") + data[8].count(",")
-                if cpt*100 >= int(data[7]) * int(minCoverage) and int(data[7]) >= 8:
+                cpt = data[8].count(".") + data[8].count(",") # number of reads supporting wild type (.fwd and ,rev)
+                #print data[1],', wt:',cpt,', tot:',data[7],',',cpt,'<',int(data[7])*(100-int(minCoverage))/100.,\
+                #      int(data[7])-cpt,'support the SNP.'
+                if int(data[7])-cpt >= 7:
+                    #print 3, data[1]
                     d[int(data[1])] = data[2].upper()
     return (d,parameters)
 
