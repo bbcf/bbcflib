@@ -196,7 +196,7 @@ def annotate_snps(filedict, sample_names, assembly, genomeRef=None ):
         for chr,pos,refbase,variants,cds,strand,ref_codon,shift in _buffer:
             varbase = [r.strip('* ') for r in variants]
             variants = []
-            if new_codon is None: 
+            if new_codon is None:
                 new_codon = [[ref_codon] for _ in range(len(varbase))]
             for variant in varbase:
                 if variant == '0':
@@ -238,7 +238,7 @@ def annotate_snps(filedict, sample_names, assembly, genomeRef=None ):
 
     for chrom, filename in filedict.iteritems():
         # For each chromosome, read the result of parse_pileupFile and make a track
-        snp_file = track( filename, format='text', fields=['chr','end','name']+sample_names, 
+        snp_file = track( filename, format='text', fields=['chr','end','name']+sample_names,
                           chrmeta=assembly.chrmeta )
         # Add a 'start' using end-1 and make an iterator from the track
         snp_read = FeatureStream( ((y[0],y[1]-1)+y[1:] for y in snp_file.read(chrom)),
@@ -300,15 +300,15 @@ def create_tracks(ex, filename, sample_names, assembly):
         instream.fields = ['chr','end','snp']
         instream = FeatureStream(_add_start(instream), fields=['chr','start','end','snp'])
         # BED track
-        out = unique_filename_in()+'.bed'
-        outtrack = track(out, format='bed', fields=['chr','start','end','snp'], chrmeta=assembly.chrmeta)
+        out = unique_filename_in()
+        outtrack = track(out+'.sql', format='sql', fields=['chr','start','end','snp'], chrmeta=assembly.chrmeta)
         outtrack.write(instream)
-        description = set_file_descr("allSNP_track_"+sample_name+".bed" ,type='bed',step='SNPs')
-        ex.add(out, description=description)
-        # SQL track
-        convert(out,out+'.sql')
         description = set_file_descr("allSNP_track_"+sample_name+".sql" ,type='sql',step='SNPs')
         ex.add(out+'.sql', description=description)
+        # SQL track
+        convert(out+'.sql',out+'.bed')
+        description = set_file_descr("allSNP_track_"+sample_name+".bed" ,type='bed',step='SNPs')
+        ex.add(out+'.bed', description=description)
 
 
 def posAllUniqSNP(PileupDict):
@@ -322,12 +322,12 @@ def posAllUniqSNP(PileupDict):
     for filename,pair in PileupDict.iteritems():
         parameters = pair[0].wait() #file p is created and samtools pileup returns its own parameters
         minCoverage = parameters[0]
-        minSNP = parameters[1]
         with open(filename,'rb') as f:
             for l in f:
                 data = l.split("\t")
                 cpt = data[8].count(".") + data[8].count(",")
-                if cpt*100 < int(data[7]) * int(minCoverage) and int(data[7]) >= 8:
+                if cpt*100 >= int(data[7]) * int(minCoverage) and int(data[7]) >= 8:
                     d[int(data[1])] = data[2].upper()
     return (d,parameters)
+
 
