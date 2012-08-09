@@ -107,8 +107,8 @@ def write_pileupFile(dictPileup,sample_names,allSNPpos,chrom,minCoverage=80,minS
                 info = line.split("\t")
                 ref = info[2].upper() # reference base
                 cons = info[3].upper() # consensus base
-                if cons == 'N': continue
-                nreads = info[7]; # coverage at this position
+                nreads = info[7] # coverage at this position
+                if cons == 'N': continue # unassembled
                 # info = ['chrV', '91668', 'G', 'R', '4', '4', '60', '4', 'a,.^~.', 'LLLL', '~~~~\n']
                 # info = [chr, pos, ref, consensus, cons_qual, snp_qual, max_map_qual, nreads, 'a,.^~.', 'LLLL', '~~~~\n']
                 #          0    1    2       3          4         5           6           7       8         9       10
@@ -116,7 +116,7 @@ def write_pileupFile(dictPileup,sample_names,allSNPpos,chrom,minCoverage=80,minS
                     pos = allpos.pop()
                     allSamples[sname][pos] = "0"
                 if not(int(info[1]) == pos): continue
-                # SNP found in allpos, treat
+                # SNP found in allpos, treat:
                 if int(nreads) == 0:
                     allSamples[sname][pos] = "0"
                 elif int(nreads) < minSNP:
@@ -129,16 +129,14 @@ def write_pileupFile(dictPileup,sample_names,allSNPpos,chrom,minCoverage=80,minS
                 else:
                     snp = info[8].count(iupac[cons][0]) + info[8].count(iupac[cons][1]) # nreads with one variant
                     snp2 = info[8].count(iupac[cons][2]) + info[8].count(iupac[cons][3]) # nreads with the other
-                    # If the number of useful reads > minCoverage % of total reads
-                    if (snp+snp2)*100 > minCoverage*int(nreads):
-                        cov = 100 / float(nreads)
-                        if ref == iupac[cons][0]:   # if ref base == first variant
-                            allSamples[sname][pos] = star+"%s (%.4g%%)" % (iupac[cons][2], snp2*cov)
-                        elif ref == iupac[cons][2]: # if ref base == second variant
-                            allSamples[sname][pos] = star+"%s (%.4g%%)" % (iupac[cons][0], snp*cov)
-                        else:                       # if third allele
-                            allSamples[sname][pos] = star+"%s (%.4g%%),%s (%.4g%%)" \
-                                    % (iupac[cons][0], snp*cov, iupac[cons][2], snp2*cov)
+                    cov = 100 / float(nreads)
+                    if ref == iupac[cons][0]:   # if ref base == first variant
+                        allSamples[sname][pos] = star+"%s (%.4g%%)" % (iupac[cons][2], snp2*cov)
+                    elif ref == iupac[cons][2]: # if ref base == second variant
+                        allSamples[sname][pos] = star+"%s (%.4g%%)" % (iupac[cons][0], snp*cov)
+                    else:                       # if third allele
+                        allSamples[sname][pos] = star+"%s (%.4g%%),%s (%.4g%%)" \
+                                % (iupac[cons][0], snp*cov, iupac[cons][2], snp2*cov)
             while allpos:  # write '0' for all pos after the last one of this sample
                 pos = allpos.pop()
                 allSamples[sname][pos] = "0"
@@ -149,7 +147,7 @@ def write_pileupFile(dictPileup,sample_names,allSNPpos,chrom,minCoverage=80,minS
         for pos in allpos:
             nbNoSnp = 0 # Check if at least one sample had the SNP (??)
             for sname in sample_names:
-                nbNoSnp += allSamples[sname][pos].count("0")
+                if allSamples[sname][pos] == "0": nbNoSnp += 1
             if nbNoSnp != len(allSamples):
                 refbase = allSNPpos[pos]
                 outfile.write("\t".join([chrom,str(pos),refbase] + [allSamples[s][pos] for s in sample_names])+"\n")
@@ -320,17 +318,13 @@ def posAllUniqSNP(PileupDict):
     """
     d={}
     for filename,pair in PileupDict.iteritems():
-        #print '\t',filename
         parameters = pair[0].wait() #file p is created and samtools pileup returns its own parameters
-        #minCoverage = parameters[0]
+        #minCoverage, minSNP = parameters
         with open(filename,'rb') as f:
             for l in f:
                 data = l.split("\t")
                 cpt = data[8].count(".") + data[8].count(",") # number of reads supporting wild type (.fwd and ,rev)
-                #print data[1],', wt:',cpt,', tot:',data[7],',',cpt,'<',int(data[7])*(100-int(minCoverage))/100.,\
-                #      int(data[7])-cpt,'support the SNP.'
                 if int(data[7])-cpt >= 7:
-                    #print 3, data[1]
                     d[int(data[1])] = data[2].upper()
     return (d,parameters)
 
