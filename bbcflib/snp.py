@@ -94,11 +94,14 @@ def write_pileupFile(dictPileup,sample_names,allSNPpos,chrom):
     iupac = {'M':['A','a','C','c'],'Y':['T','t','C','c'],'R':['A','a','G','g'],
              'S':['G','g','C','c'],'W':['A','a','T','t'],'K':['T','t','G','g']}
 
-    for pileup_filename,pair in dictPileup.iteritems():
+    for pileup_filename,trio in dictPileup.iteritems():
         allpos = sorted(allSNPpos.keys(),reverse=True) # list of positions [int] with an SNP across all groups
-        sname = pair[1]
+        sname = trio[1]
+        bamtrack = track(trio[2],format='bam')
+        bamtrack.open() # mandatory?
         with open(pileup_filename) as sample:
             pos = -1
+            info = [None]*10 # in case one of the pileup files is empty
             allSamples[sname] = {}
             for line in sample:
                 info = line.split("\t")
@@ -111,13 +114,14 @@ def write_pileupFile(dictPileup,sample_names,allSNPpos,chrom):
                 #          0    1    2       3          4         5           6           7       8         9       10
                 while int(info[1]) > pos and len(allpos) > 0: # write '0' for all pos until the one on this line of the sample
                     pos = allpos.pop()
-                    allSamples[sname][pos] = "0"
+                    coverage = bamtrack.coverage((chrom,pos,pos+1))[pos]
+                    allSamples[sname][pos] = coverage and ref or "0"
                 if not(int(info[1]) == pos): continue
                 # SNP found in allpos, treat:
                 if int(nreads) == 0:
                     allSamples[sname][pos] = "0"
-                elif int(nreads) <= 7:
-                    star = "* " # add a star *A if the snp is supported by less than minSNP reads
+                elif int(nreads) < 10:
+                    star = "* " # add a star *A if the snp is supported by less than 10 reads
                 else:
                     star = ""
                 if re.search(r'[ACGT]',cons): # if bases are encoded normally (~100% replacement?)
@@ -136,7 +140,9 @@ def write_pileupFile(dictPileup,sample_names,allSNPpos,chrom):
                                 % (iupac[cons][0], snp*cov, iupac[cons][2], snp2*cov)
             while allpos:  # write '0' for all pos after the last one of this sample
                 pos = allpos.pop()
-                allSamples[sname][pos] = "0"
+                coverage = bamtrack.coverage((chrom,pos,pos+1))[pos]
+                allSamples[sname][pos] = coverage and ref or "0"
+        bamtrack.close()
 
     #firstSample = allSamples.itervalues().next()
     allpos = sorted(allSNPpos.keys(),reverse=False) # list of positions [int] with an SNP across all groups
@@ -306,16 +312,16 @@ def create_tracks(ex, filename, sample_names, assembly):
         ex.add(out+'.bed', description=description)
 
 
-def posAllUniqSNP(PileupDict):
+def posAllUniqSNP(dictPileup):
     """
     Retrieve the results from samtools pileup and store them into a couple of the type
     ({3021: 'A'}, (minCoverage, minSNP))
 
-    :param PileupDict: (dict) dictionary of the form {filename: bein.Future}
+    :param dictPileup: (dict) dictionary of the form {filename: bein.Future}
     """
     d={}
-    for filename,pair in PileupDict.iteritems():
-        pair[0].wait() #file p is created and samtools pileup returns its own parameters
+    for filename,trio in dictPileup.iteritems():
+        trio[0].wait() #file p is created and samtools pileup returns its own parameters
         with open(filename,'rb') as f:
             for l in f:
                 data = l.split("\t")
