@@ -68,7 +68,8 @@ def sam_pileup(assembly,bamfile,refGenome,via='lsf',minSNP=10,minCoverage=80):
     :param bamfile: path to the BAM file.
     :param refGenome: path to the reference genome fasta file.
     """
-    if str(assembly.name) in ['MLeprae_TN','MSmeg_MC2_155','mycoSmeg_MC2_155','MTb_H37Rv','NA1000','TB40-BAC4']:
+    if str(assembly.name) in ["EB1_e_coli_k12","MLeprae_TN","mycoSmeg_MC2_155",
+                              "mycoTube_H37RV","NA1000","vibrChol1","TB40-BAC4"]:
         ploidy=1
         minSNP=5 #10
         minCoverage=80

@@ -526,7 +526,7 @@ class Assembly(object):
 
     def gene_coordinates(self,id_list):
         """Creates a BED-style stream from a list of gene ids."""
-        _fields = ['chr','start','end','name','strand']
+        _fields = ['chr','start','end','name','score','strand']
         _ids = "|".join(id_list)
         sort_list = []
         webh = { "names": "gene_id,gene_name,strand,chr_name",
@@ -538,7 +538,7 @@ class Assembly(object):
                 start,end = vv
                 gene_id,gene_name,strand,chr_name = [str(y).strip() for y in k.split(';')]
                 name = "%s|%s" %(gene_id,gene_name)
-                sort_list.append((chr_name,start,end,name,int(strand)))
+                sort_list.append((chr_name,start,end,name,0,int(strand)))
         sort_list.sort()
         return track.FeatureStream(sort_list,fields=_fields)
 
