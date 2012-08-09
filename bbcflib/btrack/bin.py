@@ -76,6 +76,12 @@ class BigWigTrack(BinTrack):
             self.bedgraph = None
 
     def read(self, selection=None, fields=None, **kw):
+        """
+        :param selection: list of dict of the type
+            `[{'chr':'chr1','start':(12,24)},{'chr':'chr3','end':(25,45)},...]`,
+            where tuples represent ranges.
+        :param fields: (list of str) list of field names.
+        """
         if not program_exists('bigWigToBedGraph'):
             raise OSError("Program not found in $PATH: %s" % 'bigWigToBedGraph')
         self.open()
@@ -129,11 +135,21 @@ try:
 
         def open(self):
             self.filehandle = pysam.Samfile(self.path, "rb")
+            self.references = self.filehandle.references # reference sequences (@SN)
+            self.lengths = self.filehandle.lengths # reference sequences' length (@LN)
+            self.fetch = self.filehandle.fetch
+            self.pileup = self.filehandle.pileup
 
         def close(self):
             self.filehandle.close()
 
         def read(self, selection=None, fields=None, **kw):
+            """
+            :param selection: list of dict of the type
+                `[{'chr':'chr1','start':(12,24)},{'chr':'chr3','end':(25,45)},...]`,
+                where tuples represent ranges.
+            :param fields: (list of str) list of field names.
+            """
             self.open()
             if not(os.path.exists(self.path+".bai")):
                 self._run_tool('samtools', ["index",self.path])
@@ -158,4 +174,42 @@ try:
         def write(self, source, fields, **kw):
             raise NotImplementedError("Writing to bam is not implemented.")
 
+        def count(self, regions):
+            """
+            Count the number of reads falling in a given set of *regions*.
+            Return a dictionary of the type `{name: count}`.
+
+            :param regions: list of tuples of the type `(name,start,end)`. `name` has to be
+                present in the BAM file's header (self.references).
+            :rtype: dict
+            """
+            class Counter(object):
+                def __init__(self):
+                    self.n = 0
+                def __call__(self, alignment):
+                    self.n += 1
+
+            counts = {}
+            c = Counter()
+            for x in regions:
+                self.filehandle.fetch(x[0],x[1],x[2], callback=c)
+                #The callback (c.n += 1) is executed for each alignment in a region
+                counts[x[0]] = c.n
+                c.n = 0
+            return counts
+
+        def coverage(self, region):
+            """
+            Calculates the number of reads covering each base position within a given *region*.
+            Return a dict of the form {pos: coverage}
+            """
+            coverage = {}
+            pile = self.filehandle.pileup(region[0],region[1],region[2])
+            for p in pile:
+                pos = p.pos
+                if pos >= region[1] and pos < region[2]:
+                    coverage[pos] = p.n
+            return coverage
+
 except ImportError: print "Warning: 'pysam' not installed, 'bam' format unavailable."
+

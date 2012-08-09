@@ -201,6 +201,12 @@ class SqlTrack(Track):
 
 
     def read(self, selection=None, fields=None, order='start,end', cursor=False, **kw):
+        """
+        :param selection: list of dict of the type
+            `[{'chr':'chr1','start':(12,24)},{'chr':'chr3','end':(25,45)},...]`,
+            where tuples represent ranges.
+        :param fields: (list of str) list of field names.
+        """
         if selection is None:
             selection = sorted(self.chrmeta.keys())
         if isinstance(selection, (basestring,dict)):
@@ -280,8 +286,8 @@ class SqlTrack(Track):
             else:
                 sql_command = "INSERT INTO '%s' (%s) VALUES (%s)" %(chrom,fields_list,pholders)
                 if 'chr' in srcfields:
-                    self.cursor.executemany(sql_command, 
-                                            (_sub(row) for row in source 
+                    self.cursor.executemany(sql_command,
+                                            (_sub(row) for row in source
                                              if str(row[chr_idx])==chrom))
                 else:
                     self.cursor.executemany(sql_command, (_sub(row) for row in source))
