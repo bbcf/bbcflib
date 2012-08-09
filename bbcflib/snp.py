@@ -70,17 +70,13 @@ def sam_pileup(assembly,bamfile,refGenome,via='lsf',minSNP=10,minCoverage=80):
     """
     if str(assembly.name) in ["EB1_e_coli_k12","MLeprae_TN","mycoSmeg_MC2_155",
                               "mycoTube_H37RV","NA1000","vibrChol1","TB40-BAC4"]:
-        ploidy=1
-        minSNP=5 #10
-        minCoverage=80
+        ploidy=1 # procaryote
     else:
-        ploidy=2
-        minSNP=10 #20
-        minCoverage=40
+        ploidy=2 # eucaryote
     return {"arguments": ["samtools","pileup","-B","-cvsf",refGenome,"-N",str(ploidy),bamfile],
-            "return_value": [minCoverage,minSNP]}
+            "return_value": None}
 
-def write_pileupFile(dictPileup,sample_names,allSNPpos,chrom,minCoverage=80,minSNP=10):
+def write_pileupFile(dictPileup,sample_names,allSNPpos,chrom):
     """For a given chromosome, returns a summary file containing all SNPs identified
     in at least one of the samples.
     Each row contains: chromosome id, SNP position, reference base, SNP base (with proportions)
@@ -120,7 +116,7 @@ def write_pileupFile(dictPileup,sample_names,allSNPpos,chrom,minCoverage=80,minS
                 # SNP found in allpos, treat:
                 if int(nreads) == 0:
                     allSamples[sname][pos] = "0"
-                elif int(nreads) < minSNP:
+                elif int(nreads) <= 7:
                     star = "* " # add a star *A if the snp is supported by less than minSNP reads
                 else:
                     star = ""
@@ -319,14 +315,13 @@ def posAllUniqSNP(PileupDict):
     """
     d={}
     for filename,pair in PileupDict.iteritems():
-        parameters = pair[0].wait() #file p is created and samtools pileup returns its own parameters
-        #minCoverage, minSNP = parameters
+        pair[0].wait() #file p is created and samtools pileup returns its own parameters
         with open(filename,'rb') as f:
             for l in f:
                 data = l.split("\t")
                 cpt = data[8].count(".") + data[8].count(",") # number of reads supporting wild type (.fwd and ,rev)
-                if int(data[7])-cpt >= 7:
+                if int(data[7])-cpt >= 5:
                     d[int(data[1])] = data[2].upper()
-    return (d,parameters)
+    return d
 
 
