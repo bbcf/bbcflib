@@ -95,6 +95,7 @@ def track( path, format=None, **kwargs):
     :param format: (str) format of the file.
     :param **kwargs: (dict) parameters of the Track subclass' constructor.
     """
+    assert isinstance(path,str), "*path*: Expected string, %s found." % type(path)
     if format is None:
         path2, format = os.path.splitext(path)
         format = format.lstrip('.')
@@ -180,7 +181,8 @@ def ensembl_to_ucsc(start):
 class Track(object):
     """
     Metaclass regrouping the track properties. Subclasses for each specific format
-    are in `btrack/text.py` and are instanciated when ``btrack.track()`` is called on a file.
+    are respectively in `btrack/text.py`, `btrack/bin.py`, `btrack/sql.py`,
+    and are instanciated when ``btrack.track()`` is called on a file.
 
     .. attribute:: path
 
@@ -299,7 +301,7 @@ class FeatureStream(object):
 
     .. attribute:: data
 
-        An iterator, or cursor.
+        An iterator, cursor, list or tuple. Each item is a tuple with as many members as the number of *fields*.
 
     .. attribute:: fields
 

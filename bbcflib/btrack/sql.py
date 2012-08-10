@@ -204,8 +204,8 @@ class SqlTrack(Track):
         """
         :param selection: list of dict of the type
             `[{'chr':'chr1','start':(12,24)},{'chr':'chr3','end':(25,45)},...]`,
-            where tuples represent ranges.
-        :param fields: (list of str) list of field names.
+            where tuples represent ranges, or a FeatureStream.
+        :param fields: (list of str) list of field names (columns) to read.
         """
         if selection is None:
             selection = sorted(self.chrmeta.keys())
