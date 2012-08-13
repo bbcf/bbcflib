@@ -178,12 +178,13 @@ try:
         def count(self, regions):
             """
             Count the number of reads falling in a given set of *regions*.
-            Return a dictionary of the type `{name: count}`.
+            Return a FeatureStream with one element per region, its score being the number of reads
+            overlapping (even partially) this region.
 
             :param regions: any iterable over of tuples of the type `(name,start,end)`. `name` has to be
                 present in the BAM file's header (see `self.references`). `start` and `end` are 0-based
                 coordinates, counting from the beginning of feature `name` (see `self.lengths`).
-            :rtype: dict
+            :rtype: FeatureStream with fields ['name','start','end','score'].
             """
             class Counter(object):
                 def __init__(self):
@@ -191,33 +192,47 @@ try:
                 def __call__(self, alignment):
                     self.n += 1
 
-            counts = {}
-            c = Counter()
-            for x in regions:
-                self.filehandle.fetch(x[0],x[1],x[2], callback=c)
-                #The callback (c.n += 1) is executed for each alignment in a region
-                counts[x[0]] = c.n
-                c.n = 0
-            return counts
+            def _count(regions):
+                for x in regions:
+                    c = Counter()
+                    self.filehandle.fetch(*x, callback=c)
+                    #The callback (c.n += 1) is executed for each alignment in a region
+                    yield x + (c.n,)
+
+            return FeatureStream(_count(regions),fields=['name','start','end','score'])
 
         def coverage(self, region):
             """
             Calculates the number of reads covering each base position within a given *region*.
-            Return a dict of the form {pos: coverage}
+            Return a FeatureStream with one element per base (length 1) within the region,
+            the score being the number of reads overlapping this position.
 
             :param region: tuple `(name,start,end)`. `name` has to be
                 present in the BAM file's header (see `self.references`). `start` and `end` are 0-based
                 coordinates, counting from the beginning of feature `name` (see `self.lengths`).
+            :rtype: FeatureStream with fields ['name','start','end','score'].
             """
-            coverage = {}
-            pile = self.filehandle.pileup(region[0],region[1],region[2])
-            for p in pile:
-                pos = p.pos
-                if pos >= region[1] and pos < region[2]:
-                    coverage[pos] = p.n
-            for pos in range(region[1],region[2]):
-                coverage.get(pos,0)
-            return coverage
+            pile = self.filehandle.pileup(*region)
+            name,start,end = region
+
+            def _coverage(pile):
+                pos = 0
+                while pos < start:
+                    try:
+                        p = pile.next()
+                        pos = p.pos
+                    except StopIteration: pos = end
+                for k in range(start,end):
+                    if k == pos:
+                        score = p.n
+                        try:
+                            p = pile.next()
+                            pos = p.pos
+                        except StopIteration: pos = end
+                    else: score = 0
+                    yield (name,k,k+1,score)
+
+            return FeatureStream(_coverage(pile),fields=['name','start','end','score'])
 
 
 except ImportError: print "Warning: 'pysam' not installed, 'bam' format unavailable."

@@ -111,7 +111,7 @@ def write_pileupFile(dictPileup,sample_names,allSNPpos,chrom):
                 #          0    1    2       3          4         5           6           7       8         9       10
                 while int(info[1]) > pos and len(allpos) > 0: # while pos not found in the given sample
                     pos = allpos.pop()
-                    coverage = bamtrack.coverage((chrom,pos,pos+1)).get(pos)
+                    coverage = bamtrack.coverage((chrom,pos,pos+1)).next()[-1]
                     allSamples[sname][pos] = coverage and allSNPpos[pos] or "0" # "0" if not covered, ref base otherwise
                 if not(int(info[1]) == pos): continue
                 # SNP found in allpos, treat:
@@ -137,7 +137,7 @@ def write_pileupFile(dictPileup,sample_names,allSNPpos,chrom):
                                 % (iupac[cons][0], snp*cov, iupac[cons][2], snp2*cov)
             while allpos:  # write '0' for all pos after the last one of this sample
                 pos = allpos.pop()
-                coverage = bamtrack.coverage((chrom,pos,pos+1)).get(pos)
+                coverage = bamtrack.coverage((chrom,pos,pos+1)).next()[-1]
                 allSamples[sname][pos] = coverage and allSNPpos[pos] or "0"
         bamtrack.close()
 

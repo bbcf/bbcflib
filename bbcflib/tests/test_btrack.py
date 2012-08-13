@@ -113,15 +113,13 @@ class Test_Bam(unittest.TestCase):
 
     def test_coverage(self):
         t = track(os.path.join(path,'yeast3_chrV_150k-175k.bam'))
-        coverage = t.coverage(region=('chrV',160000,160005))
-        expected = {160000:3, 160001:3, 160002:3, 160003:3, 160004:3}
-        for c in coverage:
-            self.assertEqual(coverage[c],expected[c])
+        res = t.coverage(region=('chrV',160000,160002))
+        expected = [('chrV',160000,160001,3),('chrV',160001,160002,3)]
+        self.assertListEqual(list(res),expected)
 
     def test_count(self):
         t = track(os.path.join(path,'yeast3_chrV_150k-175k.bam'))
-        counts = t.count(regions=[('chrV',150000,175000)])
-        expected = {'chrV':2514}
-        for c in counts:
-            self.assertEqual(counts[c],expected[c])
+        res = t.count(regions=[('chrV',150000,175000)])
+        expected = [('chrV',150000,175000,2514)]
+        self.assertListEqual(list(res),expected)
 
