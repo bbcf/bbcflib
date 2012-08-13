@@ -2,4 +2,4 @@
    :members:
    
    .. autofunction:: macs
-   .. autofunction:: camelPeak
+   .. autofunction:: camelPeaks
