@@ -4,7 +4,7 @@ import re, tarfile, os, sys
 # Internal modules #
 from bbcflib.common import unique_filename_in, set_file_descr
 from bbcflib.btrack import FeatureStream, track, convert
-from bbcflib.bFlatMajor.common import select, concat_fields
+from bbcflib.bFlatMajor.common import concat_fields
 from bbcflib.bFlatMajor import stream as gm_stream
 
 # Other modules #
@@ -101,7 +101,7 @@ def write_pileupFile(dictPileup,sample_names,allSNPpos,chrom):
         bamtrack.open() # mandatory?
         with open(pileup_filename) as sample:
             pos = -1
-            info = [None]*10 # in case one of the pileup files is empty
+            ref = None # In case sample is empty
             allSamples[sname] = {}
             for line in sample:
                 info = line.split("\t")
@@ -114,7 +114,7 @@ def write_pileupFile(dictPileup,sample_names,allSNPpos,chrom):
                 #          0    1    2       3          4         5           6           7       8         9       10
                 while int(info[1]) > pos and len(allpos) > 0: # write '0' for all pos until the one on this line of the sample
                     pos = allpos.pop()
-                    coverage = bamtrack.coverage((chrom,pos,pos+1))[pos]
+                    coverage = bamtrack.coverage((chrom,pos,pos+1)).get(pos)
                     allSamples[sname][pos] = coverage and ref or "0"
                 if not(int(info[1]) == pos): continue
                 # SNP found in allpos, treat:
@@ -140,7 +140,7 @@ def write_pileupFile(dictPileup,sample_names,allSNPpos,chrom):
                                 % (iupac[cons][0], snp*cov, iupac[cons][2], snp2*cov)
             while allpos:  # write '0' for all pos after the last one of this sample
                 pos = allpos.pop()
-                coverage = bamtrack.coverage((chrom,pos,pos+1))[pos]
+                coverage = bamtrack.coverage((chrom,pos,pos+1)).get(pos)
                 allSamples[sname][pos] = coverage and ref or "0"
         bamtrack.close()
 
