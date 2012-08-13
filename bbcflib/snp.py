@@ -85,8 +85,6 @@ def write_pileupFile(dictPileup,sample_names,allSNPpos,chrom):
     :param sample_names: (list of str) list of sample names.
     :param allSNPpos: dict fo the type {3021: 'A'} as returned by posAllUniqSNP(...)[0].
     :param chrom: (str) chromosome name.
-    :param minCoverage: (int) the minimal percentage of reads supporting a SNP to reject a sequencing error.
-    :param minSNP: (int) the minimal coverage of the SNP position to accept the SNP.
     """
     # Note: sample_names is redundant with dictPileup, can find a way to get rid of it
     formattedPileupFilename = unique_filename_in()
@@ -124,7 +122,7 @@ def write_pileupFile(dictPileup,sample_names,allSNPpos,chrom):
                     star = "* " # add a star *A if the snp is supported by less than 10 reads
                 else:
                     star = ""
-                if re.search(r'[ACGT]',cons): # if bases are encoded normally (~100% replacement?)
+                if re.search(r'[ACGT]',cons): # if bases are encoded normally (~100% replacement)
                     star += cons
                     allSamples[sname][pos] = star
                 else:
@@ -144,11 +142,10 @@ def write_pileupFile(dictPileup,sample_names,allSNPpos,chrom):
                 allSamples[sname][pos] = coverage and ref or "0"
         bamtrack.close()
 
-    #firstSample = allSamples.itervalues().next()
     allpos = sorted(allSNPpos.keys(),reverse=False) # list of positions [int] with an SNP across all groups
     with open(formattedPileupFilename,'wb') as outfile:
         for pos in allpos:
-            nbNoSnp = 0 # Check if at least one sample had the SNP (??)
+            nbNoSnp = 0 # Check if at least one sample still has the SNP (after filtering)
             for sname in sample_names:
                 if allSamples[sname][pos] == "0": nbNoSnp += 1
             if nbNoSnp != len(allSamples):
@@ -159,7 +156,7 @@ def write_pileupFile(dictPileup,sample_names,allSNPpos,chrom):
 
     return formattedPileupFilename
 
-def annotate_snps(filedict, sample_names, assembly, genomeRef=None ):
+def annotate_snps(filedict, sample_names, assembly, genomeRef=None):
     """Annotates SNPs described in `filedict` (a dictionary of the form {chromosome: filename}
     where `filename` is an output of parse_pileupFile).
     Adds columns 'gene', 'location_type' and 'distance' to the output of parse_pileupFile.
@@ -285,10 +282,11 @@ def annotate_snps(filedict, sample_names, assembly, genomeRef=None ):
     return (outall, outexons)
 
 
-def create_tracks(ex, filename, sample_names, assembly):
-    with open(filename,'rb') as f:
+def create_tracks(ex, outall, sample_names, assembly):
+    """Write SQL and BED tracks showing all SNPs found."""
+    with open(outall,'rb') as f:
         infields = f.readline().split()
-    intrack = track(filename, format='text', fields=infields, chrmeta=assembly.chrmeta)
+    intrack = track(outall, format='text', fields=infields, chrmeta=assembly.chrmeta)
     def _add_start(stream):
         for x in stream:
             end_idx = stream.fields.index('end')
@@ -300,13 +298,13 @@ def create_tracks(ex, filename, sample_names, assembly):
         instream = concat_fields(instream,['reference',sample_name],'snp',separator=' -> ')
         instream.fields = ['chr','end','snp']
         instream = FeatureStream(_add_start(instream), fields=['chr','start','end','snp'])
-        # BED track
+        # SQL track
         out = unique_filename_in()
         outtrack = track(out+'.sql', format='sql', fields=['chr','start','end','snp'], chrmeta=assembly.chrmeta)
         outtrack.write(instream)
         description = set_file_descr("allSNP_track_"+sample_name+".sql" ,type='sql',step='SNPs')
         ex.add(out+'.sql', description=description)
-        # SQL track
+        # BED track
         convert(out+'.sql',out+'.bed')
         description = set_file_descr("allSNP_track_"+sample_name+".bed" ,type='bed',step='SNPs')
         ex.add(out+'.bed', description=description)
