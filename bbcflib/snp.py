@@ -110,13 +110,13 @@ def write_pileupFile(dictPileup,sample_names,allSNPpos,chrom):
                 # info = ['chrV', '91668', 'G', 'R', '4', '4', '60', '4', 'a,.^~.', 'LLLL', '~~~~\n']
                 # info = [chr, pos, ref, consensus, cons_qual, snp_qual, max_map_qual, nreads, 'a,.^~.', 'LLLL', '~~~~\n']
                 #          0    1    2       3          4         5           6           7       8         9       10
-                while int(info[1]) > pos and len(allpos) > 0: # write '0' for all pos until the one on this line of the sample
+                while int(info[1]) > pos and len(allpos) > 0: # while pos not found in the given sample
                     pos = allpos.pop()
                     coverage = bamtrack.coverage((chrom,pos,pos+1)).get(pos)
-                    allSamples[sname][pos] = coverage and ref or "0"
+                    allSamples[sname][pos] = coverage and allSNPpos[pos] or "0" # "0" if not covered, ref base otherwise
                 if not(int(info[1]) == pos): continue
                 # SNP found in allpos, treat:
-                if int(nreads) == 0:
+                if int(nreads) == 0: # indel!?
                     allSamples[sname][pos] = "0"
                 elif int(nreads) < 10:
                     star = "* " # add a star *A if the snp is supported by less than 10 reads
@@ -139,7 +139,7 @@ def write_pileupFile(dictPileup,sample_names,allSNPpos,chrom):
             while allpos:  # write '0' for all pos after the last one of this sample
                 pos = allpos.pop()
                 coverage = bamtrack.coverage((chrom,pos,pos+1)).get(pos)
-                allSamples[sname][pos] = coverage and ref or "0"
+                allSamples[sname][pos] = coverage and allSNPpos[pos] or "0"
         bamtrack.close()
 
     allpos = sorted(allSNPpos.keys(),reverse=False) # list of positions [int] with an SNP across all groups
