@@ -107,3 +107,21 @@ class Test_Formats(unittest.TestCase):
         self.assertIsInstance(sga_track, SgaTrack)
         os.remove(sga)
 
+class Test_Bam(unittest.TestCase):
+    def setUp(self):
+        pass
+
+    def test_coverage(self):
+        t = track(os.path.join(path,'yeast3_chrV_150k-175k.bam'))
+        coverage = t.coverage(region=('chrV',160000,160005))
+        expected = {160000:3, 160001:3, 160002:3, 160003:3, 160004:3}
+        for c in coverage:
+            self.assertEqual(coverage[c],expected[c])
+
+    def test_count(self):
+        t = track(os.path.join(path,'yeast3_chrV_150k-175k.bam'))
+        counts = t.count(regions=[('chrV',150000,175000)])
+        expected = {'chrV':2514}
+        for c in counts:
+            self.assertEqual(counts[c],expected[c])
+

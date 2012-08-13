@@ -132,6 +132,7 @@ try:
             for h in self.filehandle.header["SQ"]:
                 self.chrmeta[h["SN"]] = {'length':h["LN"]}
             self.close()
+            self.open()
 
         def open(self):
             self.filehandle = pysam.Samfile(self.path, "rb")
@@ -179,8 +180,9 @@ try:
             Count the number of reads falling in a given set of *regions*.
             Return a dictionary of the type `{name: count}`.
 
-            :param regions: list of tuples of the type `(name,start,end)`. `name` has to be
-                present in the BAM file's header (self.references).
+            :param regions: any iterable over of tuples of the type `(name,start,end)`. `name` has to be
+                present in the BAM file's header (see `self.references`). `start` and `end` are 0-based
+                coordinates, counting from the beginning of feature `name` (see `self.lengths`).
             :rtype: dict
             """
             class Counter(object):
@@ -202,6 +204,10 @@ try:
             """
             Calculates the number of reads covering each base position within a given *region*.
             Return a dict of the form {pos: coverage}
+
+            :param region: tuple `(name,start,end)`. `name` has to be
+                present in the BAM file's header (see `self.references`). `start` and `end` are 0-based
+                coordinates, counting from the beginning of feature `name` (see `self.lengths`).
             """
             coverage = {}
             pile = self.filehandle.pileup(region[0],region[1],region[2])
@@ -209,7 +215,10 @@ try:
                 pos = p.pos
                 if pos >= region[1] and pos < region[2]:
                     coverage[pos] = p.n
+            for pos in range(region[1],region[2]):
+                coverage.get(pos,0)
             return coverage
+
 
 except ImportError: print "Warning: 'pysam' not installed, 'bam' format unavailable."
 

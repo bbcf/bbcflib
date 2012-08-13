@@ -96,7 +96,6 @@ def write_pileupFile(dictPileup,sample_names,allSNPpos,chrom):
         allpos = sorted(allSNPpos.keys(),reverse=True) # list of positions [int] with an SNP across all groups
         sname = trio[1]
         bamtrack = track(trio[2],format='bam')
-        bamtrack.open() # mandatory?
         with open(pileup_filename) as sample:
             pos = -1
             ref = None # In case sample is empty
