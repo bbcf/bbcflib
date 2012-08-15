@@ -226,15 +226,16 @@ def unroll( stream, regions, fields=['score'] ):
                         9     10     11    12   13    14    15
 
     :param stream: FeatureStream object.
-    :param regions: either a pair (start,end) or a FeatureStream interpreted as bounds of the region(s) to return.
+    :param regions: either a pair (start,end) or an ordered list of such pairs or a FeatureStream interpreted as bounds of the region(s) to return.
     :param fields: list of field names **in addition to 'start','end'**. [['score']]
     :rtype: FeatureStream
     """
     if not(isinstance(fields,(list,tuple))): fields = [fields]
     with_chrom = False
     if isinstance(regions,(list,tuple)):
-        if len(regions) > 2: with_chrom = True
-        regions = iter([regions])
+        if not isinstance(regions[0],(list,tuple)): regions = [regions]
+        if len(regions[0]) > 2: with_chrom = True
+        regions = iter(regions)
     else:
         _f = ['start','end']
         if 'chr' in regions.fields:
