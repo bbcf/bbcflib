@@ -109,7 +109,7 @@ def write_pileupFile(dictPileup,sample_names,allSNPpos,chrom,assembly):
             elif x == '$': pass
             elif x == '^': irb.next()
             else: rb += x
-        readbase = ''.join(rb) # useless stuff removed
+        readbase = ''.join(rb)
         var1_fwd,var1_rev,var2_fwd,var2_rev = iupac[cons]
         nvar1_fwd = readbase.count(var1_fwd)
         nvar1_rev = readbase.count(var1_rev)
@@ -143,9 +143,6 @@ def write_pileupFile(dictPileup,sample_names,allSNPpos,chrom,assembly):
                     allSamples[sname][pos] = coverage and allSNPpos[pos] or "0" # "0" if not covered, ref base otherwise
                 if not(int(info[1]) == pos): continue
                 # SNP found in allpos, treat:
-                print pos
-                if int(nreads) == 0: # ??
-                    allSamples[sname][pos] = "0"
                 elif int(nreads) < 10:
                     star = "* " # add a star *A if the snp is supported by less than 10 reads
                 else:
@@ -154,18 +151,20 @@ def write_pileupFile(dictPileup,sample_names,allSNPpos,chrom,assembly):
                     star += cons
                     allSamples[sname][pos] = star
                 else:
-                    mincov = 40 # used to be set to 80.
+                    mincov = 40 # half of it for diploids. Used to be set to 80.
                     var1,var2, nvar1_fwd,nvar1_rev,nvar2_fwd,nvar2_rev, indels = _parse_info8(info[8],cons)
-                    nvar1 = (100/float(nreads)) * (nvar1_fwd + nvar1_rev)
-                    nvar2 = (100/float(nreads)) * (nvar2_fwd + nvar2_rev)
-                    check1 = nvar1_fwd > 5 and nvar1_rev > 5 and nvar1 >= mincov/ploidy
-                    check2 = nvar2_fwd > 5 and nvar2_rev > 5 and nvar2 >= mincov/ploidy
+                    nvar1 = (100/float(nreads)) * (nvar1_fwd + nvar1_rev) # % of consensus 1
+                    nvar2 = (100/float(nreads)) * (nvar2_fwd + nvar2_rev) # % of consensus 2
+                    check1 = nvar1_fwd >= 5 and nvar1_rev >= 5 and nvar1 >= mincov/ploidy
+                    check2 = nvar2_fwd >= 5 and nvar2_rev >= 5 and nvar2 >= mincov/ploidy
+                    check0 = nvar2_fwd >= 3 and nvar2_rev >= 3 and nvar2 >= 0.5*mincov/ploidy \
+                         and nvar1_fwd >= 3 and nvar1_rev >= 3 and nvar1 >= 0.5*mincov/ploidy
                     if ref.upper() == var1 and check2:   # if ref base == first variant
-                        allSamples[sname][pos] = star+"%s (%.4g%%)" % (var2,nvar2)
+                        allSamples[sname][pos] = star + "%s (%.4g%%)" % (var2,nvar2)
                     elif ref.upper() == var2 and check1: # if ref base == second variant
-                        allSamples[sname][pos] = star+"%s (%.4g%%)" % (var1,nvar1)
-                    elif check1 and check2:                               # if third allele
-                        allSamples[sname][pos] = star+"%s (%.4g%%),%s (%.4g%%)" % (var1,nvar1,var2,nvar2)
+                        allSamples[sname][pos] = star + "%s (%.4g%%)" % (var1,nvar1)
+                    elif check0:                         # if third allele
+                        allSamples[sname][pos] = star + "%s (%.4g%%),%s (%.4g%%)" % (var1,nvar1,var2,nvar2)
                     else:
                         allSamples[sname][pos] = ref
             while allpos:  # write '0' for all pos after the last one of this sample
