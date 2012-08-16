@@ -17,6 +17,7 @@ path = "test_data/snp/"
 # Local test:
 # cd /scratch/cluster/monthly/jdelafon/snp
 # run_snp.py -v local -c /archive/epfl/bbcf/jdelafon/test_snp/snp.config -d /scratch/cluster/monthly/jdelafon/snp/snp_minilims -w wdir -f /archive/epfl/bbcf/jdelafon/test_snp/reference/chrV.tar.gz
+# run_snp.py -v local -c ../config/hart.config -d /scratch/cluster/monthly/jdelafon/snp/snp_minilims -w wdir
 
 
 class Test_SNP(unittest.TestCase):

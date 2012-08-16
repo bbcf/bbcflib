@@ -60,23 +60,29 @@ def untar_genome_fasta(assembly, path_to_ref=None, convert=True):
     archive.close()
     return genomeRef
 
+def _ploidy(assembly):
+    if str(assembly.name) in ["EB1_e_coli_k12","MLeprae_TN","mycoSmeg_MC2_155",
+                              "mycoTube_H37RV","NA1000","vibrChol1","TB40-BAC4"]:
+        ploidy = 1 # procaryote
+        min_coverage = 50 # percent
+    else:
+        ploidy = 2 # eucaryote
+        min_coverage = 25 # percent
+    return (ploidy,min_coverage)
+
 @program
-def sam_pileup(assembly,bamfile,refGenome,via='lsf',minSNP=10,minCoverage=80):
+def sam_pileup(assembly,bamfile,refGenome,via='lsf'):
     """Binds 'samtools pileup'.
 
     :param assembly: Genrep.Assembly object.
     :param bamfile: path to the BAM file.
     :param refGenome: path to the reference genome fasta file.
     """
-    if str(assembly.name) in ["EB1_e_coli_k12","MLeprae_TN","mycoSmeg_MC2_155",
-                              "mycoTube_H37RV","NA1000","vibrChol1","TB40-BAC4"]:
-        ploidy=1 # procaryote
-    else:
-        ploidy=2 # eucaryote
+    ploidy = _ploidy(assembly)[0]
     return {"arguments": ["samtools","pileup","-B","-cvsf",refGenome,"-N",str(ploidy),bamfile],
             "return_value": None}
 
-def write_pileupFile(dictPileup,sample_names,allSNPpos,chrom):
+def write_pileupFile(dictPileup,sample_names,allSNPpos,chrom,assembly):
     """For a given chromosome, returns a summary file containing all SNPs identified
     in at least one of the samples.
     Each row contains: chromosome id, SNP position, reference base, SNP base (with proportions)
@@ -89,64 +95,109 @@ def write_pileupFile(dictPileup,sample_names,allSNPpos,chrom):
     # Note: sample_names is redundant with dictPileup, can find a way to get rid of it
     formattedPileupFilename = unique_filename_in()
     allSamples = {}
-    iupac = {'M':['A','a','C','c'],'Y':['T','t','C','c'],'R':['A','a','G','g'],
-             'S':['G','g','C','c'],'W':['A','a','T','t'],'K':['T','t','G','g']}
+
+    def _parse_info8(readbase,cons):
+        iupac = {'M':['A','a','C','c'],'Y':['T','t','C','c'],'R':['A','a','G','g'],
+                 'S':['G','g','C','c'],'W':['A','a','T','t'],'K':['T','t','G','g']}
+        indels = []
+        irb = iter(readbase)
+        rb = ''
+        for x in irb:
+            if x in ['+','-']:
+                n_indel = int(irb.next())
+                indels.append(''.join([irb.next() for _ in range(n_indel)]))
+            elif x == '$': pass
+            elif x == '^': irb.next()
+            else: rb += x
+        readbase = ''.join(rb) # useless stuff removed
+        var1_fwd,var1_rev,var2_fwd,var2_rev = iupac[cons]
+        nvar1_fwd = readbase.count(var1_fwd)
+        nvar1_rev = readbase.count(var1_rev)
+        nvar2_fwd = readbase.count(var2_fwd)
+        nvar2_rev = readbase.count(var2_rev)
+            #asref_fwd = readbase.count('.') # forward, ref base
+            #asref_rev = readbase.count(',') # reverse, ref base
+            #total_fwd = asref_fwd+nvar1_fwd+nvar2_fwd
+            #total_rev = asref_rev+nvar1_rev+nvar2_rev
+            #nvar1_fwd = total_fwd and (100./total_fwd) * nvar1_fwd or 0
+            #nvar1_rev = total_rev and (100./total_rev) * nvar1_rev or 0
+            #nvar2_fwd = total_fwd and (100./total_fwd) * nvar2_fwd or 0
+            #nvar2_rev = total_rev and (100./total_rev) * nvar2_rev or 0
+        return var1_fwd, var2_fwd, nvar1_fwd, nvar1_rev, nvar2_fwd, nvar2_rev, indels
 
     for pileup_filename,trio in dictPileup.iteritems():
         allpos = sorted(allSNPpos.keys(),reverse=True) # list of positions [int] with an SNP across all groups
         sname = trio[1]
         bamtrack = track(trio[2],format='bam')
+        ploidy,min_coverage = _ploidy(assembly)
+        pos = -1
+        ref = None # In case sample is empty
+        allSamples[sname] = {}
         with open(pileup_filename) as sample:
-            pos = -1
-            ref = None # In case sample is empty
-            allSamples[sname] = {}
             for line in sample:
                 info = line.split("\t")
                 ref = info[2].upper() # reference base
                 cons = info[3].upper() # consensus base
+                snp_qual = 10**(-float(info[5])/10)
                 nreads = info[7] # coverage at this position
-                if cons == 'N': continue # unassembled
                 # info = ['chrV', '91668', 'G', 'R', '4', '4', '60', '4', 'a,.^~.', 'LLLL', '~~~~\n']
                 # info = [chr, pos, ref, consensus, cons_qual, snp_qual, max_map_qual, nreads, 'a,.^~.', 'LLLL', '~~~~\n']
                 #          0    1    2       3          4         5           6           7       8         9       10
+                # cons_qual : consensus quality is the Phred-scaled probability that the consensus is wrong.
+                # snp_qual: SNP quality is the Phred-scaled probability that the consensus is identical to the reference.
                 while int(info[1]) > pos and len(allpos) > 0: # while pos not found in the given sample
                     pos = allpos.pop()
                     coverage = bamtrack.coverage((chrom,pos,pos+1)).next()[-1]
                     allSamples[sname][pos] = coverage and allSNPpos[pos] or "0" # "0" if not covered, ref base otherwise
                 if not(int(info[1]) == pos): continue
                 # SNP found in allpos, treat:
-                if int(nreads) == 0: # indel!?
+                print pos
+                if int(nreads) == 0: # ??
                     allSamples[sname][pos] = "0"
                 elif int(nreads) < 10:
                     star = "* " # add a star *A if the snp is supported by less than 10 reads
                 else:
                     star = ""
-                if re.search(r'[ACGT]',cons): # if bases are encoded normally (~100% replacement)
+                if re.search(r'[ACGTN]',cons): # if bases are encoded normally (~100% replacement)
                     star += cons
                     allSamples[sname][pos] = star
                 else:
-                    snp = info[8].count(iupac[cons][0]) + info[8].count(iupac[cons][1]) # nreads with one variant
-                    snp2 = info[8].count(iupac[cons][2]) + info[8].count(iupac[cons][3]) # nreads with the other
-                    cov = 100 / float(nreads)
-                    if ref == iupac[cons][0]:   # if ref base == first variant
-                        allSamples[sname][pos] = star+"%s (%.4g%%)" % (iupac[cons][2], snp2*cov)
-                    elif ref == iupac[cons][2]: # if ref base == second variant
-                        allSamples[sname][pos] = star+"%s (%.4g%%)" % (iupac[cons][0], snp*cov)
-                    else:                       # if third allele
-                        allSamples[sname][pos] = star+"%s (%.4g%%),%s (%.4g%%)" \
-                                % (iupac[cons][0], snp*cov, iupac[cons][2], snp2*cov)
+                    mincov = 40 # used to be set to 80.
+                    var1,var2, nvar1_fwd,nvar1_rev,nvar2_fwd,nvar2_rev, indels = _parse_info8(info[8],cons)
+                    print info
+                    print pos,ref,'|', var1,'-', nvar1_fwd,nvar1_rev,'|',var2,'-',nvar2_fwd,nvar2_rev,'|',snp_qual
+                    nvar1 = (100/float(nreads)) * (nvar1_fwd + nvar1_rev)
+                    nvar2 = (100/float(nreads)) * (nvar2_fwd + nvar2_rev)
+                    #check1 = nvar1_fwd >= mincov and nvar1_rev >= mincov
+                    #check2 = nvar2_fwd >= mincov and nvar2_rev >= mincov
+                    check1 = nvar1_fwd > 5 and nvar1_rev > 5 and nvar1 >= mincov/ploidy
+                    check2 = nvar2_fwd > 5 and nvar2_rev > 5 and nvar2 >= mincov/ploidy
+                    print  'check1:',nvar1_fwd > 5,  nvar1_rev > 5,  nvar1,'>=',mincov/ploidy
+                    print  'check2:',nvar2_fwd > 5,  nvar2_rev > 5,  nvar2,'>=',mincov/ploidy
+                    if ref.upper() == var1 and check2:   # if ref base == first variant
+                        print 1
+                        allSamples[sname][pos] = star+"%s (%.4g%%)" % (var2,nvar2)
+                    elif ref.upper() == var2 and check1: # if ref base == second variant
+                        print 2
+                        allSamples[sname][pos] = star+"%s (%.4g%%)" % (var1,nvar1)
+                    elif check1 and check2:                               # if third allele
+                        print 3
+                        allSamples[sname][pos] = star+"%s (%.4g%%),%s (%.4g%%)" % (var1,nvar1,var2,nvar2)
+                    else:
+                        print 4
+                        allSamples[sname][pos] = ref
             while allpos:  # write '0' for all pos after the last one of this sample
                 pos = allpos.pop()
                 coverage = bamtrack.coverage((chrom,pos,pos+1)).next()[-1]
                 allSamples[sname][pos] = coverage and allSNPpos[pos] or "0"
         bamtrack.close()
 
-    allpos = sorted(allSNPpos.keys(),reverse=False) # list of positions [int] with an SNP across all groups
+    allpos = sorted(allSNPpos.keys(),reverse=False) # re-init
     with open(formattedPileupFilename,'wb') as outfile:
         for pos in allpos:
             nbNoSnp = 0 # Check if at least one sample still has the SNP (after filtering)
             for sname in sample_names:
-                if allSamples[sname][pos] == "0": nbNoSnp += 1
+                if allSamples[sname][pos] in ("0",allSNPpos[pos]): nbNoSnp += 1
             if nbNoSnp != len(allSamples):
                 refbase = allSNPpos[pos]
                 outfile.write("\t".join([chrom,str(pos),refbase] + [allSamples[s][pos] for s in sample_names])+"\n")
@@ -301,28 +352,28 @@ def create_tracks(ex, outall, sample_names, assembly):
         out = unique_filename_in()
         outtrack = track(out+'.sql', format='sql', fields=['chr','start','end','snp'], chrmeta=assembly.chrmeta)
         outtrack.write(instream)
-        description = set_file_descr("allSNP_track_"+sample_name+".sql" ,type='sql',step='SNPs')
+        description = set_file_descr("allSNP_track_"+sample_name+".sql" ,type='sql',step='SNPs',gdv='1')
         ex.add(out+'.sql', description=description)
         # BED track
         convert(out+'.sql',out+'.bed')
-        description = set_file_descr("allSNP_track_"+sample_name+".bed" ,type='bed',step='SNPs')
+        description = set_file_descr("allSNP_track_"+sample_name+".bed" ,type='bed',step='SNPs',ucsc='1')
         ex.add(out+'.bed', description=description)
 
 
 def posAllUniqSNP(dictPileup):
     """
-    Retrieve the results from samtools pileup and store them into a couple of the type
-    ({3021: 'A'}, (minCoverage, minSNP))
+    Retrieve the results from samtools pileup and return a dict of the type {3021: 'A'}.
 
     :param dictPileup: (dict) dictionary of the form {filename: bein.Future}
     """
     d={}
     for filename,trio in dictPileup.iteritems():
-        trio[0].wait() #file p is created and samtools pileup returns its own parameters
+        trio[0].wait() #file p is created from samtools pileup
         with open(filename,'rb') as f:
             for l in f:
                 data = l.split("\t")
                 cpt = data[8].count(".") + data[8].count(",") # number of reads supporting wild type (.fwd and ,rev)
+                print data[1]
                 if int(data[7])-cpt >= 5:
                     d[int(data[1])] = data[2].upper()
     return d
