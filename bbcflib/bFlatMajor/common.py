@@ -66,7 +66,7 @@ def select(stream, fields):
 ####################################################################
 def apply(stream,fields,functions):
     """
-    Applies transformations to the respective fields. Ex.:
+    Applies transformations to the respective fields.
 
     :param stream: FeatureStream object.
     :param fields: (list of str) list of fields to keep in the output.
@@ -186,6 +186,7 @@ def split_field( stream, outfields, infield='name', separator=';',
                 else:
                     y.pop(in_indx)
             yield tuple(y)
+
     return FeatureStream(_split(stream),_outfields)
 
 ####################################################################
