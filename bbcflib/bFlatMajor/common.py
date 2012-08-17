@@ -50,8 +50,8 @@ def select(stream, fields):
     """
     Keeps only specified *fields* from a stream.
 
-    :param stream: FeatureStream, or list of FeatureStream objects.
-    :fields: (list of str) list of fields to keep in the output.
+    :param stream: FeatureStream object.
+    :param fields: (list of str) list of fields to keep in the output.
     :rtype: FeatureStream, or list of FeatureStream objects
     """
     def _select(stream,idxs):
@@ -62,6 +62,30 @@ def select(stream, fields):
     assert all([x > -1 for x in idxs]), "Can only select amongst fields %s." % stream.fields
     assert hasattr(stream,'fields') and stream.fields, "Object %s has no attribute 'fields'." % stream
     return FeatureStream(_select(stream,idxs), fields=fields)
+
+####################################################################
+def apply(stream,fields,functions):
+    """
+    Applies transformations to the respective fields. Ex.:
+
+    :param stream: FeatureStream object.
+    :param fields: (list of str) list of fields to keep in the output.
+    :param functions: list of functions to apply to the respective *fields*.
+    :rtype: FeatureStream, or list of FeatureStream objects
+    """
+    def _apply(stream,fields,functions):
+        nf = len(stream.fields)
+        idx = [stream.fields.index(f) for f in fields]
+        fct = dict(zip(idx,functions))
+        for i in range(nf): fct.setdefault(i, lambda x:x)
+        for x in stream:
+            yield tuple([fct[i](x[i]) for i in range(nf)])
+
+    if isinstance(fields,str): fields = [fields]
+    if hasattr(functions,'__call__'): functions = [functions]
+    assert len(fields) == len(functions),"The number of fields does not equal the number of functions."
+    return FeatureStream(_apply(stream,fields,functions),fields=stream.fields)
+
 
 ####################################################################
 def reorder(stream,fields):

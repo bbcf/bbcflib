@@ -5,7 +5,7 @@ import math
 from bbcflib import btrack, genrep
 from bbcflib.btrack import FeatureStream as fstream
 from bbcflib.bFlatMajor.common import sentinelize, copy, select, reorder, unroll, sorted_stream
-from bbcflib.bFlatMajor.common import shuffled, fusion, cobble, ordered
+from bbcflib.bFlatMajor.common import shuffled, fusion, cobble, ordered, apply
 from bbcflib.bFlatMajor.common import concat_fields, split_field, map_chromosomes, score_threshold
 from bbcflib.bFlatMajor.stream.annotate import getNearestFeature
 from bbcflib.bFlatMajor.stream.intervals import concatenate, neighborhood, segment_features, combine
@@ -54,6 +54,17 @@ class Test_Common(unittest.TestCase):
         stream = fstream([('A','B'),('C','D')], fields=['1','2'])
         res = list(_test(stream))
         self.assertListEqual(res,[('A','B'),('C','D')])
+
+    def test_apply(self):
+        stream = fstream([(10,12,0.5), (14,15,1.2)], fields=['start','end','score'])
+        res = list(apply(stream,'score',lambda x:2*x))
+        expected = [(10,12,1.), (14,15,2.4)]
+        self.assertEqual(res,expected)
+
+        stream = fstream([(10,12,0.5), (14,15,1.2)], fields=['start','end','score'])
+        res = list(apply(stream,['score','end'],[lambda x:2*x, lambda x:x-3]))
+        expected = [(10,9,1.), (14,12,2.4)]
+        self.assertEqual(res,expected)
 
     def test_select(self):
         stream = fstream([(10,12,0.5), (14,15,1.2)], fields=['start','end','score'])
