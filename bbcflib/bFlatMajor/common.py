@@ -86,6 +86,26 @@ def apply(stream,fields,functions):
     assert len(fields) == len(functions),"The number of fields does not equal the number of functions."
     return FeatureStream(_apply(stream,fields,functions),fields=stream.fields)
 
+####################################################################
+def duplicate(stream,infield,outfields):
+    """
+    Duplicate one of *stream*'s fields. If outfields has more than one element,
+    the field is copied as many times.
+
+    :param stream: FeatureStream object.
+    :param infield: (str) name of the field to be duplicated.
+    :param outfields: (str, or list of str) the new field(s) to be created.
+    """
+    def _duplicate(stream,infield,outfields):
+        in_idx = stream.fields.index(infield)
+        for x in stream:
+            yield x + (x[in_idx],)*len(outfields)
+
+    assert infield in stream.fields, "Field %s not found." % infield
+    assert isinstance(infield,str), "Expected string, %s found." % type(infield)
+    assert isinstance(outfields,(str,list)), "Expected string or list, % found." % type(outfields)
+    if isinstance(outfields,str): outfields = [outfields]
+    return FeatureStream(_duplicate(stream,infield,outfields), fields=stream.fields+outfields)
 
 ####################################################################
 def reorder(stream,fields):
