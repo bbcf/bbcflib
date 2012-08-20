@@ -23,8 +23,8 @@ def score_array(trackList,fields=['score']):
 
 def _normalize(x):
     """Substracts the average and divides by the standard deviation."""
+    x = asarray(x)
     if any(abs(x-x[0])>1e-6): 
-        x = asarray(x)
         mu = mean(x)
         isigma = 1.0/sqrt((x*x).mean()-mu*mu)
         return (x-mu)*isigma
