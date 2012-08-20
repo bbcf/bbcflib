@@ -4,7 +4,7 @@ try:
     from scipy.fftpack import fft, ifft
 except ImportError:
     from numpy.fft import fft, ifft
-from numpy import conjugate, array, asarray, mean, sqrt, concatenate as ncat, real, hstack, seterr, zeros
+from numpy import conjugate, array, asarray, mean, sqrt, concatenate as ncat, real, hstack
 from math import log
 
 def score_array(trackList,fields=['score']):
@@ -23,13 +23,13 @@ def score_array(trackList,fields=['score']):
 
 def _normalize(x):
     """Substracts the average and divides by the standard deviation."""
-    x = asarray(x)
-    mu = mean(x)
-    if not any(x-mu):
-        return zeros(len(x))
+    if any(abs(x-x[0])>1e-6): 
+        x = asarray(x)
+        mu = mean(x)
+        isigma = 1.0/sqrt((x*x).mean()-mu*mu)
+        return (x-mu)*isigma
     else:
-        sigma = sqrt((x*x).mean()-mu*mu)
-        return (x-mu)/sigma
+        return x-x[0]
 
 def correlation(trackList, regions, limits=(-1000,1000), with_acf=False):
     """
@@ -68,7 +68,6 @@ def correlation(trackList, regions, limits=(-1000,1000), with_acf=False):
     """
     ##### One could profit from numpy to reduce the memory space used for
     ##### storing these - long - arrays ('dtype' is float64 by default).
-    seterr(divide='ignore')
     if isinstance(regions,FeatureStream):
         _reg = list(regions)
         x = [array([s[0] for s in common.unroll(t,FeatureStream(_reg,fields=regions.fields))])
