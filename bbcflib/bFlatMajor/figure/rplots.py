@@ -24,15 +24,15 @@ def _begin(output,format,new,**kwargs):
             robjects.r('png("%s",height=800,width=800)' %output)
         else:
             raise ValueError("Format not supported: %s" %format)
+        pars = "lwd=2,cex=1.1,cex.main=1.5,cex.lab=1.3,cex.axis=1.1,mar=c(1,1,1,1),oma=c(3,3,0,3),las=1,pch=20"
+        if len(kwargs.get('mfrow',[])) == 2:
+            pars += ",mfrow=c(%i,%i)" %tuple(kwargs['mfrow'])
+        robjects.r('par(%s)' %pars)
     opts = ''
     if 'log' in kwargs: opts += ',log="%s"' %kwargs['log']
     opts += ',main="%s"' %kwargs.get('main','')
     opts += ',xlab="%s"' %kwargs.get('xlab','')
     opts += ',ylab="%s"' %kwargs.get('ylab','')
-    pars = "lwd=2,cex=1.1,cex.main=1.5,cex.lab=1.3,cex.axis=1.1,mar=c(1,1,1,1),oma=c(3,3,0,3),las=1,pch=20"
-    if len(kwargs.get('mfrow',[])) == 2:
-        pars += ",mfrow=c(%i,%i)" %tuple(kwargs['mfrow'])
-    robjects.r('par(%s)' %pars)
     return opts, output
 
 def _end(lopts,last,**kwargs):
@@ -55,7 +55,7 @@ def scatterplot(X,Y,output=None,format='pdf',new=True,last=True,**kwargs):
     robjects.r("plot(xdata,ydata%s)" %plotopt)
     for n in range(1,len(Y)):
         robjects.r.assign('ydata',numpy2ri.numpy2ri(Y[n]))
-        robjects.r("points(xdata,ydata,col=%i)" %n)
+        robjects.r("points(xdata,ydata,col=%i)" %(n+1))
     _end(",pch=20",last,**kwargs)
     return output
 
@@ -71,7 +71,7 @@ def lineplot(X,Y,output=None,format='pdf',new=True,last=True,**kwargs):
     robjects.r("plot(xdata,ydata,t='l'%s)" %plotopt)
     for n in range(1,len(Y)):
         robjects.r.assign('ydata',numpy2ri.numpy2ri(Y[n]))
-        robjects.r("lines(xdata,ydata,col=%i)" %n)
+        robjects.r("lines(xdata,ydata,col=%i)" %(n+1))
     _end(",lty=1",last,**kwargs)
     return output
 
@@ -130,16 +130,23 @@ def pairs(M,X=None,labels=None,
     *labels* is a vector of *n* strings used to label plots, defaults to *1,...,n*.
     """
     plotopt,output = _begin(output=output,format=format,new=new,**kwargs)
-    robjects.r.assign('Mdata',numpy2ri.numpy2ri(M))
-    robjects.r("cdim = ncol(Mdata)")
     if X is None: 
-        robjects.r("n=ncol(Mdata)")
+        robjects.r.assign('Mdata',numpy2ri.numpy2ri(M))
+        robjects.r("n = ncol(Mdata)")
     else:
         robjects.r.assign('X',numpy2ri.numpy2ri(X))
+        robjects.r.assign('Mdata',numpy2ri.numpy2ri(M[0][0]))
+        for jrow in M[0][1:]:
+            robjects.r.assign('Mdj',numpy2ri.numpy2ri(jrow))
+            robjects.r("Mdata = cbind(Mdata,Mdj)")
+        for imat in M[1:]:
+            for jrow in imat:
+                robjects.r.assign('Mdj',numpy2ri.numpy2ri(jrow))
+                robjects.r("Mdata = cbind(Mdata,Mdj)")
         robjects.r("""
 n = as.integer((-1+sqrt(1+8*ncol(Mdata)))/2)  ### ncol(Mdata) = n*(n+1)/2
 rowcol = matrix(0,nrow=n,ncol=n)
-rowcol[lower.tri(rowcol,diag=T)]=1:ncol(Mdata)
+rowcol[lower.tri(rowcol,diag=T)] = 1:ncol(Mdata)
 rowcol = rbind(1+1:n,rowcol)
 """)
     if labels is None:
@@ -168,13 +175,23 @@ qpoints = function (x, y, col, ...) {
     points(qq$x,qq$y,...)
 }
 phist = function (x, col, ...) {
-    h = hist(x, plot=FALSE, br=max(10,length(x)/50))
     usr = par("usr")
     ylog = par("ylog")
-    par(ylog=FALSE)
-    par(usr=c(usr[1:2], 0, 1.5*max(h$counts)))
-    rect(h$breaks[-length(h$breaks)], 0, h$breaks[-1], h$counts, col=col, border=NA)
-    par(usr=usr,ylog=ylog)
+    xlog = par("xlog")
+    if (ylog) {
+        par(xlog=FALSE,ylog=FALSE)
+        h = hist(log(x), plot=FALSE, br=max(10,length(x)/50))
+        hbr = (h$breaks-h$breaks[1])/(h$breaks[length(h$breaks)]-h$breaks[1])
+        hbr = usr[1]+(usr[2]-usr[1])*hbr
+        rect(hbr[-length(hbr)], usr[3], hbr[-1], usr[3]+(usr[4]-usr[3])*h$density, 
+             col=col, border=NA)
+    } else {
+        h = hist(x, plot=FALSE, br=max(10,length(x)/50))
+        rect(h$breaks[-length(h$breaks)], usr[3], 
+             h$breaks[-1], usr[3]+(usr[4]-usr[3])*h$density, 
+             col=col, border=NA)
+    }
+    par(usr=usr,ylog=ylog,xlog=xlog)
 }
 
 col = 'red'
