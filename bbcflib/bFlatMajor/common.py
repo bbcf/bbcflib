@@ -29,19 +29,20 @@ def ordered(fn):
             return fn(*args,**kwargs)
         if not (isinstance(tracks,(list,tuple))):
             tracks = [tracks]
-        original_fields = dict(zip(tracks,[t.fields for t in tracks]))
+        original_fields = [t.fields for t in tracks]
 
         returned = fn(*args,**kwargs) # original function call
 
         if not (isinstance(returned,(list,tuple))):
             new_fields = returned.fields
-            original_fields = [f for f in original_fields.popitem()[1] if all([f in t.fields for t in tracks])]
-            original_fields = [f for f in original_fields if f in new_fields]
-            return reorder(returned, original_fields)
+            original_fields = [f for f in original_fields[0] if all([f in t.fields for t in tracks])]
+            return reorder(returned, [f for f in original_fields if f in new_fields])
         else:
-            new_fields = dict(zip(returned,[r.fields for r in returned]))
-            original_fields = [f for f in original_fields if f in new_fields]
-            return [reorder(r, fields=original_fields[r]) for r in returned]
+            new_fields = [r.fields for r in returned]
+            nl = len(original_fields)
+            original_fields = [[f for f in original_fields[min(n,nl)] if f in nf] 
+                               for n,nf in enumerate(new_fields)]
+            return [reorder(r, fields=original_fields[n]) for n,r in enumerate(returned)]
 
     return wrapper
 

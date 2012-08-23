@@ -539,7 +539,7 @@ def bowtie(index, reads, args="-Sra"):
     if isinstance(reads, tuple):
         reads = "-1 "+reads[0]+" -2 "+reads[1]
         options += ["-X","800"]
-    return {"arguments": ["bowtie"] + options + [index, reads, sam_filename],
+    return {"arguments": ["bowtie"]+options+[index, reads, sam_filename],
             "return_value": sam_filename}
 
 

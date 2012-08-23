@@ -5,7 +5,7 @@ Each function takes the following arguments:
 * output: the filename, a random name will be generated if this is None (default None),
 * format: the image format, 'pdf' (default) or 'png',
 * new: boolean indicating if a new figure must be started (default) or if the plot is added to the current figure,
-* last: boolean, if true this is the last plot on this figure, the file will be finalized and close on return.
+* last: boolean, if true this is the last plot on this figure, the file will be finalized and closed on return.
 * **kwargs: additional parameters for *R*, such as 'xlab', 'ylab', 'main, 'mfrow', 'log', 'legend'.
 """
 
@@ -24,7 +24,7 @@ def _begin(output,format,new,**kwargs):
             robjects.r('png("%s",height=800,width=800)' %output)
         else:
             raise ValueError("Format not supported: %s" %format)
-        pars = "lwd=2,cex=1.1,cex.main=1.5,cex.lab=1.3,cex.axis=1.1,mar=c(1,1,1,1),oma=c(3,3,0,3),las=1,pch=20"
+        pars = "lwd=2,cex=1.1,cex.main=1.5,cex.lab=1.3,cex.axis=1.1,mar=c(3,3,1,1),oma=c(3,3,0,3),las=1,pch=20"
         if len(kwargs.get('mfrow',[])) == 2:
             pars += ",mfrow=c(%i,%i)" %tuple(kwargs['mfrow'])
         robjects.r('par(%s)' %pars)
