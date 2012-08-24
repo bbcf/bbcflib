@@ -11,7 +11,7 @@ from bbcflib.bFlatMajor.stream.annotate import getNearestFeature
 from bbcflib.bFlatMajor.stream.intervals import concatenate, neighborhood, segment_features, combine
 from bbcflib.bFlatMajor.stream.intervals import exclude, require, disjunction, intersection, union
 from bbcflib.bFlatMajor.stream.scores import merge_scores, mean_score_by_feature, window_smoothing, filter_scores
-from bbcflib.bFlatMajor.numeric.regions import feature_matrix, average_feature_matrix
+from bbcflib.bFlatMajor.numeric.regions import feature_matrix, summed_feature_matrix
 from bbcflib.bFlatMajor.numeric.signal import _normalize, correlation
 
 # Other modules #
@@ -406,11 +406,12 @@ class Test_Regions(unittest.TestCase):
         feat, res = feature_matrix([scores1,scores2],features, segment=True, nbins=3)
         assert_almost_equal(res, numpy.array([[[0,2],[2,2],[6,2]],
                                               [[6,0],[6,0],[6,0]]]))
-    def test_average_feature_matrix(self):
+    def test_summed_feature_matrix(self):
         features = fstream([(5,15,'gene1'),(30,40,'gene2')], fields=['start','end','name'])
         scores1 = fstream([(10,15,6.),(30,40,6.)], fields=['start','end','score'])
         scores2 = fstream([(5,15,2.)], fields=['start','end','score'])
-        res = average_feature_matrix([scores1,scores2],features, nbins=3)
+        res,n = summed_feature_matrix([scores1,scores2],features, nbins=3)
+        res /= n*1.0
         assert_almost_equal(res, numpy.array([[3.,1.],[4.,1.],[6.,1.]]))
 
 
