@@ -404,11 +404,11 @@ class Assembly(object):
             for chrom in chromosomes:
                 if method == 'dico':
                     sql = "SELECT "+dist+",".join(h['keys'].split(',')+h['values'].split(','))
-                    sql += " FROM " + chrom
+                    sql += " FROM '%s'" %chrom
                 else:
                     h['names'] = ",".join([x for x in h['names'].split(',') if not(x == 'chr_name')])
                     sql = "SELECT "+dist+"MIN(start),MAX(end),"+h['names']
-                    sql += " FROM " + chrom
+                    sql += " FROM '%s'" %chrom
                 if h.get('conditions'):
                     sql += " WHERE "
                     conditions = []

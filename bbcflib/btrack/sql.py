@@ -276,21 +276,22 @@ class SqlTrack(Track):
             fields_list = ','.join([srcfields[n] for n in fields_left])
             pholders = ','.join(['?' for f in fields_left])
             def _sub(x): return [str(x[f]) for f in fields_left]
+            def _sqlc(x,y,z): return "INSERT INTO '%s' (%s) VALUES (%s)" %(x,y,z)
             if chrom is None:
                 if not 'chr' in srcfields:
                     raise Exception("Need a chromosome name in the source fields or in the arguments.")
                 for row in source:
-                    chrom = row[chr_idx]
-                    sql_command = "INSERT INTO '%s' (%s) VALUES (%s)" %(chrom,fields_list,pholders)
+                    sql_command = _sqlc(row[chr_idx],fields_list,pholders)
                     self.cursor.execute(sql_command, _sub(row))
             else:
-                sql_command = "INSERT INTO '%s' (%s) VALUES (%s)" %(chrom,fields_list,pholders)
+                sql_command = _sqlc(chrom,fields_list,pholders)
                 if 'chr' in srcfields:
                     self.cursor.executemany(sql_command,
                                             (_sub(row) for row in source
                                              if str(row[chr_idx])==chrom))
                 else:
-                    self.cursor.executemany(sql_command, (_sub(row) for row in source))
+                    self.cursor.executemany(sql_command,
+                                            (_sub(row) for row in source))
             self.connection.commit()
             if kw.get('clip'): self._clip()
         except (sqlite3.OperationalError, sqlite3.ProgrammingError) as err:
