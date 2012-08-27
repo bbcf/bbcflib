@@ -35,7 +35,7 @@ def ordered(fn):
 
         if not (isinstance(returned,(list,tuple))):
             new_fields = returned.fields
-            original_fields = [f for f in original_fields[0] if all([f in t.fields for t in tracks])]
+            original_fields = [f for f in original_fields[0] if all([f in tf for tf in original_fields[1:]])]
             return reorder(returned, [f for f in original_fields if f in new_fields])
         else:
             new_fields = [r.fields for r in returned]
