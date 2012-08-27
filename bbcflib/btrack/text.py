@@ -46,10 +46,10 @@ class TextTrack(Track):
         self.separator = kwargs.get('separator',"\t")
         Track.__init__(self,path,**kwargs) # super(TextTrack, self).__init__(self,path,**kwargs)
         if kwargs.get('ucsc_to_ensembl',False):
-            if not('outtypes' in kwargs): kwargs['outtypes'] = {}
+            kwargs.setdefault('outtypes', {})
             kwargs['outtypes']['start'] = ucsc_to_ensembl
         if kwargs.get('ensembl_to_ucsc',False):
-            if not('outtypes' in kwargs): kwargs['outtypes'] = {}
+            kwargs.setdefault('outtypes', {})
             kwargs['outtypes']['start'] = ensembl_to_ucsc
         self.intypes = dict((k,v) for k,v in _in_types.iteritems() if k in self.fields)
         if isinstance(kwargs.get('intypes'),dict): self.intypes.update(kwargs["intypes"])
@@ -57,9 +57,13 @@ class TextTrack(Track):
         if isinstance(kwargs.get('outtypes'),dict): self.outtypes.update(kwargs["outtypes"])
 
     def _get_chrmeta(self,chrmeta=None):
+        """
+        :param chrmeta: (str or dict) assembly name, or dict of the type {chr: {'length': 1234}}.
+            If set to `"guess"`, the whole file will be read in order to find the chromosome lengths.
+        """
         _chrmeta = Track._get_chrmeta(self,chrmeta)
         if _chrmeta or not(os.path.exists(self.path)): return _chrmeta
-        if chrmeta is None and 'chr' in self.fields and 'end' in self.fields:
+        if chrmeta == "guess" and 'chr' in self.fields and 'end' in self.fields:
             self.intypes = {'end': int}
             for row in self.read(fields=['chr','end']):
                 if not(row[0] in _chrmeta):

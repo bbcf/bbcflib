@@ -88,12 +88,15 @@ _track_map = {
 
 def track( path, format=None, **kwargs):
     """
-    Guess file format.
-    Return a Track object of the corresponding subclass (e.g. BedTrack).
+    Guess file format and return a Track object of the corresponding subclass (e.g. BedTrack).
 
-    :param path: (str) path to a track-like file.
-    :param format: (str) format of the file.
+    :param path: (str) name of/path to a track-like file. If the file does not exist yet,
+        a new track-like file of the requested *format* will be created at this location
+        on closure, if data is added to the track (using `write()`).
+    :param format: (str) format of the file. If not provided, the format is set according
+        to the file's extension.
     :param **kwargs: (dict) parameters of the Track subclass' constructor.
+        Typically `assembly` or `chrmeta`.
     """
     assert isinstance(path,str), "*path*: Expected string, %s found." % type(path)
     if format is None:

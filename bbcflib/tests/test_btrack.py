@@ -98,7 +98,7 @@ class Test_Formats(unittest.TestCase):
 
     def test_sql(self):
         sql = os.path.join(path,'test.sql')
-        sql_track = convert(self.bed, sql)
+        sql_track = convert(self.bed, sql, chrmeta=self.assembly_id)
         self.assertIsInstance(sql_track, SqlTrack)
         os.remove(sql)
 
@@ -149,7 +149,7 @@ class Test_SQL(unittest.TestCase):
 
     def test_reset(self):
         sql = os.path.join(path,'test.sql')
-        t = convert(self.bed, sql)
+        t = convert(self.bed, sql, chrmeta=self.assembly_id)
         content = t.read(cursor=True)
         line1 = content.data.next()
         line2 = content.data.next()

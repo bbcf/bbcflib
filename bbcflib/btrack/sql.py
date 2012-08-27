@@ -1,4 +1,4 @@
-from bbcflib.btrack import *
+from bbcflib.btrack import Track, FeatureStream
 import sqlite3, warnings
 
 _sql_types = {'start':        'integer',
@@ -158,7 +158,7 @@ class SqlTrack(Track):
                          dict((c.encode('ascii'),x[n+1]) for n,c in enumerate(columns)))
                         for x in query)
         except (sqlite3.OperationalError, sqlite3.ProgrammingError) as err:
-            raise Exception("Sql error: %s\n on file %s, with\n%s"%(err,self.path,sql_command))
+            raise Exception("Sql error: %s\n on file %s, with\n%s" % (err,self.path,sql_command))
 
 ################################ Read ##########################################
     def _make_selection(self,selection):
@@ -170,7 +170,7 @@ class SqlTrack(Track):
                 query.append(str(k)+" <= "+str(v[1]))
             else:
                 if isinstance(v,basestring):
-                    str_val = "'%s'" %v
+                    str_val = "'%s'" % v
                 else:
                     str_val = str(v)
                 query.append(str(k)+" = "+str_val)
