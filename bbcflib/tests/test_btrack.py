@@ -46,14 +46,6 @@ class Test_Track(unittest.TestCase):
         content = t.read()
         self.assertIsInstance(content, FeatureStream)
 
-    def test_reset(self):
-        t = track(self.bed)
-        content = t.read()
-        line1 = content.next()
-        line2 = content.next()
-        content.reset()
-        self.assertEqual(line1,content.next())
-
 
 class Test_Formats(unittest.TestCase):
     """Converting from bed to every other available format, using btrack.convert."""
@@ -82,7 +74,7 @@ class Test_Formats(unittest.TestCase):
         self.assertIsInstance(wig_track, WigTrack)
         os.remove(wig)
 
-    @unittest.skip('Works but creates temp files when testing (?)')
+    @unittest.skip('Works but creates temp files when testing (tempfile)')
     def test_bigwig(self):
         try:
             bw = os.path.join(path,'test.bw')
@@ -116,19 +108,78 @@ class Test_Formats(unittest.TestCase):
         self.assertIsInstance(sga_track, SgaTrack)
         os.remove(sga)
 
+
+class Test_Text(unittest.TestCase):
+    def setUp(self):
+        self.assembly_id = 'sacCer2'
+        self.bed = os.path.join(path,"yeast_genes.bed")
+
+    def test_reset(self):
+        t = track(self.bed)
+        content = t.read()
+        line1 = content.next()
+        line2 = content.next()
+        content.reset()
+        self.assertEqual(line1,content.next())
+
+
+class Test_BigWig(unittest.TestCase):
+    def setUp(self):
+        self.assembly_id = 'sacCer2'
+        self.bed = os.path.join(path,"yeast_genes.bed")
+
+    @unittest.skip('Works but creates temp files when testing (tempfile)')
+    def test_reset(self):
+        try:
+            bw = os.path.join(path,'test.bw')
+            t = convert(self.bed, bw)
+            content = t.read()
+            line1 = content.next()
+            line2 = content.next()
+            content.reset()
+            self.assertEqual(line1,content.next())
+            os.remove(bw)
+        except OSError: pass
+
+
+class Test_SQL(unittest.TestCase):
+    def setUp(self):
+        self.assembly_id = 'sacCer2'
+        self.bed = os.path.join(path,"yeast_genes.bed")
+
+    def test_reset(self):
+        sql = os.path.join(path,'test.sql')
+        t = convert(self.bed, sql)
+        content = t.read(cursor=True)
+        line1 = content.data.next()
+        line2 = content.data.next()
+        content.reset()
+        self.assertEqual(line1,content.next())
+        os.remove(sql)
+
+
 class Test_Bam(unittest.TestCase):
     def setUp(self):
-        pass
+        self.assembly_id = 'sacCer2'
+        self.bam = os.path.join(path,'yeast3_chrV_150k-175k.bam')
 
     def test_coverage(self):
-        t = track(os.path.join(path,'yeast3_chrV_150k-175k.bam'))
+        t = track(self.bam)
         res = t.coverage(region=('chrV',160000,160002))
         expected = [('chrV',160000,160001,3),('chrV',160001,160002,3)]
         self.assertListEqual(list(res),expected)
 
     def test_count(self):
-        t = track(os.path.join(path,'yeast3_chrV_150k-175k.bam'))
+        t = track(self.bam)
         res = t.count(regions=[('chrV',150000,175000)])
         expected = [('chrV',150000,175000,2514)]
         self.assertListEqual(list(res),expected)
+
+    def test_reset(self):
+        t = track(self.bam)
+        content = t.read()
+        line1 = content.next()
+        line2 = content.next()
+        content.reset()
+        self.assertEqual(line1,content.next())
 

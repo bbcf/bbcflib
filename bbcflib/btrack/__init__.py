@@ -339,7 +339,9 @@ class FeatureStream(object):
         if self.basetrack:
             try:
                 if isinstance(self.basetrack[0],Track):
-                    self.data = self.basetrack[0].read(*self.basetrack[1:-1], **self.basetrack[-1])
+                    args = self.basetrack[1:-1]
+                    kwargs = self.basetrack[-1]
+                    self.data = self.basetrack[0].read(*args, **kwargs)
                 elif isinstance(self.basetrack,(list,tuple)):
                     self.data = iter(self.basetrack)
             except:

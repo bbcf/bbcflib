@@ -93,8 +93,8 @@ class BigWigTrack(BinTrack):
         if reg[1]: options += ["-start="+reg[1]]
         if reg[2]: options += ["-end="+reg[2]]
         self._run_tool('bigWigToBedGraph', options+[self.path, self.bedgraph])
-        return track(self.bedgraph,format='bedGraph',
-                     chrmeta=self.chrmeta,info=self.info).read(fields=fields,**kw)
+        t = track(self.bedgraph,format='bedGraph',chrmeta=self.chrmeta,info=self.info)
+        return t.read(selection=selection,fields=fields,**kw)
 
     def write(self, source, **kw):
         if self.chrfile is None:
@@ -170,7 +170,7 @@ try:
                                read.flag, read.qual, read.tags]
                         yield tuple([row[n] for n in srcl])
                 self.close()
-            return FeatureStream(_bamrecord(self.filehandle,srcl),fields)
+            return FeatureStream(_bamrecord(self.filehandle,srcl),fields, basetrack=(self,selection,fields,kw))
 
         def write(self, source, fields, **kw):
             raise NotImplementedError("Writing to bam is not implemented.")

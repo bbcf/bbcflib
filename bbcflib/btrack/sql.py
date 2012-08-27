@@ -1,5 +1,5 @@
 from bbcflib.btrack import *
-import sqlite3
+import sqlite3, warnings
 
 _sql_types = {'start':        'integer',
               'end':          'integer',
@@ -183,20 +183,24 @@ class SqlTrack(Track):
             start_idx = selection.fields.index('start')
             end_idx = selection.fields.index('end')
         for sel in selection:
-            where = None
             chrom = sel[chr_idx]
             if add_chr: qfields = "'"+chrom+"' as chr,"+fields
             else: qfields = fields
-            sql_command = "SELECT %s FROM '%s'"%(qfields, chrom)
+            sql_command = "SELECT %s FROM '%s'" % (qfields, chrom)
             if isinstance(selection,FeatureStream):
-                sql_command += " WHERE end>%s AND start<%s"%(sel[start_idx],sel[end_idx])
+                sql_command += " WHERE end>%s AND start<%s" % (sel[start_idx],sel[end_idx])
             elif sel[1]:
-                sql_command += " WHERE %s"%self._make_selection(sel[1])
-            sql_command += " ORDER BY %s"%order
+                sql_command += " WHERE %s" % self._make_selection(sel[1])
+            sql_command += " ORDER BY %s" % order
             try:
-                cursor.execute(sql_command)
+                try:
+                    cursor.execute(sql_command)
+                except sqlite3.ProgrammingError:
+                    warnings.warn("Cannot operate on a closed cursor. Cursor has been reinitialized.")
+                    cursor = self.connection.cursor()
+                    cursor.execute(sql_command)
             except sqlite3.OperationalError as err:
-                raise Exception("Sql error: %s\n on file %s, with\n%s"%(err,self.path,sql_command))
+                raise Exception("Sql error: %s\n on file %s, with\n%s" % (err,self.path,sql_command))
             for x in cursor: yield x
 
 
@@ -206,7 +210,11 @@ class SqlTrack(Track):
             `[{'chr':'chr1','start':(12,24)},{'chr':'chr3','end':(25,45)},...]`,
             where tuples represent ranges, or a FeatureStream.
         :param fields: (list of str) list of field names (columns) to read.
+        :param order: (str, comma-separated) fields with respect to which the result must
+            be sorted. ['start,end']
+        :param cursor: (bool) whether or not to reinitialize the cursor. [False]
         """
+        _select = selection
         if selection is None:
             selection = sorted(self.chrmeta.keys())
         if isinstance(selection, (basestring,dict)):
@@ -224,7 +232,7 @@ class SqlTrack(Track):
                         sel2.extend([(chrom,x) for chrom in sorted(self.chrmeta.keys())])
             selection = sel2
         elif not(selection is None or isinstance(selection,FeatureStream)):
-            raise TypeError("Bad selection %s."%selection)
+            raise TypeError("Unexpected selection type: %s." % type(selection))
         if fields:
             add_chr = 'chr' in fields
             _fields = [f for f in fields if f in self.fields and f != 'chr']
@@ -239,7 +247,7 @@ class SqlTrack(Track):
         else:
             cur = self.cursor
         return FeatureStream(self._read(cur,query_fields,selection,order,add_chr), _fields,
-                             basetrack=(self,selection,order,cursor,kw))
+                             basetrack=(self,_select,fields,order,True,kw))
 
 ################################ Write ##########################################
     def _clip(self):
