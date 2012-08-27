@@ -134,10 +134,10 @@ class TextTrack(Track):
                     self.path.startswith("ftp://"):
                 self.filehandle = urllib2.urlropen(self.path)
             else:
-                raise ValueError("Couldn't find the file %s."%self.path)
+                raise ValueError("Could not find file %s."%self.path)
         elif mode in ['write','overwrite','append']:
             if mode == 'write' and os.path.exists(self.path):
-                raise ValueError("File %s exists, use 'overwrite' or 'append' modes."%self.path)
+                raise ValueError("File %s already exists, use 'overwrite' or 'append' modes."%self.path)
             else:
                 if isgzip:
                     if mode == 'append':
@@ -202,7 +202,7 @@ class TextTrack(Track):
                              'start': (-1,feat[end_idx]),
                              'end': (feat[start_idx],sys.maxint)})
             selection = sel2
-        return FeatureStream(self._read(fields,ilist,selection),fields)
+        return FeatureStream(self._read(fields,ilist,selection),fields, basetrack=(self,selection,fields,kw))
 
     def _format_fields(self,vec,row,source_list,target_list):
         for i,j in enumerate(target_list):
@@ -542,7 +542,7 @@ class GffTrack(TextTrack):
             break
         self.close()
         if rowlen > 9 or rowlen < 8:
-            raise Error("Gff should have 8 or 9 fields.")
+            raise ValueError("Gff should have 8 or 9 fields.")
         if rowlen == 8:
             self.intypes.pop('attributes')
             self.outtypes.pop('attributes')

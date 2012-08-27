@@ -238,8 +238,8 @@ class SqlTrack(Track):
             cur = self.connection.cursor()
         else:
             cur = self.cursor
-        return FeatureStream(self._read(cur,query_fields,selection,order,add_chr),
-                             _fields)
+        return FeatureStream(self._read(cur,query_fields,selection,order,add_chr), _fields,
+                             basetrack=(self,selection,order,cursor,kw))
 
 ################################ Write ##########################################
     def _clip(self):

@@ -46,6 +46,14 @@ class Test_Track(unittest.TestCase):
         content = t.read()
         self.assertIsInstance(content, FeatureStream)
 
+    def test_reset(self):
+        t = track(self.bed)
+        content = t.read()
+        line1 = content.next()
+        line2 = content.next()
+        content.reset()
+        self.assertEqual(line1,content.next())
+
 
 class Test_Formats(unittest.TestCase):
     """Converting from bed to every other available format, using btrack.convert."""
@@ -53,7 +61,7 @@ class Test_Formats(unittest.TestCase):
         self.assembly_id = 'sacCer2'
         self.bed = os.path.join(path,"yeast_genes.bed")
 
-    def test_bed(self):
+    def test_bed(self): # as general TextTrack
         no_extension = self.bed.split('.bed')[0] # guess extension from header
         shutil.copy(self.bed, no_extension)
         t = track(no_extension, format='bed')
@@ -74,6 +82,7 @@ class Test_Formats(unittest.TestCase):
         self.assertIsInstance(wig_track, WigTrack)
         os.remove(wig)
 
+    @unittest.skip('Works but creates temp files when testing (?)')
     def test_bigwig(self):
         try:
             bw = os.path.join(path,'test.bw')

@@ -317,20 +317,33 @@ class FeatureStream(object):
 
     """
 
-    def __init__(self, data, fields=None):
+    def __init__(self, data, fields=None, basetrack=None):
         if isinstance(data,(list,tuple)):
+            basetrack = data
             data = iter(data)
-        self.data = data
         if not fields:
             if hasattr(data, 'description'):
                 fields = [x[0] for x in data.description]
             else: raise ValueError("Must specify a 'fields' attribute for %s." % self.__str__())
+        self.data = data
         self.fields = fields
+        self.basetrack = basetrack # (Track,selection,fields,..., kw) if read from track
 
     def __iter__(self):
         return self.data
 
     def next(self):
         return self.data.next()
+
+    def reset(self):
+        if self.basetrack:
+            try:
+                if isinstance(self.basetrack[0],Track):
+                    self.data = self.basetrack[0].read(*self.basetrack[1:-1], **self.basetrack[-1])
+                elif isinstance(self.basetrack,(list,tuple)):
+                    self.data = iter(self.basetrack)
+            except:
+                print "Warning: Only Track- or list-based streams can be reset."
+
 
 ################################################################################
