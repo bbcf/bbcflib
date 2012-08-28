@@ -357,12 +357,10 @@ def estimate_size_factors(counts):
                    column a different sample.
     """
     numpy.seterr(divide='ignore')
-    counts = numpy.array(counts)
-    geo_means = numpy.exp(numpy.mean(numpy.log(counts), axis=0))
-    mean = counts/geo_means
-    size_factors = numpy.median(mean[:,geo_means>0], axis=1)
-    res = counts.T/size_factors
-    res = res.T
+    counts = numpy.asarray(counts)
+    loggeomeans = numpy.mean(numpy.log(counts), 1)
+    size_factors = numpy.exp(numpy.median(numpy.log(counts).T - loggeomeans, 1))
+    res = counts / size_factors
     print "Size factors:",size_factors
     return res, size_factors
 
@@ -575,9 +573,12 @@ def clean_deseq_output(filename):
     filename_clean = unique_filename_in()
     with open(filename,"rb") as f:
         with open(filename_clean,"wb") as g:
-            contrast = f.readline()
-            header = f.readline()
-            g.write(contrast+header)
+            contrast = f.readline().split('-')
+            header = f.readline().split('\t')
+            header[2] = 'baseMean'+contrast[0].strip()
+            header[3] = 'baseMean'+contrast[1].strip()
+            g.write('-'.join(contrast))
+            g.write('\t'.join(header))
             for line in f:
                 line = line.split("\t")[1:]
                 if not (line[2]=="0" and line[3]=="0"):
