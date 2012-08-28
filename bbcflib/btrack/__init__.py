@@ -64,7 +64,7 @@ Do something with the scores of a signal track only if the location is present i
 
 __all__ = ['Track','track','FeatureStream','convert',
            'strand_to_int','int_to_strand','format_float','format_int',
-           'ucsc_to_ensembl','ensembl_to_ucsc',]
+           'ucsc_to_ensembl','ensembl_to_ucsc']
 
 import sys, os, re
 

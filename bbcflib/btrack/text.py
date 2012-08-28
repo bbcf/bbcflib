@@ -1,5 +1,4 @@
-from bbcflib.btrack import strand_to_int,format_int,format_float,int_to_strand,ensembl_to_ucsc,ucsc_to_ensembl
-from bbcflib.btrack import Track, FeatureStream
+from bbcflib.btrack import *
 import re, urllib2, gzip, os, sys
 
 _in_types = {'start':        int,

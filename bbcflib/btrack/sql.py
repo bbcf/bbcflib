@@ -1,4 +1,4 @@
-from bbcflib.btrack import Track, FeatureStream
+from bbcflib.btrack import *
 import sqlite3, warnings
 
 _sql_types = {'start':        'integer',
