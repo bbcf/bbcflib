@@ -348,7 +348,9 @@ class FeatureStream(object):
                 elif isinstance(self.basetrack,(list,tuple)):
                     self.data = iter(self.basetrack)
             except:
-                print "Warning: Only Track- or list-based streams can be reset."
+                raise ValueError("Warning: Only Track- or list-based streams can be reset.")
+        else:
+            raise ValueError("Cannot be reset: self.basetrack is None (origin is missing).")
 
 
 ################################################################################

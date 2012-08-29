@@ -5,7 +5,7 @@ import math
 from bbcflib import btrack, genrep
 from bbcflib.btrack import FeatureStream as fstream
 from bbcflib.bFlatMajor.common import sentinelize, copy, select, reorder, unroll, sorted_stream
-from bbcflib.bFlatMajor.common import shuffled, fusion, cobble, ordered, apply, duplicate
+from bbcflib.bFlatMajor.common import shuffled, fusion, cobble, ordered, keep_track, apply, duplicate
 from bbcflib.bFlatMajor.common import concat_fields, split_field, map_chromosomes, score_threshold
 from bbcflib.bFlatMajor.stream.annotate import getNearestFeature
 from bbcflib.bFlatMajor.stream.intervals import concatenate, neighborhood, segment_features, combine
@@ -54,6 +54,24 @@ class Test_Common(unittest.TestCase):
         stream = fstream([('A','B'),('C','D')], fields=['1','2'])
         res = list(_test(stream))
         self.assertListEqual(res,[('A','B'),('C','D')])
+
+    def test_keep_track(self):
+        def _generate(s):
+            for x in s: yield x
+        @keep_track
+        def _test(stream):
+            return fstream(_generate(stream),fields=stream.fields)
+        @keep_track
+        def _multitest(streams):
+            return [fstream(_generate(s), fields=s.fields) for s in streams]
+        s1 = fstream([('A','B'),('C','D')], fields=['1','2'])
+        s2 = fstream([('A','B'),('C','D')], fields=['1','2'])
+        s1.basetrack = "origin"; s2.basetrack
+        res = _test(s1)
+        self.assertEqual(res.basetrack,s1.basetrack)
+        res = _multitest([s1,s2])
+        self.assertEqual(res[0].basetrack,s1.basetrack)
+        self.assertEqual(res[1].basetrack,s2.basetrack)
 
     def test_apply(self):
         stream = fstream([(10,12,0.5), (14,15,1.2)], fields=['start','end','score'])

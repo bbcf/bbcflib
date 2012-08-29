@@ -46,7 +46,38 @@ def ordered(fn):
 
     return wrapper
 
+def keep_track(fn):
+    """
+    Decorator. Keeps the information about the origin of the stream in order to recreate it
+    (reset) if it was made from a track or list.
+    """
+    def wrapper(*args,**kwargs):
+        tracks = None
+        if len(args) > 0:
+            tracks = args[0]
+        elif len(kwargs) > 0:
+            from bbcflib.bFlatMajor import stream
+            tracks = kwargs.get(stream.stream().loadable(fn.__name__)[0])
+        if tracks is None:
+            return fn(*args,**kwargs)
+        if not (isinstance(tracks,(list,tuple))):
+            tracks = [tracks]
+        basetracks = [t.basetrack for t in tracks]
+
+        returned = fn(*args,**kwargs) # original function call
+
+        if not (isinstance(returned,(list,tuple))):
+            returned.basetrack = basetracks[0]
+            return returned
+        else:
+            for k,r in enumerate(returned):
+                r.basetrack = basetracks[k]
+            return returned
+
+    return wrapper
+
 ####################################################################
+@keep_track
 def select(stream, fields):
     """
     Keeps only specified *fields* from a stream.
@@ -65,6 +96,7 @@ def select(stream, fields):
     return FeatureStream(_select(stream,idxs), fields=fields)
 
 ####################################################################
+@keep_track
 def apply(stream,fields,functions):
     """
     Applies transformations to the respective fields.
@@ -88,6 +120,7 @@ def apply(stream,fields,functions):
     return FeatureStream(_apply(stream,fields,functions),fields=stream.fields)
 
 ####################################################################
+@keep_track
 def duplicate(stream,infield,outfields):
     """
     Duplicate one of *stream*'s fields. If outfields has more than one element,
@@ -109,6 +142,7 @@ def duplicate(stream,infield,outfields):
     return FeatureStream(_duplicate(stream,infield,outfields), fields=stream.fields+outfields)
 
 ####################################################################
+@keep_track
 def reorder(stream,fields):
     """Reorders *stream.fields* so that *fields* come first.
 
@@ -127,6 +161,7 @@ def reorder(stream,fields):
     return FeatureStream((tuple(x[n] for n in _inds) for x in stream), fields=_flds)
 
 ####################################################################
+@keep_track
 def concat_fields( stream, infields, outfield='name', separator='|', as_tuple=False ):
     """
     Concatenate fields of a stream. Ex.:
@@ -162,6 +197,7 @@ def concat_fields( stream, infields, outfield='name', separator='|', as_tuple=Fa
     return FeatureStream(_concat(stream),_infields)
 
 ####################################################################
+@keep_track
 def split_field( stream, outfields, infield='name', separator=';',
                  header_split=None, strip_input=False ):
     """
@@ -211,6 +247,7 @@ def split_field( stream, outfields, infield='name', separator=';',
     return FeatureStream(_split(stream),_outfields)
 
 ####################################################################
+@keep_track
 def map_chromosomes( stream, chromosomes, keep=False ):
     """
     Translate the chromosome identifiers in *stream* into chromosome names of the type 'chr5'.
@@ -239,6 +276,7 @@ def map_chromosomes( stream, chromosomes, keep=False ):
                               for x in stream if x[ic] in chrom_map),stream.fields)
 
 ####################################################################
+@keep_track
 def score_threshold( stream, threshold=0.0, lower=False, fields='score' ):
     """
     Filter the features of a track which score is above or below a certain threshold.
@@ -264,6 +302,7 @@ def score_threshold( stream, threshold=0.0, lower=False, fields='score' ):
         return FeatureStream(_threshold(stream,threshold,lower,fields), fields=stream.fields)
 
 ####################################################################
+@keep_track
 def unroll( stream, regions, fields=['score'] ):
     """Creates a stream of *end*-*start* items with appropriate *fields* values at every base position.
     For example, ``unroll([(10,12,0.5,'a'), (14,15,1.2,'b')], start=9, end=16)`` returns::
@@ -320,6 +359,7 @@ def unroll( stream, regions, fields=['score'] ):
     return FeatureStream(_unr(s),fields=s.fields[nf:])
 
 ####################################################################
+@keep_track
 def sorted_stream(stream,chrnames=[],fields=['chr','start','end'],reverse=False):
     """Sorts a stream according to *fields* values. Will load the entire stream in memory.
     The order of names in *chrnames* is used to sort the 'chr' field if available.
@@ -344,6 +384,7 @@ def sorted_stream(stream,chrnames=[],fields=['chr','start','end'],reverse=False)
     return FeatureStream((feature_list[t[-1]] for t in sort_list), stream.fields)
 
 ####################################################################
+@keep_track
 @ordered
 def shuffled(stream, chrlen=sys.maxint, repeat_number=1, sorted=True):
     """Return a stream of randomly located features of the same length and annotation
@@ -395,6 +436,7 @@ def generic_merge(x):
 
 aggreg_functions = {'strand': strand_merge, 'chr': no_merge}
 
+@keep_track
 @ordered
 def fusion(stream,aggregate=aggreg_functions):
     """Fuses overlapping features in *stream* and applies *aggregate[f]* function to each field $f$.
@@ -432,6 +474,7 @@ def fusion(stream,aggregate=aggreg_functions):
     stream = reorder(stream,['start','end'])
     return FeatureStream( _fuse(stream), fields=stream.fields)
 
+@keep_track
 @ordered
 def cobble(stream,aggregate=aggreg_functions):
     """Fragments overlapping features in *stream* and applies `aggregate[f]` function
@@ -524,5 +567,6 @@ def cobble(stream,aggregate=aggreg_functions):
 
     stream = reorder(stream,['start','end'])
     return FeatureStream( _fuse(stream), fields=stream.fields)
+
 
 ####################################################################

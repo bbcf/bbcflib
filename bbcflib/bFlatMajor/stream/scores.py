@@ -5,6 +5,7 @@ from bbcflib.bFlatMajor import common
 from bbcflib.bFlatMajor.stream import concatenate
 from bbcflib import btrack as track
 
+@common.keep_track
 @common.ordered
 def merge_scores(trackList, method='arithmetic'):
     """
@@ -66,6 +67,7 @@ def merge_scores(trackList, method='arithmetic'):
     return track.FeatureStream(_stream(tracks),fields)
 
 ###############################################################################
+@common.keep_track
 def filter_scores(trackScores,trackFeatures):
     """
     Extract from *trackScores* only the regions present in *trackFeatures*.
@@ -109,6 +111,7 @@ def filter_scores(trackScores,trackFeatures):
     return track.FeatureStream(_stream(_ts,trackFeatures), _ts.fields)
 
 ###############################################################################
+@common.keep_track
 def mean_score_by_feature(trackScores,trackFeatures,normalize=True):
     """
     Computes the average of scores from each stream in *trackScores*
@@ -171,6 +174,7 @@ def mean_score_by_feature(trackScores,trackFeatures,normalize=True):
     return track.FeatureStream(_stream(_ts,trackFeatures), trackFeatures.fields+_fields)
 
 ###############################################################################
+@common.keep_track
 def window_smoothing( trackList, window_size, step_size=1, stop_val=sys.maxint,
                       featurewise=False ):
     """
