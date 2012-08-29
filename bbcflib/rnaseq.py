@@ -28,7 +28,7 @@ from bein import program
 
 # Other modules #
 import numpy
-from numpy import zeros, asarray
+from numpy import zeros, asarray, nonzero
 
 numpy.set_printoptions(precision=3,suppress=True)
 numpy.seterr(divide='ignore')
@@ -358,8 +358,9 @@ def estimate_size_factors(counts):
     """
     numpy.seterr(divide='ignore')
     counts = numpy.asarray(counts)
-    loggeomeans = numpy.mean(numpy.log(counts), 1)
-    size_factors = numpy.exp(numpy.median(numpy.log(counts).T - loggeomeans, 1))
+    cnts = counts[nonzero(counts[:,0]*counts[:,1])] # none of the counts is zero
+    loggeomeans = numpy.mean(numpy.log(cnts), 1)
+    size_factors = numpy.exp(numpy.median(numpy.log(cnts).T - loggeomeans, 1))
     res = counts / size_factors
     print "Size factors:",size_factors
     return res, size_factors
