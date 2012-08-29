@@ -24,7 +24,7 @@ def score_array(trackList,fields=['score']):
 def _normalize(x):
     """Substracts the average and divides by the standard deviation."""
     x = asarray(x)
-    if any(abs(x-x[0])>1e-6): 
+    if any(abs(x-x[0])>1e-6):
         mu = mean(x)
         isigma = 1.0/sqrt((x*x).mean()-mu*mu)
         return (x-mu)*isigma
@@ -62,6 +62,7 @@ def correlation(trackList, regions, limits=(-1000,1000), with_acf=False):
 
     :param trackList: list of FeatureStream objects
     :param regions: a tuple (start,end) or a FeatureStream with the bounds of the regions to consider (see `unroll`).
+        In the latter case, all regions will be concatenated.
     :param limits: (tuple (int,int)) maximum lag to consider. [-1000,1000]
     :param with_acf: (bool) include auto-correlations. [False]
     :rtype: list of floats, or list of lists of floats.

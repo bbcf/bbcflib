@@ -40,7 +40,7 @@ def ordered(fn):
         else:
             new_fields = [r.fields for r in returned]
             nl = len(original_fields)
-            original_fields = [[f for f in original_fields[min(n,nl)] if f in nf] 
+            original_fields = [[f for f in original_fields[min(n,nl)] if f in nf]
                                for n,nf in enumerate(new_fields)]
             return [reorder(r, fields=original_fields[n]) for n,r in enumerate(returned)]
 
@@ -272,7 +272,8 @@ def unroll( stream, regions, fields=['score'] ):
                         9     10     11    12   13    14    15
 
     :param stream: FeatureStream object.
-    :param regions: either a pair (start,end) or an ordered list of such pairs or a FeatureStream interpreted as bounds of the region(s) to return.
+    :param regions: either a pair (start,end) or an ordered list of such pairs or a FeatureStream
+        interpreted as bounds of the region(s) to return.
     :param fields: list of field names **in addition to 'start','end'**. [['score']]
     :rtype: FeatureStream
     """
@@ -282,12 +283,13 @@ def unroll( stream, regions, fields=['score'] ):
         if not isinstance(regions[0],(list,tuple)): regions = [regions]
         if len(regions[0]) > 2: with_chrom = True
         regions = iter(regions)
-    else:
+    elif isinstance(regions,FeatureStream):
         _f = ['start','end']
         if 'chr' in regions.fields:
             _f = ['chr']+_f
             with_chrom = True
         regions = reorder(regions,_f)
+    else: raise ValueError("regions: Expected tuple or FeatureStream, got %s." % type(regions))
     if with_chrom:
         s = reorder(stream,['start','end','chr']+fields)
         nf = 3
