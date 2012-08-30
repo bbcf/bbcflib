@@ -193,15 +193,10 @@ class SqlTrack(Track):
                 sql_command += " WHERE %s" % self._make_selection(sel[1])
             sql_command += " ORDER BY %s" % order
             try:
-                #try:
-                    cursor.execute(sql_command)
-                #except sqlite3.ProgrammingError:
-                #    warnings.warn("Cannot operate on a closed cursor. Cursor has been reinitialized.")
-                #    cursor = self.connection.cursor()
-                #    cursor.execute(sql_command)
+                cursor.execute(sql_command)
+                for x in cursor: yield x
             except sqlite3.OperationalError as err:
                 raise Exception("Sql error: %s\n on file %s, with\n%s" % (err,self.path,sql_command))
-            for x in cursor: yield x
 
 
     def read(self, selection=None, fields=None, order='start,end', cursor=False, **kw):
@@ -246,7 +241,8 @@ class SqlTrack(Track):
             cur = self.connection.cursor()
         else:
             cur = self.cursor
-        return FeatureStream(self._read(cur,query_fields,selection,order,add_chr), _fields)
+        return FeatureStream(self._read(cur,query_fields,selection,order,add_chr), _fields,
+                             basetrack=(self,_select,fields,order,True,kw))
 
 ################################ Write ##########################################
     def _clip(self):

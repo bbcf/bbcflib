@@ -102,32 +102,33 @@ def neighborhood(trackList, before_start=None, after_end=None,
     :rtype: FeatureStream
     """
     def _generate_single(track,a,b,c,d):
-        if a:
-            for x in track:
+        _buf = []
+        for x in track:
+            if a:
                 if on_strand and x[2]<0:
-                    yield (x[0]-after_end,     x[0]+before_end+1) + x[2:]
-                    yield (x[1]-after_start-1, x[1]+before_start) + x[2:]
+                    _buf.append((x[0]-after_end,     x[0]+before_end+1) + x[2:])
+                    _buf.append((x[1]-after_start-1, x[1]+before_start) + x[2:])
                 else:
-                    yield (x[0]-before_start, x[0]+after_start+1) + x[2:]
-                    yield (x[1]-before_end-1, x[1]+after_end)     + x[2:]
-        elif b:
-            for x in track:
+                    _buf.append((x[0]-before_start, x[0]+after_start+1) + x[2:])
+                    _buf.append((x[1]-before_end-1, x[1]+after_end)     + x[2:])
+            elif b:
                 if on_strand and x[2]<0:
-                    yield (x[1]-after_start-1, x[1]+before_start)  + x[2:]
+                    _buf.append((x[1]-after_start-1, x[1]+before_start)  + x[2:])
                 else:
-                    yield (x[0]-before_start,  x[0]+after_start+1) + x[2:]
-        elif c:
-            for x in track:
+                    _buf.append((x[0]-before_start,  x[0]+after_start+1) + x[2:])
+            elif c:
                 if on_strand and x[2]<0:
-                    yield (x[0]-after_end,    x[0]+before_end+1) + x[2:]
+                    _buf.append((x[0]-after_end,    x[0]+before_end+1) + x[2:])
                 else:
-                    yield (x[1]-before_end-1, x[1]+after_end)    + x[2:]
-        elif d:
-            for x in track:
+                    _buf.append((x[1]-before_end-1, x[1]+after_end)    + x[2:])
+            elif d:
                 if on_strand and x[2]<0:
-                    yield (x[0]-after_end,    x[1]+before_start) + x[2:]
+                    _buf.append((x[0]-after_end,    x[1]+before_start) + x[2:])
                 else:
-                    yield (x[0]-before_start, x[1]+after_end)    + x[2:]
+                    _buf.append((x[0]-before_start, x[1]+after_end)    + x[2:])
+            _buf.sort()
+            while _buf[0][1] < x[0]: yield _buf.pop(0)
+        while _buf: yield _buf.pop(0)
 
     _fields = ['start','end']
     if on_strand: _fields += ['strand']
