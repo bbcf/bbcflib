@@ -114,49 +114,17 @@ class Test_Text(unittest.TestCase):
         self.assembly_id = 'sacCer2'
         self.bed = os.path.join(path,"yeast_genes.bed")
 
-    def test_reset(self):
-        t = track(self.bed)
-        content = t.read()
-        line1 = content.next()
-        line2 = content.next()
-        content.reset()
-        self.assertEqual(line1,content.next())
-
 
 class Test_BigWig(unittest.TestCase):
     def setUp(self):
         self.assembly_id = 'sacCer2'
         self.bed = os.path.join(path,"yeast_genes.bed")
 
-    @unittest.skip('Works but creates temp files when testing (tempfile)')
-    def test_reset(self):
-        try:
-            bw = os.path.join(path,'test.bw')
-            t = convert(self.bed, bw)
-            content = t.read()
-            line1 = content.next()
-            line2 = content.next()
-            content.reset()
-            self.assertEqual(line1,content.next())
-            os.remove(bw)
-        except OSError: pass
-
 
 class Test_SQL(unittest.TestCase):
     def setUp(self):
         self.assembly_id = 'sacCer2'
         self.bed = os.path.join(path,"yeast_genes.bed")
-
-    def test_reset(self):
-        sql = os.path.join(path,'test.sql')
-        t = convert(self.bed, sql, chrmeta=self.assembly_id)
-        content = t.read(cursor=True)
-        line1 = content.data.next()
-        line2 = content.data.next()
-        content.reset()
-        self.assertEqual(line1,content.next())
-        os.remove(sql)
-
 
 class Test_Bam(unittest.TestCase):
     def setUp(self):
@@ -174,12 +142,4 @@ class Test_Bam(unittest.TestCase):
         res = t.count(regions=[('chrV',150000,175000)])
         expected = [('chrV',150000,175000,2514)]
         self.assertListEqual(list(res),expected)
-
-    def test_reset(self):
-        t = track(self.bam)
-        content = t.read()
-        line1 = content.next()
-        line2 = content.next()
-        content.reset()
-        self.assertEqual(line1,content.next())
 
