@@ -4,7 +4,6 @@ from bbcflib import btrack as track
 
 # "tracks" and "streams" refer to FeatureStream objects all over here.
 
-@common.keep_track
 def concatenate(trackList, fields=None, remove_duplicates=False):
     """
     Returns one stream containing all features from a list of tracks, ordered by *fields*.
@@ -61,7 +60,6 @@ def concatenate(trackList, fields=None, remove_duplicates=False):
     return track.FeatureStream(_weave(tl,len(_of)),fields=_of)
 
 ###############################################################################
-@common.keep_track
 @common.ordered
 def neighborhood(trackList, before_start=None, after_end=None,
                  after_start=None, before_end=None, on_strand=False):
@@ -212,7 +210,6 @@ def _combine(trackList,fn,win_size,aggregate):
             start = next
         k+=1
 
-@common.keep_track
 def combine(trackList, fn, win_size=1000,
             aggregate={'strand':common.strand_merge, 'chr':common.no_merge}):
     """
@@ -257,7 +254,6 @@ def union(x):
     return any(x)
 
 ###############################################################################
-@common.keep_track
 def segment_features(trackList,nbins=10,upstream=None,downstream=None):
     """
     Split every feature of a track into *nbins* equal segments, and optionally

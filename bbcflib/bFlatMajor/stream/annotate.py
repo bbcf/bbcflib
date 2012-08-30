@@ -2,7 +2,6 @@ import sys
 from bbcflib.bFlatMajor import common
 from bbcflib import btrack as track
 
-@common.keep_track
 def getNearestFeature(features, annotations,
                       thresholdPromot=2000, thresholdInter=100000, thresholdUTR=10):
     """

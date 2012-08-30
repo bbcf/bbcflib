@@ -170,7 +170,7 @@ try:
                                read.flag, read.qual, read.tags]
                         yield tuple([row[n] for n in srcl])
                 self.close()
-            return FeatureStream(_bamrecord(self.filehandle,srcl),fields, basetrack=(self,selection,fields,kw))
+            return FeatureStream(_bamrecord(self.filehandle,srcl),fields)
 
         def write(self, source, fields, **kw):
             raise NotImplementedError("Writing to bam is not implemented.")

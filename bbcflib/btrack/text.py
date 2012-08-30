@@ -205,7 +205,7 @@ class TextTrack(Track):
                              'start': (-1,feat[end_idx]),
                              'end': (feat[start_idx],sys.maxint)})
             selection = sel2
-        return FeatureStream(self._read(fields,ilist,selection),fields, basetrack=(self,selection,fields,kw))
+        return FeatureStream(self._read(fields,ilist,selection),fields)
 
     def _format_fields(self,vec,row,source_list,target_list):
         for i,j in enumerate(target_list):

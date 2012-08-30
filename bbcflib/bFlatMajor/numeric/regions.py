@@ -45,7 +45,7 @@ def feature_matrix(trackScores,trackFeatures,segment=False,**kw):
     nscores = 1
     if segment:
         trackFeatures = sorted_stream(segment_features(trackFeatures,**kw))
-        nbins = kw.get('nbins',segment_features.__defaults__[0]) \
+        nbins = kw.get('nbins',segment_features.func_defaults[0]) \
                 + kw.get('upstream',(0,0))[1] \
                 + kw.get('downstream',(0,0))[1]
     all_means = mean_score_by_feature(trackScores,trackFeatures)
@@ -76,7 +76,7 @@ def summed_feature_matrix(trackScores,trackFeatures,**kw):
     This creates a matrix with a column for each track in *trackScores* and a row for each bin in the segmented features.
     The values of a matrix entry is the score from one track in *trackScores* in one bin summed over all features.
 
-    
+
     Example::
 
                       gene1                 gene2
