@@ -153,9 +153,9 @@ class SqlTrack(Track):
         try:
             sql_command = 'SELECT * FROM "chrNames"'
             query = self.cursor.execute(sql_command)
-            columns = [x[0] for x in query.description if x[0] != 'name']
-            return dict((x[0].encode('ascii'),
-                         dict((c.encode('ascii'),x[n+1]) for n,c in enumerate(columns)))
+            columns = dict((x[0],n) for n,x in enumerate(query.description))
+            return dict((x[columns['name']].encode('ascii'),
+                         dict((k.encode('ascii'),x[n]) for k,n in columns.iteritems() if k != 'name'))
                         for x in query)
         except (sqlite3.OperationalError, sqlite3.ProgrammingError) as err:
             raise Exception("Sql error: %s\n on file %s, with\n%s" % (err,self.path,sql_command))
