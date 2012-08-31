@@ -58,11 +58,12 @@ class TextTrack(Track):
     def _get_chrmeta(self,chrmeta=None):
         """
         :param chrmeta: (str or dict) assembly name, or dict of the type {chr: {'length': 1234}}.
-            If set to `"guess"`, the whole file will be read in order to find the chromosome lengths.
+            If set to `"guess"`, the whole file will be read in order to find the chromosome names
+            and lengths.
         """
         _chrmeta = Track._get_chrmeta(self,chrmeta)
         if _chrmeta or not(os.path.exists(self.path)): return _chrmeta
-        if chrmeta == "guess" and 'chr' in self.fields and 'end' in self.fields:
+        elif chrmeta == "guess" and 'chr' in self.fields and 'end' in self.fields:
             self.intypes = {'end': int}
             for row in self.read(fields=['chr','end']):
                 if not(row[0] in _chrmeta):
@@ -167,8 +168,7 @@ class TextTrack(Track):
         skip = iter(chr_toskip+[[sys.maxint,sys.maxint]])
         toskip = skip.next()
         try:
-            row = True
-            while row:
+            while 1:
                 start = self.filehandle.tell()
                 if start >= toskip[0] and start <= toskip[1]:
                     self.filehandle.seek(toskip[1])
@@ -176,6 +176,7 @@ class TextTrack(Track):
                 elif start > toskip[1]:
                     toskip = skip.next()
                 row = self.filehandle.readline()
+                if not row: break
                 end = self.filehandle.tell()
                 if row.startswith("browser") or \
                    row.startswith("track") or \

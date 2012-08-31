@@ -235,7 +235,7 @@ class Track(object):
             return chrmeta
         if isinstance(chrmeta,basestring):
             self.assembly = chrmeta
-        if self.assembly is None:
+        if self.assembly is None or self.assembly == "guess":
             return {}
         from bbcflib import genrep
         return genrep.Assembly(self.assembly).chrmeta
