@@ -169,7 +169,6 @@ class TextTrack(Track):
         try:
             row = True
             while row:
-            #for row in self.filehandle:
                 start = self.filehandle.tell()
                 if start >= toskip[0] and start <= toskip[1]:
                     self.filehandle.seek(toskip[1])
@@ -183,7 +182,6 @@ class TextTrack(Track):
                    row.startswith("#"): continue
                 splitrow = row.strip().split(self.separator)
                 if selection:
-                    #print selection
                     if not any(self._select_values(splitrow,s) for s in selection):
                         continue
                     else:
