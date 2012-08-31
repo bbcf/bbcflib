@@ -158,9 +158,9 @@ class TextTrack(Track):
     def close(self):
         if self.filehandle: self.filehandle.close()
 
-    def _read(self, fields, index_list, selection):
+    def _read(self, fields, index_list, selection, skip):
         self.open('read')
-        if selection:
+        if selection and skip:
             chr_selected = [s.get('chr')[0] for s in selection if s.get('chr')]
             chr_toskip = [self.index.get(c) for c in self.index if c not in chr_selected]
         else: chr_toskip = []
@@ -200,12 +200,15 @@ class TextTrack(Track):
             raise ValueError("Bad line in file %s:\n %s%s\n" % (self.path,row,ve))
         self.close()
 
-    def read(self, selection=None, fields=None, **kw):
+    def read(self, selection=None, fields=None, skip=False, **kw):
         """
         :param selection: list of dict of the type
             `[{'chr':'chr1','start':(12,24)},{'chr':'chr3','end':(25,45)},...]`,
             where tuples represent ranges, or a FeatureStream.
         :param fields: (list of str) list of field names (columns) to read.
+        :param skip: (bool) assuming that lines are grouped by chromosome name,
+            chromosomes that have already been read (by selection) will be skipped
+            (unless it is present in *selection*) to increase reading speed. [False]
         """
         if fields is None:
             fields = self.fields
@@ -231,7 +234,7 @@ class TextTrack(Track):
                              'start': (-1,feat[end_idx]),
                              'end': (feat[start_idx],sys.maxint)})
             selection = sel2
-        return FeatureStream(self._read(fields,ilist,selection),fields)
+        return FeatureStream(self._read(fields,ilist,selection,skip),fields)
 
     def _format_fields(self,vec,row,source_list,target_list):
         for i,j in enumerate(target_list):

@@ -52,26 +52,29 @@ class Test_Track(unittest.TestCase):
         g = open(tempfile,'wb')
         g.writelines(["chrI\t1\n"]*200)
         g.close()
+
         # Never read chrI from this track: the whole file is read at each iteration.
         t = track(tempfile,fields=['chr','end'],chrmeta=self.assembly)
         tnorm = tskip = 0
         for chr in ['2micron','chrII','chrIII','chrIV','chrV','chrVI','chrVII','chrVIII','chrIX','chrX']:
             t1 = time.time()
-            s = t.read(chr)
+            s = t.read(chr, skip=False)
             for x in s: pass
             t2 = time.time()
             tnorm += t2-t1
         t.close()
+
         # Read chrI, then read others: chrI (the whole file) is skipped at each iteration.
         t = track(tempfile,fields=['chr','end'],chrmeta=self.assembly)
         for chr in ['chrI','chrII','chrIII','chrIV','chrV','chrVI','chrVII','chrVIII','chrIX','chrX']:
             t1 = time.time()
-            s = t.read(chr)
+            s = t.read(chr, skip=True)
             for x in s: pass
             t2 = time.time()
             tskip += t2-t1
         t.close()
-        print tnorm,tskip,tskip/tnorm
+
+        #print tnorm,tskip,tskip/tnorm
         self.assertLess(tskip/tnorm,0.5) # Second case it at least twice faster
         os.remove(tempfile)
 
