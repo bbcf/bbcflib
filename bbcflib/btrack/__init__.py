@@ -227,6 +227,7 @@ class Track(object):
         self.assembly = kwargs.get('assembly')
         self.chrmeta = self._get_chrmeta(kwargs.get('chrmeta'))
         self.info = self._get_info(info=kwargs.get('info'))
+        self.index = {}
 
     def _get_chrmeta(self,chrmeta=None):
         """:param chrmeta: (str or dict) assembly name, or dict of the type {chr: {'length': 1234}}."""

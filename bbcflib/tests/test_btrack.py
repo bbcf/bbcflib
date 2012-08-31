@@ -1,5 +1,5 @@
 # Built-in modules #
-import os, shutil
+import os, shutil, time
 
 # Internal modules #
 from bbcflib.btrack import track, convert, FeatureStream
@@ -22,7 +22,7 @@ path = "test_data/btrack/"
 
 class Test_Track(unittest.TestCase):
     def setUp(self):
-        self.assembly_id = 'sacCer2'
+        self.assembly = 'sacCer2'
         self.bed = os.path.join(path,"yeast_genes.bed")
 
     def test_track(self):
@@ -46,11 +46,40 @@ class Test_Track(unittest.TestCase):
         content = t.read()
         self.assertIsInstance(content, FeatureStream)
 
+    def test_index(self):
+        # Temp file containing only chrI
+        tempfile = "temp.txt"
+        g = open(tempfile,'wb')
+        g.writelines(["chrI\t1\n"]*200)
+        g.close()
+        # Never read chrI from this track: the whole file is read at each iteration.
+        t = track(tempfile,fields=['chr','end'],chrmeta=self.assembly)
+        tnorm = tskip = 0
+        for chr in ['2micron','chrII','chrIII','chrIV','chrV','chrVI','chrVII','chrVIII','chrIX','chrX']:
+            t1 = time.time()
+            s = t.read(chr)
+            for x in s: pass
+            t2 = time.time()
+            tnorm += t2-t1
+        t.close()
+        # Read chrI, then read others: chrI (the whole file) is skipped at each iteration.
+        t = track(tempfile,fields=['chr','end'],chrmeta=self.assembly)
+        for chr in ['chrI','chrII','chrIII','chrIV','chrV','chrVI','chrVII','chrVIII','chrIX','chrX']:
+            t1 = time.time()
+            s = t.read(chr)
+            for x in s: pass
+            t2 = time.time()
+            tskip += t2-t1
+        t.close()
+        print tnorm,tskip,tskip/tnorm
+        self.assertLess(tskip/tnorm,0.5) # Second case it at least twice faster
+        os.remove(tempfile)
 
+@unittest.skip('')
 class Test_Formats(unittest.TestCase):
     """Converting from bed to every other available format, using btrack.convert."""
     def setUp(self):
-        self.assembly_id = 'sacCer2'
+        self.assembly = 'sacCer2'
         self.bed = os.path.join(path,"yeast_genes.bed")
 
     def test_bed(self): # as general TextTrack
@@ -98,7 +127,7 @@ class Test_Formats(unittest.TestCase):
 
     def test_sql(self):
         sql = os.path.join(path,'test.sql')
-        sql_track = convert(self.bed, sql, chrmeta=self.assembly_id)
+        sql_track = convert(self.bed, sql, chrmeta=self.assembly)
         self.assertIsInstance(sql_track, SqlTrack)
         os.remove(sql)
 
@@ -111,24 +140,24 @@ class Test_Formats(unittest.TestCase):
 
 class Test_Text(unittest.TestCase):
     def setUp(self):
-        self.assembly_id = 'sacCer2'
+        self.assembly = 'sacCer2'
         self.bed = os.path.join(path,"yeast_genes.bed")
 
 
 class Test_BigWig(unittest.TestCase):
     def setUp(self):
-        self.assembly_id = 'sacCer2'
+        self.assembly = 'sacCer2'
         self.bed = os.path.join(path,"yeast_genes.bed")
 
 
 class Test_SQL(unittest.TestCase):
     def setUp(self):
-        self.assembly_id = 'sacCer2'
+        self.assembly = 'sacCer2'
         self.bed = os.path.join(path,"yeast_genes.bed")
 
 class Test_Bam(unittest.TestCase):
     def setUp(self):
-        self.assembly_id = 'sacCer2'
+        self.assembly = 'sacCer2'
         self.bam = os.path.join(path,'yeast3_chrV_150k-175k.bam')
 
     def test_coverage(self):

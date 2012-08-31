@@ -101,7 +101,7 @@ class TextTrack(Track):
         """
         Check whether all elements in a *row* pass through the *selection* filter.
 
-        :row: (list) spitted row from file - elements correspond to fields items.
+        :row: (list) splitted row from file - elements correspond to fields items.
         :param selection: dict of the form {field_name: value} or {field_name: (start,end)}.
         :rtype: boolean
         """
@@ -158,16 +158,42 @@ class TextTrack(Track):
     def close(self):
         if self.filehandle: self.filehandle.close()
 
-    def _read(self, fields, index_list, selection=None):
+    def _read(self, fields, index_list, selection):
         self.open('read')
+        if selection:
+            chr_selected = [s.get('chr')[0] for s in selection if s.get('chr')]
+            chr_toskip = [self.index.get(c) for c in self.index if c not in chr_selected]
+        else: chr_toskip = []
+        skip = iter(chr_toskip+[[sys.maxint,sys.maxint]])
+        toskip = skip.next()
         try:
-            for row in self.filehandle:
+            row = True
+            while row:
+            #for row in self.filehandle:
+                start = self.filehandle.tell()
+                if start >= toskip[0] and start <= toskip[1]:
+                    self.filehandle.seek(toskip[1])
+                    start = self.filehandle.tell()
+                elif start > toskip[1]:
+                    toskip = skip.next()
+                row = self.filehandle.readline()
+                end = self.filehandle.tell()
                 if row.startswith("browser") or \
                    row.startswith("track") or \
                    row.startswith("#"): continue
                 splitrow = row.strip().split(self.separator)
-                if selection and not(any(self._select_values(splitrow,s) for s in selection)):
-                    continue
+                if selection:
+                    #print selection
+                    if not any(self._select_values(splitrow,s) for s in selection):
+                        continue
+                    else:
+                        chr_idx = self.fields.index('chr')
+                        chr = splitrow[chr_idx]
+                        if self.index.get(chr):
+                            self.index[chr][1] = end
+                        else:
+                            self.index[chr] = [start,end]
+                start = end
                 yield tuple(self._check_type(splitrow[index_list[n]],f)
                             for n,f in enumerate(fields))
         except ValueError as ve:
