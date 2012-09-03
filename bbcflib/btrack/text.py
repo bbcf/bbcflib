@@ -372,7 +372,7 @@ class SgaTrack(TextTrack):
             self.chromosomes = dict((v['name'],str(k[1])+"."+str(k[2]))
                                     for k,v in chdict.iteritems())
 
-    def _read(self, fields, index_list, selection=None):
+    def _read(self, fields, index_list, selection, skip):
         self.open('read')
         rowdata = {'+': ['',-1,-1,'','+',''],
                    '-': ['',-1,-1,'','-',''],
@@ -448,7 +448,7 @@ class WigTrack(TextTrack):
         kwargs['fields'] = ['chr','start','end','score']
         TextTrack.__init__(self,path,**kwargs)
 
-    def _read(self, fields, index_list, selection=None):
+    def _read(self, fields, index_list, selection, skip):
         self.open('read')
         fixedStep = None
         chrom = None
