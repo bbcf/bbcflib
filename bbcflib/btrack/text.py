@@ -161,12 +161,14 @@ class TextTrack(Track):
 
     def _read(self, fields, index_list, selection, skip):
         self.open('read')
+
         if selection and skip:
             chr_selected = [s.get('chr')[0] for s in selection if s.get('chr')]
             chr_toskip = [self.index.get(c) for c in self.index if c not in chr_selected]
         else: chr_toskip = []
         skip = iter(chr_toskip+[[sys.maxint,sys.maxint]])
         toskip = skip.next()
+
         try:
             while 1:
                 start = self.filehandle.tell()
@@ -175,13 +177,13 @@ class TextTrack(Track):
                     start = self.filehandle.tell()
                 elif start > toskip[1]:
                     toskip = skip.next()
-                row = self.filehandle.readline()
-                if not row: break
+                try: row = self.filehandle.next()
+                except StopIteration: break
                 end = self.filehandle.tell()
                 if row.startswith("browser") or \
                    row.startswith("track") or \
                    row.startswith("#"): continue
-                splitrow = row.strip().split(self.separator)
+                splitrow = row.strip(' \r\n').split(self.separator)
                 if selection:
                     if not any(self._select_values(splitrow,s) for s in selection):
                         continue
@@ -316,7 +318,7 @@ class BedTrack(TextTrack):
             if row.startswith("browser") or \
                     row.startswith("track") or \
                     row.startswith("#"): continue
-            splitrow = row.strip().split(self.separator)
+            splitrow = row.strip(' \r\n').split(self.separator)
             rowlen = len(splitrow)
             break
         self.close()
@@ -374,26 +376,50 @@ class SgaTrack(TextTrack):
 
     def _read(self, fields, index_list, selection, skip):
         self.open('read')
+
+        if selection and skip:
+            chr_selected = [s.get('chr')[0] for s in selection if s.get('chr')]
+            chr_toskip = [self.index.get(c) for c in self.index if c not in chr_selected]
+        else: chr_toskip = []
+        skip = iter(chr_toskip+[[sys.maxint,sys.maxint]])
+        toskip = skip.next()
+
         rowdata = {'+': ['',-1,-1,'','+',''],
                    '-': ['',-1,-1,'','-',''],
                    '0': ['',-1,-1,'','.','']}
-        for row in self.filehandle:
-            row = row.strip()
-            if not(row) or row.startswith("#"): continue
-            row = row.split(self.separator)
+        while 1:
+            start = self.filehandle.tell()
+            if start >= toskip[0] and start <= toskip[1]:
+                self.filehandle.seek(toskip[1])
+                start = self.filehandle.tell()
+            elif start > toskip[1]:
+                toskip = skip.next()
+            try: row = self.filehandle.next()
+            except StopIteration: break
+            if not row or row.startswith("#"): continue
+            end = self.filehandle.tell()
+            splitrow = row.strip(' \r\n').split(self.separator)
             yieldit = True
-            strand = row[3]
-            rowdata[strand][0] = row[0]
-            start = int(row[2])
-            counts = row[4]
-            name = row[1]
+            strand = splitrow[3]
+            rowdata[strand][0] = splitrow[0]
+            start = int(splitrow[2])
+            counts = splitrow[4]
+            name = splitrow[1]
             if start-1 == rowdata[strand][2] and \
                     counts == rowdata[strand][5] and \
                     name == rowdata[strand][3]:
                 rowdata[strand][2] = start
                 yieldit = False
-            if selection and not(self._select_values(rowdata[strand],selection)):
-                continue
+            if selection:
+                if not (self._select_values(rowdata[strand],selection)):
+                    continue
+                else:
+                    chr_idx = self.fields.index('chr')
+                    chr = splitrow[chr_idx]
+                    if self.index.get(chr):
+                        self.index[chr][1] = end
+                    else:
+                        self.index[chr] = [start,end]
             if not(yieldit): continue
             if rowdata[strand][1]>=0:
                 yield tuple(self._check_type(rowdata[strand][index_list[n]],f)
@@ -450,6 +476,14 @@ class WigTrack(TextTrack):
 
     def _read(self, fields, index_list, selection, skip):
         self.open('read')
+
+        if selection and skip:
+            chr_selected = [s.get('chr')[0] for s in selection if s.get('chr')]
+            chr_toskip = [self.index.get(c) for c in self.index if c not in chr_selected]
+        else: chr_toskip = []
+        skip = iter(chr_toskip+[[sys.maxint,sys.maxint]])
+        toskip = skip.next()
+
         fixedStep = None
         chrom = None
         span = 1
@@ -459,11 +493,19 @@ class WigTrack(TextTrack):
         score = None
         try:
             rowdata = ['',-1,-1,'']
-            for row in self.filehandle:
+            while 1:
+                start = self.filehandle.tell()
+                if start >= toskip[0] and start <= toskip[1]:
+                    self.filehandle.seek(toskip[1])
+                    start = self.filehandle.tell()
+                elif start > toskip[1]:
+                    toskip = skip.next()
+                try: row = self.filehandle.next()
+                except StopIteration: break
+                if not row or row.startswith("#"): continue
+                end = self.filehandle.tell()
                 row = row.strip()
-                if not(row) or row.startswith("#"): continue
-                if row.startswith("browser") or \
-                        row.startswith("track"):
+                if row.startswith("browser") or row.startswith("track"):
                     fixedStep = None
                     chrom = None
                     span = 1
@@ -516,8 +558,16 @@ class WigTrack(TextTrack):
                         yieldit = False
                         rowdata[2] = end
                 if not(yieldit): continue
-                if selection and not(self._select_values(rowdata,selection)):
-                    continue
+                if selection:
+                    if not (self._select_values(rowdata,selection)):
+                        continue
+                    else:
+                        chr_idx = self.fields.index('chr')
+                        chr = splitrow[chr_idx]
+                        if self.index.get(chr):
+                            self.index[chr][1] = end
+                        else:
+                            self.index[chr] = [start,end]
                 if rowdata[1]>=0:
                     yield tuple(self._check_type(rowdata[index_list[n]],f)
                                 for n,f in enumerate(fields))
@@ -568,9 +618,8 @@ class GffTrack(TextTrack):
             if row.startswith("browser") or \
                     row.startswith("track") or \
                     row.startswith("#"): continue
-            splitrow = row.strip().split(self.separator)
+            splitrow = row.strip(' \r\n').split(self.separator)
             rowlen = len(splitrow)
-            break
         self.close()
         if rowlen > 9 or rowlen < 8:
             raise ValueError("Gff should have 8 or 9 fields.")
