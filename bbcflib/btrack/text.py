@@ -420,6 +420,7 @@ class SgaTrack(TextTrack):
                         self.index[chr][1] = end
                     else:
                         self.index[chr] = [start,end]
+            start = end
             if not(yieldit): continue
             if rowdata[strand][1]>=0:
                 yield tuple(self._check_type(rowdata[strand][index_list[n]],f)
@@ -504,7 +505,7 @@ class WigTrack(TextTrack):
                 except StopIteration: break
                 if not row or row.startswith("#"): continue
                 end = self.filehandle.tell()
-                row = row.strip()
+                row = row.strip(' \r\n')
                 if row.startswith("browser") or row.startswith("track"):
                     fixedStep = None
                     chrom = None
@@ -568,6 +569,7 @@ class WigTrack(TextTrack):
                             self.index[chr][1] = end
                         else:
                             self.index[chr] = [start,end]
+                start = end
                 if rowdata[1]>=0:
                     yield tuple(self._check_type(rowdata[index_list[n]],f)
                                 for n,f in enumerate(fields))
