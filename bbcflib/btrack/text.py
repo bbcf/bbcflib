@@ -306,10 +306,12 @@ class BedTrack(TextTrack):
     """
     def __init__(self,path,**kwargs):
         kwargs['format'] = 'bed'
-        kwargs['fields'] = kwargs.get('fields',
-                                      ['chr','start','end','name','score','strand',
-                                       'thick_start','thick_end','item_rgb',
-                                       'block_count','block_sizes','block_starts'])
+        _allf = ['chr','start','end','name','score','strand',
+                 'thick_start','thick_end','item_rgb',
+                 'block_count','block_sizes','block_starts']
+        _parf = ['chr','start','end']+kwargs.get('fields',[])
+        _nf = max([n for n,f in enumerate(_allf) if f in _parf])+1
+        kwargs['fields'] = _allf[:_nf]
         TextTrack.__init__(self,path,**kwargs)
         if not(os.path.exists(self.path)): return
         self.open()
@@ -367,12 +369,6 @@ class SgaTrack(TextTrack):
         kwargs['intypes'] = {'counts': int}
         kwargs['outtypes'] = {'strand': _sga_strand, 'counts': _score_to_counts}
         TextTrack.__init__(self,path,**kwargs)
-        self.chromosomes = {}
-        if self.assembly:
-            from bbcflib import genrep
-            chdict = genrep.Assembly(self.assembly).chromosomes
-            self.chromosomes = dict((v['name'],str(k[1])+"."+str(k[2]))
-                                    for k,v in chdict.iteritems())
 
     def _read(self, fields, index_list, selection, skip):
         self.open('read')
@@ -434,7 +430,6 @@ class SgaTrack(TextTrack):
                 yield tuple(self._check_type(rd[index_list[n]],f)
                             for n,f in enumerate(fields))
 
-
     def write(self, source, **kw):
         sidx = -1
         if 'score' in source.fields:
@@ -444,12 +439,11 @@ class SgaTrack(TextTrack):
         if sidx > -1:
             source.fields[sidx] = 'score'
 
-
     def _format_fields(self,vec,row,source_list,target_list):
         rowres = ['',0,0,'',0,0]
         for k,n in enumerate(source_list):
             rowres[target_list[k]] = row[n]
-        rowres[0] = self.chromosomes.get(rowres[0],rowres[0])
+        rowres[0] = self.chrmeta.get(rowres[0],{}).get('ac',rowres[0])
         feat = []
         for pos in range(rowres[1],rowres[2]):
             x = [rowres[0],rowres[3],
@@ -580,12 +574,17 @@ class WigTrack(TextTrack):
                 yield tuple(self._check_type(rowdata[index_list[n]],f)
                             for n,f in enumerate(fields))
         except ValueError:
-            raise ValueError("Bad line in file %s:\n %s\n"%(self.path,row))
+            raise ValueError("Bad line in file %s:\n %s\n" % (self.path,row))
         self.close()
         if fixedStep is None:
             raise IOError("Please specify 'fixedStep' or 'variableStep'.")
 
     def _format_fields(self,vec,row,source_list,target_list):
+        """
+        :param row: (list) splitted row.
+        :param source_list: (list of int) list of indices of the given fields in self.fields.
+        """
+        assert len(source_list) >= 4, "Insufficient number of fields (probably 'score' missing)."
         chrom = row[source_list[0]]
         start = self.outtypes.get('start',str)(row[source_list[1]])
         span = row[source_list[2]]-row[source_list[1]]

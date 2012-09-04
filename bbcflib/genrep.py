@@ -616,7 +616,8 @@ class Assembly(object):
         Return a dictionary of chromosome meta data of the type:
         ``{'chr1': {'length': 249250621},'chr2': {'length': 135534747},'chr3': {'length': 135006516}}``
         """
-        return dict([(v['name'], dict([('length', v['length'])])) for v in self.chromosomes.values()])
+        return dict([(v['name'], dict([('length', v['length']),('ac',str(k[1])+"."+str(k[2]))])) 
+                     for k,v in self.chromosomes.iteritems()])
 
     @property
     def chrnames(self):

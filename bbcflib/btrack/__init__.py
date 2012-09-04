@@ -143,10 +143,12 @@ def convert( source, target, chrmeta=None, info=None, mode='write' ):
         tsrc = track(source[0], format=source[1], chrmeta=chrmeta)
     else:
         tsrc = track(source, chrmeta=chrmeta)
+    _f = tsrc.fields
+    if not('chr' in _f): _f = ['chr']+_f
     if isinstance(target, tuple):
-        ttrg = track(target[0], format=target[1], chrmeta=tsrc.chrmeta, fields=tsrc.fields, info=info)
+        ttrg = track(target[0], format=target[1], chrmeta=tsrc.chrmeta, fields=_f, info=info)
     else:
-        ttrg = track(target, chrmeta=tsrc.chrmeta, fields=tsrc.fields, info=info)
+        ttrg = track(target, chrmeta=tsrc.chrmeta, fields=_f, info=info)
     ttrg.write( tsrc.read(), mode=mode )
     ttrg.close()
     tsrc.close()
@@ -238,10 +240,15 @@ class Track(object):
             return chrmeta
         if isinstance(chrmeta,basestring):
             self.assembly = chrmeta
-        if self.assembly is None or self.assembly == "guess":
+        if self.assembly is None:
             return {}
         from bbcflib import genrep
-        return genrep.Assembly(self.assembly).chrmeta
+        if genrep.GenRep().assemblies_available(self.assembly):
+            self.assembly = genrep.Assembly(self.assembly)
+            return self.assembly.chrmeta
+        else:
+            self.assembly = None
+            return {}
 
     def _get_info(self,info=None):
         pass
