@@ -306,10 +306,12 @@ class BedTrack(TextTrack):
     """
     def __init__(self,path,**kwargs):
         kwargs['format'] = 'bed'
-        kwargs['fields'] = kwargs.get('fields',
-                                      ['chr','start','end','name','score','strand',
-                                       'thick_start','thick_end','item_rgb',
-                                       'block_count','block_sizes','block_starts'])
+        _allf = ['chr','start','end','name','score','strand',
+                 'thick_start','thick_end','item_rgb',
+                 'block_count','block_sizes','block_starts']
+        _parf = ['chr','start','end']+kwargs.get('fields',[])
+        _nf = max([n for n,f in enumerate(_allf) if f in _parf])+1
+        kwargs['fields'] = _allf[:_nf]
         TextTrack.__init__(self,path,**kwargs)
         if not(os.path.exists(self.path)): return
         self.open()
@@ -367,12 +369,6 @@ class SgaTrack(TextTrack):
         kwargs['intypes'] = {'counts': int}
         kwargs['outtypes'] = {'strand': _sga_strand, 'counts': _score_to_counts}
         TextTrack.__init__(self,path,**kwargs)
-        self.chromosomes = {}
-        if self.assembly:
-            from bbcflib import genrep
-            chdict = genrep.Assembly(self.assembly).chromosomes
-            self.chromosomes = dict((v['name'],str(k[1])+"."+str(k[2]))
-                                    for k,v in chdict.iteritems())
 
     def _read(self, fields, index_list, selection, skip):
         self.open('read')
@@ -447,7 +443,7 @@ class SgaTrack(TextTrack):
         rowres = ['',0,0,'',0,0]
         for k,n in enumerate(source_list):
             rowres[target_list[k]] = row[n]
-        rowres[0] = self.chromosomes.get(rowres[0],rowres[0])
+        rowres[0] = self.chrmeta.get(rowres[0],{}).get('ac',rowres[0])
         feat = []
         for pos in range(rowres[1],rowres[2]):
             x = [rowres[0],rowres[3],
