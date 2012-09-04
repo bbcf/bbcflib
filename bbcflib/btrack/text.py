@@ -238,6 +238,12 @@ class TextTrack(Track):
         return FeatureStream(self._read(fields,ilist,selection,skip),fields)
 
     def _format_fields(self,vec,row,source_list,target_list):
+        """
+        :param vec: (list of types) types of the elements according to self.fields.
+        :param row: (list of str) splitted row.
+        :param source_list: (list of int) list of indices of the given fields in the source stream fields.
+        :param target_list: (list of int) list of indices of the given fields in self.fields.
+        """
         for i,j in enumerate(target_list):
             vec[j] = self.outtypes.get(self.fields[j],str)(row[source_list[i]])
         return self.separator.join(vec)
@@ -251,6 +257,7 @@ class TextTrack(Track):
         :param mode: (str) file opening mode - one of 'write','overwrite','append'. ['write']
         :param chrom: (str) a chromosome name.
         """
+        assert mode in ['write','overwrite','append'],"Unknown writing mode: %s." % mode
         if self.separator is None:
             self.separator = "\t"
         if hasattr(source, 'fields'):
@@ -440,6 +447,7 @@ class SgaTrack(TextTrack):
             source.fields[sidx] = 'score'
 
     def _format_fields(self,vec,row,source_list,target_list):
+        """See `TextTrack._format_fields` ."""
         rowres = ['',0,0,'',0,0]
         for k,n in enumerate(source_list):
             rowres[target_list[k]] = row[n]
@@ -580,10 +588,7 @@ class WigTrack(TextTrack):
             raise IOError("Please specify 'fixedStep' or 'variableStep'.")
 
     def _format_fields(self,vec,row,source_list,target_list):
-        """
-        :param row: (list) splitted row.
-        :param source_list: (list of int) list of indices of the given fields in self.fields.
-        """
+        """See `TextTrack._format_fields` ."""
         assert len(source_list) >= 4, "Insufficient number of fields (probably 'score' missing)."
         chrom = row[source_list[0]]
         start = self.outtypes.get('start',str)(row[source_list[1]])
