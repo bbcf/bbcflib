@@ -74,11 +74,9 @@ class Test_Track(unittest.TestCase):
             tskip += t2-t1
         t.close()
 
-        #print tnorm,tskip,tskip/tnorm
         self.assertLess(tskip/tnorm,0.5) # Second case it at least twice faster
         os.remove(tempfile)
 
-@unittest.skip('')
 class Test_Formats(unittest.TestCase):
     """Converting from bed to every other available format, using btrack.convert."""
     def setUp(self):
@@ -98,12 +96,14 @@ class Test_Formats(unittest.TestCase):
         bg = os.path.join(path,'test.bedgraph')
         bg_track = convert(self.bed, bg)
         self.assertIsInstance(bg_track, BedGraphTrack)
+        s = bg_track.read(); s.next()
         os.remove(bg)
 
     def test_wig(self):
         wig = os.path.join(path,'test.wig')
         wig_track = convert(self.bed, wig)
         self.assertIsInstance(wig_track, WigTrack)
+        s = wig_track.read(); s.next()
         os.remove(wig)
 
     @unittest.skip('Works but creates temp files when testing (tempfile)')
@@ -112,6 +112,7 @@ class Test_Formats(unittest.TestCase):
             bw = os.path.join(path,'test.bw')
             bw_track = convert(self.bed, bw)
             self.assertIsInstance(bw_track, BigWigTrack)
+            s = bw_track.read(); s.next()
             os.remove(bw)
         except OSError: pass
 
@@ -120,43 +121,30 @@ class Test_Formats(unittest.TestCase):
         bam = os.path.join(path,'test.bam')
         bam_track = convert(self.bed, bam)
         self.assertIsInstance(bam_track, BamTrack)
+        s = bam_track.read(); s.next()
         os.remove(bam)
 
     def test_gff(self):
         gff = os.path.join(path,'test.gff')
         gff_track = convert(self.bed, gff)
         self.assertIsInstance(gff_track, GffTrack)
+        #s = gff_track.read(); s.next() # problems with empty fields after conversion
         os.remove(gff)
 
     def test_sql(self):
         sql = os.path.join(path,'test.sql')
         sql_track = convert(self.bed, sql, chrmeta=self.assembly)
         self.assertIsInstance(sql_track, SqlTrack)
+        s = sql_track.read(cursor=True); s.next()
         os.remove(sql)
 
     def test_sga(self):
         sga = os.path.join(path,'test.sga')
         sga_track = convert(self.bed, sga)
         self.assertIsInstance(sga_track, SgaTrack)
+        s = sga_track.read(); s.next()
         os.remove(sga)
 
-
-class Test_Text(unittest.TestCase):
-    def setUp(self):
-        self.assembly = 'sacCer2'
-        self.bed = os.path.join(path,"yeast_genes.bed")
-
-
-class Test_BigWig(unittest.TestCase):
-    def setUp(self):
-        self.assembly = 'sacCer2'
-        self.bed = os.path.join(path,"yeast_genes.bed")
-
-
-class Test_SQL(unittest.TestCase):
-    def setUp(self):
-        self.assembly = 'sacCer2'
-        self.bed = os.path.join(path,"yeast_genes.bed")
 
 class Test_Bam(unittest.TestCase):
     def setUp(self):
