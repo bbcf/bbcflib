@@ -309,7 +309,7 @@ class BedTrack(TextTrack):
         _allf = ['chr','start','end','name','score','strand',
                  'thick_start','thick_end','item_rgb',
                  'block_count','block_sizes','block_starts']
-        _parf = ['chr','start','end']+kwargs.get('fields',[])
+        _parf = ['chr','start','end']+kwargs.get('fields',_allf)
         _nf = max([n for n,f in enumerate(_allf) if f in _parf])+1
         kwargs['fields'] = _allf[:_nf]
         TextTrack.__init__(self,path,**kwargs)
