@@ -121,7 +121,7 @@ def track( path, format=None, **kwargs):
     return getattr(sys.modules[_track_map[format][0]],
                    _track_map[format][1])(path,**kwargs)
 
-def convert( source, target, chrmeta=None, info=None ):
+def convert( source, target, chrmeta=None, info=None, mode='write' ):
     """
     Converts a file from one format to another. Format can be explicitly specified::
 
@@ -135,6 +135,9 @@ def convert( source, target, chrmeta=None, info=None ):
 
     :param source: (str or tuple) path to the source file, or tuple of the form (path, format).
     :param target: (str or tuple) path to the target file, or tuple of the form (path, format).
+    :param chrmeta: (dict) to specify manually 'chrmeta' for both input and output tracks. [None]
+    :param info: (dict) info that will be available as an attribute of the output track. [None]
+    :param mode: (str) writing mode: either 'write' or 'overwrite'. ['write']
     """
     if isinstance(source, tuple):
         tsrc = track(source[0], format=source[1], chrmeta=chrmeta)
@@ -144,7 +147,7 @@ def convert( source, target, chrmeta=None, info=None ):
         ttrg = track(target[0], format=target[1], chrmeta=tsrc.chrmeta, fields=tsrc.fields, info=info)
     else:
         ttrg = track(target, chrmeta=tsrc.chrmeta, fields=tsrc.fields, info=info)
-    ttrg.write( tsrc.read() )
+    ttrg.write( tsrc.read(), mode=mode )
     ttrg.close()
     tsrc.close()
     return ttrg
