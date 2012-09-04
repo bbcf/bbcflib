@@ -135,7 +135,7 @@ class Test_Formats(unittest.TestCase):
         sql = os.path.join(path,'test.sql')
         sql_track = convert(self.bed, sql, chrmeta=self.assembly)
         self.assertIsInstance(sql_track, SqlTrack)
-        #s = sql_track.read(); s.next() # problems with closed cursor
+        s = sql_track.read(cursor=True); s.next()
         os.remove(sql)
 
     def test_sga(self):
