@@ -270,7 +270,7 @@ def workflow_groups( ex, job, primers_dict, assembly, mapseq_files, mapseq_url,
         wig = unique_filename_in()+".bw"
         track.convert( sql, wig )
         ex.add( wig, description=set_file_descr( fname+".bw", 
-                                                 groupId=gid,step=step,type="bw",ucsc="1") )
+                                                 groupId=gid,step=step,type="bigWig",ucsc="1") )
     step = "norm_counts_per_frag"
     for gid, resfiles in processed['4cseq']['countsPerFrag'].iteritems():
         fname = "meanScorePerFeature_"+job_groups[gid]['name']
@@ -289,7 +289,7 @@ def workflow_groups( ex, job, primers_dict, assembly, mapseq_files, mapseq_url,
         trwig.write(trsql.read(fields=['chr','start','end','score'],
                                selection={'score':(0.01,sys.maxint)}))
         trwig.close()
-        ex.add( bwig, set_file_descr(fname+".bw",groupId=gid,step=step,type="bw",ucsc='1'))
+        ex.add( bwig, set_file_descr(fname+".bw",groupId=gid,step=step,type="bigWig",ucsc='1'))
     step = "profile_correction"
     for gid, resfiles in processed['4cseq']['profileCorrection'].iteritems():
         profileCorrectedFile = resfiles[0]

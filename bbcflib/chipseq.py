@@ -111,7 +111,7 @@ def add_macs_results( ex, read_length, genome_size, bamfile,
                                             args=macs_args, via=via, memory=8 )
     prefixes = dict((n,f.wait()) for n,f in futures.iteritems())
     for n,p in prefixes.iteritems():
-        macs_descr0 = {'step':'macs','type':'none','view':'admin'}
+        macs_descr0 = {'step':'macs','type':'none','view':'admin','groupId':n[0][0]}
         macs_descr1 = {'step':'macs','type':'xls','groupId':n[0][0]}
         macs_descr2 = {'step':'macs','type':'bed','groupId':n[0][0],'ucsc':'1'}
         filename = "_vs_".join([x[1] for x in n if x[0]])
