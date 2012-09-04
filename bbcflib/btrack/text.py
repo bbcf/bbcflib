@@ -434,7 +434,6 @@ class SgaTrack(TextTrack):
                 yield tuple(self._check_type(rd[index_list[n]],f)
                             for n,f in enumerate(fields))
 
-
     def write(self, source, **kw):
         sidx = -1
         if 'score' in source.fields:
@@ -443,7 +442,6 @@ class SgaTrack(TextTrack):
         TextTrack.write(self,source,**kw)
         if sidx > -1:
             source.fields[sidx] = 'score'
-
 
     def _format_fields(self,vec,row,source_list,target_list):
         rowres = ['',0,0,'',0,0]
@@ -580,12 +578,17 @@ class WigTrack(TextTrack):
                 yield tuple(self._check_type(rowdata[index_list[n]],f)
                             for n,f in enumerate(fields))
         except ValueError:
-            raise ValueError("Bad line in file %s:\n %s\n"%(self.path,row))
+            raise ValueError("Bad line in file %s:\n %s\n" % (self.path,row))
         self.close()
         if fixedStep is None:
             raise IOError("Please specify 'fixedStep' or 'variableStep'.")
 
     def _format_fields(self,vec,row,source_list,target_list):
+        """
+        :param row: (list) splitted row.
+        :param source_list: (list of int) list of indices of the given fields in self.fields.
+        """
+        assert len(source_list) >= 4, "Insufficient number of fields (probably 'score' missing)."
         chrom = row[source_list[0]]
         start = self.outtypes.get('start',str)(row[source_list[1]])
         span = row[source_list[2]]-row[source_list[1]]

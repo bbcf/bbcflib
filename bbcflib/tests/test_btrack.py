@@ -135,7 +135,7 @@ class Test_Formats(unittest.TestCase):
         sql = os.path.join(path,'test.sql')
         sql_track = convert(self.bed, sql, chrmeta=self.assembly)
         self.assertIsInstance(sql_track, SqlTrack)
-        s = sql_track.read(cursor=True); s.next()
+        s = sql_track.read(); s.next()
         os.remove(sql)
 
     def test_sga(self):
@@ -163,3 +163,8 @@ class Test_Bam(unittest.TestCase):
         expected = [('chrV',150000,175000,2514)]
         self.assertListEqual(list(res),expected)
 
+
+class Test_Conversions(unittest.TestCase):
+    def setUp(self):
+        self.assembly = 'sacCer2'
+        self.bam = os.path.join(path,'yeast3_chrV_150k-175k.bam')

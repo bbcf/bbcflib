@@ -164,7 +164,6 @@ class SqlTrack(Track):
     def _make_selection(self,selection):
         query = []
         for k,v in selection.iteritems():
-            fi = self.fields.index(k)
             if isinstance(v,tuple):
                 query.append(str(k)+" >= "+str(v[0]))
                 query.append(str(k)+" <= "+str(v[1]))
@@ -176,7 +175,8 @@ class SqlTrack(Track):
                 query.append(str(k)+" = "+str_val)
         return " AND ".join(query)
 
-    def _read(self, cursor, fields, selection, order, add_chr):
+    def _read(self, fields, selection, order, add_chr):
+        cursor = self.connection.cursor()
         chr_idx = 0
         if isinstance(selection,FeatureStream):
             chr_idx = selection.fields.index('chr')
@@ -197,9 +197,10 @@ class SqlTrack(Track):
                 for x in cursor: yield x
             except sqlite3.OperationalError as err:
                 raise Exception("Sql error: %s\n on file %s, with\n%s" % (err,self.path,sql_command))
+        cursor.close()
 
 
-    def read(self, selection=None, fields=None, order='start,end', cursor=False, **kw):
+    def read(self, selection=None, fields=None, order='start,end', **kw):
         """
         :param selection: list of dict of the type
             `[{'chr':'chr1','start':(12,24)},{'chr':'chr3','end':(25,45)},...]`,
@@ -207,9 +208,7 @@ class SqlTrack(Track):
         :param fields: (list of str) list of field names (columns) to read.
         :param order: (str, comma-separated) fields with respect to which the result must
             be sorted. ['start,end']
-        :param cursor: (bool) whether or not to reinitialize the cursor. [False]
         """
-        _select = selection
         if selection is None:
             selection = sorted(self.chrmeta.keys())
         if isinstance(selection, (basestring,dict)):
@@ -237,11 +236,7 @@ class SqlTrack(Track):
             query_fields = "*"
             _fields = ['chr']+[f for f in self.fields if f != 'chr']
             add_chr = True
-        if cursor:
-            cur = self.connection.cursor()
-        else:
-            cur = self.cursor
-        return FeatureStream(self._read(cur,query_fields,selection,order,add_chr), _fields)
+        return FeatureStream(self._read(query_fields,selection,order,add_chr), _fields)
 
 ################################ Write ##########################################
     def _clip(self):
