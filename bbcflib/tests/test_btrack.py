@@ -43,37 +43,38 @@ class Test_Track(unittest.TestCase):
 
     def test_read(self):
         t = track(self.bed)
-        content = t.read()
-        self.assertIsInstance(content, FeatureStream)
+        s = t.read(); s.next()
+        self.assertIsInstance(s, FeatureStream)
 
     def test_index(self):
         # Temp file containing only chrI
         tempfile = "temp.txt"
         g = open(tempfile,'wb')
-        g.writelines(["chrI\t1\n"]*200)
+        g.writelines(["chrX\t1\n"]*200)
         g.close()
 
         # Never read chrI from this track: the whole file is read at each iteration.
         t = track(tempfile,fields=['chr','end'],chrmeta=self.assembly)
-        tnorm = tskip = 0
-        for chr in ['2micron','chrII','chrIII','chrIV','chrV','chrVI','chrVII','chrVIII','chrIX','chrX']:
+        tnorm = tskip = nnorm = nskip = 0
+        for chr in ['chrI','chrII','chrIII','chrIV','chrV','chrVI','chrVII','chrVIII','chrIX','chrX']:
             t1 = time.time()
             s = t.read(chr, skip=False)
-            for x in s: pass
+            for x in s: nnorm += 1
             t2 = time.time()
             tnorm += t2-t1
         t.close()
 
         # Read chrI, then read others: chrI (the whole file) is skipped at each iteration.
         t = track(tempfile,fields=['chr','end'],chrmeta=self.assembly)
-        for chr in ['chrI','chrII','chrIII','chrIV','chrV','chrVI','chrVII','chrVIII','chrIX','chrX']:
+        for chr in ['chrX','chrII','chrIII','chrIV','chrV','chrVI','chrVII','chrVIII','chrIX','chrI']:
             t1 = time.time()
             s = t.read(chr, skip=True)
-            for x in s: pass
+            for x in s: nskip += 1
             t2 = time.time()
             tskip += t2-t1
         t.close()
 
+        self.assertEqual(nnorm,nskip)
         self.assertLess(tskip/tnorm,0.5) # Second case it at least twice faster
         os.remove(tempfile)
 
@@ -82,69 +83,72 @@ class Test_Formats(unittest.TestCase):
     def setUp(self):
         self.assembly = 'sacCer2'
         self.bed = os.path.join(path,"yeast_genes.bed")
+        self.fields = ['chr','start','end','name','score','strand']
 
     def test_bed(self): # as general TextTrack
-        no_extension = self.bed.split('.bed')[0] # guess extension from header
-        shutil.copy(self.bed, no_extension)
-        t = track(no_extension, format='bed')
+        shutil.copy(self.bed, 'test') # guess extension from header
+        t = track('test', format='bed', fields=self.fields)
         self.assertIsInstance(t, BedTrack)
         self.assertEqual(t.format,'bed')
-        self.assertListEqual(t.fields, ['chr','start','end','name','score','strand'])
-        os.remove(no_extension)
+        self.assertListEqual(t.fields, self.fields)
 
     def test_bedgraph(self):
         bg = os.path.join(path,'test.bedgraph')
-        bg_track = convert(self.bed, bg)
-        self.assertIsInstance(bg_track, BedGraphTrack)
-        s = bg_track.read(); s.next()
-        os.remove(bg)
+        t = convert(self.bed, bg)
+        self.assertIsInstance(t, BedGraphTrack)
+        s = t.read(); s.next()
+        self.assertListEqual(t.fields, ['chr','start','end','score'])
 
     def test_wig(self):
         wig = os.path.join(path,'test.wig')
-        wig_track = convert(self.bed, wig)
-        self.assertIsInstance(wig_track, WigTrack)
-        s = wig_track.read(); s.next()
-        os.remove(wig)
+        t = convert(self.bed, wig)
+        self.assertIsInstance(t, WigTrack)
+        s = t.read();
 
     @unittest.skip('Works but creates temp files when testing (tempfile)')
     def test_bigwig(self):
         try:
             bw = os.path.join(path,'test.bw')
-            bw_track = convert(self.bed, bw)
-            self.assertIsInstance(bw_track, BigWigTrack)
-            s = bw_track.read(); s.next()
-            os.remove(bw)
+            t = convert(self.bed, bw)
+            self.assertIsInstance(t, BigWigTrack)
+            s = t.read(); s.next()
+            self.assertListEqual(t.fields, self.fields)
         except OSError: pass
 
     @unittest.skip('Converting to bam is not implemented yet.')
     def test_bam(self):
         bam = os.path.join(path,'test.bam')
-        bam_track = convert(self.bed, bam)
-        self.assertIsInstance(bam_track, BamTrack)
-        s = bam_track.read(); s.next()
-        os.remove(bam)
+        t = convert(self.bed, bam)
+        self.assertIsInstance(t, BamTrack)
+        s = t.read(); s.next()
+        self.assertListEqual(t.fields, self.fields)
 
     def test_gff(self):
         gff = os.path.join(path,'test.gff')
-        gff_track = convert(self.bed, gff)
-        self.assertIsInstance(gff_track, GffTrack)
+        t = convert(self.bed, gff)
+        self.assertIsInstance(t, GffTrack)
+        print "gff fields",t.fields
         #s = gff_track.read(); s.next() # problems with empty fields after conversion
-        os.remove(gff)
+        #self.assertListEqual(t.fields, self.fields)
 
     def test_sql(self):
         sql = os.path.join(path,'test.sql')
-        sql_track = convert(self.bed, sql, chrmeta=self.assembly)
-        self.assertIsInstance(sql_track, SqlTrack)
-        s = sql_track.read(); s.next()
-        os.remove(sql)
+        t = convert(self.bed, sql, chrmeta=self.assembly)
+        self.assertIsInstance(t, SqlTrack)
+        s = t.read(); s.next()
+        self.assertListEqual(t.fields, self.fields)
 
     def test_sga(self):
         sga = os.path.join(path,'test.sga')
-        sga_track = convert(self.bed, sga)
-        self.assertIsInstance(sga_track, SgaTrack)
-        s = sga_track.read(); s.next()
-        os.remove(sga)
+        t = convert(self.bed, sga)
+        self.assertIsInstance(t, SgaTrack)
+        s = t.read(); s.next()
+        self.assertListEqual(t.fields, ['chr','start','end','name','strand','counts'])
 
+    def tearDown(self):
+        for ext in ['','bed','bw','wig','bedGraph','bam','sql','sga','gff']:
+            test_file = os.path.join(path,'test.'+ext)
+            if os.path.exists(test_file): os.remove(test_file)
 
 class Test_Bam(unittest.TestCase):
     def setUp(self):
@@ -168,3 +172,6 @@ class Test_Conversions(unittest.TestCase):
     def setUp(self):
         self.assembly = 'sacCer2'
         self.bam = os.path.join(path,'yeast3_chrV_150k-175k.bam')
+
+    def test_sql_to_bed(self):
+        pass

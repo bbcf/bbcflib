@@ -156,12 +156,14 @@ def convert( source, target, chrmeta=None, info=None, mode='write' ):
 
 def strand_to_int(strand=None):
     """Convert +/- into 1/-1 notation for DNA strands."""
+    if strand in [1,-1]: return strand
     if strand == '+': return 1
     if strand == '-': return -1
     return 0
 
 def int_to_strand(num=0):
     """Convert 1/-1 into +/- notation for DNA strands."""
+    if num in ['+','-']: return num
     num = int(num)
     if num > 0: return '+'
     if num < 0: return '-'

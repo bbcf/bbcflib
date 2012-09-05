@@ -312,29 +312,24 @@ class BedTrack(TextTrack):
     This list will be shortened depending on the number of items found in the first line of the file.
     """
     def __init__(self,path,**kwargs):
+        assert os.path.exists(path), "File not found: %s." % path
         kwargs['format'] = 'bed'
         _allf = ['chr','start','end','name','score','strand',
                  'thick_start','thick_end','item_rgb',
                  'block_count','block_sizes','block_starts']
-        _parf = ['chr','start','end']+kwargs.get('fields',[])
-        _nf = max([n for n,f in enumerate(_allf) if f in _parf])+1
-        kwargs['fields'] = _allf[:_nf]
         TextTrack.__init__(self,path,**kwargs)
-        if not(os.path.exists(self.path)): return
-        self.open()
-        rowlen = None
-        for row in self.filehandle:
-            if row.startswith("browser") or \
-                    row.startswith("track") or \
-                    row.startswith("#"): continue
-            splitrow = row.strip(' \r\n').split(self.separator)
-            rowlen = len(splitrow)
-            break
-        self.close()
+        with open(path,'rb') as handle:
+            for row in handle:
+                if row.startswith("browser") or \
+                        row.startswith("track") or \
+                        row.startswith("#"): continue
+                splitrow = row.strip(' \r\n').split(self.separator)
+                rowlen = len(splitrow)
+                break
         if rowlen is None: return
-        [self.intypes.pop(f) for f in self.fields[rowlen:] if f in self.intypes]
-        [self.outtypes.pop(f) for f in self.fields[rowlen:] if f in self.outtypes]
-        self.fields = self.fields[:rowlen]
+        else: self.fields = _allf[:rowlen]
+        [self.intypes.pop(f) for f in self.fields if f in self.intypes]
+        [self.outtypes.pop(f) for f in self.fields if f in self.outtypes]
 
 ################################ BedGraph ##########################################
 
@@ -368,6 +363,7 @@ class SgaTrack(TextTrack):
         kwargs['format'] = 'sga'
         kwargs['fields'] = ['chr','start','end','name','strand','counts']
         def _sga_strand(num=0):
+            if num in ['+','-']: return num
             num = int(num)
             if num > 0: return '+'
             if num < 0: return '-'
@@ -438,6 +434,7 @@ class SgaTrack(TextTrack):
                             for n,f in enumerate(fields))
 
     def write(self, source, **kw):
+        """Rename field 'score' to 'counts' just for writing, then restablish."""
         sidx = -1
         if 'score' in source.fields:
             sidx = source.fields.index('score')
@@ -453,7 +450,7 @@ class SgaTrack(TextTrack):
             rowres[target_list[k]] = row[n]
         rowres[0] = self.chrmeta.get(rowres[0],{}).get('ac',rowres[0])
         feat = []
-        for pos in range(rowres[1],rowres[2]):
+        for pos in range(int(rowres[1]),int(rowres[2])):
             x = [rowres[0],rowres[3],
                  self.outtypes.get("start",str)(pos+1),
                  self.outtypes.get("strand",str)(rowres[4]),
@@ -572,15 +569,15 @@ class WigTrack(TextTrack):
                         else:
                             self.index[chr] = [start,end]
                 start = end
-                if rowdata[1]>=0:
+                if rowdata[1] >= 0:
                     yield tuple(self._check_type(rowdata[index_list[n]],f)
                                 for n,f in enumerate(fields))
                 rowdata[1] = start
                 rowdata[2] = end
                 rowdata[3] = score
-            if rowdata[1]>=0:
-                yield tuple(self._check_type(rowdata[index_list[n]],f)
-                            for n,f in enumerate(fields))
+                if rowdata[1] >= 0:
+                    yield tuple(self._check_type(rowdata[index_list[n]],f)
+                                for n,f in enumerate(fields))
         except ValueError:
             raise ValueError("Bad line in file %s:\n %s\n" % (self.path,row))
         self.close()
@@ -592,7 +589,7 @@ class WigTrack(TextTrack):
         assert len(source_list) >= 4, "Insufficient number of fields (probably 'score' missing)."
         chrom = row[source_list[0]]
         start = self.outtypes.get('start',str)(row[source_list[1]])
-        span = row[source_list[2]]-row[source_list[1]]
+        span = int(row[source_list[2]])-int(row[source_list[1]])
         score = self.outtypes.get('score',str)(row[source_list[3]])
         head = ''
         if span != vec[1]:
