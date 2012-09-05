@@ -103,7 +103,8 @@ class Test_Formats(unittest.TestCase):
         wig = os.path.join(path,'test.wig')
         t = convert(self.bed, wig)
         self.assertIsInstance(t, WigTrack)
-        s = t.read();
+        s = t.read(); s.next()
+        self.assertListEqual(t.fields, ['chr','start','end','score'])
 
     @unittest.skip('Works but creates temp files when testing (tempfile)')
     def test_bigwig(self):
@@ -127,9 +128,7 @@ class Test_Formats(unittest.TestCase):
         gff = os.path.join(path,'test.gff')
         t = convert(self.bed, gff)
         self.assertIsInstance(t, GffTrack)
-        print "gff fields",t.fields
-        #s = gff_track.read(); s.next() # problems with empty fields after conversion
-        #self.assertListEqual(t.fields, self.fields)
+        self.assertListEqual(t.fields, ['chr','source','name','start','end','score','strand','frame','attributes'])
 
     def test_sql(self):
         sql = os.path.join(path,'test.sql')
@@ -173,5 +172,5 @@ class Test_Conversions(unittest.TestCase):
         self.assembly = 'sacCer2'
         self.bam = os.path.join(path,'yeast3_chrV_150k-175k.bam')
 
-    def test_sql_to_bed(self):
+    def test_to_sql(self):
         pass

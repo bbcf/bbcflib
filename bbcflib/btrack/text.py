@@ -623,6 +623,7 @@ class GffTrack(TextTrack):
                     row.startswith("#"): continue
             splitrow = row.strip(' \r\n').split(self.separator)
             rowlen = len(splitrow)
+            break
         self.close()
         if rowlen > 9 or rowlen < 8:
             raise ValueError("Gff should have 8 or 9 fields.")
