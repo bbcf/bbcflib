@@ -312,12 +312,12 @@ class BedTrack(TextTrack):
     This list will be shortened depending on the number of items found in the first line of the file.
     """
     def __init__(self,path,**kwargs):
-        assert os.path.exists(path), "File not found: %s." % path
         kwargs['format'] = 'bed'
         _allf = ['chr','start','end','name','score','strand',
                  'thick_start','thick_end','item_rgb',
                  'block_count','block_sizes','block_starts']
         TextTrack.__init__(self,path,**kwargs)
+        if not os.path.exists(path): return
         with open(path,'rb') as handle:
             for row in handle:
                 if row.startswith("browser") or \
