@@ -318,6 +318,7 @@ class BedTrack(TextTrack):
                  'block_count','block_sizes','block_starts']
         TextTrack.__init__(self,path,**kwargs)
         if not os.path.exists(path): return
+        rowlen = None
         self.open()
         for row in self.filehandle:
             if row.startswith("browser") or \
