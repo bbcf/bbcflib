@@ -318,14 +318,15 @@ class BedTrack(TextTrack):
                  'block_count','block_sizes','block_starts']
         TextTrack.__init__(self,path,**kwargs)
         if not os.path.exists(path): return
-        with open(path,'rb') as handle:
-            for row in handle:
-                if row.startswith("browser") or \
-                        row.startswith("track") or \
-                        row.startswith("#"): continue
-                splitrow = row.strip(' \r\n').split(self.separator)
-                rowlen = len(splitrow)
-                break
+        self.open()
+        for row in self.filehandle:
+            if row.startswith("browser") or \
+                    row.startswith("track") or \
+                    row.startswith("#"): continue
+            splitrow = row.strip(' \r\n').split(self.separator)
+            rowlen = len(splitrow)
+            break
+        self.close()
         if rowlen is None: return
         else: self.fields = _allf[:rowlen]
         [self.intypes.pop(f) for f in self.fields if f in self.intypes]
