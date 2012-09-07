@@ -177,8 +177,8 @@ class TextTrack(Track):
                     start = self.filehandle.tell()
                 elif start > toskip[1]:
                     toskip = skip.next()
-                try: row = self.filehandle.next()
-                except StopIteration: break
+                row = self.filehandle.readline()
+                if not row: break
                 end = self.filehandle.tell()
                 if row.startswith("browser") or \
                    row.startswith("track") or \
@@ -395,9 +395,9 @@ class SgaTrack(TextTrack):
                 start = self.filehandle.tell()
             elif start > toskip[1]:
                 toskip = skip.next()
-            try: row = self.filehandle.next()
-            except StopIteration: break
-            if not row or row.startswith("#"): continue
+            row = self.filehandle.readline()
+            if not row: break
+            if row.startswith("#"): continue
             end = self.filehandle.tell()
             splitrow = row.strip(' \r\n').split(self.separator)
             yieldit = True
@@ -502,9 +502,9 @@ class WigTrack(TextTrack):
                     start = self.filehandle.tell()
                 elif start > toskip[1]:
                     toskip = skip.next()
-                try: row = self.filehandle.next()
-                except StopIteration: break
-                if not row or row.startswith("#"): continue
+                row = self.filehandle.readline()
+                if not row: break
+                if row.startswith("#"): continue
                 end = self.filehandle.tell()
                 row = row.strip(' \r\n')
                 if row.startswith("browser") or row.startswith("track"):

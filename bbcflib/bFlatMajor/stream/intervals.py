@@ -211,6 +211,7 @@ def _combine(trackList,fn,win_size,aggregate):
             start = next
         k+=1
 
+@common.ordered
 def combine(trackList, fn, win_size=1000,
             aggregate={'strand':common.strand_merge, 'chr':common.no_merge}):
     """
