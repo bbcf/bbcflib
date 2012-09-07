@@ -66,19 +66,20 @@ def merge_scores(trackList, method='arithmetic'):
     return track.FeatureStream(_stream(tracks),fields)
 
 ###############################################################################
-def filter_scores(trackScores,trackFeatures):
+def filter_scores(trackScores,trackFeatures,method='sum'):
     """
     Extract from *trackScores* only the regions present in *trackFeatures*.
     Example::
 
-        F: _____#########__________#############_______
-        S: __________666666666___2222776_444___________
+        X: _____#########__________#############_______
+        Y: __________666666666___2222776_444___________
         R: __________6666__________22776_444___________
 
     :param trackScores: (FeatureStream) one score track.
         If a list fo streams is provided, they will be merged (averaged scores).
     :param trackFeatures: (FeatureStream) one feature track.
         If a list fo streams is provided, they will be merged.
+    :param method: (str) `merge_scores` *method* argument. ['sum']
     :rtype: FeatureStream
     """
     def _stream(ts,tf):
@@ -88,7 +89,7 @@ def filter_scores(trackScores,trackFeatures):
             ystart = y[tf.fields.index('start')]
             yend = y[tf.fields.index('end')]
             xnext = S[-1]
-            # Load into F all score items which intersect feature y
+            # Load into S all score items which intersect feature y
             while xnext[0] < yend:
                 xnext = X.next()
                 if xnext[1] > ystart: S.append(xnext)
@@ -96,15 +97,13 @@ def filter_scores(trackScores,trackFeatures):
             while S[n][1] <= ystart: n+=1
             S = S[n:]
             for s in S:
-                if yend <= s[0]:   continue
-                if s[0] <  ystart: start = ystart
-                else:              start = s[0]
-                if yend <  s[1]:   end   = yend
-                else:              end   = s[1]
+                if yend <= s[0]: continue
+                start = ystart if s[0] < ystart else s[0]
+                end   = yend   if yend < s[1]   else s[1]
                 yield (start,end)+tuple(s[2:])
 
     if isinstance(trackFeatures,(list,tuple)): trackFeatures = concatenate(trackFeatures)
-    if isinstance(trackScores,(list,tuple)): trackScores = merge_scores(trackScores)
+    if isinstance(trackScores,(list,tuple)): trackScores = merge_scores(trackScores,method)
     _ts = common.reorder(trackScores,['start','end'])
     return track.FeatureStream(_stream(_ts,trackFeatures), _ts.fields)
 
@@ -141,7 +140,7 @@ def mean_score_by_feature(trackScores,trackFeatures,normalize=True):
             scores = ()
             for i in range(len(ts)):
                 xnext = S[i][-1]
-                # Load into F all score items which intersect feature y
+                # Load into S all score items which intersect feature y
                 while xnext[0] < yend:
                     xnext = X[i].next()
                     if xnext[1] > ystart: S[i].append(xnext)

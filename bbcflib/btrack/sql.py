@@ -1,5 +1,5 @@
 from bbcflib.btrack import *
-import sqlite3, warnings
+import sqlite3
 
 _sql_types = {'start':        'integer',
               'end':          'integer',
