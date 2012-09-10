@@ -590,7 +590,6 @@ class WigTrack(TextTrack):
 
     def _format_fields(self,vec,row,source_list,target_list):
         """See `TextTrack._format_fields` ."""
-        assert len(source_list) >= 4, "Insufficient number of fields (probably 'score' missing)."
         chrom = row[source_list[0]]
         start = self.outtypes.get('start',str)(row[source_list[1]])
         span = int(row[source_list[2]])-int(row[source_list[1]])
