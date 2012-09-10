@@ -316,10 +316,13 @@ class BedTrack(TextTrack):
         _allf = ['chr','start','end','name','score','strand',
                  'thick_start','thick_end','item_rgb',
                  'block_count','block_sizes','block_starts']
+        _parf = ['chr','start','end']+kwargs.get('fields',[])
+        _nf = max([n for n,f in enumerate(_allf) if f in _parf])+1
+        kwargs['fields'] = _allf[:_nf]
         TextTrack.__init__(self,path,**kwargs)
-        if not os.path.exists(path): return
-        rowlen = None
+        if not(os.path.exists(self.path)): return
         self.open()
+        rowlen = None
         for row in self.filehandle:
             if row.startswith("browser") or \
                     row.startswith("track") or \
@@ -329,9 +332,9 @@ class BedTrack(TextTrack):
             break
         self.close()
         if rowlen is None: return
-        else: self.fields = _allf[:rowlen]
-        [self.intypes.pop(f) for f in self.fields if f in self.intypes]
-        [self.outtypes.pop(f) for f in self.fields if f in self.outtypes]
+        [self.intypes.pop(f) for f in self.fields[rowlen:] if f in self.intypes]
+        [self.outtypes.pop(f) for f in self.fields[rowlen:] if f in self.outtypes]
+        self.fields = self.fields[:rowlen]
 
 ################################ BedGraph ##########################################
 
