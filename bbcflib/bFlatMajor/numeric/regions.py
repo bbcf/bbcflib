@@ -1,4 +1,4 @@
-from bbcflib.bFlatMajor.stream import mean_score_by_feature, segment_features
+from bbcflib.bFlatMajor.stream import score_by_feature, segment_features
 from bbcflib.bFlatMajor.common import sorted_stream
 import numpy
 
@@ -48,7 +48,7 @@ def feature_matrix(trackScores,trackFeatures,segment=False,**kw):
         nbins = kw.get('nbins',segment_features.func_defaults[0]) \
                 + kw.get('upstream',(0,0))[1] \
                 + kw.get('downstream',(0,0))[1]
-    all_means = mean_score_by_feature(trackScores,trackFeatures)
+    all_means = score_by_feature(trackScores,trackFeatures)
     nfields = len(trackFeatures.fields)
     if isinstance(trackScores,(list,tuple)):
         nscores = len(trackScores)
@@ -95,7 +95,7 @@ def summed_feature_matrix(trackScores,trackFeatures,**kw):
     """
     nfields = len(trackFeatures.fields)
     trackFeatures = sorted_stream(segment_features(trackFeatures,**kw))
-    all_means = mean_score_by_feature(trackScores,trackFeatures)
+    all_means = score_by_feature(trackScores,trackFeatures)
     if isinstance(trackScores,(list,tuple)):
         nscores = len(trackScores)
     else:

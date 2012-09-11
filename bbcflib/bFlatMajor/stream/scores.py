@@ -1,6 +1,7 @@
 # coding: utf-8
 
 import sys
+from math import floor, ceil
 from bbcflib.bFlatMajor import common
 from bbcflib.bFlatMajor.stream import concatenate
 from bbcflib import btrack as track
@@ -108,11 +109,12 @@ def filter_scores(trackScores,trackFeatures,method='sum'):
     return track.FeatureStream(_stream(_ts,trackFeatures), _ts.fields)
 
 ###############################################################################
-def mean_score_by_feature(trackScores,trackFeatures,normalize=True):
+def score_by_feature(trackScores,trackFeatures,fn='mean'):
     """
-    Computes the average of scores from each stream in *trackScores*
-    within every feature from *trackFeatures*. The output is a stream
-    similar to *trackFeatures* but with an additional `score` field  for each stream in *trackScores*::
+    For every feature from *trackFeatures*, get the list of all scores it contains
+    and apply an operation *fn* on this list (by default, scores are averaged).
+    The output is a stream similar to *trackFeatures* but with an additional `score` field
+    for each stream in *trackScores*::
 
         X: ------##########--------------##########------
         Y: ___________666666666__________6666666666______
@@ -128,7 +130,8 @@ def mean_score_by_feature(trackScores,trackFeatures,normalize=True):
 
     :param trackScores: (list of) one or several score track(s) (FeatureStream).
     :param trackFeatures: (FeatureStream) one feature track.
-    :param normalize: (bool) whether to divide scores by the feature's length. [True]
+    :param fn: (str of function): operation applied to the list of scores from one feature.
+        Can be one of 'sum','mean','median','min','max', or a custom function
     :rtype: FeatureStream
     """
     def _stream(ts,tf):
@@ -148,15 +151,23 @@ def mean_score_by_feature(trackScores,trackFeatures,normalize=True):
                 while S[i][n][1] <= ystart: n+=1
                 S[i] = S[i][n:]
                 score = 0.0
+                scores_y = []
                 for s in S[i]:
                     if yend <= s[0]:   continue
                     if s[0] <  ystart: start = ystart
                     else:              start = s[0]
                     if yend <  s[1]:   end   = yend
                     else:              end   = s[1]
-                    score += (end-start)*s[2]
-                feat_length = normalize and yend-ystart or 1
-                scores += (score/feat_length,)
+                    scores_y.extend([s[2]]*(end-start))
+                if fn == 'mean': score = sum(scores_y)/(yend-ystart)
+                elif fn == 'sum': score = sum(scores_y)
+                elif fn == 'min': score = min(scores_y)
+                elif fn == 'max': score = max(scores_y)
+                elif fn == 'median':
+                    scores_y.sort()
+                    score = (scores_y[(len(scores_y)-1)/2] + scores_y[len(scores_y)/2]) / 2.
+                elif hasattr(fn,'__call__'): score = fn(scores_y)
+                scores += (score,)
             yield tuple(y)+scores
 
     if not(isinstance(trackScores,(list,tuple))): trackScores = [trackScores]

@@ -47,13 +47,13 @@ class Test_Track(unittest.TestCase):
         self.assertIsInstance(s, FeatureStream)
 
     def test_index(self):
-        # Temp file containing only chrI
+        # Temp file containing only chrX
         tempfile = "temp.txt"
         g = open(tempfile,'wb')
         g.writelines(["chrX\t1\n"]*200)
         g.close()
 
-        # Never read chrI from this track: the whole file is read at each iteration.
+        # Read chrX at last: the whole file is read at each iteration.
         t = track(tempfile,fields=['chr','end'],chrmeta=self.assembly)
         tnorm = tskip = nnorm = nskip = 0
         for chr in ['chrI','chrII','chrIII','chrIV','chrV','chrVI','chrVII','chrVIII','chrIX','chrX']:
@@ -64,7 +64,7 @@ class Test_Track(unittest.TestCase):
             tnorm += t2-t1
         t.close()
 
-        # Read chrI, then read others: chrI (the whole file) is skipped at each iteration.
+        # Read chrX, then read others: chrX (the whole file) is skipped at each iteration.
         t = track(tempfile,fields=['chr','end'],chrmeta=self.assembly)
         for chr in ['chrX','chrII','chrIII','chrIV','chrV','chrVI','chrVII','chrVIII','chrIX','chrI']:
             t1 = time.time()

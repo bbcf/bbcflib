@@ -10,7 +10,7 @@ from bbcflib.bFlatMajor.common import concat_fields, split_field, map_chromosome
 from bbcflib.bFlatMajor.stream.annotate import getNearestFeature
 from bbcflib.bFlatMajor.stream.intervals import concatenate, neighborhood, segment_features, combine
 from bbcflib.bFlatMajor.stream.intervals import exclude, require, disjunction, intersection, union
-from bbcflib.bFlatMajor.stream.scores import merge_scores, mean_score_by_feature, window_smoothing, filter_scores
+from bbcflib.bFlatMajor.stream.scores import merge_scores, score_by_feature, window_smoothing, filter_scores
 from bbcflib.bFlatMajor.numeric.regions import feature_matrix, summed_feature_matrix
 from bbcflib.bFlatMajor.numeric.signal import _normalize, correlation
 
@@ -360,11 +360,11 @@ class Test_Scores(unittest.TestCase):
         expected = [(10,15,6.),(30,40,6.)]
         self.assertListEqual(res,expected)
 
-    def test_mean_score_by_feature(self):
+    def test_score_by_feature(self):
         features = fstream([(5,15,'gene1'),(30,40,'gene2')], fields=['start','end','name'])
         scores1 = fstream([(10,20,6.),(30,40,6.)], fields=['start','end','score'])
         scores2 = fstream([(30,40,2.)], fields=['start','end','score'])
-        res = list(mean_score_by_feature([scores1,scores2],features))
+        res = list(score_by_feature([scores1,scores2],features))
         expected = [(5,15,'gene1',3.,0.),(30,40,'gene2',6.,2.)]
         self.assertListEqual(res,expected)
 
@@ -372,7 +372,7 @@ class Test_Scores(unittest.TestCase):
         features = fstream([(5,15,'gene1'),(30,40,'gene2')], fields=['start','end','name'])
         scores1 = fstream([(10,20,6.),(30,40,6.)], fields=['start','end','score'])
         scores2 = fstream([(2,8,2.),(30,33,3.)], fields=['start','end','score'])
-        res = list(mean_score_by_feature([scores1,scores2],features, normalize=False))
+        res = list(score_by_feature([scores1,scores2],features,'sum'))
         expected = [(5,15,'gene1',30.,6.),(30,40,'gene2',60.,9.)]
         self.assertListEqual(res,expected)
 
