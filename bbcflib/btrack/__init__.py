@@ -179,6 +179,24 @@ def ensembl_to_ucsc(start):
     """Substract 1 to start coordinates going from Ensembl to UCSC annotation."""
     return format_int(int(start)-1)
 
+def check_ordered(source):
+    """Read a track-like file once to see if chromosomes are grouped.
+
+    :param source: (str or tuple) path to the source file, or tuple of the form (path, format).
+    """
+    visited = []
+    lastvisited = None
+    t = track(source)
+    chr_idx = t.fields.index('chr')
+    for row in t.read():
+        chr = row[chr_idx]
+        if chr != lastvisited:
+            if chr in visited: return False
+            visited.append(chr)
+        lastvisited = chr
+    return True
+
+
 ################################################################################
 
 class Track(object):

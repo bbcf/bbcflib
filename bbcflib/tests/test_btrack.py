@@ -2,7 +2,7 @@
 import os, shutil, time
 
 # Internal modules #
-from bbcflib.btrack import track, convert, FeatureStream
+from bbcflib.btrack import track, convert, FeatureStream, check_ordered
 from bbcflib.btrack.text import BedTrack, BedGraphTrack, WigTrack, SgaTrack, GffTrack
 from bbcflib.btrack.bin import BigWigTrack, BamTrack
 from bbcflib.btrack.sql import SqlTrack
@@ -48,10 +48,9 @@ class Test_Track(unittest.TestCase):
 
     def test_index(self):
         # Temp file containing only chrX
-        tempfile = "temp.txt"
-        g = open(tempfile,'wb')
-        g.writelines(["chrX\t1\n"]*200)
-        g.close()
+        tempfile = os.path.join(path,"temp.txt")
+        with open(tempfile,'wb') as g:
+            g.writelines(["chrX\t1\n"]*200)
 
         # Read chrX at last: the whole file is read at each iteration.
         t = track(tempfile,fields=['chr','end'],chrmeta=self.assembly)
@@ -76,7 +75,21 @@ class Test_Track(unittest.TestCase):
 
         self.assertEqual(nnorm,nskip)
         self.assertLess(tskip/tnorm,0.5) # Second case it at least twice faster
-        os.remove(tempfile)
+
+    def test_check_ordered(self):
+        tempfile = os.path.join(path,'temp2.txt')
+        with open(tempfile,'wb') as g:
+            g.writelines(["chrX\t1\t2\n", "chrV\t1\t2\n", "chrX\t3\t4\n"])
+        self.assertEqual(check_ordered(tempfile),False)
+        tempfile = os.path.join(path,'temp3.txt')
+        with open(tempfile,'wb') as g:
+            g.writelines(["chrX\t1\t2\n", "chrX\t3\t4\n", "chrV\t1\t2\n"])
+        self.assertEqual(check_ordered(tempfile),True)
+
+    def tearDown(self):
+        for test_file in ['temp','temp2','temp3']:
+            test_file = os.path.join(path,test_file)
+            if os.path.exists(test_file): os.remove(test_file)
 
 class Test_Formats(unittest.TestCase):
     """Converting from bed to every other available format, using btrack.convert."""
@@ -86,7 +99,7 @@ class Test_Formats(unittest.TestCase):
         self.fields = ['chr','start','end','name','score','strand']
 
     def test_bed(self): # as general TextTrack
-        shutil.copy(self.bed, 'test') # guess extension from header
+        shutil.copy(self.bed, os.path.join(path,'test')) # guess extension from header
         t = track('test', format='bed', fields=self.fields)
         self.assertIsInstance(t, BedTrack)
         self.assertEqual(t.format,'bed')
@@ -145,8 +158,8 @@ class Test_Formats(unittest.TestCase):
         self.assertListEqual(t.fields, ['chr','start','end','name','strand','counts'])
 
     def tearDown(self):
-        for ext in ['','bed','bw','wig','bedGraph','bam','sql','sga','gff']:
-            test_file = os.path.join(path,'test.'+ext)
+        for ext in ['','.bed','.bw','.wig','.bedGraph','.bam','.sql','.sga','.gff']:
+            test_file = os.path.join(path,'test'+ext)
             if os.path.exists(test_file): os.remove(test_file)
 
 class Test_Bam(unittest.TestCase):
