@@ -6,6 +6,29 @@ from bbcflib.bFlatMajor import common
 from bbcflib.bFlatMajor.stream import concatenate
 from bbcflib import btrack as track
 
+def _sum(scores,denom):
+    return sum(scores)
+
+def _arithmetic_mean(scores,denom):
+    return sum(scores)*denom
+
+def _geometric_mean(scores,denom):
+## more precise/less efficient: exp(sum([log(x) for x in scores])*denom)
+    return (reduce(lambda x, y: x*y, scores))**denom
+
+def _min(scores,denom): 
+    return min(scores)
+
+def _max(scores,denom): 
+    return max(scores)
+
+def _median(scores,denom):
+    scores_y.sort()
+    return (scores_y[(len(scores_y)-1)/2] + scores_y[len(scores_y)/2])*.5
+
+_score_functions = {'arithmetic':_arithmetic_mean, 'geometric':_geometric_mean, 'sum':_sum,
+                    'mean': _arithmetic_mean, 'min':_min, 'max':_max, 'median':_median}
+
 @common.ordered
 def merge_scores(trackList, method='arithmetic'):
     """
@@ -27,15 +50,7 @@ def merge_scores(trackList, method='arithmetic'):
     elements = [list(x.next()) for x in tracks]
     track_denom = 1.0/len(trackList)
 
-    def _sum(scores,denom):
-        return sum(scores)
-    def _arithmetic_mean(scores,denom):
-        return sum(scores)*denom
-    def _geometric_mean(scores,denom):
-        return (reduce(lambda x, y: x*y, scores))**denom
-        ## more precise/less efficient: exp(sum([log(x) for x in scores])*denom)
-    methods = {'arithmetic':_arithmetic_mean, 'geometric':_geometric_mean, 'sum':_sum}
-    mean_fn = methods[method]
+    mean_fn = _score_functions.get(method,_arithmetic_mean)
     for i in xrange(len(tracks)-1, -1, -1):
         if elements[i][0] == sys.maxint:
             tracks.pop(i)
@@ -137,6 +152,11 @@ def score_by_feature(trackScores,trackFeatures,fn='mean'):
     def _stream(ts,tf):
         X = [common.sentinelize(x, [sys.maxint]*len(x.fields)) for x in ts]
         S = [[(-sys.maxint,-sys.maxint,0.0)] for t in ts]
+
+        if hasattr(fn,'__call__'):
+            _fn = fn
+        else:
+            _fn = _score_functions.get(fn,_arithmetic_mean)
         for y in tf:
             ystart = y[tf.fields.index('start')]
             yend = y[tf.fields.index('end')]
@@ -159,15 +179,7 @@ def score_by_feature(trackScores,trackFeatures,fn='mean'):
                     if yend <  s[1]:   end   = yend
                     else:              end   = s[1]
                     scores_y.extend([s[2]]*(end-start))
-                if fn == 'mean': score = sum(scores_y)/(yend-ystart)
-                elif fn == 'sum': score = sum(scores_y)
-                elif fn == 'min': score = min(scores_y)
-                elif fn == 'max': score = max(scores_y)
-                elif fn == 'median':
-                    scores_y.sort()
-                    score = (scores_y[(len(scores_y)-1)/2] + scores_y[len(scores_y)/2]) / 2.
-                elif hasattr(fn,'__call__'): score = fn(scores_y)
-                scores += (score,)
+                scores += (_fn(scores,1.0/(yend-ystart)),)
             yield tuple(y)+scores
 
     if not(isinstance(trackScores,(list,tuple))): trackScores = [trackScores]

@@ -54,7 +54,7 @@ def run(**kwargs):
 
     Example::
 
-        run(operation="mean_score_by_feature",
+        run(operation="score_by_feature",
             output="score_output.bed", chromosome="chr1",
             trackScores="density_file.sql", trackFeatures="genes.sql")
     """

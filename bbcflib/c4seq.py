@@ -94,7 +94,7 @@ def density_to_countsPerFrag( ex, file_dict, groups, assembly, regToExclude, scr
 #            outbed.write(gMiner.stream.mean_score_by_feature(
 #                    scores.read(selection=ch),
 #                    features.read(selection=ch)), mode='append')
-            gMiner_job = {"operation": "mean_score_by_feature",
+            gMiner_job = {"operation": "score_by_feature",
                           "output": unique_filename_in()+".bed",
                           "datatype": "qualitative",                          
                           "args": "'"+json.dumps({"trackScores":density_file,
@@ -151,7 +151,7 @@ def workflow_groups( ex, job, primers_dict, assembly, mapseq_files, mapseq_url,
     * open the 4C-seq minilims and create execution
     * 0. get/create the library 
     * 1. if necessary, calculate the density file from the bam file (mapseq.parallel_density_sql)
-    * 2. calculate the count per fragment for each denstiy file with gFeatMiner:mean_score_by_feature to calculate)
+    * 2. calculate the count per fragment for each denstiy file with bFlatMajor:score_by_feature to calculate)
     '''
 ### outputs
     processed = {'lib': {}, 'density': {}, '4cseq': {}}
