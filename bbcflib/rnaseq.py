@@ -22,7 +22,7 @@ from operator import itemgetter
 # Internal modules #
 from bbcflib.common import writecols, set_file_descr, unique_filename_in
 from bbcflib import mapseq, genrep
-from bbcflib.bFlatMajor.common import cobble, sorted_stream
+from bbcflib.bFlatMajor.common import cobble
 from bbcflib.btrack import track, FeatureStream, convert
 from bein import program
 
@@ -220,13 +220,10 @@ def save_results(ex, cols, conditions, group_ids, assembly, header=[], feature_t
         for group,filename in output_sql.iteritems():
             # SQL track
             tr = track(filename+'.sql', fields=['chr','start','end','score'], chrmeta=assembly.chrmeta)
-            lines = {}
-            for n,c in enumerate(chromosomes):
-                if not(c in tr.chrmeta): continue
-                if c in lines: lines[c].append((int(start[n]),int(end[n]),rpkm[group][n]))
-                else: lines[c] = []
-            for chrom, feats in lines.iteritems():
-                tr.write(cobble(sorted_stream(FeatureStream(feats, fields=['start','end','score']))),chrom=chrom)
+            lines = zip(*[chromosomes,start,end,rpkm[group]])
+            lines = FeatureStream(zip(*[chromosomes,start,end,rpkm[group]]), fields=['chr','start','end','score'])
+            lines = cobble(lines)
+            tr.write(lines)
             description = set_file_descr(feature_type.lower()+"_"+group+".sql", step="pileup", type="sql", \
                                          groupId=group_ids[group], gdv='1')
             ex.add(filename+'.sql', description=description)

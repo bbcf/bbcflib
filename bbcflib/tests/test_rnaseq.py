@@ -266,6 +266,7 @@ class Test_others(unittest.TestCase):
         self.counts = array([[27,12],[3,3]]) # [[cond1],[cond2]]
         self.assembly = Assem()
 
+    @unittest.skip("check - unused yet")
     def test_estimate_size_factors(self):
         res, size_factors = estimate_size_factors(self.counts)
         self.assertIsInstance(self.counts, numpy.ndarray)
