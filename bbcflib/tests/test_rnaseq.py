@@ -17,7 +17,7 @@ from numpy import array
 __test__ = True
 
 # Local test:
-# run_rnaseq.py -v local -c /archive/epfl/bbcf/jdelafon/config_files/gapkowt.txt -d rnaseq -p genes
+# run_rnaseq.py -v local -c /archive/epfl/bbcf/jdelafon/test_rnaseq/config/gapkowt.txt -d rnaseq -p genes,transcripts
 
 class Assem(object):
     def __init__(self):

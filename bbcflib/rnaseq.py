@@ -505,7 +505,7 @@ def rnaseq_workflow(ex, job, bam_files, pileup_level=["exons","genes","transcrip
     if "exons" in pileup_level:
         print "Get scores of exons"
         exons_data = zip(*exons_data)
-        exons_data = sorted(exons_data, key=itemgetter(8,4)) # sort w.r.t. chromosome, then start
+        #exons_data = sorted(exons_data, key=itemgetter(8,4)) # sort w.r.t. chromosome, then start
         header = ["ExonID"] + hconds + ["Start","End","GeneID","GeneName","Strand","Chromosome"]
         exons_data = zip(*exons_data)
         exons_file = save_results(ex, exons_data, conditions, group_ids, assembly, header=header, feature_type="EXONS")
@@ -516,7 +516,7 @@ def rnaseq_workflow(ex, job, bam_files, pileup_level=["exons","genes","transcrip
         (gcounts, grpkm) = genes_expression(exons_data, gene_mapping, exon_to_gene, ncond, nreads)
         genesID = gcounts.keys()
         genes_data = [[g,gcounts[g],grpkm[g]]+list(gene_mapping.get(g,("NA",)*6)) for g in genesID]
-        genes_data = sorted(genes_data, key=itemgetter(8,4)) # sort w.r.t. chromosome, then start
+        #genes_data = sorted(genes_data, key=itemgetter(8,4)) # sort w.r.t. chromosome, then start
         (genesID,gcounts,grpkm,gname,gstart,gend,glen,gstr,gchr) = zip(*genes_data)
         header = ["GeneID"] + hconds + ["Start","End","GeneName","Strand","Chromosome"]
         genes_data = [genesID]+list(zip(*gcounts))+list(zip(*grpkm))+[gstart,gend,gname,gstr,gchr]
@@ -529,7 +529,7 @@ def rnaseq_workflow(ex, job, bam_files, pileup_level=["exons","genes","transcrip
                    transcript_mapping, trans_in_gene, exons_in_trans, ncond, nreads)
         transID = tcounts.keys()
         trans_data = [[t,tcounts[t],trpkm[t]]+list(transcript_mapping.get(t,("NA",)*6)) for t in transID]
-        trans_data = sorted(trans_data, key=itemgetter(8,4)) # sort w.r.t. chromosome, then start
+        #trans_data = sorted(trans_data, key=itemgetter(8,4)) # sort w.r.t. chromosome, then start
         (transID,tcounts,trpkm,genesID,tstart,tend,tlen,tstr,tchr) = zip(*trans_data)
         genesName = [gene_mapping.get(g,("NA",)*6)[0] for g in genesID]
         header = ["TranscriptID"] + hconds + ["Start","End","GeneID","GeneName","Strand","Chromosome"]

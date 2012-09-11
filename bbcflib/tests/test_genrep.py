@@ -64,7 +64,7 @@ class Test_Assembly(unittest.TestCase):
         self.assertItemsEqual(zc['eif-3.B'],expected['eif-3.B'])
         self.assembly.genrep.root = self.root
 
-    @unittest.skip('too slow')
+    #@unittest.skip('too slow')
     def test_get_gene_mapping(self):
         expected = ('eif-3.B',14795327,14798367,2803,1,'chrII')
         # Test with local database request
