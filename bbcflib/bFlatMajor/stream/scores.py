@@ -23,8 +23,8 @@ def _max(scores,denom):
     return max(scores)
 
 def _median(scores,denom):
-    scores_y.sort()
-    return (scores_y[(len(scores_y)-1)/2] + scores_y[len(scores_y)/2])*.5
+    scores.sort()
+    return (scores[(len(scores)-1)/2] + scores[len(scores)/2])*.5
 
 _score_functions = {'arithmetic':_arithmetic_mean, 'geometric':_geometric_mean, 'sum':_sum,
                     'mean': _arithmetic_mean, 'min':_min, 'max':_max, 'median':_median}
