@@ -179,18 +179,31 @@ def ensembl_to_ucsc(start):
     """Substract 1 to start coordinates going from Ensembl to UCSC annotation."""
     return format_int(int(start)-1)
 
-def check_ordered(source):
+def check_ordered(source, **kwargs):
     """Read a track-like file *source* once to see if chromosomes are grouped."""
-    visited = []
-    lastvisited = None
-    t = track(source)
+    t = track(source, **kwargs)
+    assert 'chr' in t.fields, "Chromosome field not found."
+    is_start = 'start' in t.fields
+    is_end = 'end' in t.fields
     chr_idx = t.fields.index('chr')
+    start_idx = t.fields.index('start') if is_start else None
+    end_idx = t.fields.index('end') if is_end else None
+
+    visited = []
+    last_chr = None
     for row in t.read():
-        chr = row[chr_idx]
-        if chr != lastvisited:
+        chr   = row[chr_idx]
+        start = row[start_idx] if is_start else 0
+        end   = row[end_idx] if is_end else 0
+        if chr != last_chr:
             if chr in visited: return False
             visited.append(chr)
-        lastvisited = chr
+            last_start = last_end = 0
+        elif start < last_start: return False
+        elif start == last_start and end < last_end: return False
+        last_chr = chr
+        last_start = start
+        last_end = end
     return True
 
 

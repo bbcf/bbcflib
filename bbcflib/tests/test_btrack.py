@@ -48,7 +48,7 @@ class Test_Track(unittest.TestCase):
 
     def test_index(self):
         # Temp file containing only chrX
-        tempfile = os.path.join(path,"temp.txt")
+        tempfile = os.path.join(path,"temp1.txt")
         with open(tempfile,'wb') as g:
             g.writelines(["chrX\t1\n"]*200)
 
@@ -77,18 +77,33 @@ class Test_Track(unittest.TestCase):
         self.assertLess(tskip/tnorm,0.5) # Second case it at least twice faster
 
     def test_check_ordered(self):
+        # All sorted
         tempfile = os.path.join(path,'temp2.txt')
-        with open(tempfile,'wb') as g:
-            g.writelines(["chrX\t1\t2\n", "chrV\t1\t2\n", "chrX\t3\t4\n"])
-        self.assertEqual(check_ordered(tempfile),False)
-        tempfile = os.path.join(path,'temp3.txt')
         with open(tempfile,'wb') as g:
             g.writelines(["chrX\t1\t2\n", "chrX\t3\t4\n", "chrV\t1\t2\n"])
         self.assertEqual(check_ordered(tempfile),True)
 
+        # Chromosomes unsorted
+        tempfile = os.path.join(path,'temp3.txt')
+        with open(tempfile,'wb') as g:
+            g.writelines(["chrX\t1\t2\n", "chrV\t1\t2\n", "chrX\t3\t4\n"])
+        self.assertEqual(check_ordered(tempfile),False)
+
+        # Starts unsorted
+        tempfile = os.path.join(path,'temp4.txt')
+        with open(tempfile,'wb') as g:
+            g.writelines(["chrX\t3\t4\n", "chrX\t1\t2\n", "chrV\t1\t2\n"])
+        self.assertEqual(check_ordered(tempfile),False)
+
+        # Ends unsorted
+        tempfile = os.path.join(path,'temp5.txt')
+        with open(tempfile,'wb') as g:
+            g.writelines(["chrX\t1\t4\n", "chrX\t1\t3\n", "chrV\t1\t2\n"])
+        self.assertEqual(check_ordered(tempfile),False)
+
     def tearDown(self):
-        for test_file in ['temp','temp2','temp3']:
-            test_file = os.path.join(path,test_file)
+        for test_file in ['temp1','temp2','temp3','temp4','temp5']:
+            test_file = os.path.join(path,test_file)+'.txt'
             if os.path.exists(test_file): os.remove(test_file)
 
 class Test_Formats(unittest.TestCase):
