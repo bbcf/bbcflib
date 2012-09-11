@@ -1,12 +1,11 @@
 # coding: utf-8
 
 import sys
-from math import floor, ceil
 from bbcflib.bFlatMajor import common
 from bbcflib.bFlatMajor.stream import concatenate
 from bbcflib import btrack as track
 
-def _sum(scores,denom):
+def _sum(scores,denom=None):
     return sum(scores)
 
 def _arithmetic_mean(scores,denom):
@@ -16,13 +15,13 @@ def _geometric_mean(scores,denom):
 ## more precise/less efficient: exp(sum([log(x) for x in scores])*denom)
     return (reduce(lambda x, y: x*y, scores))**denom
 
-def _min(scores,denom): 
+def _min(scores,denom=None):
     return min(scores)
 
-def _max(scores,denom): 
+def _max(scores,denom=None):
     return max(scores)
 
-def _median(scores,denom):
+def _median(scores,denom=None):
     scores.sort()
     return (scores[(len(scores)-1)/2] + scores[len(scores)/2])*.5
 
@@ -170,7 +169,6 @@ def score_by_feature(trackScores,trackFeatures,fn='mean'):
                 n = 0
                 while S[i][n][1] <= ystart: n+=1
                 S[i] = S[i][n:]
-                score = 0.0
                 scores_y = []
                 for s in S[i]:
                     if yend <= s[0]:   continue
@@ -179,7 +177,7 @@ def score_by_feature(trackScores,trackFeatures,fn='mean'):
                     if yend <  s[1]:   end   = yend
                     else:              end   = s[1]
                     scores_y.extend([s[2]]*(end-start))
-                scores += (_fn(scores,1.0/(yend-ystart)),)
+                scores += (_fn(scores_y,1.0/(yend-ystart)),)
             yield tuple(y)+scores
 
     if not(isinstance(trackScores,(list,tuple))): trackScores = [trackScores]
