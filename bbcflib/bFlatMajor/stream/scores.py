@@ -21,9 +21,20 @@ def _min(scores,denom=None):
 def _max(scores,denom=None):
     return max(scores)
 
+def _qnth(vec, n):
+    pivot = vec[0]
+    below = [s for s in vec if s < pivot]
+    above = [s for s in vec if s > pivot]
+    i, j = len(below), len(vec)-len(above)
+    if n < i:      return _qnth(below, n)
+    elif n >= j:   return _qnth(above, n-j)
+    else:          return pivot
+
 def _median(scores,denom=None):
-    scores.sort()
-    return (scores[(len(scores)-1)/2] + scores[len(scores)/2])*.5
+    if len(scores) % 2:
+        return _qnth(scores,(len(scores)-1)/2)
+    else:
+        return (_qnth(scores,len(scores)/2-1)+_qnth(scores,len(scores)/2))*.5
 
 _score_functions = {'arithmetic':_arithmetic_mean, 'geometric':_geometric_mean, 'sum':_sum,
                     'mean': _arithmetic_mean, 'min':_min, 'max':_max, 'median':_median}
