@@ -154,20 +154,13 @@ def convert( source, target, chrmeta=None, info=None, mode='write' ):
     tsrc.close()
     return ttrg
 
-def strand_to_int(strand=None):
+def strand_to_int(strand=''):
     """Convert +/- into 1/-1 notation for DNA strands."""
-    if strand in [1,-1]: return strand
-    if strand == '+': return 1
-    if strand == '-': return -1
-    return 0
+    return {'1':1,'-1':-1,'+':1,'-':-1}.get(str(strand),0)
 
 def int_to_strand(num=0):
     """Convert 1/-1 into +/- notation for DNA strands."""
-    if num in ['+','-']: return num
-    num = int(num)
-    if num > 0: return '+'
-    if num < 0: return '-'
-    return '.'
+    return {'1':'+','-1':'-','+':'+','-':'-'}.get(str(num),'.')
 
 def format_float(f=float()):
     """Return a formatted string from a float or a string representing a float.
