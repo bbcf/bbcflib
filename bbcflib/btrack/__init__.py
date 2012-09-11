@@ -180,10 +180,7 @@ def ensembl_to_ucsc(start):
     return format_int(int(start)-1)
 
 def check_ordered(source):
-    """Read a track-like file once to see if chromosomes are grouped.
-
-    :param source: (str or tuple) path to the source file, or tuple of the form (path, format).
-    """
+    """Read a track-like file *source* once to see if chromosomes are grouped."""
     visited = []
     lastvisited = None
     t = track(source)
