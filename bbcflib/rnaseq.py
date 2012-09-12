@@ -6,7 +6,7 @@ Module: bbcflib.rnaseq
 Methods of the bbcflib's RNA-seq worflow. The main function is ``rnaseq_workflow()``,
 and is usually called by bbcfutils' ``run_rnaseq.py``, e.g. command-line:
 
-``run_rnaseq.py -v local -c gapkowt.txt -d rnaseq -p transcripts,genes``
+``python run_rnaseq.py -v local -c gapkowt.txt -d rnaseq -p transcripts,genes``
 
 From a BAM file produced by an alignement on the **exonome**, gets counts of reads
 on the exons, add them to get counts on genes, and uses least-squares to infer
@@ -22,7 +22,7 @@ from operator import itemgetter
 # Internal modules #
 from bbcflib.common import writecols, set_file_descr, unique_filename_in
 from bbcflib import mapseq, genrep
-from bbcflib.bFlatMajor.common import cobble
+from bbcflib.bFlatMajor.common import cobble, sorted_stream
 from bbcflib.btrack import track, FeatureStream, convert
 from bein import program
 
@@ -220,10 +220,13 @@ def save_results(ex, cols, conditions, group_ids, assembly, header=[], feature_t
         for group,filename in output_sql.iteritems():
             # SQL track
             tr = track(filename+'.sql', fields=['chr','start','end','score'], chrmeta=assembly.chrmeta)
-            lines = zip(*[chromosomes,start,end,rpkm[group]])
-            lines = FeatureStream(zip(*[chromosomes,start,end,rpkm[group]]), fields=['chr','start','end','score'])
-            lines = cobble(lines)
-            tr.write(lines)
+            lines = {}
+            for n,c in enumerate(chromosomes):
+                if not(c in tr.chrmeta): continue
+                if c in lines: lines[c].append((int(start[n]),int(end[n]),rpkm[group][n]))
+                else: lines[c] = []
+            for chrom, feats in lines.iteritems():
+                tr.write(cobble(sorted_stream(FeatureStream(feats, fields=['start','end','score']))),chrom=chrom)
             description = set_file_descr(feature_type.lower()+"_"+group+".sql", step="pileup", type="sql", \
                                          groupId=group_ids[group], gdv='1')
             ex.add(filename+'.sql', description=description)
@@ -505,7 +508,6 @@ def rnaseq_workflow(ex, job, bam_files, pileup_level=["exons","genes","transcrip
     if "exons" in pileup_level:
         print "Get scores of exons"
         exons_data = zip(*exons_data)
-        #exons_data = sorted(exons_data, key=itemgetter(8,4)) # sort w.r.t. chromosome, then start
         header = ["ExonID"] + hconds + ["Start","End","GeneID","GeneName","Strand","Chromosome"]
         exons_data = zip(*exons_data)
         exons_file = save_results(ex, exons_data, conditions, group_ids, assembly, header=header, feature_type="EXONS")
@@ -516,7 +518,6 @@ def rnaseq_workflow(ex, job, bam_files, pileup_level=["exons","genes","transcrip
         (gcounts, grpkm) = genes_expression(exons_data, gene_mapping, exon_to_gene, ncond, nreads)
         genesID = gcounts.keys()
         genes_data = [[g,gcounts[g],grpkm[g]]+list(gene_mapping.get(g,("NA",)*6)) for g in genesID]
-        #genes_data = sorted(genes_data, key=itemgetter(8,4)) # sort w.r.t. chromosome, then start
         (genesID,gcounts,grpkm,gname,gstart,gend,glen,gstr,gchr) = zip(*genes_data)
         header = ["GeneID"] + hconds + ["Start","End","GeneName","Strand","Chromosome"]
         genes_data = [genesID]+list(zip(*gcounts))+list(zip(*grpkm))+[gstart,gend,gname,gstr,gchr]
@@ -529,7 +530,6 @@ def rnaseq_workflow(ex, job, bam_files, pileup_level=["exons","genes","transcrip
                    transcript_mapping, trans_in_gene, exons_in_trans, ncond, nreads)
         transID = tcounts.keys()
         trans_data = [[t,tcounts[t],trpkm[t]]+list(transcript_mapping.get(t,("NA",)*6)) for t in transID]
-        #trans_data = sorted(trans_data, key=itemgetter(8,4)) # sort w.r.t. chromosome, then start
         (transID,tcounts,trpkm,genesID,tstart,tend,tlen,tstr,tchr) = zip(*trans_data)
         genesName = [gene_mapping.get(g,("NA",)*6)[0] for g in genesID]
         header = ["TranscriptID"] + hconds + ["Start","End","GeneID","GeneName","Strand","Chromosome"]
