@@ -296,6 +296,16 @@ class TextTrack(Track):
             self.filehandle.write(self._format_fields(voidvec,row,srcl,trgl)+"\n")
         self.close()
 
+    def make_header(self, info=None, mode='write'):
+        if isinstance(info,dict): self.info.update(info)
+        header = "track type=%s "%self.format
+        _keys = ["name","description","visibility","color","itemRgb"]
+        header += " ".join(["%s=%s" %(k,self.info[k]) 
+                            for k in _keys if k in self.info])
+        self.open(mode)
+        self.filehandle.write(header+"\n")
+        self.close()
+        
 ################################ Bed ##########################################
 
 class BedTrack(TextTrack):

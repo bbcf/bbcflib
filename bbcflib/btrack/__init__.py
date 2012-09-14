@@ -137,7 +137,7 @@ def convert( source, target, chrmeta=None, info=None, mode='write' ):
     :param target: (str or tuple) path to the target file, or tuple of the form (path, format).
     :param chrmeta: (dict) to specify manually 'chrmeta' for both input and output tracks. [None]
     :param info: (dict) info that will be available as an attribute of the output track. [None]
-    :param mode: (str) writing mode: either 'write' or 'overwrite'. ['write']
+    :param mode: (str) writing mode: either 'write', 'append' or 'overwrite'. ['write']
     """
     if isinstance(source, tuple):
         tsrc = track(source[0], format=source[1], chrmeta=chrmeta)
