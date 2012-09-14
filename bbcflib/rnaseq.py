@@ -17,7 +17,6 @@ The annotation of the bowtie index has to be consistent to that of the database 
 
 # Built-in modules #
 import os, pysam, math
-from operator import itemgetter
 
 # Internal modules #
 from bbcflib.common import writecols, set_file_descr, unique_filename_in
@@ -226,7 +225,7 @@ def save_results(ex, cols, conditions, group_ids, assembly, header=[], feature_t
                 if c in lines: lines[c].append((int(start[n]),int(end[n]),rpkm[group][n]))
                 else: lines[c] = []
             for chrom, feats in lines.iteritems():
-                tr.write(cobble(sorted_stream(FeatureStream(feats, fields=['start','end','score']))),chrom=chrom)
+                tr.write(cobble(sorted_stream(FeatureStream(feats, fields=['start','end','score']))),chrom=chrom,clip=True)
             description = set_file_descr(feature_type.lower()+"_"+group+".sql", step="pileup", type="sql", \
                                          groupId=group_ids[group], gdv='1')
             ex.add(filename+'.sql', description=description)
