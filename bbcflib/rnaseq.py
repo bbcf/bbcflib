@@ -230,8 +230,11 @@ def save_results(ex, cols, conditions, group_ids, assembly, header=[], feature_t
                                          groupId=group_ids[group], gdv='1')
             ex.add(filename+'.sql', description=description)
             # UCSC-BED track
-            convert(filename+'.sql',filename+'.bedGraph')
-            description = set_file_descr(feature_type.lower()+"_"+group+".bedGraph", step="pileup", type="bedGraph", \
+            t=track(filename+'.bedGraph',info={name:feature_type.lower()+"_"+group})
+            t.make_header()
+            convert(filename+'.sql',filename+'.bedGraph',mode='append')
+            description = set_file_descr(feature_type.lower()+"_"+group+".bedGraph",
+                                         step="pileup", type="bedGraph",
                                          groupId=group_ids[group], ucsc='1')
             ex.add(filename+'.bedGraph', description=description)
     print feature_type+": Done successfully."
