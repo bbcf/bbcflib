@@ -336,7 +336,7 @@ def create_tracks(ex, outall, sample_names, assembly):
         description = set_file_descr("allSNP_track_"+sample_name+".sql" ,type='sql',step='SNPs',gdv='1')
         ex.add(out+'.sql', description=description)
         # BED track
-        t=track(out+'.bed',info={name:"allSNP_track_"+sample_name})
+        t=track(out+'.bed',info={'name':"allSNP_track_"+sample_name})
         t.make_header()
         convert(out+'.sql',out+'.bed',mode='append')
         description = set_file_descr("allSNP_track_"+sample_name+".bed" ,
