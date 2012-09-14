@@ -819,9 +819,9 @@ def map_groups( ex, job_or_dict, assembly_or_dict, map_args=None ):
 
     * ``'ex'``: a 'bein' execution environment to run jobs in,
 
-    * ``'job_or_dict'``: a 'Frontend' 'job' object, or a dictionary with keys 'groups',
+    * ``'job_or_dict'``: a 'frontend.Job' object, or a dictionary with keys 'groups',
 
-    * ``'assembly_or_dict'``: an 'Assembly' object, or a dictionary of 'chromosomes' and 'index_path'.
+    * ``'assembly_or_dict'``: a 'genrep.Assembly' object, or a dictionary of 'chromosomes' and 'index_path'.
 
     * ``'map_args'``: a dictionary of arguments passed to map_reads.
 
@@ -1030,7 +1030,7 @@ def parallel_density_sql( ex, bamfile, chromosomes,
         tfwd = track.track(output+"fwd.sql",**trackargs)
         for k,v in chromosomes.iteritems():
             wig = str(futures[k].wait())
-            if not(os.path.exists(wig)): touch(ex,wig) 
+            if not(os.path.exists(wig)): touch(ex,wig)
             twig = track.track(wig,format='bed')
             trev.write(twig.read(selection={'strand':'-'}))
             tfwd.write(twig.read(selection={'strand':'+'}))
@@ -1040,7 +1040,7 @@ def parallel_density_sql( ex, bamfile, chromosomes,
         tboth = track.track(output+"merged.sql",**trackargs)
         for k,v in chromosomes.iteritems():
             wig = str(futures[k].wait())
-            if not(os.path.exists(wig)): touch(ex,wig) 
+            if not(os.path.exists(wig)): touch(ex,wig)
             twig = track.track(wig,format='bedgraph')
             tboth.write(twig.read())
         tboth.close()
