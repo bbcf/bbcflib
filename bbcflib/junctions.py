@@ -15,7 +15,7 @@ Uses SOAPsplice ...
 import os, pysam
 
 # Internal modules #
-from bbcflib.common import set_file_descr, unique_filename_in
+from bbcflib.common import set_file_descr, unique_filename_in, cat
 from bbcflib import mapseq, genrep
 from bbcflib.bFlatMajor.common import cobble, sorted_stream
 from bbcflib.btrack import track, FeatureStream, convert
@@ -40,7 +40,7 @@ def soapsplice(unmapped_R1, unmapped_R2, index, output=None, **options):
     #"SOAPsplice-v1.9/bin/soapsplice -d $index -1 $path1$r1 -2 $path2$r2 -I $insertsize -o $outpath$out -f 2 "
 
 
-def junctions_workflow(ex, job, bam_files, ref_genome, index, via="lsf"):
+def junctions_workflow(ex, job, bam_files, index, via="lsf"):
     """
     Main function of the workflow.
 
@@ -51,7 +51,6 @@ def junctions_workflow(ex, job, bam_files, ref_genome, index, via="lsf"):
     :param via: 'local' or 'lsf'.
     """
     assembly = genrep.Assembly(assembly=job.assembly_id,intype=2)
-    ref_genome = untar_genome_fasta(assembly, ref_genome, convert=True) # cf snp.py
 
     group_names={}
     group_ids={}
@@ -62,14 +61,21 @@ def junctions_workflow(ex, job, bam_files, ref_genome, index, via="lsf"):
 
     unmapped_fastq = {}
     for gid, group in job.groups.iteritems():
+        unmapped_fastq[gid] = []
         for rid, run in group['runs'].iteritems():
             # Define pairs of fastq files ...
-            unmapped_fastq[gid] = unmapped_fastq.setdefault(gid,[]).append(bam_files[gid][rid].get('unmapped_fastq'))
-        if unmapped_fastq[gid]:
-            R1 = None
-            R2 = None
+            unmapped = bam_files[gid][rid].get('unmapped_fastq')
+            assert unmapped, "No unmapped reads found."
+            assert os.path.exists(unmapped+'_1.gz'), "Pair-end reads required."
+            unmapped_fastq[gid].append([unmapped+'_1.gz', unmapped+'_2.gz'])
+        R1 = cat(zip(*unmapped_fastq[gid])[0])
+        R2 = cat(zip(*unmapped_fastq[gid])[1])
         junc_file = soapsplice(R1,R2,index)
 
+    # exon_mapping is a dictionary ``{exon ID: ([transcript IDs],gene ID,start,end,chromosome)}``
+    #exon_mapping = assembly.get_exon_mapping()
+    #for e,v in exon_mapping.iteritems():
+    #    start,end = (v[2],v[3])
 
     return know_junctions, new_junctions
 
