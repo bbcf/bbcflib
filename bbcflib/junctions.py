@@ -1,7 +1,7 @@
 """
-======================
+=========================
 Module: bbcflib.junctions
-======================
+=========================
 
 Methods of the bbcflib's `junctions` worflow. The main function is ``junctions_workflow()``,
 and is usually called by bbcfutils' ``run_junctions.py``, e.g. command-line:
@@ -15,123 +15,29 @@ Uses SOAPsplice ...
 import os, pysam
 
 # Internal modules #
-from bbcflib.common import writecols, set_file_descr, unique_filename_in
+from bbcflib.common import set_file_descr, unique_filename_in
 from bbcflib import mapseq, genrep
 from bbcflib.bFlatMajor.common import cobble, sorted_stream
 from bbcflib.btrack import track, FeatureStream, convert
 from bein import program
 
 
-def fetch_mappings(assembly):
-    """Given an assembly ID, returns a tuple
-    ``(gene_mapping, transcript_mapping, exon_mapping, trans_in_gene, exons_in_trans)``
+@program
+def soapsplice(unmapped_R1, unmapped_R2, index, output=None, **options):
+    """Binds 'soapsplice'. Returns a text file containing the list of junctions.
 
-    * [0] gene_mapping is a dict ``{gene ID: (gene name,start,end,length,chromosome)}``
-    * [1] transcript_mapping is a dictionary ``{transcript ID: (gene ID,start,end,length,chromosome)}``
-    * [2] exon_mapping is a dictionary ``{exon ID: ([transcript IDs],gene ID,start,end,chromosome)}``
-    * [3] trans_in_gene is a dict ``{gene ID: [IDs of the transcripts it contains]}``
-    * [4] exons_in_trans is a dict ``{transcript ID: [IDs of the exons it contains]}``
-
-    'Lenghts' are always the sum of the lengths of the exons in the gene/transcript.
-
-    :param path_or_assembly_id: can be a numeric or nominal ID for GenRep
-    (e.g. 11, 76 or 'hg19' for H.Sapiens), or a path to a file containing a
-    pickle object which is read to get the mapping.
+    :param unmapped_R1: (str) path to the fastq file containing the 'left' reads.
+    :param unmapped_R2: (str) path to the fastq file containing the 'right' reads.
+    :param index: (str) path to the SOAPsplice index.
+    :param options: (dict) SOAPsplice options, given as {opt: value}.
+    :rtype: str
     """
-    gene_mapping = assembly.get_gene_mapping()
-    transcript_mapping = assembly.get_transcript_mapping()
-    exon_mapping = assembly.get_exon_mapping()
-    exons_in_trans = assembly.get_exons_in_trans()
-    trans_in_gene = assembly.get_trans_in_gene()
-    mapping = (gene_mapping, transcript_mapping, exon_mapping, trans_in_gene, exons_in_trans)
-    return mapping
-
-def fetch_labels(bamfile):
-    """Returns a list of the exons/transcripts labels in the header of *bamfile*."""
-    try: sam = pysam.Samfile(bamfile, 'rb') #bam input
-    except ValueError: sam = pysam.Samfile(bamfile,'r') #sam input
-    #labels = zip(sam.references,sam.lengths)
-    labels = [(t['SN'],t['LN']) for t in sam.header['SQ']]
-    sam.close()
-    return labels
-
-def build_pileup(bamfile, labels):
-    """From a BAM file, returns a dictionary of the form {feature ID: number of reads that mapped to it}.
-
-    :param bamfile: name of a BAM file.
-    :param labels: index references - as returned by **fetch_labels()**
-    :type bamfile: string
-    :type exons: list
-    """
-    class Counter(object):
-        def __init__(self):
-            self.n = 0
-        def __call__(self, alignment):
-            self.n += 1
-
-    counts = {}
-    try: sam = pysam.Samfile(bamfile, 'rb')
-    except ValueError: sam = pysam.Samfile(bamfile,'r')
-    c = Counter()
-    for l in labels:
-        sam.fetch(l[0], 0, l[1], callback=c) #(name,0,length,Counter())
-        #The callback (c.n += 1) is executed for each alignment in a region
-        counts[l[0].split('|')[0]] = c.n
-        c.n = 0
-    sam.close()
-    return counts
-
-def save_results(ex, cols, conditions, group_ids, assembly, header=[], feature_type='features'):
-    """Save results in a tab-delimited file, one line per feature, one column per run.
-
-    :param ex: bein's execution.
-    :param cols: list of iterables, each element being a column to write in the output.
-    :param conditions: list of strings corresponding to descriptions of the different samples.
-    :param group_ids: dictionary {group name: group ID}.
-    :param assembly: a GenRep Assembly object.
-    :param header: list of strings, the column headers of the output file.
-    :param feature_type: (str) the kind of feature of which you measure the expression.
-    """
-    conditions = tuple(conditions)
-    # Tab-delimited output with all information
-    output_tab = unique_filename_in()
-    writecols(output_tab,cols,header=header, sep="\t")
-    description = set_file_descr(feature_type.lower()+"_expression.tab", step="pileup", type="txt")
-    ex.add(output_tab, description=description)
-    # Create one track for each group
-    if feature_type in ['GENES','EXONS']:
-        ncond = len(conditions)
-        groups = [c.split('.')[0] for c in conditions]
-        start = cols[2*ncond+1]
-        end = cols[2*ncond+2]
-        chromosomes = cols[-1]
-        rpkm = {}; output_sql = {}
-        for i in range(ncond):
-            group = conditions[i].split('.')[0]
-            nruns = groups.count(group)
-            # mean of all replicates in the group
-            rpkm[group] = asarray(rpkm.get(group,zeros(len(start)))) + asarray(cols[i+ncond+1]) / nruns
-            output_sql[group] = output_sql.get(group,unique_filename_in())
-        for group,filename in output_sql.iteritems():
-            # SQL track
-            tr = track(filename+'.sql', fields=['chr','start','end','score'], chrmeta=assembly.chrmeta)
-            lines = {}
-            for n,c in enumerate(chromosomes):
-                if not(c in tr.chrmeta): continue
-                if c in lines: lines[c].append((int(start[n]),int(end[n]),rpkm[group][n]))
-                else: lines[c] = []
-            for chrom, feats in lines.iteritems():
-                tr.write(cobble(sorted_stream(FeatureStream(feats, fields=['start','end','score']))),chrom=chrom,clip=True)
-            description = set_file_descr(feature_type.lower()+"_"+group+".sql", step="pileup", type="sql", \
-                                         groupId=group_ids[group], gdv='1')
-            ex.add(filename+'.sql', description=description)
-            # UCSC-BED track
-            convert(filename+'.sql',filename+'.bedGraph')
-            description = set_file_descr(feature_type.lower()+"_"+group+".bedGraph", step="pileup", type="bedGraph", \
-                                         groupId=group_ids[group], ucsc='1')
-            ex.add(filename+'.bedGraph', description=description)
-    print feature_type+": Done successfully."
-    return output_tab
+    args = ['soapsplice','-d',index,'-1',unmapped_R1,'-2',unmapped_R2]
+    opts = []
+    for k,v in options.iteritems(): opts.extend([str(k),v])
+    if not output: output = unique_filename_in()
+    return {"arguments": args, "return_value": output}
+    #"SOAPsplice-v1.9/bin/soapsplice -d $index -1 $path1$r1 -2 $path2$r2 -I $insertsize -o $outpath$out -f 2 "
 
 
 def junctions_workflow(ex, job, bam_files, via="lsf"):
@@ -240,19 +146,11 @@ def junctions_workflow(ex, job, bam_files, via="lsf"):
             nreads[cond] = nreads.get(cond,0) + sum(exon_pileup.values()) # total number of reads
             print "....Pileup", cond, "done"
 
-    """ Treat data """
-    print "Process data"
-    starts = asarray(starts, dtype=numpy.float_)
-    ends = asarray(ends, dtype=numpy.float_)
-    nreads = asarray([nreads[cond] for cond in conditions], dtype=numpy.float_)
-    counts = asarray([exon_pileups[cond] for cond in conditions], dtype=numpy.float_)
-
+    """ Print counts for exons """
     hconds = ["counts."+c for c in conditions] + ["rpkm."+c for c in conditions]
-    genesName, echr = zip(*[(x[0],x[-1]) for x in [gene_mapping.get(g,("NA",)*6) for g in genesID]])
     exons_data = [exonsID]+list(counts)+list(rpkm)+[starts,ends,genesID,genesName,strands,echr]
     exons_file = None; genes_file = None; trans_file = None
 
-    """ Print counts for exons """
     print "Get scores of exons"
     exons_data = zip(*exons_data)
     header = ["ExonID"] + hconds + ["Start","End","GeneID","GeneName","Strand","Chromosome"]
