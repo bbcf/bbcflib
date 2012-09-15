@@ -594,7 +594,7 @@ class Assembly(object):
                         name = "|".join([str(y) for y in v[0][2:nmax]])
                         sort_list.append((start,end,name)+tuple(v[0][nmax:]))
                 sort_list.sort()
-                for k in sort_list: yield (chrom,)+k
+                for k in sort_list: yield (chrom,)+k[:-1]
         return track.FeatureStream(_query(),fields=_fields)
 
     def gene_track(self,chromlist=None,biotype=["protein_coding"]):
