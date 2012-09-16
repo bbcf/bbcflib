@@ -150,15 +150,6 @@ def fetch_mappings(assembly):
     mapping = (gene_mapping, transcript_mapping, exon_mapping, trans_in_gene, exons_in_trans)
     return mapping
 
-def fetch_labels(bamfile):
-    """Returns a list of the exons labels in the header of *bamfile*."""
-    try: sam = pysam.Samfile(bamfile, 'rb') #bam input
-    except ValueError: sam = pysam.Samfile(bamfile,'r') #sam input
-    #labels = zip(sam.references,sam.lengths)
-    labels = [(t['SN'],t['LN']) for t in sam.header['SQ']]
-    sam.close()
-    return labels
-
 def build_pileup(bamfile, exons, assembly):
     """From a BAM file, returns a dictionary of the form {feature_id: number of reads that mapped to it}.
 
@@ -184,10 +175,14 @@ def build_pileup(bamfile, exons, assembly):
             counts[e[0]] = c.n
             c.n = 0
     else: # mapped on the exonome - retro-compatibility
-        for e in exons:
-            label = '|'.join([e[0],e[1],str(e[3]),str(e[4]),str(e[5])])
-            sam.fetch(label, 0, e[4]-e[3], callback=c) #(label,0,length,Counter())
-            counts[e[0]] = c.n
+        #for e in exons:
+        #    label = '|'.join([e[0],e[1],str(e[3]),str(e[4]),str(e[5])])
+        #    sam.fetch(label, 0, e[4]-e[3], callback=c) #(label,0,length,Counter())
+        #    counts[e[0]] = c.n
+        #    c.n = 0
+        for e in zip(sam.references,sam.lengths):
+            sam.fetch(e[0], 0, e[1], callback=c) #(label,0,length,Counter())
+            counts[e[0].split('|')[0]] = c.n
             c.n = 0
     sam.close()
     return counts
@@ -489,7 +484,7 @@ def rnaseq_workflow(ex, job, bam_files, pileup_level=["exons","genes","transcrip
             if unmapped_fastq[cond] and cond in additionals:
                 for a,x in additionals[cond].iteritems():
                     exon_pileup[a] = exon_pileup.get(a,0) + x
-            exon_pileups[cond] = [exon_pileup[e] for e in exonsID] # {cond1.run1: {pileup}, cond1.run2: {pileup}...}
+            exon_pileups[cond] = [exon_pileup.get(e,0.0) for e in exonsID] # {cond1.run1: {exon:cnt}, cond1.run2: {exon:cnt}...}
             nreads[cond] = nreads.get(cond,0) + sum(exon_pileup.values()) # total number of reads
             print "....Pileup", cond, "done"
 
