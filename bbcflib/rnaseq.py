@@ -127,14 +127,14 @@ def lsqnonneg(C, d, x0=None, tol=None, itmax_factor=3):
 
 #@timer
 def fetch_mappings(assembly):
-    """Given an assembly ID, returns a tuple
+    """Given an assembly_id, returns a tuple
     ``(gene_mapping, transcript_mapping, exon_mapping, trans_in_gene, exons_in_trans)``
 
-    * [0] gene_mapping is a dict ``{gene ID: (gene name,start,end,length,chromosome)}``
-    * [1] transcript_mapping is a dictionary ``{transcript ID: (gene ID,start,end,length,chromosome)}``
-    * [2] exon_mapping is a dictionary ``{exon ID: ([transcript IDs],gene ID,start,end,chromosome)}``
-    * [3] trans_in_gene is a dict ``{gene ID: [IDs of the transcripts it contains]}``
-    * [4] exons_in_trans is a dict ``{transcript ID: [IDs of the exons it contains]}``
+    * [0] gene_mapping is a dict ``{gene_id: (gene name,start,end,length,chromosome)}``
+    * [1] transcript_mapping is a dictionary ``{transcript_id: (gene_id,start,end,length,chromosome)}``
+    * [2] exon_mapping is a dictionary ``{exon_id: ([transcript_ids],gene_id,start,end,chromosome)}``
+    * [3] trans_in_gene is a dict ``{gene_id: [IDs of the transcripts it contains]}``
+    * [4] exons_in_trans is a dict ``{transcript_id: [IDs of the exons it contains]}``
 
     'Lenghts' are always the sum of the lengths of the exons in the gene/transcript.
 
@@ -151,7 +151,7 @@ def fetch_mappings(assembly):
     return mapping
 
 def fetch_labels(bamfile):
-    """Returns a list of the exons/transcripts labels in the header of *bamfile*."""
+    """Returns a list of the exons labels in the header of *bamfile*."""
     try: sam = pysam.Samfile(bamfile, 'rb') #bam input
     except ValueError: sam = pysam.Samfile(bamfile,'r') #sam input
     #labels = zip(sam.references,sam.lengths)
@@ -159,11 +159,11 @@ def fetch_labels(bamfile):
     sam.close()
     return labels
 
-def build_pileup(bamfile, exons):
-    """From a BAM file, returns a dictionary of the form {feature ID: number of reads that mapped to it}.
+def build_pileup(bamfile, exons, assembly):
+    """From a BAM file, returns a dictionary of the form {feature_id: number of reads that mapped to it}.
 
     :param bamfile: name of a BAM file.
-    :param exons: list of features of the type (chr,start,end,'exon_id|gene_id|gene_name',strand,phase).
+    :param exons: list of features of the type (exon_id,gene_id,gene_name,start,end,strand,chr).
     :type bamfile: string
     :type exons: list
     """
@@ -177,11 +177,18 @@ def build_pileup(bamfile, exons):
     try: sam = pysam.Samfile(bamfile, 'rb')
     except ValueError: sam = pysam.Samfile(bamfile,'r')
     c = Counter()
-    for e in exons:
-        sam.fetch(e[0],e[1],e[2], callback=c) #(name,start,end,Counter())
-        #The callback (c.n += 1) is executed for each alignment in a region
-        counts[e[3].split('|')[0]] = c.n
-        c.n = 0
+    #The callback (c.n += 1) is executed for each alignment in a region
+    if all([ref in assembly.chrmeta.keys() for ref in sam.references]): # mapped on the genome
+        for e in exons:
+            sam.fetch(e[-1],e[2],e[3], callback=c) #(chr,start,end,Counter())
+            counts[e[0]] = c.n
+            c.n = 0
+    else: # mapped on the exonome - retro-compatibility
+        for e in exons:
+            label = '|'.join([e[0],e[1],str(e[3]),str(e[4]),str(e[5])])
+            sam.fetch(label, 0, e[4]-e[3], callback=c) #(label,0,length,Counter())
+            counts[e[0]] = c.n
+            c.n = 0
     sam.close()
     return counts
 
@@ -191,7 +198,7 @@ def save_results(ex, cols, conditions, group_ids, assembly, header=[], feature_t
     :param ex: bein's execution.
     :param cols: list of iterables, each element being a column to write in the output.
     :param conditions: list of strings corresponding to descriptions of the different samples.
-    :param group_ids: dictionary {group name: group ID}.
+    :param group_ids: dictionary {group name: group_id}.
     :param assembly: a GenRep Assembly object.
     :param header: list of strings, the column headers of the output file.
     :param feature_type: (str) the kind of feature of which you measure the expression.
@@ -244,11 +251,11 @@ def save_results(ex, cols, conditions, group_ids, assembly, header=[], feature_t
 def genes_expression(exons_data, gene_mapping, exon_mapping, ncond, nreads):
     """Get gene counts from exons counts.
 
-    Returns two dictionaries, one for counts and one for rpkm, of the form ``{gene ID: score}``.
+    Returns two dictionaries, one for counts and one for rpkm, of the form ``{gene_id: score}``.
 
     :param exons_data: list of lists ``[exonsIDs,counts,rpkm,starts,ends,geneIDs,geneNames,strands,chrs]``.
-    :param gene_mapping: dictionary ``{gene ID: (gene name,start,end,length,strand,chromosome)}``
-    :param exon_mapping: dictionary ``{exon ID: ([transcript IDs],gene ID,start,end,strand,chromosome)}``
+    :param gene_mapping: dictionary ``{gene_id: (gene name,start,end,length,strand,chromosome)}``
+    :param exon_mapping: dictionary ``{exon_id: ([transcript_id's],gene_id,gene_name,start,end,strand,chromosome)}``
     :param ncond: number of samples.
     """
     genes = list(set(exons_data[-4]))
@@ -270,13 +277,13 @@ def genes_expression(exons_data, gene_mapping, exon_mapping, ncond, nreads):
 def transcripts_expression(exons_data, exon_mapping, transcript_mapping, trans_in_gene, exons_in_trans, ncond, nreads):
     """Get transcript rpkms from exon rpkms.
 
-    Returns two dictionaries, one for counts and one for rpkm, of the form ``{transcript ID: score}``.
+    Returns two dictionaries, one for counts and one for rpkm, of the form ``{transcript_id: score}``.
 
     :param exons_data: list of lists ``[exonsIDs,counts,rpkm,starts,ends,geneIDs,geneNames,strands,chrs]``
-    :param exon_mapping: dictionary ``{exon ID: ([transcript IDs],gene ID,start,end,strand,chromosome)}``
-    :param transcript_mapping: dictionary ``{transcript ID: (gene ID,start,end,length,strand,chromosome)}``
-    :param trans_in_gene: dictionary ``{gene ID: [transcript IDs it contains]}``
-    :param exons_in_trans: dictionary ``{transcript ID: [exon IDs it contains]}``
+    :param exon_mapping: dictionary ``{exon_id: ([transcript_ids],gene_id,start,end,strand,chromosome)}``
+    :param transcript_mapping: dictionary ``{transcript_id: (gene_id,start,end,length,strand,chromosome)}``
+    :param trans_in_gene: dictionary ``{gene_id: [transcript_ids it contains]}``
+    :param exons_in_trans: dictionary ``{transcript_id: [exon_ids it contains]}``
     :param ncond: number of samples
     """
     genes = list(set(exons_data[-4]))
@@ -310,7 +317,7 @@ def transcripts_expression(exons_data, exon_mapping, transcript_mapping, trans_i
                     if exons_in_trans.get(t) and e in exons_in_trans[t]:
                         M[i,j] = 1.
                         if exon_mapping.get(e) and transcript_mapping.get(t):
-                            L[i,j] = float((exon_mapping[e][3]-exon_mapping[e][2])) / transcript_mapping[t][3]
+                            L[i,j] = float((exon_mapping[e][4]-exon_mapping[e][3])) / transcript_mapping[t][3]
                         else:
                             L[i,j] = 1./len(eg)
                 # Retrieve exon scores
@@ -413,27 +420,20 @@ def rnaseq_workflow(ex, job, bam_files, pileup_level=["exons","genes","transcrip
     ncond = len(conditions)
 
     print "Load mappings"
-    """ [0] gene_mapping is a dict ``{gene ID: (gene name,start,end,length,strand,chromosome)}``
-        [1] transcript_mapping is a dictionary ``{transcript ID: (gene ID,start,end,length,strand,chromosome)}``
-        [2] exon_mapping is a dictionary ``{exon ID: ([transcript IDs],gene ID,start,end,strand,chromosome)}``
-        [3] trans_in_gene is a dict ``{gene ID: [IDs of the transcripts it contains]}``
-        [4] exons_in_trans is a dict ``{transcript ID: [IDs of the exons it contains]}`` """
+    """ [0] gene_mapping is a dict ``{gene_id: (gene name,start,end,length,strand,chromosome)}``
+        [1] transcript_mapping is a dictionary ``{transcript_id: (gene_id,start,end,length,strand,chromosome)}``
+        [2] exon_mapping is a dictionary ``{exon_id: ([transcript_ids],gene_id,gene_name,start,end,strand,chromosome)}``
+        [3] trans_in_gene is a dict ``{gene_id: [IDs of the transcripts it contains]}``
+        [4] exons_in_trans is a dict ``{transcript_id: [IDs of the exons it contains]}`` """
     (gene_mapping, transcript_mapping, exon_mapping, trans_in_gene, exons_in_trans) = fetch_mappings(assembly)
 
-    #Exon track: ('chr1',34553,35174,'ENSE00001727627|ENSG00000237613|FAM138A',-1,-1)
-    #Exon map: (exon_id,gene_id,start,end,strand,chr)
-    #exons = [(e,v[1:]) for e,v in exon_mapping.iteritems()]
-    exons = list(assembly.exon_track())
-    #Exon labels: ('exonID|geneID|start|end|strand|type', length)
-    #exons = fetch_labels(bam_files[groups.keys()[0]][groups.values()[0]['runs'].keys()[0]]['bam'])
-
-    """ Extract information from bam headers """
+    """ Build annotation lists """
+    #Exon info structure: (exon_id,gene_id,start,end,strand,chr)
+    exons = [(e,)+v[1:] for e,v in exon_mapping.iteritems() if len(e)>0]
     exonsID=[]; genesID=[]; genesName=[]; starts=[]; ends=[]; strands=[]; badexons=[]
     for e in exons:
-        chr,start,end,annot,strand,phase = e
-        exon_id,gene_id,gene_name = annot.split('|')
-        length = end-start
-        if length > 1 and len(exon_id) > 0:
+        exon_id,gene_id,gene_name,start,end,strand,chr = e
+        if end-start > 1:
             starts.append(start)
             ends.append(end)
             strands.append(strand)
@@ -467,7 +467,7 @@ def rnaseq_workflow(ex, job, bam_files, pileup_level=["exons","genes","transcrip
                         r_end = r_start + read.rlen
                         E = exons_in_trans[t_id]
                         for e in E:
-                            e_start, e_end = exon_mapping[e][2:4]
+                            e_start, e_end = exon_mapping[e][3:5]
                             e_len = e_end-e_start
                             if lag <= r_start <= lag+e_len:
                                 additional[e] = additional.get(e,0) + 0.5
@@ -485,7 +485,7 @@ def rnaseq_workflow(ex, job, bam_files, pileup_level=["exons","genes","transcrip
         for rid,f in files.iteritems():
             k+=1
             cond = group_names[gid]+'.'+str(k)
-            exon_pileup = build_pileup(f['bam'], exons)
+            exon_pileup = build_pileup(f['bam'], exons, assembly)
             if unmapped_fastq[cond] and cond in additionals:
                 for a,x in additionals[cond].iteritems():
                     exon_pileup[a] = exon_pileup.get(a,0) + x
@@ -494,7 +494,6 @@ def rnaseq_workflow(ex, job, bam_files, pileup_level=["exons","genes","transcrip
             print "....Pileup", cond, "done"
 
     """ Treat data """
-    print "Process data"
     starts = asarray(starts, dtype=numpy.float_)
     ends = asarray(ends, dtype=numpy.float_)
     nreads = asarray([nreads[cond] for cond in conditions], dtype=numpy.float_)
