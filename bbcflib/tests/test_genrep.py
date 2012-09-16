@@ -36,7 +36,8 @@ class Test_Assembly(unittest.TestCase):
         """
 
     def with_without_genrep(test):
-        """Decorator. Unables genrep.root, so that requests are sent via URL to GenRep."""
+        """Decorator. Runs *test* with genrep.root successively activated (via /db/)
+        and disabled (via URL to GenRep)."""
         @wraps(test) # gives to the wrapper the original function name
         def wrapper(self):
             root = self.assembly.genrep.root
@@ -151,7 +152,7 @@ class Test_Assembly(unittest.TestCase):
     @unittest.skip('slow')
     @with_without_genrep
     def test_get_exon_mapping(self):
-        expected = (['Y54E2A.11a.1'],'Y54E2A.11',14795327,14795434,1,'chrII')
+        expected = (['Y54E2A.11a.1'],'Y54E2A.11','eif-3.B',14795327,14795434,1,'chrII')
         map = self.assembly.get_exon_mapping()
         zc = map['Y54E2A.11a.1.1']
         self.assertEqual(zc,expected)
