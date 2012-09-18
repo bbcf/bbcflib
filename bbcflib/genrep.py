@@ -557,7 +557,7 @@ class Assembly(object):
         _fields = ['chr','start','end','name','strand']
         nmax = 4
         biosel = ''
-        if not(biotype is None):
+        if biotype is not None:
             biosel = "AND biotype IN ('"+"','".join(biotype)+"')"
         if annot_type == 'gene':
             flist = "gene_id,gene_name,strand"
@@ -582,7 +582,7 @@ class Assembly(object):
                      "conditions": "type:exon",
                      "uniq":"1" }
         else:
-            raise TypeError("Annotation track type %s not implemented." %annot_type)
+            raise TypeError("Annotation track type '%s' not implemented." %annot_type)
         def _query():
             for chrom in chromlist:
                 sort_list = []
@@ -600,15 +600,18 @@ class Assembly(object):
         return track.FeatureStream(_query(),fields=_fields)
 
     def gene_track(self,chromlist=None,biotype=["protein_coding"]):
-        """Return a FeatureStream over all protein coding genes annotation in the genome."""
+        """Return a FeatureStream over all protein coding genes annotation in the genome:
+        ('chr', start, end, 'gene_id|gene_name', strand)."""
         return self.annot_track(annot_type='gene',chromlist=chromlist,biotype=biotype)
 
     def exon_track(self,chromlist=None,biotype=["protein_coding"]):
-        """Return a FeatureStream over all coding exons annotation in the genome."""
+        """Return a FeatureStream over all coding exons annotation in the genome:
+        ('chr', start, end, 'exon_id|gene_id|gene_name', strand, phase)."""
         return self.annot_track(annot_type='exon',chromlist=chromlist,biotype=biotype)
 
     def transcript_track(self,chromlist=None,biotype=["protein_coding"]):
-        """Return a FeatureStream over all protein coding transcripts annotation in the genome."""
+        """Return a FeatureStream over all protein coding transcripts annotation in the genome:
+        ('chr', start, end, 'gene_id|gene_name', strand)."""
         return self.annot_track(annot_type='transcript',chromlist=chromlist,biotype=biotype)
 
     @property
