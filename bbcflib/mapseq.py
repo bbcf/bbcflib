@@ -1190,7 +1190,7 @@ def get_bam_wig_files( ex, job, minilims=None, hts_url=None, suffix=['fwd','rev'
                     descr = re.sub(r'^[^\[]+:','',tf['description'],count=1)
                     filename = re.search(r'^([^\s\[]+)',descr).groups()[0]
                     allfiles[filename] = fid
-                    if not(run.get('run')) and str(run['url']) == str(tf['repository_name']):
+                    if str(run['url']) == str(tf['repository_name']):
                         name = re.search(r'^(.*)_[^_]*.bam',descr).groups()[0]
                 stats_id = allfiles.get(name+"_filter_bamstat") or allfiles.get(name+"_full_bamstat")
                 with open(MMS.path_to_file(stats_id)) as q:
