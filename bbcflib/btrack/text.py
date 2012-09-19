@@ -162,24 +162,25 @@ class TextTrack(Track):
     def _read(self, fields, index_list, selection, skip):
         self.open('read')
 
-        if selection and skip:
+        if skip and selection:
             chr_selected = [s.get('chr')[0] for s in selection if s.get('chr')]
             chr_toskip = [self.index.get(c) for c in self.index if c not in chr_selected]
-        else: chr_toskip = []
-        skip = iter(chr_toskip+[[sys.maxint,sys.maxint]])
-        toskip = skip.next()
+            skip = iter(chr_toskip+[[sys.maxint,sys.maxint]])
+            toskip = skip.next()
+        start = end = 0
 
         try:
             while 1:
-                start = self.filehandle.tell()
-                if start >= toskip[0] and start <= toskip[1]:
-                    self.filehandle.seek(toskip[1])
+                if skip and selection:
                     start = self.filehandle.tell()
-                elif start > toskip[1]:
-                    toskip = skip.next()
+                    if start >= toskip[0] and start <= toskip[1]:
+                        self.filehandle.seek(toskip[1])
+                        start = self.filehandle.tell()
+                    elif start > toskip[1]:
+                        toskip = skip.next()
+                    end = self.filehandle.tell()
                 row = self.filehandle.readline()
                 if not row: break
-                end = self.filehandle.tell()
                 if row.startswith("browser") or \
                    row.startswith("track") or \
                    row.startswith("#"): continue
@@ -300,12 +301,12 @@ class TextTrack(Track):
         if isinstance(info,dict): self.info.update(info)
         header = "track type=%s "%self.format
         _keys = ["name","description","visibility","color","itemRgb"]
-        header += " ".join(["%s=%s" %(k,self.info[k]) 
+        header += " ".join(["%s=%s" %(k,self.info[k])
                             for k in _keys if k in self.info])
         self.open(mode)
         self.filehandle.write(header+"\n")
         self.close()
-        
+
 ################################ Bed ##########################################
 
 class BedTrack(TextTrack):
