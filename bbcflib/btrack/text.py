@@ -198,7 +198,7 @@ class TextTrack(Track):
                 start = end
                 yield tuple(self._check_type(splitrow[index_list[n]],f)
                             for n,f in enumerate(fields))
-        except ValueError as ve:
+        except (ValueError,IndexError) as ve:
             raise ValueError("Bad line in file %s:\n %s%s\n" % (self.path,row,ve))
         self.close()
 
