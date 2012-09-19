@@ -136,7 +136,7 @@ class TextTrack(Track):
             elif self.path.startswith("http://") or \
                     self.path.startswith("https://") or \
                     self.path.startswith("ftp://"):
-                self.filehandle = urllib2.urlropen(self.path)
+                self.filehandle = urllib2.urlopen(self.path)
             else:
                 raise ValueError("Could not find file %s."%self.path)
         elif mode in ['write','overwrite','append']:
