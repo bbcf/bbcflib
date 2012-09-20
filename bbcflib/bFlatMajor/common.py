@@ -1,4 +1,5 @@
 from bbcflib.btrack import FeatureStream
+from functools import wraps
 import sys, re, itertools
 
 ####################################################################
@@ -7,6 +8,7 @@ def ordered(fn):
     Decorator. Keeps the original order of fields for a stream passing through one of
     bFlatMajor functions that take and return a FeatureStream, or a list of FeatureStream objects.
     """
+    @wraps(fn) # makes the wrapper take the same name as the wrapped function when called
     def wrapper(*args,**kwargs):
         tracks = None
         if len(args) > 0:

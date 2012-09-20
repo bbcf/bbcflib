@@ -136,7 +136,10 @@ class TextTrack(Track):
             elif self.path.startswith("http://") or \
                     self.path.startswith("https://") or \
                     self.path.startswith("ftp://"):
-                self.filehandle = urllib2.urlropen(self.path)
+                if isgzip:
+                    raise TypeError("No support for gzipped files through URL yet.")
+                else:
+                    self.filehandle = urllib2.urlopen(self.path)
             else:
                 raise ValueError("Could not find file %s."%self.path)
         elif mode in ['write','overwrite','append']:
@@ -162,24 +165,25 @@ class TextTrack(Track):
     def _read(self, fields, index_list, selection, skip):
         self.open('read')
 
-        if selection and skip:
+        if skip and selection:
             chr_selected = [s.get('chr')[0] for s in selection if s.get('chr')]
             chr_toskip = [self.index.get(c) for c in self.index if c not in chr_selected]
-        else: chr_toskip = []
-        skip = iter(chr_toskip+[[sys.maxint,sys.maxint]])
-        toskip = skip.next()
+            skip = iter(chr_toskip+[[sys.maxint,sys.maxint]])
+            toskip = skip.next()
+        start = end = 0
 
         try:
             while 1:
-                start = self.filehandle.tell()
-                if start >= toskip[0] and start <= toskip[1]:
-                    self.filehandle.seek(toskip[1])
+                if skip and selection:
                     start = self.filehandle.tell()
-                elif start > toskip[1]:
-                    toskip = skip.next()
+                    if start >= toskip[0] and start <= toskip[1]:
+                        self.filehandle.seek(toskip[1])
+                        start = self.filehandle.tell()
+                    elif start > toskip[1]:
+                        toskip = skip.next()
+                    end = self.filehandle.tell()
                 row = self.filehandle.readline()
                 if not row: break
-                end = self.filehandle.tell()
                 if row.startswith("browser") or \
                    row.startswith("track") or \
                    row.startswith("#"): continue
@@ -197,7 +201,7 @@ class TextTrack(Track):
                 start = end
                 yield tuple(self._check_type(splitrow[index_list[n]],f)
                             for n,f in enumerate(fields))
-        except ValueError as ve:
+        except (ValueError,IndexError) as ve:
             raise ValueError("Bad line in file %s:\n %s%s\n" % (self.path,row,ve))
         self.close()
 
@@ -296,6 +300,16 @@ class TextTrack(Track):
             self.filehandle.write(self._format_fields(voidvec,row,srcl,trgl)+"\n")
         self.close()
 
+    def make_header(self, info=None, mode='write'):
+        if isinstance(info,dict): self.info.update(info)
+        header = "track type=%s "%self.format
+        _keys = ["name","description","visibility","color","itemRgb"]
+        header += " ".join(["%s=%s" %(k,self.info[k])
+                            for k in _keys if k in self.info])
+        self.open(mode)
+        self.filehandle.write(header+"\n")
+        self.close()
+
 ################################ Bed ##########################################
 
 class BedTrack(TextTrack):
@@ -380,27 +394,28 @@ class SgaTrack(TextTrack):
     def _read(self, fields, index_list, selection, skip):
         self.open('read')
 
-        if selection and skip:
+        if skip and selection:
             chr_selected = [s.get('chr')[0] for s in selection if s.get('chr')]
             chr_toskip = [self.index.get(c) for c in self.index if c not in chr_selected]
-        else: chr_toskip = []
-        skip = iter(chr_toskip+[[sys.maxint,sys.maxint]])
-        toskip = skip.next()
+            skip = iter(chr_toskip+[[sys.maxint,sys.maxint]])
+            toskip = skip.next()
+        start = end = 0
 
         rowdata = {'+': ['',-1,-1,'','+',''],
                    '-': ['',-1,-1,'','-',''],
                    '0': ['',-1,-1,'','.','']}
         while 1:
-            start = self.filehandle.tell()
-            if start >= toskip[0] and start <= toskip[1]:
-                self.filehandle.seek(toskip[1])
+            if skip and selection:
                 start = self.filehandle.tell()
-            elif start > toskip[1]:
-                toskip = skip.next()
+                if start >= toskip[0] and start <= toskip[1]:
+                    self.filehandle.seek(toskip[1])
+                    start = self.filehandle.tell()
+                elif start > toskip[1]:
+                    toskip = skip.next()
+                end = self.filehandle.tell()
             row = self.filehandle.readline()
             if not row: break
             if row.startswith("#"): continue
-            end = self.filehandle.tell()
             splitrow = row.strip(' \r\n').split(self.separator)
             yieldit = True
             strand = splitrow[3]
@@ -481,12 +496,12 @@ class WigTrack(TextTrack):
     def _read(self, fields, index_list, selection, skip):
         self.open('read')
 
-        if selection and skip:
+        if skip and selection:
             chr_selected = [s.get('chr')[0] for s in selection if s.get('chr')]
             chr_toskip = [self.index.get(c) for c in self.index if c not in chr_selected]
-        else: chr_toskip = []
-        skip = iter(chr_toskip+[[sys.maxint,sys.maxint]])
-        toskip = skip.next()
+            skip = iter(chr_toskip+[[sys.maxint,sys.maxint]])
+            toskip = skip.next()
+        start = end = 0
 
         fixedStep = None
         chrom = None
@@ -498,16 +513,17 @@ class WigTrack(TextTrack):
         try:
             rowdata = ['',-1,-1,'']
             while 1:
-                start = self.filehandle.tell()
-                if start >= toskip[0] and start <= toskip[1]:
-                    self.filehandle.seek(toskip[1])
+                if skip and selection:
                     start = self.filehandle.tell()
-                elif start > toskip[1]:
-                    toskip = skip.next()
+                    if start >= toskip[0] and start <= toskip[1]:
+                        self.filehandle.seek(toskip[1])
+                        start = self.filehandle.tell()
+                    elif start > toskip[1]:
+                        toskip = skip.next()
+                    end = self.filehandle.tell()
                 row = self.filehandle.readline()
                 if not row: break
                 if row.startswith("#"): continue
-                end = self.filehandle.tell()
                 row = row.strip(' \r\n')
                 if row.startswith("browser") or row.startswith("track"):
                     fixedStep = None

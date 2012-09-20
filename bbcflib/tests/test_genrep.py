@@ -1,5 +1,6 @@
 # Built-in modules #
 import os
+from functools import wraps
 
 # Internal modules #
 from bbcflib.genrep import Assembly, GenRep
@@ -34,6 +35,18 @@ class Test_Assembly(unittest.TestCase):
         2863   =   107        +     194       +     333        +       708       +       1461
         """
 
+    def with_without_genrep(test):
+        """Decorator. Runs *test* with genrep.root successively activated (via /db/)
+        and disabled (via URL to GenRep)."""
+        @wraps(test) # gives to the wrapper the original function name
+        def wrapper(self):
+            root = self.assembly.genrep.root
+            test(self)
+            self.assembly.genrep.root = ''
+            test(self)
+            self.assembly.genrep.root = root
+        return wrapper
+
     def test_fasta_from_regions(self):
         expected = ({'chrI':['G','C','AAGCCTAAGCCTAAGCCTAA','CTAAGCCTAAGCCTAAGCCT','TTTTTGAAAT']}, 52)
         # GenRep request, list form
@@ -64,20 +77,44 @@ class Test_Assembly(unittest.TestCase):
         self.assertItemsEqual(zc['eif-3.B'],expected['eif-3.B'])
         self.assembly.genrep.root = self.root
 
-    #@unittest.skip('too slow')
+    ################
+    # Annot tracks #
+    ################
+
+    @unittest.skip('slow')
+    @with_without_genrep
+    def test_gene_track(self):
+        expected = ('chrI',4118,10232,'Y74C9A.3|Y74C9A.3',-1)
+        track = self.assembly.gene_track()
+        self.assertEqual(track.next(),expected)
+
+    @unittest.skip('slow')
+    @with_without_genrep
+    def test_exon_track(self):
+        expected = ('chrI',4118,4358,'Y74C9A.3.1.5|Y74C9A.3|Y74C9A.3',-1,-1)
+        track = self.assembly.exon_track()
+        self.assertEqual(track.next(),expected)
+
+    @unittest.skip('slow')
+    @with_without_genrep
+    def test_transcript_track(self):
+        expected = ('chrI',4118,10232,'Y74C9A.3.1|Y74C9A.3',-1)
+        track = self.assembly.transcript_track()
+        self.assertEqual(track.next(),expected)
+
+    ############
+    # Mappings #
+    ############
+
+    @unittest.skip('slow')
+    @with_without_genrep
     def test_get_gene_mapping(self):
         expected = ('eif-3.B',14795327,14798367,2803,1,'chrII')
-        # Test with local database request
         map = self.assembly.get_gene_mapping()
         zc = map['Y54E2A.11']
         self.assertEqual(zc,expected)
-        # Test with url request via GenRep
-        self.assembly.genrep.root = ''
-        map = self.assembly.get_gene_mapping()
-        zc = map['Y54E2A.11']
-        self.assertEqual(zc,expected)
-        self.assembly.genrep.root = self.root
 
+    @with_without_genrep
     def test_get_gene_mapping_myco(self):
         expected = ('gdh',2777387,2782262,4875,-1,'chr')
         assembly = Assembly('mycoTube_H37RV')
@@ -96,7 +133,7 @@ class Test_Assembly(unittest.TestCase):
         zc = map['EBMYCG00000001689']
         self.assertEqual(zc,expected)
             # Last item
-        expected = ('Rv3085', 3450919, 3451750, 831, 1, 'chr') 
+        expected = ('Rv3085', 3450919, 3451750, 831, 1, 'chr')
         zc = map['EBMYCG00000002832']
         self.assertEqual(zc,expected)
         self.assembly.genrep.root = self.root
@@ -104,64 +141,38 @@ class Test_Assembly(unittest.TestCase):
         for v in map.itervalues():
             self.assertGreaterEqual(v[3],1)
 
-    @unittest.skip('too slow')
+    @unittest.skip('slow')
+    @with_without_genrep
     def test_get_transcript_mapping(self):
         expected = ('Y54E2A.11',14795327,14798367,2803,1,'chrII')
-        # Test with local database request
         map = self.assembly.get_transcript_mapping()
         zc = map['Y54E2A.11a.1']
         self.assertEqual(zc,expected)
-        # Test with url request via GenRep
-        self.assembly.genrep.root = ''
-        map = self.assembly.get_transcript_mapping()
-        zc = map['Y54E2A.11a.1']
-        self.assertEqual(zc,expected)
-        self.assembly.genrep.root = self.root
 
-    @unittest.skip('too slow')
+    @unittest.skip('slow')
+    @with_without_genrep
     def test_get_exon_mapping(self):
-        expected = (['Y54E2A.11a.1'],'Y54E2A.11',14795327,14795434,1,'chrII')
-        # Test with local database request
+        expected = (['Y54E2A.11a.1'],'Y54E2A.11','eif-3.B',14795327,14795434,1,'chrII')
         map = self.assembly.get_exon_mapping()
         zc = map['Y54E2A.11a.1.1']
         self.assertEqual(zc,expected)
-        # Test with url request via GenRep
-        self.assembly.genrep.root = ''
-        map = self.assembly.get_exon_mapping()
-        zc = map['Y54E2A.11a.1.1']
-        print "zc",zc
-        print "exp",expected
-        self.assertEqual(zc,expected)
-        self.assembly.genrep.root = self.root
 
-    @unittest.skip('too slow')
+    @unittest.skip('slow')
+    @with_without_genrep
     def test_get_exons_in_trans(self):
         expected = ['Y54E2A.11a.1.1','Y54E2A.11b.2.2','Y54E2A.11a.1.3',
                     'Y54E2A.11a.1.4','Y54E2A.11b.1.5'] # Y54E2A.11a.1.5 = Y54E2A.11b.1.5
-        # Test with local database request
         map = self.assembly.get_exons_in_trans()
         zc = map['Y54E2A.11a.1']
         self.assertItemsEqual(zc,expected)
-        # Test with url request via GenRep
-        self.assembly.genrep.root = ''
-        map = self.assembly.get_exons_in_trans()
-        zc = map['Y54E2A.11a.1']
-        self.assertItemsEqual(zc,expected)
-        self.assembly.genrep.root = self.root
 
-    @unittest.skip('too slow')
+    @unittest.skip('slow')
+    @with_without_genrep
     def test_trans_in_gene(self):
         expected = ['Y54E2A.11a.1','Y54E2A.11a.2','Y54E2A.11b.1','Y54E2A.11b.2']
-        # Test with local database request
         map = self.assembly.get_trans_in_gene()
         zc = map['Y54E2A.11']
         self.assertItemsEqual(zc,expected)
-        # Test with url request via GenRep
-        self.assembly.genrep.root = ''
-        map = self.assembly.get_trans_in_gene()
-        zc = map['Y54E2A.11']
-        self.assertItemsEqual(zc,expected)
-        self.assembly.genrep.root = self.root
 
 
 class Test_GenRep(unittest.TestCase):

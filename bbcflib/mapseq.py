@@ -819,9 +819,9 @@ def map_groups( ex, job_or_dict, assembly_or_dict, map_args=None ):
 
     * ``'ex'``: a 'bein' execution environment to run jobs in,
 
-    * ``'job_or_dict'``: a 'Frontend' 'job' object, or a dictionary with keys 'groups',
+    * ``'job_or_dict'``: a 'frontend.Job' object, or a dictionary with keys 'groups',
 
-    * ``'assembly_or_dict'``: an 'Assembly' object, or a dictionary of 'chromosomes' and 'index_path'.
+    * ``'assembly_or_dict'``: a 'genrep.Assembly' object, or a dictionary of 'chromosomes' and 'index_path'.
 
     * ``'map_args'``: a dictionary of arguments passed to map_reads.
 
@@ -1192,7 +1192,7 @@ def get_bam_wig_files( ex, job, minilims=None, hts_url=None, suffix=['fwd','rev'
                     descr = re.sub(r'^[^\[]+:','',tf['description'],count=1)
                     filename = re.search(r'^([^\s\[]+)',descr).groups()[0]
                     allfiles[filename] = fid
-                    if not(run.get('run')) and str(run['url']) == str(tf['repository_name']):
+                    if str(run['url']) == str(tf['repository_name']):
                         name = re.search(r'^(.*)_[^_]*.bam',descr).groups()[0]
                 stats_id = allfiles.get(name+"_filter_bamstat") or allfiles.get(name+"_full_bamstat")
                 with open(MMS.path_to_file(stats_id)) as q:

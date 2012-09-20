@@ -137,7 +137,7 @@ def convert( source, target, chrmeta=None, info=None, mode='write' ):
     :param target: (str or tuple) path to the target file, or tuple of the form (path, format).
     :param chrmeta: (dict) to specify manually 'chrmeta' for both input and output tracks. [None]
     :param info: (dict) info that will be available as an attribute of the output track. [None]
-    :param mode: (str) writing mode: either 'write' or 'overwrite'. ['write']
+    :param mode: (str) writing mode: either 'write', 'append' or 'overwrite'. ['write']
     """
     if isinstance(source, tuple):
         tsrc = track(source[0], format=source[1], chrmeta=chrmeta)
@@ -156,7 +156,7 @@ def convert( source, target, chrmeta=None, info=None, mode='write' ):
 
 def strand_to_int(strand=''):
     """Convert +/- into 1/-1 notation for DNA strands."""
-    return {'1':1,'-1':-1,'+':1,'-':-1}.get(str(strand),0)
+    return {'1':1,'-1':-1,'+':1,'-':-1,'fwd':1,'rev':-1}.get(str(strand),0)
 
 def int_to_strand(num=0):
     """Convert 1/-1 into +/- notation for DNA strands."""

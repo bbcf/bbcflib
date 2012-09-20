@@ -92,9 +92,9 @@ def merge_scores(trackList, method='arithmetic'):
     return track.FeatureStream(_stream(tracks),fields)
 
 ###############################################################################
-def filter_scores(trackScores,trackFeatures,method='sum'):
+def filter_scores(trackScores,trackFeatures,method='sum',strict=False):
     """
-    Extract from *trackScores* only the regions present in *trackFeatures*.
+    Extract from *trackScores* only the regions overlapping *trackFeatures*'s regions.
     Example::
 
         X: _____#########__________#############_______
@@ -106,6 +106,8 @@ def filter_scores(trackScores,trackFeatures,method='sum'):
     :param trackFeatures: (FeatureStream) one feature track.
         If a list fo streams is provided, they will be merged.
     :param method: (str) `merge_scores` *method* argument. ['sum']
+    :param strict: (bool) if True, only score regions from *trackScores* that are
+        strictly contained in a feature region of *trackFeatures* will be returned.
     :rtype: FeatureStream
     """
     def _stream(ts,tf):
@@ -123,9 +125,10 @@ def filter_scores(trackScores,trackFeatures,method='sum'):
             while S[n][1] <= ystart: n+=1
             S = S[n:]
             for s in S:
-                if yend <= s[0]: continue
+                if strict and (s[0] < ystart or s[1] > yend): continue
+                if s[0] >= yend : continue
                 start = ystart if s[0] < ystart else s[0]
-                end   = yend   if yend < s[1]   else s[1]
+                end   = yend   if s[1] > yend   else s[1]
                 yield (start,end)+tuple(s[2:])
 
     if isinstance(trackFeatures,(list,tuple)): trackFeatures = concatenate(trackFeatures)

@@ -1,9 +1,6 @@
 from bbcflib.bFlatMajor import common
 from bbcflib.btrack import FeatureStream
-try:
-    from scipy.fftpack import fft, ifft
-except ImportError:
-    from numpy.fft import fft, ifft
+from numpy.fft import fft, ifft
 from numpy import conjugate, array, asarray, mean, sqrt, concatenate as ncat, real, hstack
 from math import log
 

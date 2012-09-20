@@ -85,6 +85,11 @@ def normalize_url(url):
 #-------------------------------------------------------------------------#
 def cat(files,out=None,skip=0):
     """Concatenates files.
+
+    :param files: (list of str) list of file names of the files to concatenate.
+    :param out: (str) name of the output file. By default it is a 20-chars random string.
+        If this output file is not empty, *files* are appended to it.
+    :param skip: (int) number of lines to skip at the beginning of *each* file (common header). [0]
     """
     if len(files) > 1:
         out = out or unique_filename_in()

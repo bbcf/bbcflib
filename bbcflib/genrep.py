@@ -442,7 +442,7 @@ class Assembly(object):
 
     def get_gene_mapping(self):
         """
-        Return a dictionary ``{geneID: (geneName, start, end, length, strand, chromosome)}``
+        Return a dictionary ``{gene_id: (gene_name,start,end,length,strand,chromosome)}``
         Note that the gene's length is not the sum of the lengths of its exons.
         """
         gene_mapping = {}
@@ -476,7 +476,7 @@ class Assembly(object):
         return gene_mapping
 
     def get_transcript_mapping(self):
-        """Return a dictionary ``{transcript ID: (gene ID,start,end,length,strand,chromosome)}``"""
+        """Return a dictionary ``{transcript_id: (gene_id,start,end,length,strand,chromosome)}``"""
         transcript_mapping = {}
         h = {"keys":"transcript_id", "values":"gene_id,start,end,strand", "conditions":"type:exon", "uniq":"1"}
         for chr in self.chrnames:
@@ -491,22 +491,24 @@ class Assembly(object):
         return transcript_mapping
 
     def get_exon_mapping(self):
-        """Return a dictionary ``{exon ID: ([transcript IDs],gene ID,start,end,strand,chromosome)}``"""
+        """Return a dictionary ``{exon_id: ([transcript_id's],gene_id,gene_name,start,end,strand,chromosome)}``"""
         exon_mapping = {}
-        h = {"keys":"exon_id", "values":"gene_id,transcript_id,start,end,strand", "conditions":"type:exon", "uniq":"1"}
+        h = {"keys":"exon_id", "values":"transcript_id,gene_id,gene_name,start,end,strand",
+             "conditions":"type:exon", "uniq":"1"}
         for chr in self.chrnames:
             resp = self.get_features_from_gtf(h,chr)
             for k,v in resp.iteritems():
-                start = int(v[0][2])
-                end = int(v[0][3])
-                tid = [str(x[1]) for x in v]
-                gid = str(v[0][0])
-                strand = int(v[0][4])
-                exon_mapping[str(k)] = (tid,gid,start,end,strand,chr)
+                start = int(v[0][3])
+                end = int(v[0][4])
+                tid = [str(x[0]) for x in v]
+                gid = str(v[0][1])
+                gname = str(v[0][2])
+                strand = int(v[0][5])
+                exon_mapping[str(k)] = (tid,gid,gname,start,end,strand,chr)
         return exon_mapping
 
     def get_exons_in_trans(self):
-        """Return a dictionary ``{transcript ID: list of exon IDs it contains}``"""
+        """Return a dictionary ``{transcript_id: list of exon_id's it contains}``"""
         exons_in_trans = {}
         h = {"keys":"transcript_id", "values":"exon_id", "conditions":"type:exon", "uniq":"1"}
         data = self.get_features_from_gtf(h)
@@ -515,7 +517,7 @@ class Assembly(object):
         return exons_in_trans
 
     def get_trans_in_gene(self):
-        """Return a dictionary ``{gene ID: list of transcript IDs it contains}``"""
+        """Return a dictionary ``{gene_id: list of transcript_id's it contains}``"""
         trans_in_gene = {}
         h = {"keys":"gene_id", "values":"transcript_id", "conditions":"type:exon", "uniq":"1"}
         data = self.get_features_from_gtf(h)
@@ -555,7 +557,7 @@ class Assembly(object):
         _fields = ['chr','start','end','name','strand']
         nmax = 4
         biosel = ''
-        if not(biotype is None):
+        if biotype is not None:
             biosel = "AND biotype IN ('"+"','".join(biotype)+"')"
         if annot_type == 'gene':
             flist = "gene_id,gene_name,strand"
@@ -580,7 +582,7 @@ class Assembly(object):
                      "conditions": "type:exon",
                      "uniq":"1" }
         else:
-            raise TypeError("Annotation track type %s not implemented." %annot_type)
+            raise TypeError("Annotation track type '%s' not implemented." %annot_type)
         def _query():
             for chrom in chromlist:
                 sort_list = []
@@ -594,19 +596,22 @@ class Assembly(object):
                         name = "|".join([str(y) for y in v[0][2:nmax]])
                         sort_list.append((start,end,name)+tuple(v[0][nmax:]))
                 sort_list.sort()
-                for k in sort_list: yield (chrom,)+k
+                for k in sort_list: yield (chrom,)+k[:-1]
         return track.FeatureStream(_query(),fields=_fields)
 
     def gene_track(self,chromlist=None,biotype=["protein_coding"]):
-        """Return a FeatureStream over all protein coding genes annotation in the genome."""
+        """Return a FeatureStream over all protein coding genes annotation in the genome:
+        ('chr', start, end, 'gene_id|gene_name', strand)."""
         return self.annot_track(annot_type='gene',chromlist=chromlist,biotype=biotype)
 
     def exon_track(self,chromlist=None,biotype=["protein_coding"]):
-        """Return a FeatureStream over all coding exons annotation in the genome."""
+        """Return a FeatureStream over all coding exons annotation in the genome:
+        ('chr', start, end, 'exon_id|gene_id|gene_name', strand, phase)."""
         return self.annot_track(annot_type='exon',chromlist=chromlist,biotype=biotype)
 
     def transcript_track(self,chromlist=None,biotype=["protein_coding"]):
-        """Return a FeatureStream over all protein coding transcripts annotation in the genome."""
+        """Return a FeatureStream over all protein coding transcripts annotation in the genome:
+        ('chr', start, end, 'gene_id|gene_name', strand)."""
         return self.annot_track(annot_type='transcript',chromlist=chromlist,biotype=biotype)
 
     @property

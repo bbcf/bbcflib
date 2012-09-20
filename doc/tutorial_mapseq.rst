@@ -12,6 +12,7 @@ For non-demultiplexed jobs, the original `Fastq <http://en.wikipedia.org/wiki/FA
 
 .. image:: images/mapseq_newjob.png
 
+Paired-end reads must be provided as a comma-separated pair of fastq files: `sample_R1.fastq,sample_R2.fastq`. 
 Reads files are organized by `groups` (experimental conditions) and `runs` (replicates). 
 Each group must be given a name that will be used in output file names and reports to reference them.
 Make sure to use short names without spaces (prefer "_" character to separate words) and without any special characters in it (e.g,  %&?!;,) 

@@ -46,6 +46,11 @@ class Test_Track(unittest.TestCase):
         s = t.read(); s.next()
         self.assertIsInstance(s, FeatureStream)
 
+        # zipped file
+        t = track(self.bed+'.gz')
+        s = t.read(); s.next()
+        self.assertIsInstance(s, FeatureStream)
+
     def test_index(self):
         # Temp file containing only chrX
         tempfile = os.path.join(path,"temp1.txt")
