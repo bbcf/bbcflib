@@ -12,15 +12,17 @@ Uses SOAPsplice ...
 """
 
 # Built-in modules #
-import os, pysam
+import os, itertools
 
 # Internal modules #
 from bbcflib.common import set_file_descr, unique_filename_in, cat
 from bbcflib import mapseq, genrep
-from bbcflib.bFlatMajor.common import cobble, sorted_stream
-from bbcflib.btrack import track, FeatureStream, convert
+from bbcflib.bFlatMajor.common import map_chromosomes
+from bbcflib.btrack import track, convert
 from bein import program
 
+# Other modules #
+import pysam
 
 @program
 def soapsplice(unmapped_R1, unmapped_R2, index, output=None, **options):
@@ -39,6 +41,31 @@ def soapsplice(unmapped_R1, unmapped_R2, index, output=None, **options):
     return {"arguments": args, "return_value": output}
     #"SOAPsplice-v1.9/bin/soapsplice -d $index -1 $path1$r1 -2 $path2$r2 -I $insertsize -o $outpath$out -f 2 "
 
+def convert_junc_file(filename, assembly):
+    """Convert a .junc SOAPsplice output file to sql format,
+    and return an iterator on the junction locations.
+
+    :param filename: (str) name of the .junc file to convert.
+    :param assembly: genrep.Assembly object.
+    :rtype: str
+    """
+    t = track(filename, fields=['chr','start','end','strand','score'], chrmeta=assembly.chrmeta)
+    stream = t.read()
+    # Translate chromosome names
+    s1 = map_chromosomes(stream, assembly.chromosomes)
+    # Add junction IDs
+    s2 = duplicate(s1,'strand','name')
+    C = itertools.count()
+    s3 = apply(s2,'name', lambda x: 'junction'+str(C.next()))
+    # Convert to sql and bed formats
+    outfile = unique_filename_in()
+    sql = outfile + '.sql'
+    bed = outfile + '.bed'
+    out = track(sql, fields=t.fields, chrmeta=assembly.chrmeta)
+    out.write(s1)
+    convert(sql,bed)
+    return sql, bed
+
 
 def junctions_workflow(ex, job, bam_files, index, via="lsf"):
     """
@@ -52,13 +79,6 @@ def junctions_workflow(ex, job, bam_files, index, via="lsf"):
     """
     assembly = genrep.Assembly(assembly=job.assembly_id,intype=2)
 
-    group_names={}
-    group_ids={}
-    for gid,group in job.groups.iteritems():
-        gname = str(group['name'])
-        group_names[gid] = gname
-        group_ids[gname] = gid
-
     unmapped_fastq = {}
     for gid, group in job.groups.iteritems():
         unmapped_fastq[gid] = []
@@ -71,8 +91,33 @@ def junctions_workflow(ex, job, bam_files, index, via="lsf"):
         R1 = cat(zip(*unmapped_fastq[gid])[0])
         R2 = cat(zip(*unmapped_fastq[gid])[1])
         junc_file = soapsplice(R1,R2,index)
+        # Translate to more usual formats
+        sql,bed = convert_junc_file(junc_file,assembly)
+        sql_descr = set_file_descr('junctions_%s.sql' % group['name'], \
+                                   group=group['name'],type='sql',step='1',gdv=1)
+        bed_descr = set_file_descr('junctions_%s.bed' % group['name'], \
+                                   group=group['name'],type='bed',step='1',ucsc=1)
+        ex.add(sql, description=sql_descr)
+        ex.add(bed, description=bed_descr)
 
-    # exon_mapping is a dictionary ``{exon ID: ([transcript IDs],gene ID,start,end,chromosome)}``
+    # From these junctions, find which are between known exons
+
+    known_junctions = {}
+    junc_track = track(sql, fields=['chr','start','end','strand','score'], chrmeta=assembly.chrmeta)
+    exon_track = assembly.exon_track()
+    e_chr,e_start,e_end,exon,e_strand,phase = exon_track.next()
+    for chrom in assembly.chrmeta:
+        for j in junc_track.read(chrom):
+            j_chr,j_start,j_end,name,score,j_strand = j
+            while e_end < j_start:
+                e_chr,e_start,e_end,exon,e_strand,phase = exon_track.next()
+            if e_end == j_start:
+                known_junctions[name] = [exon,None]
+            if e_start == j_end and name in known_junctions:
+                known_junctions[name][1] = exon
+
+
+    # exon_mapping is a dictionary ``{exon_id: ([transcript_id's],gene_id,gene_name,start,end,chromosome)}``
     #exon_mapping = assembly.get_exon_mapping()
     #for e,v in exon_mapping.iteritems():
     #    start,end = (v[2],v[3])
