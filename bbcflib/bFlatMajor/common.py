@@ -218,7 +218,7 @@ def map_chromosomes( stream, chromosomes, keep=False ):
     Translate the chromosome identifiers in *stream* into chromosome names of the type 'chr5'.
 
     :param stream: FeatureStream object.
-    :param chromosomes: a dictionary of chromosomes, such as from a genrep.Assembly object.
+    :param chromosomes: a dictionary of chromosomes, such as `genrep.Assembly.chromosomes`.
     :param keep: (bool) keep all features (True) or only those which chromosome identifier
         is recognized (False). [False]
     """

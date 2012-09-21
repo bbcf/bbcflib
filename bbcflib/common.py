@@ -43,11 +43,24 @@ def set_file_descr(filename,**kwargs):
         >>> set_file_descr("toto",**{'tag':'pdf','step':1,'type':'doc','comment':'ahaha'})
         'pdf:toto[step:1,type:doc] (ahaha)'
 
-    if 'tag' and/or comment are ommitted::
+    If 'tag' and/or comment are ommitted::
 
         >>> set_file_descr("toto",step=1,type='doc')
         'toto[step:1,type:doc]'
 
+    :param filename: (str) name to be given to the file in the web interface.
+    :rtype: str
+
+    Possible keys to *kwargs*:
+
+    * 'tag': (str) added in front of the file name: 'tag:filename[others]'. Usually the file extension.
+    * 'group': (str) sample name.
+    * 'step': (str or int) step in the analysis.
+    * 'type': (str) type of file, file extension ('doc','txt','bam',...).
+    * 'view': (1 or 0) whether it is visible in the web interface for non-administrator user. [1]
+    * 'ucsc': (1 or 0) whether to link with the "View in UCSC" URL in the web interface. [0]
+    * 'gdv': (1 or 0) whether to link with the "View in GDV" URL in the web interface. [0]
+    * 'comment': (str) whatever. Added in parentheses after all the rest.
     """
     file_descr = filename
     argskeys = kwargs.keys()
@@ -62,7 +75,6 @@ def set_file_descr(filename,**kwargs):
     file_descr += "["+plst+"]"
     file_descr += comment
     return file_descr
-#    tag:filename[group:grpId,step:stepId,type:fileType,view:admin] (comment)
 
 #-------------------------------------------------------------------------#
 def normalize_url(url):

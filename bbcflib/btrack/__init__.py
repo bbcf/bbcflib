@@ -156,11 +156,11 @@ def convert( source, target, chrmeta=None, info=None, mode='write' ):
 
 def strand_to_int(strand=''):
     """Convert +/- into 1/-1 notation for DNA strands."""
-    return {'1':1,'-1':-1,'+':1,'-':-1,'fwd':1,'rev':-1}.get(str(strand),0)
+    return {'1':1, '-1':-1, '+':1, '-':-1, 'fwd':1, 'rev':-1}.get(str(strand),0)
 
 def int_to_strand(num=0):
     """Convert 1/-1 into +/- notation for DNA strands."""
-    return {'1':'+','-1':'-','+':'+','-':'-'}.get(str(num),'.')
+    return {'1':'+', '-1':'-', '+':'+', '-':'-'}.get(str(num),'.')
 
 def format_float(f=float()):
     """Return a formatted string from a float or a string representing a float.
