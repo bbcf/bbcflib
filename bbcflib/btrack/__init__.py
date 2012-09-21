@@ -182,19 +182,21 @@ def ensembl_to_ucsc(start):
 def check_ordered(source, **kwargs):
     """Read a track-like file *source* once to see if chromosomes are grouped."""
     t = track(source, **kwargs)
-    assert 'chr' in t.fields, "Chromosome field not found."
+    is_chr = 'chr' in t.fields
     is_start = 'start' in t.fields
     is_end = 'end' in t.fields
-    chr_idx = t.fields.index('chr')
+    chr_idx = t.fields.index('chr') if is_chr else None
     start_idx = t.fields.index('start') if is_start else None
     end_idx = t.fields.index('end') if is_end else None
 
     visited = []
     last_chr = None
+    last_start = last_end = 0
     for row in t.read():
-        chr   = row[chr_idx]
+        chr   = row[chr_idx] if is_chr else None
         start = row[start_idx] if is_start else 0
         end   = row[end_idx] if is_end else 0
+        #print start, last_start
         if chr != last_chr:
             if chr in visited: return False
             visited.append(chr)

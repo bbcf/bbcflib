@@ -1,6 +1,6 @@
 import sys
 from bbcflib.bFlatMajor import common
-from bbcflib import btrack as track
+from bbcflib.btrack import FeatureStream
 
 # "tracks" and "streams" refer to FeatureStream objects all over here.
 
@@ -56,8 +56,8 @@ def concatenate(trackList, fields=None, remove_duplicates=False):
     if 'name' in fields: _of += ['name']
     _of += [f for f in fields if not(f in _of)]
     tl = [common.reorder(t,_of) for t in trackList]
-    tl = [track.FeatureStream(common.sentinelize(x,(sys.maxint,)*len(x.fields)),x.fields) for x in tl]
-    return track.FeatureStream(_weave(tl,len(_of)),fields=_of)
+    tl = [FeatureStream(common.sentinelize(x,(sys.maxint,)*len(x.fields)),x.fields) for x in tl]
+    return FeatureStream(_weave(tl,len(_of)),fields=_of)
 
 ###############################################################################
 @common.ordered
@@ -146,11 +146,11 @@ def neighborhood(trackList, before_start=None, after_end=None,
         case1 = case3 = False
     if isinstance(trackList,(list,tuple)):
         tl = [common.reorder(t,_fields) for t in trackList]
-        return [track.FeatureStream(_generate_single(t,case1,case2,case3,case4),
+        return [FeatureStream(_generate_single(t,case1,case2,case3,case4),
                                     fields=t.fields) for t in tl]
     else:
         tl = common.reorder(trackList,_fields)
-        return track.FeatureStream(_generate_single(tl,case1,case2,case3,case4),
+        return FeatureStream(_generate_single(tl,case1,case2,case3,case4),
                                    fields=tl.fields)
 
 ###############################################################################
@@ -159,9 +159,10 @@ def _combine(trackList,fn,win_size,aggregate):
     N = len(trackList)
     fields = trackList[0].fields
     trackList = [common.sentinelize(t, [sys.maxint]*len(fields)) for t in trackList]
-    init = [trackList[i].next() for i in range(N)]
+    init = [trackList[i].next() for i in range(N)] # the first element of each track
     activity = [False]*N # a vector of boolean values for the N tracks at a given position
     z = [None]*N
+    # If there are empty tracks, remove them, and their index from init
     for i in xrange(N-1,-1,-1):
         if init[i][0] == sys.maxint:
             N-=1
@@ -169,34 +170,39 @@ def _combine(trackList,fn,win_size,aggregate):
             init.pop(i)
     if N == 0: return
     available_tracks = range(N-1,-1,-1)
-    current = [(init[i][0],i)+init[i][2:] for i in range(N)]+[(init[i][1],i) for i in range(N)]
+    # Sort starts and ends of all init elements indifferently; record the origin track index.
+    current = [(init[i][0],i)+init[i][2:] for i in range(N)] \
+            + [(init[i][1],i)+init[i][2:] for i in range(N)]
     current.sort()
 
+    # Init step: set all tracks beginning at the starting point as 'active'
     start = current[0][0]
     while current[0][0] == start:
-        i = current[0][1]
-        activity[i] = True
-        z[i] = current.pop(0)[2:]
+        i = current[0][1]          # track index
+        activity[i] = True         # set this track to 'active'
+        z[i] = current.pop(0)[2:]  # z records all meta info
 
     k=1
     while available_tracks:
-        # load *win_size* bp in memory
+        # Load all elements within *win_size* bp in *current*
         to_remove = []
+        limit = k * win_size
         for i in available_tracks:
             a = [0,0]
-            limit = k * win_size
             while a[1] < limit:
                 a = trackList[i].next()
-                if a[0] == sys.maxint:
-                    to_remove.append(i)
+                if a[0] == sys.maxint:  # track i is completely read:
+                    to_remove.append(i) # remove it from the tracks list
                 else:
                     current.append((a[0],i)+a[2:])
-                    current.append((a[1],i))
+                    current.append((a[1],i)+a[2:])
         for i in to_remove:
             available_tracks.remove(i)
         current.sort()
-
-        # calculate boolean values for start-next interval
+        while current[0][0] >= limit:
+            k+=1
+            limit = k * win_size
+        # Calculate boolean values for this window
         while current and current[0][0] < limit:
             next = current[0][0]
             if fn(activity):
@@ -204,9 +210,9 @@ def _combine(trackList,fn,win_size,aggregate):
                                     for n,f in enumerate(fields[2:]))
                 yield (start,next) + feat_aggreg
             while current and current[0][0] == next:
-                i = current[0][1]
-                activity[i] = not(activity[i])
-                zi = current.pop(0)[2:]
+                i = current[0][1]               # track index
+                activity[i] = not(activity[i])  # reverse activity
+                zi = current.pop(0)[2:]         # record meta info
                 z[i] = activity[i] and zi or None
             start = next
         k+=1
@@ -216,7 +222,8 @@ def combine(trackList, fn, win_size=1000,
             aggregate={'strand':common.strand_merge, 'chr':common.no_merge}):
     """
     Applies a custom function to a list of tracks, such as union, intersection,
-    etc., and return a single result track.
+    etc., and return a single result track. The input streams need to be ordered
+    w.r.t chr and start.
 
     :param trackList: list of FeatureStream objects.
     :param fn: function to apply, such as bbcflib.bFlatMajor.stream.union.
@@ -227,7 +234,7 @@ def combine(trackList, fn, win_size=1000,
     if len(trackList) < 2: return trackList
     if isinstance(fn,str): fn = eval(fn) # can type combine(...,fn='intersection')
     trackList = [common.cobble(common.reorder(t,fields=fields)) for t in trackList]
-    return common.fusion(track.FeatureStream(_combine(trackList,fn,win_size,aggregate),
+    return common.fusion(FeatureStream(_combine(trackList,fn,win_size,aggregate),
                                              fields=trackList[0].fields))
 
 def exclude(x,indexList):
@@ -322,8 +329,8 @@ def segment_features(trackList,nbins=10,upstream=None,downstream=None):
                     start = s
                     yield tuple(xs)+(n,)
     if isinstance(trackList, (list,tuple)):
-        return [track.FeatureStream(_split_feat(t), fields=t.fields+['bin'])
+        return [FeatureStream(_split_feat(t), fields=t.fields+['bin'])
                 for t in trackList]
     else:
-        return track.FeatureStream(_split_feat(trackList),
+        return FeatureStream(_split_feat(trackList),
                                    fields=trackList.fields+['bin'])

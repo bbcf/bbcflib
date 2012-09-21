@@ -171,15 +171,10 @@ def build_pileup(bamfile, exons, assembly):
     #The callback (c.n += 1) is executed for each alignment in a region
     if all([ref in assembly.chrmeta.keys() for ref in sam.references]): # mapped on the genome
         for e in exons:
-            sam.fetch(e[-1],e[2],e[3], callback=c) #(chr,start,end,Counter())
+            sam.fetch(e[-1],e[3],e[4], callback=c) #(chr,start,end,Counter())
             counts[e[0]] = c.n
             c.n = 0
     else: # mapped on the exonome - retro-compatibility
-        #for e in exons:
-        #    label = '|'.join([e[0],e[1],str(e[3]),str(e[4]),str(e[5])])
-        #    sam.fetch(label, 0, e[4]-e[3], callback=c) #(label,0,length,Counter())
-        #    counts[e[0]] = c.n
-        #    c.n = 0
         for e in zip(sam.references,sam.lengths):
             sam.fetch(e[0], 0, e[1], callback=c) #(label,0,length,Counter())
             counts[e[0].split('|')[0]] = c.n
@@ -343,7 +338,7 @@ def transcripts_expression(exons_data, exon_mapping, transcript_mapping, trans_i
                         trans_counts[t][c] = round(tc[c][k], 2)
         else:
             unknown += 1
-    print "Unknown transcripts for %d of %d genes (%.2f %%)" \
+    print "\tUnknown transcripts for %d of %d genes (%.2f %%)" \
            % (unknown, len(genes), 100*float(unknown)/float(len(genes)) )
     # Convert to rpkm
     for t in transcripts:

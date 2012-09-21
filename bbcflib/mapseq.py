@@ -1173,12 +1173,14 @@ def get_bam_wig_files( ex, job, minilims=None, hts_url=None, suffix=['fwd','rev'
                 else:
                     index_bam(ex, bamfile)
             elif os.path.exists(file_loc):
+                assert os.access(file_loc, os.R_OK), "No read access to %s" % file_loc
                 shutil.copy( file_loc, bamfile )
                 if os.path.exists(file_loc+".bai"):
                     shutil.copy( file_loc+".bai", bamfile+".bai" )
                 else:
                     index_bam(ex, bamfile)
             elif os.path.exists(minilims) and os.path.exists(os.path.join(minilims+".files",file_loc)):
+                assert os.access(os.path.join(minilims+".files",file_loc), os.R_OK), "No read access to %s" % file_loc
                 MMS = MiniLIMS(minilims)
                 file_loc = os.path.join(minilims+".files",file_loc)
                 shutil.copy( file_loc, bamfile )
