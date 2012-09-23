@@ -218,7 +218,7 @@ def map_chromosomes( stream, chromosomes, keep=False ):
     Translate the chromosome identifiers in *stream* into chromosome names of the type 'chr5'.
 
     :param stream: FeatureStream object.
-    :param chromosomes: a dictionary of chromosomes, such as from a genrep.Assembly object.
+    :param chromosomes: a dictionary of chromosomes, such as `genrep.Assembly.chromosomes`.
     :param keep: (bool) keep all features (True) or only those which chromosome identifier
         is recognized (False). [False]
     """
@@ -231,6 +231,7 @@ def map_chromosomes( stream, chromosomes, keep=False ):
         if cname.startswith('chr') and len(cname)>3: chrom_map[cname[3:]] = cname # {'IV': 'chrIV'}
         chrom_map[k[0]] = cname                                                   # {2780: 'chrIV'}
         chrom_map[str(k[1])+"."+str(k[2])] = cname                                # {'NC_001136.9': 'chrIV'}
+        chrom_map[str(k[0])+"_"+str(k[1])+"."+str(k[2])] = cname                  # {'2780_NC_001136.9': 'chrIV'}
         if c['synonyms']:
             for s in c['synonyms'].split(','): chrom_map[s] = cname               # {synonym: 'chrIV'}
     if keep:
@@ -271,7 +272,7 @@ def unroll( stream, regions, fields=['score'] ):
     For example, ``unroll([(10,12,0.5,'a'), (14,15,1.2,'b')], start=9, end=16)`` returns::
 
         FeatureStream([(0,),(0.5,'a'),(0.5,'a'),(0,),(0,),(1.2,'b'),(0,)])
-                        9     10     11    12   13    14    15
+                        9      10        11      12   13     14      15
 
     :param stream: FeatureStream object.
     :param regions: either a pair (start,end) or an ordered list of such pairs or a FeatureStream
