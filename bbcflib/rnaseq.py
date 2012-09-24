@@ -8,11 +8,10 @@ and is usually called by bbcfutils' ``run_rnaseq.py``, e.g. command-line:
 
 ``python run_rnaseq.py -v local -c gapkowt.txt -d rnaseq -p transcripts,genes``
 
-From a BAM file produced by an alignement on the **exonome**, gets counts of reads
+From a BAM file produced by an alignement on the genome or the exonome, gets counts of reads
 on the exons, add them to get counts on genes, and uses least-squares to infer
 counts on transcripts, avoiding to map on either genome or transcriptome.
 Note that the resulting counts on transcripts are approximate.
-The annotation of the bowtie index has to be consistent to that of the database (same assembly version).
 """
 
 # Built-in modules #

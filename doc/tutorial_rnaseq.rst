@@ -7,11 +7,7 @@ Here is a short tutorial showing how to launch a RNA-seq analysis from the inter
 New Job
 -------
 
-An RNA-seq analysis works from aligned data, given as BAM file(s) through the BAM URL field (there is one BAM file per run). Each BAM file represents a sample ("run"); several samples that were produced in the same conditions (replicates) form a "group".
-
-.. warning:: Alignments have to be performed on the **exonome**.
-
-.. note:: If the mapping was performed independantly, modify the BAM header so that the identifier of each exon is of the form `@SQ  SN:exonID|geneID|start|end|strand  LN:length`.
+An RNA-seq analysis works from aligned reads, given as BAM file(s) through the BAM URL field (there is one BAM file per run). Each BAM file represents a sample ("run"); several samples that were produced in the same conditions (replicates) form a "group".
 
 The BAM URLs can be given directly as an `http://` or `ftp://` address accessible from outside. You can add manually as many groups and as many runs per group you want by using the links `Add group of runs` and `Add run in this group`. Each sample will then be labeled *group_name.run_index* in the output files. Make sure to use short group names, without spaces (prefer "_" character to separate words) and without any special character in it (e.g. "%&?!" ).
 
