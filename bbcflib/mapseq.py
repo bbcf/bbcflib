@@ -580,13 +580,15 @@ def parallel_bowtie(ex, index, reads, unmapped=None, n_lines=1000000, bowtie_arg
         sf1 = sorted(split_file(ex, reads[0], n_lines = n_lines))
         sf2 = sorted(split_file(ex, reads[1], n_lines = n_lines))
         subfiles = [(f,sf2[n]) for n,f in enumerate(sf1)]
+        mlim = 8
     else:
         subfiles = split_file(ex, reads, n_lines = n_lines)
+        mlim = 4
     if unmapped:
-        futures = [bowtie.nonblocking(ex, index, sf, args=bowtie_args+["--un",unmapped+"_"+str(n)], via=via, memory=3)
+        futures = [bowtie.nonblocking(ex, index, sf, args=bowtie_args+["--un",unmapped+"_"+str(n)], via=via, memory=mlim)
                    for n,sf in enumerate(subfiles)]
     else:
-        futures = [bowtie.nonblocking(ex, index, sf, args=bowtie_args, via=via, memory=3)
+        futures = [bowtie.nonblocking(ex, index, sf, args=bowtie_args, via=via, memory=mlim)
                    for sf in subfiles]
     samfiles = [f.wait() for f in futures]
     futures = []
@@ -751,15 +753,17 @@ def map_reads( ex, fastq_file, chromosomes, bowtie_index,
     is_paired_end = isinstance(fastq_file,tuple)
     if is_paired_end:
         linecnt = count_lines( ex, fastq_file[0] )
+        mlim = 8
     else:
         linecnt = count_lines( ex, fastq_file )
+        mlim = 4
     if linecnt>10000000:
         bam = parallel_bowtie( ex, bowtie_index, fastq_file, unmapped=unmapped,
                                n_lines=8000000, bowtie_args=bwtarg,
                                add_nh_flags=True, via=via )
     else:
         bwtarg += ["--un",unmapped]
-        future = bowtie.nonblocking( ex, bowtie_index, fastq_file, bwtarg, via=via, memory=3 )
+        future = bowtie.nonblocking( ex, bowtie_index, fastq_file, bwtarg, via=via, memory=mlim )
         samfile = future.wait()
         bam = add_nh_flag( samfile )
     sorted_bam = sort_bam(ex, bam)
