@@ -16,13 +16,11 @@ import os, itertools
 
 # Internal modules #
 from bbcflib.common import set_file_descr, unique_filename_in, cat
-from bbcflib import mapseq, genrep
-from bbcflib.bFlatMajor.common import map_chromosomes
+from bbcflib import genrep
+from bbcflib.bFlatMajor.common import map_chromosomes, duplicate
 from bbcflib.btrack import track, convert
 from bein import program
 
-# Other modules #
-import pysam
 
 @program
 def soapsplice(unmapped_R1, unmapped_R2, index, output=None, **options):
@@ -66,6 +64,30 @@ def convert_junc_file(filename, assembly):
     convert(sql,bed)
     return sql, bed
 
+def discovery(juncfile, assembly):
+    """Take the intersection between splicing regions found by SOAPsplice, and known exons annotation."""
+    known_junctions = {}
+    new_junctions = {}
+    junc_track = track(juncfile, fields=['chr','start','end','strand','score'], chrmeta=assembly.chrmeta)
+    exon_track = assembly.exon_track()
+    e_chr,e_start,e_end,exon,e_strand,phase = exon_track.next()
+    for chrom in assembly.chrmeta:
+        for j in junc_track.read(chrom):
+            j_chr,j_start,j_end,name,score,j_strand = j
+            while e_end < j_start:
+                e_chr,e_start,e_end,exon,e_strand,phase = exon_track.next()
+            if e_end == j_start:
+                known_junctions[name] = [exon,None]
+            if e_start == j_end and name in known_junctions:
+                known_junctions[name][1] = exon
+
+    # exon_mapping is a dictionary ``{exon_id: ([transcript_id's],gene_id,gene_name,start,end,chromosome)}``
+    #exon_mapping = assembly.get_exon_mapping()
+    #for e,v in exon_mapping.iteritems():
+    #    start,end = (v[2],v[3])
+
+    return known_junctions, new_junctions
+
 
 def junctions_workflow(ex, job, bam_files, index, via="lsf"):
     """
@@ -100,29 +122,6 @@ def junctions_workflow(ex, job, bam_files, index, via="lsf"):
         ex.add(sql, description=sql_descr)
         ex.add(bed, description=bed_descr)
 
-    # From these junctions, find which are between known exons
-
-    known_junctions = {}
-    junc_track = track(sql, fields=['chr','start','end','strand','score'], chrmeta=assembly.chrmeta)
-    exon_track = assembly.exon_track()
-    e_chr,e_start,e_end,exon,e_strand,phase = exon_track.next()
-    for chrom in assembly.chrmeta:
-        for j in junc_track.read(chrom):
-            j_chr,j_start,j_end,name,score,j_strand = j
-            while e_end < j_start:
-                e_chr,e_start,e_end,exon,e_strand,phase = exon_track.next()
-            if e_end == j_start:
-                known_junctions[name] = [exon,None]
-            if e_start == j_end and name in known_junctions:
-                known_junctions[name][1] = exon
-
-
-    # exon_mapping is a dictionary ``{exon_id: ([transcript_id's],gene_id,gene_name,start,end,chromosome)}``
-    #exon_mapping = assembly.get_exon_mapping()
-    #for e,v in exon_mapping.iteritems():
-    #    start,end = (v[2],v[3])
-
-    return know_junctions, new_junctions
 
 
 #------------------------------------------------------#
