@@ -424,9 +424,10 @@ def workflow_groups( ex, job_or_dict, mapseq_files, assembly, script_path='',
     if run_meme:
         from bbcflib.motif import parallel_meme
         logfile.write("Starting MEME.\n");logfile.flush()
-        processed['meme'] = parallel_meme( ex, assembly,
+        processed['meme'] = parallel_meme( ex, assembly, 
                                            peak_list.values(), name=peak_list.keys(),
-                                           meme_args=['-nmotifs','4','-revcomp'], via=via )
+                                           chip=True, meme_args=['-nmotifs','4','-revcomp'], 
+                                           via=via )
     return processed
 
 #-----------------------------------#

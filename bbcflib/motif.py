@@ -20,14 +20,24 @@ from bein.util import touch
 
 ################################################################################
 @program
-def meme( fasta, outdir, maxsize=10000000, args=None ):
-    """Binding for the ``meme`` motif finder.
-    """
-    if args is None:
-        args = []
+def meme( fasta, outdir, background=None, maxsize=10000000, args=None ):
+    """Binding of the ``meme`` motif finder."""
+    if args is None: args = []
     if not("minw" in args): args += ["-minw","6"]
     if not("maxw" in args): args += ["-maxw","16"]
+    if os.path.exists(background): args += ["-bfile",background]
     call = ["meme", fasta, "-o", outdir, "-dna", "-maxsize", str(maxsize)]+args
+    return {"arguments": call, "return_value": None}
+
+@program
+def memechip( fasta, outdir, background=None, args=None ):
+    """Binding of the ``meme-chip`` motif finder."""
+    if args is None: args = []
+    if not("ccut" in args): args += ["-ccut","300"]
+    if not("minw" in args): args += ["-meme-minw","6"]
+    if not("maxw" in args): args += ["-meme-maxw","16"]
+    if os.path.exists(background): args += ["-bfile",background]
+    call = ["meme-chip", fasta, "-o", outdir]+args
     return {"arguments": call, "return_value": None}
 
 def parse_meme_xml( ex, meme_file, chrmeta ):
@@ -71,27 +81,25 @@ def parse_meme_xml( ex, meme_file, chrmeta ):
     return {'sql':outsql,'matrices':allmatrices}
 
 
-def parallel_meme( ex, assembly, regions, name=None, meme_args=None, via='lsf' ):
-    """Fetches sequences, then calls ``meme`` on them and finally saves the results in the repository.
-    """
-    if meme_args is None:
-        meme_args   = []
-    if not(isinstance(regions,list)):
-        regions = [regions]
-    if not(isinstance(name,list)):
-        if name == None:
-            name = '_'
-        name = [name]
+def parallel_meme( ex, assembly, regions, name=None, chip=False, meme_args=None, via='lsf' ):
+    """Fetches sequences, then calls ``meme`` on them and finally saves the results in the repository."""
+    if meme_args is None: meme_args = []
+    if not(isinstance(regions,list)): regions = [regions]
+    if not(isinstance(name,list)): name = [name or '_']
     futures = {}
     fasta_files = {}
+    background = assembly.statistics(unique_filename_in())
     for i,n in enumerate(name):
         (fasta, size) = assembly.fasta_from_regions( regions[i], out=unique_filename_in() )
         tmpfile = unique_filename_in()
         outdir = unique_filename_in()
-        futures[n] = (outdir, meme.nonblocking( ex, fasta, outdir, 
-                                                maxsize=(size*3)/2, 
-                                                args=meme_args, via=via, 
-                                                stderr=tmpfile ))
+        if chip:
+            futures[n] = (outdir, memechip.nonblocking( ex, fasta, outdir, background, 
+                                                        args=meme_args, via=via, stderr=tmpfile, memory=6 ))
+        else:
+            futures[n] = (outdir, meme.nonblocking( ex, fasta, outdir, background, 
+                                                    maxsize=(size*3)/2, args=meme_args, 
+                                                    via=via, stderr=tmpfile, memory=6 ))
         fasta_files[n] = fasta
     all_res = {}
     for n,f in futures.iteritems():
@@ -101,16 +109,6 @@ def parallel_meme( ex, assembly, regions, name=None, meme_args=None, via='lsf' )
         tgz = tarfile.open(archive, "w:gz")
         tgz.add( meme_out )
         tgz.close()
-        meme_res = parse_meme_xml( ex, os.path.join(meme_out, "meme.xml"), assembly.chrmeta )
-        if os.path.exists(os.path.join(meme_out, "meme.html")):
-            ex.add( os.path.join(meme_out, "meme.html"),
-                    description=set_file_descr(n[1]+"_meme.html",
-                                               step='meme', type='html',
-                                               groupId=n[0]) )
-        ex.add( meme_res['sql'], 
-                description=set_file_descr(n[1]+"_meme_sites.sql",
-                                           step='meme', type='sql',
-                                           groupId=n[0]) )
         ex.add( archive, description=set_file_descr(n[1]+"_meme.tgz",
                                                     step='meme', type='tar',
                                                     groupId=n[0]) )
@@ -119,28 +117,35 @@ def parallel_meme( ex, assembly, regions, name=None, meme_args=None, via='lsf' )
                 description=set_file_descr(n[1]+"_sites.fa.gz",
                                            step='meme', type='fasta',
                                            groupId=n[0]) )
-        for i,motif in enumerate(meme_res['matrices'].keys()):
-            ex.add( meme_res['matrices'][motif],
-                    description=set_file_descr(n[1]+"_meme_"+motif+".txt",
-                                               step='meme', type='txt',
-                                               groupId=n[0]) )
-            ex.add( os.path.join(meme_out, "logo"+str(i+1)+".png"), 
-                    description=set_file_descr(n[1]+"_meme_"+motif+".png",
-                                               step='meme', type='png',
-                                               groupId=n[0]) )
-        all_res[n] = meme_res
+        if not(chip) and os.path.exists(os.path.join(meme_out, "meme.xml")):
+            meme_res = parse_meme_xml( ex, os.path.join(meme_out, "meme.xml"), assembly.chrmeta )
+            if os.path.exists(os.path.join(meme_out, "meme.html")):
+                ex.add( os.path.join(meme_out, "meme.html"),
+                        description=set_file_descr(n[1]+"_meme.html",
+                                                   step='meme', type='html', groupId=n[0]) )
+            ex.add( meme_res['sql'], description=set_file_descr(n[1]+"_meme_sites.sql",
+                                                                step='meme', type='sql',
+                                                                groupId=n[0]) )
+            for i,motif in enumerate(meme_res['matrices'].keys()):
+                ex.add( meme_res['matrices'][motif],
+                        description=set_file_descr(n[1]+"_meme_"+motif+".txt",
+                                                   step='meme', type='txt', groupId=n[0]) )
+                ex.add( os.path.join(meme_out, "logo"+str(i+1)+".png"), 
+                        description=set_file_descr(n[1]+"_meme_"+motif+".png",
+                                                   step='meme', type='png', groupId=n[0]) )
+            all_res[n] = meme_res
     return all_res
 
 @program
 def motif_scan( fasta, motif, background, threshold=0 ):
-    """Binding for the ``S1K`` motif scanner.
-    """
+    """Binding of the ``S1K`` motif scanner."""
     call = ["S1K", motif, background, str(threshold), fasta]
     return {"arguments": call, "return_value": None}
 
-def save_motif_profile( ex, motifs, background, assembly, regions, keep_max_only=False, 
+def save_motif_profile( ex, motifs, assembly, regions, background=None, keep_max_only=False, 
                         threshold=0, description='motif_scan.sql', via='lsf' ):
-    """Scan a set of motifs on a set of regions and saves the results as an sql file.
+    """
+    Scans a set of motifs on a set of regions and saves the results as a track file.
     The 'motifs' argument is a single PWM file or a dictionary with keys motif names and values PWM files
     with 'n' rows like:
     "1 p(A) p(C) p(G) p(T)"
@@ -152,6 +157,7 @@ def save_motif_profile( ex, motifs, background, assembly, regions, keep_max_only
         motifs = {"_": motifs}
 #        raise ValueError("'Motifs' must be a dictionary with keys 'motif_names' and values the PWMs.")
     futures = {}
+    if background is None: background = assembly.statistics(unique_filename_in(),matrix_format=True)
     for name, pwm in motifs.iteritems():
         output = unique_filename_in()
         futures[name] = ( output, motif_scan.nonblocking( ex, fasta, pwm, background,
@@ -180,11 +186,11 @@ def save_motif_profile( ex, motifs, background, assembly, regions, keep_max_only
 ##############
     track_result = track.track( sqlout, chrmeta=assembly.chrmeta,
                                 info={'datatype':'qualitative'},
-                                fields=['start','end','name','score','strand'] )
+                                fields=['chr','start','end','name','score','strand'] )
     for name, future in futures.iteritems():
         future[1].wait()
         track_result.write( track.FeatureStream(_parse_s1k(future[0], name ),
-                                                fields=['chr']+track_result.fields) )
+                                                fields=track_result.fields) )
     track_result.close()
     ex.add( sqlout, description=description )
     return sqlout
@@ -253,7 +259,7 @@ def sqlite_to_false_discovery_rate( ex, motif, background, assembly, regions, al
     thresholded profile.
     """
     threshold = FDR_threshold( motif, background, assembly, regions, alpha=alpha, nb_samples=nb_samples, via=via )
-    track = save_motif_profile( ex, motif, background, assembly, regions,
+    track = save_motif_profile( ex, motif, assembly, regions, background=background, 
                                 threshold=threshold, description=description, via=via )
     return track, threshold
 
