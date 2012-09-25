@@ -78,7 +78,7 @@ class TextTrack(Track):
         Update an existing *info* dict, if provided.
         """
         if info: return info
-        if not(os.path.exists(self.path)): return
+        if not(os.path.exists(self.path)): return {}
         self.open()
         _info = {}
         for row in self.filehandle:
