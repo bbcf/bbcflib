@@ -129,7 +129,7 @@ class Job(object):
             if group is None:
                 raise ValueError("A group with ID "+str(id)+" was already added.")
         else:
-            self.groups[id] = {'name': name, 'runs': {}}
+            self.groups[id] = {'name': name or str(id), 'runs': {}}
         if "library_file_type_id" in group:
             group.update({"library_file_url": group.get("library_file_url" or ""),
                           "library_id": group.get("library_id") or 0,
