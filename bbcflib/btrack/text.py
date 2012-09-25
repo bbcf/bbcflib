@@ -303,8 +303,16 @@ class TextTrack(Track):
         self.close()
 
     def make_header(self, info=None, mode='write'):
+        """
+        If *self* is an empty track, this function can be used to write a header in place
+        of the first line of its related file. By default, only `track type=<track type>` is added.
+
+        :param info: (dict) information to be written. Keys can be:
+            'name','description','visibility','color','itemRgb'.
+        :param mode: (str) writing mode - one of 'write','overwrite','append'.
+        """
         if isinstance(info,dict): self.info.update(info)
-        header = "track type=%s "%self.format
+        header = "track type=%s " % self.format
         _keys = ["name","description","visibility","color","itemRgb"]
         header += " ".join(["%s=%s" %(k,self.info[k])
                             for k in _keys if k in self.info])
