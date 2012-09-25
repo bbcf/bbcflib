@@ -27,7 +27,7 @@ equally well be written::
 """
 
 # Built-in modules #
-import urllib2, json, os, re
+import urllib2, json, os, re, tarfile
 from datetime import datetime
 from operator import itemgetter
 
@@ -208,11 +208,11 @@ class Assembly(object):
             will simply iterate through its items instead of loading a track from file.
         :param out: (str or dict) output file name. If *out* is a (possibly empty) dictionary,
             will return the filled dictionary.
-        :param path_to_ref: (str) path to a fasta file containing the whole reference sequence.
+        :param path_to_ref: (str or dict) path to a fasta file containing the whole reference sequence,
+            or a dictionary {chr_name: path} as returned by Assembly.untar_genome_fasta.
         :rtype: (str,int)
         """
-        if out == None:
-            out = unique_filename_in()
+        if out is None: out = unique_filename_in()
 
         def _push_slices(slices,start,end,name,cur_chunk):
             """Add a feature to *slices*, and increment the buffer size *cur_chunk* by the feature's size."""
@@ -222,7 +222,7 @@ class Assembly(object):
                 cur_chunk += end-start
             return slices,cur_chunk
 
-        def _flush_slices(slices,chrid,chrn,out):
+        def _flush_slices(slices,chrid,chrn,out,path_to_ref):
             """Write the content of *slices* to *out*."""
             names = slices['names']
             coord = slices['coord']
@@ -249,22 +249,25 @@ class Assembly(object):
             for cid,chrom in self.chromosomes.iteritems():
                 if not(chrom['name'] in regions): continue
                 if isinstance(out,dict): out[chrom['name']] = []
+                if isinstance(path_to_ref,dict): pref = path_to_ref.get(chrom['name'])
+                else: pref = path_to_ref
                 for row in regions[chrom['name']]:
                     s = max(row[0],0)
                     e = min(row[1],chrom['length'])
                     slices,cur_chunk = _push_slices(slices,s,e,'',cur_chunk)
                     if cur_chunk > chunk:
                         size += cur_chunk
-                        slices = _flush_slices(slices,cid[0],chrom['name'],out)
+                        slices = _flush_slices(slices,cid[0],chrom['name'],out,pref)
                         cur_chunk = 0
                 size += cur_chunk
-                slices = _flush_slices(slices,cid[0],chrom['name'],out)
+                slices = _flush_slices(slices,cid[0],chrom['name'],out,pref)
         else:
             with track.track(regions, chrmeta=self.chrmeta) as t:
                 cur_chunk = 0
                 for cid,chrom in self.chromosomes.iteritems():
-                    features = t.read(selection=chrom['name'],
-                                      fields=["start","end","name"])
+                    if isinstance(path_to_ref,dict): pref = path_to_ref.get(chrom['name'])
+                    else: pref = path_to_ref
+                    features = t.read(selection=chrom['name'],fields=["start","end","name"])
                     if shuffled:
                         features = track_shuffle( features, chrlen=chrom['length'],
                                                   repeat_number=1, sorted=False )
@@ -275,10 +278,10 @@ class Assembly(object):
                         slices,cur_chunk = _push_slices(slices,s,e,name,cur_chunk)
                         if cur_chunk > chunk: # buffer is full, write
                             size += cur_chunk
-                            slices = _flush_slices(slices,cid[0],chrom['name'],out)
+                            slices = _flush_slices(slices,cid[0],chrom['name'],out,pref)
                             cur_chunk = 0
                     size += cur_chunk
-                    slices = _flush_slices(slices,cid[0],chrom['name'],out)
+                    slices = _flush_slices(slices,cid[0],chrom['name'],out,pref)
         return (out,size)
 
     def statistics(self, output=None, frequency=False, matrix_format=False):
@@ -354,6 +357,41 @@ class Assembly(object):
             root = os.path.join(self.genrep.root,"nr_assemblies/cdna")
             path = os.path.join(root,self.md5+".fa.gz")
         return path
+
+    def untar_genome_fasta(self, path_to_ref=None, convert=True):
+        """Untar and concatenate reference sequence fasta files.
+        Returns a dictionary {chr_name: file_name}
+
+        :param assembly: the GenRep.Assembly instance of the species of interest.
+        :param convert: (bool) True if chromosome names need conversion from id to chromosome name.
+        """
+        if path_to_ref is None: path_to_ref = self.fasta_path()
+        if not(os.path.exists(path_to_ref)): return None
+        if convert:
+            # Create a dict of the form {'2704_NC_001144.4': chrXII}
+            chrlist = dict((str(k[0])+"_"+str(k[1])+"."+str(k[2]),v['name'])
+                           for k,v in self.chromosomes.iteritems())
+        else:
+            chrlist = {}
+        archive = tarfile.open(path_to_ref)
+        genomeRef = {}
+        for f in archive.getmembers():
+            if f.isdir(): continue
+            inf = archive.extractfile(f)
+            header = inf.readline()
+            headpatt = re.search(r'>(\S+)\s',header)
+            if headpatt: chrom = headpatt.groups()[0]
+            else: continue
+            if convert and chrom in chrlist:
+                header = re.sub(chrom,chrlist[chrom],header)
+                chrom = chrlist[chrom]
+            genomeRef[chrom] = unique_filename_in()
+            with open(genomeRef[chrom],"wb") as outf:
+                outf.write(header)
+                [outf.write(l) for l in inf]
+            inf.close()
+        archive.close()
+        return genomeRef
 
     def get_sqlite_url(self):
         """Return the url of the sqlite file containing gene annotations."""

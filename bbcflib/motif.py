@@ -89,8 +89,9 @@ def parallel_meme( ex, assembly, regions, name=None, chip=False, meme_args=None,
     futures = {}
     fasta_files = {}
     background = assembly.statistics(unique_filename_in())
+    genomeRef = assembly.untar_genome_fasta()
     for i,n in enumerate(name):
-        (fasta, size) = assembly.fasta_from_regions( regions[i], out=unique_filename_in() )
+        (fasta, size) = assembly.fasta_from_regions( regions[i], out=unique_filename_in(), path_to_ref=genomeRef )
         tmpfile = unique_filename_in()
         outdir = unique_filename_in()
         if chip:

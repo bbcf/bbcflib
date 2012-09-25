@@ -1,5 +1,5 @@
 # Built-in modules #
-import re, tarfile, os, sys
+import re, os, sys
 
 # Internal modules #
 from bbcflib.common import unique_filename_in, set_file_descr
@@ -26,39 +26,6 @@ _translate = {"TTT": "F", "TTC": "F", "TTA": "L", "TTG": "L/START",
               "CGT": "R", "CGC": "R", "CGA": "R", "CGG": "R",
               "AGT": "S", "AGC": "S", "AGA": "R", "AGG": "R",
               "GGT": "G", "GGC": "G", "GGA": "G", "GGG": "G" }
-
-def untar_genome_fasta(assembly, path_to_ref=None, convert=True):
-    """Untar and concatenate reference sequence fasta files.
-    Returns a dictionary {chr_name: file_name}
-
-    :param assembly: the GenRep.Assembly instance of the species of interest.
-    :param convert: (bool) True if chromosome names need conversion from id to chromosome name.
-    """
-    if convert:
-        # Create a dict of the form {'2704_NC_001144.4': chrXII}
-        chrlist = dict((str(k[0])+"_"+str(k[1])+"."+str(k[2]),v['name'])
-                       for k,v in assembly.chromosomes.iteritems())
-    else:
-        chrlist = {}
-    archive = tarfile.open(path_to_ref)
-    genomeRef = {}
-    for f in archive.getmembers():
-        if f.isdir(): continue
-        inf = archive.extractfile(f)
-        header = inf.readline()
-        headpatt = re.search(r'>(\S+)\s',header)
-        if headpatt: chrom = headpatt.groups()[0]
-        else: continue
-        if convert and chrom in chrlist:
-            header = re.sub(chrom,chrlist[chrom],header)
-            chrom = chrlist[chrom]
-        genomeRef[chrom] = unique_filename_in()
-        with open(genomeRef[chrom],"wb") as outf:
-            outf.write(header)
-            [outf.write(l) for l in inf]
-        inf.close()
-    archive.close()
-    return genomeRef
 
 def _ploidy(assembly):
     if str(assembly.name) in ["EB1_e_coli_k12","MLeprae_TN","mycoSmeg_MC2_155",
