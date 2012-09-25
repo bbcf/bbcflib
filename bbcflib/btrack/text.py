@@ -24,7 +24,7 @@ class TextTrack(Track):
 
     .. attribute:: separator
 
-       character separating fields in the file (default "\t").
+       Character separating fields in the file (default "\t").
 
     .. attribute:: intypes
 
@@ -54,6 +54,7 @@ class TextTrack(Track):
         if isinstance(kwargs.get('intypes'),dict): self.intypes.update(kwargs["intypes"])
         self.outtypes = dict((k,v) for k,v in _out_types.iteritems() if k in self.fields)
         if isinstance(kwargs.get('outtypes'),dict): self.outtypes.update(kwargs["outtypes"])
+        self.header = None
 
     def _get_chrmeta(self,chrmeta=None):
         """
@@ -261,6 +262,7 @@ class TextTrack(Track):
         :param mode: (str) file opening mode - one of 'write','overwrite','append'. ['write']
         :param chrom: (str) a chromosome name.
         """
+        if self.header: mode='append'
         if self.separator is None:
             self.separator = "\t"
         if hasattr(source, 'fields'):
@@ -309,6 +311,7 @@ class TextTrack(Track):
         self.open(mode)
         self.filehandle.write(header+"\n")
         self.close()
+        self.header = header
 
 ################################ Bed ##########################################
 
