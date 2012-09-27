@@ -13,9 +13,11 @@ class BinTrack(Track):
         self.fields = kwargs.get("fields",['chr','start','end'])
 
     def _run_tool(self, tool_name, args):
+        if not program_exists(tool_name):
+            raise OSError("Program not found in $PATH: %s" % tool_name)
         proc = subprocess.Popen([tool_name]+args, stderr=subprocess.PIPE)
         stdout, stderr = proc.communicate()
-        if stderr: raise Exception("%s exited with message: %s" % (tool_name,stderr))
+        if stderr: raise OSError("%s exited with message: %s" % (tool_name,stderr))
 
     def _make_selection(self, selection):
         reg = [None,None,None]
@@ -65,8 +67,6 @@ class BigWigTrack(BinTrack):
 
     def close(self):
         if self.chrfile and self.bedgraph:
-            if not program_exists('bedGraphToBigWig'):
-                raise OSError("Program not found in $PATH: %s" % 'bedGraphToBigWig')
             self._run_tool('bedGraphToBigWig', [self.bedgraph, self.chrfile.name, self.path])
         if not(self.chrfile is None):
             os.remove(self.chrfile.name)
@@ -82,8 +82,6 @@ class BigWigTrack(BinTrack):
             where tuples represent ranges.
         :param fields: (list of str) list of field names.
         """
-        if not program_exists('bigWigToBedGraph'):
-            raise OSError("Program not found in $PATH: %s" % 'bigWigToBedGraph')
         self.open()
         if not(fields): fields = self.fields
         fields = [f for f in self.fields if f in fields]
