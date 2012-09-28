@@ -95,15 +95,16 @@ def merge_scores(trackList, method='arithmetic'):
 def filter_scores(trackScores,trackFeatures,method='sum',strict=False):
     """
     Extract from *trackScores* only the regions overlapping *trackFeatures*'s regions.
+    Warning: both score and features streams must be sorted! (use `common.sorted_stream` is necessary).
     Example::
 
         X: _____#########__________#############_______
         Y: __________666666666___2222776_444___________
         R: __________6666__________22776_444___________
 
-    :param trackScores: (FeatureStream) one score track.
+    :param trackScores: (FeatureStream) one -sorted- score track.
         If a list fo streams is provided, they will be merged (averaged scores).
-    :param trackFeatures: (FeatureStream) one feature track.
+    :param trackFeatures: (FeatureStream) one -sorted- feature track.
         If a list fo streams is provided, they will be merged.
     :param method: (str) `merge_scores` *method* argument. ['sum']
     :param strict: (bool) if True, only score regions from *trackScores* that are
@@ -141,6 +142,7 @@ def score_by_feature(trackScores,trackFeatures,fn='mean'):
     """
     For every feature from *trackFeatures*, get the list of all scores it contains
     and apply an operation *fn* on this list (by default, scores are averaged).
+    Warning: both score and features streams must be sorted! (use `common.sorted_stream` is necessary).
     The output is a stream similar to *trackFeatures* but with an additional `score` field
     for each stream in *trackScores*::
 
@@ -156,8 +158,8 @@ def score_by_feature(trackScores,trackFeatures,fn='mean'):
         Y2: ___222222_____________________333_____________
         R : ______[  30,6  ]______________[  60,9  ]______
 
-    :param trackScores: (list of) one or several score track(s) (FeatureStream).
-    :param trackFeatures: (FeatureStream) one feature track.
+    :param trackScores: (list of) one or several -sorted- score track(s) (FeatureStream).
+    :param trackFeatures: (FeatureStream) one -sorted- feature track.
     :param fn: (str of function): operation applied to the list of scores from one feature.
         Can be one of 'sum','mean','median','min','max', or a custom function
     :rtype: FeatureStream
