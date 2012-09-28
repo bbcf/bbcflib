@@ -426,7 +426,7 @@ def workflow_groups( ex, job_or_dict, mapseq_files, assembly, script_path='',
         logfile.write("Starting MEME.\n");logfile.flush()
         processed['meme'] = parallel_meme( ex, assembly, 
                                            peak_list.values(), name=peak_list.keys(),
-                                           chip=True, meme_args=['-nmotifs','4','-revcomp'], 
+                                           chip=True, meme_args=['-meme-nmotifs','4'], 
                                            via=via )
     return processed
 

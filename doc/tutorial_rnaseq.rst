@@ -18,7 +18,7 @@ If you used the HTSstation `mapping module <http://htsstation.epfl.ch/mapseq/>`_
 Then select an assembly from the list. Make sure you are selecting the one that was used for the mapping. If your assembly is not listed, please send us an `email <mailto:webmaster.bbcf@epfl.ch>`_.
 
 Name your analysis in the `Run description` field. Please, use short names, without spaces (prefer "_" character to separate words) and without any special characters (e.g., "%&?!" ... ).
-Submit your e-mail in order to receive an message upon completion of the pipeline.
+Submit your e-mail in order to receive a message upon completion of the pipeline.
 
 .. image:: images/RNAseq_generals.png
 

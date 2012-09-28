@@ -47,7 +47,7 @@ def parse_fragFile(fragfile,chrom_dict={}):
         for s in f:
             if re.search('FragIsNotValid',s): continue
             s=s.strip().split('\t')
-            chrom=chrom_dict.get(s[1],"chr"+s[1])
+            chrom=chrom_dict.get(s[1],s[1])
             fragmentInfo='|'.join(['',s[0],chrom+':'+str(int(s[2])+1)+'-'+s[3],
                                    'indexOfSecondRestSiteOcc='+s[10],
                                    'status='+s[-1],'length='+str(int(s[3])-int(s[2])),
@@ -151,40 +151,23 @@ def createLibrary(ex, assembly_or_fasta, params, hts_url=hts_url, via='local'):
         return [None,None,None,None]
 
     if isinstance(assembly_or_fasta,genrep.Assembly):
-        fasta_path = assembly_or_fasta.fasta_path()
-        tar = tarfile.open(fasta_path)
-        tar.extractall()
-        allfiles = {}
-        for finfo in tar.getmembers():
-            if not finfo.isdir():
-                with open(finfo.name) as fin:
-                    header = fin.readline()
-                hpatt = re.search(r'>(\S+)\s',header)
-                if hpatt:
-                    allfiles[hpatt.groups()[0]] = finfo.name
-#        fasta_file=cat(allfiles)
-        tar.close()
-        chrom_dict = dict([(str(k[0])+"_"+k[1]+"."+str(k[2]),v['name'])
-                            for k,v in assembly_or_fasta.chromosomes.iteritems()])
         chrnames = assembly_or_fasta.chrnames
+        allfiles = assembly_or_fasta.untar_genome_fasta()
     else:
         allfiles["lib"] = assembly_or_fasta
-        chrom_dict = {}
         chrnames = ["lib"]
 
-    libfiles = {}
-    for ch, fasta_file in allfiles.iteritems():
-        chrom = chrom_dict.get(ch,"lib")
-        libfiles[chrom] = getRestEnzymeOccAndSeq.nonblocking( ex, fasta_file,
-                                                              params['primary'], params['secondary'],
-                                                              params['length'],  params['type'], 
-                                                              via=via )
+    libfiles = dict((c, getRestEnzymeOccAndSeq.nonblocking( ex, f, 
+                                                            params['primary'], params['secondary'],
+                                                            params['length'],  params['type'], 
+                                                            via=via )) 
+                    for c, f in allfiles.iteritems())
     resfile = unique_filename_in()
     os.mkdir(resfile)
     bedfiles = {}
     for chrom, future in libfiles.iteritems():
         libfiles[chrom] = future.wait()
-        bedfiles[chrom] = parse_fragFile(libfiles[chrom][1], chrom_dict)
+        bedfiles[chrom] = parse_fragFile(libfiles[chrom][1])
     coverageInRepeats(ex, bedfiles, params['species'], outdir=resfile, via=via)
     bedchrom = [os.path.join(resfile,chrom+".bed") for chrom in chrnames]
     cat(bedchrom,out=resfile+".bed")
