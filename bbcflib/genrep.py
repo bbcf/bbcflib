@@ -206,13 +206,17 @@ class Assembly(object):
             If *regions* is a dictionary {'chr': [[start1,end1],[start2,end2]]}
             or a list [['chr',start1,end1],['chr',start2,end2]],
             will simply iterate through its items instead of loading a track from file.
-        :param out: (str or dict) output file name. If *out* is a (possibly empty) dictionary,
-            will return the filled dictionary.
+        :param out: (str, filehandle or dict) output file name or filehandle. 
+            If *out* is a (possibly empty) dictionary, will return the updated dictionary.
         :param path_to_ref: (str or dict) path to a fasta file containing the whole reference sequence,
             or a dictionary {chr_name: path} as returned by Assembly.untar_genome_fasta.
         :rtype: (str,int)
         """
         if out is None: out = unique_filename_in()
+        _to_close = False
+        if isinstance(out,basestring): 
+            _to_close = True
+            out = open(out,"w")
 
         def _push_slices(slices,start,end,name,cur_chunk):
             """Add a feature to *slices*, and increment the buffer size *cur_chunk* by the feature's size."""
@@ -226,10 +230,9 @@ class Assembly(object):
             """Write the content of *slices* to *out*."""
             names = slices['names']
             coord = slices['coord']
-            if isinstance(out,str):
-                with open(out,"a") as f:
-                    for i,s in enumerate(self.genrep.get_sequence(chrid,coord,path_to_ref=path_to_ref)):
-                        f.write(">"+names[i]+"|"+chrn+":"+str(coord[i][0])+"-"+str(coord[i][1])+"\n"+s+"\n")
+            if isinstance(out,file):
+                for i,s in enumerate(self.genrep.get_sequence(chrid,coord,path_to_ref=path_to_ref)):
+                    if s: out.write(">"+names[i]+"|"+chrn+":"+str(coord[i][0])+"-"+str(coord[i][1])+"\n"+s+"\n")
             else:
                 out[chrn].extend([s for s in self.genrep.get_sequence(chrid,coord,path_to_ref=path_to_ref)])
             return {'coord':[],'names':[]}
@@ -254,7 +257,7 @@ class Assembly(object):
                 for row in regions[chrom['name']]:
                     s = max(row[0],0)
                     e = min(row[1],chrom['length'])
-                    slices,cur_chunk = _push_slices(slices,s,e,'',cur_chunk)
+                    slices,cur_chunk = _push_slices(slices,s,e,self.name,cur_chunk)
                     if cur_chunk > chunk:
                         size += cur_chunk
                         slices = _flush_slices(slices,cid[0],chrom['name'],out,pref)
@@ -263,18 +266,19 @@ class Assembly(object):
                 slices = _flush_slices(slices,cid[0],chrom['name'],out,pref)
         else:
             with track.track(regions, chrmeta=self.chrmeta) as t:
+                _f = [f for f in ["start","end","name"] if f in t.fields]
                 cur_chunk = 0
                 for cid,chrom in self.chromosomes.iteritems():
                     if isinstance(path_to_ref,dict): pref = path_to_ref.get(chrom['name'])
                     else: pref = path_to_ref
-                    features = t.read(selection=chrom['name'],fields=["start","end","name"])
+                    features = t.read(selection=chrom['name'],fields=_f)
                     if shuffled:
                         features = track_shuffle( features, chrlen=chrom['length'],
                                                   repeat_number=1, sorted=False )
                     for row in features:
                         s = max(row[0],0)
                         e = min(row[1],chrom['length'])
-                        name = re.sub('\s+','_',row[2])
+                        name = len(row)>2 and re.sub('\s+','_',row[2]) or chrom['name']
                         slices,cur_chunk = _push_slices(slices,s,e,name,cur_chunk)
                         if cur_chunk > chunk: # buffer is full, write
                             size += cur_chunk
@@ -282,6 +286,7 @@ class Assembly(object):
                             cur_chunk = 0
                     size += cur_chunk
                     slices = _flush_slices(slices,cid[0],chrom['name'],out,pref)
+        if _to_close: out.close()
         return (out,size)
 
     def statistics(self, output=None, frequency=False, matrix_format=False):
