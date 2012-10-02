@@ -188,10 +188,10 @@ class DAFLIMS(object):
                                                                      '\n'.join(response[1:])))
         which = 1
         if len(response) > 2:
-            if not(re.search(r'multiplex',response[1].split('\t')[13])):
-                raise ValueError("lanedesc method returned multiple records: %s" % ('\n'.join(response[1:])))
             if libname:
                 which = 1+[x.split('\t')[4] for x in response[1:]].index(libname)
+            else:
+                raise ValueError("lanedesc method returned multiple records, need a libname: %s" % ('\n'.join(response[1:])))
 
         # If the response is valid, parse the fields into a dictionary.
         q = response[which].split('\t')
