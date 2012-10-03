@@ -35,6 +35,8 @@ def feature_matrix(trackScores,trackFeatures,segment=False,**kw):
         R:  [[3.  2.]
              [6.  0.]]
 
+    Note: the whole segmented features track will be loaded in memory.
+
     :param trackScores: (FeatureStream, or list of FeatureStream objects) score track(s).
     :param trackFeatures: (FeatureStream) feature track.
     :param segment: (bool) segment each feature into bins.[False]
@@ -88,6 +90,8 @@ def summed_feature_matrix(trackScores,trackFeatures,**kw):
             [4.  1.],   # bin 1
             [6.  1.]]   # bin 2
 
+    Note: the whole segmented features track will be loaded in memory.
+
     :param trackScores: (FeatureStream, or list of FeatureStream objects) score track(s).
     :param trackFeatures: (FeatureStream) feature track.
     :param **kw: arguments to pass to segment_features (`nbins`,`upstream`,`downstream`).
@@ -100,7 +104,7 @@ def summed_feature_matrix(trackScores,trackFeatures,**kw):
         nscores = len(trackScores)
     else:
         nscores = 1
-    nbins = kw.get('nbins',segment_features.__defaults__[0]) \
+    nbins = kw.get('nbins',segment_features.func_defaults[0]) \
             + kw.get('upstream',(0,0))[1] \
             + kw.get('downstream',(0,0))[1]
     averages = numpy.zeros(shape=(nbins,nscores))

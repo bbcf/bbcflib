@@ -360,6 +360,12 @@ class Test_Scores(unittest.TestCase):
         expected = [(10,15,6.),(30,40,6.)]
         self.assertListEqual(res,expected)
 
+        #features = fstream([(5,40,'gene1'),(20,50,'gene2')], fields=['start','end','name'])
+        #scores = fstream([(10,20,6.),(30,40,6.)], fields=['start','end','score'])
+        #res = list(filter_scores(scores,features))
+        #expected = [(10,15,6.),(30,40,6.)]
+        #self.assertListEqual(res,expected)
+
     def test_score_by_feature(self):
         features = fstream([(5,15,'gene1'),(30,40,'gene2')], fields=['start','end','name'])
         scores1 = fstream([(10,20,6.),(30,40,6.)], fields=['start','end','score'])

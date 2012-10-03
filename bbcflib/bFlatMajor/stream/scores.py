@@ -65,6 +65,7 @@ def merge_scores(trackList, method='arithmetic'):
         if elements[i][0] == sys.maxint:
             tracks.pop(i)
             elements.pop(i)
+
     def _stream(tracks):
         while tracks:
             start = min([x[0] for x in elements])
@@ -95,7 +96,7 @@ def merge_scores(trackList, method='arithmetic'):
 def filter_scores(trackScores,trackFeatures,method='sum',strict=False):
     """
     Extract from *trackScores* only the regions overlapping *trackFeatures*'s regions.
-    Warning: both score and features streams must be sorted! (use `common.sorted_stream` is necessary).
+    Warning: both score and features streams must be sorted! (use `common.sorted_stream` if necessary).
     Example::
 
         X: _____#########__________#############_______
