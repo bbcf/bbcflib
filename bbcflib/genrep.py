@@ -206,7 +206,7 @@ class Assembly(object):
             If *regions* is a dictionary {'chr': [[start1,end1],[start2,end2]]}
             or a list [['chr',start1,end1],['chr',start2,end2]],
             will simply iterate through its items instead of loading a track from file.
-        :param out: (str, filehandle or dict) output file name or filehandle. 
+        :param out: (str, filehandle or dict) output file name or filehandle.
             If *out* is a (possibly empty) dictionary, will return the updated dictionary.
         :param path_to_ref: (str or dict) path to a fasta file containing the whole reference sequence,
             or a dictionary {chr_name: path} as returned by Assembly.untar_genome_fasta.
@@ -214,7 +214,7 @@ class Assembly(object):
         """
         if out is None: out = unique_filename_in()
         _to_close = False
-        if isinstance(out,basestring): 
+        if isinstance(out,basestring):
             _to_close = True
             out = open(out,"w")
 
@@ -278,7 +278,7 @@ class Assembly(object):
                     for row in features:
                         s = max(row[0],0)
                         e = min(row[1],chrom['length'])
-                        name = len(row)>2 and re.sub('\s+','_',row[2]) or chrom['name']
+                        name = re.sub('\s+','_',row[2]) if len(row)>2 else chrom['name']
                         slices,cur_chunk = _push_slices(slices,s,e,name,cur_chunk)
                         if cur_chunk > chunk: # buffer is full, write
                             size += cur_chunk
