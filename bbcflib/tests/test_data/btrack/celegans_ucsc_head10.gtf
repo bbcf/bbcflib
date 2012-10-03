@@ -1,0 +1,10 @@
+MtDNA	protein_coding	exon	58	783	.	+	.	 gene_id "MTCE.3"; transcript_id "MTCE.3"; exon_number "1"; gene_name "MTCE.3"; gene_biotype "protein_coding"; transcript_name "MTCE.3";
+MtDNA	protein_coding	CDS	113	544	.	+	0	 gene_id "MTCE.3"; transcript_id "MTCE.3"; exon_number "1"; gene_name "MTCE.3"; gene_biotype "protein_coding"; transcript_name "MTCE.3"; protein_id "MTCE.3";
+MtDNA	protein_coding	exon	549	779	.	+	.	 gene_id "MTCE.4"; transcript_id "MTCE.4"; exon_number "1"; gene_name "MTCE.4"; gene_biotype "protein_coding"; transcript_name "MTCE.4";
+MtDNA	protein_coding	CDS	549	779	.	+	0	 gene_id "MTCE.4"; transcript_id "MTCE.4"; exon_number "1"; gene_name "MTCE.4"; gene_biotype "protein_coding"; transcript_name "MTCE.4"; protein_id "MTCE.4";
+MtDNA	rRNA	exon	898	1593	.	+	.	 gene_id "MTCE.7"; transcript_id "MTCE.7"; exon_number "1"; gene_name "MTCE.7"; gene_biotype "rRNA"; transcript_name "MTCE.7";
+MtDNA	protein_coding	exon	1698	3238	.	+	.	 gene_id "MTCE.11"; transcript_id "MTCE.11"; exon_number "1"; gene_name "MTCE.11"; gene_biotype "protein_coding"; transcript_name "MTCE.11";
+MtDNA	protein_coding	CDS	1763	2635	.	+	0	 gene_id "MTCE.11"; transcript_id "MTCE.11"; exon_number "1"; gene_name "MTCE.11"; gene_biotype "protein_coding"; transcript_name "MTCE.11"; protein_id "MTCE.11";
+MtDNA	protein_coding	exon	2634	3235	.	+	.	 gene_id "MTCE.12"; transcript_id "MTCE.12"; exon_number "1"; gene_name "MTCE.12"; gene_biotype "protein_coding"; transcript_name "MTCE.12";
+MtDNA	protein_coding	CDS	2634	3230	.	+	0	 gene_id "MTCE.12"; transcript_id "MTCE.12"; exon_number "1"; gene_name "MTCE.12"; gene_biotype "protein_coding"; transcript_name "MTCE.12"; protein_id "MTCE.12";
+MtDNA	protein_coding	exon	3389	4269	.	+	.	 gene_id "MTCE.16"; transcript_id "MTCE.16"; exon_number "1"; gene_name "MTCE.16"; gene_biotype "protein_coding"; transcript_name "MTCE.16";
