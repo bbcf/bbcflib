@@ -110,7 +110,6 @@ class Test_Track(unittest.TestCase):
         tempfile = os.path.join(path,'temp6.txt')
         t = track(self.bed)
         out = track(tempfile, fields=t.fields)
-        print out.fields
         for chr in ['chrII','chrIII','chrIV']:
             s = t.read(chr)
             out.write(s)
@@ -190,6 +189,7 @@ class Test_Formats(unittest.TestCase):
         for ext in ['','.bed','.bw','.wig','.bedGraph','.bam','.sql','.sga','.gff']:
             test_file = os.path.join(path,'test'+ext)
             if os.path.exists(test_file): os.remove(test_file)
+
 
 class Test_Bam(unittest.TestCase):
     def setUp(self):

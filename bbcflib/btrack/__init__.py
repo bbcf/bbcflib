@@ -288,7 +288,7 @@ class Track(object):
         self.close()
 
     def __iter__(self):
-        """Iterates on the list of features."""
+        """Iterates over the list of features."""
         return iter(self.read())
 
     def open(self):
