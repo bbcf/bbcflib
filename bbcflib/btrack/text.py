@@ -54,7 +54,6 @@ class TextTrack(Track):
         if isinstance(kwargs.get('intypes'),dict): self.intypes.update(kwargs["intypes"])
         self.outtypes = dict((k,v) for k,v in _out_types.iteritems() if k in self.fields)
         if isinstance(kwargs.get('outtypes'),dict): self.outtypes.update(kwargs["outtypes"])
-        self.header = None
 
     def _get_chrmeta(self,chrmeta=None):
         """
@@ -262,7 +261,8 @@ class TextTrack(Track):
         :param mode: (str) file opening mode - one of 'write','overwrite','append'. ['write']
         :param chrom: (str) a chromosome name.
         """
-        if self.header: mode='append'
+        if self.written and mode=='write':
+            mode='append'
         if self.separator is None:
             self.separator = "\t"
         if hasattr(source, 'fields'):
@@ -300,6 +300,7 @@ class TextTrack(Track):
                 row = row[:sidx]+(start,)+row[(sidx+1):]
                 row = row[:eidx]+(end,)+row[(eidx+1):]
             self.filehandle.write(self._format_fields(voidvec,row,srcl,trgl)+"\n")
+        self.written = True
         self.close()
 
     def make_header(self, info=None, mode='write'):
@@ -319,7 +320,7 @@ class TextTrack(Track):
         self.open(mode)
         self.filehandle.write(header+"\n")
         self.close()
-        self.header = header
+        self.written = True
 
 ################################ Bed ##########################################
 
@@ -412,7 +413,7 @@ class SgaTrack(TextTrack):
             toskip = skip.next()
         start = end = 0
 
-        rowdata = {'+': ['',-1,-1,'','+',''],
+        rowdata = {'+': ['',-1,-1,'','+',''], # chr,start,end,name,strand,counts
                    '-': ['',-1,-1,'','-',''],
                    '0': ['',-1,-1,'','.','']}
         while 1:
@@ -429,15 +430,14 @@ class SgaTrack(TextTrack):
             if row.startswith("#"): continue
             splitrow = row.strip(' \r\n').split(self.separator)
             yieldit = True
-            strand = splitrow[3]
-            rowdata[strand][0] = splitrow[0]
-            start = int(splitrow[2])
-            counts = splitrow[4]
-            name = splitrow[1]
-            if start-1 == rowdata[strand][2] and \
+            chr,name,pos,strand,counts = splitrow
+            if float(counts) == 0: continue
+            pos = int(pos)
+            rowdata[strand][0] = chr
+            if pos-1 == rowdata[strand][2] and \
                     counts == rowdata[strand][5] and \
                     name == rowdata[strand][3]:
-                rowdata[strand][2] = start
+                rowdata[strand][2] = pos
                 yieldit = False
             if selection:
                 if not (self._select_values(rowdata[strand],selection)):
@@ -454,8 +454,8 @@ class SgaTrack(TextTrack):
             if rowdata[strand][1]>=0:
                 yield tuple(self._check_type(rowdata[strand][index_list[n]],f)
                             for n,f in enumerate(fields))
-            rowdata[strand][1] = start-1
-            rowdata[strand][2] = start
+            rowdata[strand][1] = pos-1
+            rowdata[strand][2] = pos
             rowdata[strand][3] = name
             rowdata[strand][5] = counts
         for rd in rowdata.values():

@@ -98,25 +98,27 @@ def track( path, format=None, **kwargs):
     :param **kwargs: (dict) parameters of the Track subclass' constructor.
         Typically `assembly` or `chrmeta`.
     """
-    assert isinstance(path,str), "*path*: Expected string, %s found." % type(path)
+    assert isinstance(path,str), "Expected string, found %s." % type(path)
     if format is None:
         path2, format = os.path.splitext(path)
         format = format.lstrip('.')
         if format in ['gz','gzip']:
             format = os.path.splitext(path2)[1].lstrip('.')
         if format == '':
-            with open(path, 'r') as file:
-                rstart = file.read(15)
-                if rstart == "SQLite format 3": format='sql'
-                else:
-                    while rstart.startswith("#"):
-                        rstart = file.readline()
-                        rstart = file.read(1)
-                    rstart += file.readline()
-                    head = re.search(r'track\s+type=(\S+)',rstart)
-                    if head: format = head.groups()[0]
+            if os.path.exists(path):
+                with open(path, 'r') as file:
+                    rstart = file.read(15)
+                    if rstart == "SQLite format 3": format='sql'
+                    else:
+                        while rstart.startswith("#"):
+                            rstart = file.readline()
+                            rstart = file.read(1)
+                        rstart += file.readline()
+                        head = re.search(r'track\s+type=(\S+)',rstart)
+                        if head: format = head.groups()[0]
+            else: raise ValueError("Format must be specified for yet empty tracks.")
     if not(format in _track_map):
-        raise Exception("The format '%s' is not supported."%format)
+        raise Exception("Format '%s' is not supported."%format)
     __import__(_track_map[format][0])
     return getattr(sys.modules[_track_map[format][0]],
                    _track_map[format][1])(path,**kwargs)
@@ -196,7 +198,6 @@ def check_ordered(source, **kwargs):
         chr   = row[chr_idx] if is_chr else None
         start = row[start_idx] if is_start else 0
         end   = row[end_idx] if is_end else 0
-        #print start, last_start
         if chr != last_chr:
             if chr in visited: return False
             visited.append(chr)
@@ -258,6 +259,7 @@ class Track(object):
         self.chrmeta = self._get_chrmeta(kwargs.get('chrmeta'))
         self.info = self._get_info(info=kwargs.get('info'))
         self.index = {}
+        self.written = False # if True, 'write' mode becomes 'append'
 
     def _get_chrmeta(self,chrmeta=None):
         """:param chrmeta: (str or dict) assembly name, or dict of the type {chr: {'length': 1234}}."""

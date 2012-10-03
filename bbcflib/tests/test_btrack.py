@@ -106,8 +106,17 @@ class Test_Track(unittest.TestCase):
             g.writelines(["chrX\t1\t4\n", "chrX\t1\t3\n", "chrV\t1\t2\n"])
         self.assertEqual(check_ordered(tempfile),False)
 
+    def test_chr_loop(self):
+        tempfile = os.path.join(path,'temp6.txt')
+        t = track(self.bed)
+        out = track(tempfile, fields=t.fields)
+        print out.fields
+        for chr in ['chrII','chrIII','chrIV']:
+            s = t.read(chr)
+            out.write(s)
+
     def tearDown(self):
-        for test_file in ['temp1','temp2','temp3','temp4','temp5']:
+        for test_file in ['temp1','temp2','temp3','temp4','temp5','temp6']:
             test_file = os.path.join(path,test_file)+'.txt'
             if os.path.exists(test_file): os.remove(test_file)
 
