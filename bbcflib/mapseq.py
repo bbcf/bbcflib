@@ -835,6 +835,7 @@ def map_groups( ex, job_or_dict, assembly_or_dict, map_args=None ):
     processed = {}
     file_names = {}
     options = {}
+    chromosomes = {}
     if map_args is None:
         map_args = {}
     if 'bwt_args' in map_args:
@@ -854,7 +855,6 @@ def map_groups( ex, job_or_dict, assembly_or_dict, map_args=None ):
     pcr_dupl = options.get('discard_pcr_duplicates',True)
     if isinstance(pcr_dupl,basestring):
         pcr_dupl = pcr_dupl.lower() in ['1','true','t']
-    chromosomes = {}
     if isinstance(assembly_or_dict,genrep.Assembly):
         for k,v in assembly_or_dict.chromosomes.iteritems():
             if k[1] is None:
