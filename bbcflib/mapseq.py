@@ -854,9 +854,13 @@ def map_groups( ex, job_or_dict, assembly_or_dict, map_args=None ):
     pcr_dupl = options.get('discard_pcr_duplicates',True)
     if isinstance(pcr_dupl,basestring):
         pcr_dupl = pcr_dupl.lower() in ['1','true','t']
+    chromosomes = {}
     if isinstance(assembly_or_dict,genrep.Assembly):
-        chromosomes = dict([(str(k[0])+"_"+k[1]+"."+str(k[2]),v)
-                            for k,v in assembly_or_dict.chromosomes.iteritems()])
+        for k,v in assembly_or_dict.chromosomes.iteritems():
+            if k[1] is None:
+                chromosomes[str(k[0])] = v
+            else:
+                chromosomes[str(k[0])+'_'+k[1]+'.'+str(k[2])] = v
         index_path = assembly_or_dict.index_path
     elif isinstance(assembly_or_dict,dict) and 'chromosomes' in assembly_or_dict:
         chromosomes = assembly_or_dict['chromosomes']
