@@ -51,40 +51,6 @@ class Test_Track(unittest.TestCase):
         s = t.read(); s.next()
         self.assertIsInstance(s, FeatureStream)
 
-    def test_index(self):
-        t = track(self.bed)
-        s = list(t.read('chrIII', skip=True))
-        self.assertEqual(t.index, {'chrII':[41, 328],'chrIII':[360, 360],'chrIV':[393, 960]})
-
-        # Temp file containing only chrX
-        tempfile = os.path.join(path,"temp1.txt")
-        with open(tempfile,'wb') as g:
-            g.writelines(["chrX\t1\n"]*200)
-
-        # Read chrX at last: the whole file is read at each iteration.
-        t = track(tempfile,fields=['chr','end'],chrmeta=self.assembly)
-        tnorm = tskip = nnorm = nskip = 0
-        for chr in ['chrI','chrII','chrIII','chrIV','chrV','chrVI','chrVII','chrVIII','chrIX','chrX']:
-            t1 = time.time()
-            s = t.read(chr, skip=False)
-            for x in s: nnorm += 1
-            t2 = time.time()
-            tnorm += t2-t1
-        t.close()
-
-        # Read chrX, then read others: chrX (the whole file) is skipped at each iteration.
-        t = track(tempfile,fields=['chr','end'],chrmeta=self.assembly)
-        for chr in ['chrX','chrII','chrIII','chrIV','chrV','chrVI','chrVII','chrVIII','chrIX','chrI']:
-            t1 = time.time()
-            s = t.read(chr, skip=True)
-            for x in s: nskip += 1
-            t2 = time.time()
-            tskip += t2-t1
-        t.close()
-
-        self.assertEqual(nnorm,nskip)
-        self.assertLess(tskip/tnorm,0.5) # Second case it at least twice faster
-
     def test_check_ordered(self):
         # All sorted
         tempfile = os.path.join(path,'temp2.txt')
@@ -191,6 +157,51 @@ class Test_Formats(unittest.TestCase):
 
     def tearDown(self):
         for ext in ['','.bed','.bw','.wig','.bedGraph','.bam','.sql','.sga','.gff']:
+            test_file = os.path.join(path,'test'+ext)
+            if os.path.exists(test_file): os.remove(test_file)
+
+
+class Test_Index(unittest.TestCase):
+    def setUp(self):
+        self.assembly = 'sacCer2'
+        self.bed = os.path.join(path,"yeast_genes.bed")
+
+    def _test_index(self, filename):
+        t = track(filename,fields=['chr','end'],chrmeta=self.assembly)
+        tnorm = tskip = 0
+        for chr in t.chrmeta:
+            t1 = time.time()
+            s = t.read(chr, skip=False)
+            norm = list(s)
+            t2 = time.time()
+            tnorm += t2-t1
+        for chr in t.chrmeta:
+            t1 = time.time()
+            s = t.read(chr, skip=True)
+            skip = list(s)
+            t2 = time.time()
+            tskip += t2-t1
+        self.assertListEqual(norm,skip)
+        self.assertLess(tskip/tnorm,0.5) # Second case it at least twice faster
+        return t
+
+    def test_index_bed(self):
+        t = self._test_index(self.bed)
+        self.assertEqual(t.index, {'chrII':[41, 360],'chrIII':[360, 393],'chrIV':[393, 994]})
+        ###self.assertEqual(t.index, {'chrII':[41, 328],'chrIII':[360, 360],'chrIV':[393, 960]})
+
+    def test_index_wig(self):
+        wig = os.path.join(path,'test.wig')
+        convert(self.bed, wig)
+        self._test_index(wig)
+
+    def test_index_sga(self):
+        sga = os.path.join(path,'test.sga')
+        convert(self.bed, sga)
+        self._test_index(sga)
+
+    def tearDown(self):
+        for ext in ['.bed','.wig','.sga']:
             test_file = os.path.join(path,'test'+ext)
             if os.path.exists(test_file): os.remove(test_file)
 

@@ -119,6 +119,24 @@ class TextTrack(Track):
                 tests.append(str(row[fi]) == str(v))
         return all(tests)
 
+    def _index_chr(self,start,end,splitrow):
+        chr = splitrow[self.fields.index('chr')]
+        if self.index.get(chr): self.index[chr][1] = end
+        else:                   self.index[chr] = [start,end]
+    def _init_skip(self,selection):
+        chr_selected = [s.get('chr')[0] for s in selection if s.get('chr')]
+        chr_toskip = sorted([self.index.get(c) for c in self.index if c not in chr_selected])
+        chr_toskip = iter(chr_toskip+[[sys.maxint,sys.maxint]])
+        return chr_toskip
+    def _skip(self,start,next_toskip,chr_toskip):
+        #start = self.filehandle.tell()
+        if start >= next_toskip[0] and start <= next_toskip[1]:
+            self.filehandle.seek(next_toskip[1])
+            start = self.filehandle.tell()
+            next_toskip = chr_toskip.next()
+        end = self.filehandle.tell()
+        return start,end,next_toskip
+
     def open(self,mode='read'):
         """Unzip (if necessary) and open the file with the given *mode*.
 
@@ -164,40 +182,26 @@ class TextTrack(Track):
 
     def _read(self, fields, index_list, selection, skip):
         self.open('read')
-
         if skip and selection:
-            chr_selected = [s.get('chr')[0] for s in selection if s.get('chr')]
-            chr_toskip = [self.index.get(c) for c in self.index if c not in chr_selected]
-            skip = iter(chr_toskip+[[sys.maxint,sys.maxint]])
-            toskip = skip.next()
-        start = end = 0
-
+            chr_toskip = self._init_skip(selection)
+            next_toskip = chr_toskip.next()
+        fstart = fend = 0
         try:
             while 1:
-                if skip and selection:
-                    start = self.filehandle.tell()
-                    if start >= toskip[0] and start <= toskip[1]:
-                        self.filehandle.seek(toskip[1])
-                        start = self.filehandle.tell()
-                    elif start > toskip[1]:
-                        toskip = skip.next()
-                    end = self.filehandle.tell()
+                fstart = self.filehandle.tell()
                 row = self.filehandle.readline()
                 if not row: break
                 if row.startswith("browser") or \
                    row.startswith("track") or \
                    row.startswith("#"): continue
                 splitrow = row.strip(' \r\n').split(self.separator)
-                if skip:
-                    chr = splitrow[self.fields.index('chr')]
-                    if self.index.get(chr):
-                        self.index[chr][1] = end
-                    else:
-                        self.index[chr] = [start,end]
                 if selection:
+                    if skip:
+                        fstart,fend,next_toskip = self._skip(fstart,next_toskip,chr_toskip)
+                        self._index_chr(fstart,fend,splitrow)
                     if not any(self._select_values(splitrow,s) for s in selection):
                         continue
-                start = end
+                fstart = fend
                 yield tuple(self._check_type(splitrow[index_list[n]],f)
                             for n,f in enumerate(fields))
         except (ValueError,IndexError) as ve:
@@ -406,26 +410,15 @@ class SgaTrack(TextTrack):
 
     def _read(self, fields, index_list, selection, skip):
         self.open('read')
-
         if skip and selection:
-            chr_selected = [s.get('chr')[0] for s in selection if s.get('chr')]
-            chr_toskip = [self.index.get(c) for c in self.index if c not in chr_selected]
-            skip = iter(chr_toskip+[[sys.maxint,sys.maxint]])
-            toskip = skip.next()
-        start = end = 0
-
+            chr_toskip = self._init_skip(selection)
+            next_toskip = chr_toskip.next()
+        fstart = fend = 0
         rowdata = {'+': ['',-1,-1,'','+',''], # chr,start,end,name,strand,counts
                    '-': ['',-1,-1,'','-',''],
                    '0': ['',-1,-1,'','.','']}
         while 1:
-            if skip and selection:
-                start = self.filehandle.tell()
-                if start >= toskip[0] and start <= toskip[1]:
-                    self.filehandle.seek(toskip[1])
-                    start = self.filehandle.tell()
-                elif start > toskip[1]:
-                    toskip = skip.next()
-                end = self.filehandle.tell()
+            fstart = self.filehandle.tell()
             row = self.filehandle.readline()
             if not row: break
             if row.startswith("#"): continue
@@ -441,16 +434,13 @@ class SgaTrack(TextTrack):
                 rowdata[strand][2] = pos
                 yieldit = False
             if selection:
-                if not (self._select_values(rowdata[strand],selection)):
+                if skip:
+                    fstart,fend,next_toskip = self._skip(fstart,next_toskip,chr_toskip)
+                    self._index_chr(fstart,fend,splitrow)
+                if not any(self._select_values(rowdata[strand],s) for s in selection):
+                #if not any(self._select_values(splitrow,s) for s in selection):
                     continue
-                else:
-                    chr_idx = self.fields.index('chr')
-                    chr = splitrow[chr_idx]
-                    if self.index.get(chr):
-                        self.index[chr][1] = end
-                    else:
-                        self.index[chr] = [start,end]
-            start = end
+            fstart = fend
             if not(yieldit): continue
             if rowdata[strand][1]>=0:
                 yield tuple(self._check_type(rowdata[strand][index_list[n]],f)
@@ -507,14 +497,10 @@ class WigTrack(TextTrack):
 
     def _read(self, fields, index_list, selection, skip):
         self.open('read')
-
         if skip and selection:
-            chr_selected = [s.get('chr')[0] for s in selection if s.get('chr')]
-            chr_toskip = [self.index.get(c) for c in self.index if c not in chr_selected]
-            skip = iter(chr_toskip+[[sys.maxint,sys.maxint]])
-            toskip = skip.next()
-        start = end = 0
-
+            chr_toskip = self._init_skip(selection)
+            next_toskip = chr_toskip.next()
+        fstart = fend = 0
         fixedStep = None
         chrom = None
         span = 1
@@ -525,14 +511,7 @@ class WigTrack(TextTrack):
         try:
             rowdata = ['',-1,-1,'']
             while 1:
-                if skip and selection:
-                    start = self.filehandle.tell()
-                    if start >= toskip[0] and start <= toskip[1]:
-                        self.filehandle.seek(toskip[1])
-                        start = self.filehandle.tell()
-                    elif start > toskip[1]:
-                        toskip = skip.next()
-                    end = self.filehandle.tell()
+                fstart = self.filehandle.tell()
                 row = self.filehandle.readline()
                 if not row: break
                 if row.startswith("#"): continue
@@ -591,16 +570,12 @@ class WigTrack(TextTrack):
                         rowdata[2] = end
                 if not(yieldit): continue
                 if selection:
-                    if not (self._select_values(rowdata,selection)):
+                    if skip:
+                        fstart,fend,next_toskip = self._skip(fstart,next_toskip,chr_toskip)
+                        self._index_chr(fstart,fend,splitrow)
+                    if not any(self._select_values(rowdata,s) for s in selection):
                         continue
-                    else:
-                        chr_idx = self.fields.index('chr')
-                        chr = splitrow[chr_idx]
-                        if self.index.get(chr):
-                            self.index[chr][1] = end
-                        else:
-                            self.index[chr] = [start,end]
-                start = end
+                fstart = fend
                 if rowdata[1] >= 0:
                     yield tuple(self._check_type(rowdata[index_list[n]],f)
                                 for n,f in enumerate(fields))
