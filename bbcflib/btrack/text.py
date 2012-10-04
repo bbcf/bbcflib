@@ -188,16 +188,15 @@ class TextTrack(Track):
                    row.startswith("track") or \
                    row.startswith("#"): continue
                 splitrow = row.strip(' \r\n').split(self.separator)
+                if skip:
+                    chr = splitrow[self.fields.index('chr')]
+                    if self.index.get(chr):
+                        self.index[chr][1] = end
+                    else:
+                        self.index[chr] = [start,end]
                 if selection:
                     if not any(self._select_values(splitrow,s) for s in selection):
                         continue
-                    else:
-                        chr_idx = self.fields.index('chr')
-                        chr = splitrow[chr_idx]
-                        if self.index.get(chr):
-                            self.index[chr][1] = end
-                        else:
-                            self.index[chr] = [start,end]
                 start = end
                 yield tuple(self._check_type(splitrow[index_list[n]],f)
                             for n,f in enumerate(fields))
@@ -212,8 +211,10 @@ class TextTrack(Track):
             where tuples represent ranges, or a FeatureStream.
         :param fields: (list of str) list of field names (columns) to read.
         :param skip: (bool) assuming that lines are grouped by chromosome name,
-            chromosomes that have already been read (by selection) will be skipped
-            (unless it is present in *selection*) to increase reading speed. [False]
+            increases reading speed when looping over selections of several/all chromosomes.
+            The first time lines corresponding to a chromosome are read, their position in the
+            file is recorded (self.index). In the next iterations, only lines corresponding to
+            chromosomes either yet unread or present in *selection* will be read. [False]
         """
         if fields is None:
             fields = self.fields

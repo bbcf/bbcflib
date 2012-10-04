@@ -52,6 +52,10 @@ class Test_Track(unittest.TestCase):
         self.assertIsInstance(s, FeatureStream)
 
     def test_index(self):
+        t = track(self.bed)
+        s = list(t.read('chrIII', skip=True))
+        self.assertEqual(t.index, {'chrII':[41, 328],'chrIII':[360, 360],'chrIV':[393, 960]})
+
         # Temp file containing only chrX
         tempfile = os.path.join(path,"temp1.txt")
         with open(tempfile,'wb') as g:
