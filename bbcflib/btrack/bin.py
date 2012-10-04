@@ -182,7 +182,7 @@ try:
             :param regions: any iterable over of tuples of the type `(name,start,end)`. `name` has to be
                 present in the BAM file's header (see `self.references`). `start` and `end` are 0-based
                 coordinates, counting from the beginning of feature `name` (see `self.lengths`).
-            :rtype: FeatureStream with fields ['name','start','end','score'].
+            :rtype: FeatureStream with fields ['chr','start','end','score'].
             """
             class Counter(object):
                 def __init__(self):
@@ -197,7 +197,7 @@ try:
                     #The callback (c.n += 1) is executed for each alignment in a region
                     yield x + (c.n,)
 
-            return FeatureStream(_count(regions),fields=['name','start','end','score'])
+            return FeatureStream(_count(regions),fields=['chr','start','end','score'])
 
         def coverage(self, region):
             """
@@ -208,7 +208,7 @@ try:
             :param region: tuple `(name,start,end)`. `name` has to be
                 present in the BAM file's header (see `self.references`). `start` and `end` are 0-based
                 coordinates, counting from the beginning of feature `name` (see `self.lengths`).
-            :rtype: FeatureStream with fields ['name','start','end','score'].
+            :rtype: FeatureStream with fields ['chr','start','end','score'].
             """
             pile = self.filehandle.pileup(*region)
             name,start,end = region
@@ -230,7 +230,7 @@ try:
                     else: score = 0
                     yield (name,k,k+1,score)
 
-            return FeatureStream(_coverage(pile),fields=['name','start','end','score'])
+            return FeatureStream(_coverage(pile),fields=['chr','start','end','score'])
 
 
 except ImportError: print "Warning: 'pysam' not installed, 'bam' format unavailable."
