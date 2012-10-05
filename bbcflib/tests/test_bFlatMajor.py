@@ -8,7 +8,7 @@ from bbcflib.bFlatMajor.common import sentinelize, copy, select, reorder, unroll
 from bbcflib.bFlatMajor.common import shuffled, fusion, cobble, ordered, apply, duplicate
 from bbcflib.bFlatMajor.common import concat_fields, split_field, map_chromosomes, score_threshold
 from bbcflib.bFlatMajor.stream.annotate import getNearestFeature
-from bbcflib.bFlatMajor.stream.intervals import concatenate, neighborhood, segment_features, combine
+from bbcflib.bFlatMajor.stream.intervals import concatenate, neighborhood, segment_features, intersect
 from bbcflib.bFlatMajor.stream.intervals import exclude, require, disjunction, intersection, union
 from bbcflib.bFlatMajor.stream.scores import merge_scores, score_by_feature, window_smoothing, filter_scores
 from bbcflib.bFlatMajor.numeric.regions import feature_matrix, summed_feature_matrix
@@ -319,12 +319,13 @@ class Test_Intervals(unittest.TestCase):
         self.assertEqual(intersection([True,True,True]), True)
         self.assertEqual(intersection([True,False,True]), False)
 
+    def test_intersect(self):
         # Test from the snp workflow.
         expected = ('chr',91143,91144, ('C','*A','0','|EBMYCG00000002479|Rv0083',1,0))
         a = genrep.Assembly('mycoTube_H37RV')
         c = concat_fields(a.annot_track('CDS','chr'), infields=['name','strand','frame'], as_tuple=True)
         feat = fstream([('chr',91143,91144,('C','*A','0'))], fields=['chr','start','end','rest'])
-        g = combine([feat,c], intersection, win_size=10000)
+        g = intersect([feat,c], win_size=10000)
         self.assertEqual(g.next(),expected)
 
     def test_union(self):
