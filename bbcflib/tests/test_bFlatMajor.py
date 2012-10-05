@@ -153,26 +153,30 @@ class Test_Common(unittest.TestCase):
     def test_concat_fields(self):
         # Concatenate fields as strings
         stream = fstream([(10,12,0.5,'a'), (14,15,1.2,'b')], fields=['start','end','score','name'])
-        res = list(concat_fields(stream,infields=['score','name'],outfield='mix',separator=';'))
+        res = concat_fields(stream,infields=['score','name'],outfield='mix',separator=';')
         expected = [(10,12,'0.5;a'), (14,15,'1.2;b')]
-        self.assertListEqual(res,expected)
+        self.assertListEqual(list(res),expected)
+        self.assertListEqual(res.fields,['start','end','mix'])
 
         # As tuples
         stream = fstream([(10,12,0.5,'a'), (14,15,1.2,'b')], fields=['start','end','score','name'])
-        res = list(concat_fields(stream,['score','name'],'mix',as_tuple=True))
+        res = concat_fields(stream,['score','name'],'mix',as_tuple=True)
         expected = [(10,12,(0.5,'a')), (14,15,(1.2,'b'))]
-        self.assertListEqual(res,expected)
+        self.assertListEqual(list(res),expected)
+        self.assertListEqual(res.fields,['start','end','mix'])
 
     def test_split_field(self):
         stream = fstream([(10,12,(0.5,'a')), (14,15,(1.2,'b'))], fields=['start','end','mix'])
-        res = list(split_field(stream,['score','name'],'mix'))
+        res = split_field(stream,['score','name'],'mix')
         expected = [(10,12,'0.5','a'), (14,15,'1.2','b')]
-        self.assertListEqual(res,expected)
+        self.assertListEqual(list(res),expected)
+        self.assertListEqual(res.fields,['start','end','score','name'])
 
         stream = fstream([(10,12,'0.5|a'), (14,15,'1.2|b')], fields=['start','end','mix'])
-        res = list(split_field(stream,['score','name'],'mix',separator='|'))
+        res = split_field(stream,['score','name'],'mix',separator='|')
         expected = [(10,12,'0.5','a'), (14,15,'1.2','b')]
-        self.assertListEqual(res,expected)
+        self.assertListEqual(list(res),expected)
+        self.assertListEqual(res.fields,['start','end','score','name'])
 
     def test_map_chromosomes(self):
         stream = fstream([('chrIV',1),('IV',2),(2780,3),('NC_001136.9',4),('sth',5)], fields=['chr','start'])
