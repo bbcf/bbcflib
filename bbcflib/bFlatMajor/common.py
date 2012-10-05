@@ -182,6 +182,7 @@ def split_field( stream, outfields, infield='name', separator=';',
     in_indx = stream.fields.index(infield)
     out_indx = [_outfields.index(f) for f in outfields]
     more_len = len(_outfields)-len(stream.fields)
+    _outfields.remove(infield)
     def _split(stream):
         for x in stream:
             x = list(x)
