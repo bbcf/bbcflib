@@ -93,7 +93,7 @@ def merge_scores(trackList, method='arithmetic'):
     return track.FeatureStream(_stream(tracks),fields)
 
 ###############################################################################
-def filter_scores(trackScores,trackFeatures,method='sum',strict=False):
+def filter_scores(trackScores,trackFeatures,method='sum',strict=False,annotate=False):
     """
     Extract from *trackScores* only the regions overlapping *trackFeatures*'s regions.
     Warning: both score and features streams must be sorted! (use `common.sorted_stream` if necessary).
@@ -110,12 +110,16 @@ def filter_scores(trackScores,trackFeatures,method='sum',strict=False):
     :param method: (str) `merge_scores` *method* argument. ['sum']
     :param strict: (bool) if True, only score regions from *trackScores* that are
         strictly contained in a feature region of *trackFeatures* will be returned.
+    :param annotate: (bool) if True, supplementary annotation (and the corresponding fields)
+        from *trackFeatures* will be added to the result.
     :rtype: FeatureStream
     """
     def _stream(ts,tf):
+        info_idx = [k for k,f in enumerate(tf.fields) if f not in ts.fields]
         X = common.sentinelize(ts, [sys.maxint]*len(ts.fields))
         S = [(-sys.maxint,-sys.maxint,0.0)]
         for y in tf:
+            info = tuple([y[k] for k in info_idx]) if annotate else ()
             ystart = y[tf.fields.index('start')]
             yend = y[tf.fields.index('end')]
             xnext = S[-1]
@@ -131,12 +135,13 @@ def filter_scores(trackScores,trackFeatures,method='sum',strict=False):
                 if s[0] >= yend : continue
                 start = ystart if s[0] < ystart else s[0]
                 end   = yend   if s[1] > yend   else s[1]
-                yield (start,end)+tuple(s[2:])
+                yield (start,end)+tuple(s[2:])+info
 
     if isinstance(trackFeatures,(list,tuple)): trackFeatures = concatenate(trackFeatures)
     if isinstance(trackScores,(list,tuple)): trackScores = merge_scores(trackScores,method)
     _ts = common.reorder(trackScores,['start','end'])
-    return track.FeatureStream(_stream(_ts,trackFeatures), _ts.fields)
+    _info_fields = [f for f in trackFeatures.fields if f not in trackScores.fields] if annotate else []
+    return track.FeatureStream(_stream(_ts,trackFeatures), _ts.fields+_info_fields)
 
 ###############################################################################
 def score_by_feature(trackScores,trackFeatures,fn='mean'):
