@@ -188,20 +188,19 @@ class Test_Index(unittest.TestCase):
     def test_index_bed(self):
         t = self._test_index(self.bed)
         self.assertEqual(t.index, {'chrII':[41, 360],'chrIII':[360, 393],'chrIV':[393, 994]})
-        ###self.assertEqual(t.index, {'chrII':[41, 328],'chrIII':[360, 360],'chrIV':[393, 960]})
 
     def test_index_wig(self):
         wig = os.path.join(path,'test.wig')
         convert(self.bed, wig)
-        self._test_index(wig)
+        t = self._test_index(wig)
 
     def test_index_sga(self):
         sga = os.path.join(path,'test.sga')
         convert(self.bed, sga)
-        self._test_index(sga)
+        t = self._test_index(sga)
 
     def tearDown(self):
-        for ext in ['.bed','.wig','.sga']:
+        for ext in ['.wig','.sga']:
             test_file = os.path.join(path,'test'+ext)
             if os.path.exists(test_file): os.remove(test_file)
 

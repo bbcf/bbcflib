@@ -632,9 +632,9 @@ class GffTrack(TextTrack):
             splitrow = row.strip(' \r\n').split(self.separator)
             rowlen = len(splitrow)
             try: float(splitrow[5])
-            except ValueError: print "Warning: invalid scores in file %s ." % self.path
+            except ValueError: print "Warning: invalid scores in file %s: '%s'." % (self.path,splitrow[5])
             try: int(splitrow[7])
-            except ValueError: print "Warning: invalid frame in file %s ." % self.path
+            except ValueError: print "Warning: invalid frame in file %s: '%s'." % (self.path,splitrow[7])
             break
         self.close()
         if rowlen > 9 or rowlen < 8:
