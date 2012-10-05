@@ -314,6 +314,11 @@ class Test_Intervals(unittest.TestCase):
         self.assertEqual(disjunction([True,True,False,False,False],[2,3,4]), True)
         self.assertEqual(disjunction([True,True,False,False,False],[1,2,3]), False)
 
+    def test_union(self):
+        # combine( ... , fn=union)
+        self.assertEqual(union([True,False,True]), True)
+        self.assertEqual(union([False,False,False]), False)
+
     def test_intersection(self):
         # combine( ... , fn=intersection).
         self.assertEqual(intersection([True,True,True]), True)
@@ -328,10 +333,12 @@ class Test_Intervals(unittest.TestCase):
         g = intersect([feat,c], win_size=10000)
         self.assertEqual(g.next(),expected)
 
-    def test_union(self):
-        # combine( ... , fn=union)
-        self.assertEqual(union([True,False,True]), True)
-        self.assertEqual(union([False,False,False]), False)
+        fields = ['chr','start','end','name','strand','score']
+        s1 = fstream([('chr',0,20,'a1',1,6.),('chr',40,60,'b',1,3.)], fields=fields)
+        s2 = fstream([('M',10,30,'a2',1,8.),('chr',50,70,'b',-1,4.)], fields=fields)
+        res = intersect([s1,s2])
+        expected = [('chr',10,20,'a1|a2',1,14.),('chr',50,60,'b|b',0,7.)]
+        self.assertListEqual(list(res),expected)
 
 
 class Test_Scores(unittest.TestCase):

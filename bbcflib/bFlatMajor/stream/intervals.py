@@ -225,10 +225,9 @@ def combine(trackList, fn, win_size=1000,
     etc., and return a single result track. The input streams need to be ordered
     w.r.t chr and start.
 
-    Only fields that are common to all of them are kept. If values for a common field are
-    different amongst some of the tracks, they are merged by default according to
-    `common.strand_merge`,`common.no_merge` and `common.generic_merge`, respectively for
-    strand, chromosome and all others.
+    Only fields that are common to all of them are kept. Values for a common field are
+    merged by default according to `common.strand_merge`,`common.no_merge` and `common.generic_merge`,
+    respectively for strand, chromosome and all others.
 
     :param trackList: list of FeatureStream objects.
     :param fn: function to apply, such as bbcflib.bFlatMajor.stream.union.
@@ -276,7 +275,11 @@ def intersect(trackList, **kw):
     """
     Return all regions covered by an item of every track in *trackList*, returning only fields
     that are common to all tracks in *trackList*. It is a short name for calling `combine` with
-    `fn=intersection` and its other optional keyword arguments.
+    `fn=intersection` and its other optional keyword arguments. Example::
+
+        X1: ___[     chr,A,+,6     ]________[     chr,C,+,3     ]_________
+        X2: ________[     chr,B,+,8     ]________[     aaa,C,-,4     ]____
+        R:  ________[ chr,A|B,+,14 ]_____________[ chr,C|C,0,7 ]__________
     """
     return combine(trackList, fn=intersection, **kw)
 
