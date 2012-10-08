@@ -2,9 +2,11 @@ from bbcflib.bFlatMajor.stream import score_by_feature, segment_features
 from bbcflib.bFlatMajor.common import sorted_stream
 import numpy
 
-def feature_matrix(trackScores,trackFeatures,segment=False,**kw):
+def feature_matrix(trackScores,trackFeatures,segment=False,fn='mean',**kw):
     """
-    Return an array with as many elements as there are features in *trackFeatures*.
+    Return an array with as many lines as there are features in *trackFeatures*, and as many columns
+    as there are score tracks in *trackScores*. Each element in the matrix thus corresponds to the
+    (average) score of some genomic feature.
 
     If *segment* is True, each feature will be segmented into bins using
     bbcflib.bFlatMajor.stream.intervals.segment_features (additional parameters in *\*\*kw* will be passed to this function).
@@ -40,6 +42,8 @@ def feature_matrix(trackScores,trackFeatures,segment=False,**kw):
     :param trackScores: (FeatureStream, or list of FeatureStream objects) score track(s).
     :param trackFeatures: (FeatureStream) feature track.
     :param segment: (bool) segment each feature into bins.[False]
+    :param fn: (str) Operation applied to the list of scores for one feature.
+        It is the `fn` argument to `stream.score_by_feature` - one of 'sum','mean','median','min','max'.
     :param **kw: arguments to pass to segment_features (`nbins`,`upstream`,`downstream`).
     :rtype: tuple (numpy.ndarray of strings, numpy.ndarray of floats)
     """
@@ -50,7 +54,7 @@ def feature_matrix(trackScores,trackFeatures,segment=False,**kw):
         nbins = kw.get('nbins',segment_features.func_defaults[0]) \
                 + kw.get('upstream',(0,0))[1] \
                 + kw.get('downstream',(0,0))[1]
-    all_means = score_by_feature(trackScores,trackFeatures)
+    all_means = score_by_feature(trackScores,trackFeatures,fn=fn)
     nfields = len(trackFeatures.fields)
     if isinstance(trackScores,(list,tuple)):
         nscores = len(trackScores)
@@ -86,6 +90,7 @@ def summed_feature_matrix(trackScores,trackFeatures,**kw):
         Y: _____________666|66666________666|666|666_____
         Z: _____22222|22222|22222________________________
 
+             Y   Z
         R: [[3.  1.],   # bin 0
             [4.  1.],   # bin 1
             [6.  1.]]   # bin 2
