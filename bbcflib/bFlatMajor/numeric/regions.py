@@ -75,7 +75,7 @@ def feature_matrix(trackScores,trackFeatures,segment=False,fn='mean',**kw):
     scores_mat = numpy.array(scores_dict.values())
     return (feat_names,scores_mat)
 
-def summed_feature_matrix(trackScores,trackFeatures,**kw):
+def summed_feature_matrix(trackScores,trackFeatures,fn='mean',**kw):
     """
     Each feature in *trackFeatures* is segmented into bins using bbcflib.bFlatMajor.stream.segment_features
     (with parameters passed from *\*\*kw*).
@@ -99,12 +99,14 @@ def summed_feature_matrix(trackScores,trackFeatures,**kw):
 
     :param trackScores: (FeatureStream, or list of FeatureStream objects) score track(s).
     :param trackFeatures: (FeatureStream) feature track.
+    :param fn: (str) Operation applied to the list of scores for one feature.
+        It is the `fn` argument to `stream.score_by_feature` - one of 'sum','mean','median','min','max'.
     :param **kw: arguments to pass to segment_features (`nbins`,`upstream`,`downstream`).
     :rtype: numpy.ndarray, int (number of features)
     """
     nfields = len(trackFeatures.fields)
     trackFeatures = sorted_stream(segment_features(trackFeatures,**kw))
-    all_means = score_by_feature(trackScores,trackFeatures)
+    all_means = score_by_feature(trackScores,trackFeatures,fn=fn)
     if isinstance(trackScores,(list,tuple)):
         nscores = len(trackScores)
     else:
