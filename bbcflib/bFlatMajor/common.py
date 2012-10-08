@@ -44,8 +44,10 @@ def sentinelize(stream, sentinel=sys.maxint):
     yield sentinel
 
 def copy(stream,n=2):
-    """Return n independant copies of *stream*. Has to be called before iterating
-    over *stream*, otherwise it will copy only the remaining items of *stream*."""
+    """Return *n* independant copies of *stream*. Has to be called before iterating
+    over *stream*, otherwise it will copy only the remaining items of *stream*. Will
+    load at once the whole stream in memory."""
+    if n==1: return stream
     return [FeatureStream(x,stream.fields) for x in itertools.tee(stream)]
 
 ####################################################################
