@@ -599,9 +599,6 @@ class Assembly(object):
         elif isinstance(chromlist,basestring): chromlist = [chromlist]
         _fields = ['chr','start','end','name','strand']
         nmax = 4
-        biosel = ''
-        if biotype is not None:
-            biosel = "AND biotype IN ('" + "','".join(biotype)+"')"
         if annot_type == 'gene':
             flist = "gene_id,gene_name,strand"
             webh = { "keys": "gene_id",
@@ -617,8 +614,6 @@ class Assembly(object):
             nmax = 5
             _fields += ['frame']
         elif annot_type == 'transcript':
-            if biosel:
-                biosel = "WHERE "+biosel[4:]
             flist = "transcript_id,gene_name,strand"
             webh = { "keys": "transcript_id",
                      "values": "start,end,"+flist,
