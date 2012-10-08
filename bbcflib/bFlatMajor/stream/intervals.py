@@ -60,6 +60,49 @@ def concatenate(trackList, fields=None, remove_duplicates=False):
     return FeatureStream(_weave(tl,len(_of)),fields=_of)
 
 ###############################################################################
+def selection(trackList,selection):
+    """
+    For each stream in *trackList*, keep only items satisfying the *selection*'s filters.
+    A selection is entered as a dictionary which keys are field names, and values are
+    the scope of possible entries for each field. Example::
+
+        sel = {'chr':['chrI','chrII'], 'start':(1,10000), 'end':(5000,15000), 'count':range(30), ...}
+        selection(stream, selection=sel)
+
+    All filters in a selection must be satisfied for an item to pass through it (AND operator).
+    To give alternative conditions (OR operator), one must give several such selections in a list:
+
+        sel = [{'chr':'chrI', 'start':(1,10000)}, {'chr':'chrI', 'end':(1000000,1500000)}]
+
+    Values can be tuples (range of values), lists (of possible values), or a single element.
+
+    :param trackList: FeatureStream, or list of FeatureStream objects.
+    :param selection: (dict, or list of dict) the filter described above.
+    """
+    def _check_fields(item,filter):
+        print item, filter
+        for k,v in filter.iteritems():
+            z = item[k]
+            if isinstance(v,tuple):
+                if float(z) < v[0] or float(z) >= v[1]:
+                    return False
+            elif isinstance(v,list):
+                if z not in v:
+                    return False
+            elif z!= v: return False
+        return True
+
+    def _filter(stream,selection):
+        filters = [dict([(stream.fields.index(f),v) for f,v in sel.iteritems()]) for sel in selection]
+        for x in stream:
+            if any(_check_fields(x,f) for f in filters): yield x
+
+    if isinstance(trackList,FeatureStream): trackList = [trackList]
+    if isinstance(selection,dict): selection = [selection]
+    res = [FeatureStream(_filter(t,selection), fields=t.fields) for t in trackList]
+    return res[0] if len(res)==1 else res
+
+###############################################################################
 @common.ordered
 def neighborhood(trackList, before_start=None, after_end=None,
                  after_start=None, before_end=None, on_strand=False):

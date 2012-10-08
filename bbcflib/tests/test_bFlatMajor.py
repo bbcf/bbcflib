@@ -8,7 +8,7 @@ from bbcflib.bFlatMajor.common import sentinelize, copy, select, reorder, unroll
 from bbcflib.bFlatMajor.common import shuffled, fusion, cobble, ordered, apply, duplicate
 from bbcflib.bFlatMajor.common import concat_fields, split_field, map_chromosomes, score_threshold
 from bbcflib.bFlatMajor.stream.annotate import getNearestFeature
-from bbcflib.bFlatMajor.stream.intervals import concatenate, neighborhood, segment_features, intersect
+from bbcflib.bFlatMajor.stream.intervals import concatenate, neighborhood, segment_features, intersect, selection
 from bbcflib.bFlatMajor.stream.intervals import exclude, require, disjunction, intersection, union
 from bbcflib.bFlatMajor.stream.scores import merge_scores, score_by_feature, window_smoothing, filter_scores
 from bbcflib.bFlatMajor.numeric.regions import feature_matrix, summed_feature_matrix
@@ -250,6 +250,20 @@ class Test_Intervals(unittest.TestCase):
         res = list(concatenate([stream1,stream2], fields=['start','end'], remove_duplicates=True))
         expected = [(1,2),(3,4),(5,6),(7,8)]
         self.assertListEqual(res,expected)
+
+    def test_selection(self):
+        s = [('chr1',1,3,0.2,'a'), ('chr2',5,9,0.5,'b'), ('chr2',11,15,1.2,'c')]
+
+        stream = fstream(s,fields=['chr','start','end','score','name'])
+        res = selection(stream,{'chr':'chr2', 'start':(5,11), 'name':['a','b','c']})
+        expected = [('chr2',5,9,0.5,'b')]
+        self.assertListEqual(list(res),expected)
+
+        # Alternative selections
+        stream = fstream(s,fields=['chr','start','end','score','name'])
+        res = selection(stream,[{'start':(1,4)},{'end':(10,20)}])
+        expected = [('chr1',1,3,0.2,'a'),('chr2',11,15,1.2,'c')]
+        self.assertListEqual(list(res),expected)
 
     def test_neighborhood(self):
         s = [(10,16,0.5,-1), (24,36,1.2,1)]
