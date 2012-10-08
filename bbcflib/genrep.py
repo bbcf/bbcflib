@@ -601,7 +601,7 @@ class Assembly(object):
         nmax = 4
         biosel = ''
         if biotype is not None:
-            biosel = "AND biotype IN ('"+"','".join(biotype)+"')"
+            biosel = "AND biotype IN ('" + "','".join(biotype)+"')"
         if annot_type == 'gene':
             flist = "gene_id,gene_name,strand"
             webh = { "keys": "gene_id",
@@ -629,9 +629,18 @@ class Assembly(object):
         def _query():
             for chrom in chromlist:
                 sort_list = []
-                for bt in biotype:
-                    wh = webh.copy()
-                    wh["conditions"]+=",biotype:"+bt
+                if biotype is not None:
+                    for bt in biotype:
+                        wh = webh.copy()
+                        wh["conditions"]+=",biotype:"+bt
+                        resp = self.get_features_from_gtf(wh,chrom)
+                        for k,v in resp.iteritems():
+                            start = min([x[0] for x in v])
+                            end = max([x[1] for x in v])
+                            name = "|".join([str(y) for y in v[0][2:nmax]])
+                            sort_list.append((start,end,name)+tuple(v[0][nmax:]))
+                else:
+                    wh = webh
                     resp = self.get_features_from_gtf(wh,chrom)
                     for k,v in resp.iteritems():
                         start = min([x[0] for x in v])
