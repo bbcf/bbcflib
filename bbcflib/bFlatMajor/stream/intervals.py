@@ -80,7 +80,6 @@ def selection(trackList,selection):
     :param selection: (dict, or list of dict) the filter described above.
     """
     def _check_fields(item,filter):
-        print item, filter
         for k,v in filter.iteritems():
             z = item[k]
             if isinstance(v,tuple):
