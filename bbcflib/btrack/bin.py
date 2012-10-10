@@ -173,64 +173,102 @@ try:
         def write(self, source, fields, **kw):
             raise NotImplementedError("Writing to bam is not implemented.")
 
-        def count(self, regions):
+        def count(self, regions, on_strand = False):
             """
             Count the number of reads falling in a given set of *regions*.
             Return a FeatureStream with one element per region, its score being the number of reads
             overlapping (even partially) this region.
 
-            :param regions: any iterable over of tuples of the type `(name,start,end)`. `name` has to be
+            :param regions: any iterable over of tuples of the type `(chr,start,end)`. `chr` has to be
                 present in the BAM file's header (see `self.references`). `start` and `end` are 0-based
-                coordinates, counting from the beginning of feature `name` (see `self.lengths`).
+                coordinates, counting from the beginning of feature `chr` (see `self.lengths`).
+            :param on_strand: (bool) restrict to reads on same strand as region. 
             :rtype: FeatureStream with fields ['chr','start','end','score'].
             """
             class Counter(object):
-                def __init__(self):
+                def __init__(self,on_str,reg_str):
                     self.n = 0
+                    self.on_str = on_str
+                    self.reg_str = reg_str
                 def __call__(self, alignment):
+                    if self.on_str:
+                        if (alignment.is_reverse and self.reg_str>0) or \
+                           (not alignment.is_reverse and self.reg_str<0): return
                     self.n += 1
 
+            if isinstance(regions,FeatureStream):
+                _f = regions.fields + ['score']
+                _si = regions.fields.index('strand') if 'strand' in regions.fields else -1
+            else:
+                if on_strand: 
+                    _f = ['chr','start','end','strand','score']
+                    _si = 3
+                else:
+                    _f = ['chr','start','end','score']
+                    _si = -1
             def _count(regions):
                 for x in regions:
-                    c = Counter()
-                    self.filehandle.fetch(*x, callback=c)
+                    if _si > 0: _st = x[_si]
+                    else: _st = None
+                    c = Counter(on_strand,_st)
+                    self.filehandle.fetch(*x[:3], callback=c)
                     #The callback (c.n += 1) is executed for each alignment in a region
                     yield x + (c.n,)
 
-            return FeatureStream(_count(regions),fields=['chr','start','end','score'])
+            return FeatureStream(_count(regions),fields=_f)
 
-        def coverage(self, region):
+        def coverage(self, region, strand=None):
             """
             Calculates the number of reads covering each base position within a given *region*.
-            Return a FeatureStream with one element per base (length 1) within the region,
-            the score being the number of reads overlapping this position.
-
-            :param region: tuple `(name,start,end)`. `name` has to be
-                present in the BAM file's header (see `self.references`). `start` and `end` are 0-based
-                coordinates, counting from the beginning of feature `name` (see `self.lengths`).
+            Return a FeatureStream where the score is the number of reads overlapping this position.
+        
+            :param region: tuple `(chr,start,end)`. `chr` has to be
+            present in the BAM file's header (see `self.references`). `start` and `end` are 0-based
+            coordinates, counting from the beginning of feature `chr` (see `self.lengths`).
+            :strand: if not None, computes a strand-specific coverage ('+' or 1 for forward strand,
+            '-' or -1 for reverse strand).
             :rtype: FeatureStream with fields ['chr','start','end','score'].
             """
-            pile = self.filehandle.pileup(*region)
-            name,start,end = region
+            if strand is not None:
+                pplus = self.filehandle.pileup(*region,mask=16)
+                if str(strand) in ['-','-1']: pplus = iter([(x.pos,x.n) for x in pplus])
+            pboth = self.filehandle.pileup(*region)
+            chr,start,end = region
+            _f = ['chr','start','end','score']
 
-            def _coverage(pile):
-                pos = 0
-                while pos < start:
-                    try:
-                        p = pile.next()
-                        pos = p.pos
-                    except StopIteration: pos = end
-                for k in range(start,end):
-                    if k == pos:
-                        score = p.n
+            def _coverage(pboth,pplus=None):
+                s = start
+                e = start
+                score = 0
+                score1 = 0
+                if pplus is None:
+                    p1 = (end,0)
+                else:
+                    p1 = pplus.next()
+                for p0 in pboth:
+                    if p0.pos < s: continue
+                    if p0.pos >= end: break
+                    while p0.pos >= p1[0]:
                         try:
-                            p = pile.next()
-                            pos = p.pos
-                        except StopIteration: pos = end
-                    else: score = 0
-                    yield (name,k,k+1,score)
-
-            return FeatureStream(_coverage(pile),fields=['chr','start','end','score'])
+                            score1 = p1[1]
+                            p1 = pplus.next()
+                        except StopIteration:
+                            p1 = (end,0)
+                    if p0.pos == e+1 and p0.n-score1 == score:
+                        e += 1
+                    else:
+                        if score > 0: yield (chr,s,e+1,score)
+                        s = p0.pos
+                        e = s
+                        score = p0.n-score1
+                if score > 0:
+                    yield (chr,s,e+1,score)
+            if str(strand) in ['+','1']:
+                return FeatureStream(_coverage(pplus), fields=_f)
+            elif str(strand) in ['-','-1']:
+                return FeatureStream(_coverage(pboth,pplus), fields=_f)
+            else:
+                return FeatureStream(_coverage(pboth), fields=_f)
 
 
 except ImportError: print "Warning: 'pysam' not installed, 'bam' format unavailable."
