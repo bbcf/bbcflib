@@ -216,10 +216,10 @@ def score_by_feature(trackScores,trackFeatures,fn='mean'):
 def window_smoothing( trackList, window_size, step_size=1, stop_val=sys.maxint,
                       featurewise=False ):
     """
-    Given a (list of) signal track(s) *trackList*, a *window_size* (in base pairs by default,
-    or in number of feature if *featurewise* is True),  and a *window_step*,
-    returns new signal tracks with, at each position p (multiples of *step_size*),
-    the average score in the window [p-L, p+L]::
+    Given a (list of) signal track(s) *trackList*, a *window_size* L (in base pairs by default,
+    or in number of features if *featurewise* is True),  and a *step_size*,
+    return as many signal tracks with, at each position p (multiple of *step_size*),
+    the average score in the window [p-L/2, p+L/2]::
 
         X: __________666666666666____________
         R: ______12345666666666654321________ (not exact scores here)
@@ -227,7 +227,7 @@ def window_smoothing( trackList, window_size, step_size=1, stop_val=sys.maxint,
     :param trackList: FeatureStream, or list of FeatureStream objects.
     :param window_size: (int) window size in bp.
     :param step_size: (int) step length. [1]
-    :param stop_val: (int) ? . [sys.maxint]
+    :param stop_val: (int) sequence length. [sys.maxint]
     :param featurewise: (bool) bp (False), or number of features (True). [False]
     :rtype: FeatureStream
 

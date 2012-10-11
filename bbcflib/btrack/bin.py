@@ -182,7 +182,7 @@ try:
             :param regions: any iterable over of tuples of the type `(chr,start,end)`. `chr` has to be
                 present in the BAM file's header (see `self.references`). `start` and `end` are 0-based
                 coordinates, counting from the beginning of feature `chr` (see `self.lengths`).
-            :param on_strand: (bool) restrict to reads on same strand as region. 
+            :param on_strand: (bool) restrict to reads on same strand as region.
             :rtype: FeatureStream with fields ['chr','start','end','score'].
             """
             class Counter(object):
@@ -200,7 +200,7 @@ try:
                 _f = regions.fields + ['score']
                 _si = regions.fields.index('strand') if 'strand' in regions.fields else -1
             else:
-                if on_strand: 
+                if on_strand:
                     _f = ['chr','start','end','strand','score']
                     _si = 3
                 else:
@@ -221,12 +221,12 @@ try:
             """
             Calculates the number of reads covering each base position within a given *region*.
             Return a FeatureStream where the score is the number of reads overlapping this position.
-        
+
             :param region: tuple `(chr,start,end)`. `chr` has to be
-            present in the BAM file's header (see `self.references`). `start` and `end` are 0-based
-            coordinates, counting from the beginning of feature `chr` (see `self.lengths`).
+                present in the BAM file's header (see `self.references`). `start` and `end` are 0-based
+                coordinates, counting from the beginning of feature `chr` (see `self.lengths`).
             :strand: if not None, computes a strand-specific coverage ('+' or 1 for forward strand,
-            '-' or -1 for reverse strand).
+                '-' or -1 for reverse strand).
             :rtype: FeatureStream with fields ['chr','start','end','score'].
             """
             if strand is not None:
