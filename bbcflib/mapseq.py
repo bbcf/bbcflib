@@ -100,7 +100,7 @@ def fastq_dump(filename, options=None):
 
 @program
 def fastqc(fastqfile,outdir=None,options=None):
-    """Binds ``fastqc`` (http://www.bioinformatics.bbsrc.ac.uk/) which generates a QC report of short reads present into the fastq file.
+    """Binds ``fastqc`` (http://www.bioinformatics.bbsrc.ac.uk/) which generates a QC report of short reads present in the fastq file.
     """
     outfile = re.sub(".fastq","",os.path.basename(fastqfile))+'_fastqc.zip'
     if not(isinstance(options,list)): options = []
@@ -1034,7 +1034,9 @@ def parallel_density_sql( ex, bamfile, chromosomes,
     touch(ex,output)
     trackargs = {'fields': ['start','end','score'],
                  'chrmeta': chrlist,
-                 'info': {'datatype':'quantitative'}}
+                 'info': {'datatype':'quantitative',
+                          'nreads': nreads,
+                          'read_extension': read_extension}}
     if merge < 0:
         trev = track.track(output+"rev.sql",**trackargs)
         tfwd = track.track(output+"fwd.sql",**trackargs)

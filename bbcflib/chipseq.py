@@ -399,6 +399,13 @@ def workflow_groups( ex, job_or_dict, mapseq_files, assembly, script_path='',
                                                      type='sql',
                                                      step='deconvolution',
                                                      groupId=name[0]))
+            bigwig = unique_filename_in()
+            track.convert(deconv['profile'],(bigwig,"bigWig"))
+            ex.add(bigwig, 
+                   description=common.set_file_descr(name[1]+'_deconv.bw',
+                                                     type='bigWig', ucsc='1',
+                                                     step='deconvolution',
+                                                     groupId=name[0]))
             ex.add(deconv['pdf'], 
                    description=common.set_file_descr(name[1]+'_deconv.pdf',
                                                      type='pdf',

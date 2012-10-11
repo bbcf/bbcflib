@@ -230,8 +230,11 @@ try:
             :rtype: FeatureStream with fields ['chr','start','end','score'].
             """
             if strand is not None:
+##### mask=16 (=0x10): mask reads with "is_reverse" flag set
                 pplus = self.filehandle.pileup(*region,mask=16)
-                if str(strand) in ['-','-1']: pplus = iter([(x.pos,x.n) for x in pplus])
+                if str(strand) in ['-','-1']: 
+##### pysam can't iterate simultaneously on 2 pileups from the same file!
+                    pplus = iter([(x.pos,x.n) for x in pplus])
             pboth = self.filehandle.pileup(*region)
             chr,start,end = region
             _f = ['chr','start','end','score']

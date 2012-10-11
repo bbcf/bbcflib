@@ -151,13 +151,14 @@ def score_by_feature(trackScores,trackFeatures,fn='mean'):
     Warning: both score and features streams must be sorted! (use `common.sorted_stream` is necessary).
     The output is a stream similar to *trackFeatures* but with an additional `score` field
     for each stream in *trackScores*::
+        fn = 'mean':
 
         X: ------##########--------------##########------
         Y: ___________666666666__________6666666666______
         R: ______[   3.   ]______________[   6.   ]______
 
 
-        normalize = False:
+        fn = 'sum':
 
         X : ------##########--------------##########------
         Y1: ___________666666666__________6666666666______
