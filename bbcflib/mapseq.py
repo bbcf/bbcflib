@@ -856,11 +856,7 @@ def map_groups( ex, job_or_dict, assembly_or_dict, map_args=None ):
     if isinstance(pcr_dupl,basestring):
         pcr_dupl = pcr_dupl.lower() in ['1','true','t']
     if isinstance(assembly_or_dict,genrep.Assembly):
-        for k,v in assembly_or_dict.chromosomes.iteritems():
-            if k[1] is None:
-                chromosomes[str(k[0])] = v
-            else:
-                chromosomes[str(k[0])+'_'+k[1]+'.'+str(k[2])] = v
+        chromosomes = dict((v['ac'],{'name':k,'length':v['length']}) for k,v in assembly_or_dict.chrmeta.iteritems())
         index_path = assembly_or_dict.index_path
     elif isinstance(assembly_or_dict,dict) and 'chromosomes' in assembly_or_dict:
         chromosomes = assembly_or_dict['chromosomes']
@@ -955,11 +951,12 @@ def bam_to_density( bamfile, output, chromosome_accession=None, chromosome_name=
     if args is None:
         args = []
     b2w_args = ["-w", str(nreads), "-s", bamfile, "-o", output]
-    if chromosome_accession != None:
-        if convert and chromosome_name != None:
-            b2w_args += ["-a",chromosome_accession,"-n",chromosome_name]
-        else:
-            b2w_args += ["-a",chromosome_name]
+    if convert and chromosome_accession is not None and chromosome_name is not None:
+        b2w_args += ["-a",chromosome_accession,"-n",chromosome_name]
+    elif chromosome_name is not None:
+        b2w_args += ["-a",chromosome_name]
+    elif chromosome_accession is not None: 
+        b2w_args += ["-a",chromosome_accession]
     if merge>=0 and not('-p' in b2w_args):
         b2w_args += ["-p",str(merge)]
     if read_extension>0 and not('-q' in b2w_args):
@@ -977,14 +974,6 @@ def bam_to_density( bamfile, output, chromosome_accession=None, chromosome_name=
     b2w_args += args
     return {"arguments": ["bam2wig"]+b2w_args, "return_value": files}
 
-def _compact_chromosome_name(key):
-    if key is None or isinstance(key,str):
-        return key
-    elif isinstance(key,tuple) and len(key)>2:
-        return str(key[0])+"_"+str(key[1])+"."+str(key[2])
-    else:
-        raise ValueError("Can't handle this chromosome key ",key)
-
 def parallel_density_wig( ex, bamfile, chromosomes,
                           nreads=1, merge=-1, read_extension=-1, convert=True,
                           description="", alias=None,
@@ -997,7 +986,7 @@ def parallel_density_wig( ex, bamfile, chromosomes,
         b2w_args = []
     mlim = max(int(nreads*1e-7),6)
     futures = [bam_to_density.nonblocking( ex, bamfile, unique_filename_in(),
-                                           _compact_chromosome_name(k), v['name'],
+                                           k, v['name'],
                                            nreads, merge, read_extension, convert,
                                            False, args=b2w_args, via=via, memory=mlim )
                for k,v in chromosomes.iteritems()]
@@ -1026,21 +1015,21 @@ def parallel_density_sql( ex, bamfile, chromosomes,
     mlim = max(int(nreads*1e-7),6)
     for k,v in chromosomes.iteritems():
         futures[k] = bam_to_density.nonblocking( ex, bamfile, unique_filename_in(),
-                                                 _compact_chromosome_name(k), v['name'],
+                                                 k, v['name'],
                                                  nreads, merge, read_extension, convert,
                                                  False, args=b2w_args, via=via, memory=mlim )
-    chrlist = dict((v['name'], {'length': v['length']}) for v in chromosomes.values())
     output = unique_filename_in()
     touch(ex,output)
     trackargs = {'fields': ['start','end','score'],
-                 'chrmeta': chrlist,
+                 'chrmeta': dict((v['name'], {'length': v['length'], 'ac': k}) 
+                                 for k,v in chromosomes.iteritems()),
                  'info': {'datatype':'quantitative',
                           'nreads': nreads,
                           'read_extension': read_extension}}
     if merge < 0:
         trev = track.track(output+"rev.sql",**trackargs)
         tfwd = track.track(output+"fwd.sql",**trackargs)
-        for k,v in chromosomes.iteritems():
+        for k in chromosomes.keys():
             wig = str(futures[k].wait())
             if not(os.path.exists(wig)): touch(ex,wig)
             twig = track.track(wig,format='bed')
@@ -1050,7 +1039,7 @@ def parallel_density_sql( ex, bamfile, chromosomes,
         tfwd.close()
     else:
         tboth = track.track(output+"merged.sql",**trackargs)
-        for k,v in chromosomes.iteritems():
+        for k in chromosomes.keys():
             wig = str(futures[k].wait())
             if not(os.path.exists(wig)): touch(ex,wig)
             twig = track.track(wig,format='bedgraph')
@@ -1233,7 +1222,7 @@ def get_bam_wig_files( ex, job, minilims=None, hts_url=None, suffix=['fwd','rev'
                 if 'gdv_json' in allfiles:
                     with open(MMS.path_to_file(allfiles['gdv_json'])) as q:
                         job.options['gdv_project'] = pickle.load(q)
-                if hts_url != None:
+                if hts_url is not None:
                     htss = frontend.Frontend( url=hts_url )
                     ms_job = htss.job( run['key'] )
                     if int(ms_job.options.get('read_extension',-1))>0 and int(ms_job.options.get('read_extension'))<80:
