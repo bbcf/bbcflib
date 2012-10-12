@@ -593,6 +593,7 @@ class Assembly(object):
         :param annot_type: (str) one of 'gene','transcript','exon','CDS'.
         :chrom_list: (list of str) return only features in the specified chromosomes.
         :biotype: (list of str, or None) return only features with the specified biotype(s).
+            If None, all biotypes are selected.
         :rtype: btrack.FeatureStream
         """
         if chromlist is None: chromlist = self.chrnames
