@@ -120,8 +120,10 @@ class Assembly(object):
             chromosomes = json.load(urllib2.urlopen(urllib2.Request(
                             """%s/chromosomes.json?assembly_id=%d""" %(self.genrep.url, assembly))))
         except:
-            assembly_info = json.load(urllib2.urlopen(urllib2.Request(
-                            """%s/assemblies.json?assembly_name=%s""" %(self.genrep.url, assembly))))[0]
+            try:
+                url = """%s/assemblies.json?assembly_name=%s""" %(self.genrep.url, assembly)
+                assembly_info = json.load(urllib2.urlopen(urllib2.Request(url)))[0]
+            except IndexError: raise ValueError("URL not found: %s." % url)
             chromosomes = json.load(urllib2.urlopen(urllib2.Request(
                             """%s/chromosomes.json?assembly_name=%s""" %(self.genrep.url, assembly))))
         self._add_info(**dict((str(k),v) for k,v in assembly_info['assembly'].iteritems()))
