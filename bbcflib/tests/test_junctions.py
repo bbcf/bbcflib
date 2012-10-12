@@ -2,7 +2,8 @@
 # Built-in modules #
 
 # Internal modules #
-from bbcflib.rnaseq import *
+from bbcflib.junctions import *
+from bbcflib.frontend import Job
 from bein import execution
 
 # Unitesting modules #
@@ -19,20 +20,23 @@ __test__ = True
 # Local test:
 # run_unctions.py -v local -c /archive/epfl/bbcf/jdelafon/test_rnaseq/config/junc.txt -d junctions
 
-class fakejob(object):
-    def __init__(self,assembly):
-        self.assembly = genrep.Assembly(assembly)
-        self.groups = {1:{1:{}}}
+def fakejob(assembly):
+        job = Job(1,'today','key',assembly.id,'test','email',{})
+        job.add_group(id=1,name='group1')
+        job.add_run(group_id=1, id=1)
+        return job
 
 
 class Test_Junctions(unittest.TestCase):
     def setUp(self):
         self.assembly = genrep.Assembly('hg19')
         self.index = "/archive/epfl/bbcf/jdelafon/soapsplice_index/hg19.index"
-        self.unmapped = "/archive/epfl/bbcf/jdelafon/test_junctions/unmapped.fastq"
-        self.bam_files = {1:{1:{'unmapped_fastq':'unmapped.fastq'}}}
+        unmapped = ["test_data/junctions/junc_reads_chr1-100k_R1.fastq",
+                    "test_data/junctions/junc_reads_chr1-100k_R2.fastq"]
+        self.bam_files = {1:{1:{'unmapped_fastq':unmapped}}}
+        self.job = fakejob(self.assembly)
 
     def test_junctions_workflow(self):
         with execution(None) as ex:
-            junctions_workflow(ex,job=1,bam_files=self.bam_files,index=self.index)
+            junctions_workflow(ex,job=self.job,bam_files=self.bam_files,index=self.index)
 
