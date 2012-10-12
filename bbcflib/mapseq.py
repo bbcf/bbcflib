@@ -1090,8 +1090,6 @@ def densities_groups( ex, job_or_dict, file_dict, chromosomes, via='lsf' ):
     if merge_strands >= 0: suffixes = ["merged"]
     ucsc_bigwig = options.get('ucsc_bigwig',False)
     b2w_args = options.get('b2w_args',[])
-    if int(options.get('read_extension',-1))>0 and not('-q' in b2w_args):
-        b2w_args += ["-q",str(options['read_extension'])]
     processed = {}
     for gid,group in groups.iteritems():
         if 'name' in group:
@@ -1108,17 +1106,15 @@ def densities_groups( ex, job_or_dict, file_dict, chromosomes, via='lsf' ):
                 mapped[k]['libname'] = group_name+"_"+str(k)
             if not 'stats' in mapped[k]:
                 mapped[k]['stats'] = bamstats( ex, mapped[k]["bam"] )
-            if int(options.get('read_extension',-1))<=0:
+            if int(options.get('read_extension',-1)) < 1:
                 options['read_extension'] = mapped[k]['stats']['read_length']
-                if not('-q' in b2w_args):
-                    b2w_args += ["-q",str(options['read_extension'])]
         wig = []
         pars0 = {'groupId':gid, 'step':'density', 'type':'none', 'view':'admin'}
         pars1 = {'groupId':gid, 'step':'density', 'type':'sql'}
         for m in mapped.values():
             output = parallel_density_sql( ex, m["bam"], chromosomes,
                                            nreads=m["stats"]["total"],
-                                           merge=merge_strands,
+                                           merge=merge_strands, read_extension=options['read_extension'],
                                            convert=False,
                                            b2w_args=b2w_args, via=via )
             wig.append(output)

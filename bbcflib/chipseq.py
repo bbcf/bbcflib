@@ -341,10 +341,8 @@ def workflow_groups( ex, job_or_dict, mapseq_files, assembly, script_path='',
     if peak_deconvolution:
         processed['deconv'] = {}
         merged_wig = {}
-        if int(options.get('read_extension',-1))<=0:
+        if int(options.get('read_extension',-1)) < 1:
             options['read_extension'] = read_length[0]
-        if not('-q' in b2w_args):
-            b2w_args += ["-q",str(options['read_extension'])]
         for gid,mapped in mapseq_files.iteritems():
             if groups[gid]['control']:
                 continue
@@ -354,7 +352,7 @@ def workflow_groups( ex, job_or_dict, mapseq_files, assembly, script_path='',
                 if merge_strands >= 0 or not('wig' in m) or len(m['wig'])<2:
                     output = mapseq.parallel_density_sql( ex, m["bam"], assembly.chromosomes,
                                                           nreads=m["stats"]["total"],
-                                                          merge=-1,
+                                                          merge=-1, read_extension=options['read_extension'],
                                                           convert=False,
                                                           b2w_args=b2w_args, via=via )
                     wig.append(dict((s,output+s+'.sql') for s in suffixes))

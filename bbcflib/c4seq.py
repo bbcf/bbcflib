@@ -184,7 +184,8 @@ def workflow_groups( ex, job, primers_dict, assembly, mapseq_files, mapseq_url,
                 density_file=parallel_density_sql( ex, mapseq_files[gid][rid]['bam'],
                                                    assembly.chromosomes,
                                                    nreads=mapseq_files[gid][rid]['stats']["total"],
-                                                   merge=0,
+                                                   merge=0, 
+                                                   read_extension=mapseq_files[gid][rid]['stats']['read_length'],
                                                    convert=False,
                                                    via=via )
                 density_file += "merged.sql"
