@@ -102,17 +102,16 @@ class Job(object):
 
     The fields are:
 
-      * ``id``
-      * ``created_at``
-      * ``key``
-      * ``assembly_id``
-      * ``description``
-      * ``email``
-      * ``groups``
-      * ``options``
+      * ``id`` (int)
+      * ``created_at`` (str)
+      * ``key`` (str)
+      * ``assembly_id`` (str)
+      * ``description`` (str)
+      * ``email`` (str)
+      * ``groups`` (dict)
+      * ``options`` (dict)
 
-    ``groups`` is a dictionary of group IDs point to dictionaries with
-    information about the group and a dictionary of runs.
+    ``groups`` is a dictionary of the form ``{'id':group_id, 'name':group_name, 'runs':{runs_info}}``.
     """
     def __init__(self, id, created_at, key, assembly_id, description, email, options):
         self.id = id
@@ -124,19 +123,25 @@ class Job(object):
         self.groups = {}
         self.options = options
 
-    def add_group(self, id, name, group = None):
+    def add_group(self, id, name, group=None):
+        """Add info on the group to `self.groups`. If a dictionary *group* is given,
+        `self.groups` is updated with the info it contains."""
         if self.groups.has_key(id):
             if group is None:
                 raise ValueError("A group with ID "+str(id)+" was already added.")
         else:
             self.groups[id] = {'name': name or str(id), 'runs': {}}
-        if "library_file_type_id" in group:
-            group.update({"library_file_url": group.get("library_file_url" or ""),
-                          "library_id": group.get("library_id") or 0,
-                          "library_param_file": group.get("library_param_file") or ""})
-        self.groups[id].update(group)
+        if group:
+            if "library_file_type_id" in group:
+                group.setdefault("library_file_url","")
+                group.setdefault("library_id",0)
+                group.setdefault("library_param_file","")
+            self.groups[id].update(group)
 
     def add_run(self, **kwargs):
+        """Add info on the run to a specified group info in `self.groups`.
+        Mandatory keyword args are: *group_id*, *id* (run ID). All others will be added
+        as complementary info to the dictionary describing the run."""
         group = kwargs.pop('group_id')
         try:
             id = kwargs.pop('id')
@@ -209,6 +214,7 @@ def parseConfig( file, job=None, gl=None ):
     for k,v in gl.iteritems():
         if not(k in newgl): newgl[k] = v
     return (newjob,newgl)
+
 
 #-----------------------------------#
 # This code was written by the BBCF #
