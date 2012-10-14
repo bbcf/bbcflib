@@ -84,15 +84,28 @@ class SqlTrack(Track):
         try:
             sql_command = "CREATE TABLE IF NOT EXISTS 'chrNames' ('name' TEXT, 'length' INTEGER)"
             self.cursor.execute(sql_command)
-            self.cursor.execute("SELECT name,length FROM 'chrNames'")
-            table_chr = dict((x[0].encode('ascii'), {'length': x[1]}) for x in self.cursor.fetchall())
+            self.cursor.execute("SELECT * FROM 'chrNames'")
+            columns = [x[0] for x in self.cursor.description]
+            namei = columns.index('name')
+            otheri = [n for n,x in enumerate(columns) if x != 'name']
+            table_chr = dict((x[namei].encode('ascii'), 
+                              dict((columns[n].encode('ascii'),x[n]) for n in otheri))
+                             for x in self.cursor.fetchall())
             for k,v in chrmeta.iteritems():
+                for col in [str(c) for c in v.keys() if str(c) not in columns]:
+                    sql_command = "ALTER TABLE 'chrNames' ADD '%s' TEXT" %col
+                    self.cursor.execute(sql_command)
+                    columns.append(col)
                 if not(k in table_chr):
-                    sql_command = "INSERT INTO 'chrNames' (name,length) VALUES ('%s',%i)"%(k,v['length'])
+                    cols = ",".join(v.keys())
+                    vals = ",".join(["'"+str(x)+"'" for x in v.values()])
+                    sql_command = "INSERT INTO 'chrNames' (name,%s) VALUES ('%s',%s)"%(cols,k,vals)
                     self.cursor.execute(sql_command)
-                elif int(v['length']) != int(table_chr[k]['length']):
-                    sql_command = "UPDATE 'chrNames' SET length=%i WHERE name='%s'"%(v['length'],k)
-                    self.cursor.execute(sql_command)
+                else: 
+                    for col,val in v.iteritems():
+                        if str(v[col]) != str(table_chr[k][col]):
+                            sql_command = "UPDATE 'chrNames' SET %s='%s' WHERE name='%s'"%(col,val,k)
+                            self.cursor.execute(sql_command)
         except sqlite3.OperationalError as err:
             raise Exception("Sql error: %s\n on file %s, with\n%s"%(err,self.path,sql_command))
         return True
