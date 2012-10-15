@@ -31,12 +31,15 @@ class Test_Junctions(unittest.TestCase):
     def setUp(self):
         self.assembly = genrep.Assembly('hg19')
         self.index = "/archive/epfl/bbcf/jdelafon/soapsplice_index/hg19.index"
-        unmapped = ["test_data/junctions/junc_reads_chr1-100k_R1.fastq",
-                    "test_data/junctions/junc_reads_chr1-100k_R2.fastq"]
-        self.bam_files = {1:{1:{'unmapped_fastq':unmapped}}}
+        self.path = "/archive/epfl/bbcf/jdelafon/bin/SOAPsplice-v1.9/bin/soapsplice"
+        if not os.path.exists(self.path):
+            self.path = "/Users/delafont/bin/SOAPsplice-v1.9/bin/soapsplice"
+        unmapped = "test_data/junctions/junc_reads_chr1-100k"
+        self.bam_files = {1:{1:{'unmapped_fastq':(unmapped+'_R1',unmapped+'_R2')}}}
         self.job = fakejob(self.assembly)
 
     def test_junctions_workflow(self):
         with execution(None) as ex:
-            junctions_workflow(ex,job=self.job,bam_files=self.bam_files,index=self.index)
+            junctions_workflow(ex,job=self.job,bam_files=self.bam_files,index=self.index,
+                               path_to_soapsplice=self.path)
 
