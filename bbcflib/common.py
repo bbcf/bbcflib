@@ -30,6 +30,7 @@ def unique_filename_in(path=None):
 #-------------------------------------------------------------------------#
 def pause():
     """Pause until the user hits Return."""
+    print "Pause... Hit any key to continue."
     sys.stdin.readline()
     return None
 
