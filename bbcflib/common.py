@@ -28,6 +28,12 @@ def unique_filename_in(path=None):
     return filename
 
 #-------------------------------------------------------------------------#
+def pause():
+    """Pause until the user hits Return."""
+    sys.stdin.readline()
+    return None
+
+#-------------------------------------------------------------------------#
 def program_exists(program):
     """Check if *program* exists in local $PATH."""
     for path in os.environ["PATH"].split(os.pathsep):
