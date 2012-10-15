@@ -159,21 +159,20 @@ def camelPeaks( scores_fwd, scores_rev, peaks, chromosome_name, chromosome_lengt
 
 def run_deconv(ex, sql, peaks, chromosomes, read_extension, script_path, via = 'lsf'):
     """Runs the complete deconvolution process for a set of sql files and a bed file,
-    parallelized over a set of chromosomes (a dictionary with keys 'chromosome_id'
-    and values a dictionary with chromosome names and lengths).
+    parallelized over a set of chromosomes (a dictionary with keys 'chromosome_name'
+    and values a dictionary with chromosome lengths).
 
     Returns a dictionary of file outputs with keys file types
     ('pdf', 'sql' and 'bed') and values the file names.
     """
     deconv_futures = {}
     stdout_files = {}
-    for clen,cid in sorted([(v['length'],k) for k,v in chromosomes.iteritems()],reverse=True):
-        chrom = chromosomes[cid]['name']
-        stdout_files[cid] = common.unique_filename_in()
-        deconv_futures[cid] = camelPeaks.nonblocking( ex, sql['fwd'], sql['rev'], peaks,
+    for clen,chrom in sorted([(v['length'],k) for k,v in chromosomes.iteritems()],reverse=True):
+        stdout_files[chrom] = common.unique_filename_in()
+        deconv_futures[chrom] = camelPeaks.nonblocking( ex, sql['fwd'], sql['rev'], peaks,
                                                       chrom, clen,
                                                       read_extension, script_path,
-                                                      via=via, stdout=stdout_files[cid] )
+                                                      via=via, stdout=stdout_files[chrom] )
         time.sleep(150) ##avoid too many processes reading same sql 
     deconv_out = {}
     for c,f in deconv_futures.iteritems():
@@ -192,23 +191,22 @@ def run_deconv(ex, sql, peaks, chromosomes, read_extension, script_path, via = '
         pdf_future = common.join_pdf.nonblocking( ex,
                                                   [x[0] for x in deconv_out.values() if len(x)>0],
                                                   via=via )
-    chrlist = dict((v['name'], {'length': v['length']}) for v in chromosomes.values())
     output = common.unique_filename_in()
     outfiles = {}
     outfiles['peaks'] = output+"_peaks.sql"
     outfiles['profile'] = output+"_deconv.sql"
-    outbed = track.track(outfiles['peaks'], chrmeta=chrlist,
+    outbed = track.track(outfiles['peaks'], chrmeta=chromosomes,
                          fields=["start","end","score","name"],
                          info={'datatype':'qualitative'})
-    outwig = track.track(outfiles['profile'], chrmeta=chrlist,
+    outwig = track.track(outfiles['profile'], chrmeta=chromosomes,
                          fields=["start","end","score"],                         
                          info={'datatype':'quantitative'})
     outbed.open()
     outwig.open()
     for c,fout in deconv_out.iteritems():
         if len(fout) < 3: continue
-        outbed.write(track.track(fout[1],chrmeta=chrlist).read())
-        outwig.write(track.track(fout[2],chrmeta=chrlist).read())
+        outbed.write(track.track(fout[1],chrmeta=chromosomes).read())
+        outwig.write(track.track(fout[2],chrmeta=chromosomes).read())
     outbed.close()
     outwig.close()
     if len(deconv_out)>0:
@@ -350,7 +348,7 @@ def workflow_groups( ex, job_or_dict, mapseq_files, assembly, script_path='',
             wig = []
             for m in mapped.values():
                 if merge_strands >= 0 or not('wig' in m) or len(m['wig'])<2:
-                    output = mapseq.parallel_density_sql( ex, m["bam"], assembly.chromosomes,
+                    output = mapseq.parallel_density_sql( ex, m["bam"], assembly.chrmeta,
                                                           nreads=m["stats"]["total"],
                                                           merge=-1, read_extension=options['read_extension'],
                                                           convert=False,
@@ -371,7 +369,7 @@ def workflow_groups( ex, job_or_dict, mapseq_files, assembly, script_path='',
             else:
                 macsbed = common.intersect_many_bed( ex, [processed['macs'][(name,x)]+"_peaks.bed"
                                                           for x in names['controls']], via=via )
-            deconv = run_deconv( ex, merged_wig[name[1]], macsbed, assembly.chromosomes,
+            deconv = run_deconv( ex, merged_wig[name[1]], macsbed, assembly.chrmeta,
                                  options['read_extension'], script_path, via=via )
             ##############################
             def _filter_deconv( stream, pval ):

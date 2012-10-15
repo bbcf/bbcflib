@@ -182,7 +182,7 @@ def workflow_groups( ex, job, primers_dict, assembly, mapseq_files, mapseq_url,
             libname = mapseq_files[gid][rid]['libname']
             if not job.options.get('compute_densities') or job.options.get('merge_strands') != 0:
                 density_file=parallel_density_sql( ex, mapseq_files[gid][rid]['bam'],
-                                                   assembly.chromosomes,
+                                                   assembly.chrmeta,
                                                    nreads=mapseq_files[gid][rid]['stats']["total"],
                                                    merge=0, 
                                                    read_extension=mapseq_files[gid][rid]['stats']['read_length'],
