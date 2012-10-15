@@ -23,16 +23,20 @@ from bein import program
 
 
 @program
-def soapsplice(unmapped_R1, unmapped_R2, index, output=None, **options):
+def soapsplice(unmapped_R1, unmapped_R2, index, output=None, path_to_soapsplice=None, **options):
     """Binds 'soapsplice'. Returns a text file containing the list of junctions.
 
     :param unmapped_R1: (str) path to the fastq file containing the 'left' reads.
     :param unmapped_R2: (str) path to the fastq file containing the 'right' reads.
     :param index: (str) path to the SOAPsplice index.
+    :param output: (str) output file name.
+    :param path_to_soapsplice: (str) path to the SOAPsplice executable.
+        If not specified, the program must be in your $PATH.
     :param options: (dict) SOAPsplice options, given as {opt: value}.
     :rtype: str
     """
-    args = ['soapsplice','-d',index,'-1',unmapped_R1,'-2',unmapped_R2]
+    path_to_soapsplice = path_to_soapsplice or 'soapsplice'
+    args = [path_to_soapsplice,'-d',index,'-1',unmapped_R1,'-2',unmapped_R2]
     opts = []
     for k,v in options.iteritems(): opts.extend([str(k),v])
     if not output: output = unique_filename_in()
@@ -89,7 +93,7 @@ def discovery(juncfile, assembly):
     return known_junctions, new_junctions
 
 
-def junctions_workflow(ex, job, bam_files, index, via="lsf"):
+def junctions_workflow(ex, job, bam_files, index, path_to_soapsplice=None, via="lsf"):
     """
     Main function of the workflow.
 
@@ -108,11 +112,11 @@ def junctions_workflow(ex, job, bam_files, index, via="lsf"):
             # Define pairs of fastq files ...
             unmapped = bam_files[gid][rid].get('unmapped_fastq')
             assert unmapped, "No unmapped reads found."
-            assert os.path.exists(unmapped+'_1.gz'), "Pair-end reads required."
-            unmapped_fastq[gid].append([unmapped+'_1.gz', unmapped+'_2.gz'])
+            assert isinstance(unmapped,tuple), "Pair-end reads required."
+            unmapped_fastq[gid].append(unmapped)
         R1 = cat(zip(*unmapped_fastq[gid])[0])
         R2 = cat(zip(*unmapped_fastq[gid])[1])
-        junc_file = soapsplice(R1,R2,index)
+        junc_file = soapsplice(ex,R1,R2,index,path_to_soapsplice=path_to_soapsplice)
         # Translate to more usual formats
         sql,bed = convert_junc_file(junc_file,assembly)
         sql_descr = set_file_descr('junctions_%s.sql' % group['name'], \
