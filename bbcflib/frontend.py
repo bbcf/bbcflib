@@ -133,9 +133,9 @@ class Job(object):
             self.groups[id] = {'name': name or str(id), 'runs': {}}
         if group:
             if "library_file_type_id" in group:
-                group.update({"library_file_url": group.get("library_file_url" or ""),
-                              "library_id": group.get("library_id") or 0,
-                              "library_param_file": group.get("library_param_file") or ""})
+                group.setdefault("library_file_url","")
+                group.setdefault("library_id",0)
+                group.setdefault("library_param_file","")
             self.groups[id].update(group)
 
     def add_run(self, **kwargs):
