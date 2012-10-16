@@ -4,7 +4,7 @@
 # Internal modules #
 from bbcflib.junctions import *
 from bbcflib.frontend import Job
-from bein import execution
+from bein import execution, MiniLIMS
 
 # Unitesting modules #
 try: import unittest2 as unittest
@@ -29,17 +29,19 @@ def fakejob(assembly):
 
 class Test_Junctions(unittest.TestCase):
     def setUp(self):
+        # Example from Lingner TERRA study on hg19, reads unmapped to the genome
         self.assembly = genrep.Assembly('hg19')
-        self.index = "/archive/epfl/bbcf/jdelafon/soapsplice_index/hg19.index"
         self.path = "/archive/epfl/bbcf/jdelafon/bin/SOAPsplice-v1.9/bin/soapsplice"
-        if not os.path.exists(self.path):
-            self.path = "/Users/delafont/bin/SOAPsplice-v1.9/bin/soapsplice"
-        unmapped = "test_data/junctions/junc_reads_chr1-100k"
+        self.index = "../test_data/junctions/index_chr1_150k/chr1_150k.index"
+        unmapped = "../test_data/junctions/junc_reads_chr1-100k"
         self.bam_files = {1:{1:{'unmapped_fastq':(unmapped+'_R1',unmapped+'_R2')}}}
         self.job = fakejob(self.assembly)
 
     def test_junctions_workflow(self):
-        with execution(None) as ex:
-            junctions_workflow(ex,job=self.job,bam_files=self.bam_files,index=self.index,
-                               path_to_soapsplice=self.path)
+        #minilims = MiniLIMS('test_junc_lims')
+        minilims = None
+        with execution(minilims) as ex:
+            options = {'-q':1} # Sanger read quality format
+            sql,bed,bam = junctions_workflow(ex,job=self.job,bam_files=self.bam_files,index=self.index,
+                               path_to_soapsplice=self.path, soapsplice_options=options, via='local')
 
