@@ -123,7 +123,6 @@ def junctions_workflow(ex, job, bam_files, index, path_to_soapsplice=None, soaps
     for gid, group in job.groups.iteritems():
         unmapped_fastq[gid] = []
         for rid, run in group['runs'].iteritems():
-            # Define pairs of fastq files ...
             unmapped = bam_files[gid][rid].get('unmapped_fastq')
             assert unmapped, "No unmapped reads found."
             assert isinstance(unmapped,tuple), "Pair-end reads required."
