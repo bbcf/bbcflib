@@ -77,7 +77,7 @@ def convert_junc_file(filename, assembly):
     outfile = unique_filename_in()
     sql = outfile + '.sql'
     bed = outfile + '.bed'
-    out = track(sql, fields=t.fields, chrmeta=assembly.chrmeta)
+    out = track(sql, fields=s3.fields, chrmeta=assembly.chrmeta)
     out.write(s3)
     convert(sql,bed)
     return sql, bed
