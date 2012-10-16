@@ -250,17 +250,29 @@ def get_fastq_files( ex, job, dafl=None, set_seed_length=True):
 # BAM/SAM files
 ###############
 @program
-def sam_to_bam(sam_filename, bam_filename=None):
-    """Convert *sam_filename* to a BAM file.
+def sam_to_bam(sam_filename, bam_filename=None, reheader=None):
+    """Convert *sam_filename* to a BAM file. Returns the name of the created BAM file.
 
-    *sam_filename* must obviously be the filename of a SAM file.
-    Returns the filename of the created BAM file.
+    Equivalent: ``samtools view -b -S [-t *reheader*] -o *bam_filename*``
 
-    Equivalent: ``samtools view -b -S -o ...``
+    :param sam_filename: (str) the name of a SAM file.
+    :param bam_filename: (str) optional name of the output BAM file.
+    :param reheader: (str) if the SAM has no header, then tries to build one from either an
+        assembly name, or the path to a tab-delimited file with
+        `sequence_name <tab> sequence_length` on each line (samtools view ``-t`` option).
     """
     if bam_filename is None: bam_filename = unique_filename_in()
-    return {"arguments": ["samtools","view","-b","-S","-o",bam_filename,sam_filename],
-            "return_value": bam_filename}
+    arguments = ["samtools","view","-b","-S","-o",bam_filename]
+    if reheader:
+        if not os.path.exists(reheader):
+            assembly = genrep.Assembly(reheader)
+            reheader = unique_filename_in()
+            with open(reheader,'wb') as g:
+                for chr,v in assembly.chrmeta.iteritems():
+                    g.write(chr+'\t'+str(v['length'])+'\n')
+        arguments.extend(['-t',reheader])
+    arguments.append(sam_filename)
+    return {"arguments": arguments, "return_value": bam_filename}
 
 @program
 def bam_to_sam(bam_filename, no_header=False):
@@ -955,7 +967,7 @@ def bam_to_density( bamfile, output, chromosome_accession=None, chromosome_name=
         b2w_args += ["-a",chromosome_accession,"-n",chromosome_name]
     elif chromosome_name is not None:
         b2w_args += ["-a",chromosome_name]
-    elif chromosome_accession is not None: 
+    elif chromosome_accession is not None:
         b2w_args += ["-a",chromosome_accession]
     if merge>=0 and not('-p' in b2w_args):
         b2w_args += ["-p",str(merge)]
@@ -986,7 +998,7 @@ def parallel_density_wig( ex, bamfile, chromosomes,
         b2w_args = []
     mlim = max(int(nreads*1e-7),6)
     futures = [bam_to_density.nonblocking( ex, bamfile, unique_filename_in(),
-                                           v.get('ac'), k, 
+                                           v.get('ac'), k,
                                            nreads, merge, read_extension, convert,
                                            False, args=b2w_args, via=via, memory=mlim )
                for k,v in chromosomes.iteritems()]
@@ -1015,7 +1027,7 @@ def parallel_density_sql( ex, bamfile, chromosomes,
     mlim = max(int(nreads*1e-7),6)
     for k,v in chromosomes.iteritems():
         futures[k] = bam_to_density.nonblocking( ex, bamfile, unique_filename_in(),
-                                                 v.get('ac'), k, 
+                                                 v.get('ac'), k,
                                                  nreads, merge, read_extension, convert,
                                                  False, args=b2w_args, via=via, memory=mlim )
     output = unique_filename_in()
