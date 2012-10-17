@@ -67,11 +67,16 @@ class BigWigTrack(BinTrack):
 
     def close(self):
         if self.chrfile and self.bedgraph:
-            self._run_tool('bedGraphToBigWig', [self.bedgraph, self.chrfile.name, self.path])
-        if not(self.chrfile is None):
+            try:
+                self._run_tool('bedGraphToBigWig', [self.bedgraph, self.chrfile.name, self.path])
+            except OSError,ose:
+                os.remove(self.chrfile.name)
+                os.remove(self.bedgraph)
+                raise OSError(ose)
+        if self.chrfile is not None:
             os.remove(self.chrfile.name)
             self.chrfile = None
-        if not(self.bedgraph is None):
+        if self.bedgraph is not None:
             os.remove(self.bedgraph)
             self.bedgraph = None
 
@@ -102,8 +107,13 @@ class BigWigTrack(BinTrack):
             self.chrfile.close()
         self.open()
         kw['mode'] = 'append'
-        with track(self.bedgraph,format='bedgraph',chrmeta=self.chrmeta) as f:
-            f.write(source,**kw)
+        try:
+            with track(self.bedgraph,format='bedgraph',chrmeta=self.chrmeta) as f:
+                f.write(source,**kw)
+        except:
+            os.remove(self.chrfile.name)
+            os.remove(self.bedgraph)
+            raise
 
 ################################ Bam via pysam ################################
 
@@ -232,7 +242,7 @@ try:
             if strand is not None:
 ##### mask=16 (=0x10): mask reads with "is_reverse" flag set
                 pplus = self.filehandle.pileup(*region,mask=16)
-                if str(strand) in ['-','-1']: 
+                if str(strand) in ['-','-1']:
 ##### pysam can't iterate simultaneously on 2 pileups from the same file!
                     pplus = iter([(x.pos,x.n) for x in pplus])
             pboth = self.filehandle.pileup(*region)
