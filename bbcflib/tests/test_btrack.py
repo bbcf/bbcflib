@@ -117,7 +117,6 @@ class Test_Formats(unittest.TestCase):
         s = t.read(); s.next()
         self.assertListEqual(t.fields, ['chr','start','end','score'])
 
-    @unittest.skip('Works but creates temp files when testing (tempfile)')
     def test_bigwig(self):
         try:
             bw = os.path.join(path,'test.bw')
