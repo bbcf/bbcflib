@@ -8,17 +8,23 @@ What is it useful for?
 
 Bioinformaticians have to deal with large files in multiple formats.
 This involves tedious conversions, manipulations, and hundreds of very similar scripts that each of us rewrites constantly.
-Also, shell commands have their limits, and most of the time it is simpler/mandatory to use a real programming language instead (here we choose Python).
-The purpose of **btrack** is to provide an immediate access to the file's content, neither having to think about formats' specificities, nor convert or decode binary formats.
+Also, shell commands have their limits, and most of the time it is simpler/mandatory to use a real programming
+language instead (here we choose Python).
+
+The purpose of **btrack** is to provide an immediate access to the file's content, neither
+having to think about formats' specificities, nor convert or decode binary formats.
 
 What formats are supported?
 ---------------------------
 
-All kinds of raw text files organized in columns can be read (if column fields are specified), e.g. *csv*, *sam*, or tab-delimited files.
+All kinds of raw text files organized in columns can be read (if column fields are specified),
+e.g. **csv**, **sam**, or tab-delimited files.
 The following formats are automatically recognized and decoded:
+
 **bed**, **wig**, **bedGraph**, **bigWig**, **BAM**, **sqlite**, **sga**, **gff** (**gtf**).
-URLs pointing to such files (`http://genome.ucsc.edu/goldenPath/help/examples/bedExample2.bed`) and gzipped files
-are handled automatically.
+
+URLs pointing to such files (ex.: http://genome.ucsc.edu/goldenPath/help/examples/bedExample2.bed)
+and gzipped files are handled automatically.
 
 Glossary
 --------
@@ -32,12 +38,15 @@ How does is work?
 
 The library is made of two main functions: ``track`` and ``convert``, and two main classes: ``Track`` and ``FeatureStream``.
 
-When one calls the ``track`` function on a file name, it creates a ``Track`` instance that knows the format of the file and its field names, records genomic information about the species (if specified). It is the interface that gives access to the file's content, similarly to a ``file`` object: it does not itself contain the data, but one can ``read`` and ``write`` it.
+When one calls the ``track`` function on a file name, it creates a ``Track`` instance that knows
+the format of the file and its field names, records genomic information about the species (if specified).
+It is the interface that gives access to the file's content, similarly to a ``file`` object:
+it does not itself contain the data, but one can ``read`` and ``write`` it.
 
 Reading a Track object returns a ``FeatureStream`` instance, which is iterable over the data, line by line.
-On purpose, it does **not** load all the data in memory as a list would do.
-
-A ``FeatureStream`` is basically an iterator that yields tuples of the type ('chr1',12,14,0.5). Once it has been manipulated at will, it can be written to another ``Track`` using the latter's ``write`` method.
+On purpose, it does **not** load all the data in memory as a list would do. A ``FeatureStream`` is basically
+an iterator that yields tuples of the type ('chr1',12,14,0.5). Once it has been manipulated at will,
+it can be written to another ``Track`` using the latter's ``write`` method.
 
 The ``convert`` method can translate a file from a given format to another
 
@@ -152,7 +161,6 @@ Advanced features
     def generator():
         for x in [10,20,30]:
             yield ('chr1',x,x+5)
-
     s = FeatureStream(generator(), fields=['chr','start','end'])
 
 * Change default data types, etc
@@ -167,8 +175,10 @@ bFlatMajor: data manipulations
 
 **btrack** basically parses track files but does not transform the original data.
 To manipulate your data, the **bbcflib** library provides powerful tools to concatenate, intersect, annotate, etc.
-It will always take ``FeatureStream`` objects as input, so first opends the track using ``btrack.track``, then ``read`` it and provide the ouput stream to one of **bFlatMajor**'s functions.
-Most of them will also return streams, so that you can pass it to another function, and write the final result to a new ``Track``.
+It will always take ``FeatureStream`` objects as input, so first opens the track using ``btrack.track``,
+then ``read`` it and provide the ouput stream to one of **bFlatMajor**'s functions.
+Most of them will also return streams, so that you can pass it to another function,
+and write the final result to a new ``Track``.
 
 For more info, see **bFlatMajor**'s :doc:`developer documentation <bbcflib_bFlatMajor>` .
 

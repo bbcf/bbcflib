@@ -20,6 +20,7 @@ Tutorials
    tutorial_rnaseq
    tutorial_snp
    tutorial_btrack
+   tutorial_bFlatMajor
    tutorial_config_files
 
 Methods description
