@@ -3,7 +3,7 @@
 import sys
 from bbcflib.bFlatMajor import common
 from bbcflib.bFlatMajor.stream import concatenate
-from bbcflib.btrack import FeatureStream
+from bbcflib import btrack as track
 
 def _sum(scores,denom=None):
     return sum(scores)
@@ -53,7 +53,7 @@ def merge_scores(trackList, method='arithmetic'):
         If one of the scores is 0, 1 is used instead for calculating the mean.
     :rtype: FeatureStream
     """
-    tracks = [FeatureStream(common.sentinelize(x,[sys.maxint]*len(x.fields)), x.fields)
+    tracks = [track.FeatureStream(common.sentinelize(x,[sys.maxint]*len(x.fields)), x.fields)
               for x in trackList]
     tracks = [common.reorder(t,['start','end','score']) for t in tracks]
     fields = [f for f in tracks[0].fields if all([f in t.fields for t in tracks])] # common fields
@@ -90,7 +90,7 @@ def merge_scores(trackList, method='arithmetic'):
                 if elements[i][0] == sys.maxint:
                     tracks.pop(i)
                     elements.pop(i)
-    return FeatureStream(_stream(tracks),fields)
+    return track.FeatureStream(_stream(tracks),fields)
 
 ###############################################################################
 def filter_scores(trackScores,trackFeatures,method='sum',strict=False,annotate=False):
@@ -141,7 +141,7 @@ def filter_scores(trackScores,trackFeatures,method='sum',strict=False,annotate=F
     if isinstance(trackScores,(list,tuple)): trackScores = merge_scores(trackScores,method)
     _ts = common.reorder(trackScores,['start','end'])
     _info_fields = [f for f in trackFeatures.fields if f not in trackScores.fields] if annotate else []
-    return FeatureStream(_stream(_ts,trackFeatures), _ts.fields+_info_fields)
+    return track.FeatureStream(_stream(_ts,trackFeatures), _ts.fields+_info_fields)
 
 ###############################################################################
 def score_by_feature(trackScores,trackFeatures,fn='mean'):
@@ -211,7 +211,7 @@ def score_by_feature(trackScores,trackFeatures,fn='mean'):
     else:
         _fields = ["score"]
     _ts = [common.reorder(t,['start','end','score']) for t in trackScores]
-    return FeatureStream(_stream(_ts,trackFeatures), trackFeatures.fields+_fields)
+    return track.FeatureStream(_stream(_ts,trackFeatures), trackFeatures.fields+_fields)
 
 ###############################################################################
 def window_smoothing( trackList, window_size, step_size=1, stop_val=sys.maxint,
@@ -237,13 +237,14 @@ def window_smoothing( trackList, window_size, step_size=1, stop_val=sys.maxint,
     [0,1,2,3,4,5,6,7,8,9), [3,4,5,6,7,8,9,10,11,12), ...
     """
     def _stepping_mean(track,score,denom):
+        score = 0.0
         F = []
         score = 0.0
         nmid = window_size/2
         for x in track:
             F.append(x)
             score += x[2]
-            if len(F) < window_size: continue
+            if len(F)<window_size: continue
             score -= F.pop(0)[2]
             yield (F[nmid][0],F[nmid][1],score*denom)+F[nmid][3:]
             for shift in xrange(2,step_size):
@@ -256,33 +257,32 @@ def window_smoothing( trackList, window_size, step_size=1, stop_val=sys.maxint,
             F.append(x)
             fstart = F[0][0]
             fend = F[0][1]
-            lstart = F[-1][0]
-            lend = F[-1][1]
-            info = x[3:]
             win_start = max(win_start,fstart-window_size)
             win_end = win_start+window_size
+            lstart = F[-1][0]
+            lend = F[-1][1]
             while win_end < lend:
                 delta = 0
                 steps = [fend-win_start,lend-win_end]
-                if fstart > win_start: steps.append(fstart-win_start)
+                if fstart>win_start: steps += [fstart-win_start]
                 else: delta -= F[0][2]
-                if lstart > win_end:   steps.append(lstart-win_end)
+                if lstart>win_end:   steps += [lstart-win_end]
                 else: delta += F[-1][2]
                 nsteps = min(steps)
-                sst = -(win_start % step_size) % step_size
-                sen = -(win_start+nsteps % step_size) % step_size
+                sst = -(win_start % step_size)%step_size
+                sen = -(win_start+nsteps % step_size)%step_size
                 win_center = (win_start+win_end)/2
                 if abs(delta) > 1e-11:
                     delta *= denom
                     score += delta*sst
                     for step in xrange(sst,nsteps,step_size):
                         if score>0 and win_center+step>=0 and win_center+step+step_size<=stop_val:
-                            yield (win_center+step,win_center+step+step_size,score)+info
+                            yield (win_center+step,win_center+step+step_size,score)
                         score += delta*step_size
                     score -= delta*sen
                 else:
                     if score>0 and win_center+sst>=0 and win_center+sen+nsteps<=stop_val:
-                        yield (win_center+sst,win_center+sen+nsteps,score)+info
+                        yield (win_center+sst,win_center+sen+nsteps,score)
                 win_start += nsteps
                 win_end += nsteps
                 if fend <= win_start:
@@ -307,12 +307,12 @@ def window_smoothing( trackList, window_size, step_size=1, stop_val=sys.maxint,
                     score += delta*sst
                     for step in xrange(sst,nsteps,step_size):
                         if score>0 and win_center+step>=0 and win_center+step+step_size<=stop_val:
-                            yield (win_center+step,win_center+step+step_size,score)+info
+                            yield (win_center+step,win_center+step+step_size,score)
                         score += delta*step_size
                     score -= delta*sen
                 else:
                     if score>0 and win_center+sst>=0 and win_center+sen+nsteps<=stop_val:
-                        yield (win_center+sst,win_center+sen+nsteps,score)+info
+                        yield (win_center+sst,win_center+sen+nsteps,score)
                 win_start += nsteps
                 win_end += nsteps
                 if fend <= win_start:
@@ -326,15 +326,13 @@ def window_smoothing( trackList, window_size, step_size=1, stop_val=sys.maxint,
 
     denom = 1.0/window_size
     win_start = -window_size
-    if isinstance(trackList,FeatureStream): trackList = [trackList]
-    _f = [f for f in trackList[0].fields if all([f in t.fields for t in trackList])]
+    _f = ['start','end','score']
     if featurewise:
-        _mean = _stepping_mean
+        call = _stepping_mean
     else:
-        _mean = _running_mean
-    res = [FeatureStream(_mean(common.reorder(t,['start','end','score']),win_start,denom),fields=_f)
+        call = _running_mean
+    if isinstance(trackList,(list,tuple)):
+        return [track.FeatureStream(call(common.reorder(t,_f),win_start,denom),fields=_f)
                 for n,t in enumerate(trackList)]
-    if len(res) == 1:
-        return res[0]
     else:
-        return res
+        return track.FeatureStream(call(common.reorder(trackList,_f),win_start,denom),fields=_f)
