@@ -185,8 +185,8 @@ try:
 
         def count(self, regions, on_strand = False):
             """
-            Count the number of reads falling in a given set of *regions*.
-            Return a FeatureStream with one element per region, its score being the number of reads
+            Counts the number of reads falling in a given set of *regions*.
+            Returns a FeatureStream with one element per region, its score being the number of reads
             overlapping (even partially) this region.
 
             :param regions: any iterable over of tuples of the type `(chr,start,end)`. `chr` has to be
@@ -230,7 +230,7 @@ try:
         def coverage(self, region, strand=None):
             """
             Calculates the number of reads covering each base position within a given *region*.
-            Return a FeatureStream where the score is the number of reads overlapping this position.
+            Returns a FeatureStream where the score is the number of reads overlapping this position.
 
             :param region: tuple `(chr,start,end)`. `chr` has to be
                 present in the BAM file's header (see `self.references`). `start` and `end` are 0-based

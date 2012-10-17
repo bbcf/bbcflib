@@ -1,12 +1,14 @@
-btrack
-======
+Genomic tracks
+==============
 
 Here is a short tutorial showing how to manage track files with the Python library **btrack** from the **bbcflib** package.
 
 What is it useful for?
 ----------------------
 
-Bioinformaticians have to deal with very big files in multiple formats. This includes tedious conversions, manipulations, and hundreds of very similar scripts that each of them has to rewrite for himself. Also, bash commands have their limits, and most of the time it is simpler/mandatory to use a real programming language instead (here we choose Python).
+Bioinformaticians have to deal with large files in multiple formats. 
+This involves tedious conversions, manipulations, and hundreds of very similar scripts that each of us rewrites constantly. 
+Also, shell commands have their limits, and most of the time it is simpler/mandatory to use a real programming language instead (here we choose Python).
 The purpose of **btrack** is to provide an immediate access to the file's content, neither having to think about formats' specificities, nor convert or decode binary formats.
 
 What formats are supported?
@@ -14,14 +16,16 @@ What formats are supported?
 
 All kinds of raw text files organized in columns can be read (if column fields are specified), e.g. *csv*, *sam*, or tab-delimited files.
 The following formats are automatically recognized and decoded:
-**bed**, **wig**, **bedGraph**, **bigWig**, **BAM**, **sqlite**, **sga**, **gff** (**gtf**).
+**bed**, **wig**, **bedGraph**, **bigWig**, **BAM**, **sqlite**, **sga**, **gff** (**gtf**). 
+URLs pointing to such files (`http://genome.ucsc.edu/goldenPath/help/examples/bedExample2.bed`) and gzipped files 
+are handled automatically.
 
 Glossary
 --------
 
 * **track**: any kind of file that records at least a position in the genome, usually many of them, either intervals (e.g. gene positions) or scores (e.g. density of reads in a give region). By extension, any object containing the same information.
 * **stream**: an iterator, similar to a cursor pointing to lines of the track file one by one, never reading back. It can be read over only once.
-* **field**: a name describing the content of a column of a track file, for instance the most ususal 'chr', 'start', 'end', 'score', 'name' or 'strand'.
+* **field**: a name describing the content of a column of a track file, for instance the most usual 'chr', 'start', 'end', 'score', 'name' or 'strand'.
 
 How does is work?
 -----------------
@@ -30,7 +34,8 @@ The library is made of two main functions: ``track`` and ``convert``, and two ma
 
 When one calls the ``track`` function on a file name, it creates a ``Track`` instance that knows the format of the file and its field names, records genomic information about the species (if specified). It is the interface that gives access to the file's content, similarly to a ``file`` object: it does not itself contain the data, but one can ``read`` and ``write`` it.
 
-When one reads a Track object, one gets a ``FeatureStream`` instance, which is an iterable over the data, line by line. On purpose, it does **not** load all the data in memory as a list would do.
+Reading a Track object returns a ``FeatureStream`` instance, which is iterable over the data, line by line. 
+On purpose, it does **not** load all the data in memory as a list would do.
 
 A ``FeatureStream`` is basically an iterator that yields tuples of the type ('chr1',12,14,0.5). Once it has been manipulated at will, it can be written to another ``Track`` using the latter's ``write`` method.
 
@@ -104,7 +109,7 @@ How do I use it?
     >>> t.assembly.name
     u'mm9'
 
-    # See `bbcflib.genrep.Assembly` for more on genomic meta info.
+See :func:`bbcflib.genrep.Assembly` for more on genomic meta info.
 
 6. Make a selection from a track::
 
@@ -117,7 +122,7 @@ How do I use it?
     s = t.read(fields=['start','score'])
 
     # Read only features which either are on chr1 and start within 1000 bp
-    # from the beginning of the chromosome, of are on chr2 and end between
+    # from the beginning of the chromosome, or are on chr2 and end between
     # 3907400 and 4302000:
     sel = [{'chr':'chr1','start':(1,1000)},
            {'chr':'chr2','end':(3907400,4302000)}]
@@ -138,23 +143,33 @@ How do I use it?
 Advanced features
 -----------------
 
-Under construction...
+* Create your own stream
+
+* Change default data types, etc
+
+* Convert to/from UCSC interval convention
+
+* Read and write simultaneously in the same Sqlite file
+
 
 bFlatMajor: data manipulations
 ------------------------------
 
-**btrack** basically parses track files. In no occasion it transforms the original data. To manipulate your data, the **bbcflib** library provides powerful tools to concatenate, intersect, annotate, etc. It will always take ``FeatureStream`` objects as input, so one first opends the track using ``btrack.track``, then ``read`` it and give the ouput stream to one of the **bFlatMajor**'s functions. Each of them will also return streams, so that you can rewrite the result to a new ``Track``.
+**btrack** basically parses track files but does not transform the original data. 
+To manipulate your data, the **bbcflib** library provides powerful tools to concatenate, intersect, annotate, etc. 
+It will always take ``FeatureStream`` objects as input, so first opends the track using ``btrack.track``, then ``read`` it and provide the ouput stream to one of **bFlatMajor**'s functions. 
+Most of them will also return streams, so that you can pass it to another function, and write the final result to a new ``Track``.
 
-For more info, see **bFlatMajor**'s `developer documentation <http://bbcf.epfl.ch/bbcflib/bbcflib_bFlatMajor.html>`_ .
+For more info, see **bFlatMajor**'s :doc:`developer documentation <bbcflib_bFlatMajor>` .
 
 Miscellaneous notes
 -------------------
 
-* Handling BAM files requires `samtools <http://samtools.sourceforge.net/>`_ .
-* Handling bigWig files requires UCSC's *bigWigToBedGraph* (for reading) and *bedGraphToBigWig* (for writing) - look `here <http://genome.ucsc.edu/goldenPath/help/bigWig.html>`_ .
-* Looping on chromosomes is necessary for several manipulations (see ``bbcflib.bFlatMajor``).
-* The ``Track`` class is the parent of multiple subclasses, one for each type of track file (such as ``BedTrack`` or ``WigTrack``).
-* Look at the `developer's documentation <http://bbcf.epfl.ch/bbcflib/bbcflib_btrack.html>`_ for more details.
+* Handling BAM files requires *samtools<http://samtools.sourceforge.net/>_* .
+* Handling bigWig files requires UCSC's *bigWigToBedGraph* (for reading) and *bedGraphToBigWig* (for writing) - look `here <http://genome.ucsc.edu/goldenPath/help/bigWig.html>`_.
+* Looping on chromosomes is necessary for several manipulations (see :doc:<bbcflib.bFlatMajor>).
+* The ``Track`` class is the parent of multiple subclasses, one for each type of track file (such as :func:`bbcflib.btrack.text.BedTrack` or :func:`bbcflib.btrack.sql.SqlTrack`).
+* Look at the :doc:`developer documentation <bbcflib_btrack>` for more details.
 
 
 
