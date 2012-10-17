@@ -3,7 +3,7 @@
 import sys
 from bbcflib.bFlatMajor import common
 from bbcflib.bFlatMajor.stream import concatenate
-from bbcflib import btrack as track
+from bbcflib.btrack import FeatureStream
 
 def _sum(scores,denom=None):
     return sum(scores)
@@ -53,7 +53,7 @@ def merge_scores(trackList, method='arithmetic'):
         If one of the scores is 0, 1 is used instead for calculating the mean.
     :rtype: FeatureStream
     """
-    tracks = [track.FeatureStream(common.sentinelize(x,[sys.maxint]*len(x.fields)), x.fields)
+    tracks = [FeatureStream(common.sentinelize(x,[sys.maxint]*len(x.fields)), x.fields)
               for x in trackList]
     tracks = [common.reorder(t,['start','end','score']) for t in tracks]
     fields = [f for f in tracks[0].fields if all([f in t.fields for t in tracks])] # common fields
@@ -90,7 +90,7 @@ def merge_scores(trackList, method='arithmetic'):
                 if elements[i][0] == sys.maxint:
                     tracks.pop(i)
                     elements.pop(i)
-    return track.FeatureStream(_stream(tracks),fields)
+    return FeatureStream(_stream(tracks),fields)
 
 ###############################################################################
 def filter_scores(trackScores,trackFeatures,method='sum',strict=False,annotate=False):
@@ -141,7 +141,7 @@ def filter_scores(trackScores,trackFeatures,method='sum',strict=False,annotate=F
     if isinstance(trackScores,(list,tuple)): trackScores = merge_scores(trackScores,method)
     _ts = common.reorder(trackScores,['start','end'])
     _info_fields = [f for f in trackFeatures.fields if f not in trackScores.fields] if annotate else []
-    return track.FeatureStream(_stream(_ts,trackFeatures), _ts.fields+_info_fields)
+    return FeatureStream(_stream(_ts,trackFeatures), _ts.fields+_info_fields)
 
 ###############################################################################
 def score_by_feature(trackScores,trackFeatures,fn='mean'):
@@ -211,7 +211,7 @@ def score_by_feature(trackScores,trackFeatures,fn='mean'):
     else:
         _fields = ["score"]
     _ts = [common.reorder(t,['start','end','score']) for t in trackScores]
-    return track.FeatureStream(_stream(_ts,trackFeatures), trackFeatures.fields+_fields)
+    return FeatureStream(_stream(_ts,trackFeatures), trackFeatures.fields+_fields)
 
 ###############################################################################
 def window_smoothing( trackList, window_size, step_size=1, stop_val=sys.maxint,
@@ -264,9 +264,9 @@ def window_smoothing( trackList, window_size, step_size=1, stop_val=sys.maxint,
             while win_end < lend:
                 delta = 0
                 steps = [fend-win_start,lend-win_end]
-                if fstart>win_start: steps += [fstart-win_start]
+                if fstart>win_start: steps.append(fstart-win_start)
                 else: delta -= F[0][2]
-                if lstart>win_end:   steps += [lstart-win_end]
+                if lstart>win_end:   steps.append(lstart-win_end)
                 else: delta += F[-1][2]
                 nsteps = min(steps)
                 sst = -(win_start % step_size)%step_size
@@ -276,12 +276,12 @@ def window_smoothing( trackList, window_size, step_size=1, stop_val=sys.maxint,
                     delta *= denom
                     score += delta*sst
                     for step in xrange(sst,nsteps,step_size):
-                        if score>0 and win_center+step>=0 and win_center+step+step_size<=stop_val:
+                        if score>1e-11 and win_center+step>=0 and win_center+step+step_size<=stop_val:
                             yield (win_center+step,win_center+step+step_size,score)
                         score += delta*step_size
                     score -= delta*sen
                 else:
-                    if score>0 and win_center+sst>=0 and win_center+sen+nsteps<=stop_val:
+                    if score>1e-11 and win_center+sst>=0 and win_center+sen+nsteps<=stop_val:
                         yield (win_center+sst,win_center+sen+nsteps,score)
                 win_start += nsteps
                 win_end += nsteps
@@ -296,7 +296,7 @@ def window_smoothing( trackList, window_size, step_size=1, stop_val=sys.maxint,
             while F:
                 delta = 0
                 steps = [fend-win_start]
-                if fstart>win_start: steps += [fstart-win_start]
+                if fstart>win_start: steps.append(fstart-win_start)
                 else: delta -= F[0][2]
                 nsteps = min(steps)
                 sst = -(win_start % step_size)%step_size
@@ -306,12 +306,12 @@ def window_smoothing( trackList, window_size, step_size=1, stop_val=sys.maxint,
                     delta *= denom
                     score += delta*sst
                     for step in xrange(sst,nsteps,step_size):
-                        if score>0 and win_center+step>=0 and win_center+step+step_size<=stop_val:
+                        if score>1e-11 and win_center+step>=0 and win_center+step+step_size<=stop_val:
                             yield (win_center+step,win_center+step+step_size,score)
                         score += delta*step_size
                     score -= delta*sen
                 else:
-                    if score>0 and win_center+sst>=0 and win_center+sen+nsteps<=stop_val:
+                    if score>1e-11 and win_center+sst>=0 and win_center+sen+nsteps<=stop_val:
                         yield (win_center+sst,win_center+sen+nsteps,score)
                 win_start += nsteps
                 win_end += nsteps
@@ -332,7 +332,7 @@ def window_smoothing( trackList, window_size, step_size=1, stop_val=sys.maxint,
     else:
         call = _running_mean
     if isinstance(trackList,(list,tuple)):
-        return [track.FeatureStream(call(common.reorder(t,_f),win_start,denom),fields=_f)
+        return [FeatureStream(call(common.reorder(t,_f),win_start,denom),fields=_f)
                 for n,t in enumerate(trackList)]
     else:
-        return track.FeatureStream(call(common.reorder(trackList,_f),win_start,denom),fields=_f)
+        return FeatureStream(call(common.reorder(trackList,_f),win_start,denom),fields=_f)
