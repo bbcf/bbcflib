@@ -8,11 +8,8 @@ What is it useful for?
 
 Bioinformaticians have to deal with large files in multiple formats.
 This involves tedious conversions, manipulations, and hundreds of very similar scripts that each of us rewrites constantly.
-Also, shell commands have their limits, and most of the time it is simpler/mandatory to use a real programming
-language instead (here we choose Python).
-
-The purpose of **btrack** is to provide an immediate access to the file's content, neither
-having to think about formats' specificities, nor convert or decode binary formats.
+Also, shell commands have their limits, and most of the time it is simpler/mandatory to use a real programming language instead (here we choose Python).
+The purpose of **btrack** is to provide an immediate access to the file's content, neither having to think about formats' specificities, nor convert or decode binary formats.
 
 What formats are supported?
 ---------------------------
@@ -20,7 +17,6 @@ What formats are supported?
 All kinds of raw text files organized in columns can be read (if column fields are specified),
 e.g. **csv**, **sam**, or tab-delimited files.
 The following formats are automatically recognized and decoded:
-
 **bed**, **wig**, **bedGraph**, **bigWig**, **BAM**, **sqlite**, **sga**, **gff** (**gtf**).
 
 URLs pointing to such files (ex.: http://genome.ucsc.edu/goldenPath/help/examples/bedExample2.bed)
@@ -38,15 +34,12 @@ How does is work?
 
 The library is made of two main functions: ``track`` and ``convert``, and two main classes: ``Track`` and ``FeatureStream``.
 
-When one calls the ``track`` function on a file name, it creates a ``Track`` instance that knows
-the format of the file and its field names, records genomic information about the species (if specified).
-It is the interface that gives access to the file's content, similarly to a ``file`` object:
-it does not itself contain the data, but one can ``read`` and ``write`` it.
+When one calls the ``track`` function on a file name, it creates a ``Track`` instance that knows the format of the file and its field names, records genomic information about the species (if specified). It is the interface that gives access to the file's content, similarly to a ``file`` object: it does not itself contain the data, but one can ``read`` and ``write`` it.
 
 Reading a Track object returns a ``FeatureStream`` instance, which is iterable over the data, line by line.
-On purpose, it does **not** load all the data in memory as a list would do. A ``FeatureStream`` is basically
-an iterator that yields tuples of the type ('chr1',12,14,0.5). Once it has been manipulated at will,
-it can be written to another ``Track`` using the latter's ``write`` method.
+On purpose, it does **not** load all the data in memory as a list would do.
+
+A ``FeatureStream`` is basically an iterator that yields tuples of the type ('chr1',12,14,0.5). Once it has been manipulated at will, it can be written to another ``Track`` using the latter's ``write`` method.
 
 The ``convert`` method can translate a file from a given format to another
 
@@ -152,7 +145,7 @@ See :func:`bbcflib.genrep.Assembly` for more on genomic meta info.
 Advanced features
 -----------------
 
-* Create your own stream::
+* Streams can be created programmatically, without reference to a track file, either using a list, or an iterator::
 
     from bbcflib.btrack import FeatureStream
     s = FeatureStream([('chr1',12,13,'a'),('chr1',23,28,'b')],
@@ -161,13 +154,34 @@ Advanced features
     def generator():
         for x in [10,20,30]:
             yield ('chr1',x,x+5)
+
     s = FeatureStream(generator(), fields=['chr','start','end'])
 
-* Change default data types, etc
 
-* Convert to/from UCSC interval convention
+* Items are converted to a specific type upon reading and writing, depending on the field name. 
+  The conversion function are given in a dictionary called ``intypes`` (converting from text to Python object) and ``outtypes``
+  (converting from Python to a text format). For example, the default type for a 'score' field is *float*. 
+  If your file contains scores like "NA" which are not convertible with *float()*, then you can specify::
 
-* Read and write simultaneously in the same Sqlite file
+        >>> t = track("myfile.bedgraph",intypes={'score':str})
+        >>> t.read().next()
+        ('chr1', 1, 101, 'NA')
+
+   Similarly you can convert when writing to file::
+
+        >>> t = track("myfile.bedgraph",outtypes={'score': lambda x=0: "%s" %int(x+.5)})
+        >>> t.write([('chr1',10,14,23.56)])
+        "chr1    10      14      24"
+
+* To convert from Ensembl-formatted file to the UCSC interval convention::
+
+        >>> t = track("myfile.bedgraph")
+        >>> ensembl_to_ucsc(t.read()).next()
+        ('chr1', 0, 101, 1.0)
+	>>> stream = FeatureStream([('chr1',10,14,23.56)],fields=t.fields)
+        >>> t.write(ucsc_to_ensembl(stream),mode='append')
+        "chr1    11      14      23.56"
+
 
 
 bFlatMajor: data manipulations
@@ -175,7 +189,7 @@ bFlatMajor: data manipulations
 
 **btrack** basically parses track files but does not transform the original data.
 To manipulate your data, the **bbcflib** library provides powerful tools to concatenate, intersect, annotate, etc.
-It will always take ``FeatureStream`` objects as input, so first opens the track using ``btrack.track``,
+It will always take ``FeatureStream`` objects as input, so first open the track using ``btrack.track``,
 then ``read`` it and provide the ouput stream to one of **bFlatMajor**'s functions.
 Most of them will also return streams, so that you can pass it to another function,
 and write the final result to a new ``Track``.
