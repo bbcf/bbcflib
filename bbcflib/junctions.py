@@ -6,7 +6,7 @@ Module: bbcflib.junctions
 Methods of the bbcflib's `junctions` worflow. The main function is ``junctions_workflow()``,
 and is usually called by bbcfutils' ``run_junctions.py``, e.g. command-line:
 
-``python run_junctions.py -v local -c gapkowt.config -d junctions``
+``python run_junctions.py -v local -c myconfigfile.config -d junctions``
 
 Runs SOAPsplice to find splice junctions from paired-end reads:
 `<http://soap.genomics.org.cn/soapsplice.html>`_
@@ -82,11 +82,11 @@ def convert_junc_file(filename, assembly):
     convert(sql,bed)
     return sql, bed
 
-def discovery(juncfile, assembly):
+def discovery(junc_bed, assembly):
     """Take the intersection between splicing regions found by SOAPsplice, and known exons annotation."""
     known_junctions = {}
     new_junctions = {}
-    junc_track = track(juncfile, fields=['chr','start','end','strand','score'], chrmeta=assembly.chrmeta)
+    junc_track = track(junc_bed, chrmeta=assembly.chrmeta)
     exon_track = assembly.exon_track()
     e_chr,e_start,e_end,exon,e_strand,phase = exon_track.next()
     for chrom in assembly.chrmeta:
@@ -109,7 +109,6 @@ def junctions_workflow(ex, job, bam_files, index, path_to_soapsplice=None, soaps
     """
     Main function of the workflow.
 
-    :rtype: None
     :param ex: the bein's execution Id.
     :param job: a Job object (or a dictionary of the same form) as returned from HTSStation's frontend.
     :param bam_files: a complicated dictionary such as returned by mapseq.get_bam_wig_files.
@@ -117,6 +116,7 @@ def junctions_workflow(ex, job, bam_files, index, path_to_soapsplice=None, soaps
     :param path_to_soapsplice: (str) specify the path to the program if it is not in your $PATH.
     :param soapsplice_options: (dict) SOAPsplice options, e.g. {'-q',1} .
     :param via: 'local' or 'lsf'.
+    :rtype: str, str, str
     """
     assembly = genrep.Assembly(assembly=job.assembly_id)
     unmapped_fastq = {}
@@ -144,6 +144,7 @@ def junctions_workflow(ex, job, bam_files, index, path_to_soapsplice=None, soaps
         ex.add(sql, description=sql_descr)
         ex.add(bed, description=bed_descr)
         ex.add(bam, description=bam_descr)
+        #discovery(bed)
     return sql,bed,bam
 
 
