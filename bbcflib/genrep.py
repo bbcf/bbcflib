@@ -215,9 +215,9 @@ class Assembly(object):
         :rtype: (str,int)
         """
         if out is None: out = unique_filename_in()
-        _to_close = False
+        _is_filename = False
         if isinstance(out,basestring):
-            _to_close = True
+            _is_filename = True
             out = open(out,"w")
 
         def _push_slices(slices,start,end,name,cur_chunk):
@@ -288,7 +288,9 @@ class Assembly(object):
                             cur_chunk = 0
                     size += cur_chunk
                     slices = _flush_slices(slices,cid[0],chrom['name'],out,pref)
-        if _to_close: out.close()
+        if _is_filename: 
+            out.close()
+            out = out.name
         return (out,size)
 
     def statistics(self, output=None, frequency=False, matrix_format=False):
