@@ -1,7 +1,7 @@
 RNA-seq
 =======
 
-Here is a short tutorial showing how to launch a RNA-seq analysis from the interface http://htsstation.epfl.ch/rnaseq/.
+Here is a short tutorial showing how to launch a RNA-seq analysis from the interface http://htsstation.epfl.ch/rnaseq/_.
 
 
 New Job

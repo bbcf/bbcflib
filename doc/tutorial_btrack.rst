@@ -1,20 +1,20 @@
 btrack
 ======
 
-Here is a short tutorial showing how to manage track files with the Python library *btrack* from the *bbcflib* package.
+Here is a short tutorial showing how to manage track files with the Python library **btrack** from the **bbcflib** package.
 
 What is it useful for?
 ----------------------
 
 Bioinformaticians have to deal with very big files in multiple formats. This includes tedious conversions, manipulations, and hundreds of very similar scripts that each of them has to rewrite for himself. Also, bash commands have their limits, and most of the time it is simpler/mandatory to use a real programming language instead (here we choose Python).
-The purpose of *btrack* is to provide an immediate access to the file's content, neither having to think about formats' specificities, nor convert or decode binary formats.
+The purpose of **btrack** is to provide an immediate access to the file's content, neither having to think about formats' specificities, nor convert or decode binary formats.
 
 What formats are supported?
 ---------------------------
 
 All kinds of raw text files organized in columns can be read (if column fields are specified), e.g. *csv*, *sam*, or tab-delimited files.
 The following formats are automatically recognized and decoded:
-*bed*, *wig*, *bedGraph*, *bigWig*, *BAM*, *sqlite*, *sga*, *gff* (*gtf*).
+**bed**, **wig**, **bedGraph**, **bigWig**, **BAM**, **sqlite**, **sga**, **gff** (**gtf**).
 
 Glossary
 --------
@@ -26,15 +26,15 @@ Glossary
 How does is work?
 -----------------
 
-The library is made of two main functions: `track` and `convert`, and two main classes: `Track` and `FeatureStream`.
+The library is made of two main functions: ``track`` and ``convert``, and two main classes: ``Track`` and ``FeatureStream``.
 
-When one calls the `track` function on a file name, it creates a `Track` instance that knows the format of the file and its field names, records genomic information about the species (if specified). It is the interface that gives access to the file's content, similarly to a `file` object: it does not itself contain the data, but one can `read` and `write` it.
+When one calls the ``track`` function on a file name, it creates a ``Track`` instance that knows the format of the file and its field names, records genomic information about the species (if specified). It is the interface that gives access to the file's content, similarly to a ``file`` object: it does not itself contain the data, but one can ``read`` and ``write`` it.
 
-When one reads a Track object, one gets a `FeatureStream` instance, which is an iterable over the data, line by line. On purpose, it does **not** load all the data in memory as a list would do.
+When one reads a Track object, one gets a ``FeatureStream`` instance, which is an iterable over the data, line by line. On purpose, it does **not** load all the data in memory as a list would do.
 
-A `FeatureStream` is basically an iterator that yields tuples of the type ('chr1',12,14,0.5). Once it has been manipulated at will, it can be written to another `Track` using the latter's `write` method.
+A ``FeatureStream`` is basically an iterator that yields tuples of the type ('chr1',12,14,0.5). Once it has been manipulated at will, it can be written to another ``Track`` using the latter's ``write`` method.
 
-The `convert` method can translate a file from a given format to another
+The ``convert`` method can translate a file from a given format to another
 
 How do I use it?
 ----------------
@@ -54,6 +54,7 @@ How do I use it?
 2. Read the content of a track::
 
     >>> s = t.read()
+
     >>> s
     <bbcflib.btrack.FeatureStream object at 0x101244350>
     >>> s.next()
@@ -77,12 +78,13 @@ How do I use it?
 
     >>> out = track("newfile.wig")
     >>> out.write(s)  # 's' is a FeatureStream
-    >>> out
-    <bbcflib.btrack.bin.WigTrack object at 0x101769e90>
     >>> out.close()
 
+    >>> out
+    <bbcflib.btrack.bin.WigTrack object at 0x101769e90>
+
     # Note: "newfile.wig" is created only at the time you write to it
-    # Note: just a `file`, a `Track` may not be written entirely until you `close` it!
+    # Note: a `Track` may not be written entirely until you `close` it!
 
 4. Convert a track::
 
@@ -114,14 +116,17 @@ How do I use it?
     # Read only some fields:
     s = t.read(fields=['start','score'])
 
-    # Read only features which either are on chr1 and start within 1000 bp from the beginning
-    # the chromosomes, of are on chr2 and end between 3907400 and 4302000:
-    sel = [{'chr':'chr1','start':(1,1000)}, {'chr':'chr2','end':(3907400,4302000)}]
+    # Read only features which either are on chr1 and start within 1000 bp
+    # from the beginning of the chromosome, of are on chr2 and end between
+    # 3907400 and 4302000:
+    sel = [{'chr':'chr1','start':(1,1000)},
+           {'chr':'chr2','end':(3907400,4302000)}]
     s = t.read(selection=sel)
 
 7. Read a custom text file::
 
-    t = track("myfile", format='txt', separator='\t', fields=['seq','name','start','info'])
+    t = track("myfile", format='txt', separator='\t',
+                        fields=['seq','name','start','info'])
 
 8. Loop on chromosomes::
 
@@ -133,22 +138,23 @@ How do I use it?
 Advanced features
 -----------------
 
+Under construction...
 
 bFlatMajor: data manipulations
 ------------------------------
 
-*btrack* basically parses track files. In no occasion it transforms the original data. To manipulate your data, the *bbcflib* library provides powerful tools to concatenate, intersect, annotate, etc. It will always take `FeatureStream` objects as input, so one first opends the track using `btrack.track`, then `read` it and give the ouput stream to one of the *bFlatMajor*'s functions. Each of them will also return streams, so that you can rewrite the result to a new `Track`.
+**btrack** basically parses track files. In no occasion it transforms the original data. To manipulate your data, the **bbcflib** library provides powerful tools to concatenate, intersect, annotate, etc. It will always take ``FeatureStream`` objects as input, so one first opends the track using ``btrack.track``, then ``read`` it and give the ouput stream to one of the **bFlatMajor**'s functions. Each of them will also return streams, so that you can rewrite the result to a new ``Track``.
 
-For more info, see *bFlatMajor*'s *developer documentation<http://bbcf.epfl.ch/bbcflib/bbcflib_bFlatMajor.html>_* .
+For more info, see **bFlatMajor**'s `developer documentation <http://bbcf.epfl.ch/bbcflib/bbcflib_bFlatMajor.html>`_ .
 
 Miscellaneous notes
 -------------------
 
-* Handling BAM files requires *samtools<http://samtools.sourceforge.net/>_* .
-* Handling bigWig files requires UCSC's *bigWigToBedGraph* (for reading) and *bedGraphToBigWig* (for writing) - look *here<http://genome.ucsc.edu/goldenPath/help/bigWig.html>_* .
-* Looping on chromosomes is necessary for several manipulations (see `bbcflib.bFlatMajor`).
-* The `Track` class is the parent of multiple subclasses, one for each type of track file (such as `BedTrack` or `WigTrack`).
-* Look at the *developer's documentation<http://bbcf.epfl.ch/bbcflib/bbcflib_btrack.html>_* for more details.
+* Handling BAM files requires `samtools <http://samtools.sourceforge.net/>`_ .
+* Handling bigWig files requires UCSC's *bigWigToBedGraph* (for reading) and *bedGraphToBigWig* (for writing) - look `here <http://genome.ucsc.edu/goldenPath/help/bigWig.html>`_ .
+* Looping on chromosomes is necessary for several manipulations (see ``bbcflib.bFlatMajor``).
+* The ``Track`` class is the parent of multiple subclasses, one for each type of track file (such as ``BedTrack`` or ``WigTrack``).
+* Look at the `developer's documentation <http://bbcf.epfl.ch/bbcflib/bbcflib_btrack.html>`_ for more details.
 
 
 
