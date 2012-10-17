@@ -19,6 +19,7 @@ Tutorials
    tutorial_4cseq
    tutorial_rnaseq
    tutorial_snp
+   tutorial_btrack
    tutorial_config_files
 
 Methods description
