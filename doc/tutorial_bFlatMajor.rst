@@ -115,7 +115,7 @@ How do I find the function I need?
 Here are brief descriptions of the main functions (subject to changes):
 
 bFlatMajor.common functions:
-----------------------------
+############################
 
 ``from bbcflib.bFlatMajor.common import *``
 
@@ -149,7 +149,7 @@ bFlatMajor.common functions:
   break every two overlapping regions A,B into three: A - A|B - B.
 
 bFlatMajor.stream functions:
-----------------------------
+############################
 
 ``from bbcflib.bFlatMajor.stream import *``
 
@@ -173,7 +173,7 @@ bFlatMajor.stream functions:
   apply to the scores a smoothing filter along the sequence.
 
 bFlatMajor.numeric functions:
-----------------------------
+#############################
 
 ``from bbcflib.bFlatMajor.numeric import *``
 
@@ -187,7 +187,7 @@ bFlatMajor.numeric functions:
   return an array with for each input score stream, the average score over all features.
 
 bFlatMajor.figure functions:
-----------------------------
+############################
 
 ``from bbcflib.bFlatMajor.figure import *``
 
