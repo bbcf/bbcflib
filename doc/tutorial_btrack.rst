@@ -46,8 +46,9 @@ Glossary
 How does is work?
 -----------------
 
-The library is made of two main functions: ``track`` and ``convert``, and two main classes:
-``Track`` and ``FeatureStream``.
+The library is made of two main functions: :func:`track <bbcflib.btrack.track>` 
+and :func:`convert <bbcflib.btrack.convert>`, and two main classes:
+:func:`Track <bbcflib.btrack.Track>` and :func:`FeatureStream <bbcflib.btrack.FeatureStream>`.
 
 When one calls the ``track`` function on a file name, it creates a ``Track`` instance that knows
 the format of the file and its field names, and records genomic information about the species (if specified).
@@ -219,7 +220,7 @@ then ``read`` it and provide the output stream to one of **bFlatMajor**'s functi
 Most of them will also return streams, so that you can pass it to another function,
 and write the final result to a new ``Track``.
 
-For more info, see **bFlatMajor**'s `tutorial <http://bbcf.epfl.ch/bbcflib/tutorial_bFlatMajor.html>`_ 
+For more info, see **bFlatMajor**'s :doc:`tutorial <tutorial_bFlatMajor>` 
 and :doc:`developer documentation <bbcflib_bFlatMajor>`.
 
 Miscellaneous notes
