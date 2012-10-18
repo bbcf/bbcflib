@@ -179,9 +179,12 @@ Advanced features
 * Fields order (how to access a field's entry - s.fields.index('field_name'))
 * How to use ``combine``
 * Build your own function
-* The need to ``fusion`` or ``cobble``
+* The need for ``fusion`` or ``cobble``
 
-Miscellaneous notes
--------------------
+More documentation
+------------------
 
-* For more details on how these functions work, look at the :doc:`developer documentation <bbcflib_bFlatMajor>`.
+* For more details on how each individual function works,
+  look at the :doc:`developer documentation <bbcflib_bFlatMajor>`.
+
+
