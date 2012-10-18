@@ -176,24 +176,24 @@ Advanced features
   (converting from Python to a text format). For example, the default type for a 'score' field is *float*.
   If your file contains scores like "NA" which are not convertible with *float()*, then you can specify::
 
-        >>> t = track("myfile.bedgraph",intypes={'score':str})
-        >>> t.read().next()
-        ('chr1', 1, 101, 'NA')
+    >>> t = track("myfile.bedgraph",intypes={'score':str})
+    >>> t.read().next()
+    ('chr1', 1, 101, 'NA')
 
   Similarly you can convert when writing to file::
 
-        >>> t = track("myfile.bedgraph",outtypes={'score': lambda x=0: "%s" %int(x+.5)})
-        >>> t.write([('chr1',10,14,23.56)])
-        "chr1    10      14      24"
+    >>> t = track("myfile.bedgraph",outtypes={'score': lambda x=0: "%s" %int(x+.5)})
+    >>> t.write([('chr1',10,14,23.56)])
+    "chr1    10      14      24"
 
 * To switch between the Ensembl and the UCSC numbering convention (0- or 1-based starts)::
 
-        >>> t = track("myfile.bedgraph")
-        >>> ensembl_to_ucsc(t.read()).next()
-        ('chr1', 0, 101, 1.0)
-        >>> stream = FeatureStream([('chr1',10,14,23.56)],fields=t.fields)
-        >>> t.write(ucsc_to_ensembl(stream),mode='append')
-        "chr1    11      14      23.56"
+    >>> t = track("myfile.bedgraph")
+    >>> ensembl_to_ucsc(t.read()).next()
+    ('chr1', 0, 101, 1.0)
+    >>> stream = FeatureStream([('chr1',10,14,23.56)],fields=t.fields)
+    >>> t.write(ucsc_to_ensembl(stream),mode='append')
+    "chr1    11      14      23.56"
 
 * To ensure that a track file is sorted (w.r.t. chromosome, start and end), one can use the following function::
 

@@ -67,9 +67,23 @@ Finally, write the result to a new file using **btrack**::
 
 For many of the **bFlatMajor**'s functions,
 
-1. The track must be sorted w.r.t. chromosome, start, end (in this priority order). This can be done with a shell ``sort``, but we advise to use the inner ``bbcflib.bFlatMajor.common.sorted_stream`` for this purpose.
+1. The track must be sorted w.r.t. chromosome, start, end (in this priority order).
+   This can be done with a shell ``sort``, but we advise to use the inner
+   ``bbcflib.bFlatMajor.common.sorted_stream`` for this purpose.
 
-2. The function must be applied chromosome by chromosome.
+2. The function must be applied chromosome by chromosome. Typically::
+
+    from bbcflib.bFlatMajor.common import fusion
+    from bbcflib.btrack import track
+    t = track("byfile.bed", chrmeta='mm9')
+    out = track("newfile.bed")
+    for chr in t.chrmeta:
+        s = t.read(chr)
+        s1 = fusion(s)
+        out.write(s1)
+
+    # Running ``fusion`` on the whole genome would paste together
+    # regions from different chromosomes.
 
 How do I find the function I need?
 ----------------------------------
