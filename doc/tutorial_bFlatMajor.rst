@@ -1,7 +1,8 @@
 Track manipulations
 ===================
 
-Here is a short tutorial showing how to manipulate streams of data with the Python library **bFlatMajor** from the **bbcflib** package.
+Here is a short tutorial showing how to manipulate streams of data with the Python library
+**bFlatMajor** from the **bbcflib** package.
 
 What is it useful for?
 ----------------------
@@ -68,8 +69,9 @@ Finally, write the result to a new file using **btrack**::
 For many of the **bFlatMajor**'s functions,
 
 1. The track must be sorted w.r.t. chromosome, start, end (in this priority order).
-   This can be done with a shell ``sort``, but we advise to use the inner
-   ``bbcflib.bFlatMajor.common.sorted_stream`` for this purpose.
+   This can be done with a shell ``sort``, but we propose to use the inner
+   ``bbcflib.bFlatMajor.common.sorted_stream`` on the stream itself for this purpose
+   (will not modify the original file).
 
 2. The function must be applied chromosome by chromosome. Typically::
 
@@ -84,6 +86,9 @@ For many of the **bFlatMajor**'s functions,
 
     # Running ``fusion`` on the whole genome would paste together
     # regions from different chromosomes.
+
+Both concern every function that has to compare two regions' coordinates.
+In general, we advise to always loop on the chomosomes list.
 
 How do I find the function I need?
 ----------------------------------
