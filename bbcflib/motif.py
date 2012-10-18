@@ -88,7 +88,7 @@ def parallel_meme( ex, assembly, regions, name=None, chip=False, meme_args=None,
     if not(isinstance(name,list)): name = [name or '_']
     futures = {}
     fasta_files = {}
-    background = assembly.statistics(unique_filename_in())
+    background = assembly.statistics(unique_filename_in(),frequency=True)
     genomeRef = assembly.untar_genome_fasta()
     for i,n in enumerate(name):
         (fasta, size) = assembly.fasta_from_regions( regions[i], out=unique_filename_in(), path_to_ref=genomeRef )
@@ -158,7 +158,7 @@ def save_motif_profile( ex, motifs, assembly, regions, background=None, keep_max
         motifs = {"_": motifs}
 #        raise ValueError("'Motifs' must be a dictionary with keys 'motif_names' and values the PWMs.")
     futures = {}
-    if background is None: background = assembly.statistics(unique_filename_in(),matrix_format=True)
+    if background is None: background = assembly.statistics(unique_filename_in(),frequency=True,matrix_format=True)
     for name, pwm in motifs.iteritems():
         output = unique_filename_in()
         futures[name] = ( output, motif_scan.nonblocking( ex, fasta, pwm, background,
