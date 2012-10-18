@@ -143,7 +143,7 @@ bFlatMajor.stream functions:
 bFlatMajor.numeric functions:
 ----------------------------
 
-``from bbcflib.bFlatMajor.stream import *``
+``from bbcflib.bFlatMajor.numeric import *``
 
 * ``score_array``: returns a vector of scores, one for each unique name in the stream.
 * ``correlation``: calculates the auto-correlation.

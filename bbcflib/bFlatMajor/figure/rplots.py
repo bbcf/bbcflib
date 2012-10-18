@@ -1,5 +1,5 @@
 """
-These functions use `rpy2` to bind *R* plotting functions with data from numpy arrays. 
+These functions use `rpy2` to bind *R* plotting functions with data from numpy arrays.
 Each function takes the following arguments:
 
 * output: the filename, a random name will be generated if this is None (default None),
@@ -46,7 +46,7 @@ def _end(lopts,last,**kwargs):
 ############################################################
 ############################################################
 def scatterplot(X,Y,output=None,format='pdf',new=True,last=True,**kwargs):
-    """Creates a scatter plot of X vs Y. 
+    """Creates a scatter plot of X vs Y.
      If Y is a list of arrays, a different color will be used for each of them."""
     plotopt,output = _begin(output=output,format=format,new=new,**kwargs)
     robjects.r.assign('xdata',numpy2ri.numpy2ri(X))
@@ -62,7 +62,7 @@ def scatterplot(X,Y,output=None,format='pdf',new=True,last=True,**kwargs):
 ############################################################
 ############################################################
 def lineplot(X,Y,output=None,format='pdf',new=True,last=True,**kwargs):
-    """Creates a line plot of X vs Y. 
+    """Creates a line plot of X vs Y.
      If Y is a list of arrays, a different color will be used for each of them."""
     plotopt,output = _begin(output=output,format=format,new=new,**kwargs)
     robjects.r.assign('xdata',numpy2ri.numpy2ri(X))
@@ -124,13 +124,21 @@ def heatmap(M,output=None,format='pdf',new=True,last=True,
 ############################################################
 def pairs(M,X=None,labels=None,
           output=None,format='pdf',new=True,last=True,**kwargs):
-    """Pairs plot. 
-    If *X* is a vector of length *m*, *M* must be an *n(n+1)/2 x m* matrix and the *(i,j)* plot will show *M[ni+j,] ~ X* as a line plot. 
-    If *X* is `None` then *M* must be an *n x m* matrix and the *(i,j)* plot will show *M[i,] ~ M[j,]* as a density plot.
-    *labels* is a vector of *n* strings used to label plots, defaults to *1,...,n*.
+    """Pairs plot. Returns the name of the output figure.
+
+    :param M,X: If *X* is a vector of length *m*, *M* must be an *n(n+1)/2 x m* matrix
+        and the *(i,j)* plot will show *M[ni+j,] ~ X* as a line plot.
+        If *X* is `None` then *M* must be an *n x m* matrix and the *(i,j)* plot will
+        show *M[i,] ~ M[j,]* as a density plot.
+    :param labels: a vector of *n* strings used to label plots, defaults to *1,...,n*.
+    :param output: (str) name of the output file
+    :param format: (str) image format
+    :param new: (bool) ?
+    :param last: (bool) ?
+    :rtype: str
     """
     plotopt,output = _begin(output=output,format=format,new=new,**kwargs)
-    if X is None: 
+    if X is None:
         robjects.r.assign('Mdata',numpy2ri.numpy2ri(M))
         robjects.r("n = ncol(Mdata)")
     else:
@@ -153,7 +161,7 @@ rowcol = rbind(1+1:n,rowcol)
         robjects.r("labels=as.character(1:n)")
     else:
         robjects.r.assign('labels',numpy2ri.numpy2ri(labels))
-    robjects.r(""" 
+    robjects.r("""
 library(RColorBrewer)
 pline1 = function (y, M, X, col, ...) lines(X,M[,y[y[1]]],col=col,...)
 pline2 = function (x, y, M, X, col, ...) lines(X,M[,y[x[1]]],col=col,...)
@@ -183,12 +191,12 @@ phist = function (x, col, ...) {
         h = hist(log(x), plot=FALSE, br=max(10,length(x)/50))
         hbr = (h$breaks-h$breaks[1])/(h$breaks[length(h$breaks)]-h$breaks[1])
         hbr = usr[1]+(usr[2]-usr[1])*hbr
-        rect(hbr[-length(hbr)], usr[3], hbr[-1], usr[3]+(usr[4]-usr[3])*h$density, 
+        rect(hbr[-length(hbr)], usr[3], hbr[-1], usr[3]+(usr[4]-usr[3])*h$density,
              col=col, border=NA)
     } else {
         h = hist(x, plot=FALSE, br=max(10,length(x)/50))
-        rect(h$breaks[-length(h$breaks)], usr[3], 
-             h$breaks[-1], usr[3]+(usr[4]-usr[3])*h$density, 
+        rect(h$breaks[-length(h$breaks)], usr[3],
+             h$breaks[-1], usr[3]+(usr[4]-usr[3])*h$density,
              col=col, border=NA)
     }
     par(usr=usr,ylog=ylog,xlog=xlog)
