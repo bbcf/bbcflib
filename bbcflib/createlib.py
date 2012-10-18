@@ -213,7 +213,7 @@ def get_libForGrp(ex, group, fasta_or_assembly, new_libraries, grpId, hts_url=No
         return paramslib
 
     if lib_dir is None: lib_dir = os.path.split(ex.remote_working_directory)[0]
-    if not(group.get('library_param_file','null') in ["null",'']):
+    if not(group.get('library_param_file','null') in ["null",'', None]):
         library_filename = os.path.join(lib_dir,'group_'+group['name']+"_paramsFileLibrary.txt")
         paramslib = _paramsFile(library_filename)
         lib_id, ex_libfile = lib_exists( paramslib, new_libraries, hts_url )
