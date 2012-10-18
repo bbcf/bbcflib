@@ -173,13 +173,17 @@ def format_int(i=int()):
     """Return a formatted string from an integer or a string representing an integer."""
     return '%i' % int(i)
 
-def ucsc_to_ensembl(start):
-    """Add +1 to start coordinates going from UCSC to Ensembl annotation."""
-    return format_int(int(start)+1)
+def ucsc_to_ensembl(stream):
+    """Shifts start coordinates 1 base to the right, to map UCSC to Ensembl annotation."""
+    istart = stream.fields.index('start')
+    for item in stream: 
+        yield item[:istart]+(item[istart]+1,)+item[istart+1:]
 
-def ensembl_to_ucsc(start):
-    """Substract 1 to start coordinates going from Ensembl to UCSC annotation."""
-    return format_int(int(start)-1)
+def ensembl_to_ucsc(stream):
+    """Shifts start coordinates 1 base to the left, to map Ensembl to UCSC annotation."""
+    istart = stream.fields.index('start')
+    for item in stream: 
+        yield item[:istart]+(item[istart]-1,)+item[istart+1:]
 
 def check_ordered(source, **kwargs):
     """Read a track-like file *source* once to see if chromosomes are grouped."""

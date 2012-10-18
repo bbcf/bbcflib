@@ -44,12 +44,6 @@ class TextTrack(Track):
         kwargs['fields'] = kwargs.get("fields",['chr','start','end'])
         self.separator = kwargs.get('separator',"\t")
         Track.__init__(self,path,**kwargs) # super(TextTrack, self).__init__(self,path,**kwargs)
-        if kwargs.get('ucsc_to_ensembl',False):
-            kwargs.setdefault('outtypes', {})
-            kwargs['outtypes']['start'] = ucsc_to_ensembl
-        if kwargs.get('ensembl_to_ucsc',False):
-            kwargs.setdefault('outtypes', {})
-            kwargs['outtypes']['start'] = ensembl_to_ucsc
         self.intypes = dict((k,v) for k,v in _in_types.iteritems() if k in self.fields)
         if isinstance(kwargs.get('intypes'),dict): self.intypes.update(kwargs["intypes"])
         self.outtypes = dict((k,v) for k,v in _out_types.iteritems() if k in self.fields)
