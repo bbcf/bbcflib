@@ -29,6 +29,9 @@ The format is recognized mostly when reading the corresponding file extensions:
 URLs pointing to such files (ex.: http://genome.ucsc.edu/goldenPath/help/examples/bedExample2.bed)
 and gzipped files are handled automatically.
 
+Ensure that your files respect exactly their format's specifications, without any extra lines
+at the end or in the body of the file, except for specific headers.
+
 Glossary
 --------
 

@@ -21,6 +21,9 @@ This tutorial assumes that you already went through
 `btrack's tutorial <http://bbcf.epfl.ch/bbcflib/tutorial_btrack.html>`_,
 and thus a *stream* in this context is a short name for a ``btrack.FeatureStream`` object.
 
+A ``FeatureStream`` is an iterator, thus **a stream can be read only once**.
+To read the data a second time, one must recreate the stream (read the track again).
+
 How do I use it?
 ----------------
 
@@ -66,7 +69,7 @@ Finally, write the result to a new file using **btrack**::
     >>> t.write(s1)
     >>> t.close()
 
-For many of the **bFlatMajor**'s functions,
+For many of **bFlatMajor**'s functions,
 
 1. The track must be sorted w.r.t. chromosome, start, end (in this priority order).
    This can be done with a shell ``sort``, but we propose to use the inner
@@ -105,6 +108,8 @@ Here are brief descriptions of the main functions (subject to changes):
 bFlatMajor.common functions:
 ----------------------------
 
+``from bbcflib.bFlatMajor.common import *``
+
 * ``copy``: return n independant copies of the input stream.
 * ``select``: keeps only the specified fields.
 * ``reorder``: change the fields' order.
@@ -123,6 +128,8 @@ bFlatMajor.common functions:
 bFlatMajor.stream functions:
 ----------------------------
 
+``from bbcflib.bFlatMajor.stream import *``
+
 * ``getNearestFeature``: find the nearest gene to each of the input's features.
 * ``concatenate``: makes a single stream from the union of several ones.
 * ``selection``: filters elements of a stream w.r.t. some given criteria.
@@ -136,6 +143,8 @@ bFlatMajor.stream functions:
 bFlatMajor.numeric functions:
 ----------------------------
 
+``from bbcflib.bFlatMajor.stream import *``
+
 * ``score_array``: returns a vector of scores, one for each unique name in the stream.
 * ``correlation``: calculates the auto-correlation.
 * ``feature_matrix``: returns an array with names as rows and scores as columns, one column for each input score stream.
@@ -144,19 +153,35 @@ bFlatMajor.numeric functions:
 bFlatMajor.figure functions:
 ----------------------------
 
+``from bbcflib.bFlatMajor.figure import *``
+
 * ``scatterplot``: scatter plot (2-d points).
 * ``lineplot``: same, but points are bounded by lines.
 * ``boxplot``: box plot (quantile plot).
 * ``heatmap``: heat map (2-d colored matrix).
 * ``pairs``: a scatter plot of each pair of variables one against the other.
 
+Common errors
+-------------
+
+* **StopIteration**: The stream is empty, but one tries to read its next element.
+* **IndexError**: Most of the time, this is due to an incoherence with the number of fields,
+  or a required field that was not found.
+* **TypeError**: Common fields, such as 'chr','start','end','frame','strand','score', have
+  specific types (resp. str,int,int,int,int,float). Ensure that if you give such a name to a field,
+  its entries have the right type.
+* **ValueError**: Can have a lot of different causes, but often due to conversion issues
+  (see **TypeError**). Ensure that numeric entries are not surrounded by quotes.
+
 Advanced features
 -----------------
 
-* Under construction...
+* Fields order (how to access a field's entry - s.fields.index('field_name'))
+* How to use ``combine``
+* Build your own function
+* The need to ``fusion`` or ``cobble``
 
 Miscellaneous notes
 -------------------
 
-* Under construction...
-
+* For more details on how these functions work, look at the :doc:`developer documentation <bbcflib_bFlatMajor>`.
