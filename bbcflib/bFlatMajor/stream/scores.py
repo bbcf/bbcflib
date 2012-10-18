@@ -293,36 +293,36 @@ def window_smoothing( trackList, window_size, step_size=1, stop_val=sys.maxint,
                         win_start = max(win_start,fstart-window_size)
                         win_end = win_start+window_size
                         if win_end > stop_val: break
-            while F:
-                delta = 0
-                steps = [fend-win_start]
-                if fstart>win_start: steps.append(fstart-win_start)
-                else: delta -= F[0][2]
-                nsteps = min(steps)
-                sst = -(win_start % step_size)%step_size
-                sen = -(win_start+nsteps % step_size)%step_size
-                win_center = (win_start+win_end)/2
-                if abs(delta) > 1e-11:
-                    delta *= denom
-                    score += delta*sst
-                    for step in xrange(sst,nsteps,step_size):
-                        if score>1e-11 and win_center+step>=0 and win_center+step+step_size<=stop_val:
-                            yield (win_center+step,win_center+step+step_size,score)
-                        score += delta*step_size
-                    score -= delta*sen
-                else:
-                    if score>1e-11 and win_center+sst>=0 and win_center+sen+nsteps<=stop_val:
-                        yield (win_center+sst,win_center+sen+nsteps,score)
-                win_start += nsteps
-                win_end += nsteps
-                if fend <= win_start:
-                    F.pop(0)
-                    if F:
-                        fstart = F[0][0]
-                        fend = F[0][1]
-                        win_start = max(win_start,fstart-window_size)
-                        win_end = win_start+window_size
-                        if win_end > stop_val: break
+        while F:
+            delta = 0
+            steps = [fend-win_start]
+            if fstart>win_start: steps.append(fstart-win_start)
+            else: delta -= F[0][2]
+            nsteps = min(steps)
+            sst = -(win_start % step_size)%step_size
+            sen = -(win_start+nsteps % step_size)%step_size
+            win_center = (win_start+win_end)/2
+            if abs(delta) > 1e-11:
+                delta *= denom
+                score += delta*sst
+                for step in xrange(sst,nsteps,step_size):
+                    if score>1e-11 and win_center+step>=0 and win_center+step+step_size<=stop_val:
+                        yield (win_center+step,win_center+step+step_size,score)
+                    score += delta*step_size
+                score -= delta*sen
+            else:
+                if score>1e-11 and win_center+sst>=0 and win_center+sen+nsteps<=stop_val:
+                    yield (win_center+sst,win_center+sen+nsteps,score)
+            win_start += nsteps
+            win_end += nsteps
+            if fend <= win_start:
+                F.pop(0)
+                if F:
+                    fstart = F[0][0]
+                    fend = F[0][1]
+                    win_start = max(win_start,fstart-window_size)
+                    win_end = win_start+window_size
+                    if win_end > stop_val: break
 
     denom = 1.0/window_size
     win_start = -window_size
