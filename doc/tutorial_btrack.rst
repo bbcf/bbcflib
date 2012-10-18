@@ -171,7 +171,8 @@ Advanced features
 
 
 * Items are converted to a specific type upon reading and writing, depending on the field name.
-  The conversion function are given in a dictionary called ``intypes`` (converting from text to Python object) and ``outtypes``
+  The conversion functions are given in a dictionary called ``intypes`` (converting from text to Python object)
+  and ``outtypes``
   (converting from Python to a text format). For example, the default type for a 'score' field is *float*.
   If your file contains scores like "NA" which are not convertible with *float()*, then you can specify::
 
@@ -185,7 +186,7 @@ Advanced features
         >>> t.write([('chr1',10,14,23.56)])
         "chr1    10      14      24"
 
-* To convert from Ensembl-formatted file to the UCSC interval convention::
+* To switch between the Ensembl and the UCSC numbering convention (0- or 1-based starts)::
 
         >>> t = track("myfile.bedgraph")
         >>> ensembl_to_ucsc(t.read()).next()
@@ -206,7 +207,7 @@ bFlatMajor: data manipulations
 **btrack** basically parses track files but does not transform the original data.
 To manipulate your data, the **bbcflib** library provides powerful tools to concatenate, intersect, annotate, etc.
 It will always take ``FeatureStream`` objects as input, so first open the track using ``btrack.track``,
-then ``read`` it and provide the ouput stream to one of **bFlatMajor**'s functions.
+then ``read`` it and provide the output stream to one of **bFlatMajor**'s functions.
 Most of them will also return streams, so that you can pass it to another function,
 and write the final result to a new ``Track``.
 
