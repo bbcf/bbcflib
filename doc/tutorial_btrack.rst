@@ -8,8 +8,10 @@ What is it useful for?
 
 Bioinformaticians have to deal with large files in multiple formats.
 This involves tedious conversions, manipulations, and hundreds of very similar scripts that each of us rewrites constantly.
-Also, shell commands have their limits, and most of the time it is simpler/mandatory to use a real programming language instead (here we choose Python).
-The purpose of **btrack** is to provide an immediate access to the file's content, neither having to think about formats' specificities, nor convert or decode binary formats.
+Also, shell commands have their limits, and most of the time it is simpler/mandatory to use a real
+programming language instead (here we choose Python).
+The purpose of **btrack** is to provide an immediate access to the file's content, neither having
+to think about formats' specificities, nor convert or decode binary formats.
 
 What formats are supported?
 ---------------------------
@@ -25,21 +27,30 @@ and gzipped files are handled automatically.
 Glossary
 --------
 
-* **track**: any kind of file that records at least a position in the genome, usually many of them, either intervals (e.g. gene positions) or scores (e.g. density of reads in a give region). By extension, any object containing the same information.
-* **stream**: an iterator, similar to a cursor pointing to lines of the track file one by one, never reading back. It can be read over only once.
-* **field**: a name describing the content of a column of a track file, for instance the most usual 'chr', 'start', 'end', 'score', 'name' or 'strand'.
+* **track**: any kind of file that records at least a position in the genome,
+  usually many of them, either intervals (e.g. gene positions) or scores (e.g. density of reads in a give region).
+  By extension, any object containing the same information.
+* **stream**: an iterator, similar to a cursor pointing to lines of the track file one by one,
+  never reading back. It can be read over only once.
+* **field**: a name describing the content of a column of a track file, for instance the most usual
+  'chr', 'start', 'end', 'score', 'name' or 'strand'.
 
 How does is work?
 -----------------
 
-The library is made of two main functions: ``track`` and ``convert``, and two main classes: ``Track`` and ``FeatureStream``.
+The library is made of two main functions: ``track`` and ``convert``, and two main classes:
+``Track`` and ``FeatureStream``.
 
-When one calls the ``track`` function on a file name, it creates a ``Track`` instance that knows the format of the file and its field names, records genomic information about the species (if specified). It is the interface that gives access to the file's content, similarly to a ``file`` object: it does not itself contain the data, but one can ``read`` and ``write`` it.
+When one calls the ``track`` function on a file name, it creates a ``Track`` instance that knows
+the format of the file and its field names, records genomic information about the species (if specified).
+It is the interface that gives access to the file's content, similarly to a ``file`` object:
+it does not itself contain the data, but one can ``read`` and ``write`` it.
 
 Reading a Track object returns a ``FeatureStream`` instance, which is iterable over the data, line by line.
 On purpose, it does **not** load all the data in memory as a list would do.
 
-A ``FeatureStream`` is basically an iterator that yields tuples of the type ('chr1',12,14,0.5). Once it has been manipulated at will, it can be written to another ``Track`` using the latter's ``write`` method.
+A ``FeatureStream`` is basically an iterator that yields tuples of the type ('chr1',12,14,0.5).
+Once it has been manipulated at will, it can be written to another ``Track`` using the latter's ``write`` method.
 
 The ``convert`` method can translate a file from a given format to another
 
@@ -75,8 +86,8 @@ How do I use it?
     ('chrII', 332829, 333810, 'YBR048W', 4.0, 1)
     ...
 
-    >>> s.next()
-    StopIteration     # Already read entirely
+    >>> s.next()      # Already read entirely
+    StopIteration
     >>> s = t.read()  # Reset the stream
     >>> s.next()      # Read again from the beginning
     ('chrII', 59818, 60735, 'YBL087C', 8.0, -1)
@@ -90,8 +101,9 @@ How do I use it?
     >>> out
     <bbcflib.btrack.bin.WigTrack object at 0x101769e90>
 
-    # Note: "newfile.wig" is created only at the time you write to it
-    # Note: a `Track` may not be written entirely until you `close` it!
+   Note: the file "newfile.wig" is created only at the time you begin writing to it.
+
+   Note: a ``Track`` may not be written entirely until you ``close`` it!
 
 4. Convert a track::
 
@@ -111,7 +123,7 @@ How do I use it?
     >>> t.assembly.name
     u'mm9'
 
-See :func:`bbcflib.genrep.Assembly` for more on genomic meta info.
+   See :func:`bbcflib.genrep.Assembly` for more on genomic meta info.
 
 6. Make a selection from a track::
 
@@ -158,16 +170,16 @@ Advanced features
     s = FeatureStream(generator(), fields=['chr','start','end'])
 
 
-* Items are converted to a specific type upon reading and writing, depending on the field name. 
+* Items are converted to a specific type upon reading and writing, depending on the field name.
   The conversion function are given in a dictionary called ``intypes`` (converting from text to Python object) and ``outtypes``
-  (converting from Python to a text format). For example, the default type for a 'score' field is *float*. 
+  (converting from Python to a text format). For example, the default type for a 'score' field is *float*.
   If your file contains scores like "NA" which are not convertible with *float()*, then you can specify::
 
         >>> t = track("myfile.bedgraph",intypes={'score':str})
         >>> t.read().next()
         ('chr1', 1, 101, 'NA')
 
-   Similarly you can convert when writing to file::
+  Similarly you can convert when writing to file::
 
         >>> t = track("myfile.bedgraph",outtypes={'score': lambda x=0: "%s" %int(x+.5)})
         >>> t.write([('chr1',10,14,23.56)])
@@ -178,11 +190,15 @@ Advanced features
         >>> t = track("myfile.bedgraph")
         >>> ensembl_to_ucsc(t.read()).next()
         ('chr1', 0, 101, 1.0)
-	>>> stream = FeatureStream([('chr1',10,14,23.56)],fields=t.fields)
+        >>> stream = FeatureStream([('chr1',10,14,23.56)],fields=t.fields)
         >>> t.write(ucsc_to_ensembl(stream),mode='append')
         "chr1    11      14      23.56"
 
+* To ensure that a track file is sorted (w.r.t. chromosome, start and end), one can use the following function::
 
+    >>> from bbcflib.btrack import check_ordered
+    >>> check_ordered("myfile.bed")
+    True
 
 bFlatMajor: data manipulations
 ------------------------------
@@ -200,9 +216,11 @@ Miscellaneous notes
 -------------------
 
 * Handling BAM files requires `samtools <http://samtools.sourceforge.net/>`_ .
-* Handling bigWig files requires UCSC's *bigWigToBedGraph* (for reading) and *bedGraphToBigWig* (for writing) - look `here <http://genome.ucsc.edu/goldenPath/help/bigWig.html>`_.
+* Handling bigWig files requires UCSC's *bigWigToBedGraph* (for reading) and *bedGraphToBigWig*
+  (for writing) - look `here <http://genome.ucsc.edu/goldenPath/help/bigWig.html>`_.
 * Looping on chromosomes is necessary for several manipulations (see :doc:`bbcflib.bFlatMajor <bbcflib_bFlatMajor>`).
-* The ``Track`` class is the parent of multiple subclasses, one for each type of track file (such as :func:`bbcflib.btrack.text.BedTrack` or :func:`bbcflib.btrack.sql.SqlTrack`).
+* The ``Track`` class is the parent of multiple subclasses, one for each type of track file
+  (such as :func:`bbcflib.btrack.text.BedTrack` or :func:`bbcflib.btrack.sql.SqlTrack`).
 * Look at the :doc:`developer documentation <bbcflib_btrack>` for more details.
 
 

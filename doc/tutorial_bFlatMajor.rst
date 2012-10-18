@@ -3,10 +3,6 @@ Track manipulations
 
 Here is a short tutorial showing how to manipulate streams of data with the Python library **bFlatMajor** from the **bbcflib** package.
 
-This tutorial assumes that you already went through
-`btrack's tutorial <http://bbcf.epfl.ch/bbcflib/tutorial_btrack.html>`_,
-and thus a *stream* in this context is a short name for a ``btrack.FeatureStream`` object.
-
 What is it useful for?
 ----------------------
 
@@ -16,6 +12,13 @@ over the data (see the documentation `here <http://bbcf.epfl.ch/bbcflib/tutorial
 Usually, one wants to modify this data through a sequence of manipulations before writing it back.
 **bFlatMajor** provides a collection of useful functions that take streams as input and perform
 common manipulations such as concatenate, intersect or reorder.
+
+Before starting
+---------------
+
+This tutorial assumes that you already went through
+`btrack's tutorial <http://bbcf.epfl.ch/bbcflib/tutorial_btrack.html>`_,
+and thus a *stream* in this context is a short name for a ``btrack.FeatureStream`` object.
 
 How do I use it?
 ----------------
@@ -61,6 +64,12 @@ Finally, write the result to a new file using **btrack**::
     >>> t = track("newfile.bed", fields=s1.fields)
     >>> t.write(s1)
     >>> t.close()
+
+For many of the **bFlatMajor**'s functions,
+
+1. The track must be sorted w.r.t. chromosome, start, end (in this priority order). This can be done with a shell ``sort``, but we advise to use the inner ``bbcflib.bFlatMajor.common.sorted_stream`` for this purpose.
+
+2. The function must be applied chromosome by chromosome.
 
 How do I find the function I need?
 ----------------------------------
