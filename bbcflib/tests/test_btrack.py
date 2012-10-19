@@ -2,7 +2,7 @@
 import os, shutil, time
 
 # Internal modules #
-from bbcflib.btrack import track, convert, FeatureStream, check_ordered
+from bbcflib.btrack import track, convert, FeatureStream, check_ordered, check_format
 from bbcflib.btrack.text import BedTrack, BedGraphTrack, WigTrack, SgaTrack, GffTrack
 from bbcflib.btrack.bin import BigWigTrack, BamTrack
 from bbcflib.btrack.sql import SqlTrack
@@ -75,6 +75,9 @@ class Test_Track(unittest.TestCase):
         with open(tempfile,'wb') as g:
             g.writelines(["chrX\t1\t4\n", "chrX\t1\t3\n", "chrV\t1\t2\n"])
         self.assertEqual(check_ordered(tempfile),False)
+
+    def test_check_format(self):
+        self.assertTrue(check_format(self.bed))
 
     def test_chr_loop(self):
         tempfile = os.path.join(path,'temp6.txt')

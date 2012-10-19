@@ -176,13 +176,13 @@ def format_int(i=int()):
 def ucsc_to_ensembl(stream):
     """Shifts start coordinates 1 base to the right, to map UCSC to Ensembl annotation."""
     istart = stream.fields.index('start')
-    for item in stream: 
+    for item in stream:
         yield item[:istart]+(item[istart]+1,)+item[istart+1:]
 
 def ensembl_to_ucsc(stream):
     """Shifts start coordinates 1 base to the left, to map Ensembl to UCSC annotation."""
     istart = stream.fields.index('start')
-    for item in stream: 
+    for item in stream:
         yield item[:istart]+(item[istart]-1,)+item[istart+1:]
 
 def check_ordered(source, **kwargs):
@@ -213,6 +213,21 @@ def check_ordered(source, **kwargs):
         last_end = end
     return True
 
+def check_format(source, **kwargs):
+    """Reads the file *source* completely once to ensure that each line respects
+    its *format*'s specifications."""
+    t = track(source, **kwargs)
+    s = t.read()
+    n = 0
+    while 1:
+        n += 1
+        try:
+            x = s.next()
+        except StopIteration:
+            return True
+        except Exception, e:
+            raise ValueError("Line %s of %s is not compatible with format %s: \n%s. \
+                              \nException raised: %s" % (n,source,t.format,x,e))
 
 ################################################################################
 
