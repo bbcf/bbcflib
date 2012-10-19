@@ -23,19 +23,20 @@ from bein.util import touch
 def meme( fasta, outdir, background=None, maxsize=10000000, args=None ):
     """Binding of the ``meme`` motif finder."""
     if args is None: args = []
-    if not("minw" in args): args += ["-minw","6"]
-    if not("maxw" in args): args += ["-maxw","16"]
+    if not("-minw" in args): args += ["-minw","6"]
+    if not("-maxw" in args): args += ["-maxw","16"]
     if os.path.exists(background): args += ["-bfile",background]
     call = ["meme", fasta, "-o", outdir, "-dna", "-maxsize", str(maxsize)]+args
     return {"arguments": call, "return_value": None}
 
 @program
 def memechip( fasta, outdir, background=None, args=None ):
-    """Binding of the ``meme-chip`` motif finder."""
+    """Binding of the ``meme-chip`` pipeline."""
     if args is None: args = []
-    if not("ccut" in args): args += ["-ccut","300"]
-    if not("minw" in args): args += ["-meme-minw","6"]
-    if not("maxw" in args): args += ["-meme-maxw","16"]
+    if not("-ccut" in args): args += ["-ccut","300"]
+    if not("-minw" in args): args += ["-meme-minw","6"]
+    if not("-maxw" in args): args += ["-meme-maxw","16"]
+    if not("-nmeme" in args): args += ["-nmeme","300"]
     if os.path.exists(background): args += ["-bfile",background]
     call = ["meme-chip", fasta, "-o", outdir]+args
     return {"arguments": call, "return_value": None}
