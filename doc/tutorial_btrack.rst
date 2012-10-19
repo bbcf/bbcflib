@@ -46,21 +46,22 @@ Glossary
 How does is work?
 -----------------
 
-The library is made of two main functions: ``track`` and ``convert``, and two main classes:
-``Track`` and ``FeatureStream``.
+The library is made of two main functions: :func:`track <bbcflib.btrack.track>` 
+and :func:`convert <bbcflib.btrack.convert>`, and two main classes:
+:func:`Track <bbcflib.btrack.Track>` and :func:`FeatureStream <bbcflib.btrack.FeatureStream>`.
 
 When one calls the ``track`` function on a file name, it creates a ``Track`` instance that knows
-the format of the file and its field names, records genomic information about the species (if specified).
+the format of the file and its field names, and records genomic information about the species (if specified).
 It is the interface that gives access to the file's content, similarly to a ``file`` object:
 it does not itself contain the data, but one can ``read`` and ``write`` it.
 
-Reading a Track object returns a ``FeatureStream`` instance, which is iterable over the data, line by line.
+Reading a ``Track`` object returns a ``FeatureStream`` instance, which is iterable over the data, line by line.
 On purpose, it does **not** load all the data in memory as a list would do.
 
 A ``FeatureStream`` is basically an iterator that yields tuples of the type ('chr1',12,14,0.5).
 Once it has been manipulated at will, it can be written to another ``Track`` using the latter's ``write`` method.
 
-The ``convert`` method can translate a file from a given format to another
+The ``convert`` method can translate a file from a given format to another.
 
 How do I use it?
 ----------------
@@ -189,7 +190,7 @@ Advanced features
 
   Similarly you can convert when writing to file::
 
-    >>> t = track("myfile.bedgraph",outtypes={'score': lambda x=0: "%s" %int(x+.5)})
+    >>> t = track("myfile.bedgraph",outtypes={'score': lambda x=0:"%s"%int(x+.5)})
     >>> t.write([('chr1',10,14,23.56)])
     "chr1    10      14      24"
 
@@ -198,9 +199,10 @@ Advanced features
     >>> t = track("myfile.bedgraph")
     >>> ensembl_to_ucsc(t.read()).next()
     ('chr1', 0, 101, 1.0)
-    >>> stream = FeatureStream([('chr1',10,14,23.56)],fields=t.fields)
-    >>> t.write(ucsc_to_ensembl(stream),mode='append')
-    "chr1    11      14      23.56"
+    
+    >>> stream = FeatureStream([('chr1',10,14,23.56)], fields=t.fields)
+    >>> t.write(ucsc_to_ensembl(stream), mode='append')
+        # writes "chr1    11    14    23.56"
 
 * To ensure that a track file is sorted (w.r.t. chromosome, start and end), one can use the following function::
 
@@ -218,7 +220,8 @@ then ``read`` it and provide the output stream to one of **bFlatMajor**'s functi
 Most of them will also return streams, so that you can pass it to another function,
 and write the final result to a new ``Track``.
 
-For more info, see **bFlatMajor**'s :doc:`developer documentation <bbcflib_bFlatMajor>` .
+For more info, see **bFlatMajor**'s :doc:`tutorial <tutorial_bFlatMajor>` 
+and :doc:`developer documentation <bbcflib_bFlatMajor>`.
 
 Miscellaneous notes
 -------------------
@@ -226,6 +229,7 @@ Miscellaneous notes
 * Handling BAM files requires `samtools <http://samtools.sourceforge.net/>`_ .
 * Handling bigWig files requires UCSC's *bigWigToBedGraph* (for reading) and *bedGraphToBigWig*
   (for writing) - look `here <http://genome.ucsc.edu/goldenPath/help/bigWig.html>`_.
+* Do not forget to close tracks (``Track.close()``).
 * Looping on chromosomes is necessary for several manipulations (see :doc:`bbcflib.bFlatMajor <bbcflib_bFlatMajor>`).
 * The ``Track`` class is the parent of multiple subclasses, one for each type of track file
   (such as :func:`bbcflib.btrack.text.BedTrack` or :func:`bbcflib.btrack.sql.SqlTrack`).
