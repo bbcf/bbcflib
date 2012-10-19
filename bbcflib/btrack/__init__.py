@@ -186,7 +186,12 @@ def ensembl_to_ucsc(stream):
         yield item[:istart]+(item[istart]-1,)+item[istart+1:]
 
 def check_ordered(source, **kwargs):
-    """Read a track-like file *source* once to see if chromosomes are grouped."""
+    """Read a track-like file *source* once to verify that chromosomes are grouped,
+    and that regions of each chromosome are sorted w.r.t. 'start' and 'end' in ascending order.
+
+    :param source: (str) name of the file.
+    :param **kwargs: ``track`` keyword arguments.
+    """
     t = track(source, **kwargs)
     is_chr = 'chr' in t.fields
     is_start = 'start' in t.fields
@@ -214,8 +219,12 @@ def check_ordered(source, **kwargs):
     return True
 
 def check_format(source, **kwargs):
-    """Reads the file *source* completely once to ensure that each line respects
-    its *format*'s specifications."""
+    """Read a track-like file *source* completely once to ensure that each line respects
+    its format's specifications. Return True if it does.
+
+    :param source: (str) name of the file.
+    :param **kwargs: ``track`` keyword arguments.
+    """
     t = track(source, **kwargs)
     s = t.read()
     n = 0
