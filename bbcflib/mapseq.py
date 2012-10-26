@@ -781,7 +781,7 @@ def map_reads( ex, fastq_file, chromosomes, bowtie_index,
     sorted_bam = sort_bam.nonblocking(ex, bam, via=via).wait()
     sorted_bai = index_bam(ex, sorted_bam)
 ###    sorted_bam = add_and_index_bam( ex, bam, set_file_descr(name+"complete.bam",**bam_descr) )
-    full_stats = bamstats( ex, sorted_bam, via=via )
+    full_stats = bamstats( ex, sorted_bam )
     return_dict = {"fullbam": sorted_bam}
     if is_paired_end and os.path.exists(unmapped+"_1"):
         touch( ex, unmapped )
