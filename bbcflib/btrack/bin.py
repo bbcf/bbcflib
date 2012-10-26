@@ -180,29 +180,34 @@ try:
         def write(self, source, fields, **kw):
             raise NotImplementedError("Writing to bam is not implemented.")
 
-        def count(self, regions, on_strand=False, strict=True, readlen=100):
+        def count(self, regions, on_strand=False, strict=True, readlen=None):
             """
             Counts the number of reads falling in a given set of *regions*.
             Returns a FeatureStream with one element per region, its score being the number of reads
             overlapping (even partially) this region.
 
-            :param regions: any iterable over of tuples of the type `(chr,start,end)`. `chr` has to be
-                present in the BAM file's header. `start` and `end` are 0-based
-                coordinates, counting from the beginning of feature `chr`.
+            :param regions: any iterable over of tuples of the type `(chr,start,end)`. 
             :param on_strand: (bool) restrict to reads on same strand as region.
             :param strict: (bool) restrict to reads entirely contained in the region.
             :param readlen: (int) set readlen if strict == True.
-            :rtype: FeatureStream with fields ['chr','start','end','score'].
+            :rtype: FeatureStream with fields (at least) ['chr','start','end','score'].
             """
             class Counter(object):
-                def __init__(self,on_str,reg_str):
+                def __init__(self,_o,_s,_r,_l):
                     self.n = 0
-                    self.on_str = on_str
-                    self.reg_str = reg_str
+                    self.on_str = _o
+                    self.strict = _s
+                    self.reg = _r
+                    self.len = _l
                 def __call__(self, alignment):
-                    if self.on_str:
-                        if (alignment.is_reverse and self.reg_str>0) or \
-                           (not alignment.is_reverse and self.reg_str<0): return
+                    if self.strict and \
+                            (alignment.pos < self.reg[0] or \
+                                 alignment.pos+(self.len or alignment.rlen) > self.reg[1]):
+                        return
+                    if self.on_str and \
+                            (alignment.is_reverse and self.reg[2]>0) or \
+                            (not alignment.is_reverse and self.reg[2]<0): 
+                        return
                     self.n += 1
 
             self.open()
@@ -221,17 +226,12 @@ try:
                     _sci = 3
                     _sti = -1
             def _count(regions):
-                c = Counter(on_strand,0)
+                c = Counter(on_strand,strict,None,readlen)
                 for x in regions:
                     c.n = 0
-                    if _sti > 0: c.reg_str = x[_sti]
-                    else: c.reg_str = 0
-                    x1 = x[1]
-                    x2 = x[2]
-                    if strict: 
-                        x1 += readlen-1
-                        x2 = max(x1, x2-readlen+1)
-                    self.fetch(x[0], x1, x2, callback=c)
+                    if _sti > 0: c.reg = x[1:3]+(x[_sti],)
+                    else: c.reg = x[1:3]+(0,)
+                    self.fetch(*x[:3], callback=c)
                     #The callback (c.n += 1) is executed for each alignment in a region
                     yield x[:_sci]+(c.n,)+x[_sci+1:]
                 self.close()
