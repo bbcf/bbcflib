@@ -407,7 +407,7 @@ def add_nh_flag(samfile, out=None):
     outfile.close()
     return out
 
-def add_and_index_bam(ex, bamfile, description="", alias=None):
+def add_and_index_bam(ex, bamfile, description="", alias=None, via='local'):
     """Indexes *bamfile* and adds it to the repository.
 
     The index created is properly associated to *bamfile* in the
@@ -415,7 +415,7 @@ def add_and_index_bam(ex, bamfile, description="", alias=None):
     also be copied into place with the correct name.
     """
     if isinstance(description,dict): description = str(description)
-    sort = sort_bam(ex, bamfile)
+    sort = sort_bam.nonblocking(ex, bamfile, via=via).wait()
     index = index_bam(ex, sort)
     ex.add(sort, description=description, alias=alias)
     description = re.sub(r'([^\[\s]+)',r'\1.bai',description,1)
@@ -778,7 +778,7 @@ def map_reads( ex, fastq_file, chromosomes, bowtie_index,
         future = bowtie.nonblocking( ex, bowtie_index, fastq_file, bwtarg, via=via, memory=mlim )
         samfile = future.wait()
         bam = add_nh_flag( samfile )
-    sorted_bam = sort_bam(ex, bam)
+    sorted_bam = sort_bam.nonblocking(ex, bam, via=via).wait()
     sorted_bai = index_bam(ex, sorted_bam)
 ###    sorted_bam = add_and_index_bam( ex, bam, set_file_descr(name+"complete.bam",**bam_descr) )
     full_stats = bamstats( ex, sorted_bam )
@@ -795,7 +795,7 @@ def map_reads( ex, fastq_file, chromosomes, bowtie_index,
         thresh = poisson_threshold( antibody_enrichment*full_stats["actual_coverage"] )
         bam2 = remove_duplicate_reads( sorted_bam, chromosomes, maxhits, thresh, convert=True )
         return_dict['poisson_threshold'] = thresh
-        reduced_bam = sort_bam(ex, bam2)
+        reduced_bam = sort_bam.nonblocking(ex, bam2, via=via).wait()
         index2 = index_bam(ex, reduced_bam)
 #        reduced_bam = add_and_index_bam( ex, bam2, set_file_descr(name+"filtered.bam",**bam_descr) )
         filtered_stats = bamstats( ex, reduced_bam )
@@ -818,7 +818,7 @@ def map_reads( ex, fastq_file, chromosomes, bowtie_index,
                 outfile.write(read)
         outfile.close()
         infile.close()
-        reduced_bam = sort_bam(ex, bam2)
+        reduced_bam = sort_bam.nonblocking(ex, bam2, via=via).wait()
         index2 = index_bam(ex, reduced_bam)
 #        reduced_bam = add_and_index_bam( ex, bam2, set_file_descr(name+"filtered.bam",**bam_descr) )
         return_dict['bam'] = reduced_bam
