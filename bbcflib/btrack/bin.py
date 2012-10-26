@@ -140,12 +140,11 @@ try:
             for h in self.filehandle.header["SQ"]:
                 self.chrmeta[h["SN"]] = {'length':h["LN"]}
             self.close()
-            self.open()
 
         def open(self):
             self.filehandle = pysam.Samfile(self.path, "rb")
-            self.references = self.filehandle.references # reference sequences (@SN)
-            self.lengths = self.filehandle.lengths # reference sequences' length (@LN)
+            if not(os.path.exists(self.path+".bai")):
+                self._run_tool('samtools', ["index",self.path])
             self.fetch = self.filehandle.fetch
             self.pileup = self.filehandle.pileup
 
@@ -160,8 +159,6 @@ try:
             :param fields: (list of str) list of field names.
             """
             self.open()
-            if not(os.path.exists(self.path+".bai")):
-                self._run_tool('samtools', ["index",self.path])
             if not(isinstance(selection,(list,tuple))):
                 selection = [selection]
             if fields is None: fields = self.fields
@@ -183,16 +180,18 @@ try:
         def write(self, source, fields, **kw):
             raise NotImplementedError("Writing to bam is not implemented.")
 
-        def count(self, regions, on_strand = False):
+        def count(self, regions, on_strand=False, strict=True, readlen=100):
             """
             Counts the number of reads falling in a given set of *regions*.
             Returns a FeatureStream with one element per region, its score being the number of reads
             overlapping (even partially) this region.
 
             :param regions: any iterable over of tuples of the type `(chr,start,end)`. `chr` has to be
-                present in the BAM file's header (see `self.references`). `start` and `end` are 0-based
-                coordinates, counting from the beginning of feature `chr` (see `self.lengths`).
+                present in the BAM file's header. `start` and `end` are 0-based
+                coordinates, counting from the beginning of feature `chr`.
             :param on_strand: (bool) restrict to reads on same strand as region.
+            :param strict: (bool) restrict to reads entirely contained in the region.
+            :param readlen: (int) set readlen if strict == True.
             :rtype: FeatureStream with fields ['chr','start','end','score'].
             """
             class Counter(object):
@@ -206,25 +205,36 @@ try:
                            (not alignment.is_reverse and self.reg_str<0): return
                     self.n += 1
 
+            self.open()
             if isinstance(regions,FeatureStream):
-                _f = regions.fields + ['score']
-                _si = regions.fields.index('strand') if 'strand' in regions.fields else -1
+                _f = regions.fields
+                if 'score' not in _f: _f.append('score')
+                _sci = _f.index('score')
+                _sti = _f.index('strand') if 'strand' in _f else -1
             else:
                 if on_strand:
                     _f = ['chr','start','end','strand','score']
-                    _si = 3
+                    _sci = 4
+                    _sti = 3
                 else:
                     _f = ['chr','start','end','score']
-                    _si = -1
+                    _sci = 3
+                    _sti = -1
             def _count(regions):
+                c = Counter(on_strand,0)
                 for x in regions:
-                    if _si > 0: _st = x[_si]
-                    else: _st = None
-                    c = Counter(on_strand,_st)
-                    self.filehandle.fetch(*x[:3], callback=c)
+                    c.n = 0
+                    if _sti > 0: c.reg_str = x[_sti]
+                    else: c.reg_str = 0
+                    x1 = x[1]
+                    x2 = x[2]
+                    if strict: 
+                        x1 += readlen-1
+                        x2 = max(x1, x2-readlen+1)
+                    self.fetch(x[0], x1, x2, callback=c)
                     #The callback (c.n += 1) is executed for each alignment in a region
-                    yield x + (c.n,)
-
+                    yield x[:_sci]+(c.n,)+x[_sci+1:]
+                self.close()
             return FeatureStream(_count(regions),fields=_f)
 
         def coverage(self, region, strand=None):
@@ -233,19 +243,20 @@ try:
             Returns a FeatureStream where the score is the number of reads overlapping this position.
 
             :param region: tuple `(chr,start,end)`. `chr` has to be
-                present in the BAM file's header (see `self.references`). `start` and `end` are 0-based
-                coordinates, counting from the beginning of feature `chr` (see `self.lengths`).
+                present in the BAM file's header. `start` and `end` are 0-based
+                coordinates, counting from the beginning of feature `chr`.
             :strand: if not None, computes a strand-specific coverage ('+' or 1 for forward strand,
                 '-' or -1 for reverse strand).
             :rtype: FeatureStream with fields ['chr','start','end','score'].
             """
+            self.open()
             if strand is not None:
 ##### mask=16 (=0x10): mask reads with "is_reverse" flag set
-                pplus = self.filehandle.pileup(*region,mask=16)
+                pplus = self.pileup(*region,mask=16)
                 if str(strand) in ['-','-1']:
 ##### pysam can't iterate simultaneously on 2 pileups from the same file!
                     pplus = iter([(x.pos,x.n) for x in pplus])
-            pboth = self.filehandle.pileup(*region)
+            pboth = self.pileup(*region)
             chr,start,end = region
             _f = ['chr','start','end','score']
 
@@ -276,6 +287,7 @@ try:
                         score = p0.n-score1
                 if score > 0:
                     yield (chr,s,e+1,score)
+                self.close()
             if str(strand) in ['+','1']:
                 return FeatureStream(_coverage(pplus), fields=_f)
             elif str(strand) in ['-','-1']:
