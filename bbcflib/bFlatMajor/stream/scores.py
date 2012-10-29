@@ -116,26 +116,25 @@ def filter_scores(trackScores,trackFeatures,method='sum',strict=False,annotate=F
     """
     def _stream(ts,tf):
         info_idx = [k for k,f in enumerate(tf.fields) if f not in ts.fields]
-        X = common.sentinelize(ts, [sys.maxint]*len(ts.fields))
-        S = [(-sys.maxint,-sys.maxint,0.0)]
-        for y in tf:
-            info = tuple([y[k] for k in info_idx]) if annotate else ()
-            ystart = y[tf.fields.index('start')]
-            yend = y[tf.fields.index('end')]
-            xnext = S[-1]
-            # Load into S all score items which intersect feature y
-            while xnext[0] < yend:
-                xnext = X.next()
-                if xnext[1] > ystart: S.append(xnext)
-            n = 0
-            while S[n][1] <= ystart: n+=1
-            S = S[n:]
-            for s in S:
-                if strict and (s[0] < ystart or s[1] > yend): continue
-                if s[0] >= yend : continue
-                start = ystart if s[0] < ystart else s[0]
-                end   = yend   if s[1] > yend   else s[1]
-                yield (start,end)+tuple(s[2:])+info
+        tf = common.sentinelize(common.cobble(tf), [sys.maxint]*len(tf.fields))
+        Y = [(-sys.maxint,-sys.maxint,0.0)]
+        for x in ts:
+            xstart = x[ts.fields.index('start')]
+            xend = x[ts.fields.index('end')]
+            ynext = Y[-1]
+            # Load into S all feature items which intersect score x
+            while ynext[0] < xend:
+                ynext = tf.next()
+                if ynext[1] > xstart: Y.append(ynext)
+            while Y[0][1] <= xstart: Y.pop(0) # ?
+            for y in Y:
+                info = tuple([y[k] for k in info_idx]) if annotate else ()
+                if strict and (y[0] > xstart or y[1] < xend): continue
+                if y[0] >= xend : continue    # ?
+                start = xstart if y[0] < xstart else y[0]
+                end   = xend   if y[1] > xend   else y[1]
+                yield (start,end)+tuple(x[2:])+info
+                xstart = start
 
     if isinstance(trackFeatures,(list,tuple)): trackFeatures = concatenate(trackFeatures)
     if isinstance(trackScores,(list,tuple)): trackScores = merge_scores(trackScores,method)
@@ -189,9 +188,7 @@ def score_by_feature(trackScores,trackFeatures,fn='mean'):
                 while xnext[0] < yend:
                     xnext = X[i].next()
                     if xnext[1] > ystart: S[i].append(xnext)
-                n = 0
-                while S[i][n][1] <= ystart: n+=1
-                S[i] = S[i][n:]
+                while S[i][0][1] <= ystart: S[i].pop(0)
                 scores_y = []
                 for s in S[i]:
                     if yend <= s[0]:   continue

@@ -381,7 +381,7 @@ def shuffled(stream, chrlen=sys.maxint, repeat_number=1, sorted=True):
 ####################################################################
 def strand_merge(x):
     """Return 1 (resp.-1) if all elements in x are 1 (resp.-1), 0 otherwise."""
-    return all(x[0]==y for y in x[1:]) and x[0] or 0
+    return x[0] if all(x[0]==y for y in x[1:]) else type(x[0])(0)
 
 def no_merge(x):
     """Assuming all elements of x are identical (chr) or irrelevant, return only the first one."""
