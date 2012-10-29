@@ -24,12 +24,12 @@ def feature_matrix(trackScores,trackFeatures,segment=False,fn='mean',**kw):
         With segment=True, nbins=3:
 
               Y   Z
-        R: [[[0.  2.],    # bin0 - gene1
-             [2.  2.],    # bin1
-             [6.  2.]],   # bin2
-            [[6.  0.],    # bin0 - gene2
-             [6.  0.],    # bin1
-             [6.  0.]]]   # bin2
+        R: [[[0.  2.],    # bin0 \
+             [2.  2.],    # bin1  } gene 1
+             [6.  2.]],   # bin2 /
+            [[6.  0.],    # bin0 \
+             [6.  0.],    # bin1  } gene2
+             [6.  0.]]]   # bin2 /
 
         With segment=False:
 

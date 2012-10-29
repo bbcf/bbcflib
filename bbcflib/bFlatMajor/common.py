@@ -40,8 +40,10 @@ def ordered(fn):
 ####################################################################
 def sentinelize(stream, sentinel=sys.maxint):
     """Append *sentinel* at the end of *iterable* (avoid StopIteration error)."""
-    for item in stream: yield item
-    yield sentinel
+    def _sentinelize(stream):
+        for item in stream: yield item
+        yield sentinel
+    return FeatureStream(_sentinelize(stream), fields=stream.fields)
 
 def copy(stream,n=2):
     """Return *n* independant copies of *stream*. Has to be called before iterating
@@ -449,10 +451,10 @@ def cobble(stream,aggregate=aggreg_functions):
 
         yields
 
-        (10, 13, 'chr1', 'A', 1)
-        (13, 15, 'chr1', 'A|B', 0)
-        (15, 18, 'chr1', 'B', -1)
-        (18, 25, 'chr1', 'C', -1)
+        ('chr1', 10, 13, 'A', 1)
+        ('chr1', 13, 15, 'A|B', 0)
+        ('chr1', 15, 18, 'B', -1)
+        ('chr1', 18, 25, 'C', -1)
 
     This is to avoid having overlapping coordinates of features from both DNA strands,
     which some genome browsers cannot handle for quantitative tracks.

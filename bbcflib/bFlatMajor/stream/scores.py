@@ -114,33 +114,40 @@ def filter_scores(trackScores,trackFeatures,method='sum',strict=False,annotate=F
         from *trackFeatures* will be added to the result. [False]
     :rtype: FeatureStream
     """
-    def _stream(ts,tf):
+    def _stream(ts,tf,stranded):
         info_idx = [k for k,f in enumerate(tf.fields) if f not in ts.fields]
-        tf = common.sentinelize(common.cobble(tf), [sys.maxint]*len(tf.fields))
+        tf = common.sentinelize(tf,[sys.maxint]*len(tf.fields))
         Y = [(-sys.maxint,-sys.maxint,0.0)]
         for x in ts:
             xstart = x[ts.fields.index('start')]
             xend = x[ts.fields.index('end')]
             ynext = Y[-1]
-            # Load into S all feature items which intersect score x
+            # Load into Y all feature items which intersect score x
             while ynext[0] < xend:
                 ynext = tf.next()
                 if ynext[1] > xstart: Y.append(ynext)
-            while Y[0][1] <= xstart: Y.pop(0) # ?
+            while Y[0][1] <= xstart: Y.pop(0) # from last iteration
             for y in Y:
+                if stranded and (x[ts.fields.index('strand')] != y[tf.fields.index('strand')]):
+                    continue
                 info = tuple([y[k] for k in info_idx]) if annotate else ()
                 if strict and (y[0] > xstart or y[1] < xend): continue
-                if y[0] >= xend : continue    # ?
+                if y[0] >= xend : continue    # keep for next iteration
                 start = xstart if y[0] < xstart else y[0]
                 end   = xend   if y[1] > xend   else y[1]
                 yield (start,end)+tuple(x[2:])+info
-                xstart = start
 
     if isinstance(trackFeatures,(list,tuple)): trackFeatures = concatenate(trackFeatures)
     if isinstance(trackScores,(list,tuple)): trackScores = merge_scores(trackScores,method)
-    _ts = common.reorder(trackScores,['start','end'])
     _info_fields = [f for f in trackFeatures.fields if f not in trackScores.fields] if annotate else []
-    return FeatureStream(_stream(_ts,trackFeatures), _ts.fields+_info_fields)
+    _ts = common.reorder(trackScores,['start','end'])
+    if 'strand' not in (set(trackScores.fields) & set(trackFeatures.fields)):
+        _tf = common.cobble(trackFeatures)
+        stranded = False
+    else:
+        _tf = trackFeatures
+        stranded = True
+    return FeatureStream(_stream(_ts,_tf,stranded), _ts.fields+_info_fields)
 
 ###############################################################################
 def score_by_feature(trackScores,trackFeatures,fn='mean'):
@@ -167,7 +174,7 @@ def score_by_feature(trackScores,trackFeatures,fn='mean'):
     :param trackScores: (list of) one or several -sorted- score track(s) (FeatureStream).
     :param trackFeatures: (FeatureStream) one -sorted- feature track.
     :param fn: (str of function): operation applied to the list of scores from one feature.
-        Can be one of 'sum','mean','median','min','max', or a custom function
+        Can be one of 'sum','mean','median','min','max', or a custom function.
     :rtype: FeatureStream
     """
     def _stream(ts,tf):
