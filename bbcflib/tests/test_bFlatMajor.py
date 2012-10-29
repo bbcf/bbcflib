@@ -386,7 +386,6 @@ class Test_Scores(unittest.TestCase):
         expected = [(10,15,6.),(30,40,6.)]
         self.assertListEqual(res,expected)
 
-        # Overlapping features;
         # annotate = True
         features = fstream([(0,30,'gene1','+'),(20,50,'gene2','-')], fields=['start','end','name','strand'])
         scores = fstream([(10,40,6.),(25,45,3.)], fields=['start','end','score'])
@@ -395,11 +394,18 @@ class Test_Scores(unittest.TestCase):
                     (25,30,3.,'gene1|gene2','0'),(30,45,3.,'gene2','-')]
         self.assertListEqual(res,expected)
 
-        # stranded
+        # stranded, cobbled
         features = fstream([(0,30,'gene1','+'),(20,50,'gene2','-')], fields=['start','end','name','strand'])
         scores = fstream([(10,40,6.,'+'),(25,45,3.,'-')], fields=['start','end','score','strand'])
         res = list(filter_scores(scores,features,annotate=True))
         expected = [(10,30,6.,'+','gene1'),(25,45,3.,'-','gene2')]
+        self.assertListEqual(res,expected)
+
+        # stranded, fused
+        features = fstream([(0,30,'gene1','+'),(20,50,'gene2','+')], fields=['start','end','name','strand'])
+        scores = fstream([(10,40,6.,'+')], fields=['start','end','score','strand'])
+        res = list(filter_scores(scores,features,annotate=True,flatten=fusion))
+        expected = [(10,40,6.,'+','gene1|gene2')]
         self.assertListEqual(res,expected)
 
     def test_score_by_feature(self):

@@ -93,7 +93,7 @@ def merge_scores(trackList, method='arithmetic'):
     return FeatureStream(_stream(tracks),fields)
 
 ###############################################################################
-def filter_scores(trackScores,trackFeatures,method='sum',strict=False,annotate=False):
+def filter_scores(trackScores,trackFeatures,method='sum',strict=False,annotate=False,flatten=common.cobble):
     """
     Extract from *trackScores* only the regions overlapping *trackFeatures*'s regions.
     Warning: both score and features streams must be sorted! (use `common.sorted_stream` if necessary).
@@ -102,6 +102,11 @@ def filter_scores(trackScores,trackFeatures,method='sum',strict=False,annotate=F
         X: _____#########__________#############_______
         Y: __________666666666___2222776_444___________
         R: __________6666__________22776_444___________
+
+    Note: *trackFeatures* is :func:`cobbled <bbcflib.bFlatMajor.common.cobble>` by default (to avoid
+    score duplications). An alternative is :func:`fusion <bbcflib.bFlatMajor.common.fusion>`, or nothing.
+    If strand information is present in both *trackScores* and *trackFeatures*, only scores inside
+    a region of the same strand are kept.
 
     :param trackScores: (FeatureStream) one -sorted- score track.
         If a list fo streams is provided, they will be merged (using `merge_scores`).
@@ -112,6 +117,8 @@ def filter_scores(trackScores,trackFeatures,method='sum',strict=False,annotate=F
         strictly contained in a feature region of *trackFeatures* will be returned. [False]
     :param annotate: (bool) if True, supplementary annotation (and the corresponding fields)
         from *trackFeatures* will be added to the result. [False]
+    :param flatten: (func) one of None, `common.fusion` or `common.cobble`.
+        Function to be applied to *trackFeatures* before all. [common.cobble]
     :rtype: FeatureStream
     """
     def _stream(ts,tf,stranded):
@@ -140,13 +147,12 @@ def filter_scores(trackScores,trackFeatures,method='sum',strict=False,annotate=F
     if isinstance(trackFeatures,(list,tuple)): trackFeatures = concatenate(trackFeatures)
     if isinstance(trackScores,(list,tuple)): trackScores = merge_scores(trackScores,method)
     _info_fields = [f for f in trackFeatures.fields if f not in trackScores.fields] if annotate else []
-    _ts = common.reorder(trackScores,['start','end'])
-    if 'strand' not in (set(trackScores.fields) & set(trackFeatures.fields)):
-        _tf = common.cobble(trackFeatures)
-        stranded = False
-    else:
+    stranded = 'strand' in (set(trackScores.fields) & set(trackFeatures.fields))
+    if flatten is None:
         _tf = trackFeatures
-        stranded = True
+    else:
+        _tf = flatten(trackFeatures,stranded=stranded)
+    _ts = common.reorder(trackScores,['start','end'])
     return FeatureStream(_stream(_ts,_tf,stranded), _ts.fields+_info_fields)
 
 ###############################################################################
