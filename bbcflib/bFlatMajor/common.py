@@ -404,8 +404,9 @@ def generic_merge(x):
 aggreg_functions = {'strand': strand_merge, 'chr': no_merge}
 
 @ordered
-def fusion(stream,aggregate=aggreg_functions):
+def fusion(stream,aggregate=aggreg_functions,stranded=False):
     """Fuses overlapping features in *stream* and applies *aggregate[f]* function to each field $f$.
+    *stream* has to be sorted w.r.t. 'chr' (if any), 'start' and 'end'.
 
     Example::
 
@@ -417,18 +418,21 @@ def fusion(stream,aggregate=aggreg_functions):
         (18, 25, 'chr1', 'C', -1)
 
     :param stream: FeatureStream object.
+    :param stranded: (bool) if True, only features of the same strand are fused. [False]
     :rtype: FeatureStream
     """
-    def _fuse(s):
+    def _fuse(s,stranded):
         try:
             x = list(s.next())
         except StopIteration:
             return
         has_chr = 'chr' in s.fields
         if has_chr: chridx = s.fields.index('chr')
+        if stranded: stridx = s.fields.index('strand')
         for y in s:
             new_chr = has_chr and (x[chridx] != y[chridx])
-            if y[0] < x[1] and not(new_chr):
+            new_str = stranded and (x[stridx] != y[stridx])
+            if y[0] < x[1] and not (new_chr or new_str):
                 x[1] = max(x[1], y[1])
                 x[2:] = [aggregate.get(f,generic_merge)((x[n+2],y[n+2]))
                          for n,f in enumerate(s.fields[2:])]
@@ -437,13 +441,15 @@ def fusion(stream,aggregate=aggreg_functions):
                 x = list(y)
         yield tuple(x)
 
-    stream = reorder(stream,['start','end'])
-    return FeatureStream( _fuse(stream), fields=stream.fields)
+    if stranded: stream = reorder(stream,['start','end','strand'])
+    else: stream = reorder(stream,['start','end'])
+    return FeatureStream( _fuse(stream,stranded), fields=stream.fields)
 
 @ordered
-def cobble(stream,aggregate=aggreg_functions):
+def cobble(stream,aggregate=aggreg_functions,stranded=False):
     """Fragments overlapping features in *stream* and applies `aggregate[f]` function
     to each field `f` in common fragments.
+    *stream* has to be sorted w.r.t. 'chr' (if any), 'start' and 'end'.
 
     Example::
 
@@ -460,6 +466,7 @@ def cobble(stream,aggregate=aggreg_functions):
     which some genome browsers cannot handle for quantitative tracks.
 
     :param stream: FeatureStream object.
+    :param stranded: (bool) if True, only features of the same strand are cobbled. [False]
     :rtype: FeatureStream
     """
     def _intersect(A,B,fields):
@@ -497,7 +504,7 @@ def cobble(stream,aggregate=aggreg_functions):
         else: z = None            # no intersection
         return z, rest
 
-    def _fuse(stream):
+    def _fuse(stream,stranded):
         try:
             x = stream.next()
         except StopIteration:
@@ -508,6 +515,8 @@ def cobble(stream,aggregate=aggreg_functions):
                 x = stream.next()
                 intersected = False
                 for y in toyield:
+                    if stranded and x[2] != y[2]:
+                        continue
                     replace, rest = _intersect(y,x,stream.fields)
                     if replace:
                         intersected = True
@@ -530,8 +539,9 @@ def cobble(stream,aggregate=aggreg_functions):
                     yield tuple(y)
                 break
 
-    stream = reorder(stream,['start','end'])
-    return FeatureStream( _fuse(stream), fields=stream.fields)
+    if stranded: stream = reorder(stream,['start','end','strand'])
+    else: stream = reorder(stream,['start','end'])
+    return FeatureStream( _fuse(stream,stranded), fields=stream.fields)
 
 
 ####################################################################
