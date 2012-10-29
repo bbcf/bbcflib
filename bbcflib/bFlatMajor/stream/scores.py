@@ -104,14 +104,14 @@ def filter_scores(trackScores,trackFeatures,method='sum',strict=False,annotate=F
         R: __________6666__________22776_444___________
 
     :param trackScores: (FeatureStream) one -sorted- score track.
-        If a list fo streams is provided, they will be merged (averaged scores).
+        If a list fo streams is provided, they will be merged (using `merge_scores`).
     :param trackFeatures: (FeatureStream) one -sorted- feature track.
-        If a list fo streams is provided, they will be merged.
-    :param method: (str) `merge_scores` *method* argument. ['sum']
+        If a list fo streams is provided, they will be merged (using `concatenate`).
+    :param method: (str) `merge_scores` *method* argument, in case *trackScores* is a list. ['sum']
     :param strict: (bool) if True, only score regions from *trackScores* that are
-        strictly contained in a feature region of *trackFeatures* will be returned.
+        strictly contained in a feature region of *trackFeatures* will be returned. [False]
     :param annotate: (bool) if True, supplementary annotation (and the corresponding fields)
-        from *trackFeatures* will be added to the result.
+        from *trackFeatures* will be added to the result. [False]
     :rtype: FeatureStream
     """
     def _stream(ts,tf):
