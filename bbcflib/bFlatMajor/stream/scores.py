@@ -133,7 +133,9 @@ def filter_scores(trackScores,trackFeatures,method='sum',strict=False,annotate=F
             while ynext[0] < xend:
                 ynext = tf.next()
                 if ynext[1] > xstart: Y.append(ynext)
-            while Y[0][1] <= xstart: Y.pop(0) # from last iteration
+            n = 0
+            while Y[n][1] <= xstart: n+=1
+            Y = Y[n:]
             for y in Y:
                 if stranded and (x[ts.fields.index('strand')] != y[tf.fields.index('strand')]):
                     continue
@@ -201,7 +203,9 @@ def score_by_feature(trackScores,trackFeatures,fn='mean'):
                 while xnext[0] < yend:
                     xnext = X[i].next()
                     if xnext[1] > ystart: S[i].append(xnext)
-                while S[i][0][1] <= ystart: S[i].pop(0)
+                n = 0
+                while S[i][n][1] <= ystart: n+=1
+                S[i] = S[i][n:]
                 scores_y = []
                 for s in S[i]:
                     if yend <= s[0]:   continue
