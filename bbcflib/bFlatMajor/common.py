@@ -441,8 +441,7 @@ def fusion(stream,aggregate=aggreg_functions,stranded=False):
                 x = list(y)
         yield tuple(x)
 
-    if stranded: stream = reorder(stream,['start','end','strand'])
-    else: stream = reorder(stream,['start','end'])
+    stream = reorder(stream,['start','end'])
     return FeatureStream( _fuse(stream,stranded), fields=stream.fields)
 
 @ordered

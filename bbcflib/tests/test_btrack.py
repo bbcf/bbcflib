@@ -215,13 +215,13 @@ class Test_Bam(unittest.TestCase):
     def test_coverage(self):
         t = track(self.bam)
         res = t.coverage(region=('chrV',160000,160002))
-        expected = [('chrV',160000,160001,3),('chrV',160001,160002,3)]
+        expected = [('chrV',160000,160002,3)]
         self.assertListEqual(list(res),expected)
 
     def test_count(self):
         t = track(self.bam)
         res = t.count(regions=[('chrV',150000,175000)])
-        expected = [('chrV',150000,175000,2514)]
+        expected = [('chrV',150000,175000,2512)]
         self.assertListEqual(list(res),expected)
 
 

@@ -123,7 +123,6 @@ class TextTrack(Track):
         chr_toskip = iter(chr_toskip+[[sys.maxint,sys.maxint]])
         return chr_toskip
     def _skip(self,start,next_toskip,chr_toskip):
-        #start = self.filehandle.tell()
         if start >= next_toskip[0] and start <= next_toskip[1]:
             self.filehandle.seek(next_toskip[1])
             start = self.filehandle.tell()
@@ -432,7 +431,6 @@ class SgaTrack(TextTrack):
                     fstart,fend,next_toskip = self._skip(fstart,next_toskip,chr_toskip)
                     self._index_chr(fstart,fend,splitrow)
                 if not any(self._select_values(rowdata[strand],s) for s in selection):
-                #if not any(self._select_values(splitrow,s) for s in selection):
                     continue
             fstart = fend
             if not(yieldit): continue
@@ -525,8 +523,6 @@ class WigTrack(TextTrack):
                     start = int(start)
                     step = int(step)
                     rowdata[0] = chrom
-                    rowdata[1] = -1
-                    rowdata[2] = -1
                     s_patt = re.search(r'span=(\d+)',row)
                     if s_patt:
                         span = int(s_patt.groups()[0])
@@ -537,8 +533,6 @@ class WigTrack(TextTrack):
                     fixedStep = False
                     chrom = re.search(r'chrom=(\S+)',row).groups()[0]
                     rowdata[0] = chrom
-                    rowdata[1] = -1
-                    rowdata[2] = -1
                     start = -1
                     s_patt = re.search(r'span=(\d+)',row)
                     if s_patt:
@@ -563,19 +557,16 @@ class WigTrack(TextTrack):
                         yieldit = False
                         rowdata[2] = end
                 if not(yieldit): continue
-                if selection:
-                    if skip:
-                        fstart,fend,next_toskip = self._skip(fstart,next_toskip,chr_toskip)
-                        self._index_chr(fstart,fend,splitrow)
-                    if not any(self._select_values(rowdata,s) for s in selection):
-                        continue
-                fstart = fend
-                if rowdata[1] >= 0:
-                    yield tuple(self._check_type(rowdata[index_list[n]],f)
-                                for n,f in enumerate(fields))
                 rowdata[1] = start
                 rowdata[2] = end
                 rowdata[3] = score
+                fstart = fend
+                if selection:
+                    if skip:
+                        fstart,fend,next_toskip = self._skip(fstart,next_toskip,chr_toskip)
+                        self._index_chr(fstart,fend,rowdata)
+                    if not any(self._select_values(rowdata,s) for s in selection):
+                        continue
                 if rowdata[1] >= 0:
                     yield tuple(self._check_type(rowdata[index_list[n]],f)
                                 for n,f in enumerate(fields))
