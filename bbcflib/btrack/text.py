@@ -494,12 +494,8 @@ class WigTrack(TextTrack):
             next_toskip = chr_toskip.next()
         fstart = fend = 0
         fixedStep = None
-        chrom = None
+        chrom = start = end = step = score = None
         span = 1
-        start = None
-        end = None
-        step = None
-        score = None
         try:
             rowdata = ['',-1,-1,'']
             while 1:
@@ -510,12 +506,8 @@ class WigTrack(TextTrack):
                 row = row.strip(' \r\n')
                 if row.startswith("browser") or row.startswith("track"):
                     fixedStep = None
-                    chrom = None
+                    chrom = start = end = score = step = None
                     span = 1
-                    start = None
-                    end = None
-                    score = None
-                    step = None
                     continue
                 if row.startswith("fixedStep"):
                     fixedStep = True
