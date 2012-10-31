@@ -33,12 +33,6 @@ numpy.set_printoptions(precision=3,suppress=True)
 numpy.seterr(divide='ignore')
 
 
-def positive(x):
-    """Set to zero all negative components of an array."""
-    for i in range(len(x)):
-        if x[i] < 0 : x[i] = 0
-    return x
-
 def lsqnonneg(C, d, x0=None, tol=None, itmax_factor=3):
     """Linear least squares with nonnegativity constraints (NNLS), based on MATLAB's lsqnonneg function.
 
@@ -70,6 +64,12 @@ def lsqnonneg(C, d, x0=None, tol=None, itmax_factor=3):
         s = x.shape
         if dim >= len(s): return 1
         else: return s[dim]
+
+    def positive(x):
+        """Set to zero all negative components of an array."""
+        for i in range(len(x)):
+            if x[i] < 0 : x[i] = 0
+        return x
 
     if tol is None: tol = 10*eps*norm1(C)*(max(C.shape)+1)
     C = asarray(C)
@@ -390,7 +390,9 @@ def rnaseq_workflow(ex, job, bam_files, pileup_level=["exons","genes","transcrip
     :param bam_files: a complicated dictionary such as returned by mapseq.get_bam_wig_files.
     :param pileup_level: a string or array of strings indicating the features you want to compare.
                          Targets can be 'genes', 'transcripts', or 'exons'.
-    :param via: 'local' or 'lsf'.
+    :param rpath: (str) path to the R executable.
+    :param junctions: (bool) whether or not to search for splice junctions using SOAPsplice. [False]
+    :param via: 'local' or 'lsf'. ["lsf"]
     """
     group_names={}; group_ids={}; conditions=[]
     assembly = genrep.Assembly(assembly=job.assembly_id,intype=2)
@@ -419,7 +421,6 @@ def rnaseq_workflow(ex, job, bam_files, pileup_level=["exons","genes","transcrip
     (gene_mapping, transcript_mapping, exon_mapping, trans_in_gene, exons_in_trans) = fetch_mappings(assembly)
 
     """ Build annotation lists """
-    #Exon info structure: (exon_id,gene_id,start,end,strand,chr)
     exons = [(e,)+v[1:] for e,v in exon_mapping.iteritems() if len(e)>0]
     exonsID=[]; genesID=[]; genesName=[]; starts=[]; ends=[]; strands=[]; badexons=[]
     for e in exons:
@@ -470,6 +471,7 @@ def rnaseq_workflow(ex, job, bam_files, pileup_level=["exons","genes","transcrip
 
     """ Find splice junctions """
     if junctions:
+        print "Search for splice junctions"
         soapsplice_index = assembly.soapsplice_index_path
         #soapsplice_options = # check if Sanger or Illumina format
         find_junctions(ex,job,bam_files,soapsplice_index)
@@ -536,6 +538,7 @@ def rnaseq_workflow(ex, job, bam_files, pileup_level=["exons","genes","transcrip
         trans_file = save_results(ex, trans_data, conditions, group_ids, assembly, header=header, feature_type="TRANSCRIPTS")
 
     result = {"exons":exons_file, "genes":genes_file, "transcripts":trans_file}
+    print "Differential analysis"
     differential_analysis(ex, result, rpath)
 
     return 0
