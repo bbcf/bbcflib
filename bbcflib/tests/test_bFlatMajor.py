@@ -135,20 +135,38 @@ class Test_Common(unittest.TestCase):
 
     def test_fusion(self):
         stream = fstream([('chr1',10,15,'A',1),('chr1',13,18,'B',-1),('chr1',18,25,'C',-1)],
-                         fields = ['chr','start','end','name','score'])
+                         fields = ['chr','start','end','name','strand'])
         expected = [('chr1',10,18,'A|B',0),('chr1',18,25,'C',-1)]
-        fused = list(fusion(stream))
-        self.assertEqual(fused,expected)
+        res = fusion(stream)
+        self.assertEqual(list(res),expected)
+
+        # stranded = True
+        stream = fstream([('chr1',10,15,'A',1),('chr1',13,18,'B',-1),('chr1',15,25,'C',-1)],
+                         fields = ['chr','start','end','name','strand'])
+        expected = [('chr1',10,15,'A',1),('chr1',13,25,'B|C',-1)]
+        res = fusion(stream, stranded=True)
+        self.assertEqual(list(res),expected)
 
     def test_cobble(self): # more tests below
-        stream = fstream([('chr1',10,15,'A',1),('chr1',13,18,'B',-1),('chr1',18,25,'C',-1)],
-                         fields = ['chr','start','end','name','score'])
-        expected = [('chr1',10,13,'A',  1),
-                    ('chr1',13,15,'A|B',0),
-                    ('chr1',15,18,'B', -1),
-                    ('chr1',18,25,'C', -1)]
-        cobbled = list(cobble(stream))
-        self.assertEqual(cobbled,expected)
+        stream = fstream([('chr1',10,20,'A',1),('chr1',12,22,'B',-1),('chr1',15,25,'C',-1)],
+                         fields = ['chr','start','end','name','strand'])
+        expected = [('chr1',10,12,'A',1),
+                    ('chr1',12,15,'A|B',0),
+                    ('chr1',15,20,'A|B|C',0),
+                    ('chr1',20,22,'B|C',-1),
+                    ('chr1',22,25,'C',-1)]
+        res = cobble(stream)
+        self.assertEqual(list(res),expected)
+
+        # stranded = True
+        stream = fstream([('chr1',10,20,'A',1),('chr1',12,22,'B',-1),('chr1',15,25,'C',-1)],
+                         fields = ['chr','start','end','name','strand'])
+        expected = [('chr1',10,20,'A',1),
+                    ('chr1',12,15,'B',-1),
+                    ('chr1',15,22,'B|C',-1),
+                    ('chr1',22,25,'C',-1)]
+        res = cobble(stream,stranded=True)
+        self.assertEqual(list(res),expected)
 
     def test_concat_fields(self):
         # Concatenate fields as strings
