@@ -63,11 +63,15 @@ class Assembly(object):
 
         .. attribute:: name
 
-        A string giving the nameassembly of the assembly in GenRep.
+        A string giving the name of the assembly in GenRep.
 
         .. attribute:: index_path
 
         The absolute path to the bowtie index for this assembly.
+
+        .. attribute:: soapsplice_index_path
+
+        The absolute path to the SOAPsplice index for this assembly.
 
         .. attribute:: chromosomes
 
@@ -133,6 +137,7 @@ class Assembly(object):
         elif self.intype == 2:
             root = os.path.join(self.genrep.root,"nr_assemblies/cdna_bowtie")
         self.index_path = os.path.join(root,self.md5)
+        self.soapsplice_index_path = os.path.join(self.genrep.root,"nr_assemblies/soapsplice")
         for c in chromosomes:
             chrom = dict((str(k),v) for k,v in c['chromosome'].iteritems())
             cnames = chrom.pop('chr_names')
@@ -288,7 +293,7 @@ class Assembly(object):
                             cur_chunk = 0
                     size += cur_chunk
                     slices = _flush_slices(slices,cid[0],chrom['name'],out,pref)
-        if _is_filename: 
+        if _is_filename:
             out.close()
             out = out.name
         return (out,size)
