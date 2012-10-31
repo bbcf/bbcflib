@@ -36,8 +36,8 @@ class TextTrack(Track):
 
     When reading a file, lines beginning with "browser", "track" or "#" are skipped.
     The *info* attribute will be filled with "key=value" pairs found on a "track" line at the top of the file.
-    The *open" method takes the argument *mode" which can be *read* (default), *write*, *append* or *overwrite*.
-    Path can be a url, or a gzipped file.
+    The *open* method takes the argument *mode* which can be 'read' (default), 'write', 'append' or 'overwrite'.
+    Path can also be a url, or a gzipped file.
     """
     def __init__(self,path,**kwargs):
         kwargs['format'] = kwargs.get("format",'txt')
