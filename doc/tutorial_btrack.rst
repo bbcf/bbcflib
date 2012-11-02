@@ -220,7 +220,8 @@ Advanced features
   :func:`coverage <bbcflib.btrack.bin.BamTrack.coverage>`::
 
     >>> t = track("myfile.bam")
-    >>> regions = [('chr1',11,20),('chr2',5,22)] # can be a FeatureStream, too
+
+    >>> regions = [('chr1',11,20),('chr2',5,22)] # can also be a FeatureStream
     >>> c = t.count(regions)
     >>> for x in c: print x
     ('chr1',11,20, 12.)
