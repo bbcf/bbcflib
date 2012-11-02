@@ -528,18 +528,19 @@ class Assembly(object):
         return gene_mapping
 
     def get_transcript_mapping(self):
-        """Return a dictionary ``{transcript_id: (gene_id,start,end,length,strand,chromosome)}``"""
+        """Return a dictionary ``{transcript_id: (gene_id,gene_name,start,end,length,strand,chromosome)}``"""
         transcript_mapping = {}
-        h = {"keys":"transcript_id", "values":"gene_id,start,end,strand", "conditions":"type:exon", "uniq":"1"}
+        h = {"keys":"transcript_id", "values":"gene_id,gene_name,start,end,strand", "conditions":"type:exon", "uniq":"1"}
         for chr in self.chrnames:
             resp = self.get_features_from_gtf(h,chr)
             for k,v in resp.iteritems():
-                start = min([x[1] for x in v])
-                end = max([x[2] for x in v])
-                length = sum([x[2]-x[1] for x in v])
+                start = min([x[2] for x in v])
+                end = max([x[3] for x in v])
+                length = sum([x[3]-x[2] for x in v])
                 gid = str(v[0][0])
-                strand = int(v[0][3])
-                transcript_mapping[str(k)] = (gid,start,end,length,strand,chr)
+                gname = str(v[0][1])
+                strand = int(v[0][4])
+                transcript_mapping[str(k)] = (gid,gname,start,end,length,strand,chr)
         return transcript_mapping
 
     def get_exon_mapping(self):
