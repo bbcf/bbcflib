@@ -212,7 +212,7 @@ try:
 
             self.open()
             if isinstance(regions,FeatureStream):
-                _f = regions.fields
+                _f = [x for x in regions.fields]
                 if 'score' not in _f: _f.append('score')
                 _sci = _f.index('score')
                 _sti = _f.index('strand') if 'strand' in _f else -1
