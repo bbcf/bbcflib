@@ -106,7 +106,8 @@ def write_pileupFile(dictPileup,sample_names,allSNPpos,chrom,assembly):
                 # snp_qual: SNP quality is the Phred-scaled probability that the consensus is identical to the reference.
                 while int(info[1]) > pos and len(allpos) > 0: # while pos not found in the given sample
                     pos = allpos.pop()
-                    coverage = bamtrack.coverage((chrom,pos,pos+1)).next()[-1]
+                    try: coverage = bamtrack.coverage((chrom,pos,pos+1)).next()[-1]
+                    except StopIteration: coverage = 0
                     allSamples[sname][pos] = coverage and allSNPpos[pos] or "0" # "0" if not covered, ref base otherwise
                 if not(int(info[1]) == pos): continue
                 # SNP found in allpos, treat:
@@ -136,7 +137,8 @@ def write_pileupFile(dictPileup,sample_names,allSNPpos,chrom,assembly):
                         allSamples[sname][pos] = ref
             while allpos:  # write '0' for all pos after the last one of this sample
                 pos = allpos.pop()
-                coverage = bamtrack.coverage((chrom,pos,pos+1)).next()[-1]
+                try: coverage = bamtrack.coverage((chrom,pos,pos+1)).next()[-1]
+                except StopIteration: coverage = 0
                 allSamples[sname][pos] = coverage and allSNPpos[pos] or "0"
         bamtrack.close()
 
@@ -251,9 +253,9 @@ def annotate_snps(filedict, sample_names, assembly, genomeRef=None):
         _buffer = {1:[], -1:[]}
         last_start = {1:-1, -1:-1}
         for x in gm_stream.combine([inclstream, annotstream], gm_stream.intersection):
-            # x = (1606,1607,'chrV', ('T','C (43%), 1612,1724,'YEL077C|YEL077C',-1,0, 1712,1723,'YEL077W-A|YEL077W-A',1,0))
+            # x = ('chrV',1606,1607, ('T','C (43%), 1612,1724,'YEL077C|YEL077C',-1,0, 1712,1723,'YEL077W-A|YEL077W-A',1,0))
             nsamples = len(sample_names)
-            pos = x[0]; chr = x[2]; rest = x[3]
+            chr = x[0]; pos = x[1]; rest = x[3]
             refbase = rest[0]
             annot = [rest[5*i+nsamples+1 : 5*i+5+nsamples+1]
                      for i in range(len(rest[nsamples+1:])/5)] # list of [start,end,cds,strand,phase]

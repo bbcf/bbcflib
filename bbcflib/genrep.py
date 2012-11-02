@@ -67,11 +67,7 @@ class Assembly(object):
 
         .. attribute:: index_path
 
-        The absolute path to the bowtie index for this assembly.
-
-        .. attribute:: soapsplice_index_path
-
-        The absolute path to the SOAPsplice index for this assembly.
+        The absolute path to the bowtie/SOAPsplice index for this assembly.
 
         .. attribute:: chromosomes
 
@@ -98,7 +94,7 @@ class Assembly(object):
 
         .. attribute:: intype
 
-        All integers. ``intype`` is '0' for genomic data, '1' for exons and '2' for transcripts.
+        All integers. ``intype`` is '0' for genomic data, '1' for exons, '2' for transcripts, '3' for junctions.
 
         .. attribute:: source_name
 
@@ -136,8 +132,9 @@ class Assembly(object):
             root = os.path.join(self.genrep.root,"nr_assemblies/exons_bowtie")
         elif self.intype == 2:
             root = os.path.join(self.genrep.root,"nr_assemblies/cdna_bowtie")
+        elif self.intype == 3:
+            root = os.path.join(self.genrep.root,"nr_assemblies/soapsplice")
         self.index_path = os.path.join(root,self.md5)
-        self.soapsplice_index_path = os.path.join(self.genrep.root,"nr_assemblies/soapsplice")
         for c in chromosomes:
             chrom = dict((str(k),v) for k,v in c['chromosome'].iteritems())
             cnames = chrom.pop('chr_names')
@@ -528,18 +525,19 @@ class Assembly(object):
         return gene_mapping
 
     def get_transcript_mapping(self):
-        """Return a dictionary ``{transcript_id: (gene_id,start,end,length,strand,chromosome)}``"""
+        """Return a dictionary ``{transcript_id: (gene_id,gene_name,start,end,length,strand,chromosome)}``"""
         transcript_mapping = {}
-        h = {"keys":"transcript_id", "values":"gene_id,start,end,strand", "conditions":"type:exon", "uniq":"1"}
+        h = {"keys":"transcript_id", "values":"gene_id,gene_name,start,end,strand", "conditions":"type:exon", "uniq":"1"}
         for chr in self.chrnames:
             resp = self.get_features_from_gtf(h,chr)
             for k,v in resp.iteritems():
-                start = min([x[1] for x in v])
-                end = max([x[2] for x in v])
-                length = sum([x[2]-x[1] for x in v])
+                start = min([x[2] for x in v])
+                end = max([x[3] for x in v])
+                length = sum([x[3]-x[2] for x in v])
                 gid = str(v[0][0])
-                strand = int(v[0][3])
-                transcript_mapping[str(k)] = (gid,start,end,length,strand,chr)
+                gname = str(v[0][1])
+                strand = int(v[0][4])
+                transcript_mapping[str(k)] = (gid,gname,start,end,length,strand,chr)
         return transcript_mapping
 
     def get_exon_mapping(self):
