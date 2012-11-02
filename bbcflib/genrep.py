@@ -67,11 +67,7 @@ class Assembly(object):
 
         .. attribute:: index_path
 
-        The absolute path to the bowtie index for this assembly.
-
-        .. attribute:: soapsplice_index_path
-
-        The absolute path to the SOAPsplice index for this assembly.
+        The absolute path to the bowtie/SOAPsplice index for this assembly.
 
         .. attribute:: chromosomes
 
@@ -98,7 +94,7 @@ class Assembly(object):
 
         .. attribute:: intype
 
-        All integers. ``intype`` is '0' for genomic data, '1' for exons and '2' for transcripts.
+        All integers. ``intype`` is '0' for genomic data, '1' for exons, '2' for transcripts, '3' for junctions.
 
         .. attribute:: source_name
 
@@ -136,8 +132,9 @@ class Assembly(object):
             root = os.path.join(self.genrep.root,"nr_assemblies/exons_bowtie")
         elif self.intype == 2:
             root = os.path.join(self.genrep.root,"nr_assemblies/cdna_bowtie")
+        elif self.intype == 3:
+            root = os.path.join(self.genrep.root,"nr_assemblies/soapsplice")
         self.index_path = os.path.join(root,self.md5)
-        self.soapsplice_index_path = os.path.join(self.genrep.root,"nr_assemblies/soapsplice")
         for c in chromosomes:
             chrom = dict((str(k),v) for k,v in c['chromosome'].iteritems())
             cnames = chrom.pop('chr_names')

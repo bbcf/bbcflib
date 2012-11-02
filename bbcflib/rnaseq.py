@@ -472,9 +472,7 @@ def rnaseq_workflow(ex, job, bam_files, pileup_level=["exons","genes","transcrip
     """ Find splice junctions """
     if junctions:
         print "Search for splice junctions"
-        soapsplice_index = assembly.soapsplice_index_path
-        #soapsplice_options = # check if Sanger or Illumina format
-        find_junctions(ex,job,bam_files,assembly,soapsplice_index)
+        find_junctions(ex,job,bam_files,assembly)
 
     """ Build exon pileups from bam files """
     print "Build pileups"
@@ -659,17 +657,20 @@ def soapsplice(unmapped_R1, unmapped_R2, index, output=None, path_to_soapsplice=
     for k,v in options.iteritems(): opts.extend([str(k),str(v)])
     return {"arguments": args+opts, "return_value": output}
 
-def find_junctions(ex,job,bam_files,assembly,soapsplice_index,path_to_soapsplice=None,soapsplice_options={}):
+def find_junctions(ex,job,bam_files,assembly,soapsplice_index=None,path_to_soapsplice=None,soapsplice_options={}):
     """
     :param ex: the bein's execution Id.
     :param job: a Job object (or a dictionary of the same form) as returned from HTSStation's frontend.
     :param bam_files: a complicated dictionary such as returned by mapseq.get_bam_wig_files.
-    :param index: (str) path to the SOAPsplice index.
+    :param soapsplice_index: (str) path to the SOAPsplice index.
     :param path_to_soapsplice: (str) specify the path to the program if it is not in your $PATH.
     :param soapsplice_options: (dict) SOAPsplice options, e.g. {'-q',1} .
     :param via: 'local' or 'lsf'.
     :rtype: str, str, str
     """
+    assembly = genrep.Assembly(assembly.id, intype=3)
+    soapsplice_index = soapsplice_index or assembly.index_path
+    #soapsplice_options = # check if Sanger or Illumina format
     unmapped_fastq = {}
     for gid, group in job.groups.iteritems():
         unmapped_fastq[gid] = []

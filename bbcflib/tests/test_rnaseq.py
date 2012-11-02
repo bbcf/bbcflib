@@ -246,7 +246,7 @@ class Test_Expressions_Solenne(unittest.TestCase):
         self.transcript_mapping = {t1:(g1,'gg1',26975609,26978510,1525.,1,c)}
         self.gene_mapping = {g1:(gname,26975609,26978510,2901.,1,c)}
         #self.exon_mapping = {e1:([t1],g1,'gg1',0,5,1,c), e2:([t1,t3],g1,'gg1',5,10,1,c),
-        #self.exon_mapping = {e1:541., e2:984.}
+        #self.exon_lengths = {e1:541., e2:984.}
         self.trans_in_gene = {g1:[t1]}
         self.exons_in_trans = {t1:[e1,e2]}
         """
