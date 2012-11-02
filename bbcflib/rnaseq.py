@@ -15,7 +15,7 @@ Note that the resulting counts on transcripts are approximate.
 """
 
 # Built-in modules #
-import os, pysam, math, itertools
+import os, sys, pysam, math, itertools
 
 # Internal modules #
 from bbcflib.common import writecols, set_file_descr, unique_filename_in, cat
@@ -32,6 +32,12 @@ from numpy import zeros, asarray, nonzero
 numpy.set_printoptions(precision=3,suppress=True)
 numpy.seterr(divide='ignore')
 
+
+def positive(x):
+    """Set to zero all negative components of an array."""
+    for i in range(len(x)):
+        if x[i] < 0 : x[i] = 0
+    return x
 
 def lsqnonneg(C, d, x0=None, tol=None, itmax_factor=3):
     """Linear least squares with nonnegativity constraints (NNLS), based on MATLAB's lsqnonneg function.
@@ -64,12 +70,6 @@ def lsqnonneg(C, d, x0=None, tol=None, itmax_factor=3):
         s = x.shape
         if dim >= len(s): return 1
         else: return s[dim]
-
-    def positive(x):
-        """Set to zero all negative components of an array."""
-        for i in range(len(x)):
-            if x[i] < 0 : x[i] = 0
-        return x
 
     if tol is None: tol = 10*eps*norm1(C)*(max(C.shape)+1)
     C = asarray(C)
@@ -131,7 +131,7 @@ def fetch_mappings(assembly):
     ``(gene_mapping, transcript_mapping, exon_mapping, trans_in_gene, exons_in_trans)``
 
     * [0] gene_mapping is a dict ``{gene_id: (gene name,start,end,length,chromosome)}``
-    * [1] transcript_mapping is a dictionary ``{transcript_id: (gene_id,start,end,length,chromosome)}``
+    * [1] transcript_mapping is a dictionary ``{transcript_id: (gene_id,gene_name,start,end,length,chromosome)}``
     * [2] exon_mapping is a dictionary ``{exon_id: ([transcript_ids],gene_id,start,end,chromosome)}``
     * [3] trans_in_gene is a dict ``{gene_id: [IDs of the transcripts it contains]}``
     * [4] exons_in_trans is a dict ``{transcript_id: [IDs of the exons it contains]}``
@@ -271,7 +271,7 @@ def transcripts_expression(exons_data, exon_mapping, transcript_mapping, trans_i
 
     :param exons_data: list of lists ``[exonsIDs,counts,rpkm,starts,ends,geneIDs,geneNames,strands,chrs]``
     :param exon_mapping: dictionary ``{exon_id: ([transcript_ids],gene_id,start,end,strand,chromosome)}``
-    :param transcript_mapping: dictionary ``{transcript_id: (gene_id,start,end,length,strand,chromosome)}``
+    :param transcript_mapping: dictionary ``{transcript_id: (gene_id,gene_name,start,end,length,strand,chromosome)}``
     :param trans_in_gene: dictionary ``{gene_id: [transcript_ids it contains]}``
     :param exons_in_trans: dictionary ``{transcript_id: [exon_ids it contains]}``
     :param ncond: number of samples
@@ -307,7 +307,7 @@ def transcripts_expression(exons_data, exon_mapping, transcript_mapping, trans_i
                     if exons_in_trans.get(t) and e in exons_in_trans[t]:
                         M[i,j] = 1.
                         if exon_mapping.get(e) and transcript_mapping.get(t):
-                            L[i,j] = float((exon_mapping[e][4]-exon_mapping[e][3])) / transcript_mapping[t][3]
+                            L[i,j] = float((exon_mapping[e][4]-exon_mapping[e][3])) / transcript_mapping[t][4]
                         else:
                             L[i,j] = 1./len(eg)
                 # Retrieve exon scores
@@ -342,7 +342,7 @@ def transcripts_expression(exons_data, exon_mapping, transcript_mapping, trans_i
            % (unknown, len(genes), 100*float(unknown)/float(len(genes)) )
     # Convert to rpkm
     for t in transcripts:
-        trans_rpkm[t] = to_rpkm(trans_counts[t], transcript_mapping[t][3], nreads)
+        trans_rpkm[t] = to_rpkm(trans_counts[t], transcript_mapping[t][4], nreads)
     return trans_counts, trans_rpkm
 
 def estimate_size_factors(counts):
@@ -474,7 +474,7 @@ def rnaseq_workflow(ex, job, bam_files, pileup_level=["exons","genes","transcrip
         print "Search for splice junctions"
         soapsplice_index = assembly.soapsplice_index_path
         #soapsplice_options = # check if Sanger or Illumina format
-        find_junctions(ex,job,bam_files,soapsplice_index)
+        find_junctions(ex,job,bam_files,assembly,soapsplice_index)
 
     """ Build exon pileups from bam files """
     print "Build pileups"
@@ -530,7 +530,7 @@ def rnaseq_workflow(ex, job, bam_files, pileup_level=["exons","genes","transcrip
         (tcounts,trpkm) = transcripts_expression(exons_data, exon_mapping,
                    transcript_mapping, trans_in_gene, exons_in_trans, ncond, nreads)
         transID = tcounts.keys()
-        trans_data = [[t,tcounts[t],trpkm[t]]+list(transcript_mapping.get(t,("NA",)*6)) for t in transID]
+        trans_data = [[t,tcounts[t],trpkm[t]]+list(transcript_mapping.get(t,("NA",)*7)) for t in transID]
         (transID,tcounts,trpkm,genesID,tstart,tend,tlen,tstr,tchr) = zip(*trans_data)
         genesName = [gene_mapping.get(g,("NA",)*6)[0] for g in genesID]
         header = ["TranscriptID"] + hconds + ["Start","End","GeneID","GeneName","Strand","Chromosome"]
@@ -659,7 +659,7 @@ def soapsplice(unmapped_R1, unmapped_R2, index, output=None, path_to_soapsplice=
     for k,v in options.iteritems(): opts.extend([str(k),str(v)])
     return {"arguments": args+opts, "return_value": output}
 
-def find_junctions(ex,job,bam_files,soapsplice_index,path_to_soapsplice=None,soapsplice_options={}):
+def find_junctions(ex,job,bam_files,assembly,soapsplice_index,path_to_soapsplice=None,soapsplice_options={}):
     """
     :param ex: the bein's execution Id.
     :param job: a Job object (or a dictionary of the same form) as returned from HTSStation's frontend.
@@ -675,14 +675,16 @@ def find_junctions(ex,job,bam_files,soapsplice_index,path_to_soapsplice=None,soa
         unmapped_fastq[gid] = []
         for rid, run in group['runs'].iteritems():
             unmapped = bam_files[gid][rid].get('unmapped_fastq')
-            assert unmapped, "No unmapped reads found."
+            if not unmapped:
+                print >> sys.stderr, "\tNo unmapped reads found. Skip."
+                return 1
             assert isinstance(unmapped,tuple), "Pair-end reads required."
             unmapped_fastq[gid].append(unmapped)
         R1 = cat(zip(*unmapped_fastq[gid])[0])
         R2 = cat(zip(*unmapped_fastq[gid])[1])
         template = soapsplice(ex,R1,R2,soapsplice_index,path_to_soapsplice=path_to_soapsplice,options=soapsplice_options)
         junc_file = template+'.junc'
-        sql,bed = convert_junc_file(junc_file,job.assembly)
+        sql,bed = convert_junc_file(junc_file,assembly)
         sql_descr = set_file_descr('junctions_%s.sql' % group['name'], \
                                    group=group['name'],type='sql',step='1',gdv=1)
         bed_descr = set_file_descr('junctions_%s.bed' % group['name'], \
@@ -690,7 +692,7 @@ def find_junctions(ex,job,bam_files,soapsplice_index,path_to_soapsplice=None,soa
         bam_descr = set_file_descr('junctions_%s.bam' % group['name'], \
                                    group=group['name'],type='bam',step='1')
         sam = template+'.sam'
-        bam = sam_to_bam(ex,sam,reheader=job.assembly.name)
+        bam = sam_to_bam(ex,sam,reheader=assembly.name)
         add_and_index_bam(ex, bam, description=bam_descr)
         ex.add(sql, description=sql_descr)
         ex.add(bed, description=bed_descr)
