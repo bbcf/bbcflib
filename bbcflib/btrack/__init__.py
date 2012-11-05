@@ -84,6 +84,7 @@ _track_map = {
     'bigwig': ('bbcflib.btrack.bin','BigWigTrack'),
     'bw':  ('bbcflib.btrack.bin','BigWigTrack'),
     'bam': ('bbcflib.btrack.bin','BamTrack'),
+    'sam': ('bbcflib.btrack.text','SamTrack'),
 }
 
 def track( path, format=None, **kwargs):

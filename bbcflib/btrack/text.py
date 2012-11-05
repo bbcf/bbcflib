@@ -186,7 +186,8 @@ class TextTrack(Track):
                 if not row: break
                 if row.startswith("browser") or \
                    row.startswith("track") or \
-                   row.startswith("#"): continue
+                   row.startswith("#") or \
+                   row.startswith("@"): continue
                 splitrow = row.strip(' \r\n').split(self.separator)
                 if selection:
                     if skip:
@@ -620,4 +621,30 @@ class GffTrack(TextTrack):
             self.intypes.pop('attributes')
             self.outtypes.pop('attributes')
             self.fields = self.fields[:8]
+
+################################ GFF ##########################################
+
+class SamTrack(TextTrack):
+    """
+    TextTrack class for SAM files (extension ".sam").
+
+    Fields are::
+
+        ['name','flag','chr','start','end','mapq','cigar','rnext','pnext','tlen','seq','qual']
+
+    maybe followed by a few optional tags that can be specified as follows::
+
+        track("myfile.sam", tags=['XA','MD','NM'])
+    """
+    def __init__(self,path,**kwargs):
+        kwargs['format'] = 'sam'
+        kwargs['fields'] = ['name','flag','chr','start','end','mapq','cigar','rnext','pnext','tlen','seq','qual'] \
+                           + kwargs.get('tags',[])
+        TextTrack.__init__(self,path,**kwargs)
+        if not(os.path.exists(self.path)): return
+
+    def _read(self,*args,**kwargs):
+        args = (args[0][:4]+args[0][5:],) + args[1:] # remove 'end' from `fields` before `_read`
+        row = super(SamTrack,self)._read(*args,**kwargs).next()
+        yield row[:4]+(row[3]+1,)+(row[4:])
 
