@@ -20,11 +20,12 @@ All kinds of raw text files organized in columns can be read (if column fields a
 e.g. **csv**, **sam**, or tab-delimited files.
 The following formats are automatically recognized and decoded:
 
-**bed**, **wig**, **bedGraph**, **bigWig**, **BAM**, **sqlite**, **sga**, **gff**.
+**bed**, **wig**, **bedGraph**, **bigWig**, **SAM**, **BAM**, **sqlite**, **sga**, **gff**.
 
 The format is recognized mostly when reading the corresponding file extensions:
 
-**.bed**, **.wig**, **.bedGraph**, **.bedgraph**, **.bigWig**, **.bw**, **.sql**, **.sga**, **.gff**, **.gtf**.
+**.bed**, **.wig**, **.bedGraph**, **.bedgraph**, **.bigWig**, **.sam**, **.bam**, **.bw**,
+**.sql**, **.sga**, **.gff**, **.gtf**.
 
 URLs pointing to such files (ex.: http://genome.ucsc.edu/goldenPath/help/examples/bedExample2.bed)
 and gzipped files are handled automatically.

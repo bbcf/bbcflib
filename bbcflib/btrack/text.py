@@ -28,11 +28,13 @@ class TextTrack(Track):
 
     .. attribute:: intypes
 
-       Dictionary with keys field names and values functions that will be called on each item when reading the file.
+       Dictionary with keys field names and values functions that will be called on each item when reading the file
+       (e.g. check the entry type).
 
     .. attribute:: outtypes
 
-       Dictionary with keys field names and values functions that will be called on each item when writing the file.
+       Dictionary with keys field names and values functions that will be called on each item when writing the file
+       (e.g. format numerics to strings).
 
     When reading a file, lines beginning with "browser", "track" or "#" are skipped.
     The *info* attribute will be filled with "key=value" pairs found on a "track" line at the top of the file.
@@ -242,6 +244,9 @@ class TextTrack(Track):
 
     def _format_fields(self,vec,row,source_list,target_list):
         """
+        Prepares for writing:
+        formats a row (tuple) into a well-formatted string according to the output track format.
+
         :param vec: (list of types) types of the elements according to self.fields.
         :param row: (list of str) splitted row.
         :param source_list: (list of int) list of indices of the given fields in the source stream fields.
@@ -458,7 +463,6 @@ class SgaTrack(TextTrack):
             source.fields[sidx] = 'score'
 
     def _format_fields(self,vec,row,source_list,target_list):
-        """See `TextTrack._format_fields` ."""
         rowres = ['',0,0,'',0,0]
         for k,n in enumerate(source_list):
             rowres[target_list[k]] = row[n]
@@ -570,7 +574,6 @@ class WigTrack(TextTrack):
             raise IOError("Please specify 'fixedStep' or 'variableStep'.")
 
     def _format_fields(self,vec,row,source_list,target_list):
-        """See `TextTrack._format_fields` ."""
         chrom = row[source_list[0]]
         start = self.outtypes.get('start',str)(row[source_list[1]])
         span = int(row[source_list[2]])-int(row[source_list[1]])
@@ -632,7 +635,10 @@ class SamTrack(TextTrack):
 
         ['name','flag','chr','start','end','mapq','cigar','rnext','pnext','tlen','seq','qual']
 
-    maybe followed by a few optional tags that can be specified as follows::
+    according to the SAM `specification <http://samtools.sourceforge.net/SAM1.pdf>_`.
+    Here, 'name' is the read name (QNAME); 'chr' holds for the reference sequence name (RNAME);
+    'start' is the leftmost mapping position (POS); 'end' is 'start' plus the length of the read.
+    These can be followed by a few optional tags that can be specified as follows::
 
         track("myfile.sam", tags=['XA','MD','NM'])
     """
@@ -642,9 +648,16 @@ class SamTrack(TextTrack):
                            + kwargs.get('tags',[])
         TextTrack.__init__(self,path,**kwargs)
         if not(os.path.exists(self.path)): return
+        self.intypes.update({'flag':int, 'mapq':int, 'pnext':int, 'tlen':int})
 
     def _read(self,*args,**kwargs):
         args = (args[0][:4]+args[0][5:],) + args[1:] # remove 'end' from `fields` before `_read`
         row = super(SamTrack,self)._read(*args,**kwargs).next()
-        yield row[:4]+(row[3]+1,)+(row[4:])
+        yield row[:4]+(row[3]+len(row[9]),)+(row[4:]) # end = start + read length
+
+    def _format_fields(self,vec,row,source_list,target_list):
+        for i,j in enumerate(target_list):
+            vec[j] = self.outtypes.get(self.fields[j],str)(row[source_list[i]])
+        vec.pop(4) # remove 'end'
+        return self.separator.join(vec)
 
