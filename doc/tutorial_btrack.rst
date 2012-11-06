@@ -20,11 +20,12 @@ All kinds of raw text files organized in columns can be read (if column fields a
 e.g. **csv**, **sam**, or tab-delimited files.
 The following formats are automatically recognized and decoded:
 
-**bed**, **wig**, **bedGraph**, **bigWig**, **BAM**, **sqlite**, **sga**, **gff**.
+**bed**, **wig**, **bedGraph**, **bigWig**, **SAM**, **BAM**, **sqlite**, **sga**, **gff**.
 
 The format is recognized mostly when reading the corresponding file extensions:
 
-**.bed**, **.wig**, **.bedGraph**, **.bedgraph**, **.bigWig**, **.bw**, **.sql**, **.sga**, **.gff**, **.gtf**.
+**.bed**, **.wig**, **.bedGraph**, **.bedgraph**, **.bigWig**, **.sam**, **.bam**, **.bw**,
+**.sql**, **.sga**, **.gff**, **.gtf**.
 
 URLs pointing to such files (ex.: http://genome.ucsc.edu/goldenPath/help/examples/bedExample2.bed)
 and gzipped files are handled automatically.
@@ -46,7 +47,7 @@ Glossary
 How does is work?
 -----------------
 
-The library is made of two main functions: :func:`track <bbcflib.btrack.track>` 
+The library is made of two main functions: :func:`track <bbcflib.btrack.track>`
 and :func:`convert <bbcflib.btrack.convert>`, and two main classes:
 :func:`Track <bbcflib.btrack.Track>` and :func:`FeatureStream <bbcflib.btrack.FeatureStream>`.
 
@@ -199,7 +200,7 @@ Advanced features
     >>> t = track("myfile.bedgraph")
     >>> ensembl_to_ucsc(t.read()).next()
     ('chr1', 0, 101, 1.0)
-    
+
     >>> stream = FeatureStream([('chr1',10,14,23.56)], fields=t.fields)
     >>> t.write(ucsc_to_ensembl(stream), mode='append')
         # writes "chr1    11    14    23.56"
@@ -209,6 +210,35 @@ Advanced features
     >>> from bbcflib.btrack import check_ordered
     >>> check_ordered("myfile.bed")
     True
+
+* To test if all lines of the track file fit the given format::
+
+    >>> from bbcflib.btrack import check_format
+    >>> check_format("myfile.bed")
+    True
+
+* BAM files have special methods: :func:`count <bbcflib.btrack.bin.BamTrack.count>` and
+  :func:`coverage <bbcflib.btrack.bin.BamTrack.coverage>`::
+
+    >>> t = track("myfile.bam")
+
+    >>> regions = [('chr1',11,20),('chr2',5,22)] # can also be a FeatureStream
+    >>> c = t.count(regions)
+    >>> for x in c: print x
+    ('chr1',11,20, 12.)
+    ('chr2',5,22, 89.)
+
+    >>> region = ('chr1',11,20)
+    >>> c = t.coverage(region)
+    >>> for x in c: print x
+    ('chr1',11,12, 6.)
+    ('chr1',12,13, 5.)
+    ('chr1',13,17, 4.)
+    ('chr1',17,18, 1.)
+    ('chr1',19,20, 6.)
+
+    # No coverage at position 18; positions 13 to 16 have the same coverage.
+
 
 bFlatMajor: data manipulations
 ------------------------------
@@ -220,7 +250,7 @@ then ``read`` it and provide the output stream to one of **bFlatMajor**'s functi
 Most of them will also return streams, so that you can pass it to another function,
 and write the final result to a new ``Track``.
 
-For more info, see **bFlatMajor**'s :doc:`tutorial <tutorial_bFlatMajor>` 
+For more info, see **bFlatMajor**'s :doc:`tutorial <tutorial_bFlatMajor>`
 and :doc:`developer documentation <bbcflib_bFlatMajor>`.
 
 Miscellaneous notes

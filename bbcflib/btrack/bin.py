@@ -142,11 +142,16 @@ try:
             self.close()
 
         def open(self):
-            self.filehandle = pysam.Samfile(self.path, "rb")
-            if not(os.path.exists(self.path+".bai")):
-                self._run_tool('samtools', ["index",self.path])
-            self.fetch = self.filehandle.fetch
-            self.pileup = self.filehandle.pileup
+            try:
+                self.filehandle = pysam.Samfile(self.path, "rb")
+                if not(os.path.exists(self.path+".bai")):
+                    self._run_tool('samtools', ["index",self.path])
+                self.fetch = self.filehandle.fetch
+                self.pileup = self.filehandle.pileup
+            except ValueError:
+                self.filehandle = pysam.Samfile(self.path, "r")
+                #header = {'SQ':[{'SN':chr,'LN':v['length']} for chr,v in self.chrmeta.iteritems()]}
+                #self.filehandle = pysam.Samfile(self.path, "r", header=header)
 
         def close(self):
             self.filehandle.close()
@@ -186,7 +191,7 @@ try:
             Returns a FeatureStream with one element per region, its score being the number of reads
             overlapping (even partially) this region.
 
-            :param regions: any iterable over of tuples of the type `(chr,start,end)`. 
+            :param regions: any iterable over of tuples of the type `(chr,start,end)`.
             :param on_strand: (bool) restrict to reads on same strand as region.
             :param strict: (bool) restrict to reads entirely contained in the region.
             :param readlen: (int) set readlen if strict == True.
@@ -206,7 +211,7 @@ try:
                         return
                     if self.on_str and \
                             (alignment.is_reverse and self.reg[2]>0) or \
-                            (not alignment.is_reverse and self.reg[2]<0): 
+                            (not alignment.is_reverse and self.reg[2]<0):
                         return
                     self.n += 1
 
