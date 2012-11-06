@@ -3,6 +3,7 @@ import re, os, sys
 
 # Internal modules #
 from bbcflib.common import unique_filename_in, set_file_descr
+from bbcflib import mapseq, genrep
 from bbcflib.btrack import FeatureStream, track, convert
 from bbcflib.bFlatMajor.common import concat_fields
 from bbcflib.bFlatMajor import stream as gm_stream
@@ -329,5 +330,44 @@ def posAllUniqSNP(dictPileup):
                 if int(data[7])-cpt >= 5:
                     d[int(data[1])] = data[2].upper()
     return d
+
+
+def snp_workflow(ex, job, bam_files, assembly, path_to_ref, via):
+    """Main function of the workflow"""
+    groups = job.groups
+    genomeRef = assembly.untar_genome_fasta(path_to_ref, convert=True)
+    pileup_dict = dict((chrom,{}) for chrom in genomeRef.keys()) # {chr: {}}
+    sample_names = []
+    bam = {}
+    for gid, files in bam_files.iteritems():
+        sample_name = groups[gid]['name']
+        sample_names.append(sample_name)
+        runs = [r['bam'] for r in files.itervalues()]
+        if len(runs) > 1:
+            bam = mapseq.merge_bam(ex,runs)
+            mapseq.index_bam(ex,bam)
+        else: bam = runs[0]
+        pileupFilename = unique_filename_in()
+        # Samtools pileup
+        for chrom,ref in genomeRef.iteritems():
+            future = sam_pileup.nonblocking(ex,assembly,bam,ref,via,stdout=pileupFilename )
+            pileup_dict[chrom][pileupFilename] = (future,sample_name,bam) # {chr: {filename: (future,name)}}
+    chr_filename = {}
+    for chrom, dictPileup in pileup_dict.iteritems():
+        # Get the results from sam_pileup
+        # Write the list of all snps of THIS chromosome, from ALL samples
+        allSNPpos = posAllUniqSNP(dictPileup) # {3021:'A'}
+        if len(allSNPpos) == 0: continue
+        # Write results in a temporary file, for this chromosome
+        chr_filename[chrom] = write_pileupFile(dictPileup,sample_names,allSNPpos,chrom,assembly)
+
+    # Add exon & codon information & write the real file
+    outall,outexons = annotate_snps(chr_filename,sample_names,assembly,genomeRef)
+    description = set_file_descr("allSNP.txt",step="SNPs",type="txt")
+    ex.add(outall,description=description)
+    description = set_file_descr("exonsSNP.txt",step="SNPs",type="txt")
+    ex.add(outexons,description=description)
+    # Create tracks for UCSC and GDV:
+    create_tracks(ex,outall,sample_names,assembly)
 
 
