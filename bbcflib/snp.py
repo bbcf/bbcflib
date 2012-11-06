@@ -3,7 +3,7 @@ import re, os, sys
 
 # Internal modules #
 from bbcflib.common import unique_filename_in, set_file_descr
-from bbcflib import mapseq, genrep
+from bbcflib import mapseq
 from bbcflib.btrack import FeatureStream, track, convert
 from bbcflib.bFlatMajor.common import concat_fields
 from bbcflib.bFlatMajor import stream as gm_stream
@@ -282,7 +282,6 @@ def annotate_snps(filedict, sample_names, assembly, genomeRef=None):
     outex.close()
     return (outall, outexons)
 
-
 def create_tracks(ex, outall, sample_names, assembly):
     """Write SQL and BED tracks showing all SNPs found."""
     with open(outall,'rb') as f:
@@ -313,12 +312,11 @@ def create_tracks(ex, outall, sample_names, assembly):
                                      type='bed',step='SNPs',ucsc='1')
         ex.add(out+'.bed', description=description)
 
-
 def posAllUniqSNP(dictPileup):
     """
     Retrieve the results from samtools pileup and return a dict of the type {3021: 'A'}.
 
-    :param dictPileup: (dict) dictionary of the form {filename: bein.Future}
+    :param dictPileup: (dict) dictionary of the form {filename: (bein.Future,sample_name,bam_file)}
     """
     d={}
     for filename,trio in dictPileup.iteritems():
@@ -334,24 +332,28 @@ def posAllUniqSNP(dictPileup):
 
 def snp_workflow(ex, job, bam_files, assembly, path_to_ref, via):
     """Main function of the workflow"""
-    groups = job.groups
+    if path_to_ref is None:
+        path_to_ref = os.path.join(assembly.genrep.root,'nr_assemblies/fasta',assembly.md5+'.tar.gz')
+    assert os.path.exists(path_to_ref), "Reference sequence not found: %s." % path_to_ref
     genomeRef = assembly.untar_genome_fasta(path_to_ref, convert=True)
     pileup_dict = dict((chrom,{}) for chrom in genomeRef.keys()) # {chr: {}}
     sample_names = []
     bam = {}
     for gid, files in bam_files.iteritems():
-        sample_name = groups[gid]['name']
+        sample_name = job.groups[gid]['name']
         sample_names.append(sample_name)
+        # Merge all bams belonging to the same group
         runs = [r['bam'] for r in files.itervalues()]
         if len(runs) > 1:
             bam = mapseq.merge_bam(ex,runs)
             mapseq.index_bam(ex,bam)
         else: bam = runs[0]
-        pileupFilename = unique_filename_in()
         # Samtools pileup
         for chrom,ref in genomeRef.iteritems():
+            pileupFilename = unique_filename_in()
             future = sam_pileup.nonblocking(ex,assembly,bam,ref,via,stdout=pileupFilename )
-            pileup_dict[chrom][pileupFilename] = (future,sample_name,bam) # {chr: {filename: (future,name)}}
+            pileup_dict[chrom][pileupFilename] = (future,sample_name,bam)
+
     chr_filename = {}
     for chrom, dictPileup in pileup_dict.iteritems():
         # Get the results from sam_pileup
