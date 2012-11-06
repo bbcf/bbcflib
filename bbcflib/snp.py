@@ -32,11 +32,9 @@ def _ploidy(assembly):
     if str(assembly.name) in ["EB1_e_coli_k12","MLeprae_TN","mycoSmeg_MC2_155",
                               "mycoTube_H37RV","NA1000","vibrChol1","TB40-BAC4"]:
         ploidy = 1 # procaryote
-        min_coverage = 40 # percent
     else:
         ploidy = 2 # eucaryote
-        min_coverage = 20 # percent
-    return (ploidy,min_coverage)
+    return ploidy
 
 @program
 def sam_pileup(assembly,bamfile,refGenome,via='lsf'):
@@ -46,7 +44,7 @@ def sam_pileup(assembly,bamfile,refGenome,via='lsf'):
     :param bamfile: path to the BAM file.
     :param refGenome: path to the reference genome fasta file.
     """
-    ploidy = _ploidy(assembly)[0]
+    ploidy = _ploidy(assembly)
     return {"arguments": ["samtools","pileup","-B","-cvsf",refGenome,"-N",str(ploidy),bamfile],
             "return_value": None}
 
@@ -89,7 +87,7 @@ def write_pileupFile(dictPileup,sample_names,allSNPpos,chrom,assembly):
         allpos = sorted(allSNPpos.keys(),reverse=True) # list of positions [int] with an SNP across all groups
         sname = trio[1]
         bamtrack = track(trio[2],format='bam')
-        ploidy,min_coverage = _ploidy(assembly)
+        ploidy = _ploidy(assembly)
         pos = -1
         ref = None # In case sample is empty
         allSamples[sname] = {}
