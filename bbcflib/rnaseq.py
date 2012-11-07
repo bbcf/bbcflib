@@ -18,7 +18,7 @@ Note that the resulting counts on transcripts are approximate.
 import os, sys, pysam, math, itertools
 
 # Internal modules #
-from bbcflib.common import writecols, set_file_descr, unique_filename_in, cat
+from bbcflib.common import set_file_descr, unique_filename_in, cat
 from bbcflib import mapseq, genrep
 from bbcflib.mapseq import add_and_index_bam, sam_to_bam
 from bbcflib.bFlatMajor.common import cobble, sorted_stream, map_chromosomes, duplicate, apply
@@ -181,6 +181,30 @@ def build_pileup(bamfile, exons, assembly):
             c.n = 0
     sam.close()
     return counts
+
+def writecols(file, cols, header=None, sep="\t"):
+    """Write a list of iterables *cols* as columns in a *sep*-delimited text file.
+    One can precise an array *header* to define column names.
+    The parameter *sep* defines the delimiter character between columns.
+    """
+    import csv
+    ncols = len(cols)
+    with open(file,"wb") as f:
+        w = csv.writer(f, delimiter=sep)
+        if header:
+            if len(header) < len(cols):
+                header = header + ["c"+str(i+1+len(header)) for i in range(ncols-len(header))]
+                print >>sys.stderr, "Warning: header has less elements than there are columns."
+            elif len(header) > len(cols):
+                header = header[:ncols]
+                print >>sys.stderr, "Warning: header has more elements than there are columns."
+            w.writerow(header)
+        maxlen = max([len(c) for c in cols])
+        for c in cols:
+            if len(c) < maxlen:
+                c.extend( [""]*(maxlen-len(c)) )
+        for row in zip(*cols):
+            w.writerow(row)
 
 def save_results(ex, cols, conditions, group_ids, assembly, header=[], feature_type='features'):
     """Save results in a tab-delimited file, one line per feature, one column per run.
