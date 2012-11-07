@@ -530,9 +530,7 @@ def rnaseq_workflow(ex, job, bam_files, pileup_level=["exons","genes","transcrip
     """ Print counts for exons """
     if "exons" in pileup_level:
         print "Get scores of exons"
-        exons_data = zip(*exons_data)
         header = ["ExonID"] + hconds + ["Start","End","GeneID","GeneName","Strand","Chromosome"]
-        exons_data = zip(*exons_data)
         exons_file = save_results(ex, exons_data, conditions, group_ids, assembly, header=header, feature_type="EXONS")
 
     """ Get scores of genes from exons """
