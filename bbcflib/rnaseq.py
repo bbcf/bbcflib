@@ -16,6 +16,7 @@ Note that the resulting counts on transcripts are approximate.
 
 # Built-in modules #
 import os, sys, pysam, math, itertools
+from operator import itemgetter
 
 # Internal modules #
 from bbcflib.common import set_file_descr, unique_filename_in, cat
@@ -182,30 +183,6 @@ def build_pileup(bamfile, exons, assembly):
     sam.close()
     return counts
 
-def writecols(file, cols, header=None, sep="\t"):
-    """Write a list of iterables *cols* as columns in a *sep*-delimited text file.
-    One can precise an array *header* to define column names.
-    The parameter *sep* defines the delimiter character between columns.
-    """
-    import csv
-    ncols = len(cols)
-    with open(file,"wb") as f:
-        w = csv.writer(f, delimiter=sep)
-        if header:
-            if len(header) < len(cols):
-                header = header + ["c"+str(i+1+len(header)) for i in range(ncols-len(header))]
-                print >>sys.stderr, "Warning: header has less elements than there are columns."
-            elif len(header) > len(cols):
-                header = header[:ncols]
-                print >>sys.stderr, "Warning: header has more elements than there are columns."
-            w.writerow(header)
-        maxlen = max([len(c) for c in cols])
-        for c in cols:
-            if len(c) < maxlen:
-                c.extend( [""]*(maxlen-len(c)) )
-        for row in zip(*cols):
-            w.writerow(row)
-
 def save_results(ex, cols, conditions, group_ids, assembly, header=[], feature_type='features'):
     """Save results in a tab-delimited file, one line per feature, one column per run.
 
@@ -220,7 +197,10 @@ def save_results(ex, cols, conditions, group_ids, assembly, header=[], feature_t
     conditions = tuple(conditions)
     # Tab-delimited output with all information
     output_tab = unique_filename_in()
-    writecols(output_tab,cols,header=header, sep="\t")
+    with open(output_tab,'wb') as f:
+        f.write('\t'.join(header)+'\n')
+        for l in itertools.izip(*cols):
+            f.write('\t'.join([str(x) for x in l])+'\n')
     description = set_file_descr(feature_type.lower()+"_expression.tab", step="pileup", type="txt")
     ex.add(output_tab, description=description)
     # Create one track for each group
@@ -240,18 +220,18 @@ def save_results(ex, cols, conditions, group_ids, assembly, header=[], feature_t
         for group,filename in output_sql.iteritems():
             # SQL track
             tr = track(filename+'.sql', fields=['chr','start','end','score'], chrmeta=assembly.chrmeta)
-            lines = {}
+            towrite = {}
             for n,c in enumerate(chromosomes):
-                if not(c in tr.chrmeta): continue
-                if c in lines: lines[c].append((int(start[n]),int(end[n]),rpkm[group][n]))
-                else: lines[c] = []
-            for chrom, feats in lines.iteritems():
+                if c not in tr.chrmeta: continue
+                if c in towrite: towrite[c].append((int(start[n]),int(end[n]),rpkm[group][n]))
+                else: towrite[c] = []
+            for chrom, feats in towrite.iteritems():
                 tr.write(cobble(sorted_stream(FeatureStream(feats, fields=['start','end','score']))),chrom=chrom,clip=True)
             description = set_file_descr(feature_type.lower()+"_"+group+".sql", step="pileup", type="sql", \
                                          groupId=group_ids[group], gdv='1')
             ex.add(filename+'.sql', description=description)
             # UCSC-BED track
-            t=track(filename+'.bedGraph',info={'name':feature_type.lower()+"_"+group})
+            t = track(filename+'.bedGraph',info={'name':feature_type.lower()+"_"+group})
             t.make_header()
             convert(filename+'.sql',filename+'.bedGraph',mode='append')
             description = set_file_descr(feature_type.lower()+"_"+group+".bedGraph",
@@ -278,7 +258,7 @@ def genes_expression(exons_data, gene_mapping, exon_mapping, ncond, nreads):
     gene_counts = dict(zip(genes,z))
     gene_rpkm = dict(zip(genes,zz))
     round = numpy.round
-    for e,c in zip(exons_data[0],zip(*exons_data[1:2*ncond+1])):
+    for e,c in itertools.izip(exons_data[0],zip(*exons_data[1:2*ncond+1])):
         g = exon_mapping[e][1]
         gene_counts[g] += round(c[:ncond],2)
     for g in genes:
@@ -437,8 +417,8 @@ def rnaseq_workflow(ex, job, bam_files, pileup_level=["exons","genes","transcrip
     ncond = len(conditions)
 
     print "Load mappings"
-    """ [0] gene_mapping is a dict ``{gene_id: (gene name,start,end,length,strand,chromosome)}``
-        [1] transcript_mapping is a dictionary ``{transcript_id: (gene_id,start,end,length,strand,chromosome)}``
+    """ [0] gene_mapping is a dict ``{gene_id: (gene_name,start,end,length,strand,chromosome)}``
+        [1] transcript_mapping is a dictionary ``{transcript_id: (gene_id,gene_name,start,end,length,strand,chromosome)}``
         [2] exon_mapping is a dictionary ``{exon_id: ([transcript_ids],gene_id,gene_name,start,end,strand,chromosome)}``
         [3] trans_in_gene is a dict ``{gene_id: [IDs of the transcripts it contains]}``
         [4] exons_in_trans is a dict ``{transcript_id: [IDs of the exons it contains]}`` """
@@ -523,7 +503,7 @@ def rnaseq_workflow(ex, job, bam_files, pileup_level=["exons","genes","transcrip
     rpkm = to_rpkm(counts, ends-starts, nreads)
 
     hconds = ["counts."+c for c in conditions] + ["rpkm."+c for c in conditions]
-    genesName, echr = zip(*[(x[0],x[-1]) for x in [gene_mapping.get(g,("NA",)*6) for g in genesID]])
+    genesName, echr = zip(*[itemgetter(0,-1)(gene_mapping.get(g,("NA",)*6)) for g in genesID])
     exons_data = [exonsID]+list(counts)+list(rpkm)+[starts,ends,genesID,genesName,strands,echr]
     exons_file = None; genes_file = None; trans_file = None
 
@@ -531,17 +511,18 @@ def rnaseq_workflow(ex, job, bam_files, pileup_level=["exons","genes","transcrip
     if "exons" in pileup_level:
         print "Get scores of exons"
         header = ["ExonID"] + hconds + ["Start","End","GeneID","GeneName","Strand","Chromosome"]
+        #exons_data = zip(*exons_data)
         exons_file = save_results(ex, exons_data, conditions, group_ids, assembly, header=header, feature_type="EXONS")
 
     """ Get scores of genes from exons """
     if "genes" in pileup_level:
         print "Get scores of genes"
         (gcounts, grpkm) = genes_expression(exons_data, gene_mapping, exon_mapping, ncond, nreads)
-        genesID = gcounts.keys()
-        genes_data = [[g,gcounts[g],grpkm[g]]+list(gene_mapping.get(g,("NA",)*6)) for g in genesID]
-        (genesID,gcounts,grpkm,gname,gstart,gend,glen,gstr,gchr) = zip(*genes_data)
+        genesID = gcounts.iterkeys()
+        genes_data = [(g,)+tuple(gcounts[g])+tuple(grpkm[g])+itemgetter(1,2,0,4,5)(gene_mapping.get(g,("NA",)*6))
+                      for g in genesID]
+        genes_data = zip(*genes_data)
         header = ["GeneID"] + hconds + ["Start","End","GeneName","Strand","Chromosome"]
-        genes_data = [genesID]+list(zip(*gcounts))+list(zip(*grpkm))+[gstart,gend,gname,gstr,gchr]
         genes_file = save_results(ex, genes_data, conditions, group_ids, assembly, header=header, feature_type="GENES")
 
     """ Get scores of transcripts from exons, using non-negative least-squares """
@@ -549,12 +530,11 @@ def rnaseq_workflow(ex, job, bam_files, pileup_level=["exons","genes","transcrip
         print "Get scores of transcripts"
         (tcounts,trpkm) = transcripts_expression(exons_data, exon_mapping,
                    transcript_mapping, trans_in_gene, exons_in_trans, ncond, nreads)
-        transID = tcounts.keys()
-        trans_data = [[t,tcounts[t],trpkm[t]]+list(transcript_mapping.get(t,("NA",)*7)) for t in transID]
-        (transID,tcounts,trpkm,genesID,tstart,tend,tlen,tstr,tchr) = zip(*trans_data)
-        genesName = [gene_mapping.get(g,("NA",)*6)[0] for g in genesID]
+        transID = tcounts.iterkeys()
+        trans_data = [(t,)+tuple(tcounts[t])+tuple(trpkm[t])+itemgetter(2,3,0,1,5,6)(transcript_mapping.get(t,("NA",)*7))
+                      for t in transID]
+        trans_data = zip(*trans_data)
         header = ["TranscriptID"] + hconds + ["Start","End","GeneID","GeneName","Strand","Chromosome"]
-        trans_data = [transID]+list(zip(*tcounts))+list(zip(*trpkm))+[tstart,tend,genesID,genesName,tstr,tchr]
         trans_file = save_results(ex, trans_data, conditions, group_ids, assembly, header=header, feature_type="TRANSCRIPTS")
 
     result = {"exons":exons_file, "genes":genes_file, "transcripts":trans_file}
