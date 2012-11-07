@@ -183,14 +183,14 @@ def build_pileup(bamfile, exons, assembly):
     sam.close()
     return counts
 
-def save_results(ex, cols, conditions, group_ids, assembly, header=[], feature_type='features'):
+def save_results(ex, lines, conditions, group_ids, assembly, header=[], feature_type='features'):
     """Save results in a tab-delimited file, one line per feature, one column per run.
 
     :param ex: bein's execution.
-    :param cols: list of iterables, each element being a column to write in the output.
-    :param conditions: list of strings corresponding to descriptions of the different samples.
-    :param group_ids: dictionary {group name: group_id}.
-    :param assembly: a GenRep Assembly object.
+    :param lines: list of iterables, each element being a column to write in the output.
+    :param conditions: list of sample identifiers, each given as *group.run_id*.
+    :param group_ids: dictionary ``{group name: group_id}``.
+    :param assembly: a genrep.Assembly object.
     :param header: list of strings, the column headers of the output file.
     :param feature_type: (str) the kind of feature of which you measure the expression.
     """
@@ -199,12 +199,13 @@ def save_results(ex, cols, conditions, group_ids, assembly, header=[], feature_t
     output_tab = unique_filename_in()
     with open(output_tab,'wb') as f:
         f.write('\t'.join(header)+'\n')
-        for l in itertools.izip(*cols):
+        for l in lines:
             f.write('\t'.join([str(x) for x in l])+'\n')
     description = set_file_descr(feature_type.lower()+"_expression.tab", step="pileup", type="txt")
     ex.add(output_tab, description=description)
     # Create one track for each group
     if feature_type in ['GENES','EXONS']:
+        cols = zip(*lines)
         ncond = len(conditions)
         groups = [c.split('.')[0] for c in conditions]
         start = cols[2*ncond+1]
@@ -214,7 +215,7 @@ def save_results(ex, cols, conditions, group_ids, assembly, header=[], feature_t
         for i in range(ncond):
             group = conditions[i].split('.')[0]
             nruns = groups.count(group)
-            # mean of all replicates in the group
+            # Average all replicates in the group
             rpkm[group] = asarray(rpkm.get(group,zeros(len(start)))) + asarray(cols[i+ncond+1]) / nruns
             output_sql[group] = output_sql.get(group,unique_filename_in())
         for group,filename in output_sql.iteritems():
@@ -241,55 +242,65 @@ def save_results(ex, cols, conditions, group_ids, assembly, header=[], feature_t
     print feature_type+": Done successfully."
     return output_tab
 
-#@timer
+def exons_expression(exons_data, exon_mapping, nreads):
+    """Return two dictionaries, one for counts and one for rpkm, of the form ``{exon_id: scores}.
+
+    :param exons_data: a tuple (list_of_exons, counts_matrix).
+    :param exon_mapping: dictionary ``{exon_id: ([transcript_id's],gene_id,gene_name,start,end,strand,chromosome)}``
+    :param ncond: (int) number of samples.
+    :param nreads: (numpy array) number of reads in each sample.
+    """
+    exon_counts={}; exon_rpkm={}
+    for e,counts in itertools.izip(*exons_data):
+        exon_counts[e] = counts
+        exon_rpkm[e] = to_rpkm(counts, exon_mapping[e][4]-exon_mapping[e][3], nreads)
+    return exon_counts, exon_rpkm
+
 def genes_expression(exons_data, gene_mapping, exon_mapping, ncond, nreads):
-    """Get gene counts from exons counts.
+    """Get gene counts/rpkms from exon counts.
 
-    Returns two dictionaries, one for counts and one for rpkm, of the form ``{gene_id: score}``.
+    Returns two dictionaries, one for counts and one for rpkm, of the form ``{gene_id: scores}``.
 
-    :param exons_data: list of lists ``[exonsIDs,counts,rpkm,starts,ends,geneIDs,geneNames,strands,chrs]``.
+    :param exons_data: a tuple (list_of_exons, counts_matrix).
     :param gene_mapping: dictionary ``{gene_id: (gene name,start,end,length,strand,chromosome)}``
     :param exon_mapping: dictionary ``{exon_id: ([transcript_id's],gene_id,gene_name,start,end,strand,chromosome)}``
-    :param ncond: number of samples.
+    :param ncond: (int) number of samples.
+    :param nreads: (numpy array) number of reads in each sample.
     """
-    genes = list(set(exons_data[-4]))
-    z = numpy.zeros((len(genes),ncond))
-    zz = numpy.zeros((len(genes),ncond))
-    gene_counts = dict(zip(genes,z))
-    gene_rpkm = dict(zip(genes,zz))
+    gene_counts={}; gene_rpkm={}
     round = numpy.round
-    for e,c in itertools.izip(exons_data[0],zip(*exons_data[1:2*ncond+1])):
-        g = exon_mapping[e][1]
-        gene_counts[g] += round(c[:ncond],2)
-    for g in genes:
-        if gene_mapping.get(g):
-            gene_rpkm[g] = to_rpkm(gene_counts[g], gene_mapping[g][3], nreads)
-        else: gene_rpkm[g] = [0]*ncond
+    for exon,counts in itertools.izip(*exons_data):
+        g = exon_mapping[exon][1]
+        gene_counts[g] = gene_counts.get(g,zeros(ncond)) + round(counts,2)
+    for g,counts in gene_counts.iteritems():
+        gene_rpkm[g] = to_rpkm(counts, gene_mapping[g][3], nreads)
     return gene_counts, gene_rpkm
 
-#@timer
 def transcripts_expression(exons_data, exon_mapping, transcript_mapping, trans_in_gene, exons_in_trans, ncond, nreads):
     """Get transcript rpkms from exon rpkms.
 
     Returns two dictionaries, one for counts and one for rpkm, of the form ``{transcript_id: score}``.
 
-    :param exons_data: list of lists ``[exonsIDs,counts,rpkm,starts,ends,geneIDs,geneNames,strands,chrs]``
-    :param exon_mapping: dictionary ``{exon_id: ([transcript_ids],gene_id,start,end,strand,chromosome)}``
+    :param exons_data: a tuple (list_of_exons, counts_matrix).
+    :param exon_mapping: dictionary ``{exon_id: ([transcript_ids],gene_id,gene_name,start,end,strand,chromosome)}``
     :param transcript_mapping: dictionary ``{transcript_id: (gene_id,gene_name,start,end,length,strand,chromosome)}``
     :param trans_in_gene: dictionary ``{gene_id: [transcript_ids it contains]}``
     :param exons_in_trans: dictionary ``{transcript_id: [exon_ids it contains]}``
-    :param ncond: number of samples
+    :param ncond: (int) number of samples.
+    :param nreads: (numpy array) number of reads in each sample.
     """
-    genes = list(set(exons_data[-4]))
-    transcripts=[]
+    exons_counts={}; genes=[]; transcripts=[]
+    for e,counts in itertools.izip(*exons_data):
+        exons_counts[e] = counts
+        genes.append(exon_mapping[e][1])
+    genes = set(genes)
     for g in genes:
         transcripts.extend(trans_in_gene.get(g,[]))
-    transcripts = list(set(transcripts))
+    transcripts = set(transcripts)
     z = numpy.zeros((len(transcripts),ncond))
     zz = numpy.zeros((len(transcripts),ncond))
     trans_counts = dict(zip(transcripts,z))
     trans_rpkm = dict(zip(transcripts,zz))
-    exons_counts = dict(zip( exons_data[0], zip(*exons_data[1:ncond+1])) )
     unknown = 0
     pinv = numpy.linalg.pinv
     norm = numpy.linalg.norm
@@ -371,6 +382,7 @@ def estimate_size_factors(counts):
     return res, size_factors
 
 def to_rpkm(counts, lengths, nreads):
+    """Convert raw counts to RPKM."""
     if isinstance(counts, numpy.ndarray):
         rpkm = 1000*(1e6*counts.T/nreads).T/lengths
     elif isinstance(counts, float) or isinstance(counts, int):
@@ -382,7 +394,6 @@ def to_rpkm(counts, lengths, nreads):
     return rpkm
 
 
-#@timer
 def rnaseq_workflow(ex, job, bam_files, pileup_level=["exons","genes","transcripts"], via="lsf",
                     rpath=None, junctions=None):
     """
@@ -390,13 +401,13 @@ def rnaseq_workflow(ex, job, bam_files, pileup_level=["exons","genes","transcrip
 
     :rtype: None
     :param ex: the bein's execution Id.
-    :param job: a Job object (or a dictionary of the same form) as returned from HTSStation's frontend.
-    :param bam_files: a complicated dictionary such as returned by mapseq.get_bam_wig_files.
+    :param job: a Frontend.Job object (or a dictionary of the same form).
+    :param bam_files: a dictionary such as returned by mapseq.get_bam_wig_files.
     :param pileup_level: a string or array of strings indicating the features you want to compare.
-                         Targets can be 'genes', 'transcripts', or 'exons'.
+        Targets can be 'genes', 'transcripts', or 'exons'. ['genes','transcripts','exons']
     :param rpath: (str) path to the R executable.
     :param junctions: (bool) whether or not to search for splice junctions using SOAPsplice. [False]
-    :param via: 'local' or 'lsf'. ["lsf"]
+    :param via: (str) send job via 'local' or 'lsf'. ["lsf"]
     """
     group_names={}; group_ids={}; conditions=[]
     assembly = genrep.Assembly(assembly=job.assembly_id,intype=2)
@@ -407,7 +418,7 @@ def rnaseq_workflow(ex, job, bam_files, pileup_level=["exons","genes","transcrip
         group_ids[gname] = gid
     if isinstance(pileup_level,str): pileup_level=[pileup_level]
 
-    """ Define conditions """
+    """ Define conditions as 'group_name.run_id' """
     for gid,files in bam_files.iteritems():
         k = 0
         for rid,f in files.iteritems():
@@ -424,54 +435,9 @@ def rnaseq_workflow(ex, job, bam_files, pileup_level=["exons","genes","transcrip
         [4] exons_in_trans is a dict ``{transcript_id: [IDs of the exons it contains]}`` """
     (gene_mapping, transcript_mapping, exon_mapping, trans_in_gene, exons_in_trans) = fetch_mappings(assembly)
 
-    """ Build annotation lists """
-    exons = [(e,)+v[1:] for e,v in exon_mapping.iteritems() if len(e)>0]
-    exonsID=[]; genesID=[]; genesName=[]; starts=[]; ends=[]; strands=[]; badexons=[]
-    for e in exons:
-        exon_id,gene_id,gene_name,start,end,strand,chr = e
-        if end-start > 1:
-            starts.append(start)
-            ends.append(end)
-            strands.append(strand)
-            exonsID.append(exon_id)
-            genesID.append(gene_id)
-            genesName.append(gene_name)
-        else: badexons.append(e)
-    [exons.remove(e) for e in badexons]
-
     """ Map remaining reads to transcriptome """
-    additionals = {}; unmapped_bam = {}; unmapped_fastq = {}
-    refseq_path = assembly.index_path
-    for gid, group in job.groups.iteritems():
-        k = 0
-        for rid, run in group['runs'].iteritems():
-            k +=1
-            cond = group_names[gid]+'.'+str(k)
-            unmapped_fastq[cond] = bam_files[gid][rid].get('unmapped_fastq')
-            if unmapped_fastq[cond] and os.path.exists(refseq_path+".1.ebwt"):
-                unmapped_bam[cond] = mapseq.map_reads(ex, unmapped_fastq[cond], {}, refseq_path, \
-                      remove_pcr_duplicates=False, bwt_args=[], via=via)['bam']
-                if unmapped_bam[cond]:
-                    sam = pysam.Samfile(unmapped_bam[cond])
-                else: sam = []
-                additional = {}
-                for read in sam:
-                    t_id = sam.getrname(read.tid).split('|')[0]
-                    if transcript_mapping.get(t_id) and exons_in_trans.get(t_id):
-                        lag = 0
-                        r_start = read.pos
-                        r_end = r_start + read.rlen
-                        E = exons_in_trans[t_id]
-                        for e in E:
-                            e_start, e_end = exon_mapping[e][3:5]
-                            e_len = e_end-e_start
-                            if lag <= r_start <= lag+e_len:
-                                additional[e] = additional.get(e,0) + 0.5
-                            if lag <= r_end <= lag+e_len:
-                                additional[e] = additional.get(e,0) + 0.5
-                            lag += e_len
-                additionals[cond] = additional
-                sam.close()
+    unmapped_fastq,additionals = unmapped(ex,job,bam_files,assembly,group_names,
+                                          exon_mapping,transcript_mapping,exons_in_trans,via)
 
     """ Find splice junctions """
     if junctions:
@@ -480,6 +446,14 @@ def rnaseq_workflow(ex, job, bam_files, pileup_level=["exons","genes","transcrip
 
     """ Build exon pileups from bam files """
     print "Build pileups"
+    exons = [(e,)+v[1:] for e,v in exon_mapping.iteritems() if len(e)>0]
+    exon_ids=[]; badexons=[]
+    for k,e in enumerate(exons):
+        exon_id,gene_id,gene_name,start,end,strand,chr = e
+        if e[4]-e[3] <= 1: badexons.append(k)
+        else: exon_ids.append(exon_id)
+    [exons.pop(k) for k in badexons]
+
     exon_pileups={}; nreads={}
     for gid,files in bam_files.iteritems():
         k = 0
@@ -490,50 +464,44 @@ def rnaseq_workflow(ex, job, bam_files, pileup_level=["exons","genes","transcrip
             if unmapped_fastq[cond] and cond in additionals:
                 for a,x in additionals[cond].iteritems():
                     exon_pileup[a] = exon_pileup.get(a,0) + x
-            exon_pileups[cond] = [exon_pileup.get(e,0.0) for e in exonsID] # {cond1.run1: {exon:cnt}, cond1.run2: {exon:cnt}...}
+            exon_pileups[cond] = [exon_pileup.get(e,0.0) for e in exon_ids] # {cond1.run1: {exon:cnt}, cond1.run2: {exon:cnt}...}
             nreads[cond] = nreads.get(cond,0) + sum(exon_pileup.values()) # total number of reads
             print "....Pileup", cond, "done"
 
-    """ Treat data """
-    starts = asarray(starts, dtype=numpy.float_)
-    ends = asarray(ends, dtype=numpy.float_)
+    """ Arrange exon counts in a matrix """
     nreads = asarray([nreads[cond] for cond in conditions], dtype=numpy.float_)
     counts = asarray([exon_pileups[cond] for cond in conditions], dtype=numpy.float_)
     #counts, sf = estimate_size_factors(counts)
-    rpkm = to_rpkm(counts, ends-starts, nreads)
+    exon_counts = (exon_ids,counts.T)
 
     hconds = ["counts."+c for c in conditions] + ["rpkm."+c for c in conditions]
-    genesName, echr = zip(*[itemgetter(0,-1)(gene_mapping.get(g,("NA",)*6)) for g in genesID])
-    exons_data = [exonsID]+list(counts)+list(rpkm)+[starts,ends,genesID,genesName,strands,echr]
     exons_file = None; genes_file = None; trans_file = None
 
     """ Print counts for exons """
     if "exons" in pileup_level:
         print "Get scores of exons"
+        (ecounts, erpkm) = exons_expression(exon_counts,exon_mapping,nreads)
+        exons_data = [(e,)+tuple(ecounts[e])+tuple(erpkm[e])+itemgetter(3,4,1,2,5,6)(exon_mapping.get(e,("NA",)*6))
+                      for e in ecounts.iterkeys()]
         header = ["ExonID"] + hconds + ["Start","End","GeneID","GeneName","Strand","Chromosome"]
-        #exons_data = zip(*exons_data)
         exons_file = save_results(ex, exons_data, conditions, group_ids, assembly, header=header, feature_type="EXONS")
 
     """ Get scores of genes from exons """
     if "genes" in pileup_level:
         print "Get scores of genes"
-        (gcounts, grpkm) = genes_expression(exons_data, gene_mapping, exon_mapping, ncond, nreads)
-        genesID = gcounts.iterkeys()
+        (gcounts, grpkm) = genes_expression(exon_counts, gene_mapping, exon_mapping, ncond, nreads)
         genes_data = [(g,)+tuple(gcounts[g])+tuple(grpkm[g])+itemgetter(1,2,0,4,5)(gene_mapping.get(g,("NA",)*6))
-                      for g in genesID]
-        genes_data = zip(*genes_data)
+                      for g in gcounts.iterkeys()]
         header = ["GeneID"] + hconds + ["Start","End","GeneName","Strand","Chromosome"]
         genes_file = save_results(ex, genes_data, conditions, group_ids, assembly, header=header, feature_type="GENES")
 
     """ Get scores of transcripts from exons, using non-negative least-squares """
     if "transcripts" in pileup_level:
         print "Get scores of transcripts"
-        (tcounts,trpkm) = transcripts_expression(exons_data, exon_mapping,
+        (tcounts,trpkm) = transcripts_expression(exon_counts, exon_mapping,
                    transcript_mapping, trans_in_gene, exons_in_trans, ncond, nreads)
-        transID = tcounts.iterkeys()
         trans_data = [(t,)+tuple(tcounts[t])+tuple(trpkm[t])+itemgetter(2,3,0,1,5,6)(transcript_mapping.get(t,("NA",)*7))
-                      for t in transID]
-        trans_data = zip(*trans_data)
+                      for t in tcounts.iterkeys()]
         header = ["TranscriptID"] + hconds + ["Start","End","GeneID","GeneName","Strand","Chromosome"]
         trans_file = save_results(ex, trans_data, conditions, group_ids, assembly, header=header, feature_type="TRANSCRIPTS")
 
@@ -575,7 +543,7 @@ def clean_before_deseq(filename):
 
 def clean_deseq_output(filename):
     """Delete all lines of *filename* with NA's everywhere, add 0.5 to zero scores
-    before recalculating fold change, and remove rows' ids."""
+    before recalculating fold change, and remove rows' ids. Return the new file name."""
     filename_clean = unique_filename_in()
     with open(filename,"rb") as f:
         with open(filename_clean,"wb") as g:
@@ -597,22 +565,17 @@ def clean_deseq_output(filename):
                     g.write(line)
     return filename_clean
 
-def differential_analysis(ex, result, rpath, design=None, contrast=None):
-    """For each file in *result*, launches an analysis of differential expression on the count
+def differential_analysis(ex, result, rpath):
+    """For each file in *result*, launch an analysis of differential expression on the count
     values, and saves the output in the MiniLIMS.
 
-    :param ex: the bein's execution.
-    :param result: dictionary {type:filename} as returned by rnaseq_workflow.
+    :param result: dictionary of the form {feature_type:filename} as returned by `rnaseq_workflow`.
     :param rpath: path to the R scripts (negbin.test.R).
-    :param design: name of the file containing the design matrix.
-    :param contrast: name of the file containing the contrasts matrix.
     """
     for type,res_file in result.iteritems():
         if res_file and rpath and os.path.exists(rpath):
             res_file = clean_before_deseq(res_file)
             options = ['-s','tab']
-            if design: options += ['-d',design]
-            if contrast: options += ['-c', contrast]
             try:
                 glmfile = run_glm(ex, rpath, res_file, options)
                 output_files = [f for f in os.listdir(ex.working_directory) if glmfile in f]
@@ -627,7 +590,7 @@ def differential_analysis(ex, result, rpath, design=None, contrast=None):
 
 @program
 def soapsplice(unmapped_R1, unmapped_R2, index, output=None, path_to_soapsplice=None, options={}):
-    """Binds 'soapsplice'. Returns a text file containing the list of junctions.
+    """Bind 'soapsplice'. Return a text file containing the list of junctions.
 
     :param unmapped_R1: (str) path to the fastq file containing the 'left' reads.
     :param unmapped_R2: (str) path to the fastq file containing the 'right' reads.
@@ -661,13 +624,13 @@ def soapsplice(unmapped_R1, unmapped_R2, index, output=None, path_to_soapsplice=
 
 def find_junctions(ex,job,bam_files,assembly,soapsplice_index=None,path_to_soapsplice=None,soapsplice_options={}):
     """
-    :param ex: the bein's execution Id.
-    :param job: a Job object (or a dictionary of the same form) as returned from HTSStation's frontend.
-    :param bam_files: a complicated dictionary such as returned by mapseq.get_bam_wig_files.
+    Retrieve unmapped reads from a precedent mapping and runs SOAPsplice on them.
+    Return the names of .bed and .sql tracks indicating the junctions positions, as well as
+    of a bam file of the alignments attesting the junctions.
+
     :param soapsplice_index: (str) path to the SOAPsplice index.
     :param path_to_soapsplice: (str) specify the path to the program if it is not in your $PATH.
     :param soapsplice_options: (dict) SOAPsplice options, e.g. {'-q',1} .
-    :param via: 'local' or 'lsf'.
     :rtype: str, str, str
     """
     assembly = genrep.Assembly(assembly.id, intype=3)
@@ -702,11 +665,10 @@ def find_junctions(ex,job,bam_files,assembly,soapsplice_index=None,path_to_soaps
         ex.add(bam, description=bam_descr)
 
 def convert_junc_file(filename, assembly):
-    """Convert a .junc SOAPsplice output file to sql and bed formats, and return the respective file names.
+    """Convert a .junc SOAPsplice output file to sql and bed formats. Return the two respective file names.
 
     :param filename: (str) name of the .junc file to convert.
     :param assembly: genrep.Assembly object.
-    :rtype: str, str
     """
     t = track(filename, format='txt', fields=['chr','start','end','strand','score'], chrmeta=assembly.chrmeta)
     stream = t.read()
@@ -725,6 +687,49 @@ def convert_junc_file(filename, assembly):
     convert(sql,bed)
     return sql, bed
 
+#-------------------------- UNMAPPED READS ----------------------------#
+
+def unmapped(ex,job,bam_files,assembly,group_names,exon_mapping,transcript_mapping,exons_in_trans,via):
+    """
+    Map reads that did not map to the exons to a collection of annotated transcripts,
+    in order to add counts to pairs of exons involved in splicing junctions.
+
+    Return a dictionary ``unmapped_fastq`` of the form ``{sample_name:bam_file}``,
+    and a second ``additionals`` of the form ``{sample_name:{exon:additional_counts}}``.
+    """
+    additionals = {}; unmapped_bam = {}; unmapped_fastq = {}
+    refseq_path = assembly.index_path
+    for gid, group in job.groups.iteritems():
+        k = 0
+        for rid, run in group['runs'].iteritems():
+            k +=1
+            cond = group_names[gid]+'.'+str(k)
+            unmapped_fastq[cond] = bam_files[gid][rid].get('unmapped_fastq')
+            if unmapped_fastq[cond] and os.path.exists(refseq_path+".1.ebwt"):
+                unmapped_bam[cond] = mapseq.map_reads(ex, unmapped_fastq[cond], {}, refseq_path, \
+                      remove_pcr_duplicates=False, bwt_args=[], via=via)['bam']
+                if unmapped_bam[cond]:
+                    sam = pysam.Samfile(unmapped_bam[cond])
+                else: sam = []
+                additional = {}
+                for read in sam:
+                    t_id = sam.getrname(read.tid).split('|')[0]
+                    if transcript_mapping.get(t_id) and exons_in_trans.get(t_id):
+                        lag = 0
+                        r_start = read.pos
+                        r_end = r_start + read.rlen
+                        E = exons_in_trans[t_id]
+                        for e in E:
+                            e_start, e_end = exon_mapping[e][3:5]
+                            e_len = e_end-e_start
+                            if lag <= r_start <= lag+e_len:
+                                additional[e] = additional.get(e,0) + 0.5
+                            if lag <= r_end <= lag+e_len:
+                                additional[e] = additional.get(e,0) + 0.5
+                            lag += e_len
+                additionals[cond] = additional
+                sam.close()
+    return unmapped_fastq,additionals
 
 
 #------------------------------------------------------#
