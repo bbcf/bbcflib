@@ -126,7 +126,6 @@ def lsqnonneg(C, d, x0=None, tol=None, itmax_factor=3):
         w = numpy.dot(C.T, resid)
     return (x, sum(resid*resid), resid)
 
-#@timer
 def fetch_mappings(assembly):
     """Given an assembly_id, returns a tuple
     ``(gene_mapping, transcript_mapping, exon_mapping, trans_in_gene, exons_in_trans)``
@@ -543,7 +542,7 @@ def clean_before_deseq(filename):
 
 def clean_deseq_output(filename):
     """Delete all lines of *filename* with NA's everywhere, add 0.5 to zero scores
-    before recalculating fold change, and remove rows' ids. Return the new file name."""
+    before recalculating the fold change, and remove row ids. Return the new file name."""
     filename_clean = unique_filename_in()
     with open(filename,"rb") as f:
         with open(filename_clean,"wb") as g:
@@ -569,8 +568,8 @@ def differential_analysis(ex, result, rpath):
     """For each file in *result*, launch an analysis of differential expression on the count
     values, and saves the output in the MiniLIMS.
 
-    :param result: dictionary of the form {feature_type:filename} as returned by `rnaseq_workflow`.
-    :param rpath: path to the R scripts (negbin.test.R).
+    :param result: dictionary of the form ``{feature_type:filename}`` as returned by `rnaseq_workflow`.
+    :param rpath: path to the R scripts ("negbin.test.R").
     """
     for type,res_file in result.iteritems():
         if res_file and rpath and os.path.exists(rpath):
@@ -686,6 +685,7 @@ def convert_junc_file(filename, assembly):
     out.write(s3)
     convert(sql,bed)
     return sql, bed
+
 
 #-------------------------- UNMAPPED READS ----------------------------#
 
