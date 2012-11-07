@@ -3,6 +3,7 @@ import re, os, sys
 
 # Internal modules #
 from bbcflib.common import unique_filename_in, set_file_descr
+from bbcflib import mapseq
 from bbcflib.btrack import FeatureStream, track, convert
 from bbcflib.bFlatMajor.common import concat_fields
 from bbcflib.bFlatMajor import stream as gm_stream
@@ -31,11 +32,9 @@ def _ploidy(assembly):
     if str(assembly.name) in ["EB1_e_coli_k12","MLeprae_TN","mycoSmeg_MC2_155",
                               "mycoTube_H37RV","NA1000","vibrChol1","TB40-BAC4"]:
         ploidy = 1 # procaryote
-        min_coverage = 40 # percent
     else:
         ploidy = 2 # eucaryote
-        min_coverage = 20 # percent
-    return (ploidy,min_coverage)
+    return ploidy
 
 @program
 def sam_pileup(assembly,bamfile,refGenome,via='lsf'):
@@ -45,7 +44,7 @@ def sam_pileup(assembly,bamfile,refGenome,via='lsf'):
     :param bamfile: path to the BAM file.
     :param refGenome: path to the reference genome fasta file.
     """
-    ploidy = _ploidy(assembly)[0]
+    ploidy = _ploidy(assembly)
     return {"arguments": ["samtools","pileup","-B","-cvsf",refGenome,"-N",str(ploidy),bamfile],
             "return_value": None}
 
@@ -88,7 +87,7 @@ def write_pileupFile(dictPileup,sample_names,allSNPpos,chrom,assembly):
         allpos = sorted(allSNPpos.keys(),reverse=True) # list of positions [int] with an SNP across all groups
         sname = trio[1]
         bamtrack = track(trio[2],format='bam')
-        ploidy,min_coverage = _ploidy(assembly)
+        ploidy = _ploidy(assembly)
         pos = -1
         ref = None # In case sample is empty
         allSamples[sname] = {}
@@ -281,7 +280,6 @@ def annotate_snps(filedict, sample_names, assembly, genomeRef=None):
     outex.close()
     return (outall, outexons)
 
-
 def create_tracks(ex, outall, sample_names, assembly):
     """Write SQL and BED tracks showing all SNPs found."""
     with open(outall,'rb') as f:
@@ -312,12 +310,11 @@ def create_tracks(ex, outall, sample_names, assembly):
                                      type='bed',step='SNPs',ucsc='1')
         ex.add(out+'.bed', description=description)
 
-
 def posAllUniqSNP(dictPileup):
     """
     Retrieve the results from samtools pileup and return a dict of the type {3021: 'A'}.
 
-    :param dictPileup: (dict) dictionary of the form {filename: bein.Future}
+    :param dictPileup: (dict) dictionary of the form {filename: (bein.Future,sample_name,bam_file)}
     """
     d={}
     for filename,trio in dictPileup.iteritems():
@@ -329,5 +326,48 @@ def posAllUniqSNP(dictPileup):
                 if int(data[7])-cpt >= 5:
                     d[int(data[1])] = data[2].upper()
     return d
+
+
+def snp_workflow(ex, job, bam_files, assembly, path_to_ref, via):
+    """Main function of the workflow"""
+    if path_to_ref is None:
+        path_to_ref = os.path.join(assembly.genrep.root,'nr_assemblies/fasta',assembly.md5+'.tar.gz')
+    assert os.path.exists(path_to_ref), "Reference sequence not found: %s." % path_to_ref
+    genomeRef = assembly.untar_genome_fasta(path_to_ref, convert=True)
+    pileup_dict = dict((chrom,{}) for chrom in genomeRef.keys()) # {chr: {}}
+    sample_names = []
+    bam = {}
+    for gid, files in bam_files.iteritems():
+        sample_name = job.groups[gid]['name']
+        sample_names.append(sample_name)
+        # Merge all bams belonging to the same group
+        runs = [r['bam'] for r in files.itervalues()]
+        if len(runs) > 1:
+            bam = mapseq.merge_bam(ex,runs)
+            mapseq.index_bam(ex,bam)
+        else: bam = runs[0]
+        # Samtools pileup
+        for chrom,ref in genomeRef.iteritems():
+            pileupFilename = unique_filename_in()
+            future = sam_pileup.nonblocking(ex,assembly,bam,ref,via,stdout=pileupFilename )
+            pileup_dict[chrom][pileupFilename] = (future,sample_name,bam)
+
+    chr_filename = {}
+    for chrom, dictPileup in pileup_dict.iteritems():
+        # Get the results from sam_pileup
+        # Write the list of all snps of THIS chromosome, from ALL samples
+        allSNPpos = posAllUniqSNP(dictPileup) # {3021:'A'}
+        if len(allSNPpos) == 0: continue
+        # Write results in a temporary file, for this chromosome
+        chr_filename[chrom] = write_pileupFile(dictPileup,sample_names,allSNPpos,chrom,assembly)
+
+    # Add exon & codon information & write the real file
+    outall,outexons = annotate_snps(chr_filename,sample_names,assembly,genomeRef)
+    description = set_file_descr("allSNP.txt",step="SNPs",type="txt")
+    ex.add(outall,description=description)
+    description = set_file_descr("exonsSNP.txt",step="SNPs",type="txt")
+    ex.add(outexons,description=description)
+    # Create tracks for UCSC and GDV:
+    create_tracks(ex,outall,sample_names,assembly)
 
 
