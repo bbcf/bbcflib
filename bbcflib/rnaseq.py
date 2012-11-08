@@ -132,7 +132,7 @@ def fetch_mappings(assembly):
 
     * [0] gene_mapping is a dict ``{gene_id: (gene name,start,end,length,chromosome)}``
     * [1] transcript_mapping is a dictionary ``{transcript_id: (gene_id,gene_name,start,end,length,chromosome)}``
-    * [2] exon_mapping is a dictionary ``{exon_id: ([transcript_ids],gene_id,start,end,chromosome)}``
+    * [2] exon_mapping is a dictionary ``{exon_id: ([transcript_ids],gene_id,gene_name,start,end,chromosome)}``
     * [3] trans_in_gene is a dict ``{gene_id: [IDs of the transcripts it contains]}``
     * [4] exons_in_trans is a dict ``{transcript_id: [IDs of the exons it contains]}``
 
