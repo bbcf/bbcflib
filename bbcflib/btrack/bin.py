@@ -146,8 +146,6 @@ try:
                 self.filehandle = pysam.Samfile(self.path, "rb")
                 if not(os.path.exists(self.path+".bai")):
                     self._run_tool('samtools', ["index",self.path])
-                self.fetch = self.filehandle.fetch
-                self.pileup = self.filehandle.pileup
             except ValueError:
                 self.filehandle = pysam.Samfile(self.path, "r")
                 #header = {'SQ':[{'SN':chr,'LN':v['length']} for chr,v in self.chrmeta.iteritems()]}
@@ -184,6 +182,14 @@ try:
 
         def write(self, source, fields, **kw):
             raise NotImplementedError("Writing to bam is not implemented.")
+
+        def pileup(self,*args,**kwargs):
+            self.open()
+            return self.filehandle.pileup(*args,**kwargs)
+
+        def fetch(self,*args,**kwargs):
+            self.open()
+            return self.filehandle.fetch(*args,**kwargs)
 
         def count(self, regions, on_strand=False, strict=True, readlen=None):
             """
