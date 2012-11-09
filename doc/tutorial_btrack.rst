@@ -109,7 +109,7 @@ How do I use it?
     >>> out.close()
 
     >>> out
-    <bbcflib.btrack.bin.WigTrack object at 0x101769e90>
+    <bbcflib.btrack.text.WigTrack object at 0x101769e90>
 
    Note: the file "newfile.wig" is created only at the time you begin writing to it.
 
@@ -217,8 +217,10 @@ Advanced features
     >>> check_format("myfile.bed")
     True
 
-* BAM files have special methods: :func:`count <bbcflib.btrack.bin.BamTrack.count>` and
-  :func:`coverage <bbcflib.btrack.bin.BamTrack.coverage>`::
+* BAM tracks have special methods: :func:`count <bbcflib.btrack.bin.BamTrack.count>` and
+  :func:`coverage <bbcflib.btrack.bin.BamTrack.coverage>`. The first counts the number of
+  reads spanning each of a given set of regions; the second returns the basepair-wise coverage
+  within a given region. Both return FeatureStream objects::
 
     >>> t = track("myfile.bam")
 
@@ -238,7 +240,6 @@ Advanced features
     ('chr1',19,20, 6.)
 
     # No coverage at position 18; positions 13 to 16 have the same coverage.
-
 
 bFlatMajor: data manipulations
 ------------------------------
