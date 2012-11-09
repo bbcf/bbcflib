@@ -204,7 +204,8 @@ class Assembly(object):
         Get a fasta file with sequences corresponding to the features in the
         bed or sqlite file.
 
-        Returns the name of the output file and the total size of the extracted sequence.
+        Returns a tuple `(out,size)` where `out` is the name of the output file (or a dict)
+        and `size` is the total size of the extracted sequence.
 
         :param regions: (str or dict or list) bed or sqlite file name, or sequence of features.
             If *regions* is a dictionary {'chr': [[start1,end1],[start2,end2]]}
@@ -214,7 +215,7 @@ class Assembly(object):
             If *out* is a (possibly empty) dictionary, will return the updated dictionary.
         :param path_to_ref: (str or dict) path to a fasta file containing the whole reference sequence,
             or a dictionary {chr_name: path} as returned by Assembly.untar_genome_fasta.
-        :rtype: (str,int)
+        :rtype: (str,int) or (dict,int)
         """
         if out is None: out = unique_filename_in()
         _is_filename = False
@@ -373,7 +374,7 @@ class Assembly(object):
         """Untar and concatenate reference sequence fasta files.
         Returns a dictionary {chr_name: file_name}
 
-        :param assembly: the GenRep.Assembly instance of the species of interest.
+        :param path_to_ref: (str) path to the fasta file of the reference sequence (possibly .tar).
         :param convert: (bool) True if chromosome names need conversion from id to chromosome name.
         """
         if path_to_ref is None: path_to_ref = self.fasta_path()
@@ -672,7 +673,7 @@ class Assembly(object):
     @property
     def chrmeta(self):
         """
-        Return a dictionary of chromosome meta data of the type:
+        Return a dictionary of chromosome meta data of the type
         ``{'chr1': {'length': 249250621},'chr2': {'length': 135534747},'chr3': {'length': 135006516}}``
         """
         return dict([(v['name'], dict([('length', v['length']),
