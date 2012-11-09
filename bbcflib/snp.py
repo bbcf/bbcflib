@@ -152,7 +152,6 @@ def write_pileupFile(dictPileup,sample_names,allSNPpos,chrom,assembly):
                 outfile.write("\t".join([chrom,str(pos),refbase] + [allSamples[s][pos] for s in sample_names])+"\n")
                 # Write: chr    pos    ref_base    sample1 ... sampleN
                 # sampleX is one of '0', 'A', 'T (28%)', 'T (28%),G (13%)', with or without star
-
     return formattedPileupFilename
 
 def annotate_snps(filedict, sample_names, assembly, genomeRef=None):
@@ -192,9 +191,9 @@ def annotate_snps(filedict, sample_names, assembly, genomeRef=None):
         new_codon = None
         for chr,pos,refbase,variants,cds,strand,ref_codon,shift in _buffer:
             varbase = [r.strip('* ') for r in variants]
-            variants = []
             if new_codon is None:
                 new_codon = [[ref_codon] for _ in range(len(varbase))]
+            variants = []
             for variant in varbase:
                 if variant == '0':
                     variants.append([refbase])
@@ -251,7 +250,7 @@ def annotate_snps(filedict, sample_names, assembly, genomeRef=None):
         annotstream = FeatureStream((x[:3]+(x[1:3]+x[3],) for x in annotstream),fields=annotstream.fields)
         _buffer = {1:[], -1:[]}
         last_start = {1:-1, -1:-1}
-        for x in gm_stream.combine([inclstream, annotstream], gm_stream.intersection):
+        for x in gm_stream.intersect([inclstream, annotstream]):
             # x = ('chrV',1606,1607, ('T','C (43%), 1612,1724,'YEL077C|YEL077C',-1,0, 1712,1723,'YEL077W-A|YEL077W-A',1,0))
             nsamples = len(sample_names)
             chr = x[0]; pos = x[1]; rest = x[3]
@@ -267,7 +266,7 @@ def annotate_snps(filedict, sample_names, assembly, genomeRef=None):
                     codon_start = pos + shift - 2
                 ref_codon = assembly.fasta_from_regions({chr: [[codon_start,codon_start+3]]}, out={},
                                                         path_to_ref=genomeRef.get(chr))[0][chr][0]
-                info = [chr, pos, refbase, list(rest[1:1+nsamples]), cds, strand, ref_codon, shift]
+                info = [chr,pos,refbase,list(rest[1:1+nsamples]),cds,strand,ref_codon,shift]
                 # Either the codon is the same as the previous one on this strand, or it will never be.
                 # Only if one codon is passed, can write its snps to a file.
                 if codon_start == last_start[strand]:

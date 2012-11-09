@@ -213,8 +213,7 @@ def _combine(trackList,fn,win_size,aggregate):
     if N == 0: return
     available_tracks = range(N-1,-1,-1)
     # Sort starts and ends of all init elements indifferently; record the origin track index.
-    current = [(init[i][0],i)+init[i][2:] for i in range(N)] \
-            + [(init[i][1],i)+init[i][2:] for i in range(N)]
+    current = [(init[i][0],i)+init[i][2:] for i in range(N)]+[(init[i][1],i) for i in range(N)]
     current.sort()
 
     # Init step: set all tracks beginning at the starting point as 'active'
@@ -237,7 +236,7 @@ def _combine(trackList,fn,win_size,aggregate):
                     to_remove.append(i) # remove it from the tracks list
                 else:
                     current.append((a[0],i)+a[2:])
-                    current.append((a[1],i)+a[2:])
+                    current.append((a[1],i))
         for i in to_remove:
             available_tracks.remove(i)
         current.sort()
@@ -255,7 +254,7 @@ def _combine(trackList,fn,win_size,aggregate):
                 i = current[0][1]               # track index
                 activity[i] = not(activity[i])  # reverse activity
                 zi = current.pop(0)[2:]         # record meta info
-                z[i] = activity[i] and zi or None
+                z[i] = zi if activity[i] else None
             start = next
         k+=1
 
@@ -272,7 +271,7 @@ def combine(trackList, fn, win_size=1000,
     respectively for strand, chromosome and all others.
 
     :param trackList: list of FeatureStream objects.
-    :param fn: function to apply, such as bbcflib.bFlatMajor.stream.union.
+    :param fn: boolean function to apply, such as bbcflib.bFlatMajor.stream.union.
     :param win_size: (int) window size, in bp.
     :param aggregate: (dict) for each field name given as a key, its value is the function
         to apply to the vector containing all trackList's values for this field in order
