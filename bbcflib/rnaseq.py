@@ -218,7 +218,7 @@ def save_results(ex, lines, conditions, group_ids, assembly, header=[], feature_
             rpkm[group] = asarray(rpkm.get(group,zeros(len(start)))) + asarray(cols[i+ncond+1]) / nruns
             output_sql[group] = output_sql.get(group,unique_filename_in())
         for group,filename in output_sql.iteritems():
-            # SQL track
+            # SQL track - GDV
             tr = track(filename+'.sql', fields=['chr','start','end','score'], chrmeta=assembly.chrmeta)
             towrite = {}
             for n,c in enumerate(chromosomes):
@@ -230,14 +230,13 @@ def save_results(ex, lines, conditions, group_ids, assembly, header=[], feature_
             description = set_file_descr(feature_type.lower()+"_"+group+".sql", step="pileup", type="sql", \
                                          groupId=group_ids[group], gdv='1')
             ex.add(filename+'.sql', description=description)
-            # UCSC-BED track
-            t = track(filename+'.bedGraph',info={'name':feature_type.lower()+"_"+group})
-            t.make_header()
-            convert(filename+'.sql',filename+'.bedGraph',mode='append')
-            description = set_file_descr(feature_type.lower()+"_"+group+".bedGraph",
-                                         step="pileup", type="bedGraph",
+            # bigWig track - UCSC
+            t = track(filename+'.bw',info={'name':feature_type.lower()+"_"+group},chrmeta=assembly.name)
+            convert(filename+'.sql',filename+'.bw',mode='append')
+            description = set_file_descr(feature_type.lower()+"_"+group+".bw",
+                                         step="pileup", type="bw",
                                          groupId=group_ids[group], ucsc='1')
-            ex.add(filename+'.bedGraph', description=description)
+            ex.add(filename+'.bw', description=description)
     print feature_type+": Done successfully."
     return output_tab
 
