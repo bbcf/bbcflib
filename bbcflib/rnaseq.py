@@ -288,20 +288,14 @@ def transcripts_expression(exons_data, exon_mapping, transcript_mapping, trans_i
     :param nreads: (numpy array) number of reads in each sample.
     """
     exons_counts={}; genes=[]; transcripts=[]
+    trans_counts={}; trans_rpkm={}
+    unknown = 0
+    pinv = numpy.linalg.pinv
+    norm = numpy.linalg.norm
     for e,counts in itertools.izip(*exons_data):
         exons_counts[e] = counts
         genes.append(exon_mapping[e][1])
     genes = set(genes)
-    for g in genes:
-        transcripts.extend(trans_in_gene.get(g,[]))
-    transcripts = set(transcripts)
-    z = numpy.zeros((len(transcripts),ncond))
-    zz = numpy.zeros((len(transcripts),ncond))
-    trans_counts = dict(zip(transcripts,z))
-    trans_rpkm = dict(zip(transcripts,zz))
-    unknown = 0
-    pinv = numpy.linalg.pinv
-    norm = numpy.linalg.norm
     for g in genes:
         if trans_in_gene.get(g): # if the gene is (still) in the Ensembl database
             # Get all transcripts in the gene
@@ -311,6 +305,8 @@ def transcripts_expression(exons_data, exon_mapping, transcript_mapping, trans_i
             for t in tg:
                 if exons_in_trans.get(t):
                     eg = eg.union(set(exons_in_trans[t]))
+                    trans_counts[t] = zeros(ncond)
+                    trans_rpkm[t] = zeros(ncond)
             # Create the correspondance matrix
             M = zeros((len(eg),len(tg)))
             L = zeros((len(eg),len(tg)))
@@ -354,8 +350,8 @@ def transcripts_expression(exons_data, exon_mapping, transcript_mapping, trans_i
     print "\tUnknown transcripts for %d of %d genes (%.2f %%)" \
            % (unknown, len(genes), 100*float(unknown)/float(len(genes)) )
     # Convert to rpkm
-    for t in transcripts:
-        trans_rpkm[t] = to_rpkm(trans_counts[t], transcript_mapping[t][4], nreads)
+    for t,counts in trans_counts.iteritems():
+        trans_rpkm[t] = to_rpkm(counts, transcript_mapping[t][4], nreads)
     return trans_counts, trans_rpkm
 
 def estimate_size_factors(counts):
