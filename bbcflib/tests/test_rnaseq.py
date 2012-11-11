@@ -30,20 +30,19 @@ def fakejob(assembly):
         job.add_run(group_id=1, id=1)
         return job
 
-c = 'c'
+e1="e1"; e2="e2"; e3="e3"; e4="e4"; e5="e5"; t1="t1"; t2="t2"; t3="t3"; t4="t4"; g1="g1"; gname="gg1"; c="c"
 
 class Test_Expressions1(unittest.TestCase):
     """Two conditions, different lengths, invertible"""
     def setUp(self):
-        e1="e1"; e2="e2"; t1="t1"; t2="t2"; g1="g1"; c="c";
         self.ncond = 2
         self.nreads = array([1e9]*self.ncond)
         self.counts = array([[27,12],[3,3]]) # [[cond1],[cond2]]
         self.rpkms = array([[27/3.,12/6.],[3/3.,3/6.]])
         self.exon_counts = ([e1,e2],self.counts.T)
-        self.transcript_mapping = {t1:(g1,'gg1',0,3,3.,1,c), t2:(g1,'gg1',0,9,9.,1,c)}
-        self.gene_mapping = {g1:('gg1',0,9,9.,1,c)}
-        self.exon_mapping = {e1:([t1,t2],g1,'gg1',0,3,1,c), e2:([t1],g1,'gg1',3,9,1,c)}
+        self.transcript_mapping = {t1:(g1,gname,0,3,3.,1,c), t2:(g1,gname,0,9,9.,1,c)}
+        self.gene_mapping = {g1:(gname,0,9,9.,1,c)}
+        self.exon_mapping = {e1:([t1,t2],g1,gname,0,3,1,c), e2:([t1],g1,gname,3,9,1,c)}
         self.trans_in_gene = {g1:[t1,t2]}
         self.exons_in_trans = {t1:[e1], t2:[e1,e2]}
         """
@@ -91,16 +90,15 @@ class Test_Expressions1(unittest.TestCase):
 class Test_Expressions2(unittest.TestCase):
     """One condition, equal lengths, invertible"""
     def setUp(self):
-        e1="e1"; e2="e2"; e3="e3"; t1="t1"; t2="t2"; t3="t3"; g1="g1"; c="c"
         self.ncond = 1
         self.nreads = array([1e9])
         self.counts = array([[10,15,10]]) # [[cond1]]
         self.rpkms = array([[10/5.,15/5.,10/5.]])
         self.exon_counts = ([e1,e2,e3],self.counts.T)
-        self.transcript_mapping = {t1:(g1,'gg1',0,10,10.,1,c), t2:(g1,'gg1',5,15,10.,1,c), t3:(g1,'gg1',0,15,15.,1,c)}
-        self.gene_mapping = {g1:("gg1",0,9,9.,1,c)}
-        self.exon_mapping = {e1:([t1,t2],g1,'gg1',0,5,1,c), e2:([t1],g1,'gg1',5,10,1,c),
-                             e3:([t2,t3],g1,'gg1',10,15,1,c)}
+        self.transcript_mapping = {t1:(g1,gname,0,10,10.,1,c), t2:(g1,gname,5,15,10.,1,c), t3:(g1,gname,0,15,15.,1,c)}
+        self.gene_mapping = {g1:(gname,0,9,9.,1,c)}
+        self.exon_mapping = {e1:([t1,t2],g1,gname,0,5,1,c), e2:([t1],g1,gname,5,10,1,c),
+                             e3:([t2,t3],g1,gname,10,15,1,c)}
         self.trans_in_gene = {g1:[t1,t2,t3]}
         self.exons_in_trans = {t1:[e1,e2], t2:[e2,e3], t3:[e1,e2,e3]}
         """
@@ -134,17 +132,16 @@ class Test_Expressions2(unittest.TestCase):
 class Test_Expressions3(unittest.TestCase):
     """Underdetermined system"""
     def setUp(self):
-        e1="e1"; e2="e2"; e3="e3"; t1="t1"; t2="t2"; t3="t3"; t4="t4"; g1="g1"; c="c"
         self.ncond = 1
         self.nreads = array([1e9])
         self.counts = array([[10,15,10]]) # [[cond1]]
         self.rpkms = array([[10/5.,15/5.,10/5.]])
         self.exon_counts = ([e1,e2,e3],self.counts.T)
-        self.transcript_mapping = {t1:(g1,'gg1',0,10,10.,1,c), t2:(g1,'gg1',5,15,10.,1,c), \
-                                   t3:(g1,'gg1',0,15,15.,1,c), t4:(g1,'gg1',0,15,10.,1,c)}
-        self.gene_mapping = {g1:("gg1",0,9,9.,1,c)}
-        self.exon_mapping = {e1:([t1,t3,t4],g1,'gg1',0,5,1,c), e2:([t1,t2,t3],g1,'gg1',5,10,1,c),
-                             e3:([t2,t3,t4],g1,'gg1',10,15,1,c)}
+        self.transcript_mapping = {t1:(g1,gname,0,10,10.,1,c), t2:(g1,gname,5,15,10.,1,c), \
+                                   t3:(g1,gname,0,15,15.,1,c), t4:(g1,gname,0,15,10.,1,c)}
+        self.gene_mapping = {g1:(gname,0,9,9.,1,c)}
+        self.exon_mapping = {e1:([t1,t3,t4],g1,gname,0,5,1,c), e2:([t1,t2,t3],g1,gname,5,10,1,c),
+                             e3:([t2,t3,t4],g1,gname,10,15,1,c)}
         self.trans_in_gene = {g1:[t1,t2,t3,t4]}
         self.exons_in_trans = {t1:[e1,e2], t2:[e2,e3], t3:[e1,e2,e3], t4:[e1,e3]}
         """
@@ -167,16 +164,15 @@ class Test_Expressions3(unittest.TestCase):
 class Test_Expressions4(unittest.TestCase):
     """Overdetermined system"""
     def setUp(self):
-        e1="e1"; e2="e2"; e3="e3"; e4="e4"; t1="t1"; t2="t2"; t3="t3"; g1="g1"; c="c"
         self.ncond = 1
         self.nreads = array([1e9])
         self.counts = array([[10.,10.,10.,10.]]) # [[cond1]]
         self.rpkms = array([[10/5.,10/5.,10/5.,10/5.]])
         self.exon_counts = ([e1,e2,e3,e4],self.counts.T)
-        self.transcript_mapping = {t1:(g1,'gg1',0,10,10.,1,c), t2:(g1,'gg1',5,20,15.,1,c), t3:(g1,'gg1',5,20,10.,1,c)}
-        self.gene_mapping = {g1:("gg1",0,12,12.,1,c)}
-        self.exon_mapping = {e1:([t1],g1,'gg1',0,5,1,c), e2:([t1,t2,t3],g1,'gg1',5,10,1,c),
-                             e3:([t2],g1,'gg1',10,15,1,c), e4:([t2,t3],g1,'gg1',15,20,1,c)}
+        self.transcript_mapping = {t1:(g1,gname,0,10,10.,1,c), t2:(g1,gname,5,20,15.,1,c), t3:(g1,gname,5,20,10.,1,c)}
+        self.gene_mapping = {g1:(gname,0,12,12.,1,c)}
+        self.exon_mapping = {e1:([t1],g1,gname,0,5,1,c), e2:([t1,t2,t3],g1,gname,5,10,1,c),
+                             e3:([t2],g1,gname,10,15,1,c), e4:([t2,t3],g1,gname,15,20,1,c)}
         self.trans_in_gene = {g1:[t1,t2,t3]}
         self.exons_in_trans = {t1:[e1,e2], t2:[e2,e3,e4], t3:[e2,e4]}
         """
@@ -198,17 +194,16 @@ class Test_Expressions4(unittest.TestCase):
 class Test_Expressions5(unittest.TestCase):
     """Even more underdetermined system"""
     def setUp(self):
-        e1="e1"; e2="e2"; e3="e3"; e4="e4"; e5="e5"; t1="t1"; t2="t2"; t3="t3"; g1="g1"; c="c"
         self.ncond = 1
         self.nreads = array([1e9])
         self.counts = array([[10.,10.,10.,10.,10.]]) # [[cond1]]
         self.rpkms = array([[10/5.,10/5.,10/5.,10/5.,10/5.]])
         self.exon_counts = ([e1,e2,e3,e4,e5],self.counts.T)
-        self.transcript_mapping = {t1:(g1,'gg1',0,15,10.,1,c), t2:(g1,'gg1',10,25,15.,1,c), t3:(g1,'gg1',5,25,10.,1,c)}
-        self.gene_mapping = {g1:("gg1",0,15,15.,1,c)}
-        self.exon_mapping = {e1:([t1],g1,'gg1',0,5,1,c), e2:([t1,t3],g1,'gg1',5,10,1,c),
-                             e3:([t1,t2],g1,'gg1',10,15,1,c), e4:([t2,t3],g1,'gg1',15,20,1,c),
-                             e5:([t2,t3],g1,'gg1',20,25,1,c)}
+        self.transcript_mapping = {t1:(g1,gname,0,15,10.,1,c), t2:(g1,gname,10,25,15.,1,c), t3:(g1,gname,5,25,10.,1,c)}
+        self.gene_mapping = {g1:(gname,0,15,15.,1,c)}
+        self.exon_mapping = {e1:([t1],g1,gname,0,5,1,c), e2:([t1,t3],g1,gname,5,10,1,c),
+                             e3:([t1,t2],g1,gname,10,15,1,c), e4:([t2,t3],g1,gname,15,20,1,c),
+                             e5:([t2,t3],g1,gname,20,25,1,c)}
         self.trans_in_gene = {g1:[t1,t2,t3]}
         self.exons_in_trans = {t1:[e1,e2,e3], t2:[e3,e4,e5], t3:[e2,e4,e5]}
         """
@@ -238,9 +233,9 @@ class Test_Expressions_Solenne(unittest.TestCase):
         self.rpkms = array([[0,0.00691],[0,0.01077],[0,0.02937],
                                   [0.008133,0.16352],[0.00351,0.08862],[0.00499,0.05945]])
         self.exon_counts = ([e1,e2],self.counts.T)
-        self.transcript_mapping = {t1:(g1,'gg1',26975609,26978510,1525.,1,c)}
+        self.transcript_mapping = {t1:(g1,gname,26975609,26978510,1525.,1,c)}
         self.gene_mapping = {g1:(gname,26975609,26978510,2901.,1,c)}
-        #self.exon_mapping = {e1:([t1],g1,'gg1',0,5,1,c), e2:([t1,t3],g1,'gg1',5,10,1,c),
+        #self.exon_mapping = {e1:([t1],g1,gname,0,5,1,c), e2:([t1,t3],g1,gname,5,10,1,c),
         #self.exon_lengths = {e1:541., e2:984.}
         self.trans_in_gene = {g1:[t1]}
         self.exons_in_trans = {t1:[e1,e2]}
