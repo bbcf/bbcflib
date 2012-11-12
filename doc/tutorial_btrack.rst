@@ -100,7 +100,7 @@ How do I use it?
     StopIteration
     >>> s = t.read()  # Reset the stream
     >>> s.next()      # Read again from the beginning
-    ('chrII', 59818, 60735, 'YBL087C', 8.0, -1)
+    ('chrII', 45975, 46367, 'YBL092W', 6.0, 1)
 
 3. Write a stream to a new empty track::
 

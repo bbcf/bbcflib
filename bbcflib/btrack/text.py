@@ -554,9 +554,6 @@ class WigTrack(TextTrack):
                         yieldit = False
                         rowdata[2] = end
                 if not(yieldit): continue
-                rowdata[1] = start
-                rowdata[2] = end
-                rowdata[3] = score
                 fstart = fend
                 if selection:
                     if skip:
@@ -567,6 +564,12 @@ class WigTrack(TextTrack):
                 if rowdata[1] >= 0:
                     yield tuple(self._check_type(rowdata[index_list[n]],f)
                                 for n,f in enumerate(fields))
+                rowdata[1] = start
+                rowdata[2] = end
+                rowdata[3] = score
+            if rowdata[1] >= 0:
+                yield tuple(self._check_type(rowdata[index_list[n]],f)
+                            for n,f in enumerate(fields))
         except ValueError:
             raise ValueError("Bad line in file %s:\n %s\n" % (self.path,row))
         self.close()
