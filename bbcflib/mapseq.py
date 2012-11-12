@@ -869,6 +869,8 @@ def map_groups( ex, job_or_dict, assembly_or_dict, map_args=None ):
         pcr_dupl = pcr_dupl.lower() in ['1','true','t']
     if isinstance(assembly_or_dict,genrep.Assembly):
         chromosomes = dict((v['ac'],{'name':k,'length':v['length']}) for k,v in assembly_or_dict.chrmeta.iteritems())
+        if intype == 2: # transcriptome is more redundant
+            map_args['maxhits'] = max(int(map_args.get('maxhits') or 50),50)
         index_path = assembly_or_dict.index_path
     elif isinstance(assembly_or_dict,dict) and 'chromosomes' in assembly_or_dict:
         chromosomes = assembly_or_dict['chromosomes']
@@ -1236,7 +1238,7 @@ def get_bam_wig_files( ex, job, minilims=None, hts_url=None, suffix=['fwd','rev'
                 if hts_url is not None:
                     htss = frontend.Frontend( url=hts_url )
                     ms_job = htss.job( run['key'] )
-                    if int(ms_job.options.get('read_extension',-1))>0 and int(ms_job.options.get('read_extension'))<80:
+                    if int(ms_job.options.get('read_extension',-1))>0 and int(ms_job.options.get('read_extension'))<110:
                         read_exts[rid] = int(ms_job.options['read_extension'])
                     else:
                         read_exts[rid] = stats.get('read_length',50)
@@ -1254,7 +1256,7 @@ def get_bam_wig_files( ex, job, minilims=None, hts_url=None, suffix=['fwd','rev'
             else:
                 raise ValueError("Couldn't find this bam file anywhere: %s" %file_loc)
             mapped_files[gid][rid] = {'bam': bamfile,
-                                      'stats': stats or bamstats.nonblocking( ex, bamfile, via=via ),
+                                      'stats': stats or bamstats( ex, bamfile ),
                                       'poisson_threshold': p_thresh,
                                       'libname': name,
                                       'wig': wig}
