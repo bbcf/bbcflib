@@ -516,6 +516,10 @@ class WigTrack(TextTrack):
                     continue
                 if row.startswith("fixedStep"):
                     fixedStep = True
+                    if rowdata[1] >= 0:
+                        yield tuple(self._check_type(rowdata[index_list[n]],f)
+                                    for n,f in enumerate(fields))
+                    rowdata = ['',-1,-1,'']
                     chrom,start,step = re.search(r'chrom=(\S+)\s+start=(\d+)\s+step=(\d+)',row).groups()
                     start = int(start)
                     step = int(step)
@@ -528,6 +532,10 @@ class WigTrack(TextTrack):
                     continue
                 if row.startswith("variableStep"):
                     fixedStep = False
+                    if rowdata[1] >= 0:
+                        yield tuple(self._check_type(rowdata[index_list[n]],f)
+                                    for n,f in enumerate(fields))
+                    rowdata = ['',-1,-1,'']
                     chrom = re.search(r'chrom=(\S+)',row).groups()[0]
                     rowdata[0] = chrom
                     start = -1
