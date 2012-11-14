@@ -869,7 +869,7 @@ def map_groups( ex, job_or_dict, assembly_or_dict, map_args=None ):
         pcr_dupl = pcr_dupl.lower() in ['1','true','t']
     if isinstance(assembly_or_dict,genrep.Assembly):
         chromosomes = dict((v['ac'],{'name':k,'length':v['length']}) for k,v in assembly_or_dict.chrmeta.iteritems())
-        if intype == 2: # transcriptome is more redundant
+        if assembly_or_dict.intype == 2: # transcriptome is more redundant
             map_args['maxhits'] = max(int(map_args.get('maxhits') or 50),50)
         index_path = assembly_or_dict.index_path
     elif isinstance(assembly_or_dict,dict) and 'chromosomes' in assembly_or_dict:
