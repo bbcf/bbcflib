@@ -83,6 +83,7 @@ def write_pileupFile(dictPileup,sample_names,allSNPpos,chrom,assembly):
         nvar2_rev = readbase.count(var2_rev)
         return var1_fwd, var2_fwd, nvar1_fwd, nvar1_rev, nvar2_fwd, nvar2_rev, indels
 
+    chrbam = info[0]
     for pileup_filename,trio in dictPileup.iteritems():
         allpos = sorted(allSNPpos.keys(),reverse=True) # list of positions [int] with an SNP across all groups
         sname = trio[1]
@@ -105,7 +106,7 @@ def write_pileupFile(dictPileup,sample_names,allSNPpos,chrom,assembly):
                 # snp_qual: SNP quality is the Phred-scaled probability that the consensus is identical to the reference.
                 while int(info[1]) > pos and len(allpos) > 0: # while pos not found in the given sample
                     pos = allpos.pop()
-                    try: coverage = bamtrack.coverage((chrom,pos,pos+1)).next()[-1]
+                    try: coverage = bamtrack.coverage((chrbam,pos,pos+1)).next()[-1]
                     except StopIteration: coverage = 0
                     allSamples[sname][pos] = coverage and allSNPpos[pos] or "0" # "0" if not covered, ref base otherwise
                 if not(int(info[1]) == pos): continue
@@ -136,7 +137,7 @@ def write_pileupFile(dictPileup,sample_names,allSNPpos,chrom,assembly):
                         allSamples[sname][pos] = ref
             while allpos:  # write '0' for all pos after the last one of this sample
                 pos = allpos.pop()
-                try: coverage = bamtrack.coverage((chrom,pos,pos+1)).next()[-1]
+                try: coverage = bamtrack.coverage((chrbam,pos,pos+1)).next()[-1]
                 except StopIteration: coverage = 0
                 allSamples[sname][pos] = coverage and allSNPpos[pos] or "0"
         bamtrack.close()
