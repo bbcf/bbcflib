@@ -336,6 +336,14 @@ class Track(object):
     def write(self, **kw):
         pass
 
+    def column_by_name(self, fields=[], num=True):
+        if isinstance(fields,basestring): fields=[fields]
+        _f = [f for f in fields if f in self.fields]
+        if len(_f) == 0: return None
+        if num: return self.fields.index(_f[0])
+        else: return _f[0]
+
+
 ################################################################################
 class FeatureStream(object):
     """
