@@ -1146,7 +1146,7 @@ def densities_groups( ex, job_or_dict, file_dict, chromosomes, via='lsf' ):
     return processed
 
 
-def get_bam_wig_files( ex, job, minilims=None, hts_url=None, suffix=['fwd','rev'], script_path = '', fetch_unmapped=False, via='lsf' ):
+def get_bam_wig_files( ex, job, minilims=None, hts_url=None, suffix=['fwd','rev'], script_path='', fetch_unmapped=False, via='lsf' ):
     """
     Will replace file references by actual file paths in the 'job' object.
     These references are either 'mapseq' keys or urls.
