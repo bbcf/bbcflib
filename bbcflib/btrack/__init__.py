@@ -99,7 +99,7 @@ def track( path, format=None, **kwargs):
     :param **kwargs: (dict) parameters of the Track subclass' constructor.
         Typically `assembly` or `chrmeta`.
     """
-    assert isinstance(path,str), "Expected string, found %s." % type(path)
+    assert isinstance(path, basestring), "Expected string or unicode, found %s." % type(path)
     if format is None:
         path2, format = os.path.splitext(path)
         format = format.lstrip('.')
