@@ -174,6 +174,27 @@ class SqlTrack(Track):
             raise Exception("Sql error: %s\n on file %s, with\n%s" % (err,self.path,sql_command))
 
 ################################ Read ##########################################
+    def _check_selection(self,selection):
+        if selection is None:
+            selection = sorted(self.chrmeta.keys())
+        if isinstance(selection, (basestring,dict)):
+            selection = [selection]
+        if isinstance(selection, (list, tuple)):
+            sel2 = []
+            for x in selection:
+                if isinstance(x,basestring):
+                    sel2.append( (str(x),{}) )
+                elif isinstance(x,dict):
+                    if 'chr' in x:
+                        sel2.append( (x['chr'],dict((k,v) for k,v in x.iteritems()
+                                                    if not(k=='chr')) ) )
+                    else:
+                        sel2.extend([(chrom,x) for chrom in sorted(self.chrmeta.keys())])
+            selection = sel2
+        elif not(selection is None or isinstance(selection,FeatureStream)):
+            raise TypeError("Unexpected selection type: %s." % type(selection))
+        return selection
+
     def _make_selection(self,selection):
         query = []
         for k,v in selection.iteritems():
@@ -213,6 +234,45 @@ class SqlTrack(Track):
         cursor.close()
 
 
+    def get_range(self, selection=None, fields=None):
+        """
+        Returns the range of values for the given selection. 
+        If `fields` is None, returns min and max positions, otherwise min and max 
+        field values.
+        """
+        selection = self._check_selection(selection)
+        if fields is None: 
+                _f = ["min(start)","max(end)"]
+        else: 
+            _f = []
+            for f in fields:
+                if f in self.fields: _f.extend(["min(%s)"%f,"max(%s)"%f])
+        cursor = self.connection.cursor()
+        chr_idx = 0
+        if isinstance(selection,FeatureStream):
+            chr_idx = selection.fields.index('chr')
+            start_idx = selection.fields.index('start')
+            end_idx = selection.fields.index('end')
+        rback = [None]*len(_f)
+        for sel in selection:
+            chrom = sel[chr_idx]
+            sql_command = "SELECT %s FROM '%s'" % (','.join(_f), chrom)
+            if isinstance(selection,FeatureStream):
+                sql_command += " WHERE end>%s AND start<%s" % (sel[start_idx],sel[end_idx])
+            elif sel[1]:
+                sql_command += " WHERE %s" % self._make_selection(sel[1])
+            try:
+                x = cursor.execute(sql_command).fetchone()
+                for n in range(len(_f)):
+                    if rback[n] is None: rback[n] = x[n]
+                    elif n%2 and rback[n] < x[n]: rback[n] = x[n]
+                    elif not(n%2) and rback[n] > x[n]: rback[n] = x[n]
+            except sqlite3.OperationalError as err:
+                raise Exception("Sql error: %s\n on file %s, with\n%s" % (err,self.path,sql_command))
+        cursor.close()
+        return rback
+        
+
     def read(self, selection=None, fields=None, order='start,end', **kw):
         """
         :param selection: list of dict of the type
@@ -222,24 +282,7 @@ class SqlTrack(Track):
         :param order: (str, comma-separated) fields with respect to which the result must
             be sorted. ['start,end']
         """
-        if selection is None:
-            selection = sorted(self.chrmeta.keys())
-        if isinstance(selection, (basestring,dict)):
-            selection = [selection]
-        if isinstance(selection, (list, tuple)):
-            sel2 = []
-            for x in selection:
-                if isinstance(x,basestring):
-                    sel2.append( (str(x),{}) )
-                elif isinstance(x,dict):
-                    if 'chr' in x:
-                        sel2.append( (x['chr'],dict((k,v) for k,v in x.iteritems()
-                                                    if not(k=='chr')) ) )
-                    else:
-                        sel2.extend([(chrom,x) for chrom in sorted(self.chrmeta.keys())])
-            selection = sel2
-        elif not(selection is None or isinstance(selection,FeatureStream)):
-            raise TypeError("Unexpected selection type: %s." % type(selection))
+        selection = self._check_selection(selection)
         if fields:
             add_chr = 'chr' in fields
             _fields = [f for f in fields if f in self.fields and f != 'chr']
