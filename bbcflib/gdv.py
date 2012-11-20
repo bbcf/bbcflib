@@ -32,7 +32,7 @@ def get_project(mail, key, project_key, serv_url=default_url):
     :param serv_url: GDV's url.
     :rtype: JSON
     '''
-    return _gdv_request(mail=mail, key=key, 'project_key'=project_key, serv_url=serv_url,
+    return _gdv_request(mail=mail, key=key, project_key=project_key, serv_url=serv_url,
                         obj='projects', action='key', return_type='json')
 
 def new_project(mail, key, name, assembly_id, serv_url=default_url):
