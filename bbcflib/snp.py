@@ -83,7 +83,6 @@ def write_pileupFile(dictPileup,sample_names,allSNPpos,chrom,assembly):
         nvar2_rev = readbase.count(var2_rev)
         return var1_fwd, var2_fwd, nvar1_fwd, nvar1_rev, nvar2_fwd, nvar2_rev, indels
 
-    chrbam = info[0]
     for pileup_filename,trio in dictPileup.iteritems():
         allpos = sorted(allSNPpos.keys(),reverse=True) # list of positions [int] with an SNP across all groups
         sname = trio[1]
@@ -95,6 +94,7 @@ def write_pileupFile(dictPileup,sample_names,allSNPpos,chrom,assembly):
         with open(pileup_filename) as sample:
             for line in sample:
                 info = line.split("\t")
+                chrbam = info[0]
                 ref = info[2].upper() # reference base
                 cons = info[3].upper() # consensus base
                 snp_qual = 10**(-float(info[5])/10)
