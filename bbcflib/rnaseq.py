@@ -404,7 +404,7 @@ def rnaseq_workflow(ex, job, bam_files, pileup_level=["exons","genes","transcrip
     :param via: (str) send job via 'local' or 'lsf'. ["lsf"]
     """
     group_names={}; group_ids={}; conditions=[]
-    assembly = genrep.Assembly(assembly=job.assembly_id,intype=2)
+    assembly = genrep.Assembly(assembly=job.assembly_id)
     groups = job.groups
     for gid,group in groups.iteritems():
         gname = str(group['name'])
@@ -691,7 +691,10 @@ def unmapped(ex,job,bam_files,assembly,group_names,exon_mapping,transcript_mappi
 
     Return a dictionary ``unmapped_fastq`` of the form ``{sample_name:bam_file}``,
     and a second ``additionals`` of the form ``{sample_name:{exon:additional_counts}}``.
+
+    :param group_names: dict of the form ``{group_id: group_name}``.
     """
+    assembly = genrep.Assembly(assembly.id, intype=2)
     additionals = {}; unmapped_bam = {}; unmapped_fastq = {}
     refseq_path = assembly.index_path
     for gid, group in job.groups.iteritems():
@@ -701,11 +704,13 @@ def unmapped(ex,job,bam_files,assembly,group_names,exon_mapping,transcript_mappi
             cond = group_names[gid]+'.'+str(k)
             unmapped_fastq[cond] = bam_files[gid][rid].get('unmapped_fastq')
             if unmapped_fastq[cond] and os.path.exists(refseq_path+".1.ebwt"):
-                unmapped_bam[cond] = mapseq.map_reads(ex, unmapped_fastq[cond], {}, refseq_path, \
-                      remove_pcr_duplicates=False, bwt_args=[], via=via)['bam']
+                try:
+                    unmapped_bam[cond] = mapseq.map_reads(ex, unmapped_fastq[cond], {}, refseq_path, \
+                          remove_pcr_duplicates=False, bwt_args=[], via=via)['bam']
+                except: continue
                 if unmapped_bam[cond]:
                     sam = pysam.Samfile(unmapped_bam[cond])
-                else: sam = []
+                else: continue
                 additional = {}
                 for read in sam:
                     t_id = sam.getrname(read.tid).split('|')[0]
