@@ -628,7 +628,7 @@ def find_junctions(ex,job,bam_files,assembly,soapsplice_index=None,path_to_soaps
     :rtype: str, str, str
     """
     assembly = genrep.Assembly(assembly.id, intype=3)
-    soapsplice_index = soapsplice_index or assembly.index_path
+    soapsplice_index = soapsplice_index or os.path.join(assembly.index_path,assembly.md5+'.index')
     #soapsplice_options = # check if Sanger or Illumina format
     unmapped_fastq = {}
     for gid, group in job.groups.iteritems():
