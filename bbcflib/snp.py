@@ -137,7 +137,7 @@ def write_pileupFile(dictPileup,sample_names,allSNPpos,chrom,assembly):
                         allSamples[sname][pos] = ref
             while allpos:  # write '0' for all pos after the last one of this sample
                 pos = allpos.pop()
-                try: coverage = bamtrack.coverage((chrbam,pos,pos+1)).next()[-1]
+                try: coverage = bamtrack.coverage((chrom,pos,pos+1)).next()[-1]
                 except StopIteration: coverage = 0
                 allSamples[sname][pos] = coverage and allSNPpos[pos] or "0"
         bamtrack.close()
@@ -303,10 +303,11 @@ def create_tracks(ex, outall, sample_names, assembly):
         description = set_file_descr("allSNP_track_"+sample_name+".sql" ,type='sql',step='SNPs',gdv='1')
         ex.add(out+'.sql', description=description)
         # BED track
-        convert(out+'.sql',out+'.bed')
-        description = set_file_descr("allSNP_track_"+sample_name+".bed" ,
-                                     type='bed',step='SNPs',ucsc='1')
-        ex.add(out+'.bed', description=description)
+        t = track(out+'.bed.gz')
+        t.make_header(name="allSNP_track_"+sample_name)
+        convert(out+'.sql',out+'.bed.gz',mode='append')
+        description = set_file_descr("allSNP_track_"+sample_name+".bed.gz",type='bed',step='SNPs',ucsc='1')
+        ex.add(out+'.bed.gz', description=description)
 
 def posAllUniqSNP(dictPileup):
     """
