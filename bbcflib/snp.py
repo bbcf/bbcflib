@@ -59,7 +59,6 @@ def all_snps(outall,dictPileup,sample_names,allSNPpos,chrom,assembly):
     :param chrom: (str) chromosome name.
     """
     # Note: sample_names is redundant with dictPileup, can find a way to get rid of it
-    formattedPileupFilename = unique_filename_in()
     allSamples = {}
 
     def _parse_info8(readbase,cons):
@@ -238,7 +237,7 @@ def exon_snps(chrom, outall, sample_names, assembly, genomeRef={}):
     all_snps_track = track(outall, format='text', fields=['chr','end','ref']+sample_names+['gene','type','distance'],
                            chrmeta=assembly.name)
     for chrom in all_snps_track.chrmeta:
-        all_snps_stream = all_snps_track.read(chrom, skip=True) 
+        all_snps_stream = all_snps_track.read(chrom, skip=True)
         snp_stream = FeatureStream(_yield_annotated(all_snps_stream), fields=['chr','start','end']+all_snps_stream.fields[2:-3])
         inclstream = concat_fields(snp_stream, infields=snp_stream.fields[3:], as_tuple=True)
         annotstream = concat_fields(assembly.annot_track('CDS',chrom),
