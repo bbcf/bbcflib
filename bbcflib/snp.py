@@ -108,7 +108,7 @@ def all_snps(outall,dictPileup,sample_names,allSNPpos,chrom,assembly):
                     pos = allpos.pop()
                     try: coverage = bamtrack.coverage((chrbam,pos,pos+1)).next()[-1]
                     except StopIteration: coverage = 0
-                    allSamples[sname][pos] = coverage and allSNPpos[pos] or "0" # "0" if not covered, ref base otherwise
+                    allSamples[sname][pos] = allSNPpos[pos] if coverage else "0"  # "0" if not covered, ref base otherwise
                 if not(int(info[1]) == pos): continue
                 # SNP found in allpos, treat:
                 elif int(nreads) < 10:
@@ -139,7 +139,7 @@ def all_snps(outall,dictPileup,sample_names,allSNPpos,chrom,assembly):
                 pos = allpos.pop()
                 try: coverage = bamtrack.coverage((chrom,pos,pos+1)).next()[-1]
                 except StopIteration: coverage = 0
-                allSamples[sname][pos] = coverage and allSNPpos[pos] or "0"
+                allSamples[sname][pos] = allSNPpos[pos] if coverage else "0"
         bamtrack.close()
 
     allpos = sorted(allSNPpos.keys(),reverse=False) # re-init
@@ -235,40 +235,43 @@ def exon_snps(chrom, outall, sample_names, assembly, genomeRef={}):
     outex.write('#'+'\t'.join(['chromosome','position','reference'] + sample_names + ['exon','strand','ref_aa'] \
                           + ['new_aa_'+s for s in sample_names])+'\n')
 
-    annotated_stream = track(outall, format='text', fields=['chr','end','ref']+sample_names+['gene','type','distance']).read()
-    snp_stream = FeatureStream(_yield_annotated(annotated_stream), fields=['chr','start','end']+annotated_stream.fields[2:-3])
-    inclstream = concat_fields(snp_stream, infields=snp_stream.fields[3:], as_tuple=True)
-    annotstream = concat_fields(assembly.annot_track('CDS',chrom),
-                                infields=['name','strand','frame'], as_tuple=True)
-    annotstream = FeatureStream((x[:3]+(x[1:3]+x[3],) for x in annotstream),fields=annotstream.fields)
-    _buffer = {1:[], -1:[]}
-    last_start = {1:-1, -1:-1}
-    for x in gm_stream.intersect([inclstream, annotstream]):
-        # x = ('chrV',1606,1607, ('T','C (43%)', 1612,1724,'YEL077C|YEL077C',-1,0, 1712,1723,'YEL077W-A|YEL077W-A',1,0))
-        nsamples = len(sample_names)
-        chr = x[0]; pos = x[1]; rest = x[3]
-        refbase = rest[0]
-        annot = [rest[5*i+nsamples+1 : 5*i+5+nsamples+1]
-                 for i in range(len(rest[nsamples+1:])/5)] # list of (start,end,cds,strand,phase)
-        for es,ee,cds,strand,phase in annot:
-            if strand == 1:
-                shift = (pos - (es + phase)) % 3
-                codon_start = pos - shift
-            elif strand == -1:
-                shift = (ee - phase - pos) % 3
-                codon_start = pos + shift - 2
-            ref_codon = assembly.fasta_from_regions({chr: [[codon_start,codon_start+3]]}, out={},
-                                                    path_to_ref=genomeRef.get(chr))[0][chr][0]
-            info = [chr,pos,refbase,list(rest[1:nsamples+1]),cds,strand,ref_codon,shift]
-            # Either the codon is the same as the previous one on this strand, or it will never be.
-            # Only if one codon is passed, can write its snps to a file.
-            if codon_start == last_start[strand]:
-                _buffer[strand].append(info)
-            else:
-                _write_buffer(_buffer[strand],outex)
-                _buffer[strand] = [info]
-                last_start[strand] = codon_start
-    for strand in [1,-1]: _write_buffer(_buffer[strand],outex)
+    all_snps_track = track(outall, format='text', fields=['chr','end','ref']+sample_names+['gene','type','distance'],
+                           chrmeta=assembly.name)
+    for chrom in all_snps_track.chrmeta:
+        all_snps_stream = all_snps_track.read(chrom) 
+        snp_stream = FeatureStream(_yield_annotated(all_snps_stream), fields=['chr','start','end']+all_snps_stream.fields[2:-3])
+        inclstream = concat_fields(snp_stream, infields=snp_stream.fields[3:], as_tuple=True)
+        annotstream = concat_fields(assembly.annot_track('CDS',chrom),
+                                    infields=['name','strand','frame'], as_tuple=True)
+        annotstream = FeatureStream((x[:3]+(x[1:3]+x[3],) for x in annotstream),fields=annotstream.fields)
+        _buffer = {1:[], -1:[]}
+        last_start = {1:-1, -1:-1}
+        for x in gm_stream.intersect([inclstream, annotstream]):
+            # x = ('chrV',1606,1607, ('T','C (43%)', 1612,1724,'YEL077C|YEL077C',-1,0, 1712,1723,'YEL077W-A|YEL077W-A',1,0))
+            nsamples = len(sample_names)
+            chr = x[0]; pos = x[1]; rest = x[3]
+            refbase = rest[0]
+            annot = [rest[5*i+nsamples+1 : 5*i+5+nsamples+1]
+                     for i in range(len(rest[nsamples+1:])/5)] # list of (start,end,cds,strand,phase)
+            for es,ee,cds,strand,phase in annot:
+                if strand == 1:
+                    shift = (pos - (es + phase)) % 3
+                    codon_start = pos - shift
+                elif strand == -1:
+                    shift = (ee - phase - pos) % 3
+                    codon_start = pos + shift - 2
+                ref_codon = assembly.fasta_from_regions({chr: [[codon_start,codon_start+3]]}, out={},
+                                                        path_to_ref=genomeRef.get(chr))[0][chr][0]
+                info = [chr,pos,refbase,list(rest[1:nsamples+1]),cds,strand,ref_codon,shift]
+                # Either the codon is the same as the previous one on this strand, or it will never be.
+                # Only if one codon is passed, can write its snps to a file.
+                if codon_start == last_start[strand]:
+                    _buffer[strand].append(info)
+                else:
+                    _write_buffer(_buffer[strand],outex)
+                    _buffer[strand] = [info]
+                    last_start[strand] = codon_start
+        for strand in [1,-1]: _write_buffer(_buffer[strand],outex)
     outex.close()
     return outexons
 
