@@ -58,9 +58,6 @@ def all_snps(chrom,outall,assembly,sample_names,dictPileup,allSNPpos):
     :param allSNPpos: dict fo the type {3021: 'A'} as returned by posAllUniqSNP(...)[0].
     :param chrom: (str) chromosome name.
     """
-    # Note: sample_names is redundant with dictPileup, can find a way to get rid of it
-    allSamples = {}
-
     def _parse_info8(readbase,cons):
         iupac = {'M':['A','a','C','c'],'Y':['T','t','C','c'],'R':['A','a','G','g'],
                  'S':['G','g','C','c'],'W':['A','a','T','t'],'K':['T','t','G','g']}
@@ -82,6 +79,7 @@ def all_snps(chrom,outall,assembly,sample_names,dictPileup,allSNPpos):
         nvar2_rev = readbase.count(var2_rev)
         return var1_fwd, var2_fwd, nvar1_fwd, nvar1_rev, nvar2_fwd, nvar2_rev, indels
 
+    allSamples = {}
     for pileup_filename,trio in dictPileup.iteritems():
         allpos = sorted(allSNPpos.keys(),reverse=True) # list of positions [int] with an SNP across all groups
         sname = trio[1]
@@ -166,7 +164,7 @@ def all_snps(chrom,outall,assembly,sample_names,dictPileup,allSNPpos):
             # chrV  1606    T   43.48% C / 56.52% T YEL077W-A|YEL077W-A_YEL077C|YEL077C 3UTR_Included   494_-2491
     return allsnps
 
-def exon_snps(chrom,outexons,allsnps, sample_names, assembly, genomeRef={}):
+def exon_snps(chrom,outexons,allsnps,assembly,sample_names,genomeRef={}):
     """Annotates SNPs described in `filedict` (a dictionary of the form {chromosome: filename}
     where `filename` is an output of parse_pileupFile).
     Adds columns 'gene', 'location_type' and 'distance' to the output of parse_pileupFile.
@@ -298,7 +296,7 @@ def posAllUniqSNP(dictPileup):
 
     :param dictPileup: (dict) dictionary of the form {filename: (bein.Future,sample_name,bam_file)}
     """
-    d={}
+    allSNPpos={}
     for filename,trio in dictPileup.iteritems():
         trio[0].wait() #file p is created from samtools pileup
         with open(filename,'rb') as f:
@@ -306,9 +304,8 @@ def posAllUniqSNP(dictPileup):
                 data = l.split("\t")
                 cpt = data[8].count(".") + data[8].count(",") # number of reads supporting wild type (.fwd and ,rev)
                 if int(data[7])-cpt >= 5:
-                    d[int(data[1])] = data[2].upper()
-    return d
-
+                    allSNPpos[int(data[1])] = data[2].upper()
+    return allSNPpos
 
 def snp_workflow(ex, job, bam_files, assembly, path_to_ref, via):
     """Main function of the workflow"""
