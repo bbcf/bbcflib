@@ -224,7 +224,7 @@ def _combine(trackList,fn,win_size,aggregate):
         z[i] = current.pop(0)[2:]  # z records all meta info
 
     k=1
-    while available_tracks:
+    while 1:
         # Load all elements within *win_size* bp in *current*
         to_remove = []
         limit = k * win_size
@@ -239,6 +239,7 @@ def _combine(trackList,fn,win_size,aggregate):
                     current.append((a[1],i))
         for i in to_remove:
             available_tracks.remove(i)
+        if not available_tracks: break
         current.sort()
         while current[0][0] >= limit:
             k+=1
