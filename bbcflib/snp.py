@@ -48,7 +48,7 @@ def sam_pileup(assembly,bamfile,refGenome,via='lsf'):
     return {"arguments": ["samtools","pileup","-B","-cvsf",refGenome,"-N",str(ploidy),bamfile],
             "return_value": None}
 
-def all_snps(chrom,outall,dictPileup,sample_names,allSNPpos,assembly):
+def all_snps(chrom,outall,assembly,sample_names,dictPileup,allSNPpos):
     """For a given chromosome, returns a summary file containing all SNPs identified
     in at least one of the samples.
     Each row contains: chromosome id, SNP position, reference base, SNP base (with proportions)
@@ -142,18 +142,18 @@ def all_snps(chrom,outall,dictPileup,sample_names,allSNPpos,assembly):
         bamtrack.close()
 
     allpos = sorted(allSNPpos.keys(),reverse=False) # re-init
-    allsamples = []
+    allsnps = []
     for pos in allpos:
         nbNoSnp = 0 # Check if at least one sample still has the SNP (after filtering)
         for sname in sample_names:
             if allSamples[sname][pos] in ("0",allSNPpos[pos]): nbNoSnp += 1
         if nbNoSnp != len(allSamples):
             refbase = allSNPpos[pos]
-            allsamples.append((chrom,pos-1,pos,refbase) + tuple([allSamples[s][pos] for s in sample_names]))
+            allsnps.append((chrom,pos-1,pos,refbase) + tuple([allSamples[s][pos] for s in sample_names]))
             # append: chr start end ref_base    sample1 ... sampleN
             # sampleX is one of '0', 'A', 'T (28%)', 'T (28%),G (13%)', with or without star
 
-    snp_read = FeatureStream(allsamples, fields=['chr','start','end','name']+sample_names )
+    snp_read = FeatureStream(allsnps, fields=['chr','start','end','name']+sample_names )
     annotation = assembly.gene_track(chrom)
     annotated_stream = gm_stream.getNearestFeature(snp_read, annotation,
                                                    thresholdPromot=3000, thresholdInter=3000, thresholdUTR=10)
@@ -164,9 +164,9 @@ def all_snps(chrom,outall,dictPileup,sample_names,allSNPpos,assembly):
             # snp: ('chrV',154529, 154530, 'T', 'A', '* A', 'YER002W|NOP16_YER001W|MNN1', 'Upstream_Included', '2271_1011')
             fout.write('\t'.join([str(x) for x in (snp[0],)+snp[2:]])+'\n')
             # chrV  1606    T   43.48% C / 56.52% T YEL077W-A|YEL077W-A_YEL077C|YEL077C 3UTR_Included   494_-2491
-    return allsamples
+    return allsnps
 
-def exon_snps(chrom,outexons,allsamples, sample_names, assembly, genomeRef={}):
+def exon_snps(chrom,outexons,allsnps, sample_names, assembly, genomeRef={}):
     """Annotates SNPs described in `filedict` (a dictionary of the form {chromosome: filename}
     where `filename` is an output of parse_pileupFile).
     Adds columns 'gene', 'location_type' and 'distance' to the output of parse_pileupFile.
@@ -227,7 +227,7 @@ def exon_snps(chrom,outexons,allsamples, sample_names, assembly, genomeRef={}):
     outex.write('#'+'\t'.join(['chromosome','position','reference'] + sample_names + ['exon','strand','ref_aa'] \
                           + ['new_aa_'+s for s in sample_names])+'\n')
 
-    snp_stream = FeatureStream(allsamples, fields=['chr','start','end','ref']+sample_names)
+    snp_stream = FeatureStream(allsnps, fields=['chr','start','end','ref']+sample_names)
     inclstream = concat_fields(snp_stream, infields=snp_stream.fields[3:], as_tuple=True)
     annotstream = concat_fields(assembly.annot_track('CDS',chrom),
                                 infields=['name','strand','frame'], as_tuple=True)
@@ -342,9 +342,9 @@ def snp_workflow(ex, job, bam_files, assembly, path_to_ref, via):
         allSNPpos = posAllUniqSNP(dictPileup) # {3021:'A'}
         if len(allSNPpos) == 0: continue
         # Store the info from the pileup file for this chromosome in a dictionary
-        allsamples = all_snps(chrom,outall,assembly,sample_names,dictPileup,allSNPpos)
+        allsnps = all_snps(chrom,outall,assembly,sample_names,dictPileup,allSNPpos)
         # Add exon & codon information & write in file
-        exon_snps(chrom,outexons,allsamples,sample_names,assembly,genomeRef)
+        exon_snps(chrom,outexons,allsnps,assembly,sample_names,genomeRef)
 
     description = set_file_descr("allSNP.txt",step="SNPs",type="txt")
     ex.add(outall,description=description)
