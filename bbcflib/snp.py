@@ -48,7 +48,7 @@ def sam_pileup(assembly,bamfile,refGenome,via='lsf'):
     return {"arguments": ["samtools","pileup","-B","-cvsf",refGenome,"-N",str(ploidy),bamfile],
             "return_value": None}
 
-def all_snps(outall,dictPileup,sample_names,allSNPpos,chrom,assembly):
+def all_snps(chrom,outall,dictPileup,sample_names,allSNPpos,assembly):
     """For a given chromosome, returns a summary file containing all SNPs identified
     in at least one of the samples.
     Each row contains: chromosome id, SNP position, reference base, SNP base (with proportions)
@@ -142,18 +142,18 @@ def all_snps(outall,dictPileup,sample_names,allSNPpos,chrom,assembly):
         bamtrack.close()
 
     allpos = sorted(allSNPpos.keys(),reverse=False) # re-init
-    formattedPileup = []
+    allsamples = []
     for pos in allpos:
         nbNoSnp = 0 # Check if at least one sample still has the SNP (after filtering)
         for sname in sample_names:
             if allSamples[sname][pos] in ("0",allSNPpos[pos]): nbNoSnp += 1
         if nbNoSnp != len(allSamples):
             refbase = allSNPpos[pos]
-            formattedPileup.append((chrom,pos-1,pos,refbase) + tuple([allSamples[s][pos] for s in sample_names]))
+            allsamples.append((chrom,pos-1,pos,refbase) + tuple([allSamples[s][pos] for s in sample_names]))
             # append: chr start end ref_base    sample1 ... sampleN
             # sampleX is one of '0', 'A', 'T (28%)', 'T (28%),G (13%)', with or without star
 
-    snp_read = FeatureStream(formattedPileup, fields=['chr','start','end','name']+sample_names )
+    snp_read = FeatureStream(allsamples, fields=['chr','start','end','name']+sample_names )
     annotation = assembly.gene_track(chrom)
     annotated_stream = gm_stream.getNearestFeature(snp_read, annotation,
                                                    thresholdPromot=3000, thresholdInter=3000, thresholdUTR=10)
@@ -161,12 +161,12 @@ def all_snps(outall,dictPileup,sample_names,allSNPpos,chrom,assembly):
         fout.write('#'+'\t'.join(['chromosome','position','reference'] + sample_names
                              + ['gene','location_type','distance']) + '\n')
         for snp in annotated_stream:
-            # snp: (154529, 154530, 'chrV', 'T', 'A', '* A', 'YER002W|NOP16_YER001W|MNN1', 'Upstream_Included', '2271_1011')
-            fout.write('\t'.join([str(x) for x in (snp[2],snp[1])+snp[3:]])+'\n')
+            # snp: ('chrV',154529, 154530, 'T', 'A', '* A', 'YER002W|NOP16_YER001W|MNN1', 'Upstream_Included', '2271_1011')
+            fout.write('\t'.join([str(x) for x in (snp[0],)+snp[2:]])+'\n')
             # chrV  1606    T   43.48% C / 56.52% T YEL077W-A|YEL077W-A_YEL077C|YEL077C 3UTR_Included   494_-2491
-    return 1
+    return allsamples
 
-def exon_snps(chrom, outall, sample_names, assembly, genomeRef={}):
+def exon_snps(chrom,outexons,allsamples, sample_names, assembly, genomeRef={}):
     """Annotates SNPs described in `filedict` (a dictionary of the form {chromosome: filename}
     where `filename` is an output of parse_pileupFile).
     Adds columns 'gene', 'location_type' and 'distance' to the output of parse_pileupFile.
@@ -223,54 +223,43 @@ def exon_snps(chrom, outall, sample_names, assembly, genomeRef={}):
                      + [','.join([_translate[s] for s in c]) for c in new_codon]
             outex.write("\t".join([str(r) for r in result])+"\n")
 
-    def _yield_annotated(stream):
-        """Add a start (end-1) and yield if the snp is inside an exon."""
-        for snp in stream:
-            if "Included" in snp[-2].split("_"):
-                yield (snp[0],int(snp[1])-1,int(snp[1]))+snp[2:-3]  # ('chrV', 1606, 1607, 'T', 'C (43%)')
-
-    outexons = unique_filename_in()
     outex = open(outexons,"a")
     outex.write('#'+'\t'.join(['chromosome','position','reference'] + sample_names + ['exon','strand','ref_aa'] \
                           + ['new_aa_'+s for s in sample_names])+'\n')
 
-    all_snps_track = track(outall, format='text', fields=['chr','end','ref']+sample_names+['gene','type','distance'],
-                           chrmeta=assembly.name)
-    for chrom in all_snps_track.chrmeta:
-        all_snps_stream = all_snps_track.read(chrom, skip=True)
-        snp_stream = FeatureStream(_yield_annotated(all_snps_stream), fields=['chr','start','end']+all_snps_stream.fields[2:-3])
-        inclstream = concat_fields(snp_stream, infields=snp_stream.fields[3:], as_tuple=True)
-        annotstream = concat_fields(assembly.annot_track('CDS',chrom),
-                                    infields=['name','strand','frame'], as_tuple=True)
-        annotstream = FeatureStream((x[:3]+(x[1:3]+x[3],) for x in annotstream),fields=annotstream.fields)
-        _buffer = {1:[], -1:[]}
-        last_start = {1:-1, -1:-1}
-        for x in gm_stream.intersect([inclstream, annotstream]):
-            # x = ('chrV',1606,1607, ('T','C (43%)', 1612,1724,'YEL077C|YEL077C',-1,0, 1712,1723,'YEL077W-A|YEL077W-A',1,0))
-            nsamples = len(sample_names)
-            chr = x[0]; pos = x[1]; rest = x[3]
-            refbase = rest[0]
-            annot = [rest[5*i+nsamples+1 : 5*i+5+nsamples+1]
-                     for i in range(len(rest[nsamples+1:])/5)] # list of (start,end,cds,strand,phase)
-            for es,ee,cds,strand,phase in annot:
-                if strand == 1:
-                    shift = (pos - (es + phase)) % 3
-                    codon_start = pos - shift
-                elif strand == -1:
-                    shift = (ee - phase - pos) % 3
-                    codon_start = pos + shift - 2
-                ref_codon = assembly.fasta_from_regions({chr: [[codon_start,codon_start+3]]}, out={},
-                                                        path_to_ref=genomeRef.get(chr))[0][chr][0]
-                info = [chr,pos,refbase,list(rest[1:nsamples+1]),cds,strand,ref_codon,shift]
-                # Either the codon is the same as the previous one on this strand, or it will never be.
-                # Only if one codon is passed, can write its snps to a file.
-                if codon_start == last_start[strand]:
-                    _buffer[strand].append(info)
-                else:
-                    _write_buffer(_buffer[strand],outex)
-                    _buffer[strand] = [info]
-                    last_start[strand] = codon_start
-        for strand in [1,-1]: _write_buffer(_buffer[strand],outex)
+    snp_stream = FeatureStream(allsamples, fields=['chr','start','end','ref']+sample_names)
+    inclstream = concat_fields(snp_stream, infields=snp_stream.fields[3:], as_tuple=True)
+    annotstream = concat_fields(assembly.annot_track('CDS',chrom),
+                                infields=['name','strand','frame'], as_tuple=True)
+    annotstream = FeatureStream((x[:3]+(x[1:3]+x[3],) for x in annotstream),fields=annotstream.fields)
+    _buffer = {1:[], -1:[]}
+    last_start = {1:-1, -1:-1}
+    for x in gm_stream.intersect([inclstream, annotstream]):
+        # x = ('chrV',1606,1607, ('T','C (43%)', 1612,1724,'YEL077C|YEL077C',-1,0, 1712,1723,'YEL077W-A|YEL077W-A',1,0))
+        nsamples = len(sample_names)
+        chr = x[0]; pos = x[1]; rest = x[3]
+        refbase = rest[0]
+        annot = [rest[5*i+nsamples+1 : 5*i+5+nsamples+1]
+                 for i in range(len(rest[nsamples+1:])/5)] # list of (start,end,cds,strand,phase)
+        for es,ee,cds,strand,phase in annot:
+            if strand == 1:
+                shift = (pos - (es + phase)) % 3
+                codon_start = pos - shift
+            elif strand == -1:
+                shift = (ee - phase - pos) % 3
+                codon_start = pos + shift - 2
+            ref_codon = assembly.fasta_from_regions({chr: [[codon_start,codon_start+3]]}, out={},
+                                                    path_to_ref=genomeRef.get(chr))[0][chr][0]
+            info = [chr,pos,refbase,list(rest[1:nsamples+1]),cds,strand,ref_codon,shift]
+            # Either the codon is the same as the previous one on this strand, or it will never be.
+            # Only if one codon is passed, can write its snps to a file.
+            if codon_start == last_start[strand]:
+                _buffer[strand].append(info)
+            else:
+                _write_buffer(_buffer[strand],outex)
+                _buffer[strand] = [info]
+                last_start[strand] = codon_start
+    for strand in [1,-1]: _write_buffer(_buffer[strand],outex)
     outex.close()
     return outexons
 
@@ -346,16 +335,17 @@ def snp_workflow(ex, job, bam_files, assembly, path_to_ref, via):
             pileup_dict[chrom][pileupFilename] = (future,sample_name,bam)
 
     outall = unique_filename_in()
+    outexons = unique_filename_in()
     for chrom, dictPileup in pileup_dict.iteritems():
         # Get the results from sam_pileup
         # Write the list of all snps of THIS chromosome, from ALL samples
         allSNPpos = posAllUniqSNP(dictPileup) # {3021:'A'}
         if len(allSNPpos) == 0: continue
         # Store the info from the pileup file for this chromosome in a dictionary
-        all_snps(outall,dictPileup,sample_names,allSNPpos,chrom,assembly)
+        allsamples = all_snps(chrom,outall,assembly,sample_names,dictPileup,allSNPpos)
+        # Add exon & codon information & write in file
+        exon_snps(chrom,outexons,allsamples,sample_names,assembly,genomeRef)
 
-    # Add exon & codon information & write in file
-    outexons = exon_snps(chrom,outall,sample_names,assembly,genomeRef)
     description = set_file_descr("allSNP.txt",step="SNPs",type="txt")
     ex.add(outall,description=description)
     description = set_file_descr("exonsSNP.txt",step="SNPs",type="txt")
