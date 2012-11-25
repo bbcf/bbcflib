@@ -622,8 +622,8 @@ class GffTrack(TextTrack):
         kwargs['format'] = 'gff'
         kwargs['fields'] = ['chr','source','name','start','end','score','strand','frame','attributes']
         TextTrack.__init__(self,path,**kwargs)
-        self.intypes.pop('score') # can be '.' (UCSC)
-        self.intypes.pop('frame') # can be '.' (UCSC)
+        self.intypes.pop('score')
+        self.intypes.pop('frame')
         if not(os.path.exists(self.path)): return
         rowlen = 9
         self.open()
@@ -634,9 +634,9 @@ class GffTrack(TextTrack):
             splitrow = row.strip(' \r\n').split(self.separator)
             rowlen = len(splitrow)
             try: float(splitrow[5])
-            except ValueError: print "Warning: invalid scores in file %s: '%s'." % (self.path,splitrow[5])
+            except ValueError: pass # '.'
             try: int(splitrow[7])
-            except ValueError: print "Warning: invalid frame in file %s: '%s'." % (self.path,splitrow[7])
+            except ValueError: pass # '.'
             break
         self.close()
         if rowlen > 9 or rowlen < 8:
