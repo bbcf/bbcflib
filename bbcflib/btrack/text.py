@@ -633,10 +633,6 @@ class GffTrack(TextTrack):
                     row.startswith("#"): continue
             splitrow = row.strip(' \r\n').split(self.separator)
             rowlen = len(splitrow)
-            try: float(splitrow[5])
-            except ValueError: pass # '.'
-            try: int(splitrow[7])
-            except ValueError: pass # '.'
             break
         self.close()
         if rowlen > 9 or rowlen < 8:
