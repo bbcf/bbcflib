@@ -337,6 +337,10 @@ class Track(object):
         pass
 
     def column_by_name(self, fields=[], num=True):
+        """
+        Finds a column with name in `fields`. 
+        Returns its index (if `num`is True) or its name.
+        """
         if isinstance(fields,basestring): fields=[fields]
         _f = [f for f in fields if f in self.fields]
         if len(_f) == 0: return None

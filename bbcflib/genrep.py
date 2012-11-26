@@ -677,7 +677,7 @@ class Assembly(object):
         ``{'chr1': {'length': 249250621},'chr2': {'length': 135534747},'chr3': {'length': 135006516}}``
         """
         return dict([(v['name'], dict([('length', v['length']),
-                                       ('ac',str(k[0])+"_"+str(k[1])+"."+str(k[2]) if k[1] else k[0])]))
+                                       ('ac',str(k[0])+"_"+str(k[1])+"."+str(k[2]) if k[1] else str(k[0]))]))
                      for k,v in self.chromosomes.iteritems()])
 
     @property
