@@ -150,7 +150,7 @@ def fetch_mappings(assembly):
     mapping = (gene_mapping, transcript_mapping, exon_mapping, trans_in_gene, exons_in_trans)
     return mapping
 
-def build_pileup(bamfile, exons, assembly):
+def build_pileup(bamfile, assembly, gene_mapping, exon_mapping, trans_in_gene, exons_in_trans):
     """From a BAM file, returns a dictionary of the form {feature_id: number of reads that mapped to it}.
 
     :param bamfile: name of a BAM file.
@@ -170,10 +170,21 @@ def build_pileup(bamfile, exons, assembly):
     c = Counter()
     #The callback (c.n += 1) is executed for each alignment in a region
     if all([ref in assembly.chrmeta.keys() for ref in sam.references]): # mapped on the genome
-        for e in exons:
-            sam.fetch(e[-1],e[3],e[4], callback=c) #(chr,start,end,Counter())
-            counts[e[0]] = c.n
-            c.n = 0
+        for g in gene_mapping.iterkeys(): #ENSMUSG00000057666
+            eg = set()
+            for t in trans_in_gene[g]:
+                eg.update(exons_in_trans[t])
+            for e in eg:
+                counts[e] = 0
+            eg = sorted([(e,)+exon_mapping[e][3:] for e in eg if exon_mapping.get(e)], key=itemgetter(1,2))
+            eg = cobble(FeatureStream(eg,fields=['name','start','end','strand','chr']))
+            for e in eg:
+                if e[2]-e[1] <= 1: continue
+                sam.fetch(e[-1],e[1],e[2], callback=c) #(chr,start,end,Counter())
+                ex = e[0].split('|')
+                for exon in ex:
+                    counts[exon] += c.n/float(len(ex))
+                c.n = 0
     else: # mapped on the exonome - retro-compatibility
         for e in zip(sam.references,sam.lengths):
             sam.fetch(e[0], 0, e[1], callback=c) #(label,0,length,Counter())
@@ -231,8 +242,8 @@ def save_results(ex, lines, conditions, group_ids, assembly, header=[], feature_
                                          groupId=group_ids[group], gdv='1')
             ex.add(filename+'.sql', description=description)
             # bigWig track - UCSC
-            t = track(filename+'.bw',info={'name':feature_type.lower()+"_"+group},chrmeta=assembly.name)
-            convert(filename+'.sql',filename+'.bw',mode='append')
+            #track(filename+'.bw',info={'name':feature_type.lower()+"_"+group},chrmeta=assembly.name)
+            convert(filename+'.sql',filename+'.bw')#,mode='append')
             description = set_file_descr(feature_type.lower()+"_"+group+".bw",
                                          step="pileup", type="bw",
                                          groupId=group_ids[group], ucsc='1')
@@ -440,27 +451,23 @@ def rnaseq_workflow(ex, job, bam_files, pileup_level=["exons","genes","transcrip
 
     """ Build exon pileups from bam files """
     print "Build pileups"
-    exons = [(e,)+v[1:] for e,v in exon_mapping.iteritems() if len(e)>0]
-    exon_ids=[]; badexons=[]
-    for k,e in enumerate(exons):
-        exon_id,gene_id,gene_name,start,end,strand,chr = e
-        if end-start <= 1: badexons.append(k)
-        else: exon_ids.append(exon_id)
-    [exons.pop(k) for k in badexons]
-
-    exon_pileups={}; nreads={}
+    exon_pileups={}; nreads={};
     for gid,files in bam_files.iteritems():
         k = 0
         for rid,f in files.iteritems():
             k+=1
             cond = group_names[gid]+'.'+str(k)
-            exon_pileup = build_pileup(f['bam'], exons, assembly)
+            exon_pileups[cond] = []
+            exon_pileup = build_pileup(f['bam'],assembly,gene_mapping,exon_mapping,trans_in_gene,exons_in_trans)
             if unmapped_fastq[cond] and cond in additionals:
                 for a,x in additionals[cond].iteritems():
                     exon_pileup[a] = exon_pileup.get(a,0) + x
-            exon_pileups[cond] = [exon_pileup.get(e,0.0) for e in exon_ids] # {cond1.run1: {exon:cnt}, cond1.run2: {exon:cnt}...}
+            #exon_ids,pileup = zip(*exon_pileup.items())
+            exon_pileups[cond] = exon_pileup.values()
+            #exon_pileups[cond] = [exon_pileup.get(e,0.0) for e in exon_ids] # {cond1.run1: {exon:cnt}, cond1.run2: {exon:cnt}...}
             nreads[cond] = nreads.get(cond,0) + sum(exon_pileup.values()) # total number of reads
             print "....Pileup", cond, "done"
+    exon_ids = exon_pileup.keys()
 
     """ Arrange exon counts in a matrix """
     nreads = asarray([nreads[cond] for cond in conditions], dtype=numpy.float_)

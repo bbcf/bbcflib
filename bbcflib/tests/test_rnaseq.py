@@ -32,6 +32,81 @@ def fakejob(assembly):
 
 e1="e1"; e2="e2"; e3="e3"; e4="e4"; e5="e5"; t1="t1"; t2="t2"; t3="t3"; t4="t4"; g1="g1"; gname="gg1"; c="c"
 
+class Test_Expressions_Gapdh(unittest.TestCase):
+    def setUp(self):
+        g="ENSMUSG00000057666"; c="chr6"; gname="Gapdh";
+        t1="ENSMUST00000118875"; t2="ENSMUST00000117757"; t3="ENSMUST00000073605";
+        t4="ENSMUST00000144205"; t5="ENSMUST00000144588"; t6="ENSMUST00000147954";
+        #e3="ENSMUSE00001089032"; e4="ENSMUSE00001088279"; e14="ENSMUSE00001078954"; e15="ENSMUSE00001081999";
+        e1="ENSMUSE00000721118"; e2="ENSMUSE00000569415"; e3="ENSMUSE00000512722"; e4="ENSMUSE00000775454";
+        e5="ENSMUSE00000472146"; e6="ENSMUSE00000491786"; e7="ENSMUSE00000487077"; e8="ENSMUSE00000719706";
+        e9="ENSMUSE00000881196"; e10="ENSMUSE00000879959"; e11="ENSMUSE00000873350"; e12="ENSMUSE00000886744";
+        e13="ENSMUSE00000745781"; e16="ENSMUSE00000822668"; e17="ENSMUSE00000709315"; e18="ENSMUSE00000815727";
+        e19="ENSMUSE00000751942";
+        self.ncond = 2
+        self.nreads = array([4041,3728]) # KO,WT
+        self.count = array([[156,13,12,5,29,9,3689,],[]])
+        self.rpkms = array([])
+        self.exon_counts = ()
+        self.transcript_mapping = {t1:(g,gname,125161854,125165773,1420,-1,c), t2:(g,gname,125161854,125166467,1272,-1,c),
+            t3:(g,gname,125162032,125165293,909,-1,c), t4:(g,gname,125162843,125164916,560,-1,c),
+            t5:(g,gname,125164597,125165605,769,-1,c), t6:(g,gname,125161853,125162527,565,-1,c)}
+        self.gene_mapping = {g:(gname,125161853,125166467,4614.,-1,c)}
+        self.exon_mapping = {e1:([t1],g,gname,125165773,125165552,-1,c), e2:([t1,t2],g1,gname,125165311,125165271,-1,c),
+            e3:([t1,t2,t3],g,gname,125163436,125163139,-1,c), e4:([t1,t2],g1,gname,125163040,125162843,-1,c),
+            e5:([t1,t2,t3],g,gname,125162708,125162478,-1,c), e6:([t1,t2,t3],g1,gname,125162393,125162212,-1,c),
+            e7:([t1,t2],g,gname,125162101,125161854,-1,c), e8:([t2],g1,gname,125166467,125166394,-1,c),
+            e9:([t3],g,gname,125165293,125165271,-1,c), e10:([t3],g1,gname,125163040,125162975,-1,c),
+            e11:([t3],g,gname,125162881,125162843,-1,c), e12:([t3],g,gname,125162101,125162032,-1,c),
+            e13:([t4],g,gname,125164916,125164853,-1,c), e14:([t4],g,gname,125163436,125163139,-1,c), # e14=e3
+            e15:([t4],g,gname,125163040,125162843,-1,c), e16:([t5],g,gname,125165605,125165552,-1,c), # e15=e4
+            e17:([t5],g,gname,125165311,125164597,-1,c), e18:([t6],g,gname,125162527,125162212,-1,c),
+            e19:([t6],g,gname,125162101,125161853,-1,c)}
+        self.trans_in_gene = {g:[t1,t2,t3,t4,t5,t6]}
+        self.exons_in_trans = {t1:[e1,e2,e3,e4,e5,e6,e7], t2:[e8,e2,e3,e4,e5,e6,e7],
+            t3:[e9,e3,e10,e11,e5,e6,e12], t4:[e13,e3,e4], t5:[e16,e17], t6:[e18,e19]}
+
+        """
+           *Counts Cond1*
+        g1 |===.======|
+        t1 |---|         21
+        t2 |---.------|  6  +  12
+
+             27    12
+           |.e1.||.e2.|
+        """
+        """
+           *Counts Cond2*
+        g1 |===.======|
+        t1 |---|         1.5
+        t2 |---.------|  1.5 + 3
+
+             3     3
+           |.e1.||.e2.|
+        """
+    def test_transcripts_expression(self):
+        tcounts, trpkm = transcripts_expression(self.exon_counts, self.exon_mapping, self.transcript_mapping,
+                 self.trans_in_gene, self.exons_in_trans, self.ncond, self.nreads)
+        assert_almost_equal(trpkm["t1"], array([7., 0.5]))
+        assert_almost_equal(trpkm["t2"], array([2., 0.5]))
+        assert_almost_equal(tcounts["t1"], array([21., 1.5]))
+        assert_almost_equal(tcounts["t2"], array([18., 4.5]))
+        self.assertEqual(sum(sum(tcounts.values())), sum(sum(self.counts)))
+
+    def test_genes_expression(self):
+        gcounts, grpkm = genes_expression(self.exon_counts, self.gene_mapping,
+                self.exon_mapping, self.ncond, self.nreads)
+        assert_almost_equal(gcounts["g1"], array([39., 6.]))
+        assert_almost_equal(grpkm["g1"],array([39./9,6./9]))
+
+    def test_coherence(self):
+        # Test if sum of transcript counts equals gene counts
+        tcounts, trpkmm = transcripts_expression(self.exon_counts, self.exon_mapping, self.transcript_mapping,
+                     self.trans_in_gene, self.exons_in_trans, self.ncond, self.nreads)
+        gcounts, grpkms = genes_expression(self.exon_counts, self.gene_mapping,
+                     self.exon_mapping, self.ncond, self.nreads)
+        self.assertEqual(sum(gcounts["g1"]), sum([sum(tcounts[t]) for t in self.trans_in_gene["g1"]]))
+
 class Test_Expressions1(unittest.TestCase):
     """Two conditions, different lengths, invertible"""
     def setUp(self):
