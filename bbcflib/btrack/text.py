@@ -622,8 +622,14 @@ class GffTrack(TextTrack):
         kwargs['format'] = 'gff'
         kwargs['fields'] = ['chr','source','name','start','end','score','strand','frame','attributes']
         TextTrack.__init__(self,path,**kwargs)
-        self.intypes.pop('score')
-        self.intypes.pop('frame')
+        def _gff_score(x=0.0):
+            if str(x) == '.': return '.'
+            return float(x)
+        def _gff_frame(x=0.0):
+            if str(x) == '.': return '.'
+            return int(x)
+        self.intypes.update({'score': _gff_score, 'frame': _gff_frame})
+        self.outtypes.pop('score')
         if not(os.path.exists(self.path)): return
         rowlen = 9
         self.open()
