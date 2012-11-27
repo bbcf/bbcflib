@@ -170,7 +170,7 @@ def build_pileup(bamfile, assembly, gene_mapping, exon_mapping, trans_in_gene, e
     c = Counter()
     #The callback (c.n += 1) is executed for each alignment in a region
     if all([ref in assembly.chrmeta.keys() for ref in sam.references]): # mapped on the genome
-        for g in gene_mapping.iterkeys(): #ENSMUSG00000057666
+        for g in gene_mapping.iterkeys():
             eg = set()
             for t in trans_in_gene[g]:
                 eg.update(exons_in_trans[t])
@@ -185,11 +185,13 @@ def build_pileup(bamfile, assembly, gene_mapping, exon_mapping, trans_in_gene, e
                 for exon in ex:
                     counts[exon] += c.n/float(len(ex))
                 c.n = 0
-    else: # mapped on the exonome - retro-compatibility
+    else: # mapped on the exonome
         for e in zip(sam.references,sam.lengths):
-            sam.fetch(e[0], 0, e[1], callback=c) #(label,0,length,Counter())
-            counts[e[0].split('|')[0]] = c.n
-            c.n = 0
+            exon = e[0].split('|')[0]
+            if exon_mapping.get(exon):
+                sam.fetch(e[0], 0, e[1], callback=c) #(label,0,length,Counter())
+                counts[exon] = c.n
+                c.n = 0
     sam.close()
     return counts
 
@@ -242,8 +244,7 @@ def save_results(ex, lines, conditions, group_ids, assembly, header=[], feature_
                                          groupId=group_ids[group], gdv='1')
             ex.add(filename+'.sql', description=description)
             # bigWig track - UCSC
-            #track(filename+'.bw',info={'name':feature_type.lower()+"_"+group},chrmeta=assembly.name)
-            convert(filename+'.sql',filename+'.bw')#,mode='append')
+            convert(filename+'.sql',filename+'.bw',mode='append')
             description = set_file_descr(feature_type.lower()+"_"+group+".bw",
                                          step="pileup", type="bw",
                                          groupId=group_ids[group], ucsc='1')
@@ -298,7 +299,7 @@ def transcripts_expression(exons_data, exon_mapping, transcript_mapping, trans_i
     :param ncond: (int) number of samples.
     :param nreads: (numpy array) number of reads in each sample.
     """
-    exons_counts={}; genes=[]; transcripts=[]
+    exons_counts={}; genes=[];
     trans_counts={}; trans_rpkm={}
     unknown = 0
     pinv = numpy.linalg.pinv
@@ -443,7 +444,6 @@ def rnaseq_workflow(ex, job, bam_files, pileup_level=["exons","genes","transcrip
     """ Map remaining reads to transcriptome """
     unmapped_fastq,additionals = unmapped(ex,job,bam_files,assembly,group_names,
                                           exon_mapping,transcript_mapping,exons_in_trans,via)
-
     """ Find splice junctions """
     if junctions:
         print "Search for splice junctions"
@@ -462,10 +462,8 @@ def rnaseq_workflow(ex, job, bam_files, pileup_level=["exons","genes","transcrip
             if unmapped_fastq[cond] and cond in additionals:
                 for a,x in additionals[cond].iteritems():
                     exon_pileup[a] = exon_pileup.get(a,0) + x
-            #exon_ids,pileup = zip(*exon_pileup.items())
             exon_pileups[cond] = exon_pileup.values()
-            #exon_pileups[cond] = [exon_pileup.get(e,0.0) for e in exon_ids] # {cond1.run1: {exon:cnt}, cond1.run2: {exon:cnt}...}
-            nreads[cond] = nreads.get(cond,0) + sum(exon_pileup.values()) # total number of reads
+            nreads[cond] = sum(exon_pileup.values()) # total number of reads
             print "....Pileup", cond, "done"
     exon_ids = exon_pileup.keys()
 
