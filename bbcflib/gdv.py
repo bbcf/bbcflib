@@ -15,7 +15,7 @@ default_url = 'http://gdv.epfl.ch/pygdv'
 def _gdv_request(**kw):
     req_keys = ['mail','key','project_key','project_id','name','assembly',
                 'url','fsys','trackname','force','extension','delfile']
-    request = dict((k,kw[k]) for k in req_keys if kw.get('k'))
+    request = dict((k,kw[k]) for k in req_keys if kw.get(k))
     kw['serv_url'] = normalize_url(kw['serv_url'])
     url = "/".join([kw[k] for k in ['serv_url','obj','action','id'] if k in kw])
     req = urllib2.urlopen(url, urllib.urlencode(request))
