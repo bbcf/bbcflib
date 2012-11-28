@@ -72,10 +72,10 @@ def single_track(mail, key, assembly_id=None, project_id=None,
     :param delete_source: If true and file is a local parth, the original file will be removed after job success.
     :rtype: JSON
     '''
-    url = None
-    fsys = None
-    if url.startswith(("http://","https://","ftp://")): url = url
-    else: fsys = url
+    _url = None
+    _fsys = None
+    if url.startswith(("http://","https://","ftp://")): _url = url
+    else: _fsys = url
     return _gdv_request(mail=mail, key=key, 
                         assembly=assembly_id, project_id=project_id, 
                         url=url, fsys=fsys, trackname=name, extension=extension,
