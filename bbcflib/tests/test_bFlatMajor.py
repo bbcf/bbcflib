@@ -236,7 +236,7 @@ class Test_Annotate(unittest.TestCase):
         """
     def test_getNearestFeature(self):
         features = fstream([('chrII',14795327,14798367)], fields=['chr','start','end'])
-        expected = [(14795327, 14798367, 'chrII', 'Y54E2A.12|tbc-20_Y54E2A.11|eif-3.B', 'Promot_Included', '28_0')]
+        expected = [('chrII',14795327, 14798367, 'Y54E2A.12|tbc-20_Y54E2A.11|eif-3.B', 'Promot_Included', '28_0')]
         annotations = self.assembly.gene_track(chromlist=['chrII'])
         res = list(getNearestFeature(features,annotations))
         self.assertItemsEqual(res,expected)

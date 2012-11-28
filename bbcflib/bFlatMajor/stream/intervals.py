@@ -239,6 +239,7 @@ def _combine(trackList,fn,win_size,aggregate):
                     current.append((a[1],i))
         for i in to_remove:
             available_tracks.remove(i)
+        if not current: continue
         current.sort()
         while current[0][0] >= limit:
             k+=1

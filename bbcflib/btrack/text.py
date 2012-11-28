@@ -308,20 +308,30 @@ class TextTrack(Track):
         self.written = True
         self.close()
 
-    def make_header(self, info=None, mode='write'):
+    def make_header(self, info=None, mode='write', **kw):
         """
         If *self* is an empty track, this function can be used to write a header in place
-        of the first line of its related file. By default, only `track type=<track type>` is added.
+        of the first line of its related file. Info can be given as a dictioary *info*
+        or as keyword arguments to the function. The header line starts with 'track' and
+        each pair of key/value in *info* is added as 'key=value'. Example::
+
+            make_header(type='bedGraph',name='aaa')
+            # or
+            make_header(info={'type':'bedGraph','name':'aaa'})
+
+        writes on top of the file::
+
+            track type=bedgraph name=aaa
 
         :param info: (dict) information to be written. Keys can be:
             'name','description','visibility','color','itemRgb'.
         :param mode: (str) writing mode - one of 'write','overwrite','append'.
         """
         if isinstance(info,dict): self.info.update(info)
-        header = "track type=%s " % self.format
-        _keys = ["name","description","visibility","color","itemRgb"]
-        header += " ".join(["%s=%s" %(k,self.info[k])
-                            for k in _keys if k in self.info])
+        else: self.info.update(kw)
+        header = "track "
+        _keys = ["name","type","description","visibility","color","itemRgb"]
+        header += " ".join(["%s=%s"%(k,self.info[k]) for k in _keys if k in self.info])
         self.open(mode)
         self.filehandle.write(header+"\n")
         self.close()
@@ -616,8 +626,14 @@ class GffTrack(TextTrack):
         kwargs['format'] = 'gff'
         kwargs['fields'] = ['chr','source','name','start','end','score','strand','frame','attributes']
         TextTrack.__init__(self,path,**kwargs)
-        self.intypes.pop('score') # can be '.' (UCSC)
-        self.intypes.pop('frame') # can be '.' (UCSC)
+        def _gff_score(x=0.0):
+            if str(x) == '.': return '.'
+            return float(x)
+        def _gff_frame(x=0.0):
+            if str(x) == '.': return '.'
+            return int(x)
+        self.intypes.update({'score': _gff_score, 'frame': _gff_frame})
+        self.outtypes.pop('score')
         if not(os.path.exists(self.path)): return
         rowlen = 9
         self.open()
@@ -628,10 +644,6 @@ class GffTrack(TextTrack):
             splitrow = row.strip(' \r\n').split(self.separator)
             splitrow = [s.strip() for s in splitrow]
             rowlen = len(splitrow)
-            try: float(splitrow[5])
-            except ValueError: print "Warning: invalid scores in file %s: '%s'." % (self.path,splitrow[5])
-            try: int(splitrow[7])
-            except ValueError: print "Warning: invalid frame in file %s: '%s'." % (self.path,splitrow[7])
             break
         self.close()
         if rowlen > 9 or rowlen < 8:

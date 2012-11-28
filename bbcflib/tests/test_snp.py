@@ -19,7 +19,7 @@ path = "test_data/snp/"
 # run_snp.py -v local -c /archive/epfl/bbcf/jdelafon/test_snp/config/snp.config -d /scratch/cluster/monthly/jdelafon/snp/snp_minilims -w wdir -f /archive/epfl/bbcf/jdelafon/test_snp/reference/chrV.tar.gz
 # run_snp.py -v local -c /archive/epfl/bbcf/jdelafon/test_snp/config/hart.config -d /scratch/cluster/monthly/jdelafon/snp/snp_minilims -w wdir
 
-
+@unittest.skip("")
 class Test_SNP(unittest.TestCase):
     def setUp(self):
         pass
@@ -33,8 +33,8 @@ class Test_SNP(unittest.TestCase):
         raise IOError("Error raised voluntarily to print test outputs.")
 
     def tearDown(self):
-        os.remove(self.outall)
-        os.remove(self.outexons)
+        if os.path.exists(self.outall): os.remove(self.outall)
+        if os.path.exists(self.outexons): os.remove(self.outexons)
 
 
 #-----------------------------------#
