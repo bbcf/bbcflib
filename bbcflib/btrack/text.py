@@ -81,8 +81,8 @@ class TextTrack(Track):
             if row.startswith("browser") or \
                     row.startswith("#"): continue
             if row.startswith("track"):
-                for x in row.strip().split():
-                    key_val = re.search(r'(\S+)=(\S+)',x)
+                for x in row.strip(' \r\n').split(self.separator):
+                    key_val = re.search(r'(\S+)=(\S+)',x.strip())
                     if key_val: _info[key_val.groups()[0]] = key_val.groups()[1]
             break
         self.close()
@@ -191,6 +191,7 @@ class TextTrack(Track):
                    row.startswith("#") or \
                    row.startswith("@"): continue
                 splitrow = row.strip(' \r\n').split(self.separator)
+                splitrow = [s.strip() for s in splitrow]
                 if selection:
                     if skip:
                         fstart,fend,next_toskip = self._skip(fstart,next_toskip,chr_toskip)
@@ -357,6 +358,7 @@ class BedTrack(TextTrack):
                     row.startswith("track") or \
                     row.startswith("#"): continue
             splitrow = row.strip(' \r\n').split(self.separator)
+            splitrow = [s.strip() for s in splitrow]
             rowlen = len(splitrow)
             break
         self.close()
@@ -422,6 +424,7 @@ class SgaTrack(TextTrack):
             if not row: break
             if row.startswith("#"): continue
             splitrow = row.strip(' \r\n').split(self.separator)
+            splitrow = [s.strip() for s in splitrow]
             yieldit = True
             chr,name,pos,strand,counts = splitrow
             if float(counts) == 0: continue
@@ -546,6 +549,7 @@ class WigTrack(TextTrack):
                     continue
                 if fixedStep is None: continue
                 splitrow = row.split(self.separator)
+                splitrow = [s.strip() for s in splitrow]
                 yieldit = True
                 if fixedStep:
                     score = splitrow[0]
@@ -622,6 +626,7 @@ class GffTrack(TextTrack):
                     row.startswith("track") or \
                     row.startswith("#"): continue
             splitrow = row.strip(' \r\n').split(self.separator)
+            splitrow = [s.strip() for s in splitrow]
             rowlen = len(splitrow)
             try: float(splitrow[5])
             except ValueError: print "Warning: invalid scores in file %s: '%s'." % (self.path,splitrow[5])
