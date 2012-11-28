@@ -78,7 +78,7 @@ def single_track(mail, key, assembly_id=None, project_id=None,
     else: _fsys = url
     return _gdv_request(mail=mail, key=key, 
                         assembly=assembly_id, project_id=project_id, 
-                        url=url, fsys=fsys, trackname=name, extension=extension,
+                        url=_url, fsys=_fsys, trackname=name, extension=extension,
                         force=delete_target, delfile=delete_source, 
                         serv_url=serv_url, obj='tracks', action='create', return_type='json')
 
