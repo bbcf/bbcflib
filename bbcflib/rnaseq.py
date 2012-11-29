@@ -165,33 +165,36 @@ def build_pileup(bamfile, assembly, gene_mapping, exon_mapping, trans_in_gene, e
             self.n += 1
 
     counts = {}
+    unknown_refs = 0
     try: sam = pysam.Samfile(bamfile, 'rb')
     except ValueError: sam = pysam.Samfile(bamfile,'r')
     c = Counter()
     #The callback (c.n += 1) is executed for each alignment in a region
-    if all([ref in assembly.chrmeta.keys() for ref in sam.references]): # mapped on the genome
-        for g in gene_mapping.iterkeys():
-            eg = set()
-            for t in trans_in_gene[g]:
-                eg.update(exons_in_trans[t])
-            for e in eg:
-                counts[e] = 0
-            eg = sorted([(e,)+exon_mapping[e][3:] for e in eg if exon_mapping.get(e)], key=itemgetter(1,2))
-            eg = cobble(FeatureStream(eg,fields=['name','start','end','strand','chr']))
-            for e in eg:
-                if e[2]-e[1] <= 1: continue
-                sam.fetch(e[-1],e[1],e[2], callback=c) #(chr,start,end,Counter())
-                ex = e[0].split('|')
-                for exon in ex:
-                    counts[exon] += c.n/float(len(ex))
-                c.n = 0
-    else: # mapped on the exonome
-        for e in zip(sam.references,sam.lengths):
-            exon = e[0].split('|')[0]
-            if exon_mapping.get(exon):
-                sam.fetch(e[0], 0, e[1], callback=c) #(label,0,length,Counter())
-                counts[exon] = c.n
-                c.n = 0
+    #if all([ref in assembly.chrmeta.keys() for ref in sam.references]): # mapped on the genome
+    for g in gene_mapping.iterkeys():
+        eg = set()
+        for t in trans_in_gene[g]:
+            eg.update(exons_in_trans[t])
+        for e in eg:
+            counts[e] = 0
+        eg = sorted([(e,)+exon_mapping[e][3:] for e in eg], key=itemgetter(1,2))
+        eg = cobble(FeatureStream(eg,fields=['name','start','end','strand','chr']))
+        for e in eg:
+            if e[2]-e[1] <= 1: continue
+            if all([ref in assembly.chrmeta.keys() for ref in sam.references]): # mapped on the genome
+                ref = e[-1]
+            else: # mapped on the exonome
+                ref = '|'.join([e[0],g,str(e[1]),str(e[2]),str(e[3])]) # exon_id|gene_id|start|end|strand
+            try:
+                sam.fetch(ref,e[1],e[2], callback=c) #(chr,start,end,Counter())
+            except ValueError:
+                unknown_refs += 1
+                continue
+            ex = e[0].split('|')
+            for exon in ex:
+                counts[exon] += c.n/float(len(ex))
+            c.n = 0
+    if unknown_refs != 0: print "%s unknown references fetched" % unknown_refs
     sam.close()
     return counts
 
@@ -352,13 +355,13 @@ def transcripts_expression(exons_data, exon_mapping, transcript_mapping, trans_i
                 tc.append(Tc)
             # Store results in a dict *trans_counts*
             for k,t in enumerate(tg):
-                if trans_counts.get(t) is not None:
-                    for c in range(ncond):
-                        trans_counts[t][c] = round(tc[c][k], 2)
+                for c in range(ncond):
+                    trans_counts[t][c] = round(tc[c][k], 2)
         else:
             unknown += 1
-    print "\tUnknown transcripts for %d of %d genes (%.2f %%)" \
-           % (unknown, len(genes), 100*float(unknown)/float(len(genes)) )
+    if unknown != 0:
+        print "\tUnknown transcripts for %d of %d genes (%.2f %%)" \
+              % (unknown, len(genes), 100*float(unknown)/float(len(genes)) )
     # Convert to rpkm
     for t,counts in trans_counts.iteritems():
         trans_rpkm[t] = to_rpkm(counts, transcript_mapping[t][4], nreads)
