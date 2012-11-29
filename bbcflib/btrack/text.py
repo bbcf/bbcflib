@@ -190,8 +190,8 @@ class TextTrack(Track):
                    row.startswith("track") or \
                    row.startswith("#") or \
                    row.startswith("@"): continue
-                splitrow = row.strip(' \r\n').split(self.separator)
-                splitrow = [s.strip() for s in splitrow]
+                splitrow = [s.strip() for s in row.split(self.separator)]
+                if not any(splitrow): continue
                 if selection:
                     if skip:
                         fstart,fend,next_toskip = self._skip(fstart,next_toskip,chr_toskip)
@@ -364,12 +364,12 @@ class BedTrack(TextTrack):
         self.open()
         rowlen = None
         for row in self.filehandle:
-            if row.startswith("browser") or \
-                    row.startswith("track") or \
-                    row.startswith("#"): continue
-            splitrow = row.strip(' \r\n').split(self.separator)
-            splitrow = [s.strip() for s in splitrow]
-            rowlen = len(splitrow)
+            row = row.strip(' \r\n')
+            if not(row) or \ 
+                row.startswith("browser") or \
+                row.startswith("track") or \
+                row.startswith("#"): continue
+            rowlen = len(row.strip(' \r\n').split(self.separator))
             break
         self.close()
         if rowlen is None: return
@@ -433,8 +433,8 @@ class SgaTrack(TextTrack):
             row = self.filehandle.readline()
             if not row: break
             if row.startswith("#"): continue
-            splitrow = row.strip(' \r\n').split(self.separator)
-            splitrow = [s.strip() for s in splitrow]
+            splitrow = [s.strip() for s in row.split(self.separator)]
+            if not any(splitrow): continue
             yieldit = True
             chr,name,pos,strand,counts = splitrow
             if float(counts) == 0: continue
@@ -558,8 +558,8 @@ class WigTrack(TextTrack):
                     end = start+span
                     continue
                 if fixedStep is None: continue
-                splitrow = row.split(self.separator)
-                splitrow = [s.strip() for s in splitrow]
+                splitrow = [s.strip() for s in row.split(self.separator)]
+                if not any(splitrow): continue
                 yieldit = True
                 if fixedStep:
                     score = splitrow[0]
@@ -638,12 +638,12 @@ class GffTrack(TextTrack):
         rowlen = 9
         self.open()
         for row in self.filehandle:
-            if row.startswith("browser") or \
-                    row.startswith("track") or \
-                    row.startswith("#"): continue
-            splitrow = row.strip(' \r\n').split(self.separator)
-            splitrow = [s.strip() for s in splitrow]
-            rowlen = len(splitrow)
+            row = row.strip(' \r\n')
+            if not(row) or \ 
+                row.startswith("browser") or \
+                row.startswith("track") or \
+                row.startswith("#"): continue
+            rowlen = len(row.split(self.separator))
             break
         self.close()
         if rowlen > 9 or rowlen < 8:
