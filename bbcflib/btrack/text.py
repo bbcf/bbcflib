@@ -337,6 +337,32 @@ class TextTrack(Track):
         self.close()
         self.written = True
 
+    def get_range(self, selection=None, fields=None):
+        """
+        Returns the range of values for the given selection.
+        If `fields` is None, returns min and max positions, otherwise min and max
+        field values.
+        """
+        if fields is None:
+            _f = ["start","end"]
+            rback = [None,None]
+            for row in self.read(selection=selection,fields=_f):
+                if rback[0] is None: rback = list(row)
+                if rback[0] > row[0]: rback[0] = row[0]
+                if rback[1] < row[1]: rback[1] = row[1]
+        else:
+            if isinstance(fields,basestring): fields = [fields]
+            _f = [f for f in fields if f in self.fields]
+            if len(_f) == 0:
+                raise ValueError("Fields %s not in track: %s" % (fields,self.fields))
+            rback = [None,None]*len(_f)
+            for row in self.read(selection=selection,fields=_f):
+                if rback[0] is None: rback = [row[n] for n in sorted(range(len(_f))*2)]
+                for n,x in enumerate(row):
+                    if rback[2*n] > x: rback[2*n] = x
+                    if rback[2*n+1] < x: rback[2*n+1] = x
+        return rback
+
 ################################ Bed ##########################################
 
 class BedTrack(TextTrack):

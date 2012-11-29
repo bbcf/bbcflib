@@ -244,9 +244,12 @@ class SqlTrack(Track):
         if fields is None:
                 _f = ["min(start)","max(end)"]
         else:
+            if isinstance(fields,basestring): fields = [fields]
             _f = []
             for f in fields:
                 if f in self.fields: _f.extend(["min(%s)"%f,"max(%s)"%f])
+        if len(_f) == 0:
+            raise ValueError("Fields %s not in track: %s" % (fields,self.fields))
         cursor = self.connection.cursor()
         chr_idx = 0
         if isinstance(selection,FeatureStream):
