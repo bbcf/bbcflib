@@ -236,18 +236,16 @@ def save_results(ex, lines, conditions, group_ids, assembly, header=[], feature_
             towrite = {}
             for n,c in enumerate(chromosomes):
                 if c not in tr.chrmeta: continue
-                if c in towrite: towrite[c].append((int(start[n]),int(end[n]),rpkm[group][n]))
-                else: towrite[c] = []
+                towrite.setdefault(c,[]).append((int(start[n]),int(end[n]),rpkm[group][n]))
             for chrom, feats in towrite.iteritems():
                 tr.write(cobble(sorted_stream(FeatureStream(feats, fields=['start','end','score']))),chrom=chrom,clip=True)
             description = set_file_descr(feature_type.lower()+"_"+group+".sql", step="pileup", type="sql", \
                                          groupId=group_ids[group], gdv='1')
             ex.add(filename+'.sql', description=description)
             # bigWig track - UCSC
-            convert(filename+'.sql',filename+'.bw',mode='append')
+            convert(filename+'.sql',filename+'.bw')
             description = set_file_descr(feature_type.lower()+"_"+group+".bw",
-                                         step="pileup", type="bw",
-                                         groupId=group_ids[group], ucsc='1')
+                                         step="pileup", type="bw", groupId=group_ids[group], ucsc='1')
             ex.add(filename+'.bw', description=description)
     print feature_type+": Done successfully."
     return output_tab

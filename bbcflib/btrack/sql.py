@@ -88,7 +88,7 @@ class SqlTrack(Track):
             columns = [x[0] for x in self.cursor.description]
             namei = columns.index('name')
             otheri = [n for n,x in enumerate(columns) if x != 'name']
-            table_chr = dict((x[namei].encode('ascii'), 
+            table_chr = dict((x[namei].encode('ascii'),
                               dict((columns[n].encode('ascii'),x[n]) for n in otheri))
                              for x in self.cursor.fetchall())
             for k,v in chrmeta.iteritems():
@@ -101,7 +101,7 @@ class SqlTrack(Track):
                     vals = ",".join(["'"+str(x)+"'" for x in v.values()])
                     sql_command = "INSERT INTO 'chrNames' (name,%s) VALUES ('%s',%s)"%(cols,k,vals)
                     self.cursor.execute(sql_command)
-                else: 
+                else:
                     for col,val in v.iteritems():
                         if str(v[col]) != str(table_chr[k][col]):
                             sql_command = "UPDATE 'chrNames' SET %s='%s' WHERE name='%s'"%(col,val,k)
@@ -236,14 +236,14 @@ class SqlTrack(Track):
 
     def get_range(self, selection=None, fields=None):
         """
-        Returns the range of values for the given selection. 
-        If `fields` is None, returns min and max positions, otherwise min and max 
+        Returns the range of values for the given selection.
+        If `fields` is None, returns min and max positions, otherwise min and max
         field values.
         """
         selection = self._check_selection(selection)
-        if fields is None: 
+        if fields is None:
                 _f = ["min(start)","max(end)"]
-        else: 
+        else:
             _f = []
             for f in fields:
                 if f in self.fields: _f.extend(["min(%s)"%f,"max(%s)"%f])
@@ -271,7 +271,7 @@ class SqlTrack(Track):
                 raise Exception("Sql error: %s\n on file %s, with\n%s" % (err,self.path,sql_command))
         cursor.close()
         return rback
-        
+
 
     def read(self, selection=None, fields=None, order='start,end', **kw):
         """

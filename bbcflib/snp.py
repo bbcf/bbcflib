@@ -108,28 +108,23 @@ def all_snps(chrom,outall,assembly,sample_names,dictPileup,allSNPpos):
                     allSamples[sname][pos] = allSNPpos[pos] if coverage else "0"  # "0" if not covered, ref base otherwise
                 if not(int(info[1]) == pos): continue
                 # SNP found in allpos, treat:
-                elif int(nreads) < 10:
-                    star = "* " # add a star *A if the snp is supported by less than 10 reads
-                else:
-                    star = ""
                 if re.search(r'[ACGTN]',cons): # if bases are encoded normally (~100% replacement)
-                    star += cons
-                    allSamples[sname][pos] = star
+                    allSamples[sname][pos] = cons+" (%s)"%nreads
                 elif re.search(r'[MSYWRK]',cons): # avoid cons='*/*' as it happened once
                     mincov = 40 # half of it for diploids. Used to be set to 80.
                     var1,var2, nvar1_fwd,nvar1_rev,nvar2_fwd,nvar2_rev, indels = _parse_info8(info[8],cons)
-                    nvar1 = (100/float(nreads)) * (nvar1_fwd + nvar1_rev) # % of consensus 1
-                    nvar2 = (100/float(nreads)) * (nvar2_fwd + nvar2_rev) # % of consensus 2
-                    check1 = nvar1_fwd >= 5 and nvar1_rev >= 5 and nvar1 >= mincov/ploidy
-                    check2 = nvar2_fwd >= 5 and nvar2_rev >= 5 and nvar2 >= mincov/ploidy
-                    check0 = nvar2_fwd >= 3 and nvar2_rev >= 3 and nvar2 >= 0.5*mincov/ploidy \
-                         and nvar1_fwd >= 3 and nvar1_rev >= 3 and nvar1 >= 0.5*mincov/ploidy
+                    nvar1pc = (100/float(nreads)) * (nvar1_fwd + nvar1_rev) # % of consensus 1
+                    nvar2pc = (100/float(nreads)) * (nvar2_fwd + nvar2_rev) # % of consensus 2
+                    check1 = nvar1_fwd >= 5 and nvar1_rev >= 5 and nvar1pc >= mincov/ploidy
+                    check2 = nvar2_fwd >= 5 and nvar2_rev >= 5 and nvar2pc >= mincov/ploidy
+                    check0 = nvar2_fwd >= 3 and nvar2_rev >= 3 and nvar2pc >= 0.5*mincov/ploidy \
+                         and nvar1_fwd >= 3 and nvar1_rev >= 3 and nvar1pc >= 0.5*mincov/ploidy
                     if ref.upper() == var1 and check2:   # if ref base == first variant
-                        allSamples[sname][pos] = star + "%s (%.4g%%)" % (var2,nvar2)
+                        allSamples[sname][pos] = "%s (%.2f%% of %s)" % (var2,nvar2pc,nreads)
                     elif ref.upper() == var2 and check1: # if ref base == second variant
-                        allSamples[sname][pos] = star + "%s (%.4g%%)" % (var1,nvar1)
+                        allSamples[sname][pos] = "%s (%.2f%% of %s)" % (var1,nvar1pc,nreads)
                     elif check0:                         # if third allele
-                        allSamples[sname][pos] = star + "%s (%.4g%%),%s (%.4g%%)" % (var1,nvar1,var2,nvar2)
+                        allSamples[sname][pos] = "%s (%.2f%%),%s (%.4g%% of %s)" % (var1,nvar1pc,var2,nvar2pc,nreads)
                     else:
                         allSamples[sname][pos] = ref
             while allpos:  # write '0' for all pos after the last one of this sample
@@ -144,12 +139,10 @@ def all_snps(chrom,outall,assembly,sample_names,dictPileup,allSNPpos):
     for pos in allpos:
         nbNoSnp = 0 # Check if at least one sample still has the SNP (after filtering)
         for sname in sample_names:
-            if allSamples[sname][pos] in ("0",allSNPpos[pos]): nbNoSnp += 1
+            if allSamples[sname][pos].split()[0] in ("0",allSNPpos[pos]): nbNoSnp += 1
         if nbNoSnp != len(allSamples):
             refbase = allSNPpos[pos]
             allsnps.append((chrom,pos-1,pos,refbase) + tuple([allSamples[s][pos] for s in sample_names]))
-            # append: chr start end ref_base    sample1 ... sampleN
-            # sampleX is one of '0', 'A', 'T (28%)', 'T (28%),G (13%)', with or without star
 
     snp_read = FeatureStream(allsnps, fields=['chr','start','end','name']+sample_names )
     annotation = assembly.gene_track(chrom)
@@ -190,7 +183,7 @@ def exon_snps(chrom,outexons,allsnps,assembly,sample_names,genomeRef={}):
     def _write_buffer(_buffer, outex):
         new_codon = None
         for chr,pos,refbase,variants,cds,strand,ref_codon,shift in _buffer:
-            varbase = [r.strip('* ') for r in variants]
+            varbase = list(variants)
             if new_codon is None:
                 new_codon = [[ref_codon] for _ in range(len(varbase))]
             variants = []
