@@ -365,7 +365,7 @@ class BedTrack(TextTrack):
         rowlen = None
         for row in self.filehandle:
             row = row.strip(' \r\n')
-            if not(row) or \ 
+            if not(row) or \
                 row.startswith("browser") or \
                 row.startswith("track") or \
                 row.startswith("#"): continue
@@ -639,7 +639,7 @@ class GffTrack(TextTrack):
         self.open()
         for row in self.filehandle:
             row = row.strip(' \r\n')
-            if not(row) or \ 
+            if not(row) or \
                 row.startswith("browser") or \
                 row.startswith("track") or \
                 row.startswith("#"): continue
