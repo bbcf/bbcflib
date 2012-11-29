@@ -81,7 +81,7 @@ class TextTrack(Track):
             if row.startswith("browser") or \
                     row.startswith("#"): continue
             if row.startswith("track"):
-                for x in row.strip(' \r\n').split(self.separator):
+                for x in row.split(self.separator):
                     key_val = re.search(r'(\S+)=(\S+)',x.strip())
                     if key_val: _info[key_val.groups()[0]] = key_val.groups()[1]
             break
@@ -366,10 +366,10 @@ class BedTrack(TextTrack):
         for row in self.filehandle:
             row = row.strip(' \r\n')
             if not(row) or \
-                row.startswith("browser") or \
-                row.startswith("track") or \
-                row.startswith("#"): continue
-            rowlen = len(row.strip(' \r\n').split(self.separator))
+                    row.startswith("browser") or \
+                    row.startswith("track") or \
+                    row.startswith("#"): continue
+            rowlen = len(row.split(self.separator))
             break
         self.close()
         if rowlen is None: return
@@ -521,7 +521,6 @@ class WigTrack(TextTrack):
                 row = self.filehandle.readline()
                 if not row: break
                 if row.startswith("#"): continue
-                row = row.strip(' \r\n')
                 if row.startswith("browser") or row.startswith("track"):
                     fixedStep = None
                     chrom = start = end = score = step = None
@@ -640,9 +639,9 @@ class GffTrack(TextTrack):
         for row in self.filehandle:
             row = row.strip(' \r\n')
             if not(row) or \
-                row.startswith("browser") or \
-                row.startswith("track") or \
-                row.startswith("#"): continue
+                    row.startswith("browser") or \
+                    row.startswith("track") or \
+                    row.startswith("#"): continue
             rowlen = len(row.split(self.separator))
             break
         self.close()
