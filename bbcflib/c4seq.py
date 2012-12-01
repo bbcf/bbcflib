@@ -95,20 +95,23 @@ def density_to_countsPerFrag( ex, file_dict, groups, assembly, regToExclude, scr
 #            outbed.write(gMiner.stream.mean_score_by_feature(
 #                    scores.read(selection=ch),
 #                    features.read(selection=ch)), mode='append')
+            bedfile = unique_filename_in()+".bed"
             gMiner_job = {"operation": "score_by_feature",
-                          "output": unique_filename_in()+".bed",
+                          "output": bedfile,
                           "datatype": "qualitative",                          
                           "args": "'"+json.dumps({"trackScores":density_file,
                                                   "trackFeatures":chref,
                                                   "chromosome":ch})+"'"}
-            gm_futures.append(gMiner_run.nonblocking(ex,gMiner_job,via=via))
+            gm_futures.append((gMiner_run.nonblocking(ex,gMiner_job,via=via),
+                               bedfile))
         outsql = unique_filename_in()+".sql"
         sqlouttr = track( outsql, chrmeta=assembly.chrmeta, 
-                                info={'datatype':'quantitative'},
-                                fields=['start', 'end', 'score'] )
+                          info={'datatype':'quantitative'},
+                          fields=['start', 'end', 'score'] )
         outbed_all = []
         for n,f in enumerate(gm_futures):
-            fout = f.wait()[0]
+            f[0].wait()
+            fout = f[1]
             if not(os.path.exists(fout)): continue
             outbed_all.append(fout)
             outbed = track(fout, chrmeta=assembly.chrmeta)
