@@ -357,7 +357,10 @@ class TextTrack(Track):
                 raise ValueError("Fields %s not in track: %s" % (fields,self.fields))
             rback = [None,None]*len(_f)
             for row in self.read(selection=selection,fields=_f):
-                if rback[0] is None: rback = [row[n] for n in sorted(range(len(_f))*2)]
+                if rback[0] is None: 
+                    for n,x in enumerate(row):
+                        rback[2*n] = x
+                        rback[2*n+1] = x
                 for n,x in enumerate(row):
                     if rback[2*n] > x: rback[2*n] = x
                     if rback[2*n+1] < x: rback[2*n+1] = x

@@ -413,7 +413,7 @@ def workflow_groups( ex, job_or_dict, mapseq_files, assembly, script_path='',
         peakfile = common.unique_filename_in()
         touch(ex,peakfile)
         peakout = track(peakfile, format='txt', chrmeta=chrlist, 
-                              fields=['chr','start','end','name','strand',
+                              fields=['chr','start','end','name',
                                       'gene','location_type','distance'])
         for chrom in assembly.chrnames:
             peakout.write(gm_stream.getNearestFeature(

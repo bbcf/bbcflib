@@ -11,9 +11,10 @@ from reads mapped on a reference genome.
 import sys, os, json, re, time
 from bein import *
 from bein.util import touch
-from bbcflib import daflims, genrep, frontend, email, gdv, createlib
-from bbcflib import btrack as track
-from bbcflib.mapseq import *
+from bbcflib import daflims, genrep, frontend, email, gdv
+from bbcflib.createlib import get_libForGrp
+from bbcflib.btrack import track, convert
+from bbcflib.mapseq import parallel_density_sql
 from bbcflib.common import unique_filename_in, gzipfile, merge_sql, cat, gMiner_run
 
 # *** Create a dictionary with infos for each primer (from file primers.fa)
@@ -85,12 +86,12 @@ def density_to_countsPerFrag( ex, file_dict, groups, assembly, regToExclude, scr
     for gid, group in groups.iteritems():
         density_file = file_dict['density'][gid]
         reffile = file_dict['lib'][gid]
-#	scores = track.track(density_file)
+#	scores = track(density_file)
         gm_futures = []
         for ch in assembly.chrnames:
             chref = os.path.join(reffile,ch+".bed.gz")
             if not(os.path.exists(chref)): chref = reffile
-#            features = track.track(chref,'bed')
+#            features = track(chref,'bed')
 #            outbed.write(gMiner.stream.mean_score_by_feature(
 #                    scores.read(selection=ch),
 #                    features.read(selection=ch)), mode='append')
@@ -102,14 +103,15 @@ def density_to_countsPerFrag( ex, file_dict, groups, assembly, regToExclude, scr
                                                   "chromosome":ch})+"'"}
             gm_futures.append(gMiner_run.nonblocking(ex,gMiner_job,via=via))
         outsql = unique_filename_in()+".sql"
-        sqlouttr = track.track( outsql, chrmeta=assembly.chrmeta, 
+        sqlouttr = track( outsql, chrmeta=assembly.chrmeta, 
                                 info={'datatype':'quantitative'},
                                 fields=['start', 'end', 'score'] )
         outbed_all = []
         for n,f in enumerate(gm_futures):
             fout = f.wait()[0]
+            if not(os.path.exists(fout)): continue
             outbed_all.append(fout)
-            outbed = track.track(fout, chrmeta=assembly.chrmeta)
+            outbed = track(fout, chrmeta=assembly.chrmeta)
             sqlouttr.write( outbed.read(fields=['start', 'end', 'score'],
                                         selection={'score':(0.01,sys.maxint)}),
                             chrom=assembly.chrnames[n] )
@@ -136,7 +138,7 @@ def density_to_countsPerFrag( ex, file_dict, groups, assembly, regToExclude, scr
         res[1].wait()
         segOut = open(res[0],"r")
         resBedGraph = unique_filename_in()+".sql"
-        sqlTr = track.track( resBedGraph, fields=['start','end','score'],
+        sqlTr = track( resBedGraph, fields=['start','end','score'],
                              info={'datatype':'quantitative'}, chrmeta=assembly.chrmeta )
         sqlTr.write(_parse_select_frag(segOut),fields=['chr','start','end','score'])
         segOut.close()
@@ -172,9 +174,8 @@ def workflow_groups( ex, job, primers_dict, assembly, mapseq_files, mapseq_url,
         before_profile_correction = (before_profile_correction.lower() in ['1','true','on','t'])
 ### do it
     for gid, group in job_groups.iteritems():
-        processed['lib'][gid] = createlib.get_libForGrp(ex, group, assembly, 
-                                                        new_libs, gid, c4_url,
-                                                        via=via)
+        processed['lib'][gid] = get_libForGrp(ex, group, assembly, 
+                                              new_libs, gid, c4_url, via=via)
 #reffile='/archive/epfl/bbcf/data/DubouleDaan/library_Nla_30bps/library_Nla_30bps_segmentInfos.bed'
         density_files = []
         regToExclude[gid] = primers_dict.get(group['name'],{}).get('regToExclude',"").replace('\r','')
@@ -211,7 +212,7 @@ def workflow_groups( ex, job, primers_dict, assembly, mapseq_files, mapseq_url,
         touch(ex,file3)
         nFragsPerWin = group['window_size']
         resfile = unique_filename_in()+".bedGraph"
-        track.convert(processed['4cseq']['countsPerFrag'][gid][3],resfile)
+        convert(processed['4cseq']['countsPerFrag'][gid][3],resfile)
         futures[gid] = (profileCorrection.nonblocking( ex, resfile,
                                                        primers_dict[group['name']]['baitcoord'],
                                                        group['name'], file1, file2, script_path, 
@@ -269,7 +270,7 @@ def workflow_groups( ex, job, primers_dict, assembly, mapseq_files, mapseq_url,
         ex.add( sql, description=set_file_descr( fname+".sql", 
                                                  groupId=gid,step=step,type="sql",gdv="1" ) )
         wig = unique_filename_in()+".bw"
-        track.convert( sql, wig )
+        convert( sql, wig )
         ex.add( wig, description=set_file_descr( fname+".bw", 
                                                  groupId=gid,step=step,type="bigWig",ucsc="1") )
     step = "norm_counts_per_frag"
@@ -284,9 +285,9 @@ def workflow_groups( ex, job, primers_dict, assembly, mapseq_files, mapseq_url,
         ex.add( resfiles[3], description=set_file_descr( fname+"_all.sql",
                                                          groupId=gid,step=step,type="sql",view="admin",
                                                          comment="all informative frags - null included" ))
-        trsql = track.track(resfiles[3])
+        trsql = track(resfiles[3])
         bwig = unique_filename_in()+".bw"
-        trwig = track.track(bwig,chrmeta=trsql.chrmeta)
+        trwig = track(bwig,chrmeta=trsql.chrmeta)
         trwig.write(trsql.read(fields=['chr','start','end','score'],
                                selection={'score':(0.01,sys.maxint)}))
         trwig.close()
