@@ -194,7 +194,6 @@ def build_pileup(bamfile, assembly, gene_mapping, exon_mapping, trans_in_gene, e
             except ValueError,ve: # unknown reference
                 print >> logfile, ve
                 continue
-            if c.n == 0: continue
             for exon in ex:
                 counts[exon] = counts.get(exon,0) + c.n/float(len(ex))
             c.n = 0
@@ -267,7 +266,7 @@ def exons_expression(exons_data, exon_mapping, nreads):
     :param nreads: (numpy array) number of reads in each sample.
     """
     exon_counts={}; exon_rpkm={}
-    for e,counts in itertools.izip(*exons_data):
+    for e,counts in exons_data:
         exon_counts[e] = counts
         exon_rpkm[e] = to_rpkm(counts, exon_mapping[e][4]-exon_mapping[e][3], nreads)
     return exon_counts, exon_rpkm
@@ -286,7 +285,7 @@ def genes_expression(exons_data, gene_mapping, exon_mapping, ncond, nreads):
     """
     gene_counts={}; gene_rpkm={}
     round = numpy.round
-    for exon,counts in itertools.izip(*exons_data):
+    for exon,counts in exons_data:
         g = exon_mapping[exon][1]
         gene_counts[g] = gene_counts.get(g,zeros(ncond)) + round(counts,2)
     for g,counts in gene_counts.iteritems():
@@ -312,7 +311,7 @@ def transcripts_expression(exons_data, exon_mapping, transcript_mapping, trans_i
     unknown = 0
     pinv = numpy.linalg.pinv
     norm = numpy.linalg.norm
-    for e,counts in itertools.izip(*exons_data):
+    for e,counts in exons_data:
         exons_counts[e] = counts
         genes.append(exon_mapping[e][1])
     genes = set(genes)
@@ -478,9 +477,10 @@ def rnaseq_workflow(ex, job, bam_files, pileup_level=["exons","genes","transcrip
 
     """ Arrange exon counts in a matrix """
     nreads = asarray([nreads[cond] for cond in conditions], dtype=numpy.float_)
-    counts = asarray([exon_pileups[cond] for cond in conditions], dtype=numpy.float_)
+    counts = asarray([exon_pileups[cond] for cond in conditions], dtype=numpy.float_).T
     #counts, sf = estimate_size_factors(counts)
-    exon_counts = (exon_ids,counts.T)
+    del exon_pileups; del exon_pileup
+    exon_counts = [(exon_ids[k],counts[k]) for k in range(len(exon_ids)) if sum(counts[k])!=0]
 
     hconds = ["counts."+c for c in conditions] + ["rpkm."+c for c in conditions]
     exons_file = None; genes_file = None; trans_file = None
