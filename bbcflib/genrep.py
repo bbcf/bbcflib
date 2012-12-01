@@ -558,6 +558,15 @@ class Assembly(object):
                 exon_mapping[str(k)] = (tid,gid,gname,start,end,strand,chr)
         return exon_mapping
 
+    def get_exons_in_gene(self):
+        """Return a dictionary ``{gene_id: list of exon_id's it contains}``"""
+        exons_in_gene = {}
+        h = {"keys":"gene_id", "values":"exon_id", "conditions":"type:exon", "uniq":"1"}
+        data = self.get_features_from_gtf(h)
+        for k,v in data.iteritems():
+            trans_in_gene[str(k)] = [str(x[0]) for x in v]
+        return exons_in_gene
+
     def get_exons_in_trans(self):
         """Return a dictionary ``{transcript_id: list of exon_id's it contains}``"""
         exons_in_trans = {}
