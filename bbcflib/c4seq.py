@@ -8,7 +8,7 @@ from reads mapped on a reference genome.
 
 """
 
-import sys, os, json, re, time
+import sys, os, json, re, tarfile, time
 from bein import *
 from bein.util import touch
 from bbcflib import daflims, genrep, frontend, email, gdv
