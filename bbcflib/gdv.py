@@ -103,7 +103,7 @@ def multiple_tracks(mail, key, assembly_id=None, project_id=None,
     ex = extensions+[None]*(ntracks-len(extensions))
     tracks = [single_track(mail, key,
                            assembly_id=assembly_id, project_id=project_id,
-                           url=u, name=tr[n], extension=ex[n], force=force, serv_url=serv_url)
+                           url=u, name=tr[n], extension=ex[n], delete_source=force, serv_url=serv_url)
               for n,u in enumerate(urls)]
     return tracks
 
