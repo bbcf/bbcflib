@@ -15,20 +15,24 @@ default_url = 'http://gdv.epfl.ch/pygdv'
 def _gdv_request(**kw):
     req_keys = ['mail','key','project_key','project_id','name','assembly',
                 'url','fsys','trackname','force','extension','delfile']
-    request = dict((k,kw[k]) for k in req_keys if kw.get(k))
+    request = dict((k,kw[k]) for k in req_keys if k in kw)
     kw['serv_url'] = normalize_url(kw['serv_url'])
     url = "/".join([kw[k] for k in ['serv_url','obj','action','id'] if k in kw])
     req = urllib2.urlopen(url, urllib.urlencode(request))
     if kw.get('return_type','') == 'json': return json.load(req)
     return req.read()
 
-def get_project(mail, key, project_key, serv_url=default_url):
+def get_project(mail, key, project_key=None, project_id=None, serv_url=default_url):
     '''
-Retrieve project information from its key.
+Retrieve project information.
+It will retrieve all of your projects by default.
+If you specify a project id, it will retrieve one of your project.
+If you specify a project_key, it will retrieve the project specified.
 
 :param mail: email to login via TEQUILA.
 :param key: GDV user key.
 :param project_key: the project key.
+:param project_key: the project id.
 :param serv_url: GDV's url.
 :rtype: JSON
 '''
