@@ -371,7 +371,7 @@ class Assembly(object):
         return path
 
     def untar_genome_fasta(self, path_to_ref=None, convert=True):
-        """Untar and concatenate reference sequence fasta files.
+        """Untar reference sequence fasta files.
         Returns a dictionary {chr_name: file_name}
 
         :param path_to_ref: (str) path to the fasta file of the reference sequence (possibly .tar).
@@ -757,17 +757,29 @@ class GenRep(object):
 
     def assemblies_available(self, assembly=None):
         """
-        Return a list of assemblies available on genrep, or tells if an
+        Returns a list of tuples (assembly_name, species) available on genrep, or tells if an
         assembly with name *assembly* is available.
         """
+        request = urllib2.Request(self.url + "/genomes.json")
+        genome_list = {}
+        assembly_list = {}
+        for g in json.load(urllib2.urlopen(request)):
+            species = str(g['genome'].get('name')).strip()
+            gid = g['genome'].get('id')
+            if species and id:
+                genome_list[gid] = species
         request = urllib2.Request(self.url + "/assemblies.json")
-        assembly_list = []
         for a in json.load(urllib2.urlopen(request)):
-            name = a['assembly'].get('name')
+            name = str(a['assembly'].get('name'))
             if name == None: continue
-            if name == assembly: return True
-            assembly_list.append(name)
-        if assembly == None: return assembly_list
+            if filter_valid and not a['assembly'].get('bbcf_valid'): continue
+            species = genome_list.get(a['assembly'].get('genome_id'))
+            info = "%s (%s)" %(species,name)
+            if name == assembly: return info
+            if species not in assembly_list: assembly_list[species] = []
+            assembly_list[species].append((name,info))
+        if assembly == None: return [x for k in sorted(assembly_list.keys()) \
+                                     for x in assembly_list[k] ]
 
     def get_sequence(self, chr_id, coord_list, path_to_ref=None):
         """Parse a slice request to the repository.
