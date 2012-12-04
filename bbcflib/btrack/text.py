@@ -81,7 +81,7 @@ class TextTrack(Track):
             if row.startswith("browser") or \
                     row.startswith("#"): continue
             if row.startswith("track"):
-                for x in row.strip(' \r\n').split(self.separator):
+                for x in row.split(self.separator):
                     key_val = re.search(r'(\S+)=(\S+)',x.strip())
                     if key_val: _info[key_val.groups()[0]] = key_val.groups()[1]
             break
@@ -190,8 +190,8 @@ class TextTrack(Track):
                    row.startswith("track") or \
                    row.startswith("#") or \
                    row.startswith("@"): continue
-                splitrow = row.strip(' \r\n').split(self.separator)
-                splitrow = [s.strip() for s in splitrow]
+                splitrow = [s.strip() for s in row.split(self.separator)]
+                if not any(splitrow): continue
                 if selection:
                     if skip:
                         fstart,fend,next_toskip = self._skip(fstart,next_toskip,chr_toskip)
@@ -337,6 +337,35 @@ class TextTrack(Track):
         self.close()
         self.written = True
 
+    def get_range(self, selection=None, fields=None):
+        """
+        Returns the range of values for the given selection.
+        If `fields` is None, returns min and max positions, otherwise min and max
+        field values.
+        """
+        if fields is None:
+            _f = ["start","end"]
+            rback = [None,None]
+            for row in self.read(selection=selection,fields=_f):
+                if rback[0] is None: rback = list(row)
+                if rback[0] > row[0]: rback[0] = row[0]
+                if rback[1] < row[1]: rback[1] = row[1]
+        else:
+            if isinstance(fields,basestring): fields = [fields]
+            _f = [f for f in fields if f in self.fields]
+            if len(_f) == 0:
+                raise ValueError("Fields %s not in track: %s" % (fields,self.fields))
+            rback = [None,None]*len(_f)
+            for row in self.read(selection=selection,fields=_f):
+                if rback[0] is None: 
+                    for n,x in enumerate(row):
+                        rback[2*n] = x
+                        rback[2*n+1] = x
+                for n,x in enumerate(row):
+                    if rback[2*n] > x: rback[2*n] = x
+                    if rback[2*n+1] < x: rback[2*n+1] = x
+        return rback
+
 ################################ Bed ##########################################
 
 class BedTrack(TextTrack):
@@ -364,12 +393,12 @@ class BedTrack(TextTrack):
         self.open()
         rowlen = None
         for row in self.filehandle:
-            if row.startswith("browser") or \
+            row = row.strip(' \r\n')
+            if not(row) or \
+                    row.startswith("browser") or \
                     row.startswith("track") or \
                     row.startswith("#"): continue
-            splitrow = row.strip(' \r\n').split(self.separator)
-            splitrow = [s.strip() for s in splitrow]
-            rowlen = len(splitrow)
+            rowlen = len(row.split(self.separator))
             break
         self.close()
         if rowlen is None: return
@@ -433,8 +462,8 @@ class SgaTrack(TextTrack):
             row = self.filehandle.readline()
             if not row: break
             if row.startswith("#"): continue
-            splitrow = row.strip(' \r\n').split(self.separator)
-            splitrow = [s.strip() for s in splitrow]
+            splitrow = [s.strip() for s in row.split(self.separator)]
+            if not any(splitrow): continue
             yieldit = True
             chr,name,pos,strand,counts = splitrow
             if float(counts) == 0: continue
@@ -521,7 +550,6 @@ class WigTrack(TextTrack):
                 row = self.filehandle.readline()
                 if not row: break
                 if row.startswith("#"): continue
-                row = row.strip(' \r\n')
                 if row.startswith("browser") or row.startswith("track"):
                     fixedStep = None
                     chrom = start = end = score = step = None
@@ -558,8 +586,8 @@ class WigTrack(TextTrack):
                     end = start+span
                     continue
                 if fixedStep is None: continue
-                splitrow = row.split(self.separator)
-                splitrow = [s.strip() for s in splitrow]
+                splitrow = [s.strip() for s in row.split(self.separator)]
+                if not any(splitrow): continue
                 yieldit = True
                 if fixedStep:
                     score = splitrow[0]
@@ -638,12 +666,12 @@ class GffTrack(TextTrack):
         rowlen = 9
         self.open()
         for row in self.filehandle:
-            if row.startswith("browser") or \
+            row = row.strip(' \r\n')
+            if not(row) or \
+                    row.startswith("browser") or \
                     row.startswith("track") or \
                     row.startswith("#"): continue
-            splitrow = row.strip(' \r\n').split(self.separator)
-            splitrow = [s.strip() for s in splitrow]
-            rowlen = len(splitrow)
+            rowlen = len(row.split(self.separator))
             break
         self.close()
         if rowlen > 9 or rowlen < 8:

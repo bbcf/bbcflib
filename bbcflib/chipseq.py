@@ -39,7 +39,7 @@ import re, os, gzip, sys, time
 
 # Internal modules #
 from bbcflib import frontend, mapseq, common
-from bbcflib import btrack as track
+from bbcflib.btrack import track, FeatureStream, convert
 from bbcflib.bFlatMajor import stream as gm_stream
 from bbcflib.bFlatMajor import common as gm_common
 
@@ -195,18 +195,18 @@ def run_deconv(ex, sql, peaks, chromosomes, read_extension, script_path, via = '
     outfiles = {}
     outfiles['peaks'] = output+"_peaks.sql"
     outfiles['profile'] = output+"_deconv.sql"
-    outbed = track.track(outfiles['peaks'], chrmeta=chromosomes,
-                         fields=["start","end","score","name"],
-                         info={'datatype':'qualitative'})
-    outwig = track.track(outfiles['profile'], chrmeta=chromosomes,
-                         fields=["start","end","score"],                         
-                         info={'datatype':'quantitative'})
+    outbed = track(outfiles['peaks'], chrmeta=chromosomes,
+                   fields=["start","end","score","name"],
+                   info={'datatype':'qualitative'})
+    outwig = track(outfiles['profile'], chrmeta=chromosomes,
+                   fields=["start","end","score"],                         
+                   info={'datatype':'quantitative'})
     outbed.open()
     outwig.open()
     for c,fout in deconv_out.iteritems():
         if len(fout) < 3: continue
-        outbed.write(track.track(fout[1],chrmeta=chromosomes).read())
-        outwig.write(track.track(fout[2],chrmeta=chromosomes).read())
+        outbed.write(track(fout[1],chrmeta=chromosomes).read())
+        outwig.write(track(fout[2],chrmeta=chromosomes).read())
     outbed.close()
     outwig.close()
     if len(deconv_out)>0:
@@ -320,19 +320,19 @@ def workflow_groups( ex, job_or_dict, mapseq_files, assembly, script_path='',
     for i,name in enumerate(names['tests']):
         if len(names['controls']) < 2:
             ctrl = (name,names['controls'][0])
-            macsbed = track.track(processed['macs'][ctrl]+"_summits.bed",
-                                  chrmeta=chrlist, fields=_fields).read(selection=_select)
+            macsbed = track(processed['macs'][ctrl]+"_summits.bed",
+                            chrmeta=chrlist, fields=_fields).read(selection=_select)
         else:
             macsbed = gm_stream.concatenate(
-                [track.track(processed['macs'][(name,x)]+"_summits.bed",
-                             chrmeta=chrlist, fields=_fields).read(selection=_select)
+                [track(processed['macs'][(name,x)]+"_summits.bed",
+                       chrmeta=chrlist, fields=_fields).read(selection=_select)
                  for x in names['controls']])
         ##############################
         macs_neighb = gm_stream.neighborhood( macsbed, before_start=150, after_end=150 )
         peak_list[name] = common.unique_filename_in()+".sql"
-        macs_final = track.track( peak_list[name], chrmeta=chrlist,
-                                  info={'datatype':'qualitative'},
-                                  fields=['start','end','name','score'] )
+        macs_final = track( peak_list[name], chrmeta=chrlist,
+                            info={'datatype':'qualitative'},
+                            fields=['start','end','name','score'] )
         macs_final.write(gm_common.fusion(macs_neighb),clip=True)
         macs_final.close()
         ##############################
@@ -378,12 +378,12 @@ def workflow_groups( ex, job_or_dict, mapseq_files, assembly, script_path='',
                     if rowpatt and float(rowpatt.groups()[0]) <= pval: yield row
             ##############################
             peak_list[name] = common.unique_filename_in()+".bed"
-            bedfile = track.track(peak_list[name], chrmeta=chrlist,
-                                  fields=["chr","start","end","name","score"])
-            trbed = track.track(deconv['peaks'])
+            bedfile = track(peak_list[name], chrmeta=chrlist,
+                            fields=["chr","start","end","name","score"])
+            trbed = track(deconv['peaks'])
             trfields = ['chr']+trbed.fields
-            bedfile.write(track.FeatureStream(
-                _filter_deconv(trbed.read(fields=trfields),0.65),fields=trfields))
+            bedfile.write(FeatureStream(
+                    _filter_deconv(trbed.read(fields=trfields),0.65),fields=trfields))
             bedfile.close()
             ex.add(deconv['peaks'], 
                    description=common.set_file_descr(name[1]+'_peaks.sql',
@@ -396,7 +396,7 @@ def workflow_groups( ex, job_or_dict, mapseq_files, assembly, script_path='',
                                                      step='deconvolution',
                                                      groupId=name[0]))
             bigwig = common.unique_filename_in()
-            track.convert(deconv['profile'],(bigwig,"bigWig"))
+            convert(deconv['profile'],(bigwig,"bigWig"))
             ex.add(bigwig, 
                    description=common.set_file_descr(name[1]+'_deconv.bw',
                                                      type='bigWig', ucsc='1',
@@ -409,11 +409,11 @@ def workflow_groups( ex, job_or_dict, mapseq_files, assembly, script_path='',
                                                      groupId=name[0]))
             processed['deconv'][name] = deconv
     for name, plist in peak_list.iteritems():
-        ptrack = track.track(plist,chrmeta=chrlist)
+        ptrack = track(plist,chrmeta=chrlist)
         peakfile = common.unique_filename_in()
         touch(ex,peakfile)
-        peakout = track.track(peakfile, format='txt', chrmeta=chrlist, 
-                              fields=['chr','start','end','name','strand',
+        peakout = track(peakfile, format='txt', chrmeta=chrlist, 
+                              fields=['chr','start','end','name',
                                       'gene','location_type','distance'])
         for chrom in assembly.chrnames:
             peakout.write(gm_stream.getNearestFeature(

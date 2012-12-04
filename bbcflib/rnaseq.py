@@ -19,7 +19,7 @@ import os, sys, pysam, math, itertools
 from operator import itemgetter
 
 # Internal modules #
-from bbcflib.common import set_file_descr, unique_filename_in, cat
+from bbcflib.common import set_file_descr, unique_filename_in, cat, timer
 from bbcflib import mapseq, genrep
 from bbcflib.mapseq import add_and_index_bam, sam_to_bam
 from bbcflib.bFlatMajor.common import cobble, sorted_stream, map_chromosomes, duplicate, apply
@@ -126,6 +126,7 @@ def lsqnonneg(C, d, x0=None, tol=None, itmax_factor=3):
         w = numpy.dot(C.T, resid)
     return (x, sum(resid*resid), resid)
 
+@timer
 def fetch_mappings(assembly):
     """Given an assembly_id, returns a tuple
     ``(gene_mapping, transcript_mapping, exon_mapping, trans_in_gene, exons_in_trans)``
@@ -150,7 +151,8 @@ def fetch_mappings(assembly):
     mapping = (gene_mapping, transcript_mapping, exon_mapping, trans_in_gene, exons_in_trans)
     return mapping
 
-def build_pileup(bamfile, assembly, gene_mapping, exon_mapping, trans_in_gene, exons_in_trans):
+@timer
+def build_pileup(bamfile, assembly, gene_mapping, exon_mapping, trans_in_gene, exons_in_trans, logfile=sys.stdout):
     """From a BAM file, returns a dictionary of the form {feature_id: number of reads that mapped to it}.
 
     :param bamfile: name of a BAM file.
@@ -167,34 +169,38 @@ def build_pileup(bamfile, assembly, gene_mapping, exon_mapping, trans_in_gene, e
     counts = {}
     try: sam = pysam.Samfile(bamfile, 'rb')
     except ValueError: sam = pysam.Samfile(bamfile,'r')
+    chromosomes = assembly.chrmeta.keys()
+    mapped_on = 'genome' if all([ref in chromosomes for ref in sam.references]) else 'exons'
     c = Counter()
-    #The callback (c.n += 1) is executed for each alignment in a region
-    if all([ref in assembly.chrmeta.keys() for ref in sam.references]): # mapped on the genome
-        for g in gene_mapping.iterkeys():
-            eg = set()
-            for t in trans_in_gene[g]:
-                eg.update(exons_in_trans[t])
-            for e in eg:
-                counts[e] = 0
-            eg = sorted([(e,)+exon_mapping[e][3:] for e in eg if exon_mapping.get(e)], key=itemgetter(1,2))
-            eg = cobble(FeatureStream(eg,fields=['name','start','end','strand','chr']))
-            for e in eg:
-                if e[2]-e[1] <= 1: continue
-                sam.fetch(e[-1],e[1],e[2], callback=c) #(chr,start,end,Counter())
-                ex = e[0].split('|')
-                for exon in ex:
-                    counts[exon] += c.n/float(len(ex))
-                c.n = 0
-    else: # mapped on the exonome
-        for e in zip(sam.references,sam.lengths):
-            exon = e[0].split('|')[0]
-            if exon_mapping.get(exon):
-                sam.fetch(e[0], 0, e[1], callback=c) #(label,0,length,Counter())
-                counts[exon] = c.n
-                c.n = 0
+    for g in gene_mapping.iterkeys():
+        eg = set()
+        for t in trans_in_gene[g]:
+            eg.update(exons_in_trans[t])
+        eg = sorted([(e,)+exon_mapping[e][3:] for e in eg], key=itemgetter(1,2))
+        eg = cobble(FeatureStream(eg,fields=['name','start','end','strand','chr']))
+        for e in eg:
+            ex = e[0].split('|')
+            origin = ex[-1]
+            if e[2]-e[1] <= 1: continue
+            if mapped_on == 'genome':
+                ref = e[-1]; start = e[1]; end = e[2]
+            else: # mapped on the exonome
+                ostart,oend = exon_mapping[origin][3:5]
+                ref = '|'.join([origin,g,str(ostart+1),str(oend),str(e[3])]) # exon_id|gene_id|start|end|strand
+                start = e[1]-ostart; end = e[2]-ostart
+            try:
+                #The callback (c.n += 1) is executed for each alignment in a region
+                sam.fetch(ref,start,end, callback=c)
+            except ValueError,ve: # unknown reference
+                print >> logfile, ve
+                continue
+            for exon in ex:
+                counts[exon] = counts.get(exon,0) + c.n/float(len(ex))
+            c.n = 0
     sam.close()
     return counts
 
+@timer
 def save_results(ex, lines, conditions, group_ids, assembly, header=[], feature_type='features'):
     """Save results in a tab-delimited file, one line per feature, one column per run.
 
@@ -250,6 +256,7 @@ def save_results(ex, lines, conditions, group_ids, assembly, header=[], feature_
     print feature_type+": Done successfully."
     return output_tab
 
+@timer
 def exons_expression(exons_data, exon_mapping, nreads):
     """Return two dictionaries, one for counts and one for rpkm, of the form ``{exon_id: scores}.
 
@@ -259,11 +266,12 @@ def exons_expression(exons_data, exon_mapping, nreads):
     :param nreads: (numpy array) number of reads in each sample.
     """
     exon_counts={}; exon_rpkm={}
-    for e,counts in itertools.izip(*exons_data):
+    for e,counts in exons_data:
         exon_counts[e] = counts
         exon_rpkm[e] = to_rpkm(counts, exon_mapping[e][4]-exon_mapping[e][3], nreads)
     return exon_counts, exon_rpkm
 
+@timer
 def genes_expression(exons_data, gene_mapping, exon_mapping, ncond, nreads):
     """Get gene counts/rpkms from exon counts.
 
@@ -277,13 +285,14 @@ def genes_expression(exons_data, gene_mapping, exon_mapping, ncond, nreads):
     """
     gene_counts={}; gene_rpkm={}
     round = numpy.round
-    for exon,counts in itertools.izip(*exons_data):
+    for exon,counts in exons_data:
         g = exon_mapping[exon][1]
         gene_counts[g] = gene_counts.get(g,zeros(ncond)) + round(counts,2)
     for g,counts in gene_counts.iteritems():
         gene_rpkm[g] = to_rpkm(counts, gene_mapping[g][3], nreads)
     return gene_counts, gene_rpkm
 
+@timer
 def transcripts_expression(exons_data, exon_mapping, transcript_mapping, trans_in_gene, exons_in_trans, ncond, nreads):
     """Get transcript rpkms from exon rpkms.
 
@@ -302,7 +311,7 @@ def transcripts_expression(exons_data, exon_mapping, transcript_mapping, trans_i
     unknown = 0
     pinv = numpy.linalg.pinv
     norm = numpy.linalg.norm
-    for e,counts in itertools.izip(*exons_data):
+    for e,counts in exons_data:
         exons_counts[e] = counts
         genes.append(exon_mapping[e][1])
     genes = set(genes)
@@ -352,13 +361,13 @@ def transcripts_expression(exons_data, exon_mapping, transcript_mapping, trans_i
                 tc.append(Tc)
             # Store results in a dict *trans_counts*
             for k,t in enumerate(tg):
-                if trans_counts.get(t) is not None:
-                    for c in range(ncond):
-                        trans_counts[t][c] = round(tc[c][k], 2)
+                for c in range(ncond):
+                    trans_counts[t][c] = round(tc[c][k], 2)
         else:
             unknown += 1
-    print "\tUnknown transcripts for %d of %d genes (%.2f %%)" \
-           % (unknown, len(genes), 100*float(unknown)/float(len(genes)) )
+    if unknown != 0:
+        print "\tUnknown transcripts for %d of %d genes (%.2f %%)" \
+              % (unknown, len(genes), 100*float(unknown)/float(len(genes)) )
     # Convert to rpkm
     for t,counts in trans_counts.iteritems():
         trans_rpkm[t] = to_rpkm(counts, transcript_mapping[t][4], nreads)
@@ -397,9 +406,9 @@ def to_rpkm(counts, lengths, nreads):
             rpkm[k] = 1000*(1e6*v/nreads)/lengths
     return rpkm
 
-
+@timer
 def rnaseq_workflow(ex, job, bam_files, pileup_level=["exons","genes","transcripts"], via="lsf",
-                    rpath=None, junctions=None):
+                    rpath=None, junctions=None, logfile=sys.stdout, debugfile=sys.stderr):
     """
     Main function of the workflow.
 
@@ -413,6 +422,7 @@ def rnaseq_workflow(ex, job, bam_files, pileup_level=["exons","genes","transcrip
     :param junctions: (bool) whether or not to search for splice junctions using SOAPsplice. [False]
     :param via: (str) send job via 'local' or 'lsf'. ["lsf"]
     """
+    logfile = sys.stdout
     group_names={}; group_ids={}; conditions=[]
     assembly = genrep.Assembly(assembly=job.assembly_id)
     groups = job.groups
@@ -431,7 +441,7 @@ def rnaseq_workflow(ex, job, bam_files, pileup_level=["exons","genes","transcrip
             conditions.append(cond)
     ncond = len(conditions)
 
-    print "Load mappings"
+    print >> logfile, "Load mappings"; logfile.flush()
     """ [0] gene_mapping is a dict ``{gene_id: (gene_name,start,end,length,strand,chromosome)}``
         [1] transcript_mapping is a dictionary ``{transcript_id: (gene_id,gene_name,start,end,length,strand,chromosome)}``
         [2] exon_mapping is a dictionary ``{exon_id: ([transcript_ids],gene_id,gene_name,start,end,strand,chromosome)}``
@@ -444,11 +454,11 @@ def rnaseq_workflow(ex, job, bam_files, pileup_level=["exons","genes","transcrip
                                           exon_mapping,transcript_mapping,exons_in_trans,via)
     """ Find splice junctions """
     if junctions:
-        print "Search for splice junctions"
+        print >> logfile, "Search for splice junctions"; logfile.flush()
         find_junctions(ex,job,bam_files,assembly)
 
     """ Build exon pileups from bam files """
-    print "Build pileups"
+    print >> logfile, "Build pileups"; logfile.flush()
     exon_pileups={}; nreads={};
     for gid,files in bam_files.iteritems():
         k = 0
@@ -456,27 +466,28 @@ def rnaseq_workflow(ex, job, bam_files, pileup_level=["exons","genes","transcrip
             k+=1
             cond = group_names[gid]+'.'+str(k)
             exon_pileups[cond] = []
-            exon_pileup = build_pileup(f['bam'],assembly,gene_mapping,exon_mapping,trans_in_gene,exons_in_trans)
+            exon_pileup = build_pileup(f['bam'],assembly,gene_mapping,exon_mapping,trans_in_gene,exons_in_trans,debugfile)
             if unmapped_fastq[cond] and cond in additionals:
                 for a,x in additionals[cond].iteritems():
                     exon_pileup[a] = exon_pileup.get(a,0) + x
             exon_pileups[cond] = exon_pileup.values()
             nreads[cond] = sum(exon_pileup.values()) # total number of reads
-            print "....Pileup", cond, "done"
+            print >> logfile, "....Pileup", cond, "done"; logfile.flush()
     exon_ids = exon_pileup.keys()
 
     """ Arrange exon counts in a matrix """
     nreads = asarray([nreads[cond] for cond in conditions], dtype=numpy.float_)
-    counts = asarray([exon_pileups[cond] for cond in conditions], dtype=numpy.float_)
+    counts = asarray([exon_pileups[cond] for cond in conditions], dtype=numpy.float_).T
     #counts, sf = estimate_size_factors(counts)
-    exon_counts = (exon_ids,counts.T)
+    del exon_pileups; del exon_pileup
+    exon_counts = [(exon_ids[k],counts[k]) for k in range(len(exon_ids)) if sum(counts[k])!=0]
 
     hconds = ["counts."+c for c in conditions] + ["rpkm."+c for c in conditions]
     exons_file = None; genes_file = None; trans_file = None
 
     """ Print counts for exons """
     if "exons" in pileup_level:
-        print "Get scores of exons"
+        print >> logfile, "Get scores of exons"; logfile.flush()
         (ecounts, erpkm) = exons_expression(exon_counts,exon_mapping,nreads)
         exons_data = [(e,)+tuple(ecounts[e])+tuple(erpkm[e])+itemgetter(3,4,1,2,5,6)(exon_mapping.get(e,("NA",)*6))
                       for e in ecounts.iterkeys()]
@@ -485,7 +496,7 @@ def rnaseq_workflow(ex, job, bam_files, pileup_level=["exons","genes","transcrip
 
     """ Get scores of genes from exons """
     if "genes" in pileup_level:
-        print "Get scores of genes"
+        print >> logfile, "Get scores of genes"; logfile.flush()
         (gcounts, grpkm) = genes_expression(exon_counts, gene_mapping, exon_mapping, ncond, nreads)
         genes_data = [(g,)+tuple(gcounts[g])+tuple(grpkm[g])+itemgetter(1,2,0,4,5)(gene_mapping.get(g,("NA",)*6))
                       for g in gcounts.iterkeys()]
@@ -494,7 +505,7 @@ def rnaseq_workflow(ex, job, bam_files, pileup_level=["exons","genes","transcrip
 
     """ Get scores of transcripts from exons, using non-negative least-squares """
     if "transcripts" in pileup_level:
-        print "Get scores of transcripts"
+        print >> logfile, "Get scores of transcripts"; logfile.flush()
         (tcounts,trpkm) = transcripts_expression(exon_counts, exon_mapping,
                    transcript_mapping, trans_in_gene, exons_in_trans, ncond, nreads)
         trans_data = [(t,)+tuple(tcounts[t])+tuple(trpkm[t])+itemgetter(2,3,0,1,5,6)(transcript_mapping.get(t,("NA",)*7))
@@ -503,9 +514,10 @@ def rnaseq_workflow(ex, job, bam_files, pileup_level=["exons","genes","transcrip
         trans_file = save_results(ex, trans_data, conditions, group_ids, assembly, header=header, feature_type="TRANSCRIPTS")
 
     result = {"exons":exons_file, "genes":genes_file, "transcripts":trans_file}
-    print "Differential analysis"
-    differential_analysis(ex, result, rpath)
-
+    print >> logfile, "Differential analysis"; logfile.flush()
+    differential_analysis(ex, result, rpath, logfile)
+    with open(exons_file,"rb") as f:
+        print f.read()
     return 0
 
 
@@ -562,7 +574,7 @@ def clean_deseq_output(filename):
                     g.write(line)
     return filename_clean
 
-def differential_analysis(ex, result, rpath):
+def differential_analysis(ex, result, rpath, logfile):
     """For each file in *result*, launch an analysis of differential expression on the count
     values, and saves the output in the MiniLIMS.
 
@@ -580,7 +592,8 @@ def differential_analysis(ex, result, rpath):
                     desc = set_file_descr(type+"_differential"+o.split(glmfile)[1]+".txt", step='stats', type='txt')
                     o = clean_deseq_output(o)
                     ex.add(o, description=desc)
-            except Exception as exc: print "Skipped differential analysis: %s \n" % exc
+            except Exception as exc: 
+                print >> logfile,"Skipped differential analysis: %s \n" % exc; logfile.flush()
 
 
 #-------------------------- SPLICE JUNCTIONS SEARCH ----------------------------#
@@ -639,7 +652,7 @@ def find_junctions(ex,job,bam_files,assembly,soapsplice_index=None,path_to_soaps
         for rid, run in group['runs'].iteritems():
             unmapped = bam_files[gid][rid].get('unmapped_fastq')
             if not unmapped:
-                print >> sys.stderr, "\tNo unmapped reads found. Skip."
+                print >> logfile, "No unmapped reads found. Skip."
                 return 1
             assert isinstance(unmapped,tuple), "Pair-end reads required."
             unmapped_fastq[gid].append(unmapped)
