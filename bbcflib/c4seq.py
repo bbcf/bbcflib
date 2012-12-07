@@ -142,7 +142,7 @@ def density_to_countsPerFrag( ex, file_dict, groups, assembly, regToExclude, scr
         segOut = open(res[0],"r")
         resBedGraph = unique_filename_in()+".sql"
         sqlTr = track( resBedGraph, fields=['start','end','score'],
-                             info={'datatype':'quantitative'}, chrmeta=assembly.chrmeta )
+                       info={'datatype':'quantitative'}, chrmeta=assembly.chrmeta )
         sqlTr.write(_parse_select_frag(segOut),fields=['chr','start','end','score'])
         segOut.close()
         results[gid].extend([res[0],resBedGraph])

@@ -23,32 +23,30 @@ def _gdv_request(**kw):
     return req.read()
 
 def get_project(mail, key, project_key=None, project_id=None, serv_url=default_url):
-    '''
-Retrieve project information.
-It will retrieve all of your projects by default.
-If you specify a project id, it will retrieve one of your project.
-If you specify a project_key, it will retrieve the project specified.
-
-:param mail: email to login via TEQUILA.
-:param key: GDV user key.
-:param project_key: the project key.
-:param project_key: the project id.
-:param serv_url: GDV's url.
-:rtype: JSON
-'''
+    """
+    Retrieves properties of all projects own by a user, 
+    or a single project specified by key or id.
+    
+    :param mail: user email.
+    :param key: user key.
+    :param project_key: (optional) project key.
+    :param project_id: (optional) project id.
+    :param serv_url: GDV's url.
+    :rtype: JSON
+    """
     return _gdv_request(mail=mail, key=key, project_key=project_key, serv_url=serv_url,
                         obj='projects', action='get', return_type='json')
 
 def new_project(mail, key, name, assembly_id, serv_url=default_url):
-    '''
-Create a new project on GDV.
-
-:param mail: email to login via TEQUILA.
-:param key: GDV user key.
-:param name: project name.
-:param assembly_id: GenRep assembly identifier (must be BBCF_VALID).
-:rtype: JSON
-'''
+    """
+    Create a new project on GDV.
+    
+    :param mail: user email.
+    :param key: user key.
+    :param name: project name.
+    :param assembly_id: Genrep numeric assembly identifier (must be BBCF_VALID).
+    :rtype: JSON
+    """
     return _gdv_request(mail=mail, key=key, name=name, assembly=assembly_id,
                         serv_url=serv_url, obj='projects', action='create', return_type='json')
 
@@ -62,20 +60,20 @@ def single_track(mail, key, assembly_id=None, project_id=None,
                  url=None, name=None, extension=None,
                  delete_target=False, delete_source=False,
                  serv_url=default_url):
-    '''
-Create a new track on GDV.
+    """
+    Upload a new track on GDV to a specified project.
 
-:param mail: email to login via TEQUILA.
-:param key: GDV user key.
-:param assembly_id: GenRep assembly identifier (must be BBCF_VALID), optional if a project_id is specified.
-:param project_id: the project identifier to add the track to.
-:param url: an url or path pointing to a file.
-:param extension: file extension.
-:param name: the track name.
-:param delete_target: Force the file to be recomputed (boolean).
-:param delete_source: If true and file is a local parth, the original file will be removed after job success.
-:rtype: JSON
-'''
+    :param mail: user email.
+    :param key: user key.
+    :param assembly_id: Genrep numeric assembly identifier, optional if a project_id is specified.
+    :param project_id: the project identifier.
+    :param url: an url or path pointing to a file.
+    :param extension: file extension.
+    :param name: track name.
+    :param delete_target: force the file to be recomputed (boolean).
+    :param delete_source: if true and file is a local parth, the original file will be removed after job success.
+    :rtype: JSON
+    """
     _url = None
     _fsys = None
     if url.startswith(("http://","https://","ftp://")): _url = url
@@ -89,15 +87,15 @@ Create a new track on GDV.
 def multiple_tracks(mail, key, assembly_id=None, project_id=None,
                     urls=[], names=[], extensions=[],
                     force=False, serv_url=default_url):
-    '''
-Add multiple tracks to GDV.
+    """
+    Upload multiple tracks to GDV.
 
-:param urls: a list of urls.
-:param extensions: a list of extensions, in the same order as the urls.
-:param names: a list of track names, in the same order as the urls.
-
-For other params: see single_track
-'''
+    :param urls: a list of urls.
+    :param extensions: a list of extensions, in the same order as the urls.
+    :param names: a list of track names, in the same order as the urls.
+    
+    For other params: see single_track
+    """
     tracks = []
     if isinstance(names,basestring): tracknames = tracknames.split()
     if isinstance(extensions,basestring): extensions = extensions.split()
