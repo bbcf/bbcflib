@@ -296,7 +296,7 @@ class Assembly(object):
             out = out.name
         return (out,size)
 
-    def statistics(self, output=None, frequency=False, matrix_format=False):
+    def statistics(self, output=None, frequency=False, format='matrix'):
         """
         Return (di-)nucleotide counts or frequencies for an assembly, writes in file *output* if provided.
         Example of result::
@@ -327,10 +327,13 @@ class Assembly(object):
 
             Total = A + T + G + C
 
-        If *matrix_format* is True, *output* is like::
+        If *format* is 'matrix', *output* is like::
 
              >Assembly: sacCer2
             1   0.309798640038793   0.308714120881750   0.190593944221299   0.190893294858157
+
+        If *format* is 'meme', *output*'s format is that of `MEME background model format
+        <http://pgfe.umassmed.edu/meme/doc/bfile-format.html>_`
         """
         request = urllib2.Request("%s/nr_assemblies/%d.json?data_type=counts" % (self.genrep.url, self.nr_assembly_id))
         stat    = json.load(urllib2.urlopen(request))
@@ -343,10 +346,17 @@ class Assembly(object):
             return stat
         else:
             with open(output, "w") as f:
-                if matrix_format:
+                if format == 'matrix':
                     f.write(">Assembly: %s\n" % self.name)
                     f.write("%s\t%s\t%s\t%s" %(stat["A"],stat["C"],stat["G"],stat["T"]))
                     f.write("\n")
+                elif format == 'meme':
+                    frequency = True
+                    f.write("#Assembly: %s\n" % self.name)
+                    f.write("# tuple   frequency_non_coding\n")
+                    [f.write("%s\t%s\n" % (x.lower(),stat[x])) for x in ["A","C","G","T"]]
+                    f.write("# tuple   frequency_non_coding\n")
+                    [[f.write("%s\t%s\n" % (x.lower()+y.lower(),stat[x+y])) for y in ["A","C","G","T"]] for x in ["A","C","G","T"]]
                 else:
                     f.write("#Assembly: %s\n" % self.name)
                     [f.write("%s\t%s\n" % (x,stat[x])) for x in ["A","C","G","T"]]
