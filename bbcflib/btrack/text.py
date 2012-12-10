@@ -357,7 +357,7 @@ class TextTrack(Track):
                 raise ValueError("Fields %s not in track: %s" % (fields,self.fields))
             rback = [None,None]*len(_f)
             for row in self.read(selection=selection,fields=_f):
-                if rback[0] is None: 
+                if rback[0] is None:
                     for n,x in enumerate(row):
                         rback[2*n] = x
                         rback[2*n+1] = x
@@ -706,10 +706,32 @@ class SamTrack(TextTrack):
         if not(os.path.exists(self.path)): return
         self.intypes.update({'flag':int, 'mapq':int, 'pnext':int, 'tlen':int})
 
-    def _read(self,*args,**kwargs):
-        args = (args[0][:4]+args[0][5:],) + args[1:] # remove 'end' from `fields` before `_read`
-        row = super(SamTrack,self)._read(*args,**kwargs).next()
-        yield row[:4]+(row[3]+len(row[9]),)+(row[4:]) # end = start + read length
+    def _read(self, fields, index_list, selection, skip):
+        self.open('read')
+        if skip and selection:
+            chr_toskip = self._init_skip(selection)
+            next_toskip = chr_toskip.next()
+        fstart = fend = 0
+        try:
+            while 1:
+                fstart = self.filehandle.tell()
+                row = self.filehandle.readline()
+                if not row: break
+                if row.startswith("@"): continue
+                splitrow = [s.strip() for s in row.split(self.separator)]
+                if not any(splitrow): continue
+                if selection:
+                    if skip:
+                        fstart,fend,next_toskip = self._skip(fstart,next_toskip,chr_toskip)
+                        self._index_chr(fstart,fend,splitrow)
+                    if not any(self._select_values(splitrow,s) for s in selection):
+                        continue
+                splitrow = splitrow[:4]+[int(splitrow[3])+len(splitrow[9])]+splitrow[4:] # end = start + read length
+                fstart = fend
+                yield tuple(self._check_type(splitrow[index_list[n]],f) for n,f in enumerate(fields))
+        except (ValueError,IndexError) as ve:
+            raise ValueError("Bad line in file %s:\n %s%s\n" % (self.path,row,ve))
+        self.close()
 
     def _format_fields(self,vec,row,source_list,target_list):
         for i,j in enumerate(target_list):

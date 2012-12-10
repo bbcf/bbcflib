@@ -769,6 +769,7 @@ class GenRep(object):
             if species and id:
                 genome_list[gid] = species
         request = urllib2.Request(self.url + "/assemblies.json")
+        filter_valid = None
         for a in json.load(urllib2.urlopen(request)):
             name = str(a['assembly'].get('name'))
             if name == None: continue
@@ -778,7 +779,7 @@ class GenRep(object):
             if name == assembly: return info
             if species not in assembly_list: assembly_list[species] = []
             assembly_list[species].append((name,info))
-        if assembly == None: 
+        if assembly == None:
             return [x for k in sorted(assembly_list.keys()) for x in assembly_list[k]]
 
     def get_sequence(self, chr_id, coord_list, path_to_ref=None):
