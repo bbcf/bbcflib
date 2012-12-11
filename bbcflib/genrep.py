@@ -755,7 +755,7 @@ class GenRep(object):
             return False
         return True
 
-    def assemblies_available(self, assembly=None):
+    def assemblies_available(self, assembly=None, filter_valid=True):
         """
         Returns a list of tuples (assembly_name, species) available on genrep, or tells if an
         assembly with name *assembly* is available.
@@ -769,7 +769,6 @@ class GenRep(object):
             if species and id:
                 genome_list[gid] = species
         request = urllib2.Request(self.url + "/assemblies.json")
-        filter_valid = None
         for a in json.load(urllib2.urlopen(request)):
             name = str(a['assembly'].get('name'))
             if name == None: continue
