@@ -4,7 +4,7 @@ from bbcflib.btrack import FeatureStream
 
 # "tracks" and "streams" refer to FeatureStream objects all over here.
 
-def concatenate(trackList, fields=None, remove_duplicates=False):
+def concatenate(trackList, fields=None, remove_duplicates=False, group_by=None, aggregate={}):
     """
     Returns one stream containing all features from a list of tracks, ordered by *fields*.
 
@@ -12,6 +12,12 @@ def concatenate(trackList, fields=None, remove_duplicates=False):
     :param fields: (list of str) list of fields to keep in the output (at least ['start','end']).
     :param remove_duplicates: (bool) whether to remove items that are identical in several
         of the tracks in *trackList*. [False]
+    :param group_by: (list of str) if specified, elements having all values for these fields in
+        common will be merged into a singe element. Other fields are merged according to *aggregate*
+        if specified, or `common.generic_merge` y default.
+    :aggregate: (dict) for each field name given as a key, its value is the function
+        to apply to the vector containing all different values for this field in order to merge them.
+        E.g. ``{'score': lambda x: sum(x)}`` will return the sum of all scores in the output.
     :rtype: FeatureStream
     """
     def _find_min(feat_tuple):
@@ -23,11 +29,11 @@ def concatenate(trackList, fields=None, remove_duplicates=False):
         for n,x in enumerate(feat_tuple[1:]):
             if x[0] == sys.maxint: continue
             for k in range(len(x)):
-                if cmp(x[k],xmin[k])<0:
+                if cmp(hash(x[k]),hash(xmin[k]))<0:
                     xmin = x
                     nmin = n+1
                     break
-                if cmp(x[k],xmin[k])>0:
+                elif cmp(hash(x[k]),hash(xmin[k]))>0:
                     break
         return nmin
 
@@ -35,6 +41,11 @@ def concatenate(trackList, fields=None, remove_duplicates=False):
         """Generator yielding all features represented in a list of tracks *_t*,
         sorted w.r.t the *N* first fields."""
         current = [x.next()[:N] for x in _t] # init
+        allfields = [t.fields for t in _t]
+        n = _find_min(current)
+        last = current[n]
+        current[n] = _t[n].next()[:N]
+        if not group_by: yield last
         while 1:
             # Remove duplicates
             if remove_duplicates:
@@ -43,9 +54,20 @@ def concatenate(trackList, fields=None, remove_duplicates=False):
                         if current.count(current[k]) > 1:
                             current[k] = _t[k].next()[:N]
             n = _find_min(current)
-            if current[n][0] == sys.maxint: return
-            yield current[n]
+            if current[n][0] == sys.maxint: break
+            if group_by:
+                idx = [allfields[n].index(f) for f in group_by]
+                if all(current[n][i] == last[i] for i in idx):
+                    last = tuple(current[n][i] if i in idx \
+                            else aggregate.get(allfields[n][i],common.generic_merge)((last[i],current[n][i])) \
+                            for i in range(len(allfields[n]))) # merge last and current
+                else:
+                    yield last
+                    last = current[n]
+            else:
+                yield current[n]
             current[n] = _t[n].next()[:N]
+        if group_by: yield last
 
     if len(trackList) == 1: return trackList[0]
     if fields is None:
