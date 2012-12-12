@@ -4,6 +4,7 @@ from bbcflib.btrack import FeatureStream
 
 # "tracks" and "streams" refer to FeatureStream objects all over here.
 
+@common.ordered
 def concatenate(trackList, fields=None, remove_duplicates=False, group_by=None, aggregate={}):
     """
     Returns one stream containing all features from a list of tracks, ordered by *fields*.
