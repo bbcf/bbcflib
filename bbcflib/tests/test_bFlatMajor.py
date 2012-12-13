@@ -249,17 +249,19 @@ class Test_Intervals(unittest.TestCase):
     def test_concatenate(self):
         s1 = [('chr',1,3,0.2,'n'), ('chr',5,9,0.5,'n'), ('chr',11,15,1.2,'n')]
         s2 = [('chr',1,4,0.6,'m'), ('chr',8,11,0.4,'m'), ('chr',11,12,0.1,'m')]
-
         stream1 = fstream(s1, fields=['chr','start','end','score','name'])
         stream2 = fstream(s2, fields=['chr','start','end','score','name'])
         res = list(concatenate([stream1,stream2], fields=['start','score','name']))
-        expected = [(1,3,'n',0.2),(1,4,'m',0.6),(5,9,'n',0.5),(8,11,'m',0.4),(11,12,'m',0.1),(11,15,'n',1.2)]
+        expected = [(1,3,0.2,'n'),(1,4,0.6,'m'),(5,9,0.5,'n'),(8,11,0.4,'m'),(11,12,0.1,'m'),(11,15,1.2,'n')]
         self.assertListEqual(res,expected)
 
+        # Keep chr and compare items w.r.t. chr
+        s1 = [('chr',1,3,0.2,'n'), ('chr',5,9,0.5,'n'), ('chr',11,15,1.2,'n')]
+        s2 = [('chr',1,4,0.6,'m'), ('chrX',8,11,0.4,'m'), ('chrX',11,12,0.1,'m')]
         stream1 = fstream(s1, fields=['chr','start','end','score','name'])
         stream2 = fstream(s2, fields=['chr','start','end','score','name'])
-        res = list(concatenate([stream1,stream2], fields=['start','end','score']))
-        expected = [(1,3,0.2),(1,4,0.6),(5,9,0.5),(8,11,0.4),(11,12,0.1),(11,15,1.2)]
+        res = list(concatenate([stream1,stream2], fields=['chr','start','end','score']))
+        expected = [('chr',1,3,0.2),('chr',1,4,0.6),('chr',5,9,0.5),('chr',11,15,1.2),('chrX',8,11,0.4),('chrX',11,12,0.1)]
         self.assertListEqual(res,expected)
 
         # Remove duplicates
@@ -267,6 +269,17 @@ class Test_Intervals(unittest.TestCase):
         stream2 = fstream([(3,4),(5,6),(7,8)], fields=['start','end'])
         res = list(concatenate([stream1,stream2], fields=['start','end'], remove_duplicates=True))
         expected = [(1,2),(3,4),(5,6),(7,8)]
+        self.assertListEqual(res,expected)
+
+        # Group by
+        s1 = [('chr',1,4,0.2,'n'), ('chr',5,9,0.5,'n'), ('chr',11,15,1.2,'n')]
+        s2 = [('chr',1,4,0.6,'m'), ('chr',8,11,0.4,'m'), ('chrX',11,15,0.1,'m')]
+        group_by = ['chr','start','end']
+        aggregate = {'score': lambda x:sum(x), 'name': lambda x:'-'.join(x)}
+        stream1 = fstream(s1, fields=['chr','start','end','score','name'])
+        stream2 = fstream(s2, fields=['chr','start','end','score','name'])
+        res = list(concatenate([stream1,stream2], fields=['chr','start','score','name'], group_by=group_by, aggregate=aggregate))
+        expected = [('chr',1,4,0.8,'m-n'),('chr',5,9,0.5,'n'),('chr',8,11,0.4,'m'),('chr',11,15,1.2,'n'),('chrX',11,15,0.1,'m')]
         self.assertListEqual(res,expected)
 
     def test_selection(self):

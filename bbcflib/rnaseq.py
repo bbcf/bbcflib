@@ -192,7 +192,7 @@ def build_pileup(bamfile, assembly, gene_mapping, exon_mapping, trans_in_gene, e
                 #The callback (c.n += 1) is executed for each alignment in a region
                 sam.fetch(ref,start,end, callback=c)
             except ValueError,ve: # unknown reference
-                print >> logfile, ve
+                #print >> logfile, ve
                 continue
             for exon in ex:
                 counts[exon] = counts.get(exon,0) + c.n/float(len(ex))
@@ -592,7 +592,7 @@ def differential_analysis(ex, result, rpath, logfile):
                     desc = set_file_descr(type+"_differential"+o.split(glmfile)[1]+".txt", step='stats', type='txt')
                     o = clean_deseq_output(o)
                     ex.add(o, description=desc)
-            except Exception as exc: 
+            except Exception as exc:
                 print >> logfile,"Skipped differential analysis: %s \n" % exc; logfile.flush()
 
 
