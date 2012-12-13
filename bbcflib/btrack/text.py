@@ -739,3 +739,38 @@ class SamTrack(TextTrack):
         vec.pop(4) # remove 'end'
         return self.separator.join(vec)
 
+################################ GFF ##########################################
+
+class FpsTrack(TextTrack):
+    def __init__(self,path,**kwargs):
+        kwargs['format'] = 'fps'
+        kwargs['fields'] = ['chr','start','end','score','strand']
+        TextTrack.__init__(self,path,**kwargs)
+
+    def _read(self, fields, index_list, selection, skip):
+        self.open('read')
+        if skip and selection:
+            chr_toskip = self._init_skip(selection)
+            next_toskip = chr_toskip.next()
+        fstart = fend = 0
+        try:
+            while 1:
+                fstart = self.filehandle.tell()
+                row = self.filehandle.readline()
+                if not row: break
+                if not row.startswith("FP"): continue
+                splitrow = [s.strip() for s in row.split()]
+                if not any(splitrow): continue
+                splitrow = [splitrow[1],int(splitrow[5]),int(splitrow[5])+1,splitrow[7],splitrow[4][1]]
+                if selection:
+                    if skip:
+                        fstart,fend,next_toskip = self._skip(fstart,next_toskip,chr_toskip)
+                        self._index_chr(fstart,fend,splitrow)
+                    if not any(self._select_values(splitrow,s) for s in selection):
+                        continue
+                fstart = fend
+                yield tuple(self._check_type(splitrow[index_list[n]],f) for n,f in enumerate(fields))
+        except (ValueError,IndexError) as ve:
+            raise ValueError("Bad line in file %s:\n %s%s\n" % (self.path,row,ve))
+        self.close()
+
