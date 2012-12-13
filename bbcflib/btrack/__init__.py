@@ -85,6 +85,7 @@ _track_map = {
     'bw':  ('bbcflib.btrack.bin','BigWigTrack'),
     'bam': ('bbcflib.btrack.bin','BamTrack'),
     'sam': ('bbcflib.btrack.text','SamTrack'),
+    'fps': ('bbcflib.btrack.text','FpsTrack'),
 }
 
 def track( path, format=None, **kwargs):
@@ -338,7 +339,7 @@ class Track(object):
 
     def column_by_name(self, fields=[], num=True):
         """
-        Finds a column with name in `fields`. 
+        Finds a column with name in `fields`.
         Returns its index (if `num`is True) or its name.
         """
         if isinstance(fields,basestring): fields=[fields]
