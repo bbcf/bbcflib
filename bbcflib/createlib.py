@@ -7,6 +7,7 @@ Functions to create and manage a restrition fragments library in a 4c-seq analys
 """
 
 from bein import program
+from bein.util import touch
 import bbcflib.btrack as track
 from bbcflib import genrep
 from bbcflib.common import cat, set_file_descr, unique_filename_in, coverageBed, gzipfile
