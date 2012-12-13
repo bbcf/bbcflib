@@ -14,7 +14,7 @@ from bbcflib.bFlatMajor.common import sorted_stream
 import os, json, re, tarfile, urllib2
 
 #GlobalLibPath="/archive/epfl/bbcf/data/genomes/4cLibraries"
-hts_url="http://htsstation.epfl.ch/" 
+GlobalHtsUrl="http://htsstation.epfl.ch/" 
 GlobalRepbasePath="/archive/epfl/bbcf/data/genomes/repeats"
 
 @program
@@ -101,7 +101,7 @@ def coverageInRepeats(ex, infile, genomeName='mm9', repeatsPath=GlobalRepbasePat
     else: resfile = outdir
     return resfile
 
-def getEnzymeSeqId(enzyme_id,byId=False,enzymes_list=[],url=hts_url):
+def getEnzymeSeqId(enzyme_id,byId=False,enzymes_list=[],url=GlobalHtsUrl):
     '''
     Returns the restriction site corresponding to a given enzyme id (from existing enzymes)
     '''
@@ -122,7 +122,7 @@ def getEnzymeSeqId(enzyme_id,byId=False,enzymes_list=[],url=hts_url):
                 return v[trg]
     return default
 
-def lib_exists( params, libs_list=None, url=hts_url ):
+def lib_exists( params, libs_list=None, url=GlobalHtsUrl ):
     '''
     Return id or filename corresponding to the library described in params.
     '''
@@ -131,8 +131,8 @@ def lib_exists( params, libs_list=None, url=hts_url ):
         libs_list = json.load(urllib2.urlopen( url+"/libraries.json" ))
     enzymes_list = []
     for lib in libs_list:
-        enz1=getEnzymeSeqId(lib['library']['enzyme1_id'],False,enzymes_list,hts_url)
-        enz2=getEnzymeSeqId(lib['library']['enzyme2_id'],False,enzymes_list,hts_url)
+        enz1=getEnzymeSeqId(lib['library']['enzyme1_id'],False,enzymes_list,url)
+        enz2=getEnzymeSeqId(lib['library']['enzyme2_id'],False,enzymes_list,url)
         if params['species'] == lib['library']['assembly_name'] \
                 and params['primary'] == enz1 \
                 and params['secondary'] == enz2 \
@@ -141,7 +141,7 @@ def lib_exists( params, libs_list=None, url=hts_url ):
             return (lib['library'].get('id',0), lib['library'].get('filename'))
     return (0, None)
 
-def createLibrary(ex, assembly_or_fasta, params, hts_url=hts_url, via='local'):
+def createLibrary(ex, assembly_or_fasta, params, url=GlobalHtsUrl, via='local'):
     '''
     Main call to create the library
     '''
@@ -176,19 +176,18 @@ def createLibrary(ex, assembly_or_fasta, params, hts_url=hts_url, via='local'):
 #    track.convert((resfile,'bed'),(resfile_sql,'sql'),assembly=params['species'])
     enz_list = []
     infos_lib = { 'assembly_name':  params['species'],
-                  'enzyme1_id':     getEnzymeSeqId(params['primary'],True,enz_list,hts_url),
-                  'enzyme2_id':     getEnzymeSeqId(params['secondary'],True,enz_list,hts_url),
+                  'enzyme1_id':     getEnzymeSeqId(params['primary'], True, enz_list, url),
+                  'enzyme2_id':     getEnzymeSeqId(params['secondary'], True, enz_list, url),
                   'segment_length': params['length'],
                   'type':           params['type'],
                   'filename':       resfile }
     return [ libfiles, bedfiles, resfile, infos_lib ]
 
-def get_libForGrp(ex, group, fasta_or_assembly, new_libraries, grpId, hts_url=None, lib_dir=None, via='lsf'):
+def get_libForGrp(ex, group, fasta_or_assembly, new_libraries, grpId, url=None, lib_dir=None, via='lsf'):
 #wd_archive="/archive/epfl/bbcf/mleleu/pipeline_vMarion/pipeline_3Cseq/vWebServer_Bein/" #temporary: will be /scratch/cluster/monthly/htsstation/4cseq/job.id
 #os.path.split(ex.remote_working_directory)[0]
     def _libfile(id_lib):
-        if hts_url is None: return None
-        libs_list = json.load(urllib2.urlopen( hts_url+"/libraries.json" ))
+        libs_list = json.load(urllib2.urlopen( url+"/libraries.json" ))
         for lib in libs_list:
             if lib['library']['id']==int(id_lib):
                 return lib['library']['filename']
@@ -212,13 +211,14 @@ def get_libForGrp(ex, group, fasta_or_assembly, new_libraries, grpId, hts_url=No
                 if key: paramslib[key]=s[1]
         return paramslib
 
+    if url is None: url = GlobalHtsUrl
     if lib_dir is None: lib_dir = os.path.split(ex.remote_working_directory)[0]
     if not(group.get('library_param_file','null') in ["null",'', None]):
         library_filename = os.path.join(lib_dir,'group_'+group['name']+"_paramsFileLibrary.txt")
         paramslib = _paramsFile(library_filename)
-        lib_id, ex_libfile = lib_exists( paramslib, new_libraries, hts_url )
+        lib_id, ex_libfile = lib_exists( paramslib, new_libraries, url )
         if lib_id == 0 and ex_libfile == None :
-            libfiles = createLibrary(ex,fasta_or_assembly,paramslib,hts_url,via=via)
+            libfiles = createLibrary(ex, fasta_or_assembly, paramslib, url, via=via)
             reffile = libfiles[2]
             ex.add( libfiles[2]+".bed.gz",
                     description=set_file_descr( group['name']+"_new_library.bed.gz", groupId=grpId,
