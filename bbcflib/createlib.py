@@ -167,6 +167,9 @@ def createLibrary(ex, assembly_or_fasta, params, url=GlobalHtsUrl, via='local'):
     bedfiles = {}
     for chrom, future in libfiles.iteritems():
         libfiles[chrom] = future.wait()
+        if not os.path.getsize(libfiles[chrom][1])>0:
+            time.sleep(60)
+            touch(ex,libfiles[chrom][1])
         bedfiles[chrom] = parse_fragFile(libfiles[chrom][1])
     coverageInRepeats(ex, bedfiles, params['species'], outdir=resfile, via=via)
     bedchrom = [os.path.join(resfile,chrom+".bed") for chrom in chrnames]
