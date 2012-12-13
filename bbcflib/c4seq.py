@@ -184,7 +184,7 @@ def workflow_groups( ex, job, primers_dict, assembly, mapseq_files, mapseq_url,
         regToExclude[gid] = primers_dict.get(group['name'],{}).get('regToExclude',"").replace('\r','')
         for rid,run in group['runs'].iteritems():
             libname = mapseq_files[gid][rid]['libname']
-            if not job.options.get('compute_densities') or job.options.get('merge_strands') != 0:
+            if job.options.get('merge_strands') != 0 or not('wig' in mapseq_files[gid][rid]):
                 density_file=parallel_density_sql( ex, mapseq_files[gid][rid]['bam'],
                                                    assembly.chrmeta,
                                                    nreads=mapseq_files[gid][rid]['stats']["total"],
