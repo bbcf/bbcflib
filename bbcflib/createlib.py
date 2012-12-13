@@ -11,7 +11,7 @@ import bbcflib.btrack as track
 from bbcflib import genrep
 from bbcflib.common import cat, set_file_descr, unique_filename_in, coverageBed, gzipfile
 from bbcflib.bFlatMajor.common import sorted_stream
-import os, json, re, tarfile, urllib2
+import os, json, re, tarfile, urllib2, time
 
 #GlobalLibPath="/archive/epfl/bbcf/data/genomes/4cLibraries"
 GlobalHtsUrl="http://htsstation.epfl.ch/" 
