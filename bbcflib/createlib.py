@@ -8,8 +8,8 @@ Functions to create and manage a restrition fragments library in a 4c-seq analys
 
 from bein import program
 from bein.util import touch
-import bbcflib.btrack as track
 from bbcflib import genrep
+from bbcflib.btrack import track
 from bbcflib.common import cat, set_file_descr, unique_filename_in, coverageBed, gzipfile
 from bbcflib.bFlatMajor.common import sorted_stream
 import os, json, re, tarfile, urllib2, time
@@ -20,10 +20,10 @@ GlobalRepbasePath="/archive/epfl/bbcf/data/genomes/repeats"
 
 @program
 def getRestEnzymeOccAndSeq(fasta_file, prim_site, sec_site, l_seg, l_type='typeI'):
-    '''
+    """
     Creates segments and fragments files of the new library from the genome sequence 
     (via a call to getRestEnzymeOccAndSeq.pl).
-    '''
+    """
     segFile = unique_filename_in()
     fragFile = unique_filename_in()
     logFile = unique_filename_in()
@@ -34,9 +34,9 @@ def getRestEnzymeOccAndSeq(fasta_file, prim_site, sec_site, l_seg, l_type='typeI
     return {'arguments': [progname]+options, 'return_value': [ segFile, fragFile, logFile ]}
 
 def parse_fragFile(fragfile,chrom_dict={}):
-    '''
+    """
     Parse fragment file to create segment info bed file and fragment bed file
-    '''
+    """
     segInfoBedFile=unique_filename_in()
     fragmentBedFile=unique_filename_in()
     segmentBedFile=unique_filename_in()
@@ -69,10 +69,10 @@ def parse_fragFile(fragfile,chrom_dict={}):
 
 def coverageInRepeats(ex, infile, genomeName='mm9', repeatsPath=GlobalRepbasePath,
                       outdir=None, via='lsf'):
-    '''
+    """
     Completes the segment info bed file with the coverage in repeats of each segment.
     For now, works only for mm9, hg19 and dm3.
-    '''
+    """
     repeatsFile = os.path.join(repeatsPath, genomeName, genomeName+'_rmsk.bed')
     if not(os.path.exists(repeatsFile)):
         print("coverage in repeats not calculated as file "+repeatsFile+" does not exist.")
@@ -91,7 +91,7 @@ def coverageInRepeats(ex, infile, genomeName='mm9', repeatsPath=GlobalRepbasePat
             resfile = os.path.join(outdir,chrom+".bed")
             outf = open(resfile,'w')
         fut[1].wait()
-        coverout = track.track(fut[0],format='text',fields=['chr','start','end','name','c1','c2','c3','c4'])
+        coverout = track(fut[0],format='text',fields=['chr','start','end','name','c1','c2','c3','c4'])
         for s in sorted_stream(coverout.read(),[chrom]):
             s_split = s[3].split('|')
             infos = '|'.join(s_split[0:(len(s_split)-4)]+list(s[4:7]))
@@ -103,9 +103,9 @@ def coverageInRepeats(ex, infile, genomeName='mm9', repeatsPath=GlobalRepbasePat
     return resfile
 
 def getEnzymeSeqId(enzyme_id,byId=False,enzymes_list=[],url=GlobalHtsUrl):
-    '''
+    """
     Returns the restriction site corresponding to a given enzyme id (from existing enzymes)
-    '''
+    """
     
     if len(enzymes_list) == 0 and not(url is None): 
         enzymes_list.extend( json.load(urllib2.urlopen( url+"/enzymes.json" )) )
@@ -124,9 +124,9 @@ def getEnzymeSeqId(enzyme_id,byId=False,enzymes_list=[],url=GlobalHtsUrl):
     return default
 
 def lib_exists( params, libs_list=None, url=GlobalHtsUrl ):
-    '''
+    """
     Return id or filename corresponding to the library described in params.
-    '''
+    """
     if not(isinstance(libs_list,list) or url is None):
 #        with open(os.path.join(path,'libraries.json')) as f:
         libs_list = json.load(urllib2.urlopen( url+"/libraries.json" ))
@@ -143,9 +143,9 @@ def lib_exists( params, libs_list=None, url=GlobalHtsUrl ):
     return (0, None)
 
 def createLibrary(ex, assembly_or_fasta, params, url=GlobalHtsUrl, via='local'):
-    '''
+    """
     Main call to create the library
-    '''
+    """
     if len(params['primary'])<2 or len(params['secondary'])<2:
         print('Some parameters are missing, cannot create the library')
         print('primary='+params['primary']+" ; "+'secondary='+params['secondary'])
@@ -188,8 +188,7 @@ def createLibrary(ex, assembly_or_fasta, params, url=GlobalHtsUrl, via='local'):
     return [ libfiles, bedfiles, resfile, infos_lib ]
 
 def get_libForGrp(ex, group, fasta_or_assembly, new_libraries, grpId, url=None, lib_dir=None, via='lsf'):
-#wd_archive="/archive/epfl/bbcf/mleleu/pipeline_vMarion/pipeline_3Cseq/vWebServer_Bein/" #temporary: will be /scratch/cluster/monthly/htsstation/4cseq/job.id
-#os.path.split(ex.remote_working_directory)[0]
+#wd_archive="/archive/epfl/bbcf/mleleu/pipeline_vMarion/pipeline_3Cseq/vWebServer_Bein/" 
     def _libfile(id_lib):
         libs_list = json.load(urllib2.urlopen( url+"/libraries.json" ))
         for lib in libs_list:
@@ -198,10 +197,8 @@ def get_libForGrp(ex, group, fasta_or_assembly, new_libraries, grpId, url=None, 
         return None
 
     def _paramsFile(paramsfile):
-        '''Returns a dictionary with the parameters required for the creation of a new library'''
-        paramslib={'name': 'myLibrary',
-                   'length': '30',
-                   'type': 'typeI'}
+        """Returns a dictionary with the parameters required for the creation of a new library"""
+        paramslib={'name': 'myLibrary', 'length': '30', 'type': 'typeI'}
         with open(paramsfile) as f:
             for s in f:
                 s=s.strip().split('=')
@@ -221,7 +218,7 @@ def get_libForGrp(ex, group, fasta_or_assembly, new_libraries, grpId, url=None, 
         library_filename = os.path.join(lib_dir,'group_'+group['name']+"_paramsFileLibrary.txt")
         paramslib = _paramsFile(library_filename)
         lib_id, ex_libfile = lib_exists( paramslib, new_libraries, url )
-        if lib_id == 0 and ex_libfile == None :
+        if lib_id == 0 and ex_libfile == None:
             libfiles = createLibrary(ex, fasta_or_assembly, paramslib, url, via=via)
             reffile = libfiles[2]
             ex.add( libfiles[2]+".bed.gz",
@@ -229,7 +226,7 @@ def get_libForGrp(ex, group, fasta_or_assembly, new_libraries, grpId, url=None, 
                                                 step="library", type="bed" ))
 #            ex.add(reffile,description=set_file_descr("new_library.sql",groupId=grpId,step="library",type="sql",view='admin'))
             new_libraries.append( {'library': libfiles[3]} )
-        elif lib_id > 0 :
+        elif lib_id > 0:
             reffile = _libfile(lib_id)
         else:
             reffile = ex_libfile
@@ -241,7 +238,7 @@ def get_libForGrp(ex, group, fasta_or_assembly, new_libraries, grpId, url=None, 
             raise TypeError("library file ("+reffile+") is not valid")
         if not os.path.exists(reffile):
             reffile += '.bed.gz'
-    elif 'library_file_url' in group and group['library_file_url'] != "" :
+    elif 'library_file_url' in group and group['library_file_url'] != "":
         reffile=group['library_file_url']
     else:
         reffile=None

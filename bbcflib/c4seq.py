@@ -9,9 +9,9 @@ from reads mapped on a reference genome.
 """
 
 import sys, os, json, re, tarfile, time
-from bein import *
+from bein import program
 from bein.util import touch
-from bbcflib import daflims, genrep, frontend, email, gdv
+from bbcflib import frontend
 from bbcflib.createlib import get_libForGrp
 from bbcflib.btrack import track, convert
 from bbcflib.mapseq import parallel_density_sql
@@ -255,7 +255,7 @@ def workflow_groups( ex, job, primers_dict, assembly, mapseq_files, mapseq_url,
             start = False
             tarname = job_groups[gid]['name']+"_domainogram.tar.gz"
             res_tar = tarfile.open(tarname, "w:gz")
-            with open(logFile,'rb') as f:
+            with open(logFile) as f:
                 for s in f:
                     s = s.strip()
                     if re.search('####resfiles####',s): 

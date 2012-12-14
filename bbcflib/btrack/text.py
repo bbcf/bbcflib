@@ -44,7 +44,7 @@ class TextTrack(Track):
     def __init__(self,path,**kwargs):
         kwargs['format'] = kwargs.get("format",'txt')
         kwargs['fields'] = kwargs.get("fields",['chr','start','end'])
-        self.separator = kwargs.get('separator')
+        self.separator = kwargs.get('separator',"\t")
         Track.__init__(self,path,**kwargs) # super(TextTrack, self).__init__(self,path,**kwargs)
         self.intypes = dict((k,v) for k,v in _in_types.iteritems() if k in self.fields)
         if isinstance(kwargs.get('intypes'),dict): self.intypes.update(kwargs["intypes"])
@@ -190,7 +190,7 @@ class TextTrack(Track):
                    row.startswith("track") or \
                    row.startswith("#") or \
                    row.startswith("@"): continue
-                splitrow = [s for s in row.split(self.separator)]
+                splitrow = [s.strip() for s in row.split(self.separator)]
                 if not any(splitrow): continue
                 if selection:
                     if skip:
@@ -462,7 +462,7 @@ class SgaTrack(TextTrack):
             row = self.filehandle.readline()
             if not row: break
             if row.startswith("#"): continue
-            splitrow = [s for s in row.split(self.separator)]
+            splitrow = [s.strip() for s in row.split(self.separator)]
             if not any(splitrow): continue
             yieldit = True
             chr,name,pos,strand,counts = splitrow
@@ -586,7 +586,7 @@ class WigTrack(TextTrack):
                     end = start+span
                     continue
                 if fixedStep is None: continue
-                splitrow = [s for s in row.split(self.separator)]
+                splitrow = [s.strip() for s in row.split(self.separator)]
                 if not any(splitrow): continue
                 yieldit = True
                 if fixedStep:
@@ -718,7 +718,7 @@ class SamTrack(TextTrack):
                 row = self.filehandle.readline()
                 if not row: break
                 if row.startswith("@"): continue
-                splitrow = [s for s in row.split(self.separator)]
+                splitrow = [s.strip() for s in row.split(self.separator)]
                 if not any(splitrow): continue
                 if selection:
                     if skip:
@@ -759,7 +759,7 @@ class FpsTrack(TextTrack):
                 row = self.filehandle.readline()
                 if not row: break
                 if not row.startswith("FP"): continue
-                splitrow = [s for s in row.split()]
+                splitrow = [s.strip() for s in row.split()]
                 if not any(splitrow): continue
                 splitrow = [splitrow[1],int(splitrow[5]),int(splitrow[5])+1,splitrow[7],splitrow[4][1]]
                 if selection:
