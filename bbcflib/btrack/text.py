@@ -759,7 +759,7 @@ class FpsTrack(TextTrack):
                 row = self.filehandle.readline()
                 if not row: break
                 if not row.startswith("FP"): continue
-                splitrow = [s for s in row.split()]
+                splitrow = [s.strip() for s in row.split()]
                 if not any(splitrow): continue
                 splitrow = [splitrow[1],int(splitrow[5]),int(splitrow[5])+1,splitrow[7],splitrow[4][1]]
                 if selection:
