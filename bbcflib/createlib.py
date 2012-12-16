@@ -76,7 +76,7 @@ def coverageInRepeats(ex, infile, genomeName='mm9', repeatsPath=GlobalRepbasePat
     repeatsFile = os.path.join(repeatsPath, genomeName, genomeName+'_rmsk.bed')
     if not(os.path.exists(repeatsFile)):
         print("coverage in repeats not calculated as file "+repeatsFile+" does not exist.")
-        return(infile)
+        return None
     if not(isinstance(infile,dict)):
         infile = {"":infile}
     if outdir is None:
@@ -94,9 +94,9 @@ def coverageInRepeats(ex, infile, genomeName='mm9', repeatsPath=GlobalRepbasePat
         coverout = track(fut[0],format='text',fields=['chr','start','end','name','c1','c2','c3','c4'])
         for s in sorted_stream(coverout.read(),[chrom]):
             s_split = s[3].split('|')
-            infos = '|'.join(s_split[0:(len(s_split)-4)]+list(s[4:7]))
+            infos = '|'.join(s_split[0:(len(s_split)-4)]+list(s[4:8]))
             outf.write('\t'.join([str(x) for x in s[0:3]+(infos,)])+'\n')
-        if not(outdir is None): 
+        if not(outdir is None):
             outf.close()
     if outdir is None: outf.close()
     else: resfile = outdir
@@ -172,8 +172,11 @@ def createLibrary(ex, assembly_or_fasta, params, url=GlobalHtsUrl, via='local'):
             time.sleep(60)
             touch(ex,libfiles[chrom][1])
         bedfiles[chrom] = parse_fragFile(libfiles[chrom][1])
-    coverageInRepeats(ex, bedfiles, params['species'], outdir=resfile, via=via)
-    bedchrom = [os.path.join(resfile,chrom+".bed") for chrom in chrnames]
+    rescov = coverageInRepeats(ex, bedfiles, params['species'], outdir=resfile, via=via)
+    if rescov: 
+        bedchrom = [os.path.join(resfile,chrom+".bed") for chrom in chrnames]
+    else:
+        bedchrom = [os.path.join(bedfiles[chrom][0]) for chrom in chrnames]
     cat(bedchrom,out=resfile+".bed")
     gzipfile(ex,[resfile+".bed"]+bedchrom)
 #    resfile_sql = resfile+".sql"
