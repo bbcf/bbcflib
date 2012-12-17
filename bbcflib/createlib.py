@@ -12,7 +12,7 @@ from bbcflib import genrep
 from bbcflib.btrack import track
 from bbcflib.common import cat, set_file_descr, unique_filename_in, coverageBed, gzipfile
 from bbcflib.bFlatMajor.common import sorted_stream
-import os, json, re, tarfile, urllib2, time
+import os, json, re, tarfile, urllib2, time, shutil
 
 #GlobalLibPath="/archive/epfl/bbcf/data/genomes/4cLibraries"
 GlobalHtsUrl="http://htsstation.epfl.ch/" 
@@ -39,10 +39,8 @@ def parse_fragFile(fragfile,chrom_dict={}):
     """
     segInfoBedFile=unique_filename_in()
     fragmentBedFile=unique_filename_in()
-    segmentBedFile=unique_filename_in()
     o=open(segInfoBedFile,'w')
     obed=open(fragmentBedFile,'w')
-    oseg=open(segmentBedFile,'w')
     with open(fragfile,'r') as f:
         s = f.next()
         for s in f:
@@ -63,8 +61,7 @@ def parse_fragFile(fragfile,chrom_dict={}):
             obed.write('\t'.join(row)+'_endSeq\n')
     o.close()
     obed.close()
-    oseg.close()
-    return([segInfoBedFile,fragmentBedFile,segmentBedFile])
+    return([segInfoBedFile,fragmentBedFile])
 
 
 def coverageInRepeats(ex, infile, genomeName='mm9', repeatsPath=GlobalRepbasePath,
@@ -73,15 +70,22 @@ def coverageInRepeats(ex, infile, genomeName='mm9', repeatsPath=GlobalRepbasePat
     Completes the segment info bed file with the coverage in repeats of each segment.
     For now, works only for mm9, hg19 and dm3.
     """
-    repeatsFile = os.path.join(repeatsPath, genomeName, genomeName+'_rmsk.bed')
-    if not(os.path.exists(repeatsFile)):
-        print("coverage in repeats not calculated as file "+repeatsFile+" does not exist.")
-        return None
     if not(isinstance(infile,dict)):
         infile = {"":infile}
     if outdir is None:
         resfile = unique_filename_in()+".bed"
         outf = open(resfile,'w')
+    repeatsFile = os.path.join(repeatsPath, genomeName, genomeName+'_rmsk.bed')
+    if not(os.path.exists(repeatsFile)):
+        print("coverage in repeats not calculated as file "+repeatsFile+" does not exist.")
+        if outdir is None:
+            outf.close()
+            cat([inf[0] for inf in infile.values()],out=resfile)
+        else:
+            for chrom,inf in infile.iteritems():
+                shutil.copy(inf[0], os.path.join(outdir,chrom+".bed"))
+            resfile = outdir
+        return resfile
     futures = {}
     for chrom,inf in infile.iteritems():
         tmpfile = unique_filename_in()
@@ -173,10 +177,7 @@ def createLibrary(ex, assembly_or_fasta, params, url=GlobalHtsUrl, via='local'):
             touch(ex,libfiles[chrom][1])
         bedfiles[chrom] = parse_fragFile(libfiles[chrom][1])
     rescov = coverageInRepeats(ex, bedfiles, params['species'], outdir=resfile, via=via)
-    if rescov: 
-        bedchrom = [os.path.join(resfile,chrom+".bed") for chrom in chrnames]
-    else:
-        bedchrom = [os.path.join(bedfiles[chrom][0]) for chrom in chrnames]
+    bedchrom = [os.path.join(resfile,chrom+".bed") for chrom in chrnames]
     cat(bedchrom,out=resfile+".bed")
     gzipfile(ex,[resfile+".bed"]+bedchrom)
 #    resfile_sql = resfile+".sql"
