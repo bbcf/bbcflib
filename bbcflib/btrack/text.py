@@ -744,7 +744,7 @@ class SamTrack(TextTrack):
 class FpsTrack(TextTrack):
     def __init__(self,path,**kwargs):
         kwargs['format'] = 'fps'
-        kwargs['fields'] = ['chr','start','end','score','strand']
+        kwargs['fields'] = ['chr','start','end','name','score','strand']
         TextTrack.__init__(self,path,**kwargs)
 
     def _read(self, fields, index_list, selection, skip):
@@ -761,7 +761,7 @@ class FpsTrack(TextTrack):
                 if not row.startswith("FP"): continue
                 splitrow = [s.strip() for s in row.split()]
                 if not any(splitrow): continue
-                splitrow = [splitrow[1],int(splitrow[5]),int(splitrow[5])+1,splitrow[7],splitrow[4][1]]
+                splitrow = [splitrow[1],int(splitrow[5]),int(splitrow[5])+1,splitrow[0],splitrow[7],splitrow[4][1]]
                 if selection:
                     if skip:
                         fstart,fend,next_toskip = self._skip(fstart,next_toskip,chr_toskip)
