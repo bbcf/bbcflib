@@ -469,7 +469,8 @@ def rnaseq_workflow(ex, job, bam_files, pileup_level=["exons","genes","transcrip
             exon_pileup = build_pileup(f['bam'],assembly,gene_mapping,exon_mapping,trans_in_gene,exons_in_trans,debugfile)
             if unmapped_fastq[cond] and cond in additionals:
                 for a,x in additionals[cond].iteritems():
-                    exon_pileup[a] = exon_pileup.get(a,0) + x
+                    if exon_pileup.get(a):
+                        exon_pileup[a] += x
             exon_pileups[cond] = exon_pileup.values()
             nreads[cond] = sum(exon_pileup.values()) # total number of reads
             print >> logfile, "....Pileup", cond, "done"; logfile.flush()
@@ -478,7 +479,6 @@ def rnaseq_workflow(ex, job, bam_files, pileup_level=["exons","genes","transcrip
     """ Arrange exon counts in a matrix """
     nreads = asarray([nreads[cond] for cond in conditions], dtype=numpy.float_)
     counts = asarray([exon_pileups[cond] for cond in conditions], dtype=numpy.float_).T
-    #counts, sf = estimate_size_factors(counts)
     del exon_pileups; del exon_pileup
     exon_counts = [(exon_ids[k],counts[k]) for k in range(len(exon_ids)) if sum(counts[k])!=0]
 
@@ -516,8 +516,6 @@ def rnaseq_workflow(ex, job, bam_files, pileup_level=["exons","genes","transcrip
     result = {"exons":exons_file, "genes":genes_file, "transcripts":trans_file}
     print >> logfile, "Differential analysis"; logfile.flush()
     differential_analysis(ex, result, rpath, logfile)
-    with open(exons_file,"rb") as f:
-        print f.read()
     return 0
 
 
