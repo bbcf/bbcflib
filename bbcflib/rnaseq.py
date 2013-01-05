@@ -170,7 +170,7 @@ def build_pileup(bamfile, assembly, gene_mapping, exon_mapping, trans_in_gene, e
     try: sam = pysam.Samfile(bamfile, 'rb')
     except ValueError: sam = pysam.Samfile(bamfile,'r')
     chromosomes = assembly.chrmeta.keys()
-    mapped_on = 'genome' if all([ref in chromosomes for ref in sam.references]) else 'exons'
+    mapped_on = 'genome' if all([ref in chromosomes for ref in sam.references[:100]]) else 'exons'
     c = Counter()
     for g in gene_mapping.iterkeys():
         eg = set()
