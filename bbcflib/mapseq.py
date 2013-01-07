@@ -1184,7 +1184,7 @@ def get_bam_wig_files( ex, job, minilims=None, hts_url=None, suffix=['fwd','rev'
                     try:
                         index_bam(ex, bamfile)
                     except ProgramFailed, e:
-                        if "the alignment is not sorted" in e.message:
+                        if "the alignment is not sorted" in str(e):
                             bamfile = sort_bam.nonblocking(ex, bamfile, via=via).wait()
                         index_bam(ex, bamfile)
             elif os.path.exists(file_loc):
@@ -1196,7 +1196,7 @@ def get_bam_wig_files( ex, job, minilims=None, hts_url=None, suffix=['fwd','rev'
                     try:
                         index_bam(ex, bamfile)
                     except ProgramFailed, e:
-                        if "the alignment is not sorted" in e.message:
+                        if "the alignment is not sorted" in str(e):
                             bamfile = sort_bam.nonblocking(ex, bamfile, via=via).wait()
                         index_bam(ex, bamfile)
             elif os.path.exists(minilims) and os.path.exists(os.path.join(minilims+".files",file_loc)):
