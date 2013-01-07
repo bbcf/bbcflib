@@ -60,17 +60,19 @@ def _find_snp(info,minsnp,mincov,assembly):
     def _parse_info8(readbase,cons):
         iupac = {'M':['A','a','C','c'],'Y':['T','t','C','c'],'R':['A','a','G','g'],
                  'S':['G','g','C','c'],'W':['A','a','T','t'],'K':['T','t','G','g']}
-        indels = []
+        indels = {}
         irb = iter(readbase)
         rb = ''
         for x in irb:
             if x in ['+','-']:
                 n_indel = int(irb.next())
-                indels.append(''.join([irb.next() for _ in range(n_indel)]))
+                seq = ''.join([irb.next() for _ in range(n_indel)])
+                indels[x+seq] = indels.setdefault(x+seq,0) + 1
             elif x == '$': pass
             elif x == '^': irb.next()
             else: rb += x
-        readbase = ''.join(rb)
+        readbase = rb
+        indels = indels.items()
         var1_fwd,var1_rev,var2_fwd,var2_rev = iupac[cons]
         nvar1_fwd = readbase.count(var1_fwd)
         nvar1_rev = readbase.count(var1_rev)
@@ -89,7 +91,7 @@ def _find_snp(info,minsnp,mincov,assembly):
     if re.search(r'[ACGTN]',cons): # if bases are encoded normally (~100% replacement)
         return cons+" (%s)"%nreads
     elif re.search(r'[MSYWRK]',cons): # avoid cons='*/*' as it happened once
-        var1,var2, nvar1_fwd,nvar1_rev,nvar2_fwd,nvar2_rev, indels = _parse_info8(info[8],cons)
+        var1,var2, nvar1_fwd,nvar1_rev, nvar2_fwd,nvar2_rev, indels = _parse_info8(info[8],cons)
         nvar1pc = (100/float(nreads)) * (nvar1_fwd + nvar1_rev) # % of consensus 1
         nvar2pc = (100/float(nreads)) * (nvar2_fwd + nvar2_rev) # % of consensus 2
         check1 = nvar1_fwd >= 5 and nvar1_rev >= 5 and nvar1pc >= mincov/ploidy
@@ -97,15 +99,16 @@ def _find_snp(info,minsnp,mincov,assembly):
         check0 = nvar2_fwd >= 3 and nvar2_rev >= 3 and nvar2pc >= 0.5*mincov/ploidy \
              and nvar1_fwd >= 3 and nvar1_rev >= 3 and nvar1pc >= 0.5*mincov/ploidy
         if ref.upper() == var1 and check2:   # if ref base == first variant
-            return "%s (%.2f%% of %s)" % (var2,nvar2pc,nreads)
+            consensus = "%s (%.2f%% of %s)" % (var2,nvar2pc,nreads)
         elif ref.upper() == var2 and check1: # if ref base == second variant
-            return "%s (%.2f%% of %s)" % (var1,nvar1pc,nreads)
+            consensus = "%s (%.2f%% of %s)" % (var1,nvar1pc,nreads)
         elif check0:                         # if third allele
-            return "%s (%.2f%%),%s (%.4g%% of %s)" % (var1,nvar1pc,var2,nvar2pc,nreads)
-        else:
-            return ref
-        #for indel in indels:
-        #    return indel
+            consensus = "%s (%.2f%%),%s (%.4g%% of %s)" % (var1,nvar1pc,var2,nvar2pc,nreads)
+        elif indels:
+            indels.sort(key=lambda x:x[1]) # keep only the one that most reads confirm
+            consensus = "%s (%s)" % (indels[-1][0],indels[-1][1])
+        else: consensus = ref
+        return consensus
 
 def all_snps(chrom,dictPileup,outall,assembly,sample_names,minsnp,mincov):
     """For a given chromosome, returns a summary file containing all SNPs identified
