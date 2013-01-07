@@ -306,6 +306,53 @@ try:
             else:
                 return FeatureStream(_coverage(pboth), fields=_f)
 
+        def PE_fragment_size(self, region):
+            """
+            Retrieves fragment sizes from paired-end data, and returns a bedgraph-style track::
+
+                (chr,start,end,score) = fragment mid-point coordinates, average fragment size
+
+            :param region: tuple `(chr,start,end)`. `chr` has to be
+                present in the BAM file's header. `start` and `end` are 0-based
+                coordinates, counting from the beginning of feature `chr` and can be omitted.
+            :rtype: FeatureStream with fields ['chr','start','end','score'].
+            """
+            def _frag_cover(region):
+                self.open()
+                buffer = {}
+                for read in self.fetch(*region[:3]):
+                    if read.is_reverse: continue
+                    flen = read.isize
+                    midpos = read.pos+flen/2
+                    if midpos in buffer: buffer[midpos].append(flen)
+                    else: buffer[midpos] = [flen]
+                for p in sorted(buffer.keys()):
+                    fraglen = buffer[p]
+                    score = sum(fraglen)/float(len(fraglen))
+                    yield (p,score)
+                self.close()
+
+            def _join(stream,chrom):
+                start = -1
+                end = -1
+                score = 0
+                for x in stream:
+                    if x[0] == end and x[1] == score: end += 1
+                    else:
+                        if end>start: yield (chrom,start,end,score)
+                        start, score = x
+                        end = start+1
+                if end>start: yield (chrom,start,end,score)
+                
+            if isinstance(region,basestring): region = [region]
+            if isinstance(region,(list,tuple)) and len(region) < 3:
+                chrom = region[0]
+                region = [chrom, 0, self.chrmeta[chrom]['length']]
+            else:
+                raise ValueError("Region must be list ['chr',start,end] or a string 'chr'.")
+            return FeatureStream( _join(_frag_cover(region), region[0]),
+                                  fields=['chr','start','end','score'] )
+
 
 except ImportError: print "Warning: 'pysam' not installed, 'bam' format unavailable."
 
