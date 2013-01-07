@@ -318,12 +318,6 @@ try:
             :rtype: FeatureStream with fields ['chr','start','end','score'].
             """
             def _frag_cover(region):
-                if isinstance(region,basestring): region = [region]
-                if isinstance(region,(list,tuple)) and len(region) < 3:
-                    chrom = region[0]
-                    region = [chrom, 0, self.chrmeta[chrom]['length']]
-                else:
-                    raise ValueError("Region must be list ['chr',start,end] or a string 'chr'.")
                 self.open()
                 buffer = {}
                 for read in self.fetch(*region[:3]):
@@ -349,8 +343,14 @@ try:
                         start, score = x
                         end = start+1
                 if end>start: yield (chrom,start,end,score)
-
-            return FeatureStream( _join(_frag_cover( region ), region[0]), 
+                
+            if isinstance(region,basestring): region = [region]
+            if isinstance(region,(list,tuple)) and len(region) < 3:
+                chrom = region[0]
+                region = [chrom, 0, self.chrmeta[chrom]['length']]
+            else:
+                raise ValueError("Region must be list ['chr',start,end] or a string 'chr'.")
+            return FeatureStream( _join(_frag_cover(region), region[0]),
                                   fields=['chr','start','end','score'] )
 
 
