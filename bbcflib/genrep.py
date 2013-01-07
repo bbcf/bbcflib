@@ -654,6 +654,8 @@ class Assembly(object):
                             sort_list.append((start,end,name)+tuple(v[0][nmax:]))
                 else:
                     wh = webh
+                    if not os.path.exists(self.sqlite_path):
+                        raise ValueError("Unavailable local database: try with `biotype=None`.")
                     resp = self.get_features_from_gtf(wh,chrom)
                     for k,v in resp.iteritems():
                         start = min([x[0] for x in v])
