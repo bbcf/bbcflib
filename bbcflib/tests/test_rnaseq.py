@@ -46,7 +46,7 @@ class Test_Expressions_Gapdh(unittest.TestCase):
         self.nreads = array([4041,3728]) # KO,WT
         self.counts = array([[85,10.5,12,2.5,19,4.5,1843.16,0,4,1,1.5,2.66,1.5,78,44,69.5,1843.16],
                              [109.5,18.33,19,2.5,8,4.5,1614.66,0,8.33,0.5,2,1.66,4,107.5,115.33,35.5,1614.66]])
-        self.exon_counts = ([e1,e2,e3,e4,e5,e6,e7,e8,e9,e10,e11,e12,e13,e14,e15,e16,e17],self.counts.T)
+        self.exon_counts = zip([e1,e2,e3,e4,e5,e6,e7,e8,e9,e10,e11,e12,e13,e14,e15,e16,e17],self.counts.T)
         self.transcript_mapping = {t1:(g,gname,125161854,125165773,1420,-1,c), t2:(g,gname,125161854,125166467,1272,-1,c),
             t3:(g,gname,125162032,125165293,909,-1,c), t4:(g,gname,125162843,125164916,560,-1,c),
             t5:(g,gname,125164597,125165605,769,-1,c), t6:(g,gname,125161853,125162527,565,-1,c)}
@@ -98,7 +98,7 @@ class Test_Expressions1(unittest.TestCase):
         self.nreads = array([1e9]*self.ncond)
         self.counts = array([[27,12],[3,3]]) # [[cond1],[cond2]]
         self.rpkms = array([[27/3.,12/6.],[3/3.,3/6.]])
-        self.exon_counts = ([e1,e2],self.counts.T)
+        self.exon_counts = zip([e1,e2],self.counts.T)
         self.transcript_mapping = {t1:(g1,gname,0,3,3.,1,c), t2:(g1,gname,0,9,9.,1,c)}
         self.gene_mapping = {g1:(gname,0,9,9.,1,c)}
         self.exon_mapping = {e1:([t1,t2],g1,gname,0,3,1,c), e2:([t1],g1,gname,3,9,1,c)}
@@ -153,7 +153,7 @@ class Test_Expressions2(unittest.TestCase):
         self.nreads = array([1e9])
         self.counts = array([[10,15,10]]) # [[cond1]]
         self.rpkms = array([[10/5.,15/5.,10/5.]])
-        self.exon_counts = ([e1,e2,e3],self.counts.T)
+        self.exon_counts = zip([e1,e2,e3],self.counts.T)
         self.transcript_mapping = {t1:(g1,gname,0,10,10.,1,c), t2:(g1,gname,5,15,10.,1,c), t3:(g1,gname,0,15,15.,1,c)}
         self.gene_mapping = {g1:(gname,0,9,9.,1,c)}
         self.exon_mapping = {e1:([t1,t2],g1,gname,0,5,1,c), e2:([t1],g1,gname,5,10,1,c),
@@ -195,7 +195,7 @@ class Test_Expressions3(unittest.TestCase):
         self.nreads = array([1e9])
         self.counts = array([[10,15,10]]) # [[cond1]]
         self.rpkms = array([[10/5.,15/5.,10/5.]])
-        self.exon_counts = ([e1,e2,e3],self.counts.T)
+        self.exon_counts = zip([e1,e2,e3],self.counts.T)
         self.transcript_mapping = {t1:(g1,gname,0,10,10.,1,c), t2:(g1,gname,5,15,10.,1,c), \
                                    t3:(g1,gname,0,15,15.,1,c), t4:(g1,gname,0,15,10.,1,c)}
         self.gene_mapping = {g1:(gname,0,9,9.,1,c)}
@@ -227,7 +227,7 @@ class Test_Expressions4(unittest.TestCase):
         self.nreads = array([1e9])
         self.counts = array([[10.,10.,10.,10.]]) # [[cond1]]
         self.rpkms = array([[10/5.,10/5.,10/5.,10/5.]])
-        self.exon_counts = ([e1,e2,e3,e4],self.counts.T)
+        self.exon_counts = zip([e1,e2,e3,e4],self.counts.T)
         self.transcript_mapping = {t1:(g1,gname,0,10,10.,1,c), t2:(g1,gname,5,20,15.,1,c), t3:(g1,gname,5,20,10.,1,c)}
         self.gene_mapping = {g1:(gname,0,12,12.,1,c)}
         self.exon_mapping = {e1:([t1],g1,gname,0,5,1,c), e2:([t1,t2,t3],g1,gname,5,10,1,c),
@@ -257,7 +257,7 @@ class Test_Expressions5(unittest.TestCase):
         self.nreads = array([1e9])
         self.counts = array([[10.,10.,10.,10.,10.]]) # [[cond1]]
         self.rpkms = array([[10/5.,10/5.,10/5.,10/5.,10/5.]])
-        self.exon_counts = ([e1,e2,e3,e4,e5],self.counts.T)
+        self.exon_counts = zip([e1,e2,e3,e4,e5],self.counts.T)
         self.transcript_mapping = {t1:(g1,gname,0,15,10.,1,c), t2:(g1,gname,10,25,15.,1,c), t3:(g1,gname,5,25,10.,1,c)}
         self.gene_mapping = {g1:(gname,0,15,15.,1,c)}
         self.exon_mapping = {e1:([t1],g1,gname,0,5,1,c), e2:([t1,t3],g1,gname,5,10,1,c),

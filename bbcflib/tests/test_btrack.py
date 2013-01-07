@@ -107,7 +107,7 @@ class Test_Formats(unittest.TestCase):
         self.assertListEqual(t.fields, self.fields)
 
     def test_bedgraph(self):
-        bg = os.path.join(path,'test.bedgraph')
+        bg = os.path.join(path,'test.bedGraph')
         t = convert(self.bed, bg)
         self.assertIsInstance(t, BedGraphTrack)
         s = t.read(); s.next()
