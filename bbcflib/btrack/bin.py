@@ -172,7 +172,7 @@ try:
                 for sel in selection:
                     reg = self._make_selection(sel)
                     for read in stream.fetch(reference=reg[0],start=reg[1],end=reg[2]):
-                        row = [self.filehandle.getrname(read.rname),
+                        row = [self.filehandle.getrname(read.tid),
                                read.pos, read.pos+read.rlen,
                                read.mapq, read.qname, (read.is_reverse and -1 or 1),
                                read.flag, read.qual, read.tags]
@@ -350,7 +350,7 @@ try:
                     chrom = region[0]
                     region = [chrom, 0, self.chrmeta[chrom]['length']]
             else:
-                raise ValueError("Region must be list ['chr',start,end] or a string 'chr'.")
+                raise ValueError("Region must be list ['chr',start,end] or string 'chr'.")
             return FeatureStream( _join(_frag_cover(region), region[0]),
                                   fields=['chr','start','end','score'] )
 
