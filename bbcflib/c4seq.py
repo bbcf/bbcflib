@@ -170,7 +170,6 @@ def workflow_groups( ex, job, primers_dict, assembly, mapseq_files, mapseq_url,
 ### options
     run_domainogram = {}
     before_profile_correction = {}
-    for gid, group in job.groups.iteritems():
 ### do it
     for gid, group in job.groups.iteritems():
         run_domainogram[gid] = group.get('run_domainogram',False)
