@@ -165,20 +165,20 @@ def workflow_groups( ex, job, primers_dict, assembly, mapseq_files, mapseq_url,
     regToExclude = {}
     new_libs=[]
 ### inputs
-    job_groups = job.groups
     htss_mapseq = frontend.Frontend( url=mapseq_url )
     if logfile is None: logfile = sys.stdout
 ### options
     run_domainogram = {}
-    for gid, group in job_groups.iteritems():
+    before_profile_correction = {}
+    for gid, group in job.groups.iteritems():
+### do it
+    for gid, group in job.groups.iteritems():
         run_domainogram[gid] = group.get('run_domainogram',False)
         if isinstance(run_domainogram[gid],basestring):
             run_domainogram[gid] = (run_domainogram[gid].lower() in ['1','true','on','t'])
-    before_profile_correction = group.get('before_profile_correction',False)
-    if isinstance(before_profile_correction,basestring):
-        before_profile_correction = (before_profile_correction.lower() in ['1','true','on','t'])
-### do it
-    for gid, group in job_groups.iteritems():
+        before_profile_correction[gid] = group.get('before_profile_correction',False)
+        if isinstance(before_profile_correction[gid],basestring):
+            before_profile_correction[gid] = (before_profile_correction[gid].lower() in ['1','true','on','t'])
         processed['lib'][gid] = get_libForGrp(ex, group, assembly, 
                                               new_libs, gid, c4_url, via=via)
 #reffile='/archive/epfl/bbcf/data/DubouleDaan/library_Nla_30bps/library_Nla_30bps_segmentInfos.bed'
@@ -204,11 +204,11 @@ def workflow_groups( ex, job, primers_dict, assembly, mapseq_files, mapseq_url,
         # back to grp level!
         processed['density'][gid] = merge_sql(ex, density_files, via=via)
         
-    processed['4cseq'] = {'countsPerFrag': density_to_countsPerFrag( ex, processed, job_groups, assembly,
+    processed['4cseq'] = {'countsPerFrag': density_to_countsPerFrag( ex, processed, job.groups, assembly,
                                                                      regToExclude, script_path, via ),
                           'profileCorrection': {}, 'smoothFrag': {}, 'domainogram': {}}
     futures = {}
-    for gid, group in job_groups.iteritems():
+    for gid, group in job.groups.iteritems():
         file1 = unique_filename_in()
         touch(ex,file1)
         file2 = unique_filename_in()
@@ -228,26 +228,25 @@ def workflow_groups( ex, job, primers_dict, assembly, mapseq_files, mapseq_url,
         processed['4cseq']['smoothFrag'][gid] = [file3]
     futures2 = {}
     for gid, f in futures.iteritems():
-         profileCorrectedFile = processed['4cseq']['profileCorrection'][gid][0]
-         bedGraph = processed['4cseq']['profileCorrection'][gid][2]
-         f[0].wait()
-         nFragsPerWin = job_groups[gid]['window_size']
-         grName = job_groups[gid]['name']+"_fromProfileCorrected"
-         file4 = unique_filename_in()
-         touch(ex,file4)
-         processed['4cseq']['smoothFrag'][gid].append(file4)
-         futures2[gid] = (smoothFragFile.nonblocking( ex, profileCorrectedFile, nFragsPerWin, grName,
-                                                      file4, regToExclude[gid], script_path, via=via ), )
-         if run_domainogram[gid]:
-             regCoord = regToExclude[gid] or primers_dict[group['name']]['baitcoord'] 
-             if before_profile_correction:
-                 futures2[gid] += (runDomainogram.nonblocking( ex, bedGraph, job_groups[gid]['name'], 
-                                                               regCoord=regCoord, 
-                                                               script_path=script_path, via=via, memory=10 ), )
-             else:
-                 futures2[gid] += (runDomainogram.nonblocking( ex, profileCorrectedFile, job_groups[gid]['name'],
-                                                               regCoord=regCoord.split(':')[0], skip=1, 
-                                                               script_path=script_path, via=via, memory=10 ), )
+        profileCorrectedFile = processed['4cseq']['profileCorrection'][gid][0]
+        bedGraph = processed['4cseq']['profileCorrection'][gid][2]
+        f[0].wait()
+        nFragsPerWin = job.groups[gid]['window_size']
+        grName = job.groups[gid]['name']
+        file4 = unique_filename_in()
+        touch(ex,file4)
+        processed['4cseq']['smoothFrag'][gid].append(file4)
+        futures2[gid] = (smoothFragFile.nonblocking( ex, profileCorrectedFile, nFragsPerWin, grName+"_fromProfileCorrected",
+                                                     file4, regToExclude[gid], script_path, via=via ), )
+        if run_domainogram[gid]:
+            regCoord = regToExclude[gid] or primers_dict[grName]['baitcoord'] 
+            if before_profile_correction[gid]:
+                futures2[gid] += (runDomainogram.nonblocking( ex, bedGraph, grName, regCoord=regCoord, 
+                                                              script_path=script_path, via=via, memory=10 ), )
+            else:
+                futures2[gid] += (runDomainogram.nonblocking( ex, profileCorrectedFile, grName,
+                                                              regCoord=regCoord.split(':')[0], skip=1, 
+                                                              script_path=script_path, via=via, memory=10 ), )
     for gid, f in futures2.iteritems():
         futures[gid][1].wait()
         f[0].wait()
@@ -255,7 +254,7 @@ def workflow_groups( ex, job, primers_dict, assembly, mapseq_files, mapseq_url,
             resFiles = []
             logFile = f[1].wait()
             start = False
-            tarname = job_groups[gid]['name']+"_domainogram.tar.gz"
+            tarname = job.groups[gid]['name']+"_domainogram.tar.gz"
             res_tar = tarfile.open(tarname, "w:gz")
             with open(logFile) as f:
                 for s in f:
@@ -271,7 +270,7 @@ def workflow_groups( ex, job, primers_dict, assembly, mapseq_files, mapseq_url,
 ################ Add everything to minilims below!
     step = "density"
     for gid, sql in processed['density'].iteritems():
-        fname = "density_file_"+job_groups[gid]['name']+"_merged"
+        fname = "density_file_"+job.groups[gid]['name']+"_merged"
         ex.add( sql, description=set_file_descr( fname+".sql", 
                                                  groupId=gid,step=step,type="sql",gdv="1" ) )
         wig = unique_filename_in()+".bw"
@@ -280,13 +279,13 @@ def workflow_groups( ex, job, primers_dict, assembly, mapseq_files, mapseq_url,
                                                  groupId=gid,step=step,type="bigWig",ucsc="1") )
     step = "norm_counts_per_frag"
     for gid, resfiles in processed['4cseq']['countsPerFrag'].iteritems():
-        fname = "meanScorePerFeature_"+job_groups[gid]['name']
+        fname = "meanScorePerFeature_"+job.groups[gid]['name']
         ex.add( resfiles[1], description=set_file_descr( fname+".sql",
                                                          groupId=gid,step=step,type="sql",view="admin",gdv='1'))
         gzipfile(ex,resfiles[0])
         ex.add( resfiles[0]+".gz", description=set_file_descr( fname+".bed.gz",
                                                                groupId=gid,step=step,type="bed",view="admin" ))
-        fname = "segToFrag_"+job_groups[gid]['name']
+        fname = "segToFrag_"+job.groups[gid]['name']
         ex.add( resfiles[3], description=set_file_descr( fname+"_all.sql",
                                                          groupId=gid,step=step,type="sql",view="admin",
                                                          comment="all informative frags - null included" ))
@@ -301,7 +300,7 @@ def workflow_groups( ex, job, primers_dict, assembly, mapseq_files, mapseq_url,
     for gid, resfiles in processed['4cseq']['profileCorrection'].iteritems():
         profileCorrectedFile = resfiles[0]
         reportProfileCorrection = resfiles[1]
-        fname = "segToFrag_"+job_groups[gid]['name']+"_profileCorrected"
+        fname = "segToFrag_"+job.groups[gid]['name']+"_profileCorrected"
         gzipfile(ex,profileCorrectedFile)
         ex.add( profileCorrectedFile+".gz", 
                 description=set_file_descr(fname+".bedGraph.gz",groupId=gid,step=step,type="bedGraph",ucsc='1',gdv='1'))
@@ -311,19 +310,19 @@ def workflow_groups( ex, job, primers_dict, assembly, mapseq_files, mapseq_url,
     for gid, resfiles in processed['4cseq']['smoothFrag'].iteritems():
         smoothFile = resfiles[0]
         afterProfileCorrection = resfiles[1]
-        nFrags = str(job_groups[gid]['window_size'])
-        fname = "segToFrag_"+job_groups[gid]['name']+"_smoothed_"+nFrags+"FragsPerWin.bedGraph.gz"
+        nFrags = str(job.groups[gid]['window_size'])
+        fname = "segToFrag_"+job.groups[gid]['name']+"_smoothed_"+nFrags+"FragsPerWin.bedGraph.gz"
         gzipfile(ex,smoothFile)
         ex.add(smoothFile+".gz", 
                description=set_file_descr(fname,groupId=gid,step=step,type="bedGraph",ucsc='1',gdv='1'))
-        fname = "segToFrag_"+job_groups[gid]['name']+"_profileCorrected_smoothed_"+nFrags+"FragsPerWin.bedGraph.gz"
+        fname = "segToFrag_"+job.groups[gid]['name']+"_profileCorrected_smoothed_"+nFrags+"FragsPerWin.bedGraph.gz"
         gzipfile(ex,afterProfileCorrection)
         ex.add(afterProfileCorrection+".gz", 
                description=set_file_descr(fname,groupId=gid,step=step,type="bedGraph",ucsc='1',gdv='1'))
     step = "domainograms"
     for gid, resfiles in processed['4cseq']['domainogram'].iteritems():
         tarFile = resfiles.pop()
-        fname = job_groups[gid]['name']+"_domainogram.tar.gz"
+        fname = job.groups[gid]['name']+"_domainogram.tar.gz"
         ex.add(tarFile, description=set_file_descr(fname,
                                                    groupId=gid,step=step,type="tgz"))
         for s in resfiles:
