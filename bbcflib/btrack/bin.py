@@ -345,9 +345,10 @@ try:
                 if end>start: yield (chrom,start,end,score)
                 
             if isinstance(region,basestring): region = [region]
-            if isinstance(region,(list,tuple)) and len(region) < 3:
-                chrom = region[0]
-                region = [chrom, 0, self.chrmeta[chrom]['length']]
+            if isinstance(region,(list,tuple)):
+                if len(region) < 3:
+                    chrom = region[0]
+                    region = [chrom, 0, self.chrmeta[chrom]['length']]
             else:
                 raise ValueError("Region must be list ['chr',start,end] or a string 'chr'.")
             return FeatureStream( _join(_frag_cover(region), region[0]),
