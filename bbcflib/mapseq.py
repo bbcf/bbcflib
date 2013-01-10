@@ -330,7 +330,7 @@ def read_sets(reads,keep_unmapped=False):
     """
     last_read = None
     for r in reads:
-        if (not keep_unmapped) and (r.rname == -1 or r.is_unmapped):
+        if (not keep_unmapped) and (r.tid == -1 or r.is_unmapped):
             pass
         elif r.qname != last_read:
             if last_read != None:
@@ -471,7 +471,7 @@ def remove_duplicate_reads( bamfile, chromosomes,
         if lpatt: lname = lpatt.groups()[0]
         else: lname = '1'
         lib = lname+":"+(read.is_reverse and '1' or '0')
-        pos = "%s:%d" % (read.rname, read.pos)
+        pos = "%s:%d" % (read.tid, read.pos)
         if pos != pos_per_lib.get(lib):
             pos_per_lib[lib] = pos
             count_per_lib[lib] = 0
@@ -539,18 +539,18 @@ def bowtie(index, reads, args="-Sra"):
     list of strings.
     """
     sam_filename = unique_filename_in()
-    if isinstance(args, list):
-        options = args
-    elif isinstance(args, str):
-        options = [args]
+    if isinstance(args, (tuple,list)):
+        options = list(args)
+    elif isinstance(args, basestring):
+        options = args.split(" ")
     else:
-        raise ValueError("bowtie's args keyword argument requires a string or a " + \
-                         "list of strings.  Received: " + str(args))
+        raise ValueError("bowtie's args keyword argument requires a string or a "+\
+                         "list of strings.  Received: "+str(args))
     if isinstance(reads, list):
         reads = ",".join(reads)
     if isinstance(reads, tuple):
         reads = "-1 "+reads[0]+" -2 "+reads[1]
-        options += ["-X","800"]
+        if not("-X" in options): options += ["-X","800"]
     return {"arguments": ["bowtie"]+options+[index, reads, sam_filename],
             "return_value": sam_filename}
 
