@@ -466,7 +466,6 @@ def rnaseq_workflow(ex, job, pileup_level=["exons","genes","transcripts"], via="
         for rid,f in files.iteritems():
             k+=1
             cond = group_names[gid]+'.'+str(k)
-            exon_pileups[cond] = []
             exon_pileup = build_pileup(f['bam'],assembly,gene_mapping,exon_mapping,trans_in_gene,exons_in_trans,debugfile)
             if unmapped_fastq[cond] and cond in additionals:
                 for a,x in additionals[cond].iteritems():
