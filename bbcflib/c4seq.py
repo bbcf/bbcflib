@@ -3,7 +3,7 @@
 Module: bbcflib.c4seq
 =======================
 
-This module provides functions to run a 4c-seq analysis 
+This module provides functions to run a 4c-seq analysis
 from reads mapped on a reference genome.
 
 """
@@ -28,7 +28,7 @@ def loadPrimers(primersFile):
             s = re.sub(r'\s','',s)
             if not(s): continue
             if not(re.search(r'^>',s)):
-                if name: 
+                if name:
                     primers[name]['seq']=s
                     name = ''
                 continue
@@ -46,9 +46,9 @@ def loadPrimers(primersFile):
 
 @program
 def segToFrag( countsPerFragFile, regToExclude="", script_path='' ):
-    ''' 
+    '''
     This function calls segToFrag.awk (which transforms the counts per segment to a normalised count per fragment).
-    Provide a region to exclude if needed. 
+    Provide a region to exclude if needed.
     '''
     args = ["awk","-f",os.path.join(script_path,'segToFrag.awk')]
     if regToExclude: args += ["-v","reg2Excl="+regToExclude]
@@ -69,7 +69,7 @@ def smoothFragFile( inputFile, nFragsPerWin, curName, outputFile, regToExclude="
     return {'arguments': args, 'return_value': None}
 
 @program
-def runDomainogram( infile, name, prefix=None, regCoord="", 
+def runDomainogram( infile, name, prefix=None, regCoord="",
                     wmaxDomainogram=500, wmax_BRICKS=50, skip=0, script_path='' ):
     time.sleep(60)
     if prefix is None: prefix = name
@@ -86,7 +86,7 @@ def density_to_countsPerFrag( ex, file_dict, groups, assembly, regToExclude, scr
     for gid, group in groups.iteritems():
         density_file = file_dict['density'][gid]
         reffile = file_dict['lib'][gid]
-#	scores = track(density_file)
+#   scores = track(density_file)
         gm_futures = []
         for ch in assembly.chrnames:
             chref = os.path.join(reffile,ch+".bed.gz")
@@ -98,21 +98,21 @@ def density_to_countsPerFrag( ex, file_dict, groups, assembly, regToExclude, scr
             bedfile = unique_filename_in()+".bed"
             gMiner_job = {"operation": "score_by_feature",
                           "output": bedfile,
-                          "datatype": "qualitative",                          
+                          "datatype": "qualitative",
                           "args": "'"+json.dumps({"trackScores":density_file,
                                                   "trackFeatures":chref,
                                                   "chromosome":ch})+"'"}
             gm_futures.append((gMiner_run.nonblocking(ex,gMiner_job,via=via),
                                bedfile))
         outsql = unique_filename_in()+".sql"
-        sqlouttr = track( outsql, chrmeta=assembly.chrmeta, 
+        sqlouttr = track( outsql, chrmeta=assembly.chrmeta,
                           info={'datatype':'quantitative'},
                           fields=['start', 'end', 'score'] )
         outbed_all = []
         for n,f in enumerate(gm_futures):
             f[0].wait()
             fout = f[1]
-            if not(os.path.exists(fout)): 
+            if not(os.path.exists(fout)):
                 time.sleep(60)
                 touch(ex,fout)
             outbed_all.append(fout)
@@ -127,7 +127,7 @@ def density_to_countsPerFrag( ex, file_dict, groups, assembly, regToExclude, scr
         FragFile = unique_filename_in()
         touch(ex,FragFile)
         futures[gid] = (FragFile,
-                        segToFrag.nonblocking( ex, countsPerFragFile, regToExclude[gid], 
+                        segToFrag.nonblocking( ex, countsPerFragFile, regToExclude[gid],
                                                script_path, via=via, stdout=FragFile ))
     def _parse_select_frag(stream):
         for s in stream:
@@ -137,7 +137,7 @@ def density_to_countsPerFrag( ex, file_dict, groups, assembly, regToExclude, scr
                 patt = re.search(r'([^:]+):(\d+)-(\d+)',sr[1])
                 if patt:
                     coord = patt.groups()
-#                    if float(sr[11])>0.0: 
+#                    if float(sr[11])>0.0:
                     yield (coord[0], int(coord[1])-1, int(coord[2]), float(sr[11]))
     for gid, res in futures.iteritems():
         res[1].wait()
@@ -151,15 +151,16 @@ def density_to_countsPerFrag( ex, file_dict, groups, assembly, regToExclude, scr
     return results #[countsPerFrag_allBed, countsPerFrag_selectSql, segToFrag_out, segToFrag_sql]
 
 ############################################################################
-def workflow_groups( ex, job, primers_dict, assembly, mapseq_files, mapseq_url, 
+def workflow_groups( ex, job, primers_dict, assembly, mapseq_url,
                      c4_url=None, script_path='', logfile=None, via='lsf' ):
     '''
-    Main 
+    Main
     * open the 4C-seq minilims and create execution
-    * 0. get/create the library 
+    * 0. get/create the library
     * 1. if necessary, calculate the density file from the bam file (mapseq.parallel_density_sql)
     * 2. calculate the count per fragment for each denstiy file with bFlatMajor:score_by_feature to calculate)
     '''
+    mapseq_files = job.files
 ### outputs
     processed = {'lib': {}, 'density': {}, '4cseq': {}}
     regToExclude = {}
@@ -178,7 +179,7 @@ def workflow_groups( ex, job, primers_dict, assembly, mapseq_files, mapseq_url,
         before_profile_correction[gid] = group.get('before_profile_correction',False)
         if isinstance(before_profile_correction[gid],basestring):
             before_profile_correction[gid] = (before_profile_correction[gid].lower() in ['1','true','on','t'])
-        processed['lib'][gid] = get_libForGrp(ex, group, assembly, 
+        processed['lib'][gid] = get_libForGrp(ex, group, assembly,
                                               new_libs, gid, c4_url, via=via)
 #reffile='/archive/epfl/bbcf/data/DubouleDaan/library_Nla_30bps/library_Nla_30bps_segmentInfos.bed'
         density_files = []
@@ -189,7 +190,7 @@ def workflow_groups( ex, job, primers_dict, assembly, mapseq_files, mapseq_url,
                 density_file=parallel_density_sql( ex, mapseq_files[gid][rid]['bam'],
                                                    assembly.chrmeta,
                                                    nreads=mapseq_files[gid][rid]['stats']["total"],
-                                                   merge=0, 
+                                                   merge=0,
                                                    read_extension=mapseq_files[gid][rid]['stats']['read_length'],
                                                    convert=False,
                                                    via=via )
@@ -202,7 +203,7 @@ def workflow_groups( ex, job, primers_dict, assembly, mapseq_files, mapseq_url,
             density_files.append(density_file)
         # back to grp level!
         processed['density'][gid] = merge_sql(ex, density_files, via=via)
-        
+
     processed['4cseq'] = {'countsPerFrag': density_to_countsPerFrag( ex, processed, job.groups, assembly,
                                                                      regToExclude, script_path, via ),
                           'profileCorrection': {}, 'smoothFrag': {}, 'domainogram': {}}
@@ -219,9 +220,9 @@ def workflow_groups( ex, job, primers_dict, assembly, mapseq_files, mapseq_url,
         convert(processed['4cseq']['countsPerFrag'][gid][3],resfile)
         futures[gid] = (profileCorrection.nonblocking( ex, resfile,
                                                        primers_dict[group['name']]['baitcoord'],
-                                                       group['name'], file1, file2, script_path, 
+                                                       group['name'], file1, file2, script_path,
                                                        via=via ),
-                        smoothFragFile.nonblocking( ex, resfile, nFragsPerWin, group['name'], 
+                        smoothFragFile.nonblocking( ex, resfile, nFragsPerWin, group['name'],
                                                     file3, regToExclude[gid], script_path, via=via ))
         processed['4cseq']['profileCorrection'][gid] = [file1,file2,resfile]
         processed['4cseq']['smoothFrag'][gid] = [file3]
@@ -238,13 +239,13 @@ def workflow_groups( ex, job, primers_dict, assembly, mapseq_files, mapseq_url,
         futures2[gid] = (smoothFragFile.nonblocking( ex, profileCorrectedFile, nFragsPerWin, grName+"_fromProfileCorrected",
                                                      file4, regToExclude[gid], script_path, via=via ), )
         if run_domainogram[gid]:
-            regCoord = regToExclude[gid] or primers_dict[grName]['baitcoord'] 
+            regCoord = regToExclude[gid] or primers_dict[grName]['baitcoord']
             if before_profile_correction[gid]:
-                futures2[gid] += (runDomainogram.nonblocking( ex, bedGraph, grName, regCoord=regCoord, 
+                futures2[gid] += (runDomainogram.nonblocking( ex, bedGraph, grName, regCoord=regCoord,
                                                               script_path=script_path, via=via, memory=10 ), )
             else:
                 futures2[gid] += (runDomainogram.nonblocking( ex, profileCorrectedFile, grName,
-                                                              regCoord=regCoord.split(':')[0], skip=1, 
+                                                              regCoord=regCoord.split(':')[0], skip=1,
                                                               script_path=script_path, via=via, memory=10 ), )
     for gid, f in futures2.iteritems():
         futures[gid][1].wait()
@@ -258,23 +259,23 @@ def workflow_groups( ex, job, primers_dict, assembly, mapseq_files, mapseq_url,
             with open(logFile) as f:
                 for s in f:
                     s = s.strip()
-                    if re.search('####resfiles####',s): 
+                    if re.search('####resfiles####',s):
                         start = True
                     elif start and not re.search("RData",s):
                         resFiles.append(s)
                         res_tar.add(s)
             res_tar.close()
             processed['4cseq']['domainogram'][gid] = resFiles+[tarname]
-            
+
 ################ Add everything to minilims below!
     step = "density"
     for gid, sql in processed['density'].iteritems():
         fname = "density_file_"+job.groups[gid]['name']+"_merged"
-        ex.add( sql, description=set_file_descr( fname+".sql", 
+        ex.add( sql, description=set_file_descr( fname+".sql",
                                                  groupId=gid,step=step,type="sql",gdv="1" ) )
         wig = unique_filename_in()+".bw"
         convert( sql, wig )
-        ex.add( wig, description=set_file_descr( fname+".bw", 
+        ex.add( wig, description=set_file_descr( fname+".bw",
                                                  groupId=gid,step=step,type="bigWig",ucsc="1") )
     step = "norm_counts_per_frag"
     for gid, resfiles in processed['4cseq']['countsPerFrag'].iteritems():
@@ -301,7 +302,7 @@ def workflow_groups( ex, job, primers_dict, assembly, mapseq_files, mapseq_url,
         reportProfileCorrection = resfiles[1]
         fname = "segToFrag_"+job.groups[gid]['name']+"_profileCorrected"
         gzipfile(ex,profileCorrectedFile)
-        ex.add( profileCorrectedFile+".gz", 
+        ex.add( profileCorrectedFile+".gz",
                 description=set_file_descr(fname+".bedGraph.gz",groupId=gid,step=step,type="bedGraph",ucsc='1',gdv='1'))
         ex.add( reportProfileCorrection, description=set_file_descr(fname+".pdf",
                                                                     groupId=gid,step=step,type="pdf"))
@@ -312,11 +313,11 @@ def workflow_groups( ex, job, primers_dict, assembly, mapseq_files, mapseq_url,
         nFrags = str(job.groups[gid]['window_size'])
         fname = "segToFrag_"+job.groups[gid]['name']+"_smoothed_"+nFrags+"FragsPerWin.bedGraph.gz"
         gzipfile(ex,smoothFile)
-        ex.add(smoothFile+".gz", 
+        ex.add(smoothFile+".gz",
                description=set_file_descr(fname,groupId=gid,step=step,type="bedGraph",ucsc='1',gdv='1'))
         fname = "segToFrag_"+job.groups[gid]['name']+"_profileCorrected_smoothed_"+nFrags+"FragsPerWin.bedGraph.gz"
         gzipfile(ex,afterProfileCorrection)
-        ex.add(afterProfileCorrection+".gz", 
+        ex.add(afterProfileCorrection+".gz",
                description=set_file_descr(fname,groupId=gid,step=step,type="bedGraph",ucsc='1',gdv='1'))
     step = "domainograms"
     for gid, resfiles in processed['4cseq']['domainogram'].iteritems():
