@@ -456,7 +456,7 @@ def rnaseq_workflow(ex, job, pileup_level=["exons","genes","transcripts"], via="
     """ Find splice junctions """
     if junctions:
         print >> logfile, "Search for splice junctions"; logfile.flush()
-        find_junctions(ex,job,assembly,logfile)
+        find_junctions(ex,job,assembly,logfile=logfile)
 
     """ Build exon pileups from bam files """
     print >> logfile, "Build pileups"; logfile.flush()
