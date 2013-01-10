@@ -450,6 +450,7 @@ def rnaseq_workflow(ex, job, bam_files, pileup_level=["exons","genes","transcrip
     (gene_mapping, transcript_mapping, exon_mapping, trans_in_gene, exons_in_trans) = fetch_mappings(assembly)
 
     """ Map remaining reads to transcriptome """
+    print >> logfile, "Unmapped"; logfile.flush()
     unmapped_fastq,additionals = unmapped(ex,job,bam_files,assembly,group_names,
                                           exon_mapping,transcript_mapping,exons_in_trans,via)
     """ Find splice junctions """
@@ -698,6 +699,7 @@ def convert_junc_file(filename, assembly):
 
 #-------------------------- UNMAPPED READS ----------------------------#
 
+@timer
 def unmapped(ex,job,bam_files,assembly,group_names,exon_mapping,transcript_mapping,exons_in_trans,via):
     """
     Map reads that did not map to the exons to a collection of annotated transcripts,
@@ -717,6 +719,8 @@ def unmapped(ex,job,bam_files,assembly,group_names,exon_mapping,transcript_mappi
             k +=1
             cond = group_names[gid]+'.'+str(k)
             unmapped_fastq[cond] = bam_files[gid][rid].get('unmapped_fastq')
+            #unmapped_fastq["KO.1"] = "/archive/epfl/bbcf/jdelafon/test_rnaseq/KO_unmapped.fast.gz"
+            #unmapped_fastq["WT.1"] = "/archive/epfl/bbcf/jdelafon/test_rnaseq/WT_unmapped.fast.gz"
             if unmapped_fastq[cond] and os.path.exists(refseq_path+".1.ebwt"):
                 try:
                     unmapped_bam[cond] = mapseq.map_reads(ex, unmapped_fastq[cond], {}, refseq_path, \
