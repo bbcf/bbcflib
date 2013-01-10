@@ -407,7 +407,7 @@ def to_rpkm(counts, lengths, nreads):
     return rpkm
 
 @timer
-def rnaseq_workflow(ex, job, bam_files, pileup_level=["exons","genes","transcripts"], via="lsf",
+def rnaseq_workflow(ex, job, pileup_level=["exons","genes","transcripts"], via="lsf",
                     rpath=None, junctions=None, logfile=sys.stdout, debugfile=sys.stderr):
     """
     Main function of the workflow.
@@ -433,7 +433,7 @@ def rnaseq_workflow(ex, job, bam_files, pileup_level=["exons","genes","transcrip
     if isinstance(pileup_level,str): pileup_level=[pileup_level]
 
     """ Define conditions as 'group_name.run_id' """
-    for gid,files in bam_files.iteritems():
+    for gid,files in job.files.iteritems():
         k = 0
         for rid,f in files.iteritems():
             k+=1
@@ -451,17 +451,17 @@ def rnaseq_workflow(ex, job, bam_files, pileup_level=["exons","genes","transcrip
 
     """ Map remaining reads to transcriptome """
     print >> logfile, "Unmapped"; logfile.flush()
-    unmapped_fastq,additionals = unmapped(ex,job,bam_files,assembly,group_names,
+    unmapped_fastq,additionals = unmapped(ex,job,assembly,group_names,
                                           exon_mapping,transcript_mapping,exons_in_trans,via)
     """ Find splice junctions """
     if junctions:
         print >> logfile, "Search for splice junctions"; logfile.flush()
-        find_junctions(ex,job,bam_files,assembly)
+        find_junctions(ex,job,assembly,logfile)
 
     """ Build exon pileups from bam files """
     print >> logfile, "Build pileups"; logfile.flush()
     exon_pileups={}; nreads={};
-    for gid,files in bam_files.iteritems():
+    for gid,files in job.files.iteritems():
         k = 0
         for rid,f in files.iteritems():
             k+=1
@@ -631,7 +631,7 @@ def soapsplice(unmapped_R1, unmapped_R2, index, output=None, path_to_soapsplice=
     for k,v in options.iteritems(): opts.extend([str(k),str(v)])
     return {"arguments": args+opts, "return_value": output}
 
-def find_junctions(ex,job,bam_files,assembly,soapsplice_index=None,path_to_soapsplice=None,soapsplice_options={}):
+def find_junctions(ex,job,assembly,soapsplice_index=None,path_to_soapsplice=None,soapsplice_options={},logfile=sys.stdout):
     """
     Retrieve unmapped reads from a precedent mapping and runs SOAPsplice on them.
     Return the names of .bed and .sql tracks indicating the junctions positions, as well as
@@ -649,7 +649,7 @@ def find_junctions(ex,job,bam_files,assembly,soapsplice_index=None,path_to_soaps
     for gid, group in job.groups.iteritems():
         unmapped_fastq[gid] = []
         for rid, run in group['runs'].iteritems():
-            unmapped = bam_files[gid][rid].get('unmapped_fastq')
+            unmapped = job.files[gid][rid].get('unmapped_fastq')
             if not unmapped:
                 print >> logfile, "No unmapped reads found. Skip."
                 return 1
@@ -700,7 +700,7 @@ def convert_junc_file(filename, assembly):
 #-------------------------- UNMAPPED READS ----------------------------#
 
 @timer
-def unmapped(ex,job,bam_files,assembly,group_names,exon_mapping,transcript_mapping,exons_in_trans,via):
+def unmapped(ex,job,assembly,group_names,exon_mapping,transcript_mapping,exons_in_trans,via):
     """
     Map reads that did not map to the exons to a collection of annotated transcripts,
     in order to add counts to pairs of exons involved in splicing junctions.
@@ -718,7 +718,7 @@ def unmapped(ex,job,bam_files,assembly,group_names,exon_mapping,transcript_mappi
         for rid, run in group['runs'].iteritems():
             k +=1
             cond = group_names[gid]+'.'+str(k)
-            unmapped_fastq[cond] = bam_files[gid][rid].get('unmapped_fastq')
+            unmapped_fastq[cond] = job.files[gid][rid].get('unmapped_fastq')
             #unmapped_fastq["KO.1"] = "/archive/epfl/bbcf/jdelafon/test_rnaseq/KO_unmapped.fast.gz"
             #unmapped_fastq["WT.1"] = "/archive/epfl/bbcf/jdelafon/test_rnaseq/WT_unmapped.fast.gz"
             if unmapped_fastq[cond] and os.path.exists(refseq_path+".1.ebwt"):

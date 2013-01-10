@@ -62,7 +62,7 @@ def macs( read_length, genome_size, bamfile, ctrlbam=None, args=None ):
     macs_args = ["macs14","-t",bamfile,"-f","BAM","-g",str(genome_size)]
     if isinstance(args,list): macs_args += args
     if not(ctrlbam is None): macs_args += ["-c",ctrlbam]
-    if "-n" in macs_args: 
+    if "-n" in macs_args:
         outname = macs_args[macs_args.index("-n")+1]
     else:
         outname = common.unique_filename_in()
@@ -116,7 +116,7 @@ def add_macs_results( ex, read_length, genome_size, bamfile,
         macs_descr2 = {'step':'macs','type':'bed','groupId':n[0][0],'ucsc':'1'}
         filename = "_vs_".join([x[1] for x in n if x[0]])
         touch( ex, p )
-        ex.add( p, description=common.set_file_descr(filename,**macs_descr0), 
+        ex.add( p, description=common.set_file_descr(filename,**macs_descr0),
                 alias=alias )
         ex.add( p+"_peaks.xls",
                 description=common.set_file_descr(filename+"_peaks.xls",**macs_descr1),
@@ -173,7 +173,7 @@ def run_deconv(ex, sql, peaks, chromosomes, read_extension, script_path, via = '
                                                         chrom, clen,
                                                         read_extension, script_path,
                                                         via=via, stdout=stdout_files[chrom] )
-        time.sleep(150) ##avoid too many processes reading same sql 
+        time.sleep(150) ##avoid too many processes reading same sql
     deconv_out = {}
     for c,f in deconv_futures.iteritems():
         f.wait()
@@ -199,7 +199,7 @@ def run_deconv(ex, sql, peaks, chromosomes, read_extension, script_path, via = '
                    fields=["start","end","score","name"],
                    info={'datatype':'qualitative'})
     outwig = track(outfiles['profile'], chrmeta=chromosomes,
-                   fields=["start","end","score"],                         
+                   fields=["start","end","score"],
                    info={'datatype':'quantitative'})
     outbed.open()
     outwig.open()
@@ -218,15 +218,13 @@ def run_deconv(ex, sql, peaks, chromosomes, read_extension, script_path, via = '
 ################################################################################
 # Workflow #
 
-def workflow_groups( ex, job_or_dict, mapseq_files, assembly, script_path='',
+def workflow_groups( ex, job_or_dict, assembly, script_path='',
                      logfile=None, via='lsf' ):
     """Runs a chipseq workflow over bam files obtained by mapseq. Will optionally run ``macs`` and 'run_deconv'.
 
     :param ex: a 'bein' execution environment to run jobs in,
 
     :param job_or_dict: a 'Frontend' 'job' object, or a dictionary with key 'groups' and 'options' if applicable,
-
-    :param mapseq_files: a dictionary of files fomr a 'mapseq' execution, imported via 'mapseq.get_bam_wig_files',
 
     :param assembly: a genrep.Assembly object,
 
@@ -242,6 +240,7 @@ def workflow_groups( ex, job_or_dict, mapseq_files, assembly, script_path='',
 
     Returns a tuple of a dictionary with keys *group_id* from the job groups, *macs* and *deconv* if applicable and values file description dictionaries and a dictionary of *group_ids* to *names* used in file descriptions.
 """
+    mapseq_files = job_or_dict.files
     options = {}
     if logfile is None: logfile = sys.stdout
     if isinstance(job_or_dict,frontend.Job):
@@ -385,24 +384,24 @@ def workflow_groups( ex, job_or_dict, mapseq_files, assembly, script_path='',
             bedfile.write(FeatureStream(
                     _filter_deconv(trbed.read(fields=trfields),0.65),fields=trfields))
             bedfile.close()
-            ex.add(deconv['peaks'], 
+            ex.add(deconv['peaks'],
                    description=common.set_file_descr(name[1]+'_peaks.sql',
                                                      type='sql',
                                                      step='deconvolution',
                                                      groupId=name[0]))
-            ex.add(deconv['profile'], 
+            ex.add(deconv['profile'],
                    description=common.set_file_descr(name[1]+'_deconv.sql',
                                                      type='sql',
                                                      step='deconvolution',
                                                      groupId=name[0]))
             bigwig = common.unique_filename_in()
             convert(deconv['profile'],(bigwig,"bigWig"))
-            ex.add(bigwig, 
+            ex.add(bigwig,
                    description=common.set_file_descr(name[1]+'_deconv.bw',
                                                      type='bigWig', ucsc='1',
                                                      step='deconvolution',
                                                      groupId=name[0]))
-            ex.add(deconv['pdf'], 
+            ex.add(deconv['pdf'],
                    description=common.set_file_descr(name[1]+'_deconv.pdf',
                                                      type='pdf',
                                                      step='deconvolution',
@@ -412,24 +411,24 @@ def workflow_groups( ex, job_or_dict, mapseq_files, assembly, script_path='',
         ptrack = track(plist,chrmeta=chrlist)
         peakfile = common.unique_filename_in()
         touch(ex,peakfile)
-        peakout = track(peakfile, format='txt', chrmeta=chrlist, 
+        peakout = track(peakfile, format='txt', chrmeta=chrlist,
                               fields=['chr','start','end','name',
                                       'gene','location_type','distance'])
         for chrom in assembly.chrnames:
             peakout.write(gm_stream.getNearestFeature(
-                    ptrack.read(selection=chrom), 
+                    ptrack.read(selection=chrom),
                     assembly.gene_track(chrom)),mode='append')
         peakout.close()
         common.gzipfile(ex,peakfile)
-        ex.add(peakfile+".gz", 
+        ex.add(peakfile+".gz",
                description=common.set_file_descr(name[1]+'_annotated_peaks.txt.gz',type='text',
                                                  step='annotation',groupId=name[0]))
     if run_meme:
         from bbcflib.motif import parallel_meme
         logfile.write("Starting MEME.\n");logfile.flush()
-        processed['meme'] = parallel_meme( ex, assembly, 
+        processed['meme'] = parallel_meme( ex, assembly,
                                            peak_list.values(), name=peak_list.keys(),
-                                           chip=True, meme_args=['-meme-nmotifs','4'], 
+                                           chip=True, meme_args=['-meme-nmotifs','4'],
                                            via=via )
     return processed
 

@@ -85,7 +85,7 @@ def _find_snp(info,minsnp,mincov,assembly):
     ref = info[2].upper() # reference base
     cons = info[3].upper() # consensus base
     nreads = info[7] # total coverage at this position
-    if int(nreads)-cpt < minsnp: 
+    if int(nreads)-cpt < minsnp:
         return ref
     snp_qual = 10**(-float(info[5])/10)
     if re.search(r'[ACGTN]',cons): # if bases are encoded normally (~100% replacement)
@@ -298,7 +298,7 @@ def create_tracks(ex, outall, sample_names, assembly):
         ex.add(out+'.bed.gz', description=description)
 
 
-def snp_workflow(ex, job, bam_files, assembly, mincov, minsnp, path_to_ref, via):
+def snp_workflow(ex, job, assembly, mincov, minsnp, path_to_ref, via):
     """Main function of the workflow"""
     if path_to_ref is None:
         path_to_ref = os.path.join(assembly.genrep.root,'nr_assemblies/fasta',assembly.md5+'.tar.gz')
@@ -307,7 +307,7 @@ def snp_workflow(ex, job, bam_files, assembly, mincov, minsnp, path_to_ref, via)
     pileup_dict = dict((chrom,{}) for chrom in genomeRef.keys()) # {chr: {}}
     sample_names = []
     bam = {}
-    for gid, files in bam_files.iteritems():
+    for gid, files in job.files.iteritems():
         sample_name = job.groups[gid]['name']
         sample_names.append(sample_name)
         # Merge all bams belonging to the same group

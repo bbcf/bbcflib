@@ -122,6 +122,7 @@ class Job(object):
         self.email = email
         self.groups = {}
         self.options = options
+        self.files = {}
 
     def add_group(self, id, name, group=None):
         """Add info on the group to `self.groups`. If a dictionary *group* is given,
