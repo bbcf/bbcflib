@@ -195,7 +195,9 @@ def parseConfig( file, job=None, gl=None ):
                     continue
             options[k] = v
     newjob = Job( id, created_at, key, assembly_id, description, email, options )
-    if isinstance(job,Job): newjob.groups = job.groups
+    if isinstance(job,Job): 
+        newjob.groups = job.groups
+        newjob.files = job.files
     for gid, group in config.get('Groups',{}).iteritems():
         if not('name' in group):
             raise ValueError("Each entry in 'Groups' must have a 'name'")
@@ -204,12 +206,16 @@ def parseConfig( file, job=None, gl=None ):
         else:
             group['control'] = False
         newjob.add_group(id=int(gid),name=group.pop('name'),group=group)
-
+        newjob.files.setdefault(int(gid),{})
     for rid, run in config.get('Runs',{}).iteritems():
         if not('group_id' in run):
             raise ValueError("Each entry in 'Runs' must have a 'group_id'")
         run['group_id'] = int(run['group_id'])
         newjob.add_run(id=int(rid),**run)
+    for rid, run in config.get('Files',{}).iteritems():
+        gid = int(run['group_id'])
+        run.pop('group_id')
+        newjob.files[gid].setdefault(int(rid),{}).update(run)
     newgl = config.get('Global variables',{})
     if gl is None: gl = {}
     for k,v in gl.iteritems():

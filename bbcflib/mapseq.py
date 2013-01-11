@@ -60,7 +60,7 @@ Below is the script used by the frontend::
         pdf = add_pdf_stats( ex, mapped_files,
                              dict((k,v['name']) for k,v in job.groups.iteritems()),
                              gl['script_path'] )
-        density_files = densities_groups( ex, job, job.files, assembly.chromosomes )
+        density_files = densities_groups( ex, job, mapped_files, assembly.chromosomes )
         gdv_project = gdv.new_project( gl['gdv']['email'], gl['gdv']['key'],
                                        job.description, assembly.id, gl['gdv']['url'] )
         add_pickle( ex, gdv_project, description='py:gdv_json' )
@@ -1152,8 +1152,9 @@ def get_bam_wig_files( ex, job, minilims=None, hts_url=None, suffix=['fwd','rev'
     These references are either 'mapseq' keys or urls.
     """
     read_exts = {}
+    mapped_files = {}
     for gid,group in job.groups.iteritems():
-        job.files[gid] = {}
+        mapped_files[gid] = {}
         if 'name' in group:
             group_name = re.sub(r'\s+','_',group['name'])
         else:
@@ -1264,12 +1265,12 @@ def get_bam_wig_files( ex, job, minilims=None, hts_url=None, suffix=['fwd','rev'
                         wig = dict((x[1],s) for x,s in wig_ids.iteritems())
             else:
                 raise ValueError("Couldn't find this bam file anywhere: %s" %file_loc)
-            job.files[gid][rid] = {'bam': bamfile,
+            mapped_files[gid][rid] = {'bam': bamfile,
                                    'stats': stats or bamstats( ex, bamfile ),
                                    'poisson_threshold': p_thresh,
                                    'libname': name,
                                    'wig': wig}
-            if fetch_unmapped: job.files[gid][rid].update({'unmapped_fastq':fastqfiles})
+            if fetch_unmapped: mapped_files[gid][rid].update({'unmapped_fastq':fastqfiles})
     if len(read_exts)>0 and not('read_extension' in job.options):
         c = dict((x,0) for x in read_exts.values())
         for x in read_exts.values():
@@ -1278,16 +1279,18 @@ def get_bam_wig_files( ex, job, minilims=None, hts_url=None, suffix=['fwd','rev'
     for gid, group in job.groups.iteritems():
         for rid,run in group['runs'].iteritems():
             if ('read_extension' in job.options) and (read_exts.get(rid) != job.options['read_extension']):
-                job.files[gid][rid]['wig'] = []
-            if not(isinstance(job.files[gid][rid]['stats'],dict)):
-                stats = job.files[gid][rid]['stats'].wait()
-                job.files[gid][rid]['stats'] = stats
-                grname = job.files[gid][rid]['libname']
+                mapped_files[gid][rid]['wig'] = []
+            if not(isinstance(mapped_files[gid][rid]['stats'],dict)):
+                stats = mapped_files[gid][rid]['stats'].wait()
+                mapped_files[gid][rid]['stats'] = stats
+                grname = mapped_files[gid][rid]['libname']
                 pdf = add_pdf_stats( ex, {gid:{rid:{'stats':stats}}},
                                      {gid: grname},
                                      script_path,
                                      set_file_descr(grname+"_mapping_report.pdf",step='import_data',type='pdf',groupId=gid) )
-                job.files[gid][rid]['poisson_threshold'] = poisson_threshold( 50*stats["actual_coverage"] )
+                mapped_files[gid][rid]['poisson_threshold'] = poisson_threshold( 50*stats["actual_coverage"] )
+            mapped_files[gid][rid].update(job.files[gid][rid])
+    job.files = mapped_files
     return job
 
 #-----------------------------------#
