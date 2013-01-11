@@ -298,7 +298,7 @@ def create_tracks(ex, outall, sample_names, assembly):
         ex.add(out+'.bed.gz', description=description)
 
 
-def snp_workflow(ex, job, assembly, mincov, minsnp, path_to_ref, via):
+def snp_workflow(ex, job, assembly, mincov=40, minsnp=5, path_to_ref='', via='local'):
     """Main function of the workflow"""
     if path_to_ref is None:
         path_to_ref = os.path.join(assembly.genrep.root,'nr_assemblies/fasta',assembly.md5+'.tar.gz')
