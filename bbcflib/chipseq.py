@@ -224,7 +224,7 @@ def workflow_groups( ex, job_or_dict, assembly, script_path='',
 
     :param ex: a 'bein' execution environment to run jobs in,
 
-    :param job_or_dict: a 'Frontend' 'job' object, or a dictionary with key 'groups' and 'options' if applicable,
+    :param job_or_dict: a 'Frontend' 'job' object, or a dictionary with key 'groups', 'files' and 'options' if applicable,
 
     :param assembly: a genrep.Assembly object,
 
@@ -240,12 +240,12 @@ def workflow_groups( ex, job_or_dict, assembly, script_path='',
 
     Returns a tuple of a dictionary with keys *group_id* from the job groups, *macs* and *deconv* if applicable and values file description dictionaries and a dictionary of *group_ids* to *names* used in file descriptions.
 """
-    mapseq_files = job_or_dict.files
     options = {}
     if logfile is None: logfile = sys.stdout
     if isinstance(job_or_dict,frontend.Job):
         options = job_or_dict.options
         groups = job_or_dict.groups
+        mapseq_files = job_or_dict.files
     elif isinstance(job_or_dict,dict) and 'groups' in job_or_dict:
         if 'options' in job_or_dict:
             options = job_or_dict['options']
@@ -253,8 +253,9 @@ def workflow_groups( ex, job_or_dict, assembly, script_path='',
         for gid in groups.keys():
             if not('name' in groups[gid]):
                 groups[gid]['name'] = gid
+        mapseq_files = job_or_dict.get('files',{})
     else:
-        raise TypeError("job_or_dict must be a frontend.Job object or a dictionary with key 'groups'.")
+        raise TypeError("job_or_dict must be a frontend. Job object or a dictionary with key 'groups'.")
     merge_strands = int(options.get('merge_strands',-1))
     suffixes = ["fwd","rev"]
     peak_deconvolution = options.get('peak_deconvolution',False)

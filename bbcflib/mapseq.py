@@ -60,7 +60,7 @@ Below is the script used by the frontend::
         pdf = add_pdf_stats( ex, mapped_files,
                              dict((k,v['name']) for k,v in job.groups.iteritems()),
                              gl['script_path'] )
-        density_files = densities_groups( ex, job, job.files, assembly.chromosomes )
+        density_files = densities_groups( ex, job, mapped_files, assembly.chromosomes )
         gdv_project = gdv.new_project( gl['gdv']['email'], gl['gdv']['key'],
                                        job.description, assembly.id, gl['gdv']['url'] )
         add_pickle( ex, gdv_project, description='py:gdv_json' )
