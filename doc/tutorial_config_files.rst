@@ -16,25 +16,25 @@ Here is a typical workflow that uses both ``mapseq`` and ``chipseq``. The config
     [[hts_mapseq]]
     url='http://htsstation.epfl.ch/mapseq/'
     download='http://htsstation.epfl.ch/lims/mapseq/mapseq_minilims.files/'
-    [[gdv]] 
+    [[gdv]]
     url='http://gdv.epfl.ch/pygdv'
     email='your.email@yourplace.org'
     key='pErS0na1&keY%0Ng2V'
 
 For example, if you intend to download data from the LIMS, you need to setup your account::
 
-    [[lims]] 
+    [[lims]]
     user='limslogin'
-    [[[passwd]]] 
+    [[[passwd]]]
     lgtf='xxxxxxxx'
     gva='yyyyyyy'
 
 Similarly, if you want to receive an email upon completion of the pipeline, submit the relevant informations for the sender email::
 
-    [[email]] 
+    [[email]]
     sender='webmaster@lab.edu'
     smtp='local.machine.edu'
-    
+
 Then comes the job description::
 
     [Job]
@@ -46,7 +46,7 @@ Then comes the job description::
     input_type=0
     compute_densities=True
     discard_pcr_duplicates=True
-    
+
 Experimental conditions correspond to `groups` which are numbered, each condition may have any number of replicates (called `runs`) which are associated with their respective group via its numeric `group_id`::
 
     [Groups]
@@ -56,7 +56,7 @@ Experimental conditions correspond to `groups` which are numbered, each conditio
     [[2]]
     control=False
     name='stimulated'
-    
+
     [Runs]
     [[1]]
     url='http://some.place.edu/my_control.fastq'
@@ -77,7 +77,7 @@ We next analyse how these python scripts are using these configuration and proce
     from bbcflib import daflims, genrep, frontend, gdv, common
     from bbcflib.mapseq import *
     from bbcflib.chipseq import *
-    
+
 Then connect to a ``MiniLIMS`` and parse the configuration file::
 
     M = MiniLIMS( 'test_lims' )
@@ -114,7 +114,7 @@ This corresponds to the code below::
             density_files = densities_groups( ex, job, mapped_files, assembly.chromosomes, via=via )
             if job.options['gdv_project']:
                 gdv_project = gdv.create_gdv_project( gl['gdv']['key'], gl['gdv']['email'],
-                                                      job.description, hts_key, 
+                                                      job.description, hts_key,
                                                       assembly.nr_assembly_id,
                                                       gdv_url=gl['gdv']['url'], public=True )
                 add_pickle( ex, gdv_project, description='py:gdv_json' )
@@ -125,18 +125,18 @@ Finally all the output files are returned as a dictionary::
 
 this dictionary will be organized by file type and provide a descriptive name and the actual (repository) file name, e.g.::
 
-    {'none': {'7XgDex9cTCn8JjEk005Q': 'test.sql'}, 
-    'py': {'hkwjU7nnhE0uuZostJmF': 'file_names', 'M844kgtaGpgybnq5APsb': 'test_full_bamstat', 'cRzKabyKnN0dcRHaAVsj': 'test_Poisson_threshold', 'j4EWGj2riic7Xz47hKhj': 'test_filter_bamstat'}, 
-    'sql': {'7XgDex9cTCn8JjEk005Q_merged.sql': 'test_merged.sql'}, 
+    {'none': {'7XgDex9cTCn8JjEk005Q': 'test.sql'},
+    'py': {'hkwjU7nnhE0uuZostJmF': 'file_names', 'M844kgtaGpgybnq5APsb': 'test_full_bamstat', 'cRzKabyKnN0dcRHaAVsj': 'test_Poisson_threshold', 'j4EWGj2riic7Xz47hKhj': 'test_filter_bamstat'},
+    'sql': {'7XgDex9cTCn8JjEk005Q_merged.sql': 'test_merged.sql'},
     'bigwig': {'UjaseL2p8Z1RnDetZ2YX': 'test_merged.bw'},
-    'pdf': {'13wUAjrQEikA5hXEgTt': 'mapping_report.pdf'}, 
+    'pdf': {'13wUAjrQEikA5hXEgTt': 'mapping_report.pdf'},
     'bam': {'mJP4dqP1f2K6Pw2iZ2LZ': 'test_filtered.bam', 'IRn3o49zIZ2JOOkMxAJl.bai': 'test_complete.bam.bai', 'IRn3o49zIZ2JOOkMxAJl': 'test_complete.bam', 'mJP4dqP1f2K6Pw2iZ2LZ.bai': 'test_filtered.bam.bai'}}
 
-If you then want to continue with a ChIP-seq analysis, you can start a new execution, collect the files with :func:`bbcflib.chipseq.get_bam_wig_files` and run :func:`bbcflib.chipseq.workflow_groups`::
+If you then want to continue with a ChIP-seq analysis, you can start a new execution, collect the files with :func:`bbcflib.mapseq.get_bam_wig_files` and run :func:`bbcflib.chipseq.workflow_groups` with the updated job::
 
     with execution( M, description='test_chipseq' ) as ex:
-        (mapped_files, job) = get_bam_wig_files( ex, job, 'test_lims', gl['hts_mapseq']['url'], gl['script_path'], via=via )
-        chipseq_files = workflow_groups( ex, job, mapped_files, assembly.chromosomes, gl['script_path'] )
+        job = get_bam_wig_files( ex, job, 'test_lims', gl['hts_mapseq']['url'], gl['script_path'], via=via )
+        chipseq_files = workflow_groups( ex, job, assembly.chromosomes, gl['script_path'] )
 
 
 Parameters common to all modules
@@ -161,7 +161,7 @@ In addition, a set of numbered `groups` (experimental conditions) and for each o
     name='unstimulated'
     [[2]]
     name='stimulated'
-    
+
     [Runs]
     [[1]]
     url='http://some.place.edu/my_control.fastq'
@@ -171,6 +171,25 @@ In addition, a set of numbered `groups` (experimental conditions) and for each o
     group_id=2
     [[3]]
     url='http://some.place.edu/my_test2.fastq'
+    group_id=2
+
+For all modules but the Mapping one, mapping results and their parameters (as gotten from :func:`bbcflib.mapseq.get_bam_wig_files`) can be overwritten (which is very useful for testing purposes)::
+
+    [Files]
+    [[1]]
+    bam='my_control.bam'
+    unmapped_fastq='unmapped_control.fastq'
+    wig='somefile.wig'
+    libname='new_run_name'
+    poisson_threshold=None
+    group_id=1
+    [[[stats]]]
+    read_length=100     # etc.
+    [[2]]
+    bam='my_test1.bam'
+    group_id=2
+    [[3]]
+    bam='my_test2.bam'
     group_id=2
 
 Mapping parameters

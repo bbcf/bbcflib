@@ -718,8 +718,6 @@ def unmapped(ex,job,assembly,group_names,exon_mapping,transcript_mapping,exons_i
             k +=1
             cond = group_names[gid]+'.'+str(k)
             unmapped_fastq[cond] = job.files[gid][rid].get('unmapped_fastq')
-            #unmapped_fastq["KO.1"] = "/archive/epfl/bbcf/jdelafon/test_rnaseq/KO_unmapped.fast.gz"
-            #unmapped_fastq["WT.1"] = "/archive/epfl/bbcf/jdelafon/test_rnaseq/WT_unmapped.fast.gz"
             if unmapped_fastq[cond] and os.path.exists(refseq_path+".1.ebwt"):
                 try:
                     unmapped_bam[cond] = mapseq.map_reads(ex, unmapped_fastq[cond], {}, refseq_path, \
