@@ -283,8 +283,7 @@ def _combine(trackList,fn,win_size,aggregate):
         k+=1
 
 @common.ordered
-def combine(trackList, fn, win_size=1000,
-            aggregate={'strand':common.strand_merge, 'chr':common.no_merge}):
+def combine(trackList, fn, win_size=1000, aggregate={}):
     """
     Applies a custom function to a list of tracks, such as union, intersection,
     etc., and return a single result track. The input streams need to be ordered
@@ -303,6 +302,8 @@ def combine(trackList, fn, win_size=1000,
         all *trackList*'s scores in the output.
     :rtype: FeatureStream
     """
+    aggregate.setdefault('strand',common.strand_merge)
+    aggregate.setdefault('chr',common.no_merge)
     fields = ['start','end']
     if len(trackList) < 2: return trackList
     if isinstance(fn,str): fn = eval(fn) # can type combine(...,fn='intersection')
