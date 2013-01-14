@@ -207,7 +207,8 @@ def get_fastq_files( ex, job, dafl=None, set_seed_length=True):
                 run = str(run['url']).strip()
             if isinstance(run,dict) and all([x in run for x in ['facility','machine','run','lane']]):
                 dafl1 = dafl[run['facility']]
-                daf_data = dafl1.fetch_fastq( str(run['facility']), str(run['machine']), run['run'], run['lane'],
+                daf_data = dafl1.fetch_fastq( str(run['facility']), str(run['machine']), 
+                                              run['run'], run['lane'],
                                               libname=run.get('sequencing_library') )
                 job.groups[gid]['runs'][rid] = daf_data['path']
                 if (set_seed_length):
@@ -1289,7 +1290,7 @@ def get_bam_wig_files( ex, job, minilims=None, hts_url=None, suffix=['fwd','rev'
                                      script_path,
                                      set_file_descr(grname+"_mapping_report.pdf",step='import_data',type='pdf',groupId=gid) )
                 mapped_files[gid][rid]['poisson_threshold'] = poisson_threshold( 50*stats["actual_coverage"] )
-            mapped_files[gid][rid].update(job.files[gid].get(rid,{}))
+            mapped_files[gid][rid].update(job.files.get(gid,{}).get(rid,{}))
     job.files = mapped_files
     return job
 
