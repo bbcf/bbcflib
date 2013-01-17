@@ -638,7 +638,7 @@ def find_junctions(ex,job,assembly,soapsplice_index=None,path_to_soapsplice=None
 
     :param soapsplice_index: (str) path to the SOAPsplice index.
     :param path_to_soapsplice: (str) specify the path to the program if it is not in your $PATH.
-    :param soapsplice_options: (dict) SOAPsplice options, e.g. {'-q',1} .
+    :param soapsplice_options: (dict) SOAPsplice options, e.g. {'-q',1}.
     :rtype: str, str, str
     """
     assembly = genrep.Assembly(assembly.id, intype=3)

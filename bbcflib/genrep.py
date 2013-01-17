@@ -381,8 +381,7 @@ class Assembly(object):
         if not(os.path.exists(path_to_ref)): return None
         if convert:
             # Create a dict of the form {'2704_NC_001144.4': chrXII}
-            chrlist = dict((str(k[0])+"_"+str(k[1])+"."+str(k[2]),v['name'])
-                           for k,v in self.chromosomes.iteritems())
+            chrlist = dict((v['ac'],k) for k,v in self.chrmeta.iteritems())
         else:
             chrlist = {}
         archive = tarfile.open(path_to_ref)
