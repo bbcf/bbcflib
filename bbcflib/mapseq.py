@@ -156,8 +156,8 @@ def get_fastq_files( ex, job, dafl=None, set_seed_length=True):
     def _expand_fastq(ex,run,target):
         target2 = unique_filename_in()
         run_strip = run
-        is_gz = run.endswith(".gz") or run.endswith(".gzip")
-        is_bz2 = run.endswith(".bz2")
+        is_gz = run.endswith((".gz",".gzip"))
+        is_bz2 = run.endswith((".bz",".bz2"))
         if is_gz: run_strip = re.sub('.gz[ip]*','',run)
         if is_bz2: run_strip = re.sub('.bz[2]*','',run)
 
@@ -555,6 +555,56 @@ def bowtie(index, reads, args="-Sra"):
     return {"arguments": ["bowtie"]+options+[index, reads, sam_filename],
             "return_value": sam_filename}
 
+def untar_cat_fasta(fastafile):
+    target = unique_filename_in()
+    is_gz = fastafile.endswith((".gz",".gzip"))
+    is_bz2 = fastafile.endswith((".bz2",".bz"))
+    file_strip = fastafile
+    if is_gz: file_strip = re.sub('.gz[ip]*','',fastafile)
+    if is_bz2: file_strip = re.sub('.bz[2]*','',fastafile)
+
+    def _rewrite(input_file,output_file,mode='w'):
+        with open(output_file,mode) as g:
+            while True:
+                chunk = input_file.read(4096)
+                if chunk == '': break
+                else: g.write(chunk)
+
+    if file_strip.endswith(".tar"):
+        mode = 'r'
+        if is_gz: mode += '|gz'
+        tarfh = tarfile.open(fastafile, mode=mode)
+        outmode = 'w'
+        for tarname in tarfh:
+            if tarname.isdir(): continue
+            input_file = tarfh.extractfile(tarname)
+            _rewrite(input_file,target,outmode)
+            input_file.close()
+            outmode = 'a'
+        tarfh.close()
+    elif is_gz:
+        input_file = gzip.open(fastafile, 'rb')
+        _rewrite(input_file,target)
+        input_file.close()
+    elif is_bz2:
+        input_file = bz2.BZ2File(fastafile,mode='r')
+        _rewrite(input_file,target)
+        input_file.close()
+    else:
+        target = fastafile
+    return target
+
+@program
+def fasta_length(file):
+    """Binds the `fastalength` program and returns a `chromosomes` dictionary {'chr1': {'name': 'chr1', 'length': xxxx}, ...}.
+    """
+    def _len_to_dict(p):
+        chroms = {}
+        for l in p.stdout:
+            row = l.strip().split()
+            chroms[row[1]] = {'name': row[1], 'length': int(row[0])}
+        return chroms
+    return {'arguments': ['fastalength', file], 'return_value': _len_to_dict}
 
 @program
 def bowtie_build(files, index=None):
@@ -874,6 +924,11 @@ def map_groups( ex, job_or_dict, assembly_or_dict, map_args=None ):
             map_args['maxhits'] = max(int(map_args.get('maxhits') or 50),50)
         index_path = assembly_or_dict.index_path
     elif isinstance(assembly_or_dict,dict) and 'chromosomes' in assembly_or_dict:
+        if assembly_or_dict.index_path is None and 'fasta_path' in assembly_or_dict:
+            fasta = untar_cat_fasta(assembly_or_dict['fasta_path'])
+            assembly_or_dict['index_path'] = bowtie_build.nonblocking(ex,fasta,via=map_args.get('via'))
+            assembly_or_dict['chromosomes'] = fasta_length.nonblocking(ex,fasta,via=map_args.get('via')).wait()
+            assembly_or_dict['index_path'] = assembly_or_dict['index_path'].wait()
         chromosomes = assembly_or_dict['chromosomes']
         index_path = assembly_or_dict['index_path ']
     else:
