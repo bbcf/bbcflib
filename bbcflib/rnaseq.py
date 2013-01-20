@@ -192,7 +192,7 @@ def build_pileup(bamfile, assembly, gene_mapping, exon_mapping, trans_in_gene, e
                 #The callback (c.n += 1) is executed for each alignment in a region
                 sam.fetch(ref,start,end, callback=c)
             except ValueError,ve: # unknown reference
-                #print >> logfile, ve
+                #print >> debugfile, ve
                 continue
             for exon in ex:
                 counts[exon] = counts.get(exon,0) + c.n/float(len(ex))
