@@ -7,7 +7,7 @@ Utility functions common to several pipelines.
 """
 
 # Built-in modules #
-import os, sys, time, csv, string, random, pickle, re, json
+import os, sys, time, csv, string, random, pickle, re, json, functools
 
 
 #-------------------------------------------------------------------------#
@@ -141,6 +141,7 @@ def track_header( descr, ftype, url, ffile ):
 #-------------------------------------------------------------------------#
 def timer(function):
     """ A decorator that makes the decorated *function* return its execution time. """
+    @functools.wraps(function)
     def wrapper(*args, **kwargs):
         t1 = time.time()
         result = function(*args, **kwargs)

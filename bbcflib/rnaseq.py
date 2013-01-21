@@ -630,6 +630,7 @@ def soapsplice(unmapped_R1, unmapped_R2, index, output=None, path_to_soapsplice=
     for k,v in options.iteritems(): opts.extend([str(k),str(v)])
     return {"arguments": args+opts, "return_value": output}
 
+@timer
 def find_junctions(ex,job,assembly,soapsplice_index=None,path_to_soapsplice=None,soapsplice_options={},logfile=sys.stdout):
     """
     Retrieve unmapped reads from a precedent mapping and runs SOAPsplice on them.
