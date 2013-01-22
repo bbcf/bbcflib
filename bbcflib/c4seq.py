@@ -59,7 +59,7 @@ def _RCMD(path,script):
 
 @program
 def profileCorrection( inputFile, baitCoord, name, outputFile, reportFile, script_path='' ):
-    time.sleep(60)
+    time.sleep(20)
     args = _RCMD(script_path,"profileCorrection.R")+[inputFile,baitCoord,name,outputFile,reportFile]
     return {'arguments': args, 'return_value': None}
 
@@ -141,11 +141,13 @@ def density_to_countsPerFrag( ex, file_dict, groups, assembly, regToExclude, scr
                     yield (coord[0], int(coord[1])-1, int(coord[2]), float(sr[11]))
     for gid, res in futures.iteritems():
         res[1].wait()
+        touch(ex,res[0])
         segOut = open(res[0],"r")
         resBedGraph = unique_filename_in()+".sql"
         sqlTr = track( resBedGraph, fields=['start','end','score'],
                        info={'datatype':'quantitative'}, chrmeta=assembly.chrmeta )
         sqlTr.write(_parse_select_frag(segOut),fields=['chr','start','end','score'])
+        sqlTr.close()
         segOut.close()
         results[gid].extend([res[0],resBedGraph])
     return results #[countsPerFrag_allBed, countsPerFrag_selectSql, segToFrag_out, segToFrag_sql]
@@ -218,6 +220,8 @@ def workflow_groups( ex, job, primers_dict, assembly, mapseq_url,
         nFragsPerWin = group['window_size']
         resfile = unique_filename_in()+".bedGraph"
         convert(processed['4cseq']['countsPerFrag'][gid][3],resfile)
+        time.sleep(20)
+        touch(ex,resfile)
         futures[gid] = (profileCorrection.nonblocking( ex, resfile,
                                                        primers_dict[group['name']]['baitcoord'],
                                                        group['name'], file1, file2, script_path,
