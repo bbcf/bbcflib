@@ -192,7 +192,7 @@ def build_pileup(bamfile, assembly, gene_mapping, exon_mapping, trans_in_gene, e
                 #The callback (c.n += 1) is executed for each alignment in a region
                 sam.fetch(ref,start,end, callback=c)
             except ValueError,ve: # unknown reference
-                #print >> logfile, ve
+                #print >> debugfile, ve
                 continue
             for exon in ex:
                 counts[exon] = counts.get(exon,0) + c.n/float(len(ex))
@@ -630,6 +630,7 @@ def soapsplice(unmapped_R1, unmapped_R2, index, output=None, path_to_soapsplice=
     for k,v in options.iteritems(): opts.extend([str(k),str(v)])
     return {"arguments": args+opts, "return_value": output}
 
+@timer
 def find_junctions(ex,job,assembly,soapsplice_index=None,path_to_soapsplice=None,soapsplice_options={},logfile=sys.stdout):
     """
     Retrieve unmapped reads from a precedent mapping and runs SOAPsplice on them.
