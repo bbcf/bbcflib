@@ -456,7 +456,7 @@ def rnaseq_workflow(ex, job, pileup_level=["exons","genes","transcripts"], via="
     """ Find splice junctions """
     if junctions:
         print >> logfile, "Search for splice junctions"; logfile.flush()
-        find_junctions(ex,job,assembly,logfile=logfile)
+        find_junctions(ex,job,assembly,logfile=logfile,via=via)
 
     """ Build exon pileups from bam files """
     print >> logfile, "Build pileups"; logfile.flush()
@@ -631,7 +631,8 @@ def soapsplice(unmapped_R1, unmapped_R2, index, output=None, path_to_soapsplice=
     return {"arguments": args+opts, "return_value": output}
 
 @timer
-def find_junctions(ex,job,assembly,soapsplice_index=None,path_to_soapsplice=None,soapsplice_options={},logfile=sys.stdout):
+def find_junctions(ex,job,assembly,soapsplice_index=None,path_to_soapsplice=None,soapsplice_options={},
+                   logfile=sys.stdout,via='lsf'):
     """
     Retrieve unmapped reads from a precedent mapping and runs SOAPsplice on them.
     Return the names of .bed and .sql tracks indicating the junctions positions, as well as
@@ -657,7 +658,11 @@ def find_junctions(ex,job,assembly,soapsplice_index=None,path_to_soapsplice=None
             unmapped_fastq[gid].append(unmapped)
         R1 = cat(zip(*unmapped_fastq[gid])[0])
         R2 = cat(zip(*unmapped_fastq[gid])[1])
-        template = soapsplice(ex,R1,R2,soapsplice_index,path_to_soapsplice=path_to_soapsplice,options=soapsplice_options)
+        nthreads = 4
+        soapsplice_options['p'] = nthreads
+        future = soapsplice.nonblocking(ex,R1,R2,soapsplice_index,path_to_soapsplice=path_to_soapsplice,
+                                        options=soapsplice_options, via=via, memory=4, threads=nthreads)
+        template = future.wait()
         junc_file = template+'.junc'
         sql,bed = convert_junc_file(junc_file,assembly)
         sql_descr = set_file_descr('junctions_%s.sql' % group['name'], \

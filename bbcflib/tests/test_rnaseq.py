@@ -396,12 +396,13 @@ class Test_Junctions(unittest.TestCase):
         self.exon_mapping={}
         self.transcript_mapping={}
         self.exons_in_trans={}
+        self.via='local'
 
     def test_unmapped(self):
         with execution(None) as ex:
             unmapped(ex,self.job,self.assembly,group_names={1:'group1'}, \
                      exon_mapping=self.exon_mapping,transcript_mapping=self.transcript_mapping, \
-                     exons_in_trans=self.exons_in_trans, via='local')
+                     exons_in_trans=self.exons_in_trans, via=self.via)
 
     def test_find_junctions(self):
         #minilims = MiniLIMS('test_junc_lims')
@@ -409,7 +410,7 @@ class Test_Junctions(unittest.TestCase):
         with execution(minilims) as ex:
             options = {'-q':1} # Sanger read quality format
             find_junctions(ex,self.job,self.assembly,self.index,
-                           path_to_soapsplice=self.path,soapsplice_options=options)
+                           path_to_soapsplice=self.path,soapsplice_options=options,via=self.via)
 
 
 #-----------------------------------#
