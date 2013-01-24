@@ -450,7 +450,7 @@ def rnaseq_workflow(ex, job, pileup_level=["exons","genes","transcripts"], via="
     (gene_mapping, transcript_mapping, exon_mapping, trans_in_gene, exons_in_trans) = fetch_mappings(assembly)
 
     """ Map remaining reads to transcriptome """
-    print >> logfile, "Unmapped"; logfile.flush()
+    print >> logfile, "Align unmapped reads on transcriptome"; logfile.flush()
     if unmapped:
         unmapped_fastq,additionals = align_unmapped(ex,job,assembly,group_names,
                                                     exon_mapping,transcript_mapping,exons_in_trans,via)
@@ -468,10 +468,11 @@ def rnaseq_workflow(ex, job, pileup_level=["exons","genes","transcripts"], via="
             k+=1
             cond = group_names[gid]+'.'+str(k)
             exon_pileup = build_pileup(f['bam'],assembly,gene_mapping,exon_mapping,trans_in_gene,exons_in_trans,debugfile)
-            if unmapped_fastq[cond] and cond in additionals:
+            if unmapped and unmapped_fastq[cond] and cond in additionals:
                 for a,x in additionals[cond].iteritems():
                     if exon_pileup.get(a):
                         exon_pileup[a] += x
+                additionals.pop(cond)
             exon_pileups[cond] = exon_pileup.values()
             nreads[cond] = sum(exon_pileup.values()) # total number of reads
             print >> logfile, "....Pileup", cond, "done"; logfile.flush()
