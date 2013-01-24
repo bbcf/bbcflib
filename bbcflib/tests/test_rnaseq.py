@@ -400,7 +400,7 @@ class Test_Junctions(unittest.TestCase):
 
     def test_unmapped(self):
         with execution(None) as ex:
-            unmapped(ex,self.job,self.assembly,group_names={1:'group1'}, \
+            align_unmapped(ex,self.job,self.assembly,group_names={1:'group1'}, \
                      exon_mapping=self.exon_mapping,transcript_mapping=self.transcript_mapping, \
                      exons_in_trans=self.exons_in_trans, via=self.via)
 

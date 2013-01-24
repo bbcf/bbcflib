@@ -408,7 +408,7 @@ def to_rpkm(counts, lengths, nreads):
 
 @timer
 def rnaseq_workflow(ex, job, pileup_level=["exons","genes","transcripts"], via="lsf",
-                    rpath=None, junctions=None, logfile=sys.stdout, debugfile=sys.stderr):
+                    rpath=None, junctions=None, unmapped=None, logfile=sys.stdout, debugfile=sys.stderr):
     """
     Main function of the workflow.
 
@@ -451,8 +451,9 @@ def rnaseq_workflow(ex, job, pileup_level=["exons","genes","transcripts"], via="
 
     """ Map remaining reads to transcriptome """
     print >> logfile, "Unmapped"; logfile.flush()
-    unmapped_fastq,additionals = unmapped(ex,job,assembly,group_names,
-                                          exon_mapping,transcript_mapping,exons_in_trans,via)
+    if unmapped:
+        unmapped_fastq,additionals = align_unmapped(ex,job,assembly,group_names,
+                                                    exon_mapping,transcript_mapping,exons_in_trans,via)
     """ Find splice junctions """
     if junctions:
         print >> logfile, "Search for splice junctions"; logfile.flush()
@@ -705,7 +706,7 @@ def convert_junc_file(filename, assembly):
 #-------------------------- UNMAPPED READS ----------------------------#
 
 @timer
-def unmapped(ex,job,assembly,group_names,exon_mapping,transcript_mapping,exons_in_trans,via):
+def align_unmapped(ex,job,assembly,group_names,exon_mapping,transcript_mapping,exons_in_trans,via):
     """
     Map reads that did not map to the exons to a collection of annotated transcripts,
     in order to add counts to pairs of exons involved in splicing junctions.
