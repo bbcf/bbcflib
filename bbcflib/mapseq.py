@@ -929,7 +929,7 @@ def map_groups( ex, job_or_dict, assembly_or_dict, map_args=None ):
             assembly_or_dict['index_path'] = bowtie_build.nonblocking(ex,fasta,via=map_args.get('via'))
             assembly_or_dict['chromosomes'] = fasta_length.nonblocking(ex,fasta,via=map_args.get('via')).wait()
             assembly_or_dict['chrmeta'] = dict([(v['name'], {'length': v['length']})
-                                                for v in self.chromosomes.values()])
+                                                for v in assembly_or_dict['chromosomes'].values()])
             assembly_or_dict['index_path'] = assembly_or_dict['index_path'].wait()
         chromosomes = assembly_or_dict['chromosomes']
         index_path = assembly_or_dict['index_path ']
