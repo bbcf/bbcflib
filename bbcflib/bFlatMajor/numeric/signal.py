@@ -1,7 +1,8 @@
-from bbcflib.bFlatMajor import common
+from bbcflib.bFlatMajor.common import unroll
 from bbcflib.btrack import FeatureStream
 from numpy.fft import fft, ifft
-from numpy import conjugate, array, asarray, mean, sqrt, concatenate as ncat, real, hstack
+from numpy import conjugate,array,asarray,mean,median,sqrt,exp,real,hstack,nonzero,prod,around
+from numpy import log as nlog,concatenate as ncat
 from math import log
 
 def score_array(trackList,fields=['score']):
@@ -17,6 +18,70 @@ def score_array(trackList,fields=['score']):
         dico = dict((k[nidx[n+1]],[k[i] for i in sidx[n+1]]) for k in tn)
         nums = hstack((nums,[dico[k] for k in labs]))
     return (nums,labs)
+
+def normalize(trackList,method='total',field='score'):
+    """Normalizes the scores in every stream from *trackList* using the given *method*.
+    It assumes that the n-th element of one stream corresponds to the n-th element of another
+    - so they need to have the same number of elements.
+
+    [!] This function will temporarily store everything in memory.
+
+    :param method: normalization method:
+        * ``'total'`` divides every score vector by its sum (total number of reads) x 10^7 .
+        * ``'deseq'`` applies DESeq's normalization ("size factors") - considering every track
+            as belonging to a different group.
+        * ``'quantile'`` applies quantile normalization.
+    :param field: (str) name of the field containing the scores (must be the same for all streams).
+    """
+    def _total(scores):
+        for n,col in enumerate(scores):
+            scores[n] = scores[n]/sum(scores[n])
+        return scores
+    def _deseq(scores):
+        cnts = scores[:,nonzero(prod(scores,axis=0))[0]] # none of the counts is zero
+        loggeomeans = mean(nlog(cnts),axis=0) # -inf if division by 0
+        size_factors = exp(median(nlog(cnts)-loggeomeans,axis=1))
+        scores = around((scores.T / size_factors).T,2)
+        return scores
+    def _quantile(scores):
+        raise ValueError("Not implemented yet")
+
+    if method == 'total': f = _total
+    elif method == 'deseq': f = _deseq
+    elif method == 'quantile': f = _quantile
+    else: f = method # custom function
+    if isinstance(trackList,(list,tuple)):
+        allcontents = [None]*len(trackList)
+        allscores = [None]*len(trackList)
+        for n,t in enumerate(trackList):
+            # make a copy of the whole content, and scores separately
+            score_idx = t.fields.index(field)
+            allcontents[n] = []
+            allscores[n] = []
+            for x in t:
+                allcontents[n].append(list(x))
+                allscores[n].append(x[score_idx])
+        allscores = f(asarray(allscores))
+        for n,content in enumerate(allcontents):
+            score_idx = trackList[n].fields.index(field)
+            for k,x in enumerate(content):
+                x[score_idx] = allscores[n][k]
+                content[k] = tuple(x)
+        return [FeatureStream(c,fields=trackList[n].fields) for n,c in enumerate(allcontents)]
+    elif method == 'total' or method == f:
+        content = []
+        scores = []
+        score_idx = trackList.fields.index(field)
+        for x in trackList:
+            content.append(list(x))
+            scores.append(x[score_idx])
+        scores = f(asarray([scores,]))
+        for k,x in enumerate(content):
+            x[score_idx] = scores[0][k]
+            content[k] = tuple(x)
+        return FeatureStream(content,fields=trackList.fields)
+    else:
+        return trackList
 
 def _normalize(x):
     """Substracts the average and divides by the standard deviation."""
@@ -68,11 +133,11 @@ def correlation(trackList, regions, limits=(-1000,1000), with_acf=False):
     ##### storing these - long - arrays ('dtype' is float64 by default).
     if isinstance(regions,FeatureStream):
         _reg = list(regions)
-        x = [array([s[0] for s in common.unroll(t,FeatureStream(_reg,fields=regions.fields))])
+        x = [array([s[0] for s in unroll(t,FeatureStream(_reg,fields=regions.fields))])
              for t in trackList]
         _reg = []
     else:
-        x = [array([s[0] for s in common.unroll(t,regions)]) for t in trackList]
+        x = [array([s[0] for s in unroll(t,regions)]) for t in trackList]
     x = [_normalize(t) for t in x]
     if limits[1]-limits[0] > 2*len(x[0]):
         limits = (-len(x[0])+1,len(x[0])-1)

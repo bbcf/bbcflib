@@ -12,7 +12,7 @@ from bbcflib.bFlatMajor.stream.intervals import concatenate, neighborhood, segme
 from bbcflib.bFlatMajor.stream.intervals import exclude, require, disjunction, intersection, union
 from bbcflib.bFlatMajor.stream.scores import merge_scores, score_by_feature, window_smoothing, filter_scores
 from bbcflib.bFlatMajor.numeric.regions import feature_matrix, summed_feature_matrix
-from bbcflib.bFlatMajor.numeric.signal import _normalize, correlation
+from bbcflib.bFlatMajor.numeric.signal import _normalize, normalize, correlation
 
 # Other modules #
 import numpy
@@ -499,6 +499,40 @@ class Test_Signal(unittest.TestCase):
         pass
 
     def test_normalize(self):
+        s1 = [('a',64.),('b',256.),('c',16.)]
+        s2 = [('a',16.),('b',16.),('c',16.)]
+
+        # deseq
+        scores1 = fstream(s1, fields=['name','score'])
+        scores2 = fstream(s2, fields=['name','score'])
+        res = normalize([scores1,scores2], method='deseq')
+        expected = [[('a',32.),('b',128.),('c',8.)],[('a',32.),('b',32.),('c',32.)]]
+        self.assertListEqual([list(r) for r in res],expected)
+
+        # total
+        scores1 = fstream(s1, fields=['name','score'])
+        scores2 = fstream(s2, fields=['name','score'])
+        res = normalize([scores1,scores2], method='total')
+        scores = [[round(x[1],2) for x in r]for r in res]
+        expected = [[0.19,0.76,0.05],[0.33,0.33,0.33]]
+        self.assertListEqual(scores,expected)
+
+        # only one
+        scores1 = fstream(s1, fields=['name','score'])
+        res = normalize(scores1, method='total')
+        scores = [round(x[1],2) for x in res]
+        expected = [0.19,0.76,0.05]
+        self.assertListEqual(scores,expected)
+
+        # quantiles
+        scores1 = fstream(s1, fields=['name','score'])
+        scores2 = fstream(s2, fields=['name','score'])
+        #res = normalize([scores1,scores2], method='quantiles')
+        #scores = [[round(x[1],2) for x in r]for r in res]
+        #expected = [[0.19,0.76,0.05],[0.33,0.33,0.33]]
+        #self.assertListEqual(scores,expected)
+
+    def test__normalize(self):
         x = [1,2,3,4,5] # mean=15/5=3, var=(1/5)*(4+1+0+1+4)=2
         assert_almost_equal(_normalize(x), numpy.array([-2,-1,0,1,2])*(1/math.sqrt(2)))
 
