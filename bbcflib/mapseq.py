@@ -932,7 +932,7 @@ def map_groups( ex, job_or_dict, assembly_or_dict, map_args=None ):
                                                 for v in assembly_or_dict['chromosomes'].values()])
             assembly_or_dict['index_path'] = assembly_or_dict['index_path'].wait()
         chromosomes = assembly_or_dict['chromosomes']
-        index_path = assembly_or_dict['index_path ']
+        index_path = assembly_or_dict['index_path']
     else:
         raise TypeError("assembly_or_dict must be a genrep.Assembly object or a dictionary \
                          with keys 'chromosomes' and 'index_path'.")
