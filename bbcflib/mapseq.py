@@ -1278,14 +1278,16 @@ def get_bam_wig_files( ex, job, minilims=None, hts_url=None, suffix=['fwd','rev'
                 p_thresh = -1
                 if fetch_unmapped:
                     fastqname = unique_filename_in()
-                    if name+"_unmapped.fastq.gz" in allfiles:
-                        if name+"_unmapped_1.fastq.gz" in allfiles:
-                            fastq_loc = [MMS.path_to_file(allfiles[name+"_unmapped_1.fastq.gz"]),
-                                         MMS.path_to_file(allfiles[name+"_unmapped_2.fastq.gz"])]
-                            fastqfiles = (fastqname+"_R1",fastqname+"_R2")
-                        else:
-                            fastq_loc = [MMS.path_to_file(allfiles[name+"_unmapped.fastq.gz"])]
-                            fastqfiles = (fastqname,)
+                    if name+"_unmapped_1.fastq.gz" in allfiles:
+                        fastq_loc = [MMS.path_to_file(allfiles[name+"_unmapped_1.fastq.gz"]),
+                                     MMS.path_to_file(allfiles[name+"_unmapped_2.fastq.gz"])]
+                        fastqfiles = (fastqname+"_R1",fastqname+"_R2")
+                    elif name+"_unmapped.fastq.gz" in allfiles:
+                        fastq_loc = [MMS.path_to_file(allfiles[name+"_unmapped.fastq.gz"])]
+                        fastqfiles = (fastqname,)
+                    else:
+                        fastq_loc = []
+                        fastqfiles = ()
                     for i,fqf in enumerate(fastq_loc):
                         with open(fastqfiles[i],'w') as f:
                             temp = gzip.open(fqf, 'rb')
