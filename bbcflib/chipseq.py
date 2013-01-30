@@ -109,8 +109,10 @@ def add_macs_results( ex, read_length, genome_size, bamfile,
             nm = (n,m)
             futures[nm] = macs.nonblocking( ex, rl, genome_size, bam, cam,
                                             args=macs_args, via=via, memory=12 )
-    prefixes = dict((n,f.wait()) for n,f in futures.iteritems())
-    for n,p in prefixes.iteritems():
+    prefixes = {}
+    for n,f in futures.iteritems():
+        p = f.wait()
+        prefixes[n] = p
         macs_descr0 = {'step':'macs','type':'none','view':'admin','groupId':n[0][0]}
         macs_descr1 = {'step':'macs','type':'xls','groupId':n[0][0]}
         macs_descr2 = {'step':'macs','type':'bed','groupId':n[0][0],'ucsc':'1'}

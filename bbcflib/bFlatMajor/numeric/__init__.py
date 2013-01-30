@@ -6,6 +6,7 @@ from bbcflib.bFlatMajor import *
 ###############################################################################
 _members = {'score_array': ['trackList'],
             'correlation': ['trackList'],
+            'normalize': ['trackList'],
             'feature_matrix': ['trackScores','trackFeatures'],
             'summed_feature_matrix': ['trackScores','trackFeatures']
             }
