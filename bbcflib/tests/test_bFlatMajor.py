@@ -517,7 +517,7 @@ class Test_Signal(unittest.TestCase):
         expected = [[0.19,0.76,0.05],[0.33,0.33,0.33]]
         self.assertListEqual(scores,expected)
 
-        # only one
+        # total, only one
         scores1 = fstream(s1, fields=['name','score'])
         res = normalize(scores1, method='total')
         scores = [round(x[1],2) for x in res]
@@ -527,10 +527,17 @@ class Test_Signal(unittest.TestCase):
         # quantiles
         scores1 = fstream(s1, fields=['name','score'])
         scores2 = fstream(s2, fields=['name','score'])
-        #res = normalize([scores1,scores2], method='quantiles')
-        #scores = [[round(x[1],2) for x in r]for r in res]
-        #expected = [[0.19,0.76,0.05],[0.33,0.33,0.33]]
-        #self.assertListEqual(scores,expected)
+        res = normalize([scores1,scores2], method='quantile')
+        scores = [[round(x[1],2) for x in r]for r in res]
+        expected = [[40.,136.,16.],[16.,40,136.]]
+        self.assertListEqual(scores,expected)
+
+        # custom
+        scores1 = fstream(s1, fields=['name','score'])
+        res = normalize(scores1, method=lambda x:x/2.)
+        scores = [round(x[1],2) for x in res]
+        expected = [32.,128.,8.]
+        self.assertListEqual(scores,expected)
 
     def test__normalize(self):
         x = [1,2,3,4,5] # mean=15/5=3, var=(1/5)*(4+1+0+1+4)=2
