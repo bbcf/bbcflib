@@ -191,7 +191,7 @@ def build_pileup(bamfile, assembly, gene_mapping, exon_mapping, trans_in_gene, e
                 ostart,oend = exon_mapping[origin][3:5]
                 ref = ref_index.get(origin)
                 start = e[1]-ostart; end = e[2]-ostart
-            if not ref: continue
+                if not ref: continue
             try:
                 #The callback (c.n += 1) is executed for each alignment in a region
                 sam.fetch(ref,start,end, callback=c)
