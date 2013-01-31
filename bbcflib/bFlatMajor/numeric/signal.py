@@ -1,8 +1,8 @@
 from bbcflib.bFlatMajor.common import unroll
 from bbcflib.btrack import FeatureStream
 from numpy.fft import fft, ifft
-from numpy import conjugate,array,asarray,mean,median,sqrt,exp,real,hstack,nonzero,prod,around
-from numpy import log as nlog,concatenate as ncat
+from numpy import conjugate,array,asarray,mean,median,sqrt,exp,real,hstack,nonzero,prod,around,argsort
+from numpy import log as nlog,concatenate as ncat, float as nfloat
 from math import log
 
 def score_array(trackList,fields=['score']):
@@ -21,8 +21,8 @@ def score_array(trackList,fields=['score']):
 
 def normalize(trackList,method='total',field='score'):
     """Normalizes the scores in every stream from *trackList* using the given *method*.
-    It assumes that the n-th element of one stream corresponds to the n-th element of another
-    - so they need to have the same number of elements.
+    It assumes that each of the streams represents the same features, i.e. the n-th element
+    of one stream corresponds to the n-th element of another
 
     [!] This function will temporarily store everything in memory.
 
@@ -44,12 +44,19 @@ def normalize(trackList,method='total',field='score'):
         scores = around((scores.T / size_factors).T,2)
         return scores
     def _quantile(scores):
-        raise ValueError("Not implemented yet")
+        ordering = argsort(scores)
+        for n in range(len(scores)):
+            scores[n] = scores[n][ordering[n]]
+        means = mean(scores,0)
+        for n in range(len(scores)):
+            scores[n] = around(means[argsort(ordering[n])],2)
+        return scores
 
     if method == 'total': f = _total
     elif method == 'deseq': f = _deseq
     elif method == 'quantile': f = _quantile
-    else: f = method # custom function
+    elif hasattr(method,'__call__'): f = method # custom function
+    else: raise ValueError("Unknown normalization method (got %s)" % method)
     if isinstance(trackList,(list,tuple)):
         allcontents = [None]*len(trackList)
         allscores = [None]*len(trackList)
@@ -75,7 +82,7 @@ def normalize(trackList,method='total',field='score'):
         for x in trackList:
             content.append(list(x))
             scores.append(x[score_idx])
-        scores = f(asarray([scores,]))
+        scores = f(asarray([scores,],dtype=nfloat))
         for k,x in enumerate(content):
             x[score_idx] = scores[0][k]
             content[k] = tuple(x)
