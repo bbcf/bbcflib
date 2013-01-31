@@ -152,7 +152,7 @@ def fetch_mappings(assembly):
     return mapping
 
 @timer
-def build_pileup(bamfile, assembly, gene_mapping, exon_mapping, trans_in_gene, exons_in_trans, logfile=sys.stdout):
+def build_pileup(bamfile, assembly, gene_mapping, exon_mapping, trans_in_gene, exons_in_trans, debugfile=sys.stderr):
     """From a BAM file, returns a dictionary of the form {feature_id: number of reads that mapped to it}.
 
     :param bamfile: name of a BAM file.
@@ -170,6 +170,9 @@ def build_pileup(bamfile, assembly, gene_mapping, exon_mapping, trans_in_gene, e
     try: sam = pysam.Samfile(bamfile, 'rb')
     except ValueError: sam = pysam.Samfile(bamfile,'r')
     chromosomes = assembly.chrmeta.keys()
+    ref_index = {}
+    for ref in sam.references:
+        ref_index[ref.split('|')[0]] = ref
     mapped_on = 'genome' if all([ref in chromosomes for ref in sam.references[:100]]) else 'exons'
     c = Counter()
     for g in gene_mapping.iterkeys():
@@ -179,20 +182,21 @@ def build_pileup(bamfile, assembly, gene_mapping, exon_mapping, trans_in_gene, e
         eg = sorted([(e,)+exon_mapping[e][3:] for e in eg], key=itemgetter(1,2))
         eg = cobble(FeatureStream(eg,fields=['name','start','end','strand','chr']))
         for e in eg:
-            ex = e[0].split('|')
-            origin = ex[-1]
+            ex = e[0].split('|') # list of cobbled exons
+            origin = ex[-1]      # last representant of this exons set (arbitrary)
             if e[2]-e[1] <= 1: continue
             if mapped_on == 'genome':
                 ref = e[-1]; start = e[1]; end = e[2]
             else: # mapped on the exonome
                 ostart,oend = exon_mapping[origin][3:5]
-                ref = '|'.join([origin,g,str(ostart+1),str(oend),str(e[3])]) # exon_id|gene_id|start|end|strand
+                ref = ref_index.get(origin)
                 start = e[1]-ostart; end = e[2]-ostart
+            if not ref: continue
             try:
                 #The callback (c.n += 1) is executed for each alignment in a region
                 sam.fetch(ref,start,end, callback=c)
             except ValueError,ve: # unknown reference
-                #print >> debugfile, ve
+                print >> debugfile, ve
                 continue
             for exon in ex:
                 counts[exon] = counts.get(exon,0) + c.n/float(len(ex))
@@ -287,7 +291,7 @@ def genes_expression(exons_data, gene_mapping, exon_mapping, ncond, nreads):
     round = numpy.round
     for exon,counts in exons_data:
         g = exon_mapping[exon][1]
-        gene_counts[g] = gene_counts.get(g,zeros(ncond)) + round(counts,2)
+        gene_counts[g] = gene_counts.get(g,zeros(ncond)) + round(counts,0)
     for g,counts in gene_counts.iteritems():
         gene_rpkm[g] = to_rpkm(counts, gene_mapping[g][3], nreads)
     return gene_counts, gene_rpkm
@@ -345,7 +349,7 @@ def transcripts_expression(exons_data, exon_mapping, transcript_mapping, trans_i
             # If only one transcript, special case for more precision
             if len(tg) == 1:
                 for c in range(ncond):
-                    trans_counts[t][c] = round(sum(ec[c]),2)
+                    trans_counts[t][c] = round(sum(ec[c]),0)
                 continue
             # Compute transcript scores
             tc = []
@@ -362,7 +366,7 @@ def transcripts_expression(exons_data, exon_mapping, transcript_mapping, trans_i
             # Store results in a dict *trans_counts*
             for k,t in enumerate(tg):
                 for c in range(ncond):
-                    trans_counts[t][c] = round(tc[c][k], 2)
+                    trans_counts[t][c] = round(tc[c][k],0)
         else:
             unknown += 1
     if unknown != 0:
@@ -404,6 +408,7 @@ def to_rpkm(counts, lengths, nreads):
         rpkm = {}
         for k,v in counts.iteritems():
             rpkm[k] = 1000*(1e6*v/nreads)/lengths
+    rpkm = numpy.round(rpkm,2)
     return rpkm
 
 @timer
