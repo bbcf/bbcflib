@@ -266,7 +266,7 @@ try:
         """
         out = files[0]
         for f in files[1:]:
-            next = unique_filename_in()
+            next = unique_filename_in()+".bed"
             intersectBed.nonblocking( ex, out, f, via=via, stdout=next ).wait()
             out = next
         return out
