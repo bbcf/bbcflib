@@ -258,7 +258,7 @@ def save_results(ex, lines, conditions, group_ids, assembly, header=[], feature_
                                          step="pileup", type="bw", groupId=group_ids[group], ucsc='1')
             ex.add(filename+'.bw', description=description)
     print feature_type+": Done successfully."
-    return output_tab
+    return os.path.abspath(output_tab)
 
 @timer
 def exons_expression(exons_data, exon_mapping, nreads):
@@ -592,13 +592,14 @@ def differential_analysis(ex, result, rpath, logfile):
             options = ['-s','tab']
             try:
                 glmfile = run_glm(ex, rpath, res_file, options)
-                output_files = [f for f in os.listdir(ex.working_directory) if glmfile in f]
-                for o in output_files:
-                    desc = set_file_descr(type+"_differential"+o.split(glmfile)[1]+".txt", step='stats', type='txt')
-                    o = clean_deseq_output(o)
-                    ex.add(o, description=desc)
             except Exception as exc:
                 print >> logfile,"Skipped differential analysis: %s \n" % exc; logfile.flush()
+                break
+            output_files = [f for f in os.listdir(ex.working_directory) if glmfile in f]
+            for o in output_files:
+                desc = set_file_descr(type+"_differential"+o.split(glmfile)[1]+".txt", step='stats', type='txt')
+                o = clean_deseq_output(o)
+                ex.add(o, description=desc)
 
 
 #-------------------------- SPLICE JUNCTIONS SEARCH ----------------------------#
