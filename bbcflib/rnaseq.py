@@ -197,7 +197,7 @@ def build_pileup(bamfile, assembly, gene_mapping, exon_mapping, trans_in_gene, e
                 sam.fetch(ref,start,end, callback=c)
             except ValueError,ve: # unknown reference
                 print >> debugfile, ve
-                continue
+                pass
             for exon in ex:
                 counts[exon] = counts.get(exon,0) + c.n/float(len(ex))
             c.n = 0
