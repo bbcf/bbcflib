@@ -446,7 +446,7 @@ def rnaseq_workflow(ex, job, pileup_level=["exons","genes","transcripts"], via="
             conditions.append(cond)
     ncond = len(conditions)
 
-    print >> logfile, "Load mappings"; logfile.flush()
+    print >> logfile, "* Load mappings"; logfile.flush()
     """ [0] gene_mapping is a dict ``{gene_id: (gene_name,start,end,length,strand,chromosome)}``
         [1] transcript_mapping is a dictionary ``{transcript_id: (gene_id,gene_name,start,end,length,strand,chromosome)}``
         [2] exon_mapping is a dictionary ``{exon_id: ([transcript_ids],gene_id,gene_name,start,end,strand,chromosome)}``
@@ -455,17 +455,18 @@ def rnaseq_workflow(ex, job, pileup_level=["exons","genes","transcripts"], via="
     (gene_mapping, transcript_mapping, exon_mapping, trans_in_gene, exons_in_trans) = fetch_mappings(assembly)
 
     """ Map remaining reads to transcriptome """
-    print >> logfile, "Align unmapped reads on transcriptome"; logfile.flush()
+    print >> logfile, "* Align unmapped reads on transcriptome"; logfile.flush()
     if unmapped:
         unmapped_fastq,additionals = align_unmapped(ex,job,assembly,group_names,
                                                     exon_mapping,transcript_mapping,exons_in_trans,via)
     """ Find splice junctions """
     if junctions:
-        print >> logfile, "Search for splice junctions"; logfile.flush()
-        find_junctions(ex,job,assembly,logfile=logfile,via=via)
+        print >> logfile, "* Search for splice junctions"; logfile.flush()
+        try: find_junctions(ex,job,assembly,logfile=logfile,via=via)
+        except Exception as error: print error
 
     """ Build exon pileups from bam files """
-    print >> logfile, "Build pileups"; logfile.flush()
+    print >> logfile, "* Build pileups"; logfile.flush()
     exon_pileups={}; nreads={};
     for gid,files in job.files.iteritems():
         k = 0
@@ -480,7 +481,7 @@ def rnaseq_workflow(ex, job, pileup_level=["exons","genes","transcripts"], via="
                 additionals.pop(cond)
             exon_pileups[cond] = exon_pileup.values()
             nreads[cond] = sum(exon_pileup.values()) # total number of reads
-            print >> logfile, "....Pileup", cond, "done"; logfile.flush()
+            print >> logfile, "  ....Pileup", cond, "done"; logfile.flush()
     exon_ids = exon_pileup.keys()
 
     """ Arrange exon counts in a matrix """
@@ -494,7 +495,7 @@ def rnaseq_workflow(ex, job, pileup_level=["exons","genes","transcripts"], via="
 
     """ Print counts for exons """
     if "exons" in pileup_level:
-        print >> logfile, "Get scores of exons"; logfile.flush()
+        print >> logfile, "* Get scores of exons"; logfile.flush()
         (ecounts, erpkm) = exons_expression(exon_counts,exon_mapping,nreads)
         exons_data = [(e,)+tuple(ecounts[e])+tuple(erpkm[e])+itemgetter(3,4,1,2,5,6)(exon_mapping.get(e,("NA",)*6))
                       for e in ecounts.iterkeys()]
@@ -503,7 +504,7 @@ def rnaseq_workflow(ex, job, pileup_level=["exons","genes","transcripts"], via="
 
     """ Get scores of genes from exons """
     if "genes" in pileup_level:
-        print >> logfile, "Get scores of genes"; logfile.flush()
+        print >> logfile, "* Get scores of genes"; logfile.flush()
         (gcounts, grpkm) = genes_expression(exon_counts, gene_mapping, exon_mapping, ncond, nreads)
         genes_data = [(g,)+tuple(gcounts[g])+tuple(grpkm[g])+itemgetter(1,2,0,4,5)(gene_mapping.get(g,("NA",)*6))
                       for g in gcounts.iterkeys()]
@@ -512,7 +513,7 @@ def rnaseq_workflow(ex, job, pileup_level=["exons","genes","transcripts"], via="
 
     """ Get scores of transcripts from exons, using non-negative least-squares """
     if "transcripts" in pileup_level:
-        print >> logfile, "Get scores of transcripts"; logfile.flush()
+        print >> logfile, "* Get scores of transcripts"; logfile.flush()
         (tcounts,trpkm) = transcripts_expression(exon_counts, exon_mapping,
                    transcript_mapping, trans_in_gene, exons_in_trans, ncond, nreads)
         trans_data = [(t,)+tuple(tcounts[t])+tuple(trpkm[t])+itemgetter(2,3,0,1,5,6)(transcript_mapping.get(t,("NA",)*7))
@@ -522,7 +523,7 @@ def rnaseq_workflow(ex, job, pileup_level=["exons","genes","transcripts"], via="
 
     result = {"exons":exons_file, "genes":genes_file, "transcripts":trans_file}
     if len(hconds) > 1:
-        print >> logfile, "Differential analysis"; logfile.flush()
+        print >> logfile, "* Differential analysis"; logfile.flush()
         differential_analysis(ex, result, rpath, logfile)
     return 0
 
@@ -580,6 +581,7 @@ def clean_deseq_output(filename):
                     g.write(line)
     return filename_clean
 
+@timer
 def differential_analysis(ex, result, rpath, logfile):
     """For each file in *result*, launch an analysis of differential expression on the count
     values, and saves the output in the MiniLIMS.
