@@ -521,8 +521,9 @@ def rnaseq_workflow(ex, job, pileup_level=["exons","genes","transcripts"], via="
         trans_file = save_results(ex, trans_data, conditions, group_ids, assembly, header=header, feature_type="TRANSCRIPTS")
 
     result = {"exons":exons_file, "genes":genes_file, "transcripts":trans_file}
-    print >> logfile, "Differential analysis"; logfile.flush()
-    differential_analysis(ex, result, rpath, logfile)
+    if len(hconds) > 1:
+        print >> logfile, "Differential analysis"; logfile.flush()
+        differential_analysis(ex, result, rpath, logfile)
     return 0
 
 
@@ -662,11 +663,13 @@ def find_junctions(ex,job,assembly,soapsplice_index=None,path_to_soapsplice=None
             if not unmapped:
                 print >> logfile, "No unmapped reads found. Skip."
                 return 1
-            assert isinstance(unmapped,tuple), "Pair-end reads required."
+            if not isinstance(unmapped,tuple):
+                print >> logfile, "Pair-end reads required."
+                return 1
             unmapped_fastq[gid].append(unmapped)
         R1 = cat(zip(*unmapped_fastq[gid])[0])
         R2 = cat(zip(*unmapped_fastq[gid])[1])
-        nthreads = 4
+        nthreads = 16
         soapsplice_options['p'] = nthreads
         future = soapsplice.nonblocking(ex,R1,R2,soapsplice_index,path_to_soapsplice=path_to_soapsplice,
                                         options=soapsplice_options, via=via, memory=4, threads=nthreads)
