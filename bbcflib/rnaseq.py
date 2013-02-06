@@ -651,11 +651,12 @@ def find_junctions(ex,job,assembly,soapsplice_index=None,path_to_soapsplice=None
 
     :param soapsplice_index: (str) path to the SOAPsplice index.
     :param path_to_soapsplice: (str) specify the path to the program if it is not in your $PATH.
-    :param soapsplice_options: (dict) SOAPsplice options, e.g. {'-q',1}.
+    :param soapsplice_options: (dict) SOAPsplice options, e.g. {'-q':1}.
     :rtype: str, str, str
     """
     assembly = genrep.Assembly(assembly.id, intype=3)
     soapsplice_index = soapsplice_index or os.path.join(assembly.index_path,assembly.md5+'.index')
+    soapsplice_options.update(job.options.get('soapsplice_options',{}))
     #soapsplice_options = # check if Sanger or Illumina format
     unmapped_fastq = {}
     for gid, group in job.groups.iteritems():

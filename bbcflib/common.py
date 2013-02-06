@@ -146,7 +146,7 @@ def timer(function):
         t1 = time.time()
         result = function(*args, **kwargs)
         t2 = time.time()
-        print "Execution time of function", function.__name__, ":", str(t2-t1), "s."
+        print "  Execution time of function", function.__name__, ":", str(t2-t1), "s."
         return result
     return wrapper
 
