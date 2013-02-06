@@ -58,8 +58,8 @@ class Frontend(object):
         for k,v in a.iteritems():
             if isinstance(v,unicode): a[k] = str(v)
             if isinstance(k,unicode): a[str(k)] = a.pop(k)
-        if isinstance(a.get('created_at'),str):
-            a['created_at'] = datetime.strptime(a['created_at'], '%Y-%m-%dT%H:%M:%SZ')
+#        if isinstance(a.get('created_at'),str):
+#            a['created_at'] = datetime.strptime(a['created_at'], '%Y-%m-%dT%H:%M:%SZ')
         return a
 
     def _fetch_groups(self, key):

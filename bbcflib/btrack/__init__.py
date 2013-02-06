@@ -295,7 +295,7 @@ class Track(object):
         """:param chrmeta: (str or dict) assembly name, or dict of the type {chr: {'length': 1234}}."""
         if isinstance(chrmeta,dict):
             return chrmeta
-        if isinstance(chrmeta,basestring):
+        if isinstance(chrmeta,basestring) and not(str(chrmeta) == "guess"):
             self.assembly = chrmeta
         if self.assembly is None:
             return {}
