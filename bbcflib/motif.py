@@ -11,7 +11,7 @@ import re, os, tarfile
 from operator import add
 
 # Internal modules #
-from bbcflib import btrack as track
+from bbcflib.btrack import track, FeatureStream
 from bbcflib.common import set_file_descr, unique_filename_in, gzipfile
 
 # Other modules #
@@ -75,9 +75,9 @@ def parse_meme_xml( ex, meme_file, chrmeta ):
                 score = it.attrib['pvalue']
                 yield (seq_chr,str(start),str(end),it.attrib['motif_id'],score,strnd)
     outsql = unique_filename_in()+".sql"
-    outtrack = track.track(outsql, chrmeta=chrmeta, info={'datatype':'qualitative'},
-                           fields=['start','end','name','score','strand'])
-    outtrack.write(track.FeatureStream(_xmltree(tree),fields=['chr']+outtrack.fields))
+    outtrack = track(outsql, chrmeta=chrmeta, info={'datatype':'qualitative'},
+                     fields=['start','end','name','score','strand'])
+    outtrack.write(FeatureStream(_xmltree(tree),fields=['chr']+outtrack.fields))
     outtrack.close()
     return {'sql':outsql,'matrices':allmatrices}
 
@@ -144,8 +144,8 @@ def motif_scan( fasta, motif, background, threshold=0 ):
     call = ["S1K", motif, background, str(threshold), fasta]
     return {"arguments": call, "return_value": None}
 
-def save_motif_profile( ex, motifs, assembly, regions, background=None, keep_max_only=False, 
-                        threshold=0, description='motif_scan.sql', via='lsf' ):
+def save_motif_profile( ex, motifs, assembly, regions=None, fasta=None, background=None, keep_max_only=False, 
+                        threshold=0, output=None, description=None, via='lsf' ):
     """
     Scans a set of motifs on a set of regions and saves the results as a track file.
     The 'motifs' argument is a single PWM file or a dictionary with keys motif names and values PWM files
@@ -153,11 +153,16 @@ def save_motif_profile( ex, motifs, assembly, regions, background=None, keep_max
     "1 p(A) p(C) p(G) p(T)"
     where the sum of the 'p's is 1 and the first column allows to skip a position with a '0'.
     """
-    fasta, size = assembly.fasta_from_regions( regions )
-    sqlout = unique_filename_in()
+    if regions is not None:
+        fasta, size = assembly.fasta_from_regions( regions )
+    if fasta is None:
+        raise ValueError("Provide either a fasta file or a valid list of regions")
+    if output is None: 
+        sqlout = unique_filename_in()
+    else:
+        output = sqlout
     if not(isinstance(motifs, dict)):
         motifs = {"_": motifs}
-#        raise ValueError("'Motifs' must be a dictionary with keys 'motif_names' and values the PWMs.")
     futures = {}
     if background is None: background = assembly.statistics(unique_filename_in(),frequency=True,matrix_format=True)
     for name, pwm in motifs.iteritems():
@@ -186,15 +191,13 @@ def save_motif_profile( ex, motifs, assembly, regions, background=None, keep_max
             for x in maxscore.values():
                 yield x
 ##############
-    track_result = track.track( sqlout, chrmeta=assembly.chrmeta,
-                                info={'datatype':'qualitative'},
-                                fields=['chr','start','end','name','score','strand'] )
+    track_result = track( sqlout, chrmeta=assembly.chrmeta, info={'datatype':'qualitative'},
+                          fields=['chr','start','end','name','score','strand'] )
     for name, future in futures.iteritems():
         future[1].wait()
-        track_result.write( track.FeatureStream(_parse_s1k(future[0], name ),
-                                                fields=track_result.fields) )
+        track_result.write( FeatureStream(_parse_s1k(future[0], name), fields=track_result.fields) )
     track_result.close()
-    ex.add( sqlout, description=description )
+    if description is not None: ex.add( sqlout, description=description )
     return sqlout
 
 def FDR_threshold( ex, motif, background, assembly, regions, alpha=.1, nb_samples=1, via='lsf' ):
@@ -261,9 +264,9 @@ def sqlite_to_false_discovery_rate( ex, motif, background, assembly, regions, al
     thresholded profile.
     """
     threshold = FDR_threshold( motif, background, assembly, regions, alpha=alpha, nb_samples=nb_samples, via=via )
-    track = save_motif_profile( ex, motif, assembly, regions, background=background, 
-                                threshold=threshold, description=description, via=via )
-    return track, threshold
+    outtrack = save_motif_profile( ex, motif, assembly, regions, background=background, 
+                                   threshold=threshold, description=description, via=via )
+    return outtrack, threshold
 
 #-----------------------------------#
 # This code was written by the BBCF #

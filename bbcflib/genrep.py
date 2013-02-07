@@ -345,7 +345,7 @@ class Assembly(object):
             with open(output, "w") as f:
                 if matrix_format:
                     f.write(">Assembly: %s\n" % self.name)
-                    f.write("%s\t%s\t%s\t%s" %(stat["A"],stat["C"],stat["G"],stat["T"]))
+                    f.write("1\t%s\t%s\t%s\t%s" %(stat["A"],stat["C"],stat["G"],stat["T"]))
                     f.write("\n")
                 else:
                     f.write("#Assembly: %s\n" % self.name)
