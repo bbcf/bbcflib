@@ -196,7 +196,7 @@ def build_pileup(bamfile, assembly, gene_mapping, exon_mapping, trans_in_gene, e
                 #The callback (c.n += 1) is executed for each alignment in a region
                 sam.fetch(ref,start,end, callback=c)
             except ValueError,ve: # unknown reference
-                print >> debugfile, ve
+                print >> debugfile, ve; debugfile.flush()
                 pass
             for exon in ex:
                 counts[exon] = counts.get(exon,0) + c.n/float(len(ex))
@@ -257,7 +257,7 @@ def save_results(ex, lines, conditions, group_ids, assembly, header=[], feature_
             description = set_file_descr(feature_type.lower()+"_"+group+".bw",
                                          step="pileup", type="bw", groupId=group_ids[group], ucsc='1')
             ex.add(filename+'.bw', description=description)
-    print feature_type+": Done successfully."
+    print "  "+feature_type+": Done successfully."
     return os.path.abspath(output_tab)
 
 @timer
@@ -455,15 +455,19 @@ def rnaseq_workflow(ex, job, pileup_level=["exons","genes","transcripts"], via="
     (gene_mapping, transcript_mapping, exon_mapping, trans_in_gene, exons_in_trans) = fetch_mappings(assembly)
 
     """ Map remaining reads to transcriptome """
-    print >> logfile, "* Align unmapped reads on transcriptome"; logfile.flush()
     if unmapped:
-        unmapped_fastq,additionals = align_unmapped(ex,job,assembly,group_names,
-                                                    exon_mapping,transcript_mapping,exons_in_trans,via)
+        print >> logfile, "* Align unmapped reads on transcriptome"; logfile.flush()
+        try: unmapped_fastq,additionals = align_unmapped(ex,job,assembly,group_names,
+                                                         exon_mapping,transcript_mapping,exons_in_trans,via)
+        except Exception as error:
+            print >> debugfile, error; debugfile.flush()
+
     """ Find splice junctions """
     if junctions:
         print >> logfile, "* Search for splice junctions"; logfile.flush()
         try: find_junctions(ex,job,assembly,logfile=logfile,via=via)
-        except Exception as error: print error
+        except Exception as error:
+            print >> debugfile, error; debugfile.flush()
 
     """ Build exon pileups from bam files """
     print >> logfile, "* Build pileups"; logfile.flush()
@@ -629,7 +633,7 @@ def soapsplice(unmapped_R1, unmapped_R2, index, output=None, path_to_soapsplice=
         -i: length of tail that can be ignored in one-segment alignment. [7]
         -t: longest gap between two segments in two-segment alignment. [500000]
         -a: shortest length of a segment in two-segment alignment. [8]
-        -q: input quality type in FASTQ file (0: Illumina, 1: Sanger). [0]
+        -q: input quality type in FASTQ file (0: old Illumina, 1: Sanger). [0]
         -L: maximum distance between paired-end reads. [500000]
         -l: minimum distance between paired-end reads. [50]
         -I: insert length of paired-end reads.
@@ -637,7 +641,7 @@ def soapsplice(unmapped_R1, unmapped_R2, index, output=None, path_to_soapsplice=
     if not output: output = unique_filename_in()
     path_to_soapsplice = path_to_soapsplice or 'soapsplice'
     args = [path_to_soapsplice,'-d',index,'-1',unmapped_R1,'-2',unmapped_R2,'-o',output,'-f','2']
-    opts = [] # -q 1 for Sanger format
+    opts = []
     for k,v in options.iteritems(): opts.extend([str(k),str(v)])
     return {"arguments": args+opts, "return_value": output}
 
@@ -651,31 +655,30 @@ def find_junctions(ex,job,assembly,soapsplice_index=None,path_to_soapsplice=None
 
     :param soapsplice_index: (str) path to the SOAPsplice index.
     :param path_to_soapsplice: (str) specify the path to the program if it is not in your $PATH.
-    :param soapsplice_options: (dict) SOAPsplice options, e.g. {'-q':1}.
+    :param soapsplice_options: (dict) SOAPsplice options, e.g. {'-m':2}.
     :rtype: str, str, str
     """
     assembly = genrep.Assembly(assembly.id, intype=3)
     soapsplice_index = soapsplice_index or os.path.join(assembly.index_path,assembly.md5+'.index')
     soapsplice_options.update(job.options.get('soapsplice_options',{}))
-    #soapsplice_options = # check if Sanger or Illumina format
+    soapsplice_options.setdefault('-p',16) # number of threads
+    soapsplice_options.setdefault('-q',1)  # Sanger format
     unmapped_fastq = {}
     for gid, group in job.groups.iteritems():
         unmapped_fastq[gid] = []
         for rid, run in group['runs'].iteritems():
             unmapped = job.files[gid][rid].get('unmapped_fastq')
             if not unmapped:
-                print >> logfile, "No unmapped reads found. Skip."
-                return 1
-            if not isinstance(unmapped,tuple):
-                print >> logfile, "Pair-end reads required."
-                return 1
+                print >> logfile, "No unmapped reads found. Skip."; logfile.flush()
+                continue
+            elif not isinstance(unmapped,tuple):
+                print >> logfile, "Pair-end reads required. Skip."; logfile.flush()
+                continue
             unmapped_fastq[gid].append(unmapped)
         R1 = cat(zip(*unmapped_fastq[gid])[0])
         R2 = cat(zip(*unmapped_fastq[gid])[1])
-        nthreads = 16
-        soapsplice_options['p'] = nthreads
         future = soapsplice.nonblocking(ex,R1,R2,soapsplice_index,path_to_soapsplice=path_to_soapsplice,
-                                        options=soapsplice_options, via=via, memory=4, threads=nthreads)
+                                        options=soapsplice_options, via=via, memory=4, threads=soapsplice_options['-p'])
         template = future.wait()
         junc_file = template+'.junc'
         sql,bed = convert_junc_file(junc_file,assembly)
@@ -686,7 +689,10 @@ def find_junctions(ex,job,assembly,soapsplice_index=None,path_to_soapsplice=None
         bam_descr = set_file_descr('junctions_%s.bam' % group['name'], \
                                    group=group['name'],type='bam',step='1')
         sam = template+'.sam'
-        bam = sam_to_bam(ex,sam,reheader=assembly.name)
+        try: bam = sam_to_bam(ex,sam,reheader=assembly.name)
+        except Exception, e:
+            print >> logfile, "%s\n(Qualities may be in the wrong format, try with '-q 0'.)" % e; logfile.flush()
+            continue
         add_and_index_bam(ex, bam, description=bam_descr)
         ex.add(sql, description=sql_descr)
         ex.add(bed, description=bed_descr)
