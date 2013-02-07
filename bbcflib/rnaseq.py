@@ -689,14 +689,14 @@ def find_junctions(ex,job,assembly,soapsplice_index=None,path_to_soapsplice=None
         bam_descr = set_file_descr('junctions_%s.bam' % group['name'], \
                                    group=group['name'],type='bam',step='1')
         sam = template+'.sam'
-        try: bam = sam_to_bam(ex,sam,reheader=assembly.name)
+        try:
+            bam = sam_to_bam(ex,sam,reheader=assembly.name)
+            add_and_index_bam(ex, bam, description=bam_descr)
+            ex.add(bam, description=bam_descr)
         except Exception, e:
             print >> logfile, "%s\n(Qualities may be in the wrong format, try with '-q 0'.)" % e; logfile.flush()
-            continue
-        add_and_index_bam(ex, bam, description=bam_descr)
         ex.add(sql, description=sql_descr)
         ex.add(bed, description=bed_descr)
-        ex.add(bam, description=bam_descr)
 
 def convert_junc_file(filename, assembly):
     """Convert a .junc SOAPsplice output file to sql and bed formats. Return the two respective file names.
