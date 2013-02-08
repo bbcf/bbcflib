@@ -431,6 +431,7 @@ def rnaseq_workflow(ex, job, pileup_level=["exons","genes","transcripts"], via="
     group_names={}; group_ids={}; conditions=[]
     assembly = genrep.Assembly(assembly=job.assembly_id)
     groups = job.groups
+    assert len(groups)>0, "No groups/runs were given."
     for gid,group in groups.iteritems():
         gname = str(group['name'])
         group_names[gid] = gname
@@ -487,11 +488,12 @@ def rnaseq_workflow(ex, job, pileup_level=["exons","genes","transcripts"], via="
             nreads[cond] = sum(exon_pileup.values()) # total number of reads
             print >> logfile, "  ....Pileup", cond, "done"; logfile.flush()
     exon_ids = exon_pileup.keys()
+    del exon_pileup
 
     """ Arrange exon counts in a matrix """
     nreads = asarray([nreads[cond] for cond in conditions], dtype=numpy.float_)
     counts = asarray([exon_pileups[cond] for cond in conditions], dtype=numpy.float_).T
-    del exon_pileups; del exon_pileup
+    del exon_pileups
     exon_counts = [(exon_ids[k],counts[k]) for k in range(len(exon_ids)) if sum(counts[k])!=0]
 
     hconds = ["counts."+c for c in conditions] + ["rpkm."+c for c in conditions]
