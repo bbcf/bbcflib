@@ -296,6 +296,12 @@ class Assembly(object):
             out = out.name
         return (out,size)
 
+    def motif_available(self):
+        return self.genrep.motifs_available(genome_id=self.genome_id)
+
+    def get_motif_PWM(self, motif_name, output=None):
+        return self.genrep.get_motif_PWM(self.genome_id, motif_name, output=output)
+
     def statistics(self, output=None, frequency=False, matrix_format=False):
         """
         Return (di-)nucleotide counts or frequencies for an assembly, writes in file *output* if provided.
@@ -756,6 +762,45 @@ class GenRep(object):
             return False
         return True
 
+    def motifs_available(self, genome_id=None):
+        """
+        List motifs available in genrep, returns a list like (first number is genome id)::
+
+        [('6 ABF1', 'Saccharomyces cerevisiae S288c - ABF1'),
+        ('6 ABF2', 'Saccharomyces cerevisiae S288c - ABF2'),
+        ('6 ACE2', 'Saccharomyces cerevisiae S288c - ACE2'), ...]
+
+        """
+        request = urllib2.Request(self.url + "/genomes.json")
+        motif_list = []
+        for g in json.load(urllib2.urlopen(request)):
+            species = str(g['genome'].get('name')).strip()
+            gid = g['genome'].get('id')
+            if genome_id and gid != genome_id: continue
+            source_url = g['genome'].get('motif_matrix_url')
+            if not source_url: continue
+            request2 = urllib2.Request("%s/genomes/%i/get_matrix.json" %(self.url, gid))
+            for m in json.load(urllib2.urlopen(request2)):
+                mname = m['motif']['name']
+                motif_list.append(("%i %s"%(gid,mname), species+" - "+mname))
+        motif_list.sort(key=lambda x: x[1])
+        return motif_list
+
+    def get_motif_PWM(self, genome_id, motif_name, output=None):
+        """
+        Retieves a motif PWM from its genome_id and name, and saves in the file named as output if not None.
+        """
+        request = urllib2.Request("%s/genomes/%i/get_matrix.json?gene_name=%s" %(self.url,genome_id,motif_name))
+        motif = json.load(urllib2.urlopen(request))[0]['motif']
+        if output is None: return motif
+        with open(output,"w") as pwmfile:
+            t = dict((alpha,n) for n,alpha in enumerate(motif['alphabet']))
+            pwm = "\n".join([" ".join(["1"]+[str(x[t[y]]) for y in ['A','C','G','T']]) for x in motif['motif']])
+            pwmfile.write(pwm)
+        return output
+        
+        
+
     def assemblies_available(self, assembly=None, filter_valid=True):
         """
         Returns a list of tuples (assembly_name, species) available on genrep, or tells if an
@@ -767,7 +812,7 @@ class GenRep(object):
         for g in json.load(urllib2.urlopen(request)):
             species = str(g['genome'].get('name')).strip()
             gid = g['genome'].get('id')
-            if species and id:
+            if species and gid:
                 genome_list[gid] = species
         request = urllib2.Request(self.url + "/assemblies.json")
         for a in json.load(urllib2.urlopen(request)):

@@ -271,6 +271,19 @@ try:
             out = next
         return out
 
+        #-------------------------------------------------------------------------#
+    @program
+    def fasta_length(file):
+        """Binds the `fastalength` program and returns a `chromosomes` dictionary {'chr1': {'name': 'chr1', 'length': xxxx}, ...}.
+        """
+        def _len_to_dict(p):
+            chroms = {}
+            for l in p.stdout:
+                row = l.strip().split()
+                chroms[row[1]] = {'name': row[1], 'length': int(row[0])}
+            return chroms
+        return {'arguments': ['fastalength', file], 'return_value': _len_to_dict}
+
 #-------------------------------------------------------------------------#
     def get_files( id_or_key, minilims, by_type=True, select_param=None ):
         """Retrieves a dictionary of files created by an htsstation job identified by its key

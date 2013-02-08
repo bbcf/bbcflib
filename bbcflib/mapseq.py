@@ -74,7 +74,7 @@ import os, re, json, shutil, gzip, tarfile, bz2, pickle, urllib, time
 
 # Internal modules #
 from bbcflib import frontend, genrep, daflims
-from bbcflib.common import cat, set_file_descr, merge_sql, gzipfile, unique_filename_in
+from bbcflib.common import cat, set_file_descr, merge_sql, gzipfile, unique_filename_in, fasta_length
 import bbcflib.btrack as track
 
 # Other modules #
@@ -593,18 +593,6 @@ def untar_cat_fasta(fastafile):
     else:
         target = fastafile
     return target
-
-@program
-def fasta_length(file):
-    """Binds the `fastalength` program and returns a `chromosomes` dictionary {'chr1': {'name': 'chr1', 'length': xxxx}, ...}.
-    """
-    def _len_to_dict(p):
-        chroms = {}
-        for l in p.stdout:
-            row = l.strip().split()
-            chroms[row[1]] = {'name': row[1], 'length': int(row[0])}
-        return chroms
-    return {'arguments': ['fastalength', file], 'return_value': _len_to_dict}
 
 @program
 def bowtie_build(files, index=None):

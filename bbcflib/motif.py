@@ -12,7 +12,7 @@ from operator import add
 
 # Internal modules #
 from bbcflib.btrack import track, FeatureStream
-from bbcflib.common import set_file_descr, unique_filename_in, gzipfile
+from bbcflib.common import set_file_descr, unique_filename_in, gzipfile, fasta_length
 
 # Other modules #
 from bein import program
@@ -157,6 +157,11 @@ def save_motif_profile( ex, motifs, assembly, regions=None, fasta=None, backgrou
         fasta, size = assembly.fasta_from_regions( regions )
     if fasta is None:
         raise ValueError("Provide either a fasta file or a valid list of regions")
+    if assembly:
+        chrmeta = assembly.chrmeta
+    else:
+        chroms = fasta_length.nonblocking( ex, fasta, via=via ).wait()
+        chrmeta = dict([(v['name'], {'length': v['length']}) for v in chroms.values()])
     if output is None: 
         sqlout = unique_filename_in()
     else:
@@ -164,7 +169,9 @@ def save_motif_profile( ex, motifs, assembly, regions=None, fasta=None, backgrou
     if not(isinstance(motifs, dict)):
         motifs = {"_": motifs}
     futures = {}
-    if background is None: background = assembly.statistics(unique_filename_in(),frequency=True,matrix_format=True)
+    if background is None: 
+        background = assembly.statistics(unique_filename_in(),frequency=True,
+                                         matrix_format=True)
     for name, pwm in motifs.iteritems():
         output = unique_filename_in()
         futures[name] = ( output, motif_scan.nonblocking( ex, fasta, pwm, background,
@@ -191,7 +198,7 @@ def save_motif_profile( ex, motifs, assembly, regions=None, fasta=None, backgrou
             for x in maxscore.values():
                 yield x
 ##############
-    track_result = track( sqlout, chrmeta=assembly.chrmeta, info={'datatype':'qualitative'},
+    track_result = track( sqlout, chrmeta=chrmeta, info={'datatype':'qualitative'},
                           fields=['chr','start','end','name','score','strand'] )
     for name, future in futures.iteritems():
         future[1].wait()
