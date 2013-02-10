@@ -162,7 +162,7 @@ def score_by_feature(trackScores,trackFeatures,fn='mean'):
     """
     For every feature from *trackFeatures*, get the list of all scores it contains
     and apply an operation *fn* on this list (by default, scores are averaged).
-    Warning: both score and features streams must be sorted! (use `common.sorted_stream` is necessary).
+    Warning: both score and feature streams must be sorted! (use `common.sorted_stream` is necessary).
     The output is a stream similar to *trackFeatures* but with an additional `score` field
     for each stream in *trackScores*::
         fn = 'mean':
