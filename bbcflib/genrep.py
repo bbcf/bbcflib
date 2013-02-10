@@ -296,7 +296,7 @@ class Assembly(object):
             out = out.name
         return (out,size)
 
-    def motif_available(self):
+    def motifs_available(self):
         return self.genrep.motifs_available(genome_id=self.genome_id)
 
     def get_motif_PWM(self, motif_name, output=None):
