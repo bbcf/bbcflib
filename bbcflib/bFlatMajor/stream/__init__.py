@@ -3,8 +3,16 @@ The *stream* module contains algorithms which produce :func:`FeatureStream <bbcf
 """
 from bbcflib.bFlatMajor import *
 ###############################################################################
-_members = {'filter_scores': ['trackFeatures','trackScores'],
+_members = {'merge_scores': ['trackList'],
+            'filter_scores': ['trackFeatures','trackScores'],
             'score_by_feature': ['trackFeatures', 'trackScores'],
+            'window_smoothing': ['trackList'],
+            'normalize': ['trackList'],
+            'concatenate': ['trackList'],
+            'selection': ['trackList'],
+            'neighborhood': ['trackList'],
+            'combine': ['trackList'],  
+            'segment_features': ['trackList'],
             'getNearestFeature': ['features','annotations'],
             }
 
