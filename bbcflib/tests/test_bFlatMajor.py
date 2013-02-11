@@ -10,9 +10,9 @@ from bbcflib.bFlatMajor.common import concat_fields, split_field, map_chromosome
 from bbcflib.bFlatMajor.stream.annotate import getNearestFeature
 from bbcflib.bFlatMajor.stream.intervals import concatenate, neighborhood, segment_features, intersect, selection
 from bbcflib.bFlatMajor.stream.intervals import exclude, require, disjunction, intersection, union
-from bbcflib.bFlatMajor.stream.scores import merge_scores, score_by_feature, window_smoothing, filter_scores
+from bbcflib.bFlatMajor.stream.scores import merge_scores, score_by_feature, window_smoothing, filter_scores, normalize
 from bbcflib.bFlatMajor.numeric.regions import feature_matrix, summed_feature_matrix
-from bbcflib.bFlatMajor.numeric.signal import _normalize, normalize, correlation
+from bbcflib.bFlatMajor.numeric.signal import _normalize, correlation
 
 # Other modules #
 import numpy

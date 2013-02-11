@@ -4,6 +4,8 @@ import sys
 from bbcflib.bFlatMajor import common
 from bbcflib.bFlatMajor.stream import concatenate
 from bbcflib.btrack import FeatureStream
+from numpy import float as nfloat, log as nlog
+from numpy import asarray,mean,median,exp,nonzero,prod,around,argsort
 
 def _sum(scores,denom=None):
     return sum(scores)
@@ -350,3 +352,76 @@ def window_smoothing( trackList, window_size, step_size=1, stop_val=sys.maxint,
                 for n,t in enumerate(trackList)]
     else:
         return FeatureStream(call(common.reorder(trackList,_f),win_start,denom),fields=_f)
+
+###############################################################################
+def normalize(trackList,method='total',field='score'):
+    """Normalizes the scores in every stream from *trackList* using the given *method*.
+    It assumes that each of the streams represents the same features, i.e. the n-th element
+    of one stream corresponds to the n-th element of another
+
+    [!] This function will temporarily store everything in memory.
+
+    :param method: normalization method:
+        * ``'total'`` divides every score vector by its sum (total number of reads) x 10^7 .
+        * ``'deseq'`` applies DESeq's normalization ("size factors") - considering every track
+            as belonging to a different group.
+        * ``'quantile'`` applies quantile normalization.
+    :param field: (str) name of the field containing the scores (must be the same for all streams).
+    """
+    def _total(scores):
+        for n,col in enumerate(scores):
+            scores[n] = scores[n]/sum(scores[n])
+        return scores
+    def _deseq(scores):
+        cnts = scores[:,nonzero(prod(scores,axis=0))[0]] # none of the counts is zero
+        loggeomeans = mean(nlog(cnts),axis=0) # -inf if division by 0
+        size_factors = exp(median(nlog(cnts)-loggeomeans,axis=1))
+        scores = around((scores.T / size_factors).T,2)
+        return scores
+    def _quantile(scores):
+        ordering = argsort(scores)
+        for n in range(len(scores)):
+            scores[n] = scores[n][ordering[n]]
+        means = mean(scores,0)
+        for n in range(len(scores)):
+            scores[n] = around(means[argsort(ordering[n])],2)
+        return scores
+
+    if method == 'total': f = _total
+    elif method == 'deseq': f = _deseq
+    elif method == 'quantile': f = _quantile
+    elif hasattr(method,'__call__'): f = method # custom function
+    else: raise ValueError("Unknown normalization method (got %s)" % method)
+    if isinstance(trackList,(list,tuple)):
+        allcontents = [None]*len(trackList)
+        allscores = [None]*len(trackList)
+        for n,t in enumerate(trackList):
+            # make a copy of the whole content, and scores separately
+            score_idx = t.fields.index(field)
+            allcontents[n] = []
+            allscores[n] = []
+            for x in t:
+                allcontents[n].append(list(x))
+                allscores[n].append(x[score_idx])
+        allscores = f(asarray(allscores))
+        for n,content in enumerate(allcontents):
+            score_idx = trackList[n].fields.index(field)
+            for k,x in enumerate(content):
+                x[score_idx] = allscores[n][k]
+                content[k] = tuple(x)
+        return [FeatureStream(c,fields=trackList[n].fields) for n,c in enumerate(allcontents)]
+    elif method == 'total' or method == f:
+        content = []
+        scores = []
+        score_idx = trackList.fields.index(field)
+        for x in trackList:
+            content.append(list(x))
+            scores.append(x[score_idx])
+        scores = f(asarray([scores,],dtype=nfloat))
+        for k,x in enumerate(content):
+            x[score_idx] = scores[0][k]
+            content[k] = tuple(x)
+        return FeatureStream(content,fields=trackList.fields)
+    else:
+        return trackList
+
