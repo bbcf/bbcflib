@@ -207,7 +207,7 @@ def get_fastq_files( ex, job, dafl=None, set_seed_length=True):
                 run = str(run['url']).strip()
             if isinstance(run,dict) and all([x in run for x in ['facility','machine','run','lane']]):
                 dafl1 = dafl[run['facility']]
-                daf_data = dafl1.fetch_fastq( str(run['facility']), str(run['machine']), 
+                daf_data = dafl1.fetch_fastq( str(run['facility']), str(run['machine']),
                                               run['run'], run['lane'],
                                               libname=run.get('sequencing_library') )
                 job.groups[gid]['runs'][rid] = daf_data['path']
@@ -1030,7 +1030,7 @@ def bam_to_density( bamfile, output, chromosome_accession=None, chromosome_name=
     else:
         if merge<0:
             b2w_args += ["-6"]
-        files = output
+        files = [output]
     b2w_args += args
     return {"arguments": ["bam2wig"]+b2w_args, "return_value": files}
 
