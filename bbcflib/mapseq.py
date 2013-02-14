@@ -1030,7 +1030,7 @@ def bam_to_density( bamfile, output, chromosome_accession=None, chromosome_name=
     else:
         if merge<0:
             b2w_args += ["-6"]
-        files = [output]
+        files = output
     b2w_args += args
     return {"arguments": ["bam2wig"]+b2w_args, "return_value": files}
 
