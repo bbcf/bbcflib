@@ -246,7 +246,6 @@ class Test_Intervals(unittest.TestCase):
     def setUp(self):
         pass
 
-    @unittest.skip("")
     def test_concatenate(self):
         s1 = [('chr',1,3,0.2,'n'), ('chr',5,9,0.5,'n'), ('chr',11,15,1.2,'n')]
         s2 = [('chr',1,4,0.6,'m'), ('chr',8,11,0.4,'m'), ('chr',11,12,0.1,'m')]
