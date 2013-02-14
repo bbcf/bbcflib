@@ -246,7 +246,7 @@ class Test_Intervals(unittest.TestCase):
     def setUp(self):
         pass
 
-    @unittest.skip("")
+    #@unittest.skip("")
     def test_concatenate(self):
         s1 = [('chr',1,3,0.2,'n'), ('chr',5,9,0.5,'n'), ('chr',11,15,1.2,'n')]
         s2 = [('chr',1,4,0.6,'m'), ('chr',8,11,0.4,'m'), ('chr',11,12,0.1,'m')]
@@ -263,7 +263,7 @@ class Test_Intervals(unittest.TestCase):
         stream2 = fstream(s2, fields=['chr','start','end','score','name'])
         res = list(concatenate([stream1,stream2], fields=['chr','start','end','score']))
         expected = [('chr',1,3,0.2),('chr',1,4,0.6),('chr',5,9,0.5),('chr',11,15,1.2),('chrX',8,11,0.4),('chrX',11,12,0.1)]
-        self.assertListEqual(res,expected)
+        self.assertListEqual(sorted(res),sorted(expected))
 
         # Remove duplicates
         stream1 = fstream([(1,2),(3,4),(5,6)], fields=['start','end'])
@@ -281,7 +281,7 @@ class Test_Intervals(unittest.TestCase):
         stream2 = fstream(s2, fields=['chr','start','end','score','name'])
         res = list(concatenate([stream1,stream2], fields=['chr','start','score','name'], group_by=group_by, aggregate=aggregate))
         expected = [('chr',1,4,0.8,'m-n'),('chr',5,9,0.5,'n'),('chr',8,11,0.4,'m'),('chr',11,15,1.2,'n'),('chrX',11,15,0.1,'m')]
-        self.assertListEqual(res,expected)
+        self.assertListEqual(sorted(res),sorted(expected))
 
     def test_selection(self):
         s = [('chr1',1,3,0.2,'a'), ('chr2',5,9,0.5,'b'), ('chr2',11,15,1.2,'c')]
