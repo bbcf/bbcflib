@@ -368,30 +368,7 @@ def normalize(trackList,method='total',field='score'):
         * ``'quantile'`` applies quantile normalization.
     :param field: (str) name of the field containing the scores (must be the same for all streams).
     """
-    def _total(scores):
-        for n,col in enumerate(scores):
-            scores[n] = scores[n]/sum(scores[n])
-        return scores
-    def _deseq(scores):
-        cnts = scores[:,nonzero(prod(scores,axis=0))[0]] # none of the counts is zero
-        loggeomeans = mean(nlog(cnts),axis=0) # -inf if division by 0
-        size_factors = exp(median(nlog(cnts)-loggeomeans,axis=1))
-        scores = around((scores.T / size_factors).T,2)
-        return scores
-    def _quantile(scores):
-        ordering = argsort(scores)
-        for n in range(len(scores)):
-            scores[n] = scores[n][ordering[n]]
-        means = mean(scores,0)
-        for n in range(len(scores)):
-            scores[n] = around(means[argsort(ordering[n])],2)
-        return scores
 
-    if method == 'total': f = _total
-    elif method == 'deseq': f = _deseq
-    elif method == 'quantile': f = _quantile
-    elif hasattr(method,'__call__'): f = method # custom function
-    else: raise ValueError("Unknown normalization method (got %s)" % method)
     if isinstance(trackList,(list,tuple)):
         allcontents = [None]*len(trackList)
         allscores = [None]*len(trackList)
@@ -403,21 +380,21 @@ def normalize(trackList,method='total',field='score'):
             for x in t:
                 allcontents[n].append(list(x))
                 allscores[n].append(x[score_idx])
-        allscores = f(asarray(allscores))
+        allscores = common.normalize(asarray(allscores),method)
         for n,content in enumerate(allcontents):
             score_idx = trackList[n].fields.index(field)
             for k,x in enumerate(content):
                 x[score_idx] = allscores[n][k]
                 content[k] = tuple(x)
         return [FeatureStream(c,fields=trackList[n].fields) for n,c in enumerate(allcontents)]
-    elif method == 'total' or method == f:
+    elif method == 'total' or hasattr(method,'__call__'):
         content = []
         scores = []
         score_idx = trackList.fields.index(field)
         for x in trackList:
             content.append(list(x))
             scores.append(x[score_idx])
-        scores = f(asarray([scores,],dtype=nfloat))
+        scores = common.normalize(asarray([scores,],dtype=nfloat),method)
         for k,x in enumerate(content):
             x[score_idx] = scores[0][k]
             content[k] = tuple(x)

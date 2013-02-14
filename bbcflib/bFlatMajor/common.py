@@ -1,6 +1,35 @@
 from bbcflib.btrack import FeatureStream
 from functools import wraps
 import sys, re, itertools
+from numpy import float as nfloat, log as nlog
+from numpy import asarray,mean,median,exp,nonzero,prod,around,argsort
+
+####################################################################
+def normalize(scores,method):
+    def _total(scores):
+        for n,col in enumerate(scores):
+            scores[n] = scores[n]/sum(scores[n])
+        return scores
+    def _deseq(scores):
+        cnts = scores[:,nonzero(prod(scores,axis=0))[0]] # none of the counts is zero
+        loggeomeans = mean(nlog(cnts),axis=0) # -inf if division by 0
+        size_factors = exp(median(nlog(cnts)-loggeomeans,axis=1))
+        scores = around((scores.T / size_factors).T,2)
+        return scores
+    def _quantile(scores):
+        ordering = argsort(scores)
+        for n in range(len(scores)):
+            scores[n] = scores[n][ordering[n]]
+        means = mean(scores,0)
+        for n in range(len(scores)):
+            scores[n] = around(means[argsort(ordering[n])],2)
+        return scores
+
+    if method == 'total': return _total(scores)
+    elif method == 'deseq': return _deseq(scores)
+    elif method == 'quantile': return _quantile(scores)
+    elif hasattr(method,'__call__'): return method(scores) # custom function
+    else: raise ValueError("Unknown normalization method (got %s)" % method)
 
 ####################################################################
 def ordered(fn):
