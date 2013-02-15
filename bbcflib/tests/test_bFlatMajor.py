@@ -246,7 +246,6 @@ class Test_Intervals(unittest.TestCase):
     def setUp(self):
         pass
 
-    #@unittest.skip("")
     def test_concatenate(self):
         s1 = [('chr',1,3,0.2,'n'), ('chr',5,9,0.5,'n'), ('chr',11,15,1.2,'n')]
         s2 = [('chr',1,4,0.6,'m'), ('chr',8,11,0.4,'m'), ('chr',11,12,0.1,'m')]
@@ -441,19 +440,19 @@ class Test_Scores(unittest.TestCase):
         self.assertListEqual(res,expected)
 
     def test_score_by_feature(self):
-        features = fstream([(5,15,'gene1'),(30,40,'gene2')], fields=['start','end','name'])
-        scores1 = fstream([(10,20,6.),(30,40,6.)], fields=['start','end','score'])
-        scores2 = fstream([(30,40,2.)], fields=['start','end','score'])
+        features = fstream([('chr',5,15,'gene1'),('chr',30,40,'gene2')], fields=['chr','start','end','name'])
+        scores1 = fstream([('chr',10,20,6.),('chr',30,40,6.)], fields=['chr','start','end','score'])
+        scores2 = fstream([('chr',30,40,2.)], fields=['chr','start','end','score'])
         res = list(score_by_feature([scores1,scores2],features))
-        expected = [(5,15,'gene1',3.,0.),(30,40,'gene2',6.,2.)]
+        expected = [('chr',5,15,'gene1',3.,0.),('chr',30,40,'gene2',6.,2.)]
         self.assertListEqual(res,expected)
 
         # normalize = False
-        features = fstream([(5,15,'gene1'),(30,40,'gene2')], fields=['start','end','name'])
-        scores1 = fstream([(10,20,6.),(30,40,6.)], fields=['start','end','score'])
-        scores2 = fstream([(2,8,2.),(30,33,3.)], fields=['start','end','score'])
+        features = fstream([('chr',5,15,'gene1'),('chr',30,40,'gene2')], fields=['chr','start','end','name'])
+        scores1 = fstream([('chr',10,20,6.),('chr',30,40,6.)], fields=['chr','start','end','score'])
+        scores2 = fstream([('chr',2,8,2.),('chr',30,33,3.)], fields=['chr','start','end','score'])
         res = list(score_by_feature([scores1,scores2],features,'sum'))
-        expected = [(5,15,'gene1',30.,6.),(30,40,'gene2',60.,9.)]
+        expected = [('chr',5,15,'gene1',30.,6.),('chr',30,40,'gene2',60.,9.)]
         self.assertListEqual(res,expected)
 
     def test_window_smoothing(self):
