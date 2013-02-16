@@ -5,33 +5,6 @@ from numpy import float as nfloat, log as nlog
 from numpy import asarray,mean,median,exp,nonzero,prod,around,argsort
 
 ####################################################################
-def normalize(scores,method):
-    def _total(scores):
-        for n,col in enumerate(scores):
-            scores[n] = scores[n]/sum(scores[n])
-        return scores
-    def _deseq(scores):
-        cnts = scores[:,nonzero(prod(scores,axis=0))[0]] # none of the counts is zero
-        loggeomeans = mean(nlog(cnts),axis=0) # -inf if division by 0
-        size_factors = exp(median(nlog(cnts)-loggeomeans,axis=1))
-        scores = around((scores.T / size_factors).T,2)
-        return scores
-    def _quantile(scores):
-        ordering = argsort(scores)
-        for n in range(len(scores)):
-            scores[n] = scores[n][ordering[n]]
-        means = mean(scores,0)
-        for n in range(len(scores)):
-            scores[n] = around(means[argsort(ordering[n])],2)
-        return scores
-
-    if method == 'total': return _total(scores)
-    elif method == 'deseq': return _deseq(scores)
-    elif method == 'quantile': return _quantile(scores)
-    elif hasattr(method,'__call__'): return method(scores) # custom function
-    else: raise ValueError("Unknown normalization method (got %s)" % method)
-
-####################################################################
 def ordered(fn):
     """
     Decorator. Keeps the original order of fields for a stream passing through one of
@@ -571,5 +544,42 @@ def cobble(stream,aggregate=aggreg_functions,stranded=False):
     else: stream = reorder(stream,['start','end'])
     return FeatureStream( _fuse(stream,stranded), fields=stream.fields)
 
+
+####################################################################
+def normalize(M,method):
+    """Normalize the vectors of a matrix *M* using the given *method*.
+    To apply it to streams, use :func:`bFlatMajor.stream.normalize
+    <bbcflib.bFlatMajor.stream.scores.normalize>`.
+
+    :param M: (list of lists, or numpy array) matrix M to normalize.
+    :param method: normalization method:
+        * ``'total'`` divides every score vector by its sum (total number of reads) x 10^7 .
+        * ``'deseq'`` applies DESeq's normalization ("size factors") - considering every track
+            as belonging to a different group.
+        * ``'quantile'`` applies quantile normalization.
+    """
+    def _total(M):
+        for n,col in enumerate(M):
+            M[n] = M[n]/sum(M[n])
+        return M
+    def _deseq(M):
+        cnts = M[:,nonzero(prod(M,axis=0))[0]] # none of the counts is zero
+        loggeomeans = mean(nlog(cnts),axis=0) # -inf if division by 0
+        size_factors = exp(median(nlog(cnts)-loggeomeans,axis=1))
+        M = around((M.T / size_factors).T,2)
+        return M
+    def _quantile(M):
+        ordering = argsort(M)
+        for n in range(len(M)):
+            M[n] = M[n][ordering[n]]
+        means = mean(M,0)
+        for n in range(len(M)):
+            M[n] = around(means[argsort(ordering[n])],2)
+        return M
+    if method == 'total': return _total(M)
+    elif method == 'deseq': return _deseq(M)
+    elif method == 'quantile': return _quantile(M)
+    elif hasattr(method,'__call__'): return method(M) # custom function
+    else: raise ValueError("Unknown normalization method (got %s)" % method)
 
 ####################################################################

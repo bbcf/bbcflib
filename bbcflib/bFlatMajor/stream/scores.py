@@ -4,8 +4,7 @@ import sys
 from bbcflib.bFlatMajor import common
 from bbcflib.bFlatMajor.stream import concatenate
 from bbcflib.btrack import FeatureStream
-from numpy import float as nfloat, log as nlog
-from numpy import asarray,mean,median,exp,nonzero,prod,around,argsort
+from numpy import float as nfloat, asarray, zeros
 
 def _sum(scores,denom=None):
     return sum(scores)
@@ -357,10 +356,11 @@ def window_smoothing( trackList, window_size, step_size=1, stop_val=sys.maxint,
 def normalize(trackList,method='total',field='score'):
     """Normalizes the scores in every stream from *trackList* using the given *method*.
     It assumes that each of the streams represents the same features, i.e. the n-th element
-    of one stream corresponds to the n-th element of another
+    of one stream corresponds to the n-th element of another.
 
     [!] This function will temporarily store everything in memory.
 
+    :param trackList: FeatureStream, or list of FeatureStream objects.
     :param method: normalization method:
         * ``'total'`` divides every score vector by its sum (total number of reads) x 10^7 .
         * ``'deseq'`` applies DESeq's normalization ("size factors") - considering every track
@@ -368,37 +368,27 @@ def normalize(trackList,method='total',field='score'):
         * ``'quantile'`` applies quantile normalization.
     :param field: (str) name of the field containing the scores (must be the same for all streams).
     """
-
-    if isinstance(trackList,(list,tuple)):
-        allcontents = [None]*len(trackList)
-        allscores = [None]*len(trackList)
-        for n,t in enumerate(trackList):
-            # make a copy of the whole content, and scores separately
-            score_idx = t.fields.index(field)
-            allcontents[n] = []
-            allscores[n] = []
-            for x in t:
-                allcontents[n].append(list(x))
-                allscores[n].append(x[score_idx])
-        allscores = common.normalize(asarray(allscores),method)
-        for n,content in enumerate(allcontents):
-            score_idx = trackList[n].fields.index(field)
-            for k,x in enumerate(content):
-                x[score_idx] = allscores[n][k]
-                content[k] = tuple(x)
-        return [FeatureStream(c,fields=trackList[n].fields) for n,c in enumerate(allcontents)]
-    elif method == 'total' or hasattr(method,'__call__'):
-        content = []
-        scores = []
-        score_idx = trackList.fields.index(field)
-        for x in trackList:
-            content.append(list(x))
-            scores.append(x[score_idx])
-        scores = common.normalize(asarray([scores,],dtype=nfloat),method)
+    if not isinstance(trackList,(list,tuple)):
+        trackList = [trackList]
+    allcontents = [list(t) for t in trackList]
+    ncols = len(trackList)
+    nlines = len(allcontents[0])
+    assert all(len(t)==nlines for t in allcontents), "All streams must have the same number of elements."
+    # Build the matrix
+    allscores = zeros((ncols,nlines))
+    for n,content in enumerate(allcontents):
+        idx = trackList[n].fields.index(field)
+        allscores[n] = asarray([x[idx] for x in content])
+    # Normalize
+    allscores = common.normalize(asarray(allscores),method)
+    # Reinsert the new scores in the respective tracks
+    for n,content in enumerate(allcontents):
+        idx = trackList[n].fields.index(field)
         for k,x in enumerate(content):
-            x[score_idx] = scores[0][k]
-            content[k] = tuple(x)
-        return FeatureStream(content,fields=trackList.fields)
+            content[k] = x[:idx] + (allscores[n][k],) + x[idx+1:]
+    res = [FeatureStream(t,fields=trackList[n].fields) for n,t in enumerate(allcontents)]
+    if len(trackList) == 1:
+        return res[0]
     else:
-        return trackList
+        return res
 

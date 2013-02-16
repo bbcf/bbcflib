@@ -164,13 +164,15 @@ bFlatMajor.stream functions:
 * :func:`intersect <bbcflib.bFlatMajor.stream.intervals.intersect>`:
   return the intersection of several streams.
 * :func:`merge_scores <bbcflib.bFlatMajor.stream.scores.merge_scores>`:
-  return a stream with per-base average (or sum) of several score tracks.
+  return a stream with per-base average (or sum) of several signal tracks.
 * :func:`filter_scores <bbcflib.bFlatMajor.stream.scores.filter_scores>`:
   keep only scores belonging to a given set of regions.
 * :func:`score_by_feature <bbcflib.bFlatMajor.stream.scores.score_by_feature>`:
   attribute to each given region the sum or average of (independantly) given scores that span the region.
 * :func:`window_smoothing <bbcflib.bFlatMajor.stream.scores.window_smoothing>`:
   apply to the scores a smoothing filter along the sequence.
+* :func:`normalize <bbcflib.bFlatMajor.stream.scores.normalize>`:
+  normalize the scores between several signal tracks.
 
 bFlatMajor.numeric functions:
 #############################
