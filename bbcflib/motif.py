@@ -165,7 +165,7 @@ def save_motif_profile( ex, motifs, assembly, regions=None, fasta=None, backgrou
     if output is None: 
         sqlout = unique_filename_in()
     else:
-        output = sqlout
+        sqlout = output
     if not(isinstance(motifs, dict)):
         motifs = {"_": motifs}
     futures = {}
@@ -182,13 +182,20 @@ def save_motif_profile( ex, motifs, assembly, regions=None, fasta=None, backgrou
             maxscore = {}
         with open(_f, 'r') as fin:
             for line in fin:
-                row = line.split("\t")
-                sname,seq_chr,start,end = re.search(r'(.*)\|(.+):(\d+)-(\d+)',row[0]).groups()
+                row = line.strip().split("\t")
+                spatt = re.search(r'(.*)\|(.+):(\d+)-(\d+)',row[0])
+                if spatt:
+                    sname,seq_chr,start,end = spatt.groups()
+                else:
+                    sname = row[0]
+                    seq_chr = row[0]
+                    start = 0
+                    end = 0
                 start = int(row[3])+int(start)-1
                 tag = row[1]
                 end = start+len(tag)
                 score = float(row[2])
-                strnd = row[4]=='+' and 1 or -1
+                strnd = 1 if row[4][0] == '+' else -1
                 if keep_max_only:
                     if not((sname,seq_chr) in maxscore) or score>maxscore[(sname,seq_chr)][3]:
                         maxscore[(sname,seq_chr)] = (seq_chr,start,end,_n+":"+tag,score,strnd)
