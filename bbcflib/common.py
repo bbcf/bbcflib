@@ -284,6 +284,23 @@ try:
             return chroms
         return {'arguments': ['fastalength', file], 'return_value': _len_to_dict}
 
+    @program
+    def fasta_composition(file, frequency=False):
+        """Binds the `fastacomposition` program and returns a dictionary with keys the nucleotides ('A', 'C', 'G', 'T') and values the counts or frequencies in the file.
+        """
+        def _parse_line(p):
+            fastacomp = {}
+            for l in p.stdout:
+                row = l.strip().split()
+                fastacomp = dict((row[n].upper(),int(row[n+1]))
+                                 for n in range(1,len(row),2))
+                break
+            if frequency:
+                tot = 1.0*sum(fastacomp.values())
+                fastacomp = dict((k,x/tot) for k,x in fastacomp.iteritems())
+            return fastacomp
+        return {'arguments': ['fastacomposition', file], 'return_value': _parse_line}
+
 #-------------------------------------------------------------------------#
     def get_files( id_or_key, minilims, by_type=True, select_param=None ):
         """Retrieves a dictionary of files created by an htsstation job identified by its key

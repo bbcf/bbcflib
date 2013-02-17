@@ -252,6 +252,9 @@ def exon_snps(chrom,outexons,allsnps,assembly,sample_names,genomeRef={}):
             elif strand == -1:
                 shift = (ee - phase - pos) % 3
                 codon_start = pos + shift - 2
+            else:
+                print "***",es,ee,cds,strand,phase
+                continue
             ref_codon = assembly.fasta_from_regions({chr: [[codon_start,codon_start+3]]}, out={},
                                                     path_to_ref=genomeRef.get(chr))[0][chr][0]
             info = [chr,pos,refbase,list(rest[1:nsamples+1]),cds,strand,ref_codon,shift]
