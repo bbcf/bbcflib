@@ -32,6 +32,8 @@ def _ploidy(assembly):
     if str(assembly.name) in ["EB1_e_coli_k12","MLeprae_TN","mycoSmeg_MC2_155",
                               "mycoTube_H37RV","NA1000","vibrChol1","TB40-BAC4"]:
         ploidy = 1 # procaryote
+    elif str(assembly.name) in ["araTha1"]:
+        ploidy = 3
     else:
         ploidy = 2 # eucaryote
     return ploidy
@@ -48,7 +50,7 @@ def sam_pileup(assembly,bamfile,refGenome,via='lsf'):
     return {"arguments": ["samtools","pileup","-B","-cvsf",refGenome,"-N",str(ploidy),bamfile],
             "return_value": None}
 
-def _find_snp(info,minsnp,mincov,assembly):
+def find_snp(info,minsnp,mincov,assembly):
     """Parse the output of samtools pileup, provided as a list of already splitted *info*::
 
         info = ['chrV', '91668', 'G', 'R', '4', '4', '60', '4', 'a,.^~.', 'LLLL', '~~~~\n']
@@ -56,42 +58,43 @@ def _find_snp(info,minsnp,mincov,assembly):
                  0    1    2       3          4         5           6           7       8         9       10
         cons_qual : consensus quality is the Phred-scaled probability that the consensus is wrong.
         snp_qual: SNP quality is the Phred-scaled probability that the consensus is identical to the reference.
+
+        In case of indels:
+        info = ['chrV', '1128659', '*', '*/+CT', '5', '5', '37', '11', '*', '+CT', '10', '1', '0', '0', '0']
+        info = [chr, pos, *, c1/c2, cons_qual, snp_qual, max_map_qual, nreads, c1, c2, nindel, nref, n3rd]
+                 0    1   2    3        4         5           6           7    8   9     10     11    12
+        c1/c2: consensus on strand1/strand2, of the form \[+-][0-9]+[ACGTNacgtn]+ .
+        nindel/nref/n3rd: number of reads supporting the indel/reference/3rd allele.
+        `http://samtools.sourceforge.net/cns0.shtml`_
     """
     def _parse_info8(readbase,cons):
         iupac = {'M':['A','a','C','c'],'Y':['T','t','C','c'],'R':['A','a','G','g'],
                  'S':['G','g','C','c'],'W':['A','a','T','t'],'K':['T','t','G','g']}
-        indels = {}
-        irb = iter(readbase)
-        rb = ''
-        for x in irb:
-            if x in ['+','-']:
-                n_indel = int(irb.next())
-                seq = ''.join([irb.next() for _ in range(n_indel)])
-                indels[x+seq] = indels.setdefault(x+seq,0) + 1
-            elif x == '$': pass
-            elif x == '^': irb.next()
-            else: rb += x
-        readbase = rb
-        indels = indels.items()
         var1_fwd,var1_rev,var2_fwd,var2_rev = iupac[cons]
         nvar1_fwd = readbase.count(var1_fwd)
         nvar1_rev = readbase.count(var1_rev)
         nvar2_fwd = readbase.count(var2_fwd)
         nvar2_rev = readbase.count(var2_rev)
-        return var1_fwd, var2_fwd, nvar1_fwd, nvar1_rev, nvar2_fwd, nvar2_rev, indels
+        return var1_fwd,var2_fwd, nvar1_fwd,nvar1_rev,nvar2_fwd,nvar2_rev
 
-    ploidy = _ploidy(assembly)
-    cpt = info[8].count(".") + info[8].count(",") # number of reads supporting wild type (.fwd and ,rev)
-    ref = info[2].upper() # reference base
+    ref = info[2].upper()  # reference base
     cons = info[3].upper() # consensus base
-    nreads = info[7] # total coverage at this position
-    if int(nreads)-cpt < minsnp:
-        return ref
-    snp_qual = 10**(-float(info[5])/10)
-    if re.search(r'[ACGTN]',cons): # if bases are encoded normally (~100% replacement)
-        return cons+" (%s)"%nreads
-    elif re.search(r'[MSYWRK]',cons): # avoid cons='*/*' as it happened once
-        var1,var2, nvar1_fwd,nvar1_rev, nvar2_fwd,nvar2_rev, indels = _parse_info8(info[8],cons)
+    nreads = int(info[7])  # total coverage at this position
+    #snp_qual = 10**(-float(info[5])/10)
+    if ref == "*": # indel
+        nindel = int(info[10])
+        nref = int(info[11])
+        if nreads-nref < minsnp:
+            return ref
+        consensus = "%s/%s (%.2f%% of %s)" % (info[8],info[9],nindel*100./nreads,nreads)
+    elif re.search(r'[ACGTN]',cons): # if bases are encoded normally (~100% replacement)
+        consensus = "%s (%s)" % (cons,nreads)
+    elif re.search(r'[MSYWRK]',cons):
+        ploidy = _ploidy(assembly)
+        nref = info[8].count(".") + info[8].count(",") # number of reads supporting wild type (.fwd and ,rev)
+        if nreads-nref < minsnp:
+            return ref
+        var1,var2, nvar1_fwd,nvar1_rev, nvar2_fwd,nvar2_rev = _parse_info8(info[8],cons)
         nvar1pc = (100/float(nreads)) * (nvar1_fwd + nvar1_rev) # % of consensus 1
         nvar2pc = (100/float(nreads)) * (nvar2_fwd + nvar2_rev) # % of consensus 2
         check1 = nvar1_fwd >= 5 and nvar1_rev >= 5 and nvar1pc >= mincov/ploidy
@@ -104,11 +107,8 @@ def _find_snp(info,minsnp,mincov,assembly):
             consensus = "%s (%.2f%% of %s)" % (var1,nvar1pc,nreads)
         elif check0:                         # if third allele
             consensus = "%s (%.2f%%),%s (%.4g%% of %s)" % (var1,nvar1pc,var2,nvar2pc,nreads)
-        elif indels:
-            indels.sort(key=lambda x:x[1]) # keep only the one that most reads confirm
-            consensus = "%s (%s)" % (indels[-1][0],indels[-1][1])
         else: consensus = ref
-        return consensus
+    return consensus
 
 def all_snps(chrom,dictPileup,outall,assembly,sample_names,minsnp,mincov):
     """For a given chromosome, returns a summary file containing all SNPs identified
@@ -134,22 +134,26 @@ def all_snps(chrom,dictPileup,outall,assembly,sample_names,minsnp,mincov):
         bam_tracks.append(track(trio[2],format='bam'))
     nsamples = len(sample_names)
     current = [f.readline().split('\t') for f in pileup_files]
+    lastpos = 0
     while any([len(x)>1 for x in current]):
         current_pos = [int(x[1]) if len(x)>1 else sys.maxint for x in current]
         pos = min(current_pos)
+        print pos
         current_snp_idx = set(i for i in range(nsamples) if current_pos[i]==pos)
         current_snps = [None]*nsamples
         for i in current_snp_idx:
             info = current[i]
             chrbam = info[0]
             ref = info[2].upper()
-            current_snps[i] = _find_snp(info,minsnp,mincov,assembly)
+            current_snps[i] = find_snp(info,minsnp,mincov,assembly)
         for i in set(range(nsamples))-current_snp_idx:
             try: coverage = bam_tracks[i].coverage((chrbam,pos,pos+1)).next()[-1]
             except StopIteration: coverage = 0
             current_snps[i] = ref if coverage else "0"
         if not all([s == ref for s in current_snps]):
-            allsnps.append((chrom,pos-1,pos,ref)+tuple(current_snps))
+            if pos != lastpos: # indel can be located at the same position as an SNP
+                allsnps.append((chrom,pos-1,pos,ref)+tuple(current_snps))
+            lastpos = pos
         for i in current_snp_idx:
             current[i] = pileup_files[i].readline().split('\t')
     for f in pileup_files: f.close()
@@ -196,6 +200,8 @@ def exon_snps(chrom,outexons,allsnps,assembly,sample_names,genomeRef={}):
     def _write_buffer(_buffer, outex):
         new_codon = None
         for chr,pos,refbase,variants,cds,strand,ref_codon,shift in _buffer:
+            if refbase == "*":
+                break
             varbase = list(variants)
             if new_codon is None:
                 new_codon = [[ref_codon] for _ in range(len(varbase))]
@@ -222,17 +228,25 @@ def exon_snps(chrom,outexons,allsnps,assembly,sample_names,genomeRef={}):
             ref_codon = _revcomp(ref_codon)
             new_codon = [[_revcomp(s) for s in c] for c in new_codon]
         for chr,pos,refbase,variants,cds,strand,ref_codon,shift in _buffer:
-            result = [chr, pos+1, refbase] + list(variants) + [cds, strand] \
-                     + [_translate[ref_codon]] \
-                     + [','.join([_translate[s] for s in c]) for c in new_codon]
+            if refbase == "*":
+                result = [chr, pos+1, refbase] + list(variants) + [cds, strand] \
+                         + [_translate[ref_codon]] + ["indel"]
+            else:
+                result = [chr, pos+1, refbase] + list(variants) + [cds, strand] \
+                         + [_translate[ref_codon]] \
+                         + [','.join([_translate[s] for s in c]) for c in new_codon]
             outex.write("\t".join([str(r) for r in result])+"\n")
 
+    #############################################################
     outex = open(outexons,"a")
     outex.write('#'+'\t'.join(['chromosome','position','reference'] + sample_names + ['exon','strand','ref_aa'] \
                           + ['new_aa_'+s for s in sample_names])+'\n')
 
     snp_stream = FeatureStream(allsnps, fields=['chr','start','end','ref']+sample_names)
     inclstream = concat_fields(snp_stream, infields=snp_stream.fields[3:], as_tuple=True)
+    snp_stream = FeatureStream(allsnps, fields=['chr','start','end','ref']+sample_names)
+    inclstream = concat_fields(snp_stream, infields=snp_stream.fields[3:], as_tuple=True)
+
     annotstream = concat_fields(assembly.annot_track('CDS',chrom),
                                 infields=['name','strand','frame'], as_tuple=True)
     annotstream = FeatureStream((x[:3]+(x[1:3]+x[3],) for x in annotstream),fields=annotstream.fields)
@@ -301,7 +315,7 @@ def create_tracks(ex, outall, sample_names, assembly):
         ex.add(out+'.bed.gz', description=description)
 
 
-def snp_workflow(ex, job, assembly, mincov=40, minsnp=5, path_to_ref='', via='local'):
+def snp_workflow(ex, job, assembly, mincov=40, minsnp=5, path_to_ref='', via='local', logfile=sys.stdout, debugfile=sys.stderr):
     """Main function of the workflow"""
     if path_to_ref is None:
         path_to_ref = os.path.join(assembly.genrep.root,'nr_assemblies/fasta',assembly.md5+'.tar.gz')
