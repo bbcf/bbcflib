@@ -547,7 +547,7 @@ def cobble(stream,aggregate=aggreg_functions,stranded=False):
 
 ####################################################################
 def normalize(M,method):
-    """Normalize the vectors (columns) of a matrix *M* using the given *method*.
+    """Normalize the vectors of a matrix *M* using the given *method*.
     To apply it to streams, use :func:`bFlatMajor.stream.normalize
     <bbcflib.bFlatMajor.stream.scores.normalize>`.
 
