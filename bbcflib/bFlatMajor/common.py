@@ -2,7 +2,7 @@ from bbcflib.btrack import FeatureStream
 from functools import wraps
 import sys, re, itertools
 from numpy import float as nfloat, log as nlog
-from numpy import asarray,mean,median,exp,nonzero,prod,around,argsort
+from numpy import asarray,mean,median,exp,nonzero,prod,around,argsort,float_
 
 ####################################################################
 def ordered(fn):
@@ -547,7 +547,7 @@ def cobble(stream,aggregate=aggreg_functions,stranded=False):
 
 ####################################################################
 def normalize(M,method):
-    """Normalize the vectors of a matrix *M* using the given *method*.
+    """Normalize the vectors (columns) of a matrix *M* using the given *method*.
     To apply it to streams, use :func:`bFlatMajor.stream.normalize
     <bbcflib.bFlatMajor.stream.scores.normalize>`.
 
@@ -576,6 +576,7 @@ def normalize(M,method):
         for n in range(len(M)):
             M[n] = around(means[argsort(ordering[n])],2)
         return M
+    M = asarray(M, dtype=float_)
     if method == 'total': return _total(M)
     elif method == 'deseq': return _deseq(M)
     elif method == 'quantile': return _quantile(M)
