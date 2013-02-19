@@ -114,9 +114,9 @@ def heatmap(M,output=None,format='pdf',new=True,last=True,
       library(RColorBrewer)
       myBreaks=seq(floor(min(Mdata,na.rm=T)),ceiling(max(Mdata,na.rm=T)),length.out=15)
       myColors=rev(colorRampPalette(brewer.pal(10,"RdYlBu"))(length(myBreaks)-1))
-      rcor = function(x) {as.dist(1-cor(t(x),use="pairwise.complete.ob"))}
+      myCor = function(x) {as.dist(1-cor(t(x),use="pairwise.complete.ob"))}
       heatmap.2(as.matrix(Mdata),
-                col=myColors, trace="none", breaks=myBreaks, distfun=rcor,
+                col=myColors, trace="none", breaks=myBreaks, distfun=myCor,
                 na.rm=TRUE, density.info='none'%s)""" %plotopt)
     _end("",last,**kwargs)
     return output

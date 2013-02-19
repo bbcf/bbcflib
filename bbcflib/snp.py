@@ -138,7 +138,6 @@ def all_snps(chrom,dictPileup,outall,assembly,sample_names,minsnp,mincov):
     while any([len(x)>1 for x in current]):
         current_pos = [int(x[1]) if len(x)>1 else sys.maxint for x in current]
         pos = min(current_pos)
-        print pos
         current_snp_idx = set(i for i in range(nsamples) if current_pos[i]==pos)
         current_snps = [None]*nsamples
         for i in current_snp_idx:
