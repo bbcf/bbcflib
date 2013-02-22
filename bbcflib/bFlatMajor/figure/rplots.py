@@ -30,6 +30,8 @@ def _begin(output,format,new,**kwargs):
         robjects.r('par(%s)' %pars)
     opts = ''
     if 'log' in kwargs: opts += ',log="%s"' %kwargs['log']
+    if 'xlim' in kwargs: opts += ',xlim=c(%f,%f)' %kwargs['xlim']
+    if 'ylim' in kwargs: opts += ',ylim=c(%f,%f)' %kwargs['ylim']
     opts += ',main="%s"' %kwargs.get('main','')
     opts += ',xlab="%s"' %kwargs.get('xlab','')
     opts += ',ylab="%s"' %kwargs.get('ylab','')
@@ -40,7 +42,7 @@ def _end(lopts,last,**kwargs):
     if not(last): return
     if 'legend' in kwargs:
         names = kwargs['legend']
-        robjects.r("legend('topright', c(%s), col=1:%i%s)" %(",".join(names),len(names),lopts))
+        robjects.r("legend('topright', c('%s'), col=1:%i%s)" %("','".join(names),len(names),lopts))
     robjects.r("dev.off()")
 
 ############################################################
@@ -169,7 +171,9 @@ pcor = function(x, y, M, X, ...) {
     usr = par("usr")
     par(usr=c(0, 1, 0, 1))
     cmax = max(M[,x[y[1]]])
-    text(0.5, 0.5, paste("corr=",format(cmax, digits=4),sep=''),cex=par('cex')*3*cmax)
+    ctext = paste("corr=",format(cmax, digits=4),sep='')
+    cmax = abs(cmax)
+    if (cmax>0.5) text(0.5, 0.5, ctext, cex=par('cex')*3*cmax)
     par(usr=usr)
 }
 ppoints = function (x, y, col, ...) {
@@ -184,6 +188,8 @@ qpoints = function (x, y, col, ...) {
 }
 phist = function (x, col, ...) {
     usr = par("usr")
+print(usr)
+print(range(x))
     ylog = par("ylog")
     xlog = par("xlog")
     if (ylog) {
@@ -192,19 +198,19 @@ phist = function (x, col, ...) {
         hbr = (h$breaks-h$breaks[1])/(h$breaks[length(h$breaks)]-h$breaks[1])
         hbr = usr[1]+(usr[2]-usr[1])*hbr
         rect(hbr[-length(hbr)], usr[3], hbr[-1], usr[3]+(usr[4]-usr[3])*h$density,
-             col=col, border=NA)
+             col=col, border=NA, ...)
     } else {
         h = hist(x, plot=FALSE, br=max(10,length(x)/50))
         rect(h$breaks[-length(h$breaks)], usr[3],
              h$breaks[-1], usr[3]+(usr[4]-usr[3])*h$density,
-             col=col, border=NA)
+             col=col, border=NA, ...)
     }
     par(usr=usr,ylog=ylog,xlog=xlog)
 }
 
 col = 'red'
 if (exists("X")) {
-    pairs(rowcol, labels, M=Mdata, X=X, xlim=range(X), col=col,
+    pairs(rowcol, labels, M=Mdata, X=X, xlim=range(X), ylim=c(-1,1.2), col=col,
           diag.panel=pline1, lower.panel=pcor, upper.panel=pline2)
 } else {
     pairs(Mdata, labels, log='xy', col=col,
