@@ -140,7 +140,7 @@ def pairs(M,X=None,labels=None,
     plotopt,output = _begin(output=output,format=format,new=new,**kwargs)
     if X is None:
         robjects.r.assign('Mdata',numpy2ri.numpy2ri(M))
-        robjects.r("n = ncol(Mdata)")
+        robjects.r("n = ncol(Mdata); if (exists('X')) rm(X)")
     else:
         robjects.r.assign('X',numpy2ri.numpy2ri(X))
         robjects.r.assign('Mdata',numpy2ri.numpy2ri(M[0][0]))
