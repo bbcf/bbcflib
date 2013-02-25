@@ -30,8 +30,8 @@ def _begin(output,format,new,**kwargs):
         robjects.r('par(%s)' %pars)
     opts = ''
     if 'log' in kwargs: opts += ',log="%s"' %kwargs['log']
-    if 'xlim' in kwargs: opts += ',xlim=c(%f,%f)' %kwargs['xlim']
-    if 'ylim' in kwargs: opts += ',ylim=c(%f,%f)' %kwargs['ylim']
+    if 'xlim' in kwargs: opts += ',xlim=c(%f,%f)' %tuple(kwargs['xlim'])
+    if 'ylim' in kwargs: opts += ',ylim=c(%f,%f)' %tuple(kwargs['ylim'])
     opts += ',main="%s"' %kwargs.get('main','')
     opts += ',xlab="%s"' %kwargs.get('xlab','')
     opts += ',ylab="%s"' %kwargs.get('ylab','')
@@ -116,9 +116,10 @@ def heatmap(M,output=None,format='pdf',new=True,last=True,
       library(RColorBrewer)
       myBreaks=seq(floor(min(Mdata,na.rm=T)),ceiling(max(Mdata,na.rm=T)),length.out=15)
       myColors=rev(colorRampPalette(brewer.pal(10,"RdYlBu"))(length(myBreaks)-1))
-      myCor = function(x) {as.dist(1-cor(t(x),use="pairwise.complete.ob"))}
+#      myCor = function(x) {as.dist(1-cor(t(x),use="pairwise.complete.ob"))}
+      par(cex.main=1.1)
       heatmap.2(as.matrix(Mdata),
-                col=myColors, trace="none", breaks=myBreaks, distfun=myCor,
+                col=myColors, trace="none", breaks=myBreaks, #distfun=myCor,
                 na.rm=TRUE, density.info='none'%s)""" %plotopt)
     _end("",last,**kwargs)
     return output
@@ -215,7 +216,7 @@ phist = function (x, col, ...) {
 
 col = 'red'
 if (exists("X")) {
-    pairs(rowcol, labels, M=Mdata, X=X, xlim=range(X), ylim=c(-1,1.2), col=col,
+    pairs(rowcol, labels, M=Mdata, X=X, xlim=range(X), ylim=c(-1,1.5), col=col,
           diag.panel=pline1, lower.panel=pcor, upper.panel=pline2)
 } else {
     pairs(Mdata, labels, log='xy', col=col,
