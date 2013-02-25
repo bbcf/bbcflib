@@ -186,10 +186,15 @@ qpoints = function (x, y, col, ...) {
     qq = qqplot(x,y,plot.it=FALSE)
     points(qq$x,qq$y,...)
 }
+ptext = function(x=0.5, y=0.5, txt, cex, font) {
+    ylog = par("ylog")
+    xlog = par("xlog")
+    if (xlog) par(xlog=FALSE,ylog=FALSE)
+    text(x, y, txt, cex=cex, font=font)
+    par(ylog=ylog,xlog=xlog)
+}
 phist = function (x, col, ...) {
     usr = par("usr")
-print(usr)
-print(range(x))
     ylog = par("ylog")
     xlog = par("xlog")
     if (ylog) {
@@ -214,7 +219,7 @@ if (exists("X")) {
           diag.panel=pline1, lower.panel=pcor, upper.panel=pline2)
 } else {
     pairs(Mdata, labels, log='xy', col=col,
-          diag.panel=phist, lower.panel=qpoints, upper.panel=ppoints)
+          diag.panel=phist, lower.panel=qpoints, upper.panel=ppoints, text.panel=ptext)
 }
 """)
     _end("",last,**kwargs)
