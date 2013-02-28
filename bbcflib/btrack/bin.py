@@ -125,15 +125,19 @@ try:
 
         Fields are::
 
-            ['chr','start','end','score','name','strand','flag','qual','tags']
+            ['chr','start','end','score','name','strand','flag','seq','qual','tags','paired']
 
-        uses *pysam* to read the binary bam file and extract the relevant fields.
+        'score': mapping quality (MAPQ).
+        'paired': 0 if unpaired, 1 if read 1 of a pair, 2 if read 2.
+        'positions': list of positions the read mapped to.
+
+        Uses *pysam* to read the binary bam file and extract the relevant fields.
         Write is not implemented in this class.
         """
         def __init__(self,path,**kwargs):
             kwargs['format'] = 'bam'
             kwargs['fields'] = ['chr','start','end','score','name','strand',
-                                'flag','qual','tags']
+                                'flag','seq','qual','tags','paired','positions']
             BinTrack.__init__(self,path,**kwargs)
             self.filehandle = None
             self.open()
@@ -174,8 +178,10 @@ try:
                     for read in stream.fetch(reference=reg[0],start=reg[1],end=reg[2]):
                         row = [self.filehandle.getrname(read.tid),
                                read.pos, read.pos+read.rlen,
-                               read.mapq, read.qname, (read.is_reverse and -1 or 1),
-                               read.flag, read.qual, read.tags]
+                               read.mapq, read.qname, (-1 if read.is_reverse else 1),
+                               read.flag, read.seq, read.qual, read.tags,
+                               (0 if not read.is_paired else (1 if read.is_read1 else 2)),
+                               read.positions]
                         yield tuple([row[n] for n in srcl])
                 self.close()
             return FeatureStream(_bamrecord(self.filehandle,srcl),fields)
@@ -343,7 +349,7 @@ try:
                         start, score = x
                         end = start+1
                 if end>start: yield (chrom,start,end,score)
-                
+
             if isinstance(region,basestring): region = [region]
             if isinstance(region,(list,tuple)):
                 if len(region) < 3:
