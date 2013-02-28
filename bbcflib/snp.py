@@ -323,6 +323,7 @@ def snp_workflow(ex, job, assembly, mincov=40, minsnp=5, path_to_ref='', via='lo
     pileup_dict = dict((chrom,{}) for chrom in genomeRef.keys()) # {chr: {}}
     sample_names = []
     bam = {}
+    print >> logfile, "* Run samtools pileup"; logfile.flush()
     for gid, files in job.files.iteritems():
         sample_name = job.groups[gid]['name']
         sample_names.append(sample_name)
@@ -337,19 +338,19 @@ def snp_workflow(ex, job, assembly, mincov=40, minsnp=5, path_to_ref='', via='lo
             pileup_filename = unique_filename_in()
             future = sam_pileup.nonblocking(ex,assembly,bam,ref,via,stdout=pileup_filename )
             pileup_dict[chrom][pileup_filename] = (future,sample_name,bam)
+        print >> logfile, "....Group %s done." % sample_name; logfile.flush()
 
+    print >> logfile, "* Annotate SNPs"; logfile.flush()
     outall = unique_filename_in()
     outexons = unique_filename_in()
     for chrom, dictPileup in pileup_dict.iteritems():
         allsnps = all_snps(chrom,dictPileup,outall,assembly,sample_names,minsnp,mincov)
-        # Add exon & codon information & write in file
         exon_snps(chrom,outexons,allsnps,assembly,sample_names,genomeRef)
-
     description = set_file_descr("allSNP.txt",step="SNPs",type="txt")
     ex.add(outall,description=description)
     description = set_file_descr("exonsSNP.txt",step="SNPs",type="txt")
     ex.add(outexons,description=description)
-    # Create tracks for UCSC and GDV:
+
+    print >> logfile, "* Create tracks"; logfile.flush()
     create_tracks(ex,outall,sample_names,assembly)
-
-
+    return 0
