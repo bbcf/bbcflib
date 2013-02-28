@@ -73,11 +73,12 @@ def select(stream, fields):
     return FeatureStream(_select(stream,idxs), fields=fields)
 
 ####################################################################
-def reorder(stream,fields):
+def reorder(stream,fields,last=False):
     """Reorders *stream.fields* so that *fields* come first.
 
     :param stream: FeatureStream object.
     :param fields: list of field names.
+    :param last: (bool) if True, reorders fields so that *fields* come last.
     :rtype: FeatureStream
     """
     if not(hasattr(stream, 'fields')) or stream.fields is None:
@@ -86,7 +87,10 @@ def reorder(stream,fields):
         raise ValueError("Need %s fields in stream."%(", ".join(fields)))
     if all(stream.fields[n] == f for n,f in enumerate(fields)):
         return stream
-    _inds = [stream.fields.index(f) for f in fields]+[n for n,f in enumerate(stream.fields) if f not in fields]
+    if last:
+        _inds = [n for n,f in enumerate(stream.fields) if f not in fields]+[stream.fields.index(f) for f in fields]
+    else:
+        _inds = [stream.fields.index(f) for f in fields]+[n for n,f in enumerate(stream.fields) if f not in fields]
     _flds = [stream.fields[n] for n in _inds]
     return FeatureStream((tuple(x[n] for n in _inds) for x in stream), fields=_flds)
 
