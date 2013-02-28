@@ -125,11 +125,12 @@ try:
 
         Fields are::
 
-            ['chr','start','end','score','name','strand','flag','seq','qual','tags','paired','positions']
+            ['chr','start','end','score','name','strand','flag','seq','qual','cigar','tags','paired','positions']
 
         'score': mapping quality (MAPQ).
         'name': read ID.
         'qual': Phred-scaled read quality (ASCII+33, same as in fastq).
+        'cigar': CIGAR string (match / mismatch / indel etc.).
         'tags': dictionary of tags, e.g. {'NH':12, ...}.
         'paired': 0 if unpaired, 1 if first read of a pair, 2 if second.
         'positions': list of positions the read mapped to.
@@ -140,7 +141,7 @@ try:
         def __init__(self,path,**kwargs):
             kwargs['format'] = 'bam'
             kwargs['fields'] = ['chr','start','end','score','name','strand',
-                                'flag','seq','qual','tags','paired','positions']
+                                'flag','seq','qual','cigar','tags','paired','positions']
             BinTrack.__init__(self,path,**kwargs)
             self.filehandle = None
             self.open()
@@ -182,7 +183,7 @@ try:
                         row = [self.filehandle.getrname(read.tid),
                                read.pos, read.pos+read.rlen,
                                read.mapq, read.qname, (-1 if read.is_reverse else 1),
-                               read.flag, read.seq, read.qual, read.tags,
+                               read.flag, read.seq, read.qual, read.cigar, read.tags,
                                (0 if not read.is_paired else (1 if read.is_read1 else 2)),
                                read.positions]
                         yield tuple([row[n] for n in srcl])
