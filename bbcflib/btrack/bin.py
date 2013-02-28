@@ -125,10 +125,13 @@ try:
 
         Fields are::
 
-            ['chr','start','end','score','name','strand','flag','seq','qual','tags','paired']
+            ['chr','start','end','score','name','strand','flag','seq','qual','tags','paired','positions']
 
         'score': mapping quality (MAPQ).
-        'paired': 0 if unpaired, 1 if read 1 of a pair, 2 if read 2.
+        'name': read ID.
+        'qual': Phred-scaled read quality (ASCII+33, same as in fastq).
+        'tags': dictionary of tags, e.g. {'NH':12, ...}.
+        'paired': 0 if unpaired, 1 if first read of a pair, 2 if second.
         'positions': list of positions the read mapped to.
 
         Uses *pysam* to read the binary bam file and extract the relevant fields.
