@@ -304,13 +304,13 @@ def create_tracks(ex, outall, sample_names, assembly):
         out = unique_filename_in()
         outtrack = track(out+'.sql', format='sql', fields=['chr','start','end','snp'], chrmeta=assembly.chrmeta)
         outtrack.write(instream)
-        description = set_file_descr("allSNP_track_"+sample_name+".sql" ,type='sql',step='SNPs',gdv='1')
+        description = set_file_descr("allSNP_track_"+sample_name+".sql" ,type='sql',step='tracks',gdv='1')
         ex.add(out+'.sql', description=description)
         # BED track
         t = track(out+'.bed.gz')
         t.make_header(name="allSNP_track_"+sample_name)
         convert(out+'.sql',out+'.bed.gz',mode='append')
-        description = set_file_descr("allSNP_track_"+sample_name+".bed.gz",type='bed',step='SNPs',ucsc='1')
+        description = set_file_descr("allSNP_track_"+sample_name+".bed.gz",type='bed',step='tracks',ucsc='1')
         ex.add(out+'.bed.gz', description=description)
 
 
