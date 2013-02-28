@@ -2,7 +2,7 @@ from bbcflib.btrack import FeatureStream
 from functools import wraps
 import sys, re, itertools
 from numpy import float as nfloat, log as nlog
-from numpy import asarray,mean,median,exp,nonzero,prod,around,argsort
+from numpy import asarray,mean,median,exp,nonzero,prod,around,argsort,float_
 
 ####################################################################
 def ordered(fn):
@@ -576,6 +576,7 @@ def normalize(M,method):
         for n in range(len(M)):
             M[n] = around(means[argsort(ordering[n])],2)
         return M
+    M = asarray(M, dtype=float_)
     if method == 'total': return _total(M)
     elif method == 'deseq': return _deseq(M)
     elif method == 'quantile': return _quantile(M)

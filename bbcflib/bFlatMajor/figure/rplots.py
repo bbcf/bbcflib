@@ -30,6 +30,8 @@ def _begin(output,format,new,**kwargs):
         robjects.r('par(%s)' %pars)
     opts = ''
     if 'log' in kwargs: opts += ',log="%s"' %kwargs['log']
+    if 'xlim' in kwargs: opts += ',xlim=c(%f,%f)' %tuple(kwargs['xlim'])
+    if 'ylim' in kwargs: opts += ',ylim=c(%f,%f)' %tuple(kwargs['ylim'])
     opts += ',main="%s"' %kwargs.get('main','')
     opts += ',xlab="%s"' %kwargs.get('xlab','')
     opts += ',ylab="%s"' %kwargs.get('ylab','')
@@ -40,7 +42,7 @@ def _end(lopts,last,**kwargs):
     if not(last): return
     if 'legend' in kwargs:
         names = kwargs['legend']
-        robjects.r("legend('topright', c(%s), col=1:%i%s)" %(",".join(names),len(names),lopts))
+        robjects.r("legend('topright', c('%s'), col=1:%i%s)" %("','".join(names),len(names),lopts))
     robjects.r("dev.off()")
 
 ############################################################
@@ -114,9 +116,10 @@ def heatmap(M,output=None,format='pdf',new=True,last=True,
       library(RColorBrewer)
       myBreaks=seq(floor(min(Mdata,na.rm=T)),ceiling(max(Mdata,na.rm=T)),length.out=15)
       myColors=rev(colorRampPalette(brewer.pal(10,"RdYlBu"))(length(myBreaks)-1))
-      rcor = function(x) {as.dist(1-cor(t(x),use="pairwise.complete.ob"))}
+#      myCor = function(x) {as.dist(1-cor(t(x),use="pairwise.complete.ob"))}
+      par(cex.main=1.1)
       heatmap.2(as.matrix(Mdata),
-                col=myColors, trace="none", breaks=myBreaks, distfun=rcor,
+                col=myColors, trace="none", breaks=myBreaks, #distfun=myCor,
                 na.rm=TRUE, density.info='none'%s)""" %plotopt)
     _end("",last,**kwargs)
     return output
@@ -140,7 +143,7 @@ def pairs(M,X=None,labels=None,
     plotopt,output = _begin(output=output,format=format,new=new,**kwargs)
     if X is None:
         robjects.r.assign('Mdata',numpy2ri.numpy2ri(M))
-        robjects.r("n = ncol(Mdata)")
+        robjects.r("n = ncol(Mdata); if (exists('X')) rm(X)")
     else:
         robjects.r.assign('X',numpy2ri.numpy2ri(X))
         robjects.r.assign('Mdata',numpy2ri.numpy2ri(M[0][0]))
@@ -169,7 +172,9 @@ pcor = function(x, y, M, X, ...) {
     usr = par("usr")
     par(usr=c(0, 1, 0, 1))
     cmax = max(M[,x[y[1]]])
-    text(0.5, 0.5, paste("corr=",format(cmax, digits=4),sep=''),cex=par('cex')*3*cmax)
+    ctext = paste("corr=",format(cmax, digits=4),sep='')
+    cmax = abs(cmax)
+    if (cmax>0.5) text(0.5, 0.5, ctext, cex=par('cex')*3*cmax)
     par(usr=usr)
 }
 ppoints = function (x, y, col, ...) {
@@ -182,6 +187,13 @@ qpoints = function (x, y, col, ...) {
     qq = qqplot(x,y,plot.it=FALSE)
     points(qq$x,qq$y,...)
 }
+ptext = function(x=0.5, y=0.5, txt, cex, font) {
+    ylog = par("ylog")
+    xlog = par("xlog")
+    if (xlog) par(xlog=FALSE,ylog=FALSE)
+    text(x, y, txt, cex=cex, font=font)
+    par(ylog=ylog,xlog=xlog)
+}
 phist = function (x, col, ...) {
     usr = par("usr")
     ylog = par("ylog")
@@ -192,23 +204,23 @@ phist = function (x, col, ...) {
         hbr = (h$breaks-h$breaks[1])/(h$breaks[length(h$breaks)]-h$breaks[1])
         hbr = usr[1]+(usr[2]-usr[1])*hbr
         rect(hbr[-length(hbr)], usr[3], hbr[-1], usr[3]+(usr[4]-usr[3])*h$density,
-             col=col, border=NA)
+             col=col, border=NA, ...)
     } else {
         h = hist(x, plot=FALSE, br=max(10,length(x)/50))
         rect(h$breaks[-length(h$breaks)], usr[3],
              h$breaks[-1], usr[3]+(usr[4]-usr[3])*h$density,
-             col=col, border=NA)
+             col=col, border=NA, ...)
     }
     par(usr=usr,ylog=ylog,xlog=xlog)
 }
 
 col = 'red'
 if (exists("X")) {
-    pairs(rowcol, labels, M=Mdata, X=X, xlim=range(X), col=col,
+    pairs(rowcol, labels, M=Mdata, X=X, xlim=range(X), ylim=c(-1,1.5), col=col,
           diag.panel=pline1, lower.panel=pcor, upper.panel=pline2)
 } else {
     pairs(Mdata, labels, log='xy', col=col,
-          diag.panel=phist, lower.panel=qpoints, upper.panel=ppoints)
+          diag.panel=phist, lower.panel=qpoints, upper.panel=ppoints, text.panel=ptext)
 }
 """)
     _end("",last,**kwargs)

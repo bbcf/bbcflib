@@ -104,6 +104,7 @@ class Assembly(object):
         if genrep is None: genrep = GenRep()
         self.genrep = genrep
         self.intype = int(intype)
+        self.chromosomes = {}
         if not(assembly is None):
             self.set_assembly(assembly)
 

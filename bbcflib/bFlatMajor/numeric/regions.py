@@ -10,7 +10,7 @@ def feature_matrix(trackScores,trackFeatures,segment=False,fn='mean',**kw):
 
     If *segment* is True, each feature will be segmented into bins using
     bbcflib.bFlatMajor.stream.intervals.segment_features (additional parameters in *\*\*kw* will be passed to this function).
-    Then each element of the array is itself an array with *nbin* lines and one column for each track in *trackScores*.
+    Then each element of the array is itself an array with *nbins* lines and one column for each track in *trackScores*.
 
     If *segment* is False, then each element of the array is an array with one element for each track in *trackScores*.
 
