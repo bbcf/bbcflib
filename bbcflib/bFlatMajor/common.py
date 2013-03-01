@@ -392,8 +392,10 @@ def strand_merge(x):
     return x[0] if all(x[0]==y for y in x[1:]) else type(x[0])(0)
 
 def no_merge(x):
-    """Assuming all elements of x are identical (chr) or irrelevant, return only the first one."""
-    return x[0]
+    """Assuming all elements of x are identical (chr) or irrelevant, return the first non-null element."""
+    for y in x:
+        if y is not None:
+            return y
 
 def generic_merge(x):
     """Sum numeric values; concatenate str values; stack tuples."""

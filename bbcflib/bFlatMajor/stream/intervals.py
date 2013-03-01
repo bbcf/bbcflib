@@ -241,6 +241,7 @@ def _combine(trackList,fn,win_size,aggregate):
 
     # Init step: set all tracks beginning at the starting point as 'active'
     start = current[0][0]
+    empty = (current[0][2],)+(None,)*len(fields[3:])
     while current[0][0] == start:
         i = current[0][1]          # track index
         activity[i] = True         # set this track to 'active'
@@ -251,10 +252,13 @@ def _combine(trackList,fn,win_size,aggregate):
         # Load all elements within *win_size* bp in *current*
         to_remove = []
         limit = k * win_size
+        while current[0][0] >= limit:
+            k+=1
+            limit = k * win_size
         for i in available_tracks:
             a = [0,0]
             while a[1] < limit:
-                a = trackList[i].next()
+                a = trackList[i].next() # (may be outside the limit, filtered later)
                 if a[0] == sys.maxint:  # track i is completely read:
                     to_remove.append(i) # remove it from the tracks list
                 else:
@@ -264,21 +268,23 @@ def _combine(trackList,fn,win_size,aggregate):
             available_tracks.remove(i)
         if not current: continue
         current.sort()
-        while current[0][0] >= limit:
-            k+=1
-            limit = k * win_size
         # Calculate boolean values for this window
         while current and current[0][0] < limit:
             next = current[0][0]
             if fn(activity):
-                feat_aggreg = tuple(aggregate.get(f,common.generic_merge)(tuple(zz[n] for zz in z if zz))
-                                    for n,f in enumerate(fields[2:]))
+                try:
+                    feat_aggreg = tuple(aggregate.get(f,common.generic_merge)(tuple(zz[n] for zz in z if zz))
+                                        for n,f in enumerate(fields[2:]))
+                except:
+                    feat_aggreg = empty
                 yield (start,next) + feat_aggreg
             while current and current[0][0] == next:
                 i = current[0][1]               # track index
                 activity[i] = not(activity[i])  # reverse activity
                 zi = current.pop(0)[2:]         # record meta info
-                z[i] = zi if activity[i] else None
+                if zi and empty and zi[0]!=empty[0]:        # chromosome change
+                    empty = (zi[0],)+(None,)*len(fields[3:]) # update empty regions chr info
+                z[i] = zi if activity[i] else empty         # need chr info even for intergenic/empty regions
             start = next
         k+=1
 
@@ -304,10 +310,9 @@ def combine(trackList, fn, win_size=1000, aggregate={}):
     """
     aggregate.setdefault('strand',common.strand_merge)
     aggregate.setdefault('chr',common.no_merge)
-    fields = ['start','end']
     if len(trackList) < 2: return trackList
     if isinstance(fn,str): fn = eval(fn) # can type combine(...,fn='intersection')
-    trackList = [common.cobble(common.reorder(t,fields=fields)) for t in trackList]
+    trackList = [common.cobble(common.reorder(t,fields=['start','end','chr'])) for t in trackList]
     return common.fusion(FeatureStream(_combine(trackList,fn,win_size,aggregate),
                                              fields=trackList[0].fields))
 
