@@ -685,11 +685,11 @@ def find_junctions(ex,job,assembly,soapsplice_index=None,path_to_soapsplice=None
         junc_file = template+'.junc'
         sql,bed = convert_junc_file(junc_file,assembly)
         sql_descr = set_file_descr('junctions_%s.sql' % group['name'], \
-                                   group=group['name'],type='sql',step='1',gdv=1)
+                                   groupId=gid,type='sql',step='1',gdv=1)
         bed_descr = set_file_descr('junctions_%s.bed' % group['name'], \
-                                   group=group['name'],type='bed',step='1',ucsc=1)
+                                   groupId=gid,type='bed',step='1',ucsc=1)
         bam_descr = set_file_descr('junctions_%s.bam' % group['name'], \
-                                   group=group['name'],type='bam',step='1')
+                                   groupId=gid,type='bam',step='1')
         sam = template+'.sam'
         try:
             bam = sam_to_bam(ex,sam,reheader=assembly.name)

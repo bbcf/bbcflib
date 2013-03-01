@@ -94,7 +94,7 @@ def _get_minscore(dbf):
 ## max score = len*5, penalty for len/2 mismatches = -9*len/2 => score = len/2
     return primer_len/2 
 
-def parallel_exonerate(ex, subfiles, dbFile, grp_name, 
+def parallel_exonerate(ex, subfiles, dbFile, grp_descr, 
                        minScore=77, n=1, x=22, l=30, via="local"):
     futures=[fastqToFasta.nonblocking(ex,sf,n=n,x=x,via=via) for sf in subfiles]
 
@@ -104,6 +104,7 @@ def parallel_exonerate(ex, subfiles, dbFile, grp_name,
     faSubFiles = []
     all_ambiguous = []
     all_unaligned = []
+    gid, grp_name = grp_descr
     my_minscore = _get_minscore(dbFile)
     for sf in futures:
         subResFile = unique_filename_in()
@@ -121,23 +122,23 @@ def parallel_exonerate(ex, subfiles, dbFile, grp_name,
     gzipfile(ex,cat(all_unaligned[1:],out=all_unaligned[0]))
     ex.add(all_unaligned[0]+".gz",
            description=set_file_descr(grp_name+"_unaligned.txt.gz",
-                                      group=grp_name,step="exonerate",type="txt",
+                                      groupId=gid,step="exonerate",type="txt",
                                       view="admin", comment="scores between %i and %i"%(my_minscore,minScore)) )
     gzipfile(ex,cat(all_ambiguous[1:],out=all_ambiguous[0]))
     ex.add(all_ambiguous[0]+".gz",
            description=set_file_descr(grp_name+"_ambiguous.txt.gz",
-                                      group=grp_name,step="exonerate",type="txt",
+                                      groupId=gid,step="exonerate",type="txt",
                                       view="admin") )
 
     gzipfile(ex,faSubFiles[0])
     ex.add(faSubFiles[0]+".gz",
            description=set_file_descr(grp_name+"_input_part.fa.gz",
-                                      group=grp_name,step="init",type="fa",
+                                      groupId=gid,step="init",type="fa",
                                       view="admin",comment="part") )
     gzipfile(ex,resExonerate[0])
     ex.add(resExonerate[0]+".gz",
            description=set_file_descr(grp_name+"_exonerate_part.txt.gz",
-                                      group=grp_name,step="exonerate",type="txt",
+                                      groupId=gid,step="exonerate",type="txt",
                                       view="admin",comment="part") )
 
     resFiles = dict((k,'') for d in res for k in d.keys())
@@ -223,11 +224,11 @@ def workflow_groups(ex, job, gl, file_path="../", via='lsf'):
 
         primersFilename = 'group_' + group['name'] + "_barcode_file.fa"
         primersFile = os.path.join(file_path,primersFilename)
-        ex.add(primersFile,description=set_file_descr(primersFilename,group=group['name'],step="init",type="fa"))
+        ex.add(primersFile,description=set_file_descr(primersFilename,groupId=gid,step="init",type="fa"))
 
         paramsFilename = 'group_' + group['name'] + "_param_file.txt"
         paramsFile = os.path.join(file_path,paramsFilename)
-        ex.add(paramsFile,description=set_file_descr(paramsFilename,group=group['name'],step="init",type="txt"))
+        ex.add(paramsFile,description=set_file_descr(paramsFilename,groupId=gid,step="init",type="txt"))
         params=load_paramsFile(paramsFile)
 
         infiles = []
@@ -241,15 +242,17 @@ def workflow_groups(ex, job, gl, file_path="../", via='lsf'):
                 allSubFiles.extend(split_file(ex,run,n_lines=8000000))
             else:
                 allSubFiles.append(run)
-        resExonerate = parallel_exonerate(ex, allSubFiles, primersFile, group['name'], 
-                                          minScore=int(params['s']), n=params['n'], x=params['x'],
+        resExonerate = parallel_exonerate(ex, allSubFiles, primersFile, 
+                                          (gid, group['name']), 
+                                          minScore=int(params['s']), 
+                                          n=params['n'], x=params['x'],
                                           l=int(params['l']), via=via)
         filteredFastq={}
         counts_primers={}
         counts_primers_filtered={}
         for k,f in resExonerate.iteritems():
             ex.add(f,description=set_file_descr(group['name']+"_"+k+".fastq",
-                                                group=group['name'],step="demultiplexing",type="fastq"))
+                                                groupId=gid,step="demultiplexing",type="fastq"))
             counts_primers[k]=count_lines(ex,f)/4
             counts_primers_filtered[k]=0
             file_names[gid][k]=group['name']+"_"+k
@@ -260,7 +263,7 @@ def workflow_groups(ex, job, gl, file_path="../", via='lsf'):
 
         # if seqToFilter is NOT none...
         log.write("Will filter the sequences\n")
-        filteredFastq=filterSeq(ex,resExonerate,seqToFilter,group['name'],via=via)
+        filteredFastq=filterSeq(ex,resExonerate,seqToFilter,(gid,group['name']),via=via)
 
         log.write("After filterSeq, filteredFastq=\n")
         log.write(str(filteredFastq));log.flush()
@@ -268,25 +271,25 @@ def workflow_groups(ex, job, gl, file_path="../", via='lsf'):
         for k,f in filteredFastq.iteritems():
             log.write("\nWill add filtered file "+f+" with descr="+group['name']+"_"+k+"_filtered.fastq\n");log.flush()
             ex.add(f,description=set_file_descr(group['name']+"_"+k+"_filtered.fastq",
-                                                group=group['name'],step="filtering",
+                                                grouId=gid,step="filtering",
                                                 type="fastq"))
             counts_primers_filtered[k]=count_lines(ex,f)/4
             file_names[gid][k]=group['name']+"_"+k+"_filtered"
 
-        ex.add(logfile,description=set_file_descr("logfile",group=group['name'],
+        ex.add(logfile,description=set_file_descr("logfile",groupId=gid,
                                                   step="final",type="txt",view="admin"))
         # Prepare report per group of runs
         report_ok,reportFile=prepareReport(ex,group['name'],tot_counts,
                                            counts_primers,counts_primers_filtered)
         ex.add(reportFile,description=set_file_descr(
                 group['name']+"_report_demultiplexing.txt",
-                group=group['name'],step="final",type="txt",view="admin"))
+                groupId=gid,step="final",type="txt",view="admin"))
         if report_ok:
             reportFile_pdf=unique_filename_in()
             createReport(ex,reportFile,reportFile_pdf,script_path)
             ex.add(reportFile_pdf,description=set_file_descr(
                     group['name']+"_report_demultiplexing.pdf",
-                    group=group['name'],step="final",type="pdf"))
+                    groupId=gid,step="final",type="pdf"))
         else:
             log.write("*** Probable ambiguous classification: total_reads < sum(reads_by_primers) ***\n");log.flush()
     add_pickle( ex, file_names, 
@@ -312,13 +315,14 @@ def getSeqToFilter(ex,primersFile):
     return filenames
 
 
-def filterSeq(ex,fastqFiles,seqToFilter,grp_name,via='lsf'):
+def filterSeq(ex,fastqFiles,seqToFilter,grp_descr,via='lsf'):
 #seqToFilter=`awk -v primer=${curPrimer} '{if($0 ~ /^>/){n=split($0,a,"|");curPrimer=a[1];gsub(">","",curPrimer); if(curPrimer == primer){seqToFilter="";for(i=5;i<n;i++){if(a[i] !~ /Exclude=/){seqToFilter=seqToFilter""a[i]","}} if(a[n] !~ /Exclude=/){seqToFilter=seqToFilter""a[n]}else{gsub(/,$/,"",seqToFilter)};print seqToFilter}}}' ${primersFile}`
     indexSeqToFilter={}
     indexFiles={}
+    gid, grp_name = grp_descr
     for k,f in seqToFilter.iteritems():
         ex.add(f,description=set_file_descr(grp_name+"_"+k+"_seqToFilter.fa",
-                                            group=grp_name,step="filtering",
+                                            groupId=gid,step="filtering",
                                             type="fa",view="admin"))
         if k in fastqFiles:
             indexFiles[k]=bowtie_build.nonblocking(ex,f,via=via)
