@@ -343,7 +343,8 @@ def snp_workflow(ex, job, assembly, mincov=40, minsnp=5, path_to_ref='', via='lo
     print >> logfile, "* Annotate SNPs"; logfile.flush()
     outall = unique_filename_in()
     outexons = unique_filename_in()
-    for chrom, dictPileup in pileup_dict.iteritems():
+    for chrom in assembly.chrnames:
+        dictPileup = pileup_dict[chrom]
         allsnps = all_snps(chrom,dictPileup,outall,assembly,sample_names,minsnp,mincov)
         exon_snps(chrom,outexons,allsnps,assembly,sample_names,genomeRef)
     description = set_file_descr("allSNP.txt",step="SNPs",type="txt")
