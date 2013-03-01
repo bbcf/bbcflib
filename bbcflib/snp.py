@@ -163,8 +163,6 @@ def all_snps(chrom,dictPileup,outall,assembly,sample_names,minsnp,mincov):
     annotated_stream = gm_stream.getNearestFeature(snp_read,annotation,
                                                    thresholdPromot=3000,thresholdInter=3000,thresholdUTR=10)
     with open(outall,"a") as fout:
-        fout.write('#'+'\t'.join(['chromosome','position','reference'] + sample_names
-                             + ['gene','location_type','distance']) + '\n')
         for snp in annotated_stream:
             # snp: ('chrV',154529, 154530, 'T', 'A', '* A', 'YER002W|NOP16_YER001W|MNN1', 'Upstream_Included', '2271_1011')
             fout.write('\t'.join([str(x) for x in (snp[0],)+snp[2:]])+'\n')
@@ -343,6 +341,8 @@ def snp_workflow(ex, job, assembly, mincov=40, minsnp=5, path_to_ref='', via='lo
     print >> logfile, "* Annotate SNPs"; logfile.flush()
     outall = unique_filename_in()
     outexons = unique_filename_in()
+    with open(outall,"w") as fout:
+        fout.write('#'+'\t'.join(['chromosome','position','reference']+sample_names+['gene','location_type','distance'])+'\n')
     for chrom in assembly.chrnames:
         dictPileup = pileup_dict[chrom]
         allsnps = all_snps(chrom,dictPileup,outall,assembly,sample_names,minsnp,mincov)
