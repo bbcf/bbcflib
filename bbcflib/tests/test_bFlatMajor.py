@@ -9,7 +9,7 @@ from bbcflib.bFlatMajor.common import shuffled, fusion, cobble, ordered, apply, 
 from bbcflib.bFlatMajor.common import concat_fields, split_field, map_chromosomes, score_threshold
 from bbcflib.bFlatMajor.stream.annotate import getNearestFeature
 from bbcflib.bFlatMajor.stream.intervals import concatenate, neighborhood, segment_features, intersect, selection
-from bbcflib.bFlatMajor.stream.intervals import exclude, require, disjunction, intersection, union
+from bbcflib.bFlatMajor.stream.intervals import exclude, require, disjunction, intersection, union, combine
 from bbcflib.bFlatMajor.stream.scores import merge_scores, score_by_feature, window_smoothing, filter_scores, normalize
 from bbcflib.bFlatMajor.numeric.regions import feature_matrix, summed_feature_matrix
 from bbcflib.bFlatMajor.numeric.signal import _normalize, correlation
@@ -380,10 +380,19 @@ class Test_Intervals(unittest.TestCase):
 
         fields = ['chr','start','end','name','strand','score']
         s1 = fstream([('chr',0,20,'a1',1,6.),('chr',40,60,'b',1,3.)], fields=fields)
-        s2 = fstream([('M',10,30,'a2',1,8.),('chr',50,70,'b',-1,4.)], fields=fields)
-        res = intersect([s1,s2])
+        s2 = fstream([('chr',10,30,'a2',1,8.),('chr',50,70,'b',-1,4.)], fields=fields)
+        res = list(intersect([s1,s2]))
         expected = [('chr',10,20,'a1|a2',1,14.),('chr',50,60,'b|b',0,7.)]
-        self.assertListEqual(list(res),expected)
+        self.assertListEqual(res,expected)
+
+    def test_combine(self):
+        # Complement
+        fields = ['chr','start','end','name','strand','score']
+        s1 = fstream([('chr',0,20,'a1',1,6.),('chr',40,60,'b',1,3.)], fields=fields)
+        s2 = fstream([('chr',0,20,'a1',1,6.),('chr',40,60,'b',1,3.)], fields=fields)
+        res = list(combine([s1,s2],fn=lambda x:not all(x)))
+        expected = [('chr',20,40,None,None,None)]
+        self.assertListEqual(res,expected)
 
 
 class Test_Scores(unittest.TestCase):

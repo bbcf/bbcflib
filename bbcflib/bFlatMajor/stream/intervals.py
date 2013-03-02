@@ -223,7 +223,7 @@ def _combine(trackList,fn,win_size,aggregate):
     """Generator - see function `combine` below."""
     N = len(trackList)
     fields = trackList[0].fields
-    trackList = [common.sentinelize(t, [sys.maxint]*len(fields)) for t in trackList]
+    trackList = [common.sentinelize(t, [sys.maxint]*len(t.fields)) for t in trackList]
     init = [trackList[i].next() for i in range(N)] # the first element of each track
     activity = [False]*N # a vector of boolean values for the N tracks at a given position
     z = [None]*N
@@ -240,6 +240,11 @@ def _combine(trackList,fn,win_size,aggregate):
     current.sort()
 
     # Init step: set all tracks beginning at the starting point as 'active'
+    is_chr = 'chr' in fields
+    if is_chr:
+        empty = (current[0][2],)+(None,)*len(fields[3:]) # write chr name if a region has no other annotation
+    else:
+        empty = (None,)*len(fields[2:])
     start = current[0][0]
     while current[0][0] == start:
         i = current[0][1]          # track index
@@ -278,7 +283,7 @@ def _combine(trackList,fn,win_size,aggregate):
                 i = current[0][1]               # track index
                 activity[i] = not(activity[i])  # reverse activity
                 zi = current.pop(0)[2:]         # record meta info
-                z[i] = zi if activity[i] else None
+                z[i] = zi if activity[i] else empty  # need chr info even for intergenic/empty regions
             start = next
         k+=1
 
@@ -287,9 +292,9 @@ def combine(trackList, fn, win_size=1000, aggregate={}):
     """
     Applies a custom function to a list of tracks, such as union, intersection,
     etc., and return a single result track. The input streams need to be ordered
-    w.r.t chr and start.
+    w.r.t 'chr', 'start' and 'end'. To be applied chromosome by chromosome.
 
-    Only fields that are common to all of them are kept. Values for a common field are
+    Only fields of the first track are kept. Values for a common field are
     merged by default according to `common.strand_merge`,`common.no_merge` and `common.generic_merge`,
     respectively for strand, chromosome and all others.
 
@@ -304,10 +309,11 @@ def combine(trackList, fn, win_size=1000, aggregate={}):
     """
     aggregate.setdefault('strand',common.strand_merge)
     aggregate.setdefault('chr',common.no_merge)
-    fields = ['start','end']
-    if len(trackList) < 2: return trackList
-    if isinstance(fn,str): fn = eval(fn) # can type combine(...,fn='intersection')
-    trackList = [common.cobble(common.reorder(t,fields=fields)) for t in trackList]
+    _f = ['start','end']
+    if all('chr' in t.fields for t in trackList):
+        _f += ['chr']
+    if isinstance(fn,str): fn = eval(fn) # can type "combine(...,fn='intersection')"
+    trackList = [common.cobble(common.reorder(t,fields=_f)) for t in trackList]
     return common.fusion(FeatureStream(_combine(trackList,fn,win_size,aggregate),
                                              fields=trackList[0].fields))
 

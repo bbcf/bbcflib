@@ -408,6 +408,8 @@ def generic_merge(x):
         for y in x[1:]:
             x0 += tuple(y)
         return x0
+    else:
+        raise ValueError("Could not merge elements from %s" % x)
 
 aggreg_functions = {'strand': strand_merge, 'chr': no_merge}
 
