@@ -256,6 +256,9 @@ def _combine(trackList,fn,win_size,aggregate):
         # Load all elements within *win_size* bp in *current*
         to_remove = []
         limit = k * win_size
+        while current[0][0] >= limit:
+            k+=1
+            limit = k * win_size
         for i in available_tracks:
             a = [0,0]
             while a[1] < limit:
@@ -269,9 +272,6 @@ def _combine(trackList,fn,win_size,aggregate):
             available_tracks.remove(i)
         if not current: continue
         current.sort()
-        while current[0][0] >= limit:
-            k+=1
-            limit = k * win_size
         # Calculate boolean values for this window
         while current and current[0][0] < limit:
             next = current[0][0]
