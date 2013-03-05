@@ -196,6 +196,16 @@ class Test_Common(unittest.TestCase):
         self.assertListEqual(list(res),expected)
         self.assertListEqual(res.fields,['start','end','score','name'])
 
+        stream = fstream([(10,12,'gene_id "A"; exon_number "1"; gene_name "a";'), 
+                          (14,15,'gene_id "B"; exon_number "2"; gene_name "b";')], 
+                         fields=['start','end','attributes'])
+        res = split_field(stream,['gene_id','gene_name'],
+                          infield='attributes', header_split=' ',
+                          strip_input=True)
+        expected = [(10,12,'exon_number "1"',"A","a"), (14,15,'exon_number "2"',"B","b")]
+        self.assertListEqual(list(res),expected)
+        self.assertListEqual(res.fields,['start', 'end', 'attributes', 'gene_id', 'gene_name'])
+
     def test_map_chromosomes(self):
         stream = fstream([('chrIV',1),('IV',2),(2780,3),('NC_001136.9',4),('sth',5)], fields=['chr','start'])
         assembly = genrep.Assembly('sacCer2')
