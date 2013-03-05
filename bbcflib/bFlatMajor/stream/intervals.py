@@ -242,9 +242,9 @@ def _combine(trackList,fn,win_size,aggregate):
     # Init step: set all tracks beginning at the starting point as 'active'
     is_chr = 'chr' in fields
     if is_chr:
-        empty = (current[0][2],)+(None,)*len(fields[3:]) # write chr name if a region has no other annotation
+        empty = (current[0][2],)+('0',)*len(fields[3:]) # write chr name if a region has no other annotation
     else:
-        empty = (None,)*len(fields[2:])
+        empty = ('0',)*len(fields[2:])
     start = current[0][0]
     while current[0][0] == start:
         i = current[0][1]          # track index
@@ -276,14 +276,17 @@ def _combine(trackList,fn,win_size,aggregate):
         while current and current[0][0] < limit:
             next = current[0][0]
             if fn(activity):
-                feat_aggreg = tuple(aggregate.get(f,common.generic_merge)(tuple(zz[n] for zz in z if zz))
-                                    for n,f in enumerate(fields[2:]))
-                yield (start,next) + feat_aggreg
+                feat_aggreg = [None]*len(fields[2:])
+                for n,f in enumerate(fields[2:]):
+                    feats = tuple(zi[n] for zi in z if zi)
+                    try: feat_aggreg[n] = aggregate.get(f,common.generic_merge)(feats)
+                    except IndexError: feat_aggreg = empty
+                yield (start,next) + tuple(feat_aggreg)
             while current and current[0][0] == next:
                 i = current[0][1]               # track index
                 activity[i] = not(activity[i])  # reverse activity
                 zi = current.pop(0)[2:]         # record meta info
-                z[i] = zi if activity[i] else empty  # need chr info even for intergenic/empty regions
+                z[i] = zi if activity[i] else None
             start = next
         k+=1
 

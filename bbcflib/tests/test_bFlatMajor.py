@@ -390,8 +390,8 @@ class Test_Intervals(unittest.TestCase):
         fields = ['chr','start','end','name','strand','score']
         s1 = fstream([('chr',0,20,'a1',1,6.),('chr',40,60,'b',1,3.)], fields=fields)
         s2 = fstream([('chr',0,20,'a1',1,6.),('chr',40,60,'b',1,3.)], fields=fields)
-        res = list(combine([s1,s2],fn=lambda x:not all(x)))
-        expected = [('chr',20,40,None,None,None)]
+        res = list(combine([s1,s2],fn=lambda x:not any(x)))
+        expected = [('chr',20,40,'0','0','0')]
         self.assertListEqual(res,expected)
 
 
