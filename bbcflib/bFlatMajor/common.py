@@ -192,12 +192,13 @@ def split_field( stream, outfields, infield='name', separator=';',
     """
     _outfields = stream.fields+[f for f in outfields if not(f in stream.fields)]
     in_indx = stream.fields.index(infield)
-    if not strip_input: _outfields.remove(infield)
     more_len = len(_outfields)-len(stream.fields)
+    if not strip_input: _outfields.remove(infield)
     out_indx = [_outfields.index(f) for f in outfields]
     def _split(stream):
         for x in stream:
             y = list(x)
+            if not strip_input: y.pop(in_indx)
             y += [None for f in range(more_len)]
             if isinstance(x[in_indx],(list,tuple)):
                 xsplit = [str(_) for _ in x[in_indx]]
@@ -220,8 +221,6 @@ def split_field( stream, outfields, infield='name', separator=';',
                     y[out_indx[n]] = v
                 if strip_input:
                     y[in_indx] = separator.join(xsplit[n:])
-                else:
-                    y.pop(in_indx)
             yield tuple(y)
 
     return FeatureStream(_split(stream),_outfields)
