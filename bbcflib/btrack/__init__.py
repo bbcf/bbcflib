@@ -180,14 +180,14 @@ def format_int(i=int()):
 def ucsc_to_ensembl(stream):
     """Shifts start coordinates 1 base to the right, to map UCSC to Ensembl annotation."""
     istart = stream.fields.index('start')
-    for item in stream:
-        yield item[:istart]+(item[istart]+1,)+item[istart+1:]
+    return FeatureStream((item[:istart]+(item[istart]+1,)+item[istart+1:] 
+                          for item in stream),fields=stream.fields)
 
 def ensembl_to_ucsc(stream):
     """Shifts start coordinates 1 base to the left, to map Ensembl to UCSC annotation."""
     istart = stream.fields.index('start')
-    for item in stream:
-        yield item[:istart]+(item[istart]-1,)+item[istart+1:]
+    return FeatureStream((item[:istart]+(item[istart]-1,)+item[istart+1:]
+                          for item in stream),fields=stream.fields)
 
 def check_ordered(source, **kwargs):
     """Read a track-like file *source* once to verify that chromosomes are grouped,

@@ -181,12 +181,14 @@ def split_field( stream, outfields, infield='name', separator=';',
 
     ('chr1', 12, 'aa;bb;cc') -> ('chr1', 12, 'aa', 'bb', 'cc')
 
+    ('chr1', 12, 'name=aa;strand="+";score=143;additional="X"') -> ('chr1', 12, 'aa', 243, '+', 'additional="X"')
+
     :param stream: FeatureStream object.
     :param outfields: (list of str) list of new fields to be created.
-    :param infield: (str) name of the field to be splitted. ['name']
+    :param infield: (str) name of the field to be split. ['name']
     :param separator: (str) char separating the information in *infield*'s entries. [';']
-    :param header_split: ?
-    :param strip_input: (bool) ?
+    :param header_split: if split entries are field_name/field_value pairs, provides the separator to split them.
+    :param strip_input: (bool) if True for a field of name/value pairs, will remove from the original field the values that have been succesfully parsed.
     """
     _outfields = stream.fields+[f for f in outfields if not(f in stream.fields)]
     in_indx = stream.fields.index(infield)
@@ -200,7 +202,7 @@ def split_field( stream, outfields, infield='name', separator=';',
                 x[in_indx] = separator.join([str(_) for _ in x[in_indx]])
             y = x + [None for f in range(more_len)]
             xsplit = x[in_indx].split(separator)
-            if header_split:
+            if header_split is not None:
                 xmore = dict([re.search(r'\s*(\S+)'+header_split+'(\S*)',v+header_split).groups()
                               for v in xsplit if v])
                 for n,f in enumerate(outfields):
@@ -258,7 +260,7 @@ def score_threshold( stream, threshold=0.0, lower=False, fields='score' ):
     Filter the features of a track which score is above or below a certain threshold.
 
     :param stream: FeatureStream, or list of FeatureStream objects.
-    :param threshold: (float) threshold above which features are not retained (?)
+    :param threshold: (float) threshold above/below which features are retained
     :param lower: (bool) higher (False) or lower (True) bound.
     :param fields: (str or list of str) names of the fields to apply the filter to.
     :rtype: FeatureStream, or list of FeatureStream objects

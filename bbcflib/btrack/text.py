@@ -561,9 +561,12 @@ class WigTrack(TextTrack):
                         yield tuple(self._check_type(rowdata[index_list[n]],f)
                                     for n,f in enumerate(fields))
                     rowdata = ['',-1,-1,'']
-                    chrom,start,step = re.search(r'chrom=(\S+)\s+start=(\d+)\s+step=(\d+)',row).groups()
+                    chrom,start = re.search(r'chrom=(\S+)\s+start=(\d+)',row).groups()
                     start = int(start)
-                    step = int(step)
+                    step = 1
+                    s_patt = re.search(r'step=(\d+)',row)
+                    if s_patt:
+                        step = int(s_patt.groups()[0])
                     rowdata[0] = chrom
                     s_patt = re.search(r'span=(\d+)',row)
                     if s_patt:
