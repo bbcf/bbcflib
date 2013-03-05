@@ -565,12 +565,10 @@ class WigTrack(TextTrack):
                     start = int(start)
                     step = 1
                     s_patt = re.search(r'step=(\d+)',row)
-                    if s_patt:
-                        step = int(s_patt.groups()[0])
+                    if s_patt: step = max(1,int(s_patt.groups()[0]))
                     rowdata[0] = chrom
                     s_patt = re.search(r'span=(\d+)',row)
-                    if s_patt:
-                        span = int(s_patt.groups()[0])
+                    if s_patt: span = max(1,int(s_patt.groups()[0]))
                     end = -1
                     start -= step
                     continue
