@@ -192,16 +192,17 @@ def split_field( stream, outfields, infield='name', separator=';',
     """
     _outfields = stream.fields+[f for f in outfields if not(f in stream.fields)]
     in_indx = stream.fields.index(infield)
-    out_indx = [_outfields.index(f) for f in outfields]
+    if not strip_input: _outfields.remove(infield)
     more_len = len(_outfields)-len(stream.fields)
-    _outfields.remove(infield)
+    out_indx = [_outfields.index(f) for f in outfields]
     def _split(stream):
         for x in stream:
-            x = list(x)
+            y = list(x)
+            y += [None for f in range(more_len)]
             if isinstance(x[in_indx],(list,tuple)):
-                x[in_indx] = separator.join([str(_) for _ in x[in_indx]])
-            y = x + [None for f in range(more_len)]
-            xsplit = x[in_indx].split(separator)
+                xsplit = [str(_) for _ in x[in_indx]]
+            else:
+                xsplit = x[in_indx].split(separator)
             if header_split is not None:
                 xmore = dict([re.search(r'\s*(\S+)'+header_split+'(\S*)',v+header_split).groups()
                               for v in xsplit if v])
