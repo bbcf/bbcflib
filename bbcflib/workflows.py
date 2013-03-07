@@ -17,60 +17,52 @@ class Usage(Exception):
 class Workflow(object):
     def __init__(self,**kw):
         self.module = kw.get('module','HTSstation')
+        self.name = kw.get('name',self.module)
         self.opts = (
             ("-v", "--via", "Run executions locally or remotely (can be 'local' or 'lsf')", 
              {'default': _via}),
-            ("-k", "--key", "Alphanumeric key of the %s job" %self.module, {'default': None}),
+            ("-k", "--key", "Alphanumeric key of the %s job" %self.name,
+             {'default': None}),
             ("-w", "--working-directory", "Directory to run execution in",
              {'default': os.getcwd(), 'dest':"wdir"}),
             ("-c", "--config", "Configuration file", {'default': None}),
             ("--basepath","HTS data basepath", {'default': _basepath}))
 
-        self.opts.update(kw.get("opts",{}))
+        self.opts += kw.get("opts",())
         self.usage = _usage + str(kw.get('usage',''))
         self.desc = kw.get('desc',_description)
-        self.hts = "hts_%s"%self.module
-        if hasattr(self.opt,"mapseq_minilims") and self.opt.mapseq_minilims:
-            self.mapseq_minilims = self.opt.mapseq_minilims
-        else:
-            self.mapseq_minilims = os.path.join(opt.basepath,"mapseq_minilims")
-        self.minilims = os.path.join(self.opt.basepath,self.opt.module+"_minilims")
 #### By default the workflow will execute the call 
 ####     X_workflow(ex,**self.main_args) from bbcflib.X where X is the module name
-#### Can be overloaded in rived classes
+#### Can be overloaded in derived classes
         __import__('bbcflib',fromlist=[self.module])
         self.main_func = getattr(sys.modules["bbcflib."+self.module],self.module+"_workflow")
         self.main_args = {}
 
-    def __call__(self,opt):
-        self.opt = opt
-        if self.opt.wdir is not None: 
-            if os.path.exists(self.opt.wdir): 
-                os.chdir(self.opt.wdir)
+    def __call__(self,opts):
+        self.opts = opts
+        if self.opts.wdir is not None: 
+            if os.path.exists(self.opts.wdir): 
+                os.chdir(self.opts.wdir)
             else:
-                raise Usage("Working directory '%s' does not exist." %self.opt.wdir)
+                raise Usage("Working directory '%s' does not exist." %self.opts.wdir)
         else:
-            self.opt.wdir = ''
+            self.opts.wdir = ''
 
 ##### Connect to Minilims, recover global variables, fetch job info
-        if self.module not in _module_list:
-            raise Usage("No module named %s, choose one of %s."%(self.module,str(_module_list)))
-
-        minilims_path = os.path.join(self.opt.basepath,self.module+"_minilims")
-        M = MiniLIMS(minilims_path)
-        if not((self.opt.key != None or (self.opt.config and os.path.exists(self.opt.config)))):
+        M = MiniLIMS(self.minilims)
+        if not((self.opts.key != None or (self.opts.config and os.path.exists(self.opts.config)))):
             raise Usage("Need a job key or a configuration file")
-        if self.opt.key:
+        if self.opts.key:
             self.globals = use_pickle(M, "global variables")
             htss = frontend.Frontend( url=self.globals['hts_mapseq']['url'] )
-            self.job = htss.job( self.opt.key )
+            self.job = htss.job( self.opts.key )
             [M.delete_execution(x) for x in \
-                 M.search_executions(with_description=self.opt.key,fails=True)]
-            if self.opt.config and os.path.exists(self.opt.config):
-                (self.job,self.globals) = frontend.parseConfig( self.opt.config, self.job, self.globals )
-        elif os.path.exists(self.opt.config):
-            (self.job,self.globals) = frontend.parseConfig( self.opt.config )
-            self.opt.key = self.job.description
+                 M.search_executions(with_description=self.opts.key,fails=True)]
+            if self.opts.config and os.path.exists(self.opts.config):
+                (self.job,self.globals) = frontend.parseConfig( self.opts.config, self.job, self.globals )
+        elif os.path.exists(self.opts.config):
+            (self.job,self.globals) = frontend.parseConfig( self.opts.config )
+            self.opts.key = self.job.description
         else:
             raise Usage("Need either a job key (-k) or a configuration file (-c).")
 ##### Genrep assembly
@@ -88,18 +80,18 @@ class Workflow(object):
             self.job.dafl = None
 ##### Check all the options
         if not self.check_options(): 
-            raise Usage("Problem with options %s" %self.opt)
+            raise Usage("Problem with options %s" %self.opts)
 ##### Logging
-        self.logfile = open(self.opt.key+".log",'w')
-        self.debugfile = open(self.opt.key+".debug",'w')
+        self.logfile = open(self.opts.key+".log",'w')
+        self.debugfile = open(self.opts.key+".debug",'w')
         self.debug_write(json.dumps(self.job.options)+"\n\n"+json.dumps(self.globals))
 
 
 ########################################################################
 ##########################  EXECUTION  #################################
 ########################################################################
-        with execution( M, description=self.opt.key, 
-                        remote_working_directory=self.opt.wdir ) as ex:
+        with execution( M, description=self.opts.key, 
+                        remote_working_directory=self.opts.wdir ) as ex:
             self.log_write("Enter execution. Current working directory: %s" %ex.working_directory)
 
             self.init_files( ex )
@@ -117,9 +109,12 @@ class Workflow(object):
         self.logfile.close()
         self.debugfile.close()
         print json.dumps(allfiles)
-        with open(self.opt.key+".done",'w') as done: json.dump(allfiles,done)
+        with open(self.opts.key+".done",'w') as done: json.dump(allfiles,done)
         self.send_email()
         return 0
+########################################################################
+#############################  DONE!  ##################################
+########################################################################
 
     def log_write(self,mesg):
         self.logfile.write(mesg+"\n")
@@ -129,12 +124,12 @@ class Workflow(object):
         self.debugfile.write(mesg+"\n")
         self.debugfile.flush()
 
-    def check_options(self,def={}):
+    def check_options(self,more_defs={}):
     ### { option_name: (default_value, additional_conditions,...) }
         defaults = {'compute_densities':(True,),
                     'ucsc_bigwig':(True,(self.job.assembly.intype == 0)),
                     'create_gdv_project':(False,)}
-        defaults.update(def)
+        defaults.update(more_defs)
         for op,val in defaults.iteritems(): 
             self.job.options.setdefault(op,val[0])
             if isinstance(self.job.options[op],basestring):
@@ -142,6 +137,12 @@ class Workflow(object):
             self.job.options[op] &= all(val[1:])
         self.job.options['gdv_project'] = {'project':{'id': self.job.options.get('gdv_project_id',0)}}
         self.job.options.setdefault('gdv_key',"")
+        self.minilims = os.path.join(self.opts.basepath,self.module+"_minilims")
+        if hasattr(self.opts,"mapseq_minilims") and self.opts.mapseq_minilims:
+            self.mapseq_minilims = self.opts.mapseq_minilims
+        else:
+            self.mapseq_minilims = os.path.join(self.opts.basepath,"mapseq_minilims")
+        self.suffix = ['fwd','rev']
         return
 
     def init_files(self,ex):
@@ -149,11 +150,11 @@ class Workflow(object):
         from bbcflib.mapseq import get_bam_wig_files
         msurl = self.globals.get('hts_mapseq','').get('url','')
         scpath = self.globals.get('script_path','')
-        suffix = ['merged'] if module == '4cseq' else ['fwd','rev']
-        (self.init_files, self.job) = get_bam_wig_files( ex, self.job, 
-                                                         minilims=self.mapseq_minilims, 
-                                                         hts_url=msurl, suffix=suffix,
-                                                         script_path=scpath, via=self.opt.via )
+        _files_job = get_bam_wig_files( ex, self.job, 
+                                        minilims=self.mapseq_minilims, 
+                                        hts_url=msurl, suffix=self.suffix,
+                                        script_path=scpath, via=self.opts.via )
+        self.init_files, self.job = _files_job
         return True
 
     def gdv_create(self,ex): 
@@ -175,7 +176,7 @@ class Workflow(object):
     def gdv_upload(self,files): 
         glg = self.globals['gdv']
         project = self.job.options['gdv_project']['project']
-        download_url = normalize_url(self.globals['hts_'+self.opt.module]['download'])
+        download_url = normalize_url(self.globals['hts_'+self.name]['download'])
         urls_names = dict(("%s/%s" %(download_url,k),re.sub('\.sql.*','',str(f))) 
                           for k,f in files.iteritems())
         self.log_write("Uploading GDV tracks:\n"+" ".join(urls_names.keys())+"\n"+" ".join(urls_names.values()))
@@ -196,7 +197,7 @@ class Workflow(object):
         from bbcflib import email
         r = email.EmailReport( sender=self.globals['email']['sender'],
                                to=str(self.job.email).split(','),
-                               subject="%s job %s" %(self.opt.module,str(self.job.description)),
+                               subject="%s job %s" %(self.name,str(self.job.description)),
                                smtp_server=self.globals['email']['smtp'] )
         r.appendBody('''
 Your %s job has finished.
@@ -207,7 +208,7 @@ and its unique key is %s
 
 You can now retrieve the results at this url:
 %s/jobs/%s/get_results
-''' %(self.opt.module,self.job.description,self.opt.key,normalize_url(self.globals['hts_'+opt.module]['url']),self.opt.key))
+''' %(self.name,self.job.description,self.opts.key,normalize_url(self.globals['hts_'+self.module]['url']),self.opts.key))
         r.send()
 
 
