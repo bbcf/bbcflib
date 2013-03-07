@@ -1207,7 +1207,11 @@ def get_bam_wig_files( ex, job, minilims=None, hts_url=None, suffix=['fwd','rev'
             group_name = str(gid)
         job.groups[gid]['name'] = group_name
         for rid,run in group['runs'].iteritems():
-            file_loc = re.search(r'^[\"\']?([^\"\';]+)[\"\']?',str(run['url']).strip()).groups()[0]
+            bam_url = str(run['url'])
+            try:
+                file_loc = re.search(r'^[\"\']?([^\"\';]+)[\"\']?',bam_url.strip()).groups()[0]
+            except AttributeError:
+                raise ValueError("BAM file not found: %s ." % bam_url)
             bamfile = unique_filename_in()
             wig = {}
             name = group_name
