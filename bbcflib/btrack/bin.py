@@ -77,8 +77,8 @@ class BigWigTrack(BinTrack):
             os.remove(self.chrfile.name)
             self.chrfile = None
         if self.bedgraph is not None:
-            try: os.remove(self.bedgraph)
-            except OSError: pass
+            if os.path.exists(self.bedgraph):
+                os.remove(self.bedgraph)
             self.bedgraph = None
 
     def read(self, selection=None, fields=None, **kw):
