@@ -34,21 +34,23 @@ class Workflow(object):
 #### By default the workflow will execute the call 
 ####     X_workflow(ex,**self.main_args) from bbcflib.X where X is the module name
 #### Can be overloaded in derived classes
-        __import__('bbcflib',fromlist=[self.module])
+        __import__('bbcflib.'+self.module)
+        self.sysmod = getattr(sys.modules['bbcflib'],self.module)
         self.main_func = getattr(sys.modules["bbcflib."+self.module],self.module+"_workflow")
         self.main_args = {}
+        self.logfile = None
+        self.debugfile = None
+
 
     def __call__(self,opts):
         self.opts = opts
-        if self.opts.wdir is not None: 
-            if os.path.exists(self.opts.wdir): 
-                os.chdir(self.opts.wdir)
-            else:
-                raise Usage("Working directory '%s' does not exist." %self.opts.wdir)
+        if os.path.exists(self.opts.wdir): 
+            os.chdir(self.opts.wdir)
         else:
-            self.opts.wdir = ''
+            raise Usage("Working directory '%s' does not exist." %self.opts.wdir)
 
 ##### Connect to Minilims, recover global variables, fetch job info
+        self.minilims = os.path.join(self.opts.basepath,self.module+"_minilims")
         M = MiniLIMS(self.minilims)
         if not((self.opts.key != None or (self.opts.config and os.path.exists(self.opts.config)))):
             raise Usage("Need a job key or a configuration file")
@@ -65,6 +67,9 @@ class Workflow(object):
             self.opts.key = self.job.description
         else:
             raise Usage("Need either a job key (-k) or a configuration file (-c).")
+##### Logging
+        self.logfile = open(self.opts.key+".log",'w')
+        self.debugfile = open(self.opts.key+".debug",'w')
 ##### Genrep assembly
         g_rep = genrep.GenRep( url=self.globals.get("genrep_url"), 
                                root=self.globals.get("bwt_root") )
@@ -81,12 +86,8 @@ class Workflow(object):
 ##### Check all the options
         if not self.check_options(): 
             raise Usage("Problem with options %s" %self.opts)
-##### Logging
-        self.logfile = open(self.opts.key+".log",'w')
-        self.debugfile = open(self.opts.key+".debug",'w')
-        self.debug_write(json.dumps(self.job.options)+"\n\n"+json.dumps(self.globals))
-
-
+        self.debug_write(json.dumps(self.globals)+"\n")
+        self.debug_write(json.dumps(self.job.options))
 ########################################################################
 ##########################  EXECUTION  #################################
 ########################################################################
@@ -137,7 +138,6 @@ class Workflow(object):
             self.job.options[op] &= all(val[1:])
         self.job.options['gdv_project'] = {'project':{'id': self.job.options.get('gdv_project_id',0)}}
         self.job.options.setdefault('gdv_key',"")
-        self.minilims = os.path.join(self.opts.basepath,self.module+"_minilims")
         if hasattr(self.opts,"mapseq_minilims") and self.opts.mapseq_minilims:
             self.mapseq_minilims = self.opts.mapseq_minilims
         else:
