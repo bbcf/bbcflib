@@ -915,7 +915,7 @@ def map_groups( ex, job_or_dict, assembly_or_dict, map_args=None ):
         if assembly_or_dict['index_path'] is None and 'fasta_path' in assembly_or_dict:
             fasta = untar_cat_fasta(assembly_or_dict['fasta_path'])
             assembly_or_dict['index_path'] = bowtie_build.nonblocking(ex,fasta,via=map_args.get('via')).wait()
-            assembly_or_dict['chromosomes'] = fasta_length.nonblocking(ex,fasta,via='local').wait()
+            assembly_or_dict['chromosomes'] = fasta_length(ex,fasta)
             assembly_or_dict['chrmeta'] = dict([(v['name'], {'length': v['length']})
                                                 for v in assembly_or_dict['chromosomes'].values()])
         chromosomes = assembly_or_dict['chromosomes']
