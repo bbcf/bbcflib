@@ -606,8 +606,7 @@ def bowtie_build(files, index=None):
         index = unique_filename_in()
     if isinstance(files,list):
         files = ",".join(files)
-    return {'arguments': ['bowtie-build', '-f', files, index],
-            'return_value': index}
+    return {'arguments': ['bowtie-build', '-f', files, index], 'return_value': index}
 
 
 def parallel_bowtie(ex, index, reads, unmapped=None, n_lines=1000000, bowtie_args="-Sra", add_nh_flags=False, via='local'):
@@ -914,7 +913,7 @@ def map_groups( ex, job_or_dict, assembly_or_dict, map_args=None ):
     elif isinstance(assembly_or_dict,dict) and 'chromosomes' in assembly_or_dict:
         if assembly_or_dict['index_path'] is None and 'fasta_path' in assembly_or_dict:
             fasta = untar_cat_fasta(assembly_or_dict['fasta_path'])
-            assembly_or_dict['index_path'] = bowtie_build.nonblocking(ex,fasta,via=map_args.get('via')).wait()
+            assembly_or_dict['index_path'] = bowtie_build.nonblocking(ex,fasta,via=map_args.get('via'),memory=8).wait()
             assembly_or_dict['chromosomes'] = fasta_length(ex,fasta)
             assembly_or_dict['chrmeta'] = dict([(v['name'], {'length': v['length']})
                                                 for v in assembly_or_dict['chromosomes'].values()])
