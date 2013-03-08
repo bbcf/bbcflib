@@ -427,7 +427,6 @@ def rnaseq_workflow(ex, job, pileup_level=["exons","genes","transcripts"], via="
     :param junctions: (bool) whether or not to search for splice junctions using SOAPsplice. [False]
     :param via: (str) send job via 'local' or 'lsf'. ["lsf"]
     """
-    logfile = sys.stdout
     group_names={}; group_ids={}; conditions=[]
     assembly = genrep.Assembly(assembly=job.assembly_id)
     groups = job.groups
