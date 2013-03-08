@@ -5,8 +5,11 @@ from bbcflib.common import *
 import os
 
 # Unitesting module #
-try: import unittest2 as unittest
-except ImportError: import unittest
+try:
+    import unittest2 as unittest
+    assert unittest
+except ImportError:
+    import unittest
 
 # Nosetest flag #
 __test__ = True

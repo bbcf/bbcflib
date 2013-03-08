@@ -7,6 +7,7 @@ from ..daflims import DAFLIMS
 # Unitesting module #
 try:
     import unittest2 as unittest
+    assert unittest
 except ImportError:
     import unittest
 

@@ -10,6 +10,7 @@ from bbcflib.btrack.sql import SqlTrack
 # Unitesting module #
 try:
     import unittest2 as unittest
+    assert unittest
 except ImportError:
     import unittest
 

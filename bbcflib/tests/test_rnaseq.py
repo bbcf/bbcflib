@@ -7,8 +7,11 @@ from bbcflib.frontend import Job
 from bein import execution, MiniLIMS
 
 # Unitesting modules #
-try: import unittest2 as unittest
-except ImportError: import unittest
+try:
+    import unittest2 as unittest
+    assert unittest
+except ImportError:
+    import unittest
 from numpy.testing import assert_almost_equal
 
 # Other modules #

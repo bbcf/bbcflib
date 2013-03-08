@@ -8,6 +8,7 @@ from bbcflib.genrep import Assembly, GenRep
 # Unitesting module #
 try:
     import unittest2 as unittest
+    assert unittest
 except ImportError:
     import unittest
 

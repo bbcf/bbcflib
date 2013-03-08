@@ -5,6 +5,7 @@ from bbcflib import genrep
 # Unitesting module #
 try:
     import unittest2 as unittest
+    assert unittest
 except ImportError:
     import unittest
 
