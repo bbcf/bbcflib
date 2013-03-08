@@ -50,7 +50,7 @@ class Workflow(object):
             raise Usage("Working directory '%s' does not exist." %self.opts.wdir)
 
 ##### Connect to Minilims, recover global variables, fetch job info
-        self.minilims = os.path.join(self.opts.basepath,self.module+"_minilims")
+        self.minilims = os.path.join(self.opts.basepath,self.name+"_minilims")
         M = MiniLIMS(self.minilims)
         if not((self.opts.key != None or (self.opts.config and os.path.exists(self.opts.config)))):
             raise Usage("Need a job key or a configuration file")
@@ -150,11 +150,10 @@ class Workflow(object):
         from bbcflib.mapseq import get_bam_wig_files
         msurl = self.globals.get('hts_mapseq','').get('url','')
         scpath = self.globals.get('script_path','')
-        _files_job = get_bam_wig_files( ex, self.job, 
-                                        minilims=self.mapseq_minilims, 
-                                        hts_url=msurl, suffix=self.suffix,
-                                        script_path=scpath, via=self.opts.via )
-        self.init_files, self.job = _files_job
+        self.job = get_bam_wig_files( ex, self.job, 
+                                      minilims=self.mapseq_minilims, 
+                                      hts_url=msurl, suffix=self.suffix,
+                                      script_path=scpath, via=self.opts.via )
         return True
 
     def gdv_create(self,ex): 
@@ -208,7 +207,7 @@ and its unique key is %s
 
 You can now retrieve the results at this url:
 %s/jobs/%s/get_results
-''' %(self.name,self.job.description,self.opts.key,normalize_url(self.globals['hts_'+self.module]['url']),self.opts.key))
+''' %(self.name,self.job.description,self.opts.key,normalize_url(self.globals['hts_'+self.name]['url']),self.opts.key))
         r.send()
 
 

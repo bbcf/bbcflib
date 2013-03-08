@@ -153,8 +153,8 @@ def density_to_countsPerFrag( ex, file_dict, groups, assembly, regToExclude, scr
     return results #[countsPerFrag_allBed, countsPerFrag_selectSql, segToFrag_out, segToFrag_sql]
 
 ############################################################################
-def workflow_groups( ex, job, primers_dict, assembly, mapseq_url,
-                     c4_url=None, script_path='', logfile=None, via='lsf' ):
+def c4seq_workflow( ex, job, primers_dict, assembly,
+                    c4_url=None, script_path='', logfile=sys.stdout, via='lsf' ):
     '''
     Main
     * open the 4C-seq minilims and create execution
@@ -167,9 +167,6 @@ def workflow_groups( ex, job, primers_dict, assembly, mapseq_url,
     processed = {'lib': {}, 'density': {}, '4cseq': {}}
     regToExclude = {}
     new_libs=[]
-### inputs
-    htss_mapseq = frontend.Frontend( url=mapseq_url )
-    if logfile is None: logfile = sys.stdout
 ### options
     run_domainogram = {}
     before_profile_correction = {}

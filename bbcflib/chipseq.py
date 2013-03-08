@@ -27,8 +27,8 @@ Below is the script used by the frontend::
     job = htss.job( hts_key )
     assembly = genrep.Assembly( assembly=assembly_id )
     with execution( M, description=hts_key, remote_working_directory=working_dir ) as ex:
-        (ms_files, job) = get_bam_wig_files( ex, job, ms_limspath, gl['hts_mapseq']['url'], gl['script_path'], via=via )
-        files = workflow_groups( ex, job, ms_files, assembly, gl['script_path'] )
+        job = get_bam_wig_files( ex, job, ms_limspath, gl['hts_mapseq']['url'], gl['script_path'], via=via )
+        files = chipseq_workflow( ex, job, ms_files, assembly, gl['script_path'] )
     print ex.id
     allfiles = common.get_files( ex.id, M )
     print allfiles
@@ -220,8 +220,7 @@ def run_deconv(ex, sql, peaks, chromosomes, read_extension, script_path, via = '
 ################################################################################
 # Workflow #
 
-def workflow_groups( ex, job_or_dict, assembly, script_path='',
-                     logfile=None, via='lsf' ):
+def chipseq_workflow( ex, job_or_dict, assembly, script_path='', logfile=sys.stdout, via='lsf' ):
     """Runs a chipseq workflow over bam files obtained by mapseq. Will optionally run ``macs`` and 'run_deconv'.
 
     :param ex: a 'bein' execution environment to run jobs in,

@@ -206,16 +206,8 @@ def createReport(numbersFile,reportFile,script_path='./'):
            'return_value':None}
 
 
-def workflow_groups(ex, job, gl, file_path="../", via='lsf'):
+def demultiplex_workflow(ex, job, gl, file_path="../", via='lsf'):
     script_path=gl['script_path']
-    if 'lims' in gl:
-        dafl=dict((loc,daflims.DAFLIMS( username=gl['lims']['user'], password=pwd ))
-                  for loc,pwd in gl['lims']['passwd'].iteritems())
-    else:
-        dafl=None
-
-    job=get_fastq_files(ex, job, dafl)
-
     file_names = {}
     job_groups=job.groups
     resFiles={}
@@ -261,7 +253,6 @@ def workflow_groups(ex, job, gl, file_path="../", via='lsf'):
         log.write("Will get sequences to filter\n");log.flush()
         seqToFilter=getSeqToFilter(ex,primersFile)
 
-        # if seqToFilter is NOT none...
         log.write("Will filter the sequences\n")
         filteredFastq=filterSeq(ex,resExonerate,seqToFilter,(gid,group['name']),via=via)
 
@@ -321,6 +312,7 @@ def filterSeq(ex,fastqFiles,seqToFilter,grp_descr,via='lsf'):
     indexFiles={}
     gid, grp_name = grp_descr
     for k,f in seqToFilter.iteritems():
+        if os.path.getsize(f) == 0: continue
         ex.add(f,description=set_file_descr(grp_name+"_"+k+"_seqToFilter.fa",
                                             groupId=gid,step="filtering",
                                             type="fa",view="admin"))

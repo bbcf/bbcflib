@@ -15,7 +15,7 @@ from bbcflib.bFlatMajor.common import sorted_stream
 import os, json, re, tarfile, urllib2, time, shutil
 
 #GlobalLibPath="/archive/epfl/bbcf/data/genomes/4cLibraries"
-GlobalHtsUrl="http://htsstation.epfl.ch/" 
+GlobalHtsUrl="http://htsstation.epfl.ch" 
 GlobalRepbasePath="/archive/epfl/bbcf/data/genomes/repeats"
 
 @program

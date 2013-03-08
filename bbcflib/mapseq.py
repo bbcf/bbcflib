@@ -54,7 +54,7 @@ Below is the script used by the frontend::
                                           password=gl['lims']['passwd'][loc] ))
                     for loc in gl['lims']['passwd'].keys())
     with execution( M, description=hts_key, remote_working_directory=working_dir ) as ex:
-        job = get_fastq_files( ex, job, daflims1 )
+        job = get_fastq_files( ex, job )
         run_fastqc( ex, job, via=via )
         mapped_files = map_groups( ex, job, assembly )
         pdf = add_pdf_stats( ex, mapped_files,
@@ -70,7 +70,7 @@ Below is the script used by the frontend::
 """
 
 # Built-in modules #
-import os, re, json, shutil, gzip, tarfile, bz2, pickle, urllib, time
+import sys, os, re, json, shutil, gzip, tarfile, bz2, pickle, urllib, time
 
 # Internal modules #
 from bbcflib import frontend, genrep, daflims
@@ -144,7 +144,7 @@ def run_fastqc( ex, job, via='lsf' ):
     return None
 
 
-def get_fastq_files( ex, job, dafl=None, set_seed_length=True):
+def get_fastq_files( ex, job, set_seed_length=True ):
     """
     Will replace file references by actual file paths in the 'job' object.
     These references are either 'dafl' run descriptions or urls.
@@ -191,7 +191,7 @@ def get_fastq_files( ex, job, dafl=None, set_seed_length=True):
             target2 = target
         return target2
 #########
-    if  not(dafl is None or isinstance(dafl.values()[0],daflims.DAFLIMS)):
+    if  hasattr(job,"dafl") and not isinstance(job.dafl.values()[0],daflims.DAFLIMS):
         raise ValueError("Need DAFLIMS objects in get_fastq_files.")
     for gid,group in job.groups.iteritems():
         job.groups[gid]['seed_lengths'] = {}
@@ -206,7 +206,7 @@ def get_fastq_files( ex, job, dafl=None, set_seed_length=True):
             if run.get('url'):
                 run = str(run['url']).strip()
             if isinstance(run,dict) and all([x in run for x in ['facility','machine','run','lane']]):
-                dafl1 = dafl[run['facility']]
+                dafl1 = job.dafl[run['facility']]
                 daf_data = dafl1.fetch_fastq( str(run['facility']), str(run['machine']),
                                               run['run'], run['lane'],
                                               libname=run.get('sequencing_library') )
@@ -914,11 +914,10 @@ def map_groups( ex, job_or_dict, assembly_or_dict, map_args=None ):
     elif isinstance(assembly_or_dict,dict) and 'chromosomes' in assembly_or_dict:
         if assembly_or_dict['index_path'] is None and 'fasta_path' in assembly_or_dict:
             fasta = untar_cat_fasta(assembly_or_dict['fasta_path'])
-            assembly_or_dict['index_path'] = bowtie_build.nonblocking(ex,fasta,via=map_args.get('via'))
-            assembly_or_dict['chromosomes'] = fasta_length.nonblocking(ex,fasta,via=map_args.get('via')).wait()
+            assembly_or_dict['index_path'] = bowtie_build.nonblocking(ex,fasta,via=map_args.get('via')).wait()
+            assembly_or_dict['chromosomes'] = fasta_length.nonblocking(ex,fasta,via='local').wait()
             assembly_or_dict['chrmeta'] = dict([(v['name'], {'length': v['length']})
                                                 for v in assembly_or_dict['chromosomes'].values()])
-            assembly_or_dict['index_path'] = assembly_or_dict['index_path'].wait()
         chromosomes = assembly_or_dict['chromosomes']
         index_path = assembly_or_dict['index_path']
     else:
@@ -1191,6 +1190,32 @@ def densities_groups( ex, job_or_dict, file_dict, chromosomes, via='lsf' ):
                       'genome_size': mapped.values()[0]['stats']['genome_size']})
     return processed
 
+def mapseq_workflow(ex, job, assembly, map_args, gl, via="local",
+                    logfile=sys.stdout, debugfile=sys.stderr):
+    logfile.write("Map reads.\n");logfile.flush()
+    map_args.setdefault("via",via)
+    mapped_files = map_groups( ex, job, assembly, map_args )
+    logfile.write("Make stats:\n");logfile.flush()
+    logfile.write("GroupId_GroupName:\t")
+    for k,v in job.groups.iteritems():
+        logfile.write(str(k)+"_"+str(v['name'])+"\t");debugfile.flush()
+        pdf = add_pdf_stats( ex, mapped_files, {k:v['name']},
+                             gl.get('script_path',''),
+                             description=set_file_descr(v['name']+"_mapping_report.pdf",
+                                                        groupId=k,step='stats',type='pdf') )
+    if job.options['compute_densities']:
+        chrmeta = {}
+        if isinstance(assembly,genrep.Assembly): chrmeta = assembly.chrmeta
+        elif isinstance(assembly,dict):          chrmeta = assembly.get('chrmeta',{})
+        logfile.write("\ncomputing densities.\n");logfile.flush()
+        if int(job.options.get('read_extension',-1))<=0:
+            job.options['read_extension'] = mapped_files.values()[0].values()[0]['stats']['read_length']
+        density_files = densities_groups( ex, job, mapped_files, chrmeta, via=via )
+        logfile.write("Finished computing densities.\n");logfile.flush()
+    else: 
+        density_files = None
+    return 0
+
 
 def get_bam_wig_files( ex, job, minilims=None, hts_url=None, suffix=['fwd','rev'], script_path='', fetch_unmapped=False, via='lsf' ):
     """
@@ -1207,11 +1232,7 @@ def get_bam_wig_files( ex, job, minilims=None, hts_url=None, suffix=['fwd','rev'
             group_name = str(gid)
         job.groups[gid]['name'] = group_name
         for rid,run in group['runs'].iteritems():
-            bam_url = str(run['url'])
-            try:
-                file_loc = re.search(r'^[\"\']?([^\"\';]+)[\"\']?',bam_url.strip()).groups()[0]
-            except AttributeError:
-                raise ValueError("BAM file not found: %s ." % bam_url)
+            file_loc = re.search(r'^[\"\']?([^\"\';]+)[\"\']?',str(run['url']).strip()).groups()[0]
             bamfile = unique_filename_in()
             wig = {}
             name = group_name
