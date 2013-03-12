@@ -83,6 +83,7 @@ from bein import program, ProgramFailed, MiniLIMS
 from bein.util import add_pickle, touch, split_file, count_lines
 
 demultiplex_path = "/srv/demultiplexing/public/data/demultiplexing_minilims.files/"
+arch_basepath = "/archive/epfl/bbcf/data/"
 
 ###############
 # Fastq files
@@ -228,6 +229,7 @@ def get_fastq_files( ex, job, set_seed_length=True ):
                     if run_pe:
                         urllib.urlretrieve( run_pe, target_pe )
                 else:
+                    if run.startswith("arch://"): run = os.path.join(arch_basepath,run[7:])
                     if not(os.path.exists(run)):
                         demrun = os.path.join(demultiplex_path,run)
                         if not(os.path.exists(demrun)):
@@ -1257,7 +1259,8 @@ def get_bam_wig_files( ex, job, minilims=None, hts_url=None, suffix=['fwd','rev'
                         if "the alignment is not sorted" in str(e):
                             bamfile = sort_bam.nonblocking(ex, bamfile, via=via).wait()
                         index_bam(ex, bamfile)
-            elif os.path.exists(file_loc):
+            elif file_loc.startswith("arch://") or os.path.exists(file_loc):
+                if file_loc.startswith("arch://"): file_loc = os.path.join(arch_basepath,file_loc[7:])
                 assert os.access(file_loc, os.R_OK), "No read access to %s" % file_loc
                 shutil.copy( file_loc, bamfile )
                 if os.path.exists(file_loc+".bai"):

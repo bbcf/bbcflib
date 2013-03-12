@@ -1,3 +1,14 @@
+"""
+=========================
+Module: bbcflib.workflows
+=========================
+
+This module provides a base class that can be used to construct workflows from the various 
+modules in this library.
+
+
+"""
+
 import sys, os, re, json
 from bbcflib import genrep, frontend
 from bbcflib.common import normalize_url, get_files, set_file_descr
@@ -17,6 +28,8 @@ class Usage(Exception):
 class Workflow(object):
     def __init__(self,**kw):
         self.module = kw.get('module','HTSstation')
+#### name can be different from module: e.g. c4seq is the python module,
+#### but the name 4cseq is used in outputs and in variable names
         self.name = kw.get('name',self.module)
         self.opts = (
             ("-v", "--via", "Run executions locally or remotely (can be 'local' or 'lsf')", 
@@ -27,7 +40,6 @@ class Workflow(object):
              {'default': os.getcwd(), 'dest':"wdir"}),
             ("-c", "--config", "Configuration file", {'default': None}),
             ("--basepath","HTS data basepath", {'default': _basepath}))
-
         self.opts += kw.get("opts",())
         self.usage = _usage + str(kw.get('usage',''))
         self.desc = kw.get('desc',_description)
@@ -94,12 +106,10 @@ class Workflow(object):
         with execution( M, description=self.opts.key, 
                         remote_working_directory=self.opts.wdir ) as ex:
             self.log_write("Enter execution. Current working directory: %s" %ex.working_directory)
-
             self.init_files( ex )
             self.log_write("Starting workflow.")
             self.main_func(ex,**self.main_args)
-            if self.job.options['create_gdv_project']: 
-                self.job.options['gdv_project'] = self.gdv_create(ex)
+            if self.job.options['create_gdv_project']: self.gdv_create(ex)
 
 ########################################################################
 ########################  POSTPROCESSING  ##############################
@@ -169,7 +179,8 @@ class Workflow(object):
                                        self.globals['gdv']['url'] )
             self.debug_write("\nGDV project: "+json.dumps(project))
             add_pickle( ex, project, description=set_file_descr("gdv_json",step='gdv',type='py',view='admin') )
-        return project
+        self.job.options['gdv_project'] = project
+        return True
 
 
     def gdv_upload(self,files): 
