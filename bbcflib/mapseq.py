@@ -221,8 +221,8 @@ def get_fastq_files( ex, job, set_seed_length=True ):
                 runsplit = run.split(',')
                 run_pe = None
                 if len(runsplit) > 1:
-                    run = runsplit[0]
-                    run_pe = runsplit[1]
+                    run = runsplit[0].strip()
+                    run_pe = runsplit[1].strip()
                     target_pe = target+"_R2"
                 if run.startswith(("http://","https://","ftp://")):
                     urllib.urlretrieve( run, target )

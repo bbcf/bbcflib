@@ -150,7 +150,7 @@ class Workflow(object):
         self.debugfile.flush()
 
     def check_options(self,more_defs={}):
-    ### { option_name: (default_value, additional_conditions,...) }
+    ### { option_name: (default_value, additional_conditions, ...) }
         defaults = {'compute_densities':(True,),
                     'ucsc_bigwig':(True,(self.job.assembly.intype == 0)),
                     'create_gdv_project':(False,)}
@@ -172,7 +172,7 @@ class Workflow(object):
     def init_files(self,ex):
         """ Default behaviour for most modules: get bam files from mapping."""
         from bbcflib.mapseq import get_bam_wig_files
-        msurl = self.globals.get('hts_mapseq','').get('url','')
+        msurl = self.globals.get('hts_mapseq',{}).get('url','')
         scpath = self.globals.get('script_path','')
         self.job = get_bam_wig_files( ex, self.job, 
                                       minilims=self.mapseq_minilims, 
