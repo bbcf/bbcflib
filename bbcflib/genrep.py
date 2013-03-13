@@ -161,6 +161,7 @@ class Assembly(object):
             else:
                 self.name = "_custom_"
         else:
+            chromosomes = {}
             try:
                 assembly = int(assembly)
                 assembly_info = json.load(urllib2.urlopen(urllib2.Request(
@@ -171,9 +172,10 @@ class Assembly(object):
                 try:
                     url = """%s/assemblies.json?assembly_name=%s""" %(self.genrep.url, assembly)
                     assembly_info = json.load(urllib2.urlopen(urllib2.Request(url)))[0]
-                except IndexError: raise ValueError("URL not found: %s." % url)
-                chromosomes = json.load(urllib2.urlopen(urllib2.Request(
-                            """%s/chromosomes.json?assembly_name=%s""" %(self.genrep.url, assembly))))
+                    chromosomes = json.load(urllib2.urlopen(urllib2.Request(
+                                """%s/chromosomes.json?assembly_name=%s""" %(self.genrep.url, assembly))))
+                except:
+                    pass
             for c in chromosomes:
                 chrom = dict((str(k),v) for k,v in c['chromosome'].iteritems())
                 cnames = chrom.pop('chr_names')
@@ -470,7 +472,7 @@ class Assembly(object):
                     outf.write(line)
             if outf is not None: outf.close()
 
-        if hasattr(self,"fasta_by_chrom") return self.fasta_by_chrom
+        if hasattr(self,"fasta_by_chrom"): return self.fasta_by_chrom
         if path_to_ref is None: path_to_ref = self.fasta_path()
         if not(os.path.exists(path_to_ref)): 
             raise ValueError("Reference fasta archive not found: %s."%path_to_ref)
