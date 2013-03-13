@@ -83,10 +83,21 @@ class Workflow(object):
         self.logfile = open(self.opts.key+".log",'w')
         self.debugfile = open(self.opts.key+".debug",'w')
 ##### Genrep assembly
+        if 'fasta_file' in job.options:
+            if os.path.exists(job.options['fasta_file']):
+                self.job.options['fasta_file'] = os.path.abspath(self.job.options['fasta_path'])
+            else:
+                for ext in (".fa",".fa.gz",".tar.gz"):
+                    if os.path.exists("ref_sequence"+ext):
+                        self.job.options['fasta_file'] = os.path.abspath("ref_sequence"+ext)
+            if not os.path.exists(job.options['fasta_file']):
+                raise Usage("Don't know where to find fasta file %s." %job.options["fasta_file"])
         g_rep = genrep.GenRep( url=self.globals.get("genrep_url"), 
                                root=self.globals.get("bwt_root") )
         self.job.assembly = genrep.Assembly( assembly=self.job.assembly_id, genrep=g_rep,
-                                        intype=self.job.options.get('input_type_id',0) )
+                                             fasta=job.options.get('fasta_file'),
+                                             annot=job.options.get('annot_file'),
+                                             intype=self.job.options.get('input_type_id',0) )
 ##### Configure facility LIMS
         if 'lims' in self.globals:
             from bbcflib import daflims
