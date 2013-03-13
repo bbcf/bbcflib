@@ -245,7 +245,7 @@ def map_chromosomes( stream, chromosomes, keep=False ):
         chrom_map[k[0]] = cname                                                   # {2780: 'chrIV'}
         chrom_map[str(k[1])+"."+str(k[2])] = cname                                # {'NC_001136.9': 'chrIV'}
         chrom_map[str(k[0])+"_"+str(k[1])+"."+str(k[2])] = cname                  # {'2780_NC_001136.9': 'chrIV'}
-        if c['synonyms']:
+        if c.get('synonyms'):
             for s in c['synonyms'].split(','): chrom_map[s] = cname               # {synonym: 'chrIV'}
     if keep:
         return FeatureStream((x[:ic]+(chrom_map.get(x[ic],x[0]),)+x[ic+1:]

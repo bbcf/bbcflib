@@ -274,7 +274,10 @@ try:
         #-------------------------------------------------------------------------#
     @program
     def fasta_length(file):
-        """Binds the `fastalength` program and returns a `chromosomes` dictionary {'chr1': {'name': 'chr1', 'length': xxxx}, ...}.
+        """Binds the `fastalength` program and returns a `chromosomes` dictionary::
+           
+            {'chr1': {'name': 'chr1', 'length': xxxx}, ...}
+
         """
         def _len_to_dict(p):
             chroms = {}
