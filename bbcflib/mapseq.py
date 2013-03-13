@@ -557,45 +557,6 @@ def bowtie(index, reads, args="-Sra"):
     return {"arguments": ["bowtie"]+options+[index, reads, sam_filename],
             "return_value": sam_filename}
 
-def untar_cat_fasta(fastafile):
-    target = unique_filename_in()
-    is_gz = fastafile.endswith((".gz",".gzip"))
-    is_bz2 = fastafile.endswith((".bz2",".bz"))
-    file_strip = fastafile
-    if is_gz: file_strip = re.sub('.gz[ip]*','',fastafile)
-    if is_bz2: file_strip = re.sub('.bz[2]*','',fastafile)
-
-    def _rewrite(input_file,output_file,mode='w'):
-        with open(output_file,mode) as g:
-            while True:
-                chunk = input_file.read(4096)
-                if chunk == '': break
-                else: g.write(chunk)
-
-    if file_strip.endswith(".tar"):
-        mode = 'r'
-        if is_gz: mode += '|gz'
-        tarfh = tarfile.open(fastafile, mode=mode)
-        outmode = 'w'
-        for tarname in tarfh:
-            if tarname.isdir(): continue
-            input_file = tarfh.extractfile(tarname)
-            _rewrite(input_file,target,outmode)
-            input_file.close()
-            outmode = 'a'
-        tarfh.close()
-    elif is_gz:
-        input_file = gzip.open(fastafile, 'rb')
-        _rewrite(input_file,target)
-        input_file.close()
-    elif is_bz2:
-        input_file = bz2.BZ2File(fastafile,mode='r')
-        _rewrite(input_file,target)
-        input_file.close()
-    else:
-        target = fastafile
-    return target
-
 @program
 def bowtie_build(files, index=None):
     """Created a bowtie index from *files*.
@@ -867,7 +828,7 @@ def map_reads( ex, fastq_file, chromosomes, bowtie_index,
 
 ############################################################
 
-def map_groups( ex, job_or_dict, assembly_or_dict, map_args=None ):
+def map_groups( ex, job_or_dict, assembly, map_args=None ):
     """Fetches fastq files and bowtie indexes, and runs the 'map_reads' function for
     a collection of samples described in a 'Frontend' 'job'.
 
@@ -877,7 +838,7 @@ def map_groups( ex, job_or_dict, assembly_or_dict, map_args=None ):
 
     * ``'job_or_dict'``: a 'frontend.Job' object, or a dictionary with keys 'groups',
 
-    * ``'assembly_or_dict'``: a 'genrep.Assembly' object, or a dictionary of 'chromosomes' and 'index_path'.
+    * ``'assembly'``: a 'genrep.Assembly' object.
 
     * ``'map_args'``: a dictionary of arguments passed to map_reads.
 
@@ -907,23 +868,10 @@ def map_groups( ex, job_or_dict, assembly_or_dict, map_args=None ):
     pcr_dupl = options.get('discard_pcr_duplicates',True)
     if isinstance(pcr_dupl,basestring):
         pcr_dupl = pcr_dupl.lower() in ['1','true','t']
-    if isinstance(assembly_or_dict,genrep.Assembly):
-        chromosomes = dict((v['ac'],{'name':k,'length':v['length']}) for k,v in assembly_or_dict.chrmeta.iteritems())
-        if assembly_or_dict.intype == 2: # transcriptome is more redundant
-            map_args['maxhits'] = max(int(map_args.get('maxhits') or 50),50)
-        index_path = assembly_or_dict.index_path
-    elif isinstance(assembly_or_dict,dict) and 'chromosomes' in assembly_or_dict:
-        if assembly_or_dict['index_path'] is None and 'fasta_path' in assembly_or_dict:
-            fasta = untar_cat_fasta(assembly_or_dict['fasta_path'])
-            assembly_or_dict['index_path'] = bowtie_build.nonblocking(ex,fasta,via=map_args.get('via'),memory=8).wait()
-            assembly_or_dict['chromosomes'] = fasta_length(ex,fasta)
-            assembly_or_dict['chrmeta'] = dict([(v['name'], {'length': v['length']})
-                                                for v in assembly_or_dict['chromosomes'].values()])
-        chromosomes = assembly_or_dict['chromosomes']
-        index_path = assembly_or_dict['index_path']
-    else:
-        raise TypeError("assembly_or_dict must be a genrep.Assembly object or a dictionary \
-                         with keys 'chromosomes' and 'index_path'.")
+    chromosomes = dict((v['ac'],{'name':k,'length':v['length']}) for k,v in assembly.chrmeta.iteritems())
+    if assembly.intype == 2: # transcriptome is more redundant
+        map_args['maxhits'] = max(int(map_args.get('maxhits') or 50),50)
+    index_path = assembly.index_path
     for gid,group in groups.iteritems():
         processed[gid] = {}
         file_names[gid] = {}
