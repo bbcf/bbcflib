@@ -79,10 +79,7 @@ class Workflow(object):
             self.opts.key = self.job.description
         else:
             raise Usage("Need either a job key (-k) or a configuration file (-c).")
-##### Logging
-        self.logfile = open(self.opts.key+".log",'w')
-        self.debugfile = open(self.opts.key+".debug",'w')
-##### Genrep assembly
+##### Genrep instance
         if 'fasta_file' in job.options:
             if os.path.exists(job.options['fasta_file']):
                 self.job.options['fasta_file'] = os.path.abspath(self.job.options['fasta_path'])
@@ -94,10 +91,6 @@ class Workflow(object):
                 raise Usage("Don't know where to find fasta file %s." %job.options["fasta_file"])
         g_rep = genrep.GenRep( url=self.globals.get("genrep_url"), 
                                root=self.globals.get("bwt_root") )
-        self.job.assembly = genrep.Assembly( assembly=self.job.assembly_id, genrep=g_rep,
-                                             fasta=job.options.get('fasta_file'),
-                                             annot=job.options.get('annot_file'),
-                                             intype=self.job.options.get('input_type_id',0) )
 ##### Configure facility LIMS
         if 'lims' in self.globals:
             from bbcflib import daflims
@@ -106,19 +99,29 @@ class Workflow(object):
                                  for loc,pwd in self.globals['lims']['passwd'].iteritems())
         else: 
             self.job.dafl = None
-##### Check all the options
-        if not self.check_options(): 
-            raise Usage("Problem with options %s" %self.opts)
-        self.debug_write(json.dumps(self.globals)+"\n")
-        self.debug_write(json.dumps(self.job.options))
 ########################################################################
 ##########################  EXECUTION  #################################
 ########################################################################
+##### Logging
+        self.logfile = open(self.opts.key+".log",'w')
+        self.debugfile = open(self.opts.key+".debug",'w')
+        self.debug_write(json.dumps(self.globals)+"\n")
         with execution( M, description=self.opts.key, 
                         remote_working_directory=self.opts.wdir ) as ex:
+            self.job.assembly = genrep.Assembly( assembly=self.job.assembly_id, 
+                                                 genrep=g_rep,
+                                                 fasta=job.options.get('fasta_file'),
+                                                 annot=job.options.get('annot_file'),
+                                                 intype=self.job.options.get('input_type_id',0),
+                                                 ex=ex, via=self.opts.via )
+##### Check all the options
+            if not self.check_options(): 
+                raise Usage("Problem with options %s" %self.opts)
+            self.debug_write(json.dumps(self.job.options))
             self.log_write("Enter execution. Current working directory: %s" %ex.working_directory)
             self.init_files( ex )
             self.log_write("Starting workflow.")
+##### Run workflow
             self.main_func(ex,**self.main_args)
             if self.job.options['create_gdv_project']: self.gdv_create(ex)
 
@@ -186,7 +189,8 @@ class Workflow(object):
             self.log_write("Creating GDV project.")
             project = gdv.new_project( self.globals['gdv']['email'], 
                                        self.globals['gdv']['key'],
-                                       self.job.description, assembly.id, 
+                                       self.job.description, 
+                                       self.job.assembly.id, 
                                        self.globals['gdv']['url'] )
             self.debug_write("\nGDV project: "+json.dumps(project))
             add_pickle( ex, project, description=set_file_descr("gdv_json",step='gdv',type='py',view='admin') )
