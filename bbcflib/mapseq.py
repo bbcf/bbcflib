@@ -230,6 +230,7 @@ def get_fastq_files( ex, job, set_seed_length=True ):
                         urllib.urlretrieve( run_pe, target_pe )
                 else:
                     if run.startswith("arch://"): run = os.path.join(arch_basepath,run[7:])
+                    if run_pe and run_pe.startswith("arch://"): run_pe = os.path.join(arch_basepath,run_pe[7:])
                     if not(os.path.exists(run)):
                         demrun = os.path.join(demultiplex_path,run)
                         if not(os.path.exists(demrun)):
