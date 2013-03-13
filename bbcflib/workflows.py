@@ -108,6 +108,7 @@ class Workflow(object):
         self.debug_write(json.dumps(self.globals)+"\n")
         with execution( M, description=self.opts.key, 
                         remote_working_directory=self.opts.wdir ) as ex:
+            self.log_write("Enter execution. Current working directory: %s" %ex.working_directory)
             self.job.assembly = genrep.Assembly( assembly=self.job.assembly_id, 
                                                  genrep=g_rep,
                                                  fasta=self.job.options.get('fasta_file'),
@@ -118,10 +119,9 @@ class Workflow(object):
             if not self.check_options(): 
                 raise Usage("Problem with options %s" %self.opts)
             self.debug_write(json.dumps(self.job.options))
-            self.log_write("Enter execution. Current working directory: %s" %ex.working_directory)
             self.init_files( ex )
-            self.log_write("Starting workflow.")
 ##### Run workflow
+            self.log_write("Starting workflow.")
             self.main_func(ex,**self.main_args)
             if self.job.options['create_gdv_project']: self.gdv_create(ex)
 
@@ -218,7 +218,8 @@ class Workflow(object):
         return {gdv_project_url: 'GDV view'}
 
     def send_email(self):
-        if 'email' not in self.globals: return
+        if not('email' in self.globals and hasattr(self.job,"email")): 
+            return
         from bbcflib import email
         r = email.EmailReport( sender=self.globals['email']['sender'],
                                to=str(self.job.email).split(','),
