@@ -443,9 +443,9 @@ class SgaTrack(TextTrack):
             if num > 0: return '+'
             if num < 0: return '-'
             return '0'
-        def _score_to_counts(x=0.0): return "%i"%float(x)
-        kwargs['intypes'] = {'counts': int}
-        kwargs['outtypes'] = {'strand': _sga_strand, 'counts': _score_to_counts}
+        def _score_to_counts(x=0.0): return "%.2g"%float(x) # %i
+        kwargs['intypes'] = {'counts':int, 'score':float}
+        kwargs['outtypes'] = {'strand': _sga_strand, 'counts': _score_to_counts, 'score':float}
         TextTrack.__init__(self,path,**kwargs)
 
     def _read(self, fields, index_list, selection, skip):
@@ -508,13 +508,14 @@ class SgaTrack(TextTrack):
         rowres = ['',0,0,'',0,0]
         for k,n in enumerate(source_list):
             rowres[target_list[k]] = row[n]
-        rowres[0] = self.chrmeta.get(rowres[0],{}).get('ac',rowres[0])
+        rowres[0] = self.chrmeta.get(rowres[0],{}).get('ac',rowres[0]) # '3075_NC_000001.10'-like chr names
         feat = []
         for pos in range(int(rowres[1]),int(rowres[2])):
-            x = [rowres[0],rowres[3],
+            x = [rowres[0],rowres[3] or '--',
                  self.outtypes.get("start",str)(pos+1),
                  self.outtypes.get("strand",str)(rowres[4]),
                  self.outtypes.get("counts",str)(rowres[5])]
+            if x[4] == '0': continue
             feat.append(self.separator.join(x))
         return "\n".join(feat)
 
