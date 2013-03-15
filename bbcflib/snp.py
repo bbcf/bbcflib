@@ -137,7 +137,7 @@ def all_snps(ex,chrom,dictPileup,outall,assembly,sample_names,mincov,minsnp):
     for pileup_filename,trio in dictPileup.iteritems():
         trio[0].wait() #file p is created from samtools pileup
         sample_names.append(trio[1])
-        pileup_files.append(open(pileup_filename,'rb'))
+        pileup_files.append(open(pileup_filename))
         bam_tracks.append(track(trio[2],format='bam'))
         description = set_file_descr(trio[1]+".pileup",step="pileup",type="txt",view='admin')
         ex.add(pileup_filename,description=description)
@@ -348,7 +348,7 @@ def snp_workflow(ex, job, assembly, minsnp=40, mincov=5, path_to_ref='', via='lo
         # Samtools pileup
         for chrom,ref in genomeRef.iteritems():
             pileup_filename = unique_filename_in()
-            future = sam_pileup.nonblocking(ex,assembly,bam,ref,via,stdout=pileup_filename )
+            future = sam_pileup.nonblocking(ex,assembly,bam,ref,via=via,stdout=pileup_filename )
             pileup_dict[chrom][pileup_filename] = (future,sample_name,bam)
         print >> logfile, "....Group %s done." % sample_name; logfile.flush()
 
