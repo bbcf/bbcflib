@@ -230,15 +230,13 @@ def exon_snps(chrom,outexons,allsnps,assembly,sample_names,genomeRef={}):
             ref_codon = _revcomp(ref_codon)
             new_codon = [[_revcomp(s) for s in c] for c in new_codon]
         for chr,pos,refbase,variants,cds,strand,ref_codon,shift in _buffer:
-            #refc = [itemgetter(0,2)(_iupac[x]) if x in _iupac else (x,) for x in ref_codon]
-            #ref_codon = [''.join(x) for x in product(*refc)]
-            #newc = [[[itemgetter(0,2)(_iupac[x]) if x in _iupac else (x,) for x in variant] for variant in sample] for sample in new_codon]
-            #newcc = [[[''.join(x) for codon in sample for x in product(*codon)] for sample in newc]
-            #newccc = [[','.join([codon for variant in sample for codon in variant])] for sample in newcc]
+            refc = [itemgetter(0,2)(_iupac[x]) if x in _iupac else (x,) for x in ref_codon]
+            ref_codon = [''.join(x) for x in product(*refc)]
+            newc = [[[itemgetter(0,2)(_iupac[x]) if x in _iupac else (x,) for x in variant] for variant in sample] for sample in new_codon]
+            new_codon = [[''.join(x) for codon in sample for x in product(*codon)] for sample in newc]
             if refbase == "*":
                 result = [chr, pos+1, refbase] + list(variants) + [cds, strand] \
-                         + [','.join([_translate.get(refc,'?') for refc in ref_codon])] \
-                         + ["indel"]
+                         + [','.join([_translate.get(refc,'?') for refc in ref_codon])] + ["indel"]
             else:
                 result = [chr, pos+1, refbase] + list(variants) + [cds, strand] \
                          + [_translate.get(ref_codon,'?')] \
