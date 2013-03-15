@@ -1,5 +1,7 @@
 # Built-in modules #
 import re, os, sys
+from operator import itemgetter
+from itertools import product
 
 # Internal modules #
 from bbcflib.common import unique_filename_in, set_file_descr
@@ -10,6 +12,9 @@ from bbcflib.bFlatMajor import stream as gm_stream
 
 # Other modules #
 from bein import program
+
+_iupac = {'M':['A','a','C','c'],'Y':['T','t','C','c'],'R':['A','a','G','g'],
+          'S':['G','g','C','c'],'W':['A','a','T','t'],'K':['T','t','G','g']}
 
 _translate = {"TTT": "F", "TTC": "F", "TTA": "L", "TTG": "L/START",
               "CTT": "L", "CTC": "L", "CTA": "L", "CTG": "L",
@@ -68,9 +73,7 @@ def find_snp(info,mincov,minsnp,assembly):
         `http://samtools.sourceforge.net/cns0.shtml`_
     """
     def _parse_info8(readbase,cons):
-        iupac = {'M':['A','a','C','c'],'Y':['T','t','C','c'],'R':['A','a','G','g'],
-                 'S':['G','g','C','c'],'W':['A','a','T','t'],'K':['T','t','G','g']}
-        var1_fwd,var1_rev,var2_fwd,var2_rev = iupac[cons]
+        var1_fwd,var1_rev,var2_fwd,var2_rev = _iupac[cons]
         nvar1_fwd = readbase.count(var1_fwd)
         nvar1_rev = readbase.count(var1_rev)
         nvar2_fwd = readbase.count(var2_fwd)
@@ -110,7 +113,7 @@ def find_snp(info,mincov,minsnp,assembly):
         else: consensus = ref
     return consensus
 
-def all_snps(chrom,dictPileup,outall,assembly,sample_names,mincov,minsnp):
+def all_snps(ex,chrom,dictPileup,outall,assembly,sample_names,mincov,minsnp):
     """For a given chromosome, returns a summary file containing all SNPs identified
     in at least one of the samples.
     Each row contains: chromosome id, SNP position, reference base, SNP base (with proportions)
@@ -132,6 +135,8 @@ def all_snps(chrom,dictPileup,outall,assembly,sample_names,mincov,minsnp):
         sample_names.append(trio[1])
         pileup_files.append(open(pileup_filename,'rb'))
         bam_tracks.append(track(trio[2],format='bam'))
+        description = set_file_descr(trio[1]+".pileup",step="pileup",type="txt",view='admin')
+        ex.add(pileup_filename,description=description)
     nsamples = len(sample_names)
     current = [f.readline().split('\t') for f in pileup_files]
     lastpos = 0
@@ -225,13 +230,19 @@ def exon_snps(chrom,outexons,allsnps,assembly,sample_names,genomeRef={}):
             ref_codon = _revcomp(ref_codon)
             new_codon = [[_revcomp(s) for s in c] for c in new_codon]
         for chr,pos,refbase,variants,cds,strand,ref_codon,shift in _buffer:
+            #refc = [itemgetter(0,2)(_iupac[x]) if x in _iupac else (x,) for x in ref_codon]
+            #ref_codon = [''.join(x) for x in product(*refc)]
+            #newc = [[[itemgetter(0,2)(_iupac[x]) if x in _iupac else (x,) for x in variant] for variant in sample] for sample in new_codon]
+            #newcc = [[[''.join(x) for codon in sample for x in product(*codon)] for sample in newc]
+            #newccc = [[','.join([codon for variant in sample for codon in variant])] for sample in newcc]
             if refbase == "*":
                 result = [chr, pos+1, refbase] + list(variants) + [cds, strand] \
-                         + [_translate.get(ref_codon,'?')] + ["indel"]
+                         + [','.join([_translate.get(refc,'?') for refc in ref_codon])] \
+                         + ["indel"]
             else:
                 result = [chr, pos+1, refbase] + list(variants) + [cds, strand] \
                          + [_translate.get(ref_codon,'?')] \
-                         + [','.join([_translate.get(s,'?') for s in c]) for c in new_codon]
+                         + [','.join([_translate.get(s,'?') for s in newc]) for newc in new_codon]
             outex.write("\t".join([str(r) for r in result])+"\n")
 
     #############################################################
@@ -345,7 +356,7 @@ def snp_workflow(ex, job, assembly, minsnp=40, mincov=5, path_to_ref='', via='lo
         fout.write('#'+'\t'.join(['chromosome','position','reference']+sample_names+['gene','location_type','distance'])+'\n')
     for chrom in assembly.chrnames:
         dictPileup = pileup_dict[chrom]
-        allsnps = all_snps(chrom,dictPileup,outall,assembly,sample_names,mincov,minsnp)
+        allsnps = all_snps(ex,chrom,dictPileup,outall,assembly,sample_names,mincov,minsnp)
         exon_snps(chrom,outexons,allsnps,assembly,sample_names,genomeRef)
     description = set_file_descr("allSNP.txt",step="SNPs",type="txt")
     ex.add(outall,description=description)
