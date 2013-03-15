@@ -191,6 +191,11 @@ class Assembly(object):
                                                        via=via,memory=8).wait()
             chromosomes = {}
             for f in fasta_files: chromosomes.update(fasta_length(ex,f))
+            self.stats_dict = {}
+            for f in fasta_files: 
+                stats = fasta_composition(ex,f)
+                for k,v in stats.iteritems():
+                    self.stats_dict[k] = self.stats_dict.get(k,0)+v
             for k,chrom in self.chromosomes.iteritems():
                 if chrom['name'] in chromosomes:
                     chrom_ac = str(k[0])+"_"+str(k[1])+"."+str(k[2]) if k[1] else str(k[0])
@@ -368,7 +373,7 @@ class Assembly(object):
     def get_motif_PWM(self, motif_name, output=None):
         return self.genrep.get_motif_PWM(self.genome_id, motif_name, output=output)
 
-    def statistics(self, output=None, frequency=False, matrix_format=False):
+    def statistics(self, output=None, frequency=False, matrix_format=False, ex=None):
         """
         Return (di-)nucleotide counts or frequencies for an assembly, writes in file *output* if provided.
         Example of result::
@@ -404,13 +409,14 @@ class Assembly(object):
              >Assembly: sacCer2
             1   0.309798640038793   0.308714120881750   0.190593944221299   0.190893294858157
         """
-        request = urllib2.Request("%s/nr_assemblies/%d.json?data_type=counts" % (self.genrep.url, self.nr_assembly_id))
-        stat    = json.load(urllib2.urlopen(request))
+        if hasattr(self,"stats_dict"): 
+            stat = self.stats_dict
+        else:
+            request = urllib2.Request("%s/nr_assemblies/%d.json?data_type=counts" % (self.genrep.url, self.nr_assembly_id))
+            stat    = json.load(urllib2.urlopen(request))
         total   = float(stat["A"]+stat["T"]+stat["G"]+stat["C"])
         if frequency:
             stat = dict((k,x/total) for k,x in stat.iteritems())
-        else:
-            stat.update
         if output == None:
             return stat
         else:

@@ -44,7 +44,7 @@ def _ploidy(assembly):
     return ploidy
 
 @program
-def sam_pileup(assembly,bamfile,refGenome,via='lsf'):
+def sam_pileup(assembly,bamfile,refGenome):
     """Binds 'samtools pileup'.
 
     :param assembly: Genrep.Assembly object.
@@ -55,8 +55,12 @@ def sam_pileup(assembly,bamfile,refGenome,via='lsf'):
     return {"arguments": ["samtools","pileup","-B","-cvsf",refGenome,"-N",str(ploidy),bamfile],
             "return_value": None}
 
+@program
+def sam_faidx(fasta):
+    return {"arguments": ["samtools","faidx",str(fasta)],"return_value": None}
+
 def find_snp(info,mincov,minsnp,assembly):
-    """Parse the output of samtools pileup, provided as a list of already splitted *info*::
+    """Parse the output of samtools pileup, provided as a list of already split *info*::
 
         info = ['chrV', '91668', 'G', 'R', '4', '4', '60', '4', 'a,.^~.', 'LLLL', '~~~~\n']
         info = [chr, pos, ref, consensus, cons_qual, snp_qual, max_map_qual, nreads, 'a,.^~.', 'LLLL', '~~~~\n']
@@ -248,8 +252,7 @@ def exon_snps(chrom,outexons,allsnps,assembly,sample_names,genomeRef={}):
     #############################################################
     outex = open(outexons,"a")
     outex.write('#'+'\t'.join(['chromosome','position','reference']+sample_names+['exon','strand','ref_aa'] \
-                              + ['new_aa_'+s for s in sample_names])+'\n')
-
+                                  + ['new_aa_'+s for s in sample_names])+'\n')
     snp_stream = FeatureStream(allsnps, fields=['chr','start','end','ref']+sample_names)
     inclstream = concat_fields(snp_stream, infields=snp_stream.fields[3:], as_tuple=True)
     snp_stream = FeatureStream(allsnps, fields=['chr','start','end','ref']+sample_names)
@@ -330,6 +333,7 @@ def snp_workflow(ex, job, assembly, minsnp=40, mincov=5, path_to_ref='', via='lo
     assert os.path.exists(path_to_ref), "Reference sequence not found: %s." % path_to_ref
     genomeRef = assembly.untar_genome_fasta(path_to_ref, convert=True)
     pileup_dict = dict((chrom,{}) for chrom in genomeRef.keys()) # {chr: {}}
+    [g.wait() for g in [sam_faidx.nonblocking(ex,f,via=via) for f in genomeRef.values()]]
     sample_names = []
     bam = {}
     print >> logfile, "* Run samtools pileup"; logfile.flush()
