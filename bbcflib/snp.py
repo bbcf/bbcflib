@@ -227,17 +227,17 @@ def exon_snps(chrom,outexons,allsnps,assembly,sample_names,genomeRef={}):
         for chr,pos,refbase,variants,cds,strand,ref_codon,shift in _buffer:
             if refbase == "*":
                 result = [chr, pos+1, refbase] + list(variants) + [cds, strand] \
-                         + [_translate[ref_codon]] + ["indel"]
+                         + [_translate.get(ref_codon,'?')] + ["indel"]
             else:
                 result = [chr, pos+1, refbase] + list(variants) + [cds, strand] \
-                         + [_translate[ref_codon]] \
-                         + [','.join([_translate[s] for s in c]) for c in new_codon]
+                         + [_translate.get(ref_codon,'?')] \
+                         + [','.join([_translate.get(s,'?') for s in c]) for c in new_codon]
             outex.write("\t".join([str(r) for r in result])+"\n")
 
     #############################################################
     outex = open(outexons,"a")
-    outex.write('#'+'\t'.join(['chromosome','position','reference'] + sample_names + ['exon','strand','ref_aa'] \
-                          + ['new_aa_'+s for s in sample_names])+'\n')
+    outex.write('#'+'\t'.join(['chromosome','position','reference']+sample_names+['exon','strand','ref_aa'] \
+                              + ['new_aa_'+s for s in sample_names])+'\n')
 
     snp_stream = FeatureStream(allsnps, fields=['chr','start','end','ref']+sample_names)
     inclstream = concat_fields(snp_stream, infields=snp_stream.fields[3:], as_tuple=True)
