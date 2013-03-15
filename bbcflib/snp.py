@@ -232,14 +232,15 @@ def exon_snps(chrom,outexons,allsnps,assembly,sample_names,genomeRef={}):
         for chr,pos,refbase,variants,cds,strand,ref_codon,shift in _buffer:
             refc = [itemgetter(0,2)(_iupac[x]) if x in _iupac else (x,) for x in ref_codon]
             ref_codon = [''.join(x) for x in product(*refc)]
-            newc = [[[itemgetter(0,2)(_iupac[x]) if x in _iupac else (x,) for x in variant] for variant in sample] for sample in new_codon]
+            newc = [[[itemgetter(0,2)(_iupac[x]) if x in _iupac else (x,) for x in variant]
+                    for variant in sample] for sample in new_codon]
             new_codon = [[''.join(x) for codon in sample for x in product(*codon)] for sample in newc]
             if refbase == "*":
                 result = [chr, pos+1, refbase] + list(variants) + [cds, strand] \
                          + [','.join([_translate.get(refc,'?') for refc in ref_codon])] + ["indel"]
             else:
                 result = [chr, pos+1, refbase] + list(variants) + [cds, strand] \
-                         + [_translate.get(ref_codon,'?')] \
+                         + [','.join([_translate.get(refc,'?') for refc in ref_codon])] \
                          + [','.join([_translate.get(s,'?') for s in newc]) for newc in new_codon]
             outex.write("\t".join([str(r) for r in result])+"\n")
 
