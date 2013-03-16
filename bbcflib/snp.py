@@ -134,13 +134,16 @@ def all_snps(ex,chrom,dictPileup,outall,assembly,sample_names,mincov,minsnp):
     pileup_files = []
     bam_tracks = []
     allsnps = []
+    tarname = unique_filename_in()
+    tarfh = tarfile.open(tarname, "w:gz")
     for pileup_filename,trio in dictPileup.iteritems():
         trio[0].wait() #file p is created from samtools pileup
         sample_names.append(trio[1])
         pileup_files.append(open(pileup_filename))
+        tarfh.add(pileup_filename,arcname=trio[1]+".pileup")
         bam_tracks.append(track(trio[2],format='bam'))
-        description = set_file_descr(trio[1]+".pileup",step="pileup",type="txt",view='admin')
-        ex.add(pileup_filename,description=description)
+    tarfh.close()
+    ex.add( tarname, description=set_file_descr(tarname,step="pileup",type="tar",view='admin') )
     nsamples = len(sample_names)
     current = [f.readline().split('\t') for f in pileup_files]
     lastpos = 0
