@@ -140,7 +140,7 @@ def all_snps(ex,chrom,dictPileup,outall,assembly,sample_names,mincov,minsnp):
         trio[0].wait() #file p is created from samtools pileup
         sample_names.append(trio[1])
         pileup_files.append(open(pileup_filename))
-        tarfh.add(pileup_filename,arcname=trio[1]+".pileup")
+        tarfh.add(pileup_filename,arcname=trio[1]+"_"+chrom+".pileup")
         bam_tracks.append(track(trio[2],format='bam'))
     tarfh.close()
     ex.add( tarname, description=set_file_descr(tarname,step="pileup",type="tar",view='admin') )
