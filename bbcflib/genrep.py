@@ -32,7 +32,7 @@ from datetime import datetime
 from operator import itemgetter
 
 # Internal modules #
-from bbcflib.common import normalize_url, unique_filename_in, fasta_length, fasta_composition
+from bbcflib.common import normalize_url, unique_filename_in, fasta_length, fasta_composition, sam_faidx
 from bbcflib.btrack import track, ensembl_to_ucsc, FeatureStream
 from bbcflib.bFlatMajor.common import shuffled as track_shuffle, split_field, map_chromosomes
 
