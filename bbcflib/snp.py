@@ -4,7 +4,7 @@ from operator import itemgetter
 from itertools import product
 
 # Internal modules #
-from bbcflib.common import unique_filename_in, set_file_descr
+from bbcflib.common import unique_filename_in, set_file_descr, sam_faidx
 from bbcflib import mapseq
 from bbcflib.btrack import FeatureStream, track, convert
 from bbcflib.bFlatMajor.common import concat_fields
@@ -54,10 +54,6 @@ def sam_pileup(assembly,bamfile,refGenome):
     ploidy = _ploidy(assembly)
     return {"arguments": ["samtools","pileup","-B","-cvsf",refGenome,"-N",str(ploidy),bamfile],
             "return_value": None}
-
-@program
-def sam_faidx(fasta):
-    return {"arguments": ["samtools","faidx",str(fasta)],"return_value": None}
 
 def find_snp(info,mincov,minsnp,assembly):
     """Parse the output of samtools pileup, provided as a list of already split *info*::
@@ -130,7 +126,7 @@ def all_snps(ex,chrom,dictPileup,outall,assembly,sample_names,mincov,minsnp):
     :param minsnp: (int) Minimum percentage of reads supporting the SNP for it to be returned.
         N.B.: Effectively, half of it on each strand for diploids. [40]
     """
-    sample_names = []
+    snames = []
     pileup_files = []
     bam_tracks = []
     allsnps = []
@@ -138,14 +134,15 @@ def all_snps(ex,chrom,dictPileup,outall,assembly,sample_names,mincov,minsnp):
     tarfh = tarfile.open(tarname, "w:gz")
     for pileup_filename,trio in dictPileup.iteritems():
         trio[0].wait() #file p is created from samtools pileup
-        sample_names.append(trio[1])
+        snames.append(trio[1])
         pileup_files.append(open(pileup_filename))
         tarfh.add(pileup_filename,arcname=trio[1]+"_"+chrom+".pileup")
         bam_tracks.append(track(trio[2],format='bam'))
     tarfh.close()
     ex.add( tarname, description=set_file_descr(tarname,step="pileup",type="tar",view='admin') )
-    nsamples = len(sample_names)
-    current = [f.readline().split('\t') for f in pileup_files]
+    nsamples = len(snames)
+    sorder = [snames.index(x) for x in sample_names]
+    current = [pileup_files[i].readline().split('\t') for i in sorder]
     lastpos = 0
     while any([len(x)>1 for x in current]):
         current_pos = [int(x[1]) if len(x)>1 else sys.maxint for x in current]
@@ -166,7 +163,7 @@ def all_snps(ex,chrom,dictPileup,outall,assembly,sample_names,mincov,minsnp):
                 allsnps.append((chrom,pos-1,pos,ref)+tuple(current_snps))
             lastpos = pos
         for i in current_snp_idx:
-            current[i] = pileup_files[i].readline().split('\t')
+            current[i] = pileup_files[sorder[i]].readline().split('\t')
     for f in pileup_files: f.close()
     for b in bam_tracks: b.close()
 
@@ -335,7 +332,8 @@ def snp_workflow(ex, job, assembly, minsnp=40, mincov=5, path_to_ref='', via='lo
     assert os.path.exists(path_to_ref), "Reference sequence not found: %s." % path_to_ref
     genomeRef = assembly.untar_genome_fasta(path_to_ref, convert=True)
     pileup_dict = dict((chrom,{}) for chrom in genomeRef.keys()) # {chr: {}}
-    [g.wait() for g in [sam_faidx.nonblocking(ex,f,via=via) for f in genomeRef.values()]]
+    [g.wait() for g in [sam_faidx.nonblocking(ex,f,via=via) \
+                            for f in genomeRef.values()]]
     sample_names = []
     bam = {}
     print >> logfile, "* Run samtools pileup"; logfile.flush()

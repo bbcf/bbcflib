@@ -273,6 +273,10 @@ try:
 
         #-------------------------------------------------------------------------#
     @program
+    def sam_faidx(fasta):
+        return {"arguments": ["samtools","faidx",str(fasta)], "return_value": None}
+
+    @program
     def fasta_length(file):
         """Binds the `fastalength` program and returns a `chromosomes` dictionary::
            

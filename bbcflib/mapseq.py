@@ -371,8 +371,7 @@ def merge_bam(files):
     is returned.
     """
     if len(files) == 1:
-        return {'arguments': ['echo'],
-                'return_value': files[0]}
+        return {'arguments': ['echo'], 'return_value': files[0]}
     else:
         filename = unique_filename_in()
         return {'arguments': ['samtools','merge',filename] + files,
