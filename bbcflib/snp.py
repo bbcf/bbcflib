@@ -155,7 +155,7 @@ def all_snps(ex,chrom,dictPileup,outall,assembly,sample_names,mincov,minsnp):
             ref = info[2].upper()
             current_snps[i] = find_snp(info,mincov,minsnp,assembly)
         for i in set(range(nsamples))-current_snp_idx:
-            try: coverage = bam_tracks[i].coverage((chrbam,pos,pos+1)).next()[-1]
+            try: coverage = bam_tracks[sorder[i]].coverage((chrbam,pos,pos+1)).next()[-1]
             except StopIteration: coverage = 0
             current_snps[i] = ref if coverage else "0"
         if not all([s == ref for s in current_snps]):
