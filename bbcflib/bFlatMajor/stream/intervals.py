@@ -318,7 +318,7 @@ def combine(trackList, fn, win_size=1000, aggregate={}):
     if isinstance(fn,str): fn = eval(fn) # can type "combine(...,fn='intersection')"
     trackList = [common.cobble(common.reorder(t,fields=_f)) for t in trackList]
     return common.fusion(FeatureStream(_combine(trackList,fn,win_size,aggregate),
-                                             fields=trackList[0].fields))
+                                       fields=trackList[0].fields))
 
 def exclude(x,indexList):
     """Returns True if x[n] is False for all n in *indexList*

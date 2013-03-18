@@ -95,15 +95,15 @@ def find_snp(info,mincov,minsnp,assembly):
         nref = info[8].count(".") + info[8].count(",") # number of reads supporting wild type (.fwd and ,rev)
         if cons[0] in ['A','C','G','T','N']: # if bases are encoded normally (~100% replacement)
             nvar = (100/float(nreads))*(nreads-nref)
-            if nvar < minsnp/ploidy or (nreads-nref) < mincov: return ref
+            if nvar*ploidy < minsnp or (nreads-nref) < mincov: return ref
             consensus = "%s (%.2f%% of %s)" % (cons,nvar,nreads)
         elif cons in _iupac.keys():
             var1, var2, nvar1_fwd, nvar1_rev, nvar2_fwd, nvar2_rev = _parse_info8(info[8],cons)
             nvar1pc = (100/float(nreads)) * (nvar1_fwd + nvar1_rev) # % of consensus 1
             nvar2pc = (100/float(nreads)) * (nvar2_fwd + nvar2_rev) # % of consensus 2
-            check1 = nvar1_fwd >= mincov and nvar1_rev >= mincov and nvar1pc >= minsnp/ploidy
-            check2 = nvar2_fwd >= mincov and nvar2_rev >= mincov and nvar2pc >= minsnp/ploidy
-            check0 = nvar2_fwd >= mincov and nvar2_rev >= mincov and (nvar2pc+nvar1pc) >= minsnp/ploidy \
+            check1 = nvar1_fwd >= mincov and nvar1_rev >= mincov and nvar1pc*ploidy >= minsnp
+            check2 = nvar2_fwd >= mincov and nvar2_rev >= mincov and nvar2pc*ploidy >= minsnp
+            check0 = nvar2_fwd >= mincov and nvar2_rev >= mincov and (nvar2pc+nvar1pc)*ploidy >= minsnp \
                 and nvar1_fwd >= mincov and nvar1_rev >= mincov
             if ref.upper() == var1 and check2:   # if ref base == first variant
                 consensus = "%s (%.2f%% of %s)" % (var2,nvar2pc,nreads)
