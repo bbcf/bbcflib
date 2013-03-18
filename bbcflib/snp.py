@@ -140,7 +140,7 @@ def all_snps(ex,chrom,dictPileup,outall,assembly,sample_names,mincov,minsnp):
         tarfh.add(pileup_filename,arcname=trio[1]+"_"+chrom+".pileup")
         bam_tracks.append(track(trio[2],format='bam'))
     tarfh.close()
-    ex.add( tarname, description=set_file_descr("pileup_files.tgz",step="pileup",type="tar",view='admin') )
+    ex.add( tarname, description=set_file_descr("pileups_%s.tgz"%chrom,step="pileup",type="tar",view='admin') )
     nsamples = len(snames)
     sorder = [snames.index(x) for x in sample_names]
     current = [pileup_files[i].readline().split('\t') for i in sorder]
