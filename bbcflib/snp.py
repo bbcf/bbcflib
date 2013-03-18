@@ -1,5 +1,5 @@
 # Built-in modules #
-import re, os, sys
+import re, os, sys, tarfile
 from operator import itemgetter
 from itertools import product
 
