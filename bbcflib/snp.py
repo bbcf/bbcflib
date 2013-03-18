@@ -52,7 +52,7 @@ def sam_pileup(assembly,bamfile,refGenome):
     :param refGenome: path to the reference genome fasta file.
     """
     ploidy = _ploidy(assembly)
-    return {"arguments": ["samtools","pileup","-B","-cvsf",refGenome,"-N",str(ploidy),bamfile],
+    return {"arguments": ["samtools","pileup","-Bcvsf",refGenome,"-N",str(ploidy),bamfile],
             "return_value": None}
 
 def find_snp(info,mincov,minsnp,assembly):
@@ -90,27 +90,28 @@ def find_snp(info,mincov,minsnp,assembly):
         if nreads-nref < mincov:
             return ref
         consensus = "%s/%s (%.2f%% of %s)" % (info[8],info[9],nindel*100./nreads,nreads)
-    elif re.search(r'[ACGTN]',cons): # if bases are encoded normally (~100% replacement)
-        consensus = "%s (%s)" % (cons,nreads)
-    elif re.search(r'[MSYWRK]',cons):
+    else:
         ploidy = _ploidy(assembly)
         nref = info[8].count(".") + info[8].count(",") # number of reads supporting wild type (.fwd and ,rev)
-        if nreads-nref < mincov:
-            return ref
-        var1,var2, nvar1_fwd,nvar1_rev, nvar2_fwd,nvar2_rev = _parse_info8(info[8],cons)
-        nvar1pc = (100/float(nreads)) * (nvar1_fwd + nvar1_rev) # % of consensus 1
-        nvar2pc = (100/float(nreads)) * (nvar2_fwd + nvar2_rev) # % of consensus 2
-        check1 = nvar1_fwd >= 5 and nvar1_rev >= 5 and nvar1pc >= minsnp/ploidy
-        check2 = nvar2_fwd >= 5 and nvar2_rev >= 5 and nvar2pc >= minsnp/ploidy
-        check0 = nvar2_fwd >= 3 and nvar2_rev >= 3 and nvar2pc >= 0.5*minsnp/ploidy \
-             and nvar1_fwd >= 3 and nvar1_rev >= 3 and nvar1pc >= 0.5*minsnp/ploidy
-        if ref.upper() == var1 and check2:   # if ref base == first variant
-            consensus = "%s (%.2f%% of %s)" % (var2,nvar2pc,nreads)
-        elif ref.upper() == var2 and check1: # if ref base == second variant
-            consensus = "%s (%.2f%% of %s)" % (var1,nvar1pc,nreads)
-        elif check0:                         # if third allele
-            consensus = "%s (%.2f%%),%s (%.4g%% of %s)" % (var1,nvar1pc,var2,nvar2pc,nreads)
-        else: consensus = ref
+        if cons[0] in ['A','C','G','T','N']: # if bases are encoded normally (~100% replacement)
+            nvar = (100/float(nreads))*(nreads-nref)
+            if nvar < minsnp/ploidy or (nreads-nref) < mincov: return ref
+            consensus = "%s (%.2f%% of %s)" % (cons,nvar,nreads)
+        elif cons in _iupac.keys():
+            var1, var2, nvar1_fwd, nvar1_rev, nvar2_fwd, nvar2_rev = _parse_info8(info[8],cons)
+            nvar1pc = (100/float(nreads)) * (nvar1_fwd + nvar1_rev) # % of consensus 1
+            nvar2pc = (100/float(nreads)) * (nvar2_fwd + nvar2_rev) # % of consensus 2
+            check1 = nvar1_fwd >= mincov and nvar1_rev >= mincov and nvar1pc >= minsnp/ploidy
+            check2 = nvar2_fwd >= mincov and nvar2_rev >= mincov and nvar2pc >= minsnp/ploidy
+            check0 = nvar2_fwd >= mincov and nvar2_rev >= mincov and (nvar2pc+nvar1pc) >= minsnp/ploidy \
+                and nvar1_fwd >= mincov and nvar1_rev >= mincov
+            if ref.upper() == var1 and check2:   # if ref base == first variant
+                consensus = "%s (%.2f%% of %s)" % (var2,nvar2pc,nreads)
+            elif ref.upper() == var2 and check1: # if ref base == second variant
+                consensus = "%s (%.2f%% of %s)" % (var1,nvar1pc,nreads)
+            elif check0:                         # if third allele
+                consensus = "%s (%.2f%%),%s (%.4g%% of %s)" % (var1,nvar1pc,var2,nvar2pc,nreads)
+            else: consensus = ref
     return consensus
 
 def all_snps(ex,chrom,dictPileup,outall,assembly,sample_names,mincov,minsnp):
@@ -139,7 +140,7 @@ def all_snps(ex,chrom,dictPileup,outall,assembly,sample_names,mincov,minsnp):
         tarfh.add(pileup_filename,arcname=trio[1]+"_"+chrom+".pileup")
         bam_tracks.append(track(trio[2],format='bam'))
     tarfh.close()
-    ex.add( tarname, description=set_file_descr(tarname,step="pileup",type="tar",view='admin') )
+    ex.add( tarname, description=set_file_descr("pileup_files.tgz",step="pileup",type="tar",view='admin') )
     nsamples = len(snames)
     sorder = [snames.index(x) for x in sample_names]
     current = [pileup_files[i].readline().split('\t') for i in sorder]
