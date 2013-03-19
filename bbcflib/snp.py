@@ -6,7 +6,7 @@ from itertools import product
 # Internal modules #
 from bbcflib.common import unique_filename_in, set_file_descr, sam_faidx
 from bbcflib import mapseq
-from bbcflib.btrack import FeatureStream, track, convert
+from bbcflib.btrack import FeatureStream, track
 from bbcflib.bFlatMajor.common import concat_fields
 from bbcflib.bFlatMajor import stream as gm_stream
 
@@ -73,14 +73,6 @@ def find_snp(info,mincov,minsnp,assembly):
         nindel/nref/n3rd: number of reads supporting the indel/reference/3rd allele.
         `http://samtools.sourceforge.net/cns0.shtml`_
     """
-    def _parse_info8(readbase,cons):
-        var1_fwd,var1_rev,var2_fwd,var2_rev = _iupac[cons]
-        nvar1_fwd = readbase.count(var1_fwd)
-        nvar1_rev = readbase.count(var1_rev)
-        nvar2_fwd = readbase.count(var2_fwd)
-        nvar2_rev = readbase.count(var2_rev)
-        return var1_fwd,var2_fwd, nvar1_fwd,nvar1_rev,nvar2_fwd,nvar2_rev
-
     ref = info[2].upper()  # reference base
     cons = info[3].upper() # consensus base
     nreads = int(info[7])  # total coverage at this position
@@ -92,7 +84,7 @@ def find_snp(info,mincov,minsnp,assembly):
         nindel = int(info[10])
         nref = int(info[11])
         if nindel >= mincov and 100*nindel*ploidy >= minsnp*nreads:
-            consensus.eppnd("%s/%s (%.2f%% of %s)" %(info[8],info[9],denom*nindel,nreads))
+            consensus.append("%s/%s (%.2f%% of %s)" %(info[8],info[9],denom*nindel,nreads))
     else:
 #        nref = info[8].count(".") + info[8].count(",") # number of reads supporting wild type (.fwd and ,rev)
         for char in _iupac.get(cons,cons):
@@ -284,35 +276,34 @@ def exon_snps(chrom,outexons,allsnps,assembly,sample_names,genomeRef={}):
     outex.close()
     return outexons
 
-def create_tracks(ex,outall, sample_names, assembly):
-    """Write SQL and BED tracks showing all SNPs found."""
-    with open(outall,'rb') as f:
-        infields = f.readline().lstrip('#').split()
-    intrack = track(outall, format='text', fields=infields, chrmeta=assembly.chrmeta)
-    def _add_start(stream):
-        for x in stream:
-            end_idx = stream.fields.index('end')
-            end = int(x[end_idx])
-            yield x[:end_idx]+(end-1,)+x[end_idx:]
+def create_tracks(ex, outall, sample_names, assembly):
+    """Write BED tracks showing SNPs found in each sample."""
+    infields = ['chromosome','position','reference']+sample_names+['gene','location_type','distance']
+    intrack = track(outall, format='text', fields=infields, chrmeta=assembly.chrmeta,
+                    intypes={'position':int})
+    instream = intrack.read(fields=infields[:-3])
+    outtracks = {}
     for sample_name in sample_names:
-        instream = intrack.read(fields=['chromosome','position','reference',sample_name])
-        try: instream.next() # skip header
-        except StopIteration: continue
-        instream = concat_fields(instream,['reference',sample_name],'snp',separator=' -> ')
-        instream.fields = ['chr','end','snp']
-        instream = FeatureStream(_add_start(instream), fields=['chr','start','end','snp'])
-        # SQL track
-        out = unique_filename_in()
-        outtrack = track(out+'.sql', format='sql', fields=['chr','start','end','snp'], chrmeta=assembly.chrmeta)
-        outtrack.write(instream)
-        description = set_file_descr("allSNP_track_"+sample_name+".sql" ,type='sql',step='tracks',gdv='1')
-        ex.add(out+'.sql', description=description)
-        # BED track
-        t = track(out+'.bed.gz')
-        t.make_header(name="allSNP_track_"+sample_name)
-        convert(out+'.sql',out+'.bed.gz',mode='append')
-        description = set_file_descr("allSNP_track_"+sample_name+".bed.gz",type='bed',step='tracks',ucsc='1')
-        ex.add(out+'.bed.gz', description=description)
+        out = unique_filename_in()+'.bed.gz'
+        t = track(out,fields=['name'])
+        t.make_header(name=sample_name+"_SNPs")
+        outtracks[sample_name] = (t,out)
+
+    def _row_to_annot(x,ref,n):
+        if x[3+n][0] == ref: return None
+        else: return "%s>%s"%(ref,x[3+n][0])
+
+    for x in instream:
+        coord = (x[0],x[1]-1,x[1])
+        ref = x[2]
+        snp = dict((name, _row_to_annot(x,ref,n)) for n,name in enumerate(sample_names))
+        for name, tr in outtracks.iteritems():
+            if snp[name]: tr[0].write([coord+(snp[name],)],mode='append')
+#       convert(out+'.sql',out+'.bed.gz',mode='append')
+    for name, tr in outtracks.iteritems():
+        tr[0].close()
+        description = set_file_descr(name+"_SNPs.bed.gz",type='bed',step='tracks',gdv='1',ucsc='1')
+        ex.add(tr[1], description=description)
 
 
 def snp_workflow(ex, job, assembly, minsnp=40, mincov=5, path_to_ref='', via='local', logfile=sys.stdout, debugfile=sys.stderr):
