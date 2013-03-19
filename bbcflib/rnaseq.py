@@ -4,9 +4,6 @@ Module: bbcflib.rnaseq
 ======================
 
 Methods of the bbcflib's RNA-seq worflow. The main function is ``rnaseq_workflow()``,
-and is usually called by bbcfutils' ``run_rnaseq.py``, e.g. command-line:
-
-``python run_rnaseq.py -v local -c gapkowt.txt -d rnaseq -p transcripts,genes``
 
 From a BAM file produced by an alignement on the genome or the exonome, gets counts of reads
 on the exons, add them to get counts on genes, and uses least-squares to infer

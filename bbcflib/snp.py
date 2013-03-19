@@ -1,3 +1,11 @@
+"""
+===================
+Module: bbcflib.snp
+===================
+
+From a set of BAM files produced by an alignement on the genome, calls snps and annotates them 
+with respect to a set of coding genes on the same genome.
+"""
 # Built-in modules #
 import re, os, sys, tarfile
 from operator import itemgetter
@@ -9,8 +17,6 @@ from bbcflib import mapseq
 from bbcflib.btrack import FeatureStream, track
 from bbcflib.bFlatMajor.common import concat_fields
 from bbcflib.bFlatMajor import stream as gm_stream
-
-# Other modules #
 from bein import program
 
 _iupac = {'M':'AC', 'Y':'CT', 'R':'AG', 'S':'CG', 'W': 'AT', 'K':'GT', 
@@ -89,7 +95,7 @@ def find_snp(info,mincov,minsnp,assembly):
 #        nref = info[8].count(".") + info[8].count(",") # number of reads supporting wild type (.fwd and ,rev)
         for char in _iupac.get(cons,cons):
             if char == ref: continue
-            nvar = (info[8].count(char)+info[8].count(char.lower()))
+            nvar = info[8].count(char)+info[8].count(char.lower())
             if nvar >= mincov and 100*nvar*ploidy >= minsnp*nreads:
                 consensus.append("%s (%.2f%% of %s)" %(char,denom*nvar,nreads))
     consensus = ",".join(consensus) or ref
@@ -137,7 +143,7 @@ def all_snps(ex,chrom,dictPileup,outall,assembly,sample_names,mincov,minsnp):
             ref = info[2].upper()
             current_snps[i] = find_snp(info,mincov,minsnp,assembly)
         for i in set(range(nsamples))-current_snp_idx:
-            try: coverage = bam_tracks[sorder[i]].coverage((chrbam,pos,pos+1)).next()[-1]
+            try: coverage = bam_tracks[sorder[i]].coverage((chrbam,pos-1,pos)).next()[-1]
             except StopIteration: coverage = 0
             current_snps[i] = ref if coverage else "0"
         if not all([s in ["0",ref] for s in current_snps]):
@@ -278,6 +284,7 @@ def exon_snps(chrom,outexons,allsnps,assembly,sample_names,genomeRef={}):
 
 def create_tracks(ex, outall, sample_names, assembly):
     """Write BED tracks showing SNPs found in each sample."""
+    ###### TODO: tracks for coverage + quality + heterozyg. 
     infields = ['chromosome','position','reference']+sample_names+['gene','location_type','distance']
     intrack = track(outall, format='text', fields=infields, chrmeta=assembly.chrmeta,
                     intypes={'position':int})
