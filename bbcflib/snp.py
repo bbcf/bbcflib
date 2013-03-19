@@ -83,24 +83,24 @@ def find_snp(info,mincov,minsnp,assembly):
     ref = info[2].upper()  # reference base
     cons = info[3].upper() # consensus base
     nreads = int(info[7])  # total coverage at this position
+    denom = 100/float(nreads)
     #snp_qual = 10**(-float(info[5])/10)
     if ref == "*": # indel
         nindel = int(info[10])
         nref = int(info[11])
-        if nreads-nref < mincov:
-            return ref
-        consensus = "%s/%s (%.2f%% of %s)" % (info[8],info[9],nindel*100./nreads,nreads)
+        if nreads-nref < mincov or nindel*denom*ploidy < minsnp: return ref
+        consensus = "%s/%s (%.2f%% of %s)" % (info[8],info[9],nindel*denom,nreads)
     else:
         ploidy = _ploidy(assembly)
-        nref = info[8].count(".") + info[8].count(",") # number of reads supporting wild type (.fwd and ,rev)
-        if cons[0] in ['A','C','G','T','N']: # if bases are encoded normally (~100% replacement)
-            nvar = (100/float(nreads))*(nreads-nref)
-            if nvar*ploidy < minsnp or (nreads-nref) < mincov: return ref
-            consensus = "%s (%.2f%% of %s)" % (cons,nvar,nreads)
+#        nref = info[8].count(".") + info[8].count(",") # number of reads supporting wild type (.fwd and ,rev)
+        if cons in ['A','C','G','T','N']: # if single allele observed
+            nvar = (info[8].count(cons.upper()) + info[8].count(cons.lower()))
+            if denom*nvar*ploidy < minsnp or nvar < mincov: return ref
+            consensus = "%s (%.2f%% of %s)" % (cons,denom*nvar,nreads)
         elif cons in _iupac.keys():
             var1, var2, nvar1_fwd, nvar1_rev, nvar2_fwd, nvar2_rev = _parse_info8(info[8],cons)
-            nvar1pc = (100/float(nreads)) * (nvar1_fwd + nvar1_rev) # % of consensus 1
-            nvar2pc = (100/float(nreads)) * (nvar2_fwd + nvar2_rev) # % of consensus 2
+            nvar1pc = denom*(nvar1_fwd + nvar1_rev) # % of consensus 1
+            nvar2pc = denom*(nvar2_fwd + nvar2_rev) # % of consensus 2
             check1 = nvar1_fwd >= mincov and nvar1_rev >= mincov and nvar1pc*ploidy >= minsnp
             check2 = nvar2_fwd >= mincov and nvar2_rev >= mincov and nvar2pc*ploidy >= minsnp
             check0 = nvar2_fwd >= mincov and nvar2_rev >= mincov and (nvar2pc+nvar1pc)*ploidy >= minsnp \
@@ -114,7 +114,7 @@ def find_snp(info,mincov,minsnp,assembly):
             else: consensus = ref
     return consensus
 
-def all_snps(ex,chrom,dictPileup,outall,assembly,sample_names,mincov,minsnp):
+def all_snps(chrom,dictPileup,outall,assembly,sample_names,mincov,minsnp):
     """For a given chromosome, returns a summary file containing all SNPs identified
     in at least one of the samples.
     Each row contains: chromosome id, SNP position, reference base, SNP base (with proportions)
@@ -159,7 +159,7 @@ def all_snps(ex,chrom,dictPileup,outall,assembly,sample_names,mincov,minsnp):
             try: coverage = bam_tracks[sorder[i]].coverage((chrbam,pos,pos+1)).next()[-1]
             except StopIteration: coverage = 0
             current_snps[i] = ref if coverage else "0"
-        if not all([s == ref for s in current_snps]):
+        if not all([s in ["0",ref] for s in current_snps]):
             if pos != lastpos: # indel can be located at the same position as an SNP
                 allsnps.append((chrom,pos-1,pos,ref)+tuple(current_snps))
             lastpos = pos
@@ -295,7 +295,7 @@ def exon_snps(chrom,outexons,allsnps,assembly,sample_names,genomeRef={}):
     outex.close()
     return outexons
 
-def create_tracks(ex, outall, sample_names, assembly):
+def create_tracks(outall, sample_names, assembly):
     """Write SQL and BED tracks showing all SNPs found."""
     with open(outall,'rb') as f:
         infields = f.readline().lstrip('#').split()
@@ -361,7 +361,7 @@ def snp_workflow(ex, job, assembly, minsnp=40, mincov=5, path_to_ref='', via='lo
         fout.write('#'+'\t'.join(['chromosome','position','reference']+sample_names+['gene','location_type','distance'])+'\n')
     for chrom in assembly.chrnames:
         dictPileup = pileup_dict[chrom]
-        allsnps = all_snps(ex,chrom,dictPileup,outall,assembly,sample_names,mincov,minsnp)
+        allsnps = all_snps(chrom,dictPileup,outall,assembly,sample_names,mincov,minsnp)
         exon_snps(chrom,outexons,allsnps,assembly,sample_names,genomeRef)
     description = set_file_descr("allSNP.txt",step="SNPs",type="txt")
     ex.add(outall,description=description)
@@ -369,5 +369,5 @@ def snp_workflow(ex, job, assembly, minsnp=40, mincov=5, path_to_ref='', via='lo
     ex.add(outexons,description=description)
 
     print >> logfile, "* Create tracks"; logfile.flush()
-    create_tracks(ex,outall,sample_names,assembly)
+    create_tracks(outall,sample_names,assembly)
     return 0
