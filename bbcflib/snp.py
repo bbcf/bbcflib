@@ -13,8 +13,9 @@ from bbcflib.bFlatMajor import stream as gm_stream
 # Other modules #
 from bein import program
 
-_iupac = {'M':['A','a','C','c'],'Y':['T','t','C','c'],'R':['A','a','G','g'],
-          'S':['G','g','C','c'],'W':['A','a','T','t'],'K':['T','t','G','g']}
+_iupac = {'M':'AC', 'Y':'CT', 'R':'AG', 'S':'CG', 'W': 'AT', 'K':'GT', 
+          'B':'CGT', 'D':'AGT', 'H':'ACT', 'V':'ACG',
+          'N': 'ACGT'}
 
 _translate = {"TTT": "F", "TTC": "F", "TTA": "L", "TTG": "L/START",
               "CTT": "L", "CTC": "L", "CTA": "L", "CTG": "L",
@@ -84,34 +85,22 @@ def find_snp(info,mincov,minsnp,assembly):
     cons = info[3].upper() # consensus base
     nreads = int(info[7])  # total coverage at this position
     denom = 100/float(nreads)
+    ploidy = _ploidy(assembly)
     #snp_qual = 10**(-float(info[5])/10)
+    consensus = []
     if ref == "*": # indel
         nindel = int(info[10])
         nref = int(info[11])
-        if nreads-nref < mincov or nindel*denom*ploidy < minsnp: return ref
-        consensus = "%s/%s (%.2f%% of %s)" % (info[8],info[9],nindel*denom,nreads)
+        if nindel >= mincov and 100*nindel*ploidy >= minsnp*nreads:
+            consensus.eppnd("%s/%s (%.2f%% of %s)" %(info[8],info[9],denom*nindel,nreads))
     else:
-        ploidy = _ploidy(assembly)
 #        nref = info[8].count(".") + info[8].count(",") # number of reads supporting wild type (.fwd and ,rev)
-        if cons in ['A','C','G','T','N']: # if single allele observed
-            nvar = (info[8].count(cons.upper()) + info[8].count(cons.lower()))
-            if denom*nvar*ploidy < minsnp or nvar < mincov: return ref
-            consensus = "%s (%.2f%% of %s)" % (cons,denom*nvar,nreads)
-        elif cons in _iupac.keys():
-            var1, var2, nvar1_fwd, nvar1_rev, nvar2_fwd, nvar2_rev = _parse_info8(info[8],cons)
-            nvar1pc = denom*(nvar1_fwd + nvar1_rev) # % of consensus 1
-            nvar2pc = denom*(nvar2_fwd + nvar2_rev) # % of consensus 2
-            check1 = nvar1_fwd >= mincov and nvar1_rev >= mincov and nvar1pc*ploidy >= minsnp
-            check2 = nvar2_fwd >= mincov and nvar2_rev >= mincov and nvar2pc*ploidy >= minsnp
-            check0 = nvar2_fwd >= mincov and nvar2_rev >= mincov and (nvar2pc+nvar1pc)*ploidy >= minsnp \
-                and nvar1_fwd >= mincov and nvar1_rev >= mincov
-            if ref.upper() == var1 and check2:   # if ref base == first variant
-                consensus = "%s (%.2f%% of %s)" % (var2,nvar2pc,nreads)
-            elif ref.upper() == var2 and check1: # if ref base == second variant
-                consensus = "%s (%.2f%% of %s)" % (var1,nvar1pc,nreads)
-            elif check0:                         # if third allele
-                consensus = "%s (%.2f%%),%s (%.4g%% of %s)" % (var1,nvar1pc,var2,nvar2pc,nreads)
-            else: consensus = ref
+        for char in _iupac.get(cons,cons):
+            if char == ref: continue
+            nvar = (info[8].count(char)+info[8].count(char.lower()))
+            if nvar >= mincov and 100*nvar*ploidy >= minsnp*nreads:
+                consensus.append("%s (%.2f%% of %s)" %(char,denom*nvar,nreads))
+    consensus = ",".join(consensus) or ref
     return consensus
 
 def all_snps(ex,chrom,dictPileup,outall,assembly,sample_names,mincov,minsnp):
