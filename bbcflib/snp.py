@@ -114,7 +114,7 @@ def find_snp(info,mincov,minsnp,assembly):
             else: consensus = ref
     return consensus
 
-def all_snps(chrom,dictPileup,outall,assembly,sample_names,mincov,minsnp):
+def all_snps(ex,chrom,dictPileup,outall,assembly,sample_names,mincov,minsnp):
     """For a given chromosome, returns a summary file containing all SNPs identified
     in at least one of the samples.
     Each row contains: chromosome id, SNP position, reference base, SNP base (with proportions)
@@ -295,7 +295,7 @@ def exon_snps(chrom,outexons,allsnps,assembly,sample_names,genomeRef={}):
     outex.close()
     return outexons
 
-def create_tracks(outall, sample_names, assembly):
+def create_tracks(ex,outall, sample_names, assembly):
     """Write SQL and BED tracks showing all SNPs found."""
     with open(outall,'rb') as f:
         infields = f.readline().lstrip('#').split()
@@ -361,7 +361,7 @@ def snp_workflow(ex, job, assembly, minsnp=40, mincov=5, path_to_ref='', via='lo
         fout.write('#'+'\t'.join(['chromosome','position','reference']+sample_names+['gene','location_type','distance'])+'\n')
     for chrom in assembly.chrnames:
         dictPileup = pileup_dict[chrom]
-        allsnps = all_snps(chrom,dictPileup,outall,assembly,sample_names,mincov,minsnp)
+        allsnps = all_snps(ex,chrom,dictPileup,outall,assembly,sample_names,mincov,minsnp)
         exon_snps(chrom,outexons,allsnps,assembly,sample_names,genomeRef)
     description = set_file_descr("allSNP.txt",step="SNPs",type="txt")
     ex.add(outall,description=description)
@@ -369,5 +369,5 @@ def snp_workflow(ex, job, assembly, minsnp=40, mincov=5, path_to_ref='', via='lo
     ex.add(outexons,description=description)
 
     print >> logfile, "* Create tracks"; logfile.flush()
-    create_tracks(outall,sample_names,assembly)
+    create_tracks(ex,outall,sample_names,assembly)
     return 0
