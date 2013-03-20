@@ -8,7 +8,6 @@ with respect to a set of coding genes on the same genome.
 """
 # Built-in modules #
 import re, os, sys, tarfile
-from operator import itemgetter
 from itertools import product
 
 # Internal modules #
@@ -210,22 +209,18 @@ def exon_snps(chrom,outexons,allsnps,assembly,sample_names,genomeRef={}):
                 newc = new_codon[k]*len(v)
                 for i,vari in enumerate(v):
                     for j in range(cnumb):
-                        if strand < 0:
-                            newc[i*cnumb+j] = newc[i*cnumb+j][:2-shift]+vari +newc[i*cnumb+j][3-shift:]
-                            assert ref_codon[2-shift] == refbase, "bug with shift within codon"
-                        else:
-                            newc[i*cnumb+j] = newc[i*cnumb+j][:shift]  +vari +newc[i*cnumb+j][shift+1:]
-                            assert ref_codon[shift] == refbase, "bug with shift within codon"
+                        newc[i*cnumb+j] = newc[i*cnumb+j][:shift]  +vari +newc[i*cnumb+j][shift+1:]
+                        assert ref_codon[shift] == refbase, "bug with shift within codon"
                 new_codon[k] = newc
         if new_codon is None: return
-        if strand < 0:
+        if strand == -1:
             ref_codon = _revcomp(ref_codon)
             new_codon = [[_revcomp(s) for s in c] for c in new_codon]
-        for chr,pos,refbase,variants,cds,strand,ref_codon,shift in _buffer:
-            refc = [itemgetter(0,2)(_iupac[x]) if x in _iupac else (x,) for x in ref_codon]
+        for chr,pos,refbase,variants,cds,strand,dummy,shift in _buffer:
+            refc = [[y for y in _iupac.get(x,x)] for x in ref_codon]
             ref_codon = [''.join(x) for x in product(*refc)]
-            newc = [[[itemgetter(0,2)(_iupac[x]) if x in _iupac else (x,) for x in variant]
-                    for variant in sample] for sample in new_codon]
+            newc = [[[[y for y in _iupac.get(x,x)] for x in variant] for variant in sample]
+                    for sample in new_codon]
             new_codon = [[''.join(x) for codon in sample for x in product(*codon)] for sample in newc]
             if refbase == "*":
                 result = [chr, pos+1, refbase] + list(variants) + [cds, strand] \
@@ -259,14 +254,13 @@ def exon_snps(chrom,outexons,allsnps,assembly,sample_names,genomeRef={}):
                  for i in range(len(rest[nsamples+1:])/5)] # list of (start,end,cds,strand,phase)
         for es,ee,cds,strand,phase in annot:
             if strand == 1:
-                shift = (pos - (es + phase)) % 3
-                codon_start = pos - shift
+                shift = (pos-es-phase) % 3
             elif strand == -1:
-                shift = (ee - phase - pos) % 3
-                codon_start = pos + shift - 2
+                shift = (pos-ee+phase) % 3
             else:
                 print "***",es,ee,cds,strand,phase
                 continue
+            codon_start = pos-shift
             ref_codon = assembly.fasta_from_regions({chr: [[codon_start,codon_start+3]]}, out={},
                                                     path_to_ref=genomeRef.get(chr))[0][chr][0]
             info = [chr,pos,refbase,list(rest[1:nsamples+1]),cds,strand,ref_codon,shift]
