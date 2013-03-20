@@ -98,7 +98,7 @@ def find_snp(info,mincov,minsnp,assembly):
             nvar = info[8].count(char)+info[8].count(char.lower())
             if nvar >= mincov and 100*nvar*ploidy >= minsnp*nreads:
                 consensus.append("%s (%.2f%% of %s)" %(char,denom*nvar,nreads))
-    consensus = ",".join(consensus) or ref
+    consensus = ", ".join(consensus) or ref
     return consensus
 
 def all_snps(ex,chrom,dictPileup,outall,assembly,sample_names,mincov,minsnp):
@@ -325,7 +325,8 @@ def snp_workflow(ex, job, assembly, minsnp=40, mincov=5, path_to_ref='', via='lo
     sample_names = []
     bam = {}
     print >> logfile, "* Run samtools pileup"; logfile.flush()
-    for gid, files in job.files.iteritems():
+    for gid in sorted(job.files.keys()):
+        files = job.files[gid]
         sample_name = job.groups[gid]['name']
         sample_names.append(sample_name)
         # Merge all bams belonging to the same group
