@@ -217,9 +217,9 @@ def exon_snps(chrom,outexons,allsnps,assembly,sample_names,genomeRef={}):
             ref_codon = _revcomp(ref_codon)
             new_codon = [[_revcomp(s) for s in c] for c in new_codon]
         for chr,pos,refbase,variants,cds,strand,dummy,shift in _buffer:
-            refc = [[y for y in _iupac.get(x,x)] for x in ref_codon]
+            refc = [list(_iupac.get(x,x)) for x in ref_codon]
             ref_codon = [''.join(x) for x in product(*refc)]
-            newc = [[[[y for y in _iupac.get(x,x)] for x in variant] for variant in sample]
+            newc = [[[list(_iupac.get(x,x)) for x in variant] for variant in sample]
                     for sample in new_codon]
             new_codon = [[''.join(x) for codon in sample for x in product(*codon)] for sample in newc]
             if refbase == "*":
