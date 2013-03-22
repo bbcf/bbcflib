@@ -315,7 +315,7 @@ def snp_workflow(ex, job, assembly, minsnp=40, mincov=5, path_to_ref='', via='lo
     genomeRef = assembly.untar_genome_fasta(path_to_ref, convert=True)
     pileup_dict = dict((chrom,{}) for chrom in genomeRef.keys()) # {chr: {}}
     [g.wait() for g in [sam_faidx.nonblocking(ex,f,via=via) \
-                            for f in genomeRef.values()]]
+                            for f in set(genomeRef.values())]]
     sample_names = []
     bam = {}
     print >> logfile, "* Run samtools pileup"; logfile.flush()
