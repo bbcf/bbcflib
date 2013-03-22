@@ -17,10 +17,10 @@ def _geometric_mean(scores,denom):
     return (reduce(lambda x, y: x*y, scores))**denom
 
 def _min(scores,denom=None):
-    return min(scores)
+    return min(scores) if scores else 0
 
 def _max(scores,denom=None):
-    return max(scores)
+    return max(scores) if scores else 0
 
 def _qnth(vec, n):
     pivot = vec[0]
@@ -189,7 +189,6 @@ def score_by_feature(trackScores,trackFeatures,fn='mean'):
     def _stream(ts,tf):
         X = [common.sentinelize(x, [sys.maxint]*len(x.fields)) for x in ts]
         S = [[(-sys.maxint,-sys.maxint,0.0)] for t in ts]
-
         if hasattr(fn,'__call__'):
             _fn = fn
         else:
