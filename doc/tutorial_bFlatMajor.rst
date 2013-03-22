@@ -159,6 +159,8 @@ bFlatMajor.stream functions:
   make a single stream from the union of several ones.
 * :func:`selection <bbcflib.bFlatMajor.stream.intervals.selection>`:
   filter elements of a stream w.r.t. some given criteria.
+* :func:`overlap <bbcflib.bFlatMajor.stream.intervals.overlap>`:
+  keep only items overlapping at least one element of a filter track.
 * :func:`neighborhood <bbcflib.bFlatMajor.stream.intervals.neighborhood>`:
   enlarge each of the input's regions.
 * :func:`intersect <bbcflib.bFlatMajor.stream.intervals.intersect>`:

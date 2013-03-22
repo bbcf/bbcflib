@@ -9,7 +9,7 @@ from bbcflib.bFlatMajor.common import shuffled, fusion, cobble, ordered, apply, 
 from bbcflib.bFlatMajor.common import concat_fields, split_field, map_chromosomes, score_threshold
 from bbcflib.bFlatMajor.stream.annotate import getNearestFeature
 from bbcflib.bFlatMajor.stream.intervals import concatenate, neighborhood, segment_features, intersect, selection
-from bbcflib.bFlatMajor.stream.intervals import exclude, require, disjunction, intersection, union, combine
+from bbcflib.bFlatMajor.stream.intervals import exclude, require, disjunction, intersection, union, combine, overlap
 from bbcflib.bFlatMajor.stream.scores import merge_scores, score_by_feature, window_smoothing, filter_scores, normalize
 from bbcflib.bFlatMajor.numeric.regions import feature_matrix, summed_feature_matrix
 from bbcflib.bFlatMajor.numeric.signal import _normalize, correlation
@@ -305,6 +305,24 @@ class Test_Intervals(unittest.TestCase):
         stream = fstream(s,fields=['chr','start','end','score','name'])
         res = selection(stream,[{'start':(1,4)},{'end':(10,20)}])
         expected = [('chr1',1,3,0.2,'a'),('chr2',11,15,1.2,'c')]
+        self.assertListEqual(list(res),expected)
+
+    def test_overlap(self):
+        s1 = [('chr',0,4,'n',1.), ('chr',7,12,'n',2.), ('chr',16,19,'n',3.), ('chr',22,27,'n',4.)]
+        s2 = [('chr',2,9,'m'), ('chr',13,14,'m'), ('chr',25,30,'m')]
+        stream1 = fstream(s1, fields=['chr','start','end','name','score'])
+        stream2 = fstream(s2, fields=['chr','start','end','name'])
+        res = overlap(stream1,stream2)
+        expected = [('chr',0,4,'n',1.),('chr',7,12,'n',2.),('chr',22,27,'n',4.)]
+        self.assertListEqual(list(res),expected)
+
+        # Stranded
+        s1 = [('chr',0,3,'+'), ('chr',7,12,'+'), ('chr',16,19,'+'), ('chr',22,27,'+')]
+        s2 = [('chr',2,9,'+'), ('chr',13,14,'-'), ('chr',25,30,'-')]
+        stream1 = fstream(s1, fields=['chr','start','end','strand'])
+        stream2 = fstream(s2, fields=['chr','start','end','strand'])
+        res = overlap(stream1,stream2)
+        expected = [('chr',0,3,'+'),('chr',7,12,'+')]
         self.assertListEqual(list(res),expected)
 
     def test_neighborhood(self):

@@ -1,7 +1,6 @@
 import sys
 from bbcflib.bFlatMajor import common
 from bbcflib.btrack import FeatureStream
-import itertools
 
 # "tracks" and "streams" refer to FeatureStream objects all over here.
 
@@ -126,29 +125,42 @@ def selection(trackList,selection):
     return res[0] if len(res)==1 else res
 
 ###############################################################################
-def overlap(trackList,filter):
+@common.ordered
+def overlap(trackList,trackFeatures,method='sum',strict=False,annotate=False,flatten=common.cobble):
     """
     For each stream in *trackList*, keep only items overlapping at least one element
-    of *filter*.  The input streams need to be ordered w.r.t 'chr', 'start' and 'end'.
-    To be applied chromosome by chromosome.
+    of *trackFeatures*.  The input streams need to be ordered w.r.t 'chr', 'start' and 'end'.
+    To be applied chromosome by chromosome. If several tracks are given in either trackList
+    or trackFeatures, they will be concatenated into one.
 
-    :param trackList: FeatureStream, or list of FeatureStream objects.
-    :param filter: FeatureStream - the filter described above.
+    :param trackList: FeatureStream - the elements to be filtered.
+    :param trackFeatures: FeatureStream - the filter.
     """
-    def _overlap(stream,filter):
-        x = (0,0)
-        for p in filter:
-            while x[1] <= p[0]: x = s.next()
-            if x[0] > p[1]: continue
-            else: yield x
+    def _overlap(tl,tf,stranded):
+        if stranded:
+            tl_strand_idx = tl.fields.index('strand')
+            tf_strand_idx = tf.fields.index('strand')
+            same_strand = lambda x,y:x[tl_strand_idx]==y[tf_strand_idx]
+        else: same_strand = lambda x,y:True
+        x = tl.next()
+        for y in tf:
+            try:
+                if not same_strand(x,y): x = tl.next()
+                while x[1] <= y[0]: x = tl.next()
+                while x[1] <= y[1] or x[0] < y[1]:
+                    yield x
+                    x = tl.next()
+            except StopIteration: break
 
-
-
-    if isinstance(trackList,FeatureStream): trackList = [trackList]
-    trackList = [common.reorder(t,['start','end']) for t in trackList]
-    filters = itertools.tee(common.reorder(filter,['start','end']),len(trackList)) # !
-    res = [FeatureStream(_overlap(trackList,filters[n]), fields=t.fields) for n,t in enumerate(trackList)]
-    return res[0] if len(res)==1 else res
+    if isinstance(trackFeatures,(list,tuple)): trackList = concatenate(trackFeatures)
+    if isinstance(trackFeatures,(list,tuple)): trackFeatures = concatenate(trackFeatures)
+    _info_fields = [f for f in trackFeatures.fields if f not in trackList.fields] if annotate else []
+    stranded = 'strand' in (set(trackList.fields) & set(trackFeatures.fields))
+    if flatten is None: _tf = trackFeatures
+    else: _tf = flatten(trackFeatures,stranded=stranded)
+    _tl = common.reorder(trackList,['start','end'])
+    _tf = common.reorder(trackFeatures,['start','end'])
+    return FeatureStream(_overlap(_tl,_tf,stranded), _tl.fields+_info_fields)
 
 ###############################################################################
 @common.ordered

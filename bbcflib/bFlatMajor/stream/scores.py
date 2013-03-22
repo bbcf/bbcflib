@@ -123,12 +123,17 @@ def filter_scores(trackScores,trackFeatures,method='sum',strict=False,annotate=F
     :rtype: FeatureStream
     """
     def _stream(ts,tf,stranded):
-        info_idx = [k for k,f in enumerate(tf.fields) if f not in ts.fields]
         tf = common.sentinelize(tf,[sys.maxint]*len(tf.fields))
         Y = [(-sys.maxint,-sys.maxint,0.0)]
+        info_idx = [k for k,f in enumerate(tf.fields) if f not in ts.fields]
+        if stranded:
+            ts_strand_idx = ts.fields.index('strand')
+            tf_strand_idx = tf.fields.index('strand')
+            same_strand = lambda x,y:x[ts_strand_idx]==y[tf_strand_idx]
+        else: same_strand = lambda x,y:True
         for x in ts:
-            xstart = x[ts.fields.index('start')]
-            xend = x[ts.fields.index('end')]
+            xstart = x[0]
+            xend = x[1]
             ynext = Y[-1]
             # Load into Y all feature items which intersect score x
             while ynext[0] < xend:
@@ -138,8 +143,7 @@ def filter_scores(trackScores,trackFeatures,method='sum',strict=False,annotate=F
             while Y[n][1] <= xstart: n+=1
             Y = Y[n:]
             for y in Y:
-                if stranded and (x[ts.fields.index('strand')] != y[tf.fields.index('strand')]):
-                    continue
+                if not same_strand(x,y): continue
                 info = tuple([y[k] for k in info_idx]) if annotate else ()
                 if strict and (y[0] > xstart or y[1] < xend): continue
                 if y[0] >= xend : continue    # keep for next iteration
