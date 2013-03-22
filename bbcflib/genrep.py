@@ -155,9 +155,9 @@ class Assembly(object):
         from bbcflib.mapseq import bowtie_build
         if assembly is None:
             if fasta is not None:
-                self.name = splitext( basename( fasta ) )[0]
+                self.name = os.path.splitext( os.path.basename( fasta ) )[0]
             elif annot is not None:
-                self.name = splitext( basename( fasta ) )[0]
+                self.name = os.path.splitext( os.path.basename( fasta ) )[0]
             else:
                 self.name = "_custom_"
         else:
@@ -186,7 +186,7 @@ class Assembly(object):
         if fasta is not None:
             self.fasta_origin = fasta
             self.fasta_by_chrom = self.untar_genome_fasta()
-            fasta_files = list(set(self.fasta_by_chrom.values()))
+            fasta_files = self.fasta_by_chrom.values()
             [g.wait() for g in [sam_faidx.nonblocking(ex,f,via=via) \
                                     for f in fasta_files]]
             self.index_path = bowtie_build.nonblocking(ex,fasta_files,
@@ -295,6 +295,8 @@ class Assembly(object):
         if isinstance(out,basestring):
             _is_filename = True
             out = open(out,"w")
+        if hasattr(self,"fasta_by_chrom"): 
+            path_to_ref = self.fasta_by_chrom
 
         def _push_slices(slices,start,end,name,cur_chunk):
             """Add a feature to *slices*, and increment the buffer size *cur_chunk* by the feature's size."""
@@ -309,10 +311,10 @@ class Assembly(object):
             names = slices['names']
             coord = slices['coord']
             if isinstance(out,file):
-                for i,s in enumerate(self.genrep.get_sequence(chrid,coord,path_to_ref=path_to_ref)):
+                for i,s in enumerate(self.genrep.get_sequence(chrid,coord,path_to_ref=path_to_ref,chr_name=chrn)):
                     if s: out.write(">"+names[i]+"|"+chrn+":"+str(coord[i][0])+"-"+str(coord[i][1])+"\n"+s+"\n")
             else:
-                out[chrn].extend([s for s in self.genrep.get_sequence(chrid,coord,path_to_ref=path_to_ref)])
+                out[chrn].extend([s for s in self.genrep.get_sequence(chrid,coord,path_to_ref=path_to_ref,chr_name=chrn)])
             return {'coord':[],'names':[]}
 
         slices = {'coord':[],'names':[]}
@@ -463,8 +465,7 @@ class Assembly(object):
         """
 
         def _rewrite(inf,genomeRef,chrlist):
-            newfa = unique_filename_in()
-            outf = open(newfa,"w")
+            outf = None
             for line in inf:
                 headpatt = re.search(r'^>(\S+)\s',line)
                 if headpatt: 
@@ -472,11 +473,14 @@ class Assembly(object):
                     if chrom in chrlist:
                         line = re.sub(chrom,chrlist[chrom],line)
                         chrom = chrlist[chrom]
+                    newfa = unique_filename_in()
+                    if outf is not None: outf.close()
+                    outf = open(newfa,"w")
                     outf.write(line)
                     genomeRef[chrom] = newfa
-                else:
+                elif outf is not None: 
                     outf.write(line)
-            outf.close()
+            if outf is not None: outf.close()
 
         if hasattr(self,"fasta_by_chrom"): return self.fasta_by_chrom
         if path_to_ref is None: path_to_ref = self.fasta_path()
@@ -987,7 +991,7 @@ class GenRep(object):
         if assembly == None:
             return [x for k in sorted(assembly_list.keys()) for x in assembly_list[k]]
 
-    def get_sequence(self, chr_id, coord_list, path_to_ref=None):
+    def get_sequence(self, chr_id, coord_list, path_to_ref=None, chr_name=None):
         """Parse a slice request to the repository.
 
         :param chr_id: (int) chromosome number (keys of Assembly.chromosomes).
@@ -1009,9 +1013,14 @@ class GenRep(object):
             start,end = coord_list.next()
             seq = ''
             line = True
+            chrom = None
             for i,line in enumerate(f):
+                headpatt = re.search(r'^>(\S+)\s',line)
                 line = line.strip(' \t\r\n')
+                if headpatt:
+                    chrom = headpatt.groups()[0]
                 if line.startswith('>'): continue
+                if not chrom in (chr_id, chr_name): continue
                 b = a+len(line)
                 while start <= b:
                     start = max(a,start)
