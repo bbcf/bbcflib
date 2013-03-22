@@ -9,7 +9,6 @@ with respect to a set of coding genes on the same genome.
 # Built-in modules #
 import os, sys, tarfile
 from operator import itemgetter
->>>>>>> embryo of 'overlap' function
 from itertools import product
 
 # Internal modules #
@@ -66,14 +65,14 @@ def sam_pileup(assembly,bamfile,refGenome):
 def find_snp(info,mincov,minsnp,assembly):
     """Parse the output of samtools pileup, provided as a list of already split *info*::
 
-        info = ['chrV','18','G'  ,'R',       '4',      '4',        '60',      '4',   'a,.^~.', 'LLLL', '~~~~\n']
+        info = ['chrV', '18', 'G', 'R', '4', '4', '60', '4', 'a,.^~.', 'LLLL', '~~~~\n']
         info = [chr, pos, ref, consensus, cons_qual, snp_qual, max_map_qual, nreads, 'a,.^~.', 'LLLL', '~~~~\n']
                  0    1    2       3          4         5           6           7       8         9       10
         cons_qual : consensus quality is the Phred-scaled probability that the consensus is wrong.
         snp_qual: SNP quality is the Phred-scaled probability that the consensus is identical to the reference.
 
         In case of indels:
-        info = ['chrV','18','*','*/+CT','5',     '5',        '37',      '11', '*','+CT','10',  '1',  '0','0','0']
+        info = ['chrV', '18', '*', '*/+CT', '5', '5', '37', '11', '*', '+CT', '10', '1', '0', '0', '0']
         info = [chr, pos, *, c1/c2, cons_qual, snp_qual, max_map_qual, nreads, c1, c2, nindel, nref, n3rd]
                  0    1   2    3        4         5           6           7    8   9     10     11    12
         c1/c2: consensus on strand1/strand2, of the form \[+-][0-9]+[ACGTNacgtn]+ .
@@ -89,7 +88,6 @@ def find_snp(info,mincov,minsnp,assembly):
     consensus = []
     if ref == "*": # indel
         nindel = int(info[10])
-        #nref = int(info[11])
         if nindel >= mincov and 100*nindel*ploidy >= minsnp*nreads:
             consensus.append("%s/%s (%.2f%% of %s)" %(info[8],info[9],denom*nindel,nreads))
     else:
@@ -219,9 +217,9 @@ def exon_snps(chrom,outexons,allsnps,assembly,sample_names,genomeRef={}):
             ref_codon = _revcomp(ref_codon)
             new_codon = [[_revcomp(s) for s in c] for c in new_codon]
         for chr,pos,refbase,variants,cds,strand,dummy,shift in _buffer:
-            refc = [list(_iupac.get(x,x)) for x in ref_codon]
+            refc = [_iupac.get(x,x) for x in ref_codon]
             ref_codon = [''.join(x) for x in product(*refc)]
-            newc = [[[list(_iupac.get(x,x)) for x in variant] for variant in sample]
+            newc = [[[_iupac.get(x,x) for x in variant] for variant in sample]
                     for sample in new_codon]
             new_codon = [[''.join(x) for codon in sample for x in product(*codon)] for sample in newc]
             if refbase == "*":
@@ -264,7 +262,8 @@ def exon_snps(chrom,outexons,allsnps,assembly,sample_names,genomeRef={}):
             codon_start = pos-shift
             ref_codon = assembly.fasta_from_regions({chr: [[codon_start,codon_start+3]]}, out={},
                                                     path_to_ref=genomeRef.get(chr))[0][chr][0]
-            info = [chr,pos,refbase,list(rest[1:nsamples+1]),cds,strand,ref_codon,shift]
+            info = [chr,pos,refbase,list(rest[1:nsamples+1]),cds,strand,
+                    ref_codon.upper(),shift]
             # Either the codon is the same as the previous one on this strand, or it will never be.
             # Only if one codon is passed, can write its snps to a file.
             if codon_start == last_start[strand]:
