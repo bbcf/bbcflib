@@ -154,13 +154,12 @@ def overlap(trackList,trackFeatures,method='sum',strict=False,annotate=False,fla
 
     if isinstance(trackFeatures,(list,tuple)): trackList = concatenate(trackFeatures)
     if isinstance(trackFeatures,(list,tuple)): trackFeatures = concatenate(trackFeatures)
-    _info_fields = [f for f in trackFeatures.fields if f not in trackList.fields] if annotate else []
     stranded = 'strand' in (set(trackList.fields) & set(trackFeatures.fields))
     if flatten is None: _tf = trackFeatures
     else: _tf = flatten(trackFeatures,stranded=stranded)
     _tl = common.reorder(trackList,['start','end'])
     _tf = common.reorder(trackFeatures,['start','end'])
-    return FeatureStream(_overlap(_tl,_tf,stranded), _tl.fields+_info_fields)
+    return FeatureStream(_overlap(_tl,_tf,stranded), _tl.fields)
 
 ###############################################################################
 @common.ordered
