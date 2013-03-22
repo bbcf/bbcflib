@@ -463,7 +463,8 @@ class Assembly(object):
         """
 
         def _rewrite(inf,genomeRef,chrlist):
-            outf = None
+            newfa = unique_filename_in()
+            outf = open(newfa,"w")
             for line in inf:
                 headpatt = re.search(r'^>(\S+)\s',line)
                 if headpatt: 
@@ -471,14 +472,11 @@ class Assembly(object):
                     if chrom in chrlist:
                         line = re.sub(chrom,chrlist[chrom],line)
                         chrom = chrlist[chrom]
-                    newfa = unique_filename_in()
-                    if outf is not None: outf.close()
-                    outf = open(newfa,"w")
                     outf.write(line)
                     genomeRef[chrom] = newfa
-                elif outf is not None: 
+                else:
                     outf.write(line)
-            if outf is not None: outf.close()
+            outf.close()
 
         if hasattr(self,"fasta_by_chrom"): return self.fasta_by_chrom
         if path_to_ref is None: path_to_ref = self.fasta_path()
