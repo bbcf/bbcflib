@@ -190,7 +190,7 @@ def score_by_feature(trackScores,trackFeatures,fn='mean'):
         X = [common.sentinelize(x, [sys.maxint]*len(x.fields)) for x in ts]
         S = [[(-sys.maxint,-sys.maxint,0.0)] for t in ts]
         if hasattr(fn,'__call__'):
-            _fn = fn
+            _fn = lambda scores,denom:fn(scores)
         else:
             _fn = _score_functions.get(fn,_arithmetic_mean)
         for y in tf:
