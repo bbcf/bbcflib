@@ -3,11 +3,13 @@
 Module: bbcflib.snp
 ===================
 
-From a set of BAM files produced by an alignement on the genome, calls snps and annotates them 
+From a set of BAM files produced by an alignement on the genome, calls snps and annotates them
 with respect to a set of coding genes on the same genome.
 """
 # Built-in modules #
-import re, os, sys, tarfile
+import os, sys, tarfile
+from operator import itemgetter
+>>>>>>> embryo of 'overlap' function
 from itertools import product
 
 # Internal modules #
@@ -18,7 +20,7 @@ from bbcflib.bFlatMajor.common import concat_fields
 from bbcflib.bFlatMajor import stream as gm_stream
 from bein import program
 
-_iupac = {'M':'AC', 'Y':'CT', 'R':'AG', 'S':'CG', 'W': 'AT', 'K':'GT', 
+_iupac = {'M':'AC', 'Y':'CT', 'R':'AG', 'S':'CG', 'W': 'AT', 'K':'GT',
           'B':'CGT', 'D':'AGT', 'H':'ACT', 'V':'ACG',
           'N': 'ACGT'}
 
@@ -64,14 +66,14 @@ def sam_pileup(assembly,bamfile,refGenome):
 def find_snp(info,mincov,minsnp,assembly):
     """Parse the output of samtools pileup, provided as a list of already split *info*::
 
-        info = ['chrV', '91668', 'G', 'R', '4', '4', '60', '4', 'a,.^~.', 'LLLL', '~~~~\n']
+        info = ['chrV','18','G'  ,'R',       '4',      '4',        '60',      '4',   'a,.^~.', 'LLLL', '~~~~\n']
         info = [chr, pos, ref, consensus, cons_qual, snp_qual, max_map_qual, nreads, 'a,.^~.', 'LLLL', '~~~~\n']
                  0    1    2       3          4         5           6           7       8         9       10
         cons_qual : consensus quality is the Phred-scaled probability that the consensus is wrong.
         snp_qual: SNP quality is the Phred-scaled probability that the consensus is identical to the reference.
 
         In case of indels:
-        info = ['chrV', '1128659', '*', '*/+CT', '5', '5', '37', '11', '*', '+CT', '10', '1', '0', '0', '0']
+        info = ['chrV','18','*','*/+CT','5',     '5',        '37',      '11', '*','+CT','10',  '1',  '0','0','0']
         info = [chr, pos, *, c1/c2, cons_qual, snp_qual, max_map_qual, nreads, c1, c2, nindel, nref, n3rd]
                  0    1   2    3        4         5           6           7    8   9     10     11    12
         c1/c2: consensus on strand1/strand2, of the form \[+-][0-9]+[ACGTNacgtn]+ .
@@ -87,11 +89,11 @@ def find_snp(info,mincov,minsnp,assembly):
     consensus = []
     if ref == "*": # indel
         nindel = int(info[10])
-        nref = int(info[11])
+        #nref = int(info[11])
         if nindel >= mincov and 100*nindel*ploidy >= minsnp*nreads:
             consensus.append("%s/%s (%.2f%% of %s)" %(info[8],info[9],denom*nindel,nreads))
     else:
-#        nref = info[8].count(".") + info[8].count(",") # number of reads supporting wild type (.fwd and ,rev)
+        #nref = info[8].count(".") + info[8].count(",") # number of reads supporting wild type (.fwd and ,rev)
         for char in _iupac.get(cons,cons):
             if char == ref: continue
             nvar = info[8].count(char)+info[8].count(char.lower())
@@ -258,7 +260,6 @@ def exon_snps(chrom,outexons,allsnps,assembly,sample_names,genomeRef={}):
             elif strand == -1:
                 shift = (pos-ee+phase) % 3
             else:
-                print "***",es,ee,cds,strand,phase
                 continue
             codon_start = pos-shift
             ref_codon = assembly.fasta_from_regions({chr: [[codon_start,codon_start+3]]}, out={},
@@ -278,7 +279,7 @@ def exon_snps(chrom,outexons,allsnps,assembly,sample_names,genomeRef={}):
 
 def create_tracks(ex, outall, sample_names, assembly):
     """Write BED tracks showing SNPs found in each sample."""
-    ###### TODO: tracks for coverage + quality + heterozyg. 
+    ###### TODO: tracks for coverage + quality + heterozyg.
     infields = ['chromosome','position','reference']+sample_names+['gene','location_type','distance']
     intrack = track(outall, format='text', fields=infields, chrmeta=assembly.chrmeta,
                     intypes={'position':int})
@@ -300,7 +301,7 @@ def create_tracks(ex, outall, sample_names, assembly):
         snp = dict((name, _row_to_annot(x,ref,n)) for n,name in enumerate(sample_names))
         for name, tr in outtracks.iteritems():
             if snp[name]: tr[0].write([coord+(snp[name],)],mode='append')
-#       convert(out+'.sql',out+'.bed.gz',mode='append')
+        #convert(out+'.sql',out+'.bed.gz',mode='append')
     for name, tr in outtracks.iteritems():
         tr[0].close()
         description = set_file_descr(name+"_SNPs.bed.gz",type='bed',step='tracks',gdv='1',ucsc='1')

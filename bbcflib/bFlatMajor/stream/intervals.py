@@ -1,6 +1,7 @@
 import sys
 from bbcflib.bFlatMajor import common
 from bbcflib.btrack import FeatureStream
+import itertools
 
 # "tracks" and "streams" refer to FeatureStream objects all over here.
 
@@ -122,6 +123,31 @@ def selection(trackList,selection):
     if isinstance(trackList,FeatureStream): trackList = [trackList]
     if isinstance(selection,dict): selection = [selection]
     res = [FeatureStream(_filter(t,selection), fields=t.fields) for t in trackList]
+    return res[0] if len(res)==1 else res
+
+###############################################################################
+def overlap(trackList,filter):
+    """
+    For each stream in *trackList*, keep only items overlapping at least one element
+    of *filter*.  The input streams need to be ordered w.r.t 'chr', 'start' and 'end'.
+    To be applied chromosome by chromosome.
+
+    :param trackList: FeatureStream, or list of FeatureStream objects.
+    :param filter: FeatureStream - the filter described above.
+    """
+    def _overlap(stream,filter):
+        x = (0,0)
+        for p in filter:
+            while x[1] <= p[0]: x = s.next()
+            if x[0] > p[1]: continue
+            else: yield x
+
+
+
+    if isinstance(trackList,FeatureStream): trackList = [trackList]
+    trackList = [common.reorder(t,['start','end']) for t in trackList]
+    filters = itertools.tee(common.reorder(filter,['start','end']),len(trackList)) # !
+    res = [FeatureStream(_overlap(trackList,filters[n]), fields=t.fields) for n,t in enumerate(trackList)]
     return res[0] if len(res)==1 else res
 
 ###############################################################################
