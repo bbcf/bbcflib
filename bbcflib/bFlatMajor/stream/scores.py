@@ -153,14 +153,13 @@ def filter_scores(trackScores,trackFeatures,method='sum',strict=False,annotate=F
 
     if isinstance(trackFeatures,(list,tuple)): trackFeatures = concatenate(trackFeatures)
     if isinstance(trackScores,(list,tuple)): trackScores = merge_scores(trackScores,method)
-    _info_fields = [f for f in trackFeatures.fields if f not in trackScores.fields] if annotate else []
     stranded = 'strand' in (set(trackScores.fields) & set(trackFeatures.fields))
     if flatten is None:
         _tf = trackFeatures
     else:
         _tf = flatten(trackFeatures,stranded=stranded)
     _ts = common.reorder(trackScores,['start','end'])
-    return FeatureStream(_stream(_ts,_tf,stranded), _ts.fields+_info_fields)
+    return FeatureStream(_stream(_ts,_tf,stranded), _ts.fields)
 
 ###############################################################################
 def score_by_feature(trackScores,trackFeatures,fn='mean'):
