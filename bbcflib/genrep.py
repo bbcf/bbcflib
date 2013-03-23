@@ -186,7 +186,7 @@ class Assembly(object):
         if fasta is not None:
             self.fasta_origin = fasta
             self.fasta_by_chrom = self.untar_genome_fasta()
-            fasta_files = self.fasta_by_chrom.values()
+            fasta_files = list(set(self.fasta_by_chrom.values()))
             [g.wait() for g in [sam_faidx.nonblocking(ex,f,via=via) \
                                     for f in fasta_files]]
             self.index_path = bowtie_build.nonblocking(ex,fasta_files,
