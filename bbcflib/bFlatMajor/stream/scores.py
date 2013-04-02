@@ -193,13 +193,15 @@ def score_by_feature(trackScores,trackFeatures,fn='mean'):
     def _stream(ts,tf):
         X = [common.sentinelize(x, [sys.maxint]*len(x.fields)) for x in ts]
         S = [[(-sys.maxint,-sys.maxint,0.0)] for t in ts]
+        start_idx = tf.fields.index('start')
+        end_idx = tf.fields.index('end')
         if hasattr(fn,'__call__'):
             _fn = lambda scores,denom:fn(scores)
         else:
             _fn = _score_functions.get(fn,_arithmetic_mean)
         for y in tf:
-            ystart = y[tf.fields.index('start')]
-            yend = y[tf.fields.index('end')]
+            ystart = y[start_idx]
+            yend = y[end_idx]
             scores = ()
             for i in range(len(ts)):
                 xnext = S[i][-1]
