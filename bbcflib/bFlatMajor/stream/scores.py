@@ -110,9 +110,9 @@ def filter_scores(trackScores,trackFeatures,method='sum',strict=False,annotate=F
     a region of the same strand are kept.
 
     :param trackScores: (FeatureStream) one -sorted- score track.
-        If a list fo streams is provided, they will be merged (using `merge_scores`).
+        If a list of streams is provided, they will be merged (using `merge_scores`).
     :param trackFeatures: (FeatureStream) one -sorted- feature track.
-        If a list fo streams is provided, they will be merged (using `concatenate`).
+        If a list of streams is provided, they will be merged (using `concatenate`).
     :param method: (str) `merge_scores` *method* argument, in case *trackScores* is a list. ['sum']
     :param strict: (bool) if True, only score regions from *trackScores* that are
         strictly contained in a feature region of *trackFeatures* will be returned. [False]
