@@ -180,7 +180,7 @@ def format_int(i=int()):
 def ucsc_to_ensembl(stream):
     """Shifts start coordinates 1 base to the right, to map UCSC to Ensembl annotation."""
     istart = stream.fields.index('start')
-    return FeatureStream((item[:istart]+(item[istart]+1,)+item[istart+1:] 
+    return FeatureStream((item[:istart]+(item[istart]+1,)+item[istart+1:]
                           for item in stream),fields=stream.fields)
 
 def ensembl_to_ucsc(stream):
@@ -241,6 +241,68 @@ def check_format(source, **kwargs):
         except Exception, e:
             raise ValueError("Line %s of %s is not compatible with format %s: \n%s. \
                               \nException raised: %s" % (n,source,t.format,x,e))
+
+def stats(source,out=sys.stdout,hlimit=15,wlimit=100, **kwargs):
+    """Prints stats about the track. Draws a plot of the scores distribution (if any)
+    directly to the console.
+
+    It does not load the whole file in memory, but the distribution of its scores,
+    which are expected to be limited in variety for count data (normalized or not).
+
+    :param s: FeatureStream object.
+    :param out: writable/file object (defaut: stdout).
+    :param hlimit: height of the distribution plot, in number of chars.
+    :param wlimit: max width of the distribution plot, in number of chars.
+    """
+    t = track(source, **kwargs)
+    s = t.read(**kwargs)
+    is_score = 'score' in s.fields
+    if is_score:
+        distr = {}
+        smax = -sys.maxint
+        smin = sys.maxint
+        total = 0.0
+        score_idx = s.fields.index('score')
+        for nfeat,x in enumerate(s):
+            sc = x[score_idx]
+            total += sc
+            distr[sc] = distr.get(sc,0.0) + 1
+        smean = total/nfeat
+        vals = sorted(distr.keys())
+        lvals = len(vals)
+        if lvals%2 == 1: smedian = vals[(lvals+1)/2]
+        else: smedian = 0.5*(vals[lvals/2]+vals[lvals/2+1])
+        stdev = (sum((x-smean)**2 for x in vals)/nfeat)**(0.5)
+        smin = vals[0]; smax = vals[-1]
+    print >> out, "Fields:", str(','.join(s.fields))
+    print >> out, "Number of lines:", str(nfeat)
+    print >> out, "Score stats:"
+    if is_score:
+        print >> out, "  Total:", str(total)
+        print >> out, "  Min:", str(smin)
+        print >> out, "  Max:", str(smax)
+        print >> out, "  Median:", str(smedian)
+        print >> out, "  Mean:", str(smean)
+        print >> out, "  Standard deviation:", str(stdev)
+        print >> out, "Distribution of scores:"
+        # Console distribution plot
+        try: from numpy import zeros,array
+        except ImportError: return
+        scores = array([distr[v] for v in vals])
+        lscores = len(scores)
+        L = min(lscores,wlimit)
+        binw = lscores//L if lscores%L==0 else lscores//L+1
+        bscores = zeros(L)
+        for b in range(L):
+            bs = scores[b*binw:(b+1)*binw]
+            bscores[b] = sum(bs)/len(bs) if len(bs)>0 else 0
+        bmax = max(bscores)
+        bscores = bscores * hlimit/bmax
+        T = zeros((hlimit+1,L))
+        for k in range(hlimit,0,-1):
+            T[k-1] = T[k] + array([1 if (k >= x > k-1) else 0 for x in bscores])
+            print >> out, ''.join(['#' if x else ' ' for x in T[k]])
+        print >> out, ''.join(['-']*L)
 
 ################################################################################
 
