@@ -229,7 +229,7 @@ def neighborhood(trackList, before_start=None, after_end=None,
                 else:
                     _buf.append((x[0]-before_start, x[1]+after_end)    + x[2:])
             _buf.sort()
-            while _buf[0][1] < x[0]: yield _buf.pop(0)
+            while _buf and _buf[0][1] < x[0]: yield _buf.pop(0)
         while _buf: yield _buf.pop(0)
 
     _fields = ['start','end']
