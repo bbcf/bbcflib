@@ -194,7 +194,7 @@ class Assembly(object):
             chromosomes = {}
             for f in fasta_files: chromosomes.update(fasta_length(ex,f))
             self.stats_dict = {}
-            for f in fasta_files: 
+            for f in fasta_files:
                 stats = fasta_composition(ex,f)
                 for k,v in stats.iteritems():
                     self.stats_dict[k] = self.stats_dict.get(k,0)+v
@@ -205,7 +205,7 @@ class Assembly(object):
                         chromosomes[chrom['name']]['synonyms'] = chrom['synonyms']+","+chrom_ac
                     else:
                         chromosomes[chrom['name']]['synonyms'] = chrom_ac
-            self.chromosomes = dict(((k,None,None),v) 
+            self.chromosomes = dict(((k,None,None),v)
                                     for k,v in chromosomes.iteritems())
             if hasattr(self,"annot_origin"):
                 archive = tarfile.open(fasta)
@@ -295,7 +295,7 @@ class Assembly(object):
         if isinstance(out,basestring):
             _is_filename = True
             out = open(out,"w")
-        if path_to_ref is None and hasattr(self,"fasta_by_chrom"): 
+        if path_to_ref is None and hasattr(self,"fasta_by_chrom"):
             path_to_ref = self.fasta_by_chrom
 
         def _push_slices(slices,start,end,name,cur_chunk):
@@ -413,7 +413,7 @@ class Assembly(object):
              >Assembly: sacCer2
             1   0.309798640038793   0.308714120881750   0.190593944221299   0.190893294858157
         """
-        if hasattr(self,"stats_dict"): 
+        if hasattr(self,"stats_dict"):
             stat = self.stats_dict
         else:
             request = urllib2.Request("%s/nr_assemblies/%d.json?data_type=counts" % (self.genrep.url, self.nr_assembly_id))
@@ -438,7 +438,7 @@ class Assembly(object):
 
     def fasta_path(self, chromosome=None):
         """Return the path to the compressed fasta file, for the whole assembly or for a single chromosome."""
-        if hasattr(self,"fasta_origin"): 
+        if hasattr(self,"fasta_origin"):
             if chromosome is not None:
                 return self.fasta_by_chrom[chromosome]
             return self.fasta_origin
@@ -469,7 +469,7 @@ class Assembly(object):
             outf = open(newfa,"w")
             for line in inf:
                 headpatt = re.search(r'^>(\S+)\s',line)
-                if headpatt: 
+                if headpatt:
                     chrom = headpatt.groups()[0]
                     if chrom in chrlist:
                         line = re.sub(chrom,chrlist[chrom],line)
@@ -481,7 +481,7 @@ class Assembly(object):
 
         if hasattr(self,"fasta_by_chrom"): return self.fasta_by_chrom
         if path_to_ref is None: path_to_ref = self.fasta_path()
-        if not(os.path.exists(path_to_ref)): 
+        if not(os.path.exists(path_to_ref)):
             raise ValueError("Reference fasta archive not found: %s."%path_to_ref)
         if convert:
             # Create a dict of the form {'2704_NC_001144.4': chrXII}
@@ -550,7 +550,7 @@ class Assembly(object):
         exon_count = 1
 
         if sql_path is None: sql_path = unique_filename_in()+".sql"
-        if gtf_path is None: 
+        if gtf_path is None:
             gtf_path = os.path.join(self.genrep.root,"nr_assemblies/gtf/%s_%i.gtf.gz"%(self.md5,0))
             for n in range(1,100):
                 gtf_path_n = os.path.join(self.genrep.root,"nr_assemblies/gtf/%s_%i.gtf.gz"%(self.md5,n))
@@ -561,7 +561,7 @@ class Assembly(object):
         all_fields = set(_split_attributes(gtf.read(fields=['attributes'])))
         new_fields = [f for f in all_fields if not(f in std_outfields)]
         xsplit = split_field(ensembl_to_ucsc(gtf.read(fields=gtf_read_fields)),
-                             outfields=std_outfields+new_fields, infield='attributes', 
+                             outfields=std_outfields+new_fields, infield='attributes',
                              header_split=' ', strip_input=True)
         outf = track(sql_path, fields=sql_fields+new_fields, **sql_params)
         outf.write(FeatureStream(_fix_exon_id(
@@ -731,7 +731,7 @@ class Assembly(object):
         h = {"keys":"gene_id", "values":"exon_id", "conditions":"type:exon", "uniq":"1"}
         data = self.get_features_from_gtf(h)
         for k,v in data.iteritems():
-            trans_in_gene[str(k)] = [str(x[0]) for x in v]
+            exons_in_gene[str(k)] = [str(x[0]) for x in v]
         return exons_in_gene
 
     def get_exons_in_trans(self):
@@ -960,7 +960,7 @@ class GenRep(object):
             pwm = "\n".join([" ".join(["1"]+[str(x[t[y]]) for y in ['A','C','G','T']]) for x in motif['motif']])
             pwmfile.write(pwm)
         return output
-        
+
 
     def assemblies_available(self, assembly=None, filter_valid=True):
         """

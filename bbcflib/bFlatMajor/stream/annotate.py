@@ -1,6 +1,6 @@
 import sys
 from bbcflib.bFlatMajor import common
-from bbcflib import btrack as track
+from bbcflib.btrack import FeatureStream
 
 @common.ordered
 def getNearestFeature(features, annotations, thresholdPromot=2000, thresholdInter=20000, thresholdUTR=10):
@@ -23,8 +23,8 @@ def getNearestFeature(features, annotations, thresholdPromot=2000, thresholdInte
     These annotations can be concatenated with '_' as well.
     The distance to each gene is negative if the feature is included, positive otherwise.
 
-    :param features: (bbcflib.btrack.FeatureStream) features track.
-    :param annotations: (bbcflib.btrack.FeatureStream) gene annotation track
+    :param features: (FeatureStream) features track.
+    :param annotations: (FeatureStream) gene annotation track
         (e.g. as obtained with assembly.gene_track()).
     :param thresholdPromot: (int) associates the promoter of each gene which promoter is within
         this distance of the feature. Above the threshold, associates only the closest. [2000]
@@ -32,7 +32,7 @@ def getNearestFeature(features, annotations, thresholdPromot=2000, thresholdInte
     :param thresholdUTR: (int) in case the feature is surrounded by two eligible genes on the
         same strand: if distance to gene1's 3'UTR upstream is less than *thresholdUTR*% of the distance
         between gene1 and gene2, associated to 3'UTR of gene1, else to promoter of gene2. [10]
-    :rtype: bbcflib.btrack.FeatureStream (..., str, str, str).
+    :rtype: FeatureStream (..., str, str, str).
 
     ::
 
@@ -165,7 +165,7 @@ def getNearestFeature(features, annotations, thresholdPromot=2000, thresholdInte
                                 typeLoc += "_Promot"
                                 gene += "_"+geneAfter
                                 dist = str(dist)+"_"+str(distMinAfter)
-                    else: 
+                    else:
                         gene = geneAfter
                         dist = distMinAfter
                         if dist < thresholdPromot:
@@ -204,6 +204,5 @@ def getNearestFeature(features, annotations, thresholdPromot=2000, thresholdInte
     features = common.reorder(features,['start','end'])
     annot = common.reorder(annotations,['start','end','name','strand'])
     _fields = features.fields+['gene','location_type','distance']
-    return track.FeatureStream(_get_feature(features,annot),fields=_fields)
-
+    return FeatureStream(_get_feature(features,annot),fields=_fields)
 
