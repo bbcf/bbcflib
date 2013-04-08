@@ -110,9 +110,9 @@ def filter_scores(trackScores,trackFeatures,method='sum',strict=False,annotate=F
     a region of the same strand are kept.
 
     :param trackScores: (FeatureStream) one -sorted- score track.
-        If a list fo streams is provided, they will be merged (using `merge_scores`).
+        If a list of streams is provided, they will be merged (using `merge_scores`).
     :param trackFeatures: (FeatureStream) one -sorted- feature track.
-        If a list fo streams is provided, they will be merged (using `concatenate`).
+        If a list of streams is provided, they will be merged (using `concatenate`).
     :param method: (str) `merge_scores` *method* argument, in case *trackScores* is a list. ['sum']
     :param strict: (bool) if True, only score regions from *trackScores* that are
         strictly contained in a feature region of *trackFeatures* will be returned. [False]
@@ -193,13 +193,15 @@ def score_by_feature(trackScores,trackFeatures,fn='mean'):
     def _stream(ts,tf):
         X = [common.sentinelize(x, [sys.maxint]*len(x.fields)) for x in ts]
         S = [[(-sys.maxint,-sys.maxint,0.0)] for t in ts]
+        start_idx = tf.fields.index('start')
+        end_idx = tf.fields.index('end')
         if hasattr(fn,'__call__'):
             _fn = lambda scores,denom:fn(scores)
         else:
             _fn = _score_functions.get(fn,_arithmetic_mean)
         for y in tf:
-            ystart = y[tf.fields.index('start')]
-            yend = y[tf.fields.index('end')]
+            ystart = y[start_idx]
+            yend = y[end_idx]
             scores = ()
             for i in range(len(ts)):
                 xnext = S[i][-1]

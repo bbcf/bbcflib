@@ -126,7 +126,7 @@ def selection(trackList,selection):
 
 ###############################################################################
 @common.ordered
-def overlap(trackList,trackFeatures,method='sum',strict=False,annotate=False,flatten=common.cobble):
+def overlap(trackList,trackFeatures,strict=False,annotate=False,flatten=common.cobble):
     """
     For each stream in *trackList*, keep only items overlapping at least one element
     of *trackFeatures*.  The input streams need to be ordered w.r.t 'chr', 'start' and 'end'.
@@ -134,9 +134,20 @@ def overlap(trackList,trackFeatures,method='sum',strict=False,annotate=False,fla
     or trackFeatures, they will be concatenated into one.
 
     :param trackList: FeatureStream - the elements to be filtered.
+        If a list of streams is provided, they will be merged (using `concatenate`).
     :param trackFeatures: FeatureStream - the filter.
+        If a list fo streams is provided, they will be merged (using `concatenate`).
+    :param strict: (bool) if True, only score regions from *trackList* that
+        entirely contain a feature region of *trackFeatures* will be returned. [False]
+    :param annotate: (bool) if True, supplementary annotation (and the corresponding fields)
+        from *trackFeatures* will be added to the result. [False]
+    :param flatten: (func) one of None, `common.fusion` or `common.cobble`.
+        Function to be applied to *trackFeatures* before all. [common.cobble]
+    :rtype: FeatureStream
     """
-    def _overlap(tl,tf,stranded):
+    def _overlap(tl,tf,stranded,strict):
+        if strict: olap = lambda x,y: x[0] <= y[0] and y[1] <= x[1]
+        else: olap = lambda x,y: x[0] < y[1]
         if stranded:
             tl_strand_idx = tl.fields.index('strand')
             tf_strand_idx = tf.fields.index('strand')
@@ -147,7 +158,7 @@ def overlap(trackList,trackFeatures,method='sum',strict=False,annotate=False,fla
             try:
                 if not same_strand(x,y): x = tl.next()
                 while x[1] <= y[0]: x = tl.next()
-                while x[1] <= y[1] or x[0] < y[1]:
+                while olap(x,y):
                     yield x
                     x = tl.next()
             except StopIteration: break
@@ -159,7 +170,7 @@ def overlap(trackList,trackFeatures,method='sum',strict=False,annotate=False,fla
     else: _tf = flatten(trackFeatures,stranded=stranded)
     _tl = common.reorder(trackList,['start','end'])
     _tf = common.reorder(trackFeatures,['start','end'])
-    return FeatureStream(_overlap(_tl,_tf,stranded), _tl.fields)
+    return FeatureStream(_overlap(_tl,_tf,stranded,strict), _tl.fields)
 
 ###############################################################################
 @common.ordered

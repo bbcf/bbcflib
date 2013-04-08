@@ -1,7 +1,7 @@
 from bbcflib.btrack import FeatureStream
 from functools import wraps
 import sys, re, itertools
-from numpy import float as nfloat, log as nlog
+from numpy import log as nlog
 from numpy import asarray,mean,median,exp,nonzero,prod,around,argsort,float_
 
 ####################################################################
@@ -549,7 +549,6 @@ def cobble(stream,aggregate=aggreg_functions,stranded=False):
     if stranded: stream = reorder(stream,['start','end','strand'])
     else: stream = reorder(stream,['start','end'])
     return FeatureStream( _fuse(stream,stranded), fields=stream.fields)
-
 
 ####################################################################
 def normalize(M,method):

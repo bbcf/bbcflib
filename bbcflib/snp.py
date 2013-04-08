@@ -8,7 +8,6 @@ with respect to a set of coding genes on the same genome.
 """
 # Built-in modules #
 import os, sys, tarfile
-from operator import itemgetter
 from itertools import product
 
 # Internal modules #
@@ -44,8 +43,6 @@ def _ploidy(assembly):
     if str(assembly.name) in ["EB1_e_coli_k12","MLeprae_TN","mycoSmeg_MC2_155",
                               "mycoTube_H37RV","NA1000","vibrChol1","TB40-BAC4"]:
         ploidy = 1 # procaryote
-    elif str(assembly.name) in ["araTha1"]:
-        ploidy = 3
     else:
         ploidy = 2 # eucaryote
     return ploidy
