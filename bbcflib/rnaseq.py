@@ -30,6 +30,11 @@ from numpy import zeros, asarray, nonzero
 numpy.set_printoptions(precision=3,suppress=True)
 numpy.seterr(divide='ignore')
 
+class Counter(object):
+    def __init__(self):
+        self.n = 0
+    def __call__(self, alignment):
+        self.n += 1
 
 def positive(x):
     """Set to zero all negative components of an array."""
@@ -157,12 +162,6 @@ def build_pileup(bamfile, assembly, gene_mapping, exon_mapping, trans_in_gene, e
     :type bamfile: string
     :type exons: list
     """
-    class Counter(object):
-        def __init__(self):
-            self.n = 0
-        def __call__(self, alignment):
-            self.n += 1
-
     counts = {}
     try: sam = pysam.Samfile(bamfile, 'rb')
     except ValueError: sam = pysam.Samfile(bamfile,'r')
@@ -194,7 +193,6 @@ def build_pileup(bamfile, assembly, gene_mapping, exon_mapping, trans_in_gene, e
                 sam.fetch(ref,start,end, callback=c)
             except ValueError,ve: # unknown reference
                 print >> debugfile, ve; debugfile.flush()
-                pass
             for exon in ex:
                 counts[exon] = counts.get(exon,0) + c.n/float(len(ex))
             c.n = 0
@@ -408,20 +406,34 @@ def to_rpkm(counts, lengths, nreads):
     rpkm = numpy.round(rpkm,2)
     return rpkm
 
+def build_custom_pileup(bamfile, transcript_mapping=None, debugfile=sys.stderr):
+    counts = {}
+    try: sam = pysam.Samfile(bamfile, 'rb')
+    except ValueError: sam = pysam.Samfile(bamfile,'r')
+    c = Counter()
+    for t in sam.references:
+        ref = t.split('|')[0]
+        start,end = transcript_mapping.get(t,(0,0,0))[2:4]
+        sam.fetch(ref,start,end, callback=c)
+        counts[t] = c.n
+        c.n = 0
+    sam.close()
+    return counts
+
 @timer
 def rnaseq_workflow(ex, job, pileup_level=["exons","genes","transcripts"], via="lsf",
-                    rpath=None, junctions=None, unmapped=None, logfile=sys.stdout, debugfile=sys.stderr):
-    """
-    Main function of the workflow.
+                    rpath=None, junctions=None, unmapped=None, custom_ref=None,
+                    logfile=sys.stdout, debugfile=sys.stderr):
+    """Main function of the workflow.
 
     :rtype: None
     :param ex: the bein's execution Id.
     :param job: a Frontend.Job object (or a dictionary of the same form).
     :param bam_files: a dictionary such as returned by mapseq.get_bam_wig_files.
-    :param pileup_level: a string or array of strings indicating the features you want to compare.
-        Targets can be 'genes', 'transcripts', or 'exons'. ['genes','transcripts','exons']
     :param rpath: (str) path to the R executable.
-    :param junctions: (bool) whether or not to search for splice junctions using SOAPsplice. [False]
+    :param junctions: (bool) whether to search for splice junctions using SOAPsplice. [False]
+    :param unmapped: (bool) whether to remap to the transcriptome reads that did not map the genome. [False]
+    :param custom_ref: (bool) whether reads were aligned to a custom index. [False]
     :param via: (str) send job via 'local' or 'lsf'. ["lsf"]
     """
     group_names={}; group_ids={}; conditions=[]
@@ -442,6 +454,48 @@ def rnaseq_workflow(ex, job, pileup_level=["exons","genes","transcripts"], via="
             cond = group_names[gid]+'.'+str(k)
             conditions.append(cond)
     ncond = len(conditions)
+
+    # If the reads were aligned on transcriptome (maybe custom), do that and skip the rest
+    if custom_ref or job.assembly.intype==2:
+        if job.assembly.intype==2:
+            tmap = assembly.get_transcript_mapping()
+        else:
+            tmap = {}
+            for c,length in assembly.chrmeta:
+                tmap[c] = ('','',0,length)
+        #(gene_id,gene_name,start,end,length,strand,chromosome)
+        print >> logfile, "* Build pileups"; logfile.flush()
+        pileups={}; nreads={};
+        for gid,files in job.files.iteritems():
+            k = 0
+            for rid,f in files.iteritems():
+                k+=1
+                cond = group_names[gid]+'.'+str(k)
+                pileup = build_custom_pileup(f['bam'],tmap,debugfile)
+                pileups[cond] = pileup.values()
+                nreads[cond] = sum(pileup.values()) # total number of reads
+                print >> logfile, "  ....Pileup", cond, "done"; logfile.flush()
+        ids = pileup.keys()
+        del pileup
+        nreads = asarray([nreads[cond] for cond in conditions], dtype=numpy.float_)
+        counts = asarray([pileups[cond] for cond in conditions], dtype=numpy.float_).T
+        del pileups
+        trans_counts = [(ids[k],counts[k]) for k in range(len(ids)) if sum(counts[k])!=0]
+        hconds = ["counts."+c for c in conditions] + ["rpkm."+c for c in conditions]
+        print >> logfile, "* Get scores"; logfile.flush()
+        tcounts={}; trpkm={}
+        for t,c in trans_counts:
+            tcounts[t] = c
+            trpkm[t] = to_rpkm(c, tmap[t][4]-tmap[t][3], nreads)
+        exons_data = [(t,)+tuple(tcounts[t])+tuple(trpkm[t])+itemgetter(3,4,1,2,5,6)(tmap.get(t,("NA",)*6))
+                      for t in tcounts.iterkeys()]
+        header = ["ExonID"] + hconds + ["Start","End","GeneID","GeneName","Strand","Chromosome"]
+        trans_file = save_results(ex,exons_data,conditions,group_ids,assembly,header=header,feature_type="Transcript")
+        result = {"transcripts":trans_file}
+        if len(hconds) > 1:
+            print >> logfile, "* Differential analysis"; logfile.flush()
+            differential_analysis(ex, result, rpath, logfile)
+        return 0
 
     print >> logfile, "* Load mappings"; logfile.flush()
     """ [0] gene_mapping is a dict ``{gene_id: (gene_name,start,end,length,strand,chromosome)}``

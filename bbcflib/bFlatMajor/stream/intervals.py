@@ -15,7 +15,7 @@ def concatenate(trackList, fields=None, remove_duplicates=False, group_by=None, 
         of the tracks in *trackList*. [False]
     :param group_by: (list of str) if specified, elements having all values for these fields in
         common will be merged into a singe element. Other fields are merged according to *aggregate*
-        if specified, or `common.generic_merge` y default.
+        if specified, or `common.generic_merge` by default.
     :aggregate: (dict) for each field name given as a key, its value is the function
         to apply to the vector containing all different values for this field in order to merge them.
         E.g. ``{'score': lambda x: sum(x)}`` will return the sum of all scores in the output.
