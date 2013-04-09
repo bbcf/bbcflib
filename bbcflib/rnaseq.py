@@ -25,7 +25,7 @@ from bein import program
 
 # Other modules #
 import numpy
-from numpy import zeros, asarray, nonzero
+from numpy import zeros, asarray, nonzero, round as nround
 
 numpy.set_printoptions(precision=3,suppress=True)
 numpy.seterr(divide='ignore')
@@ -402,7 +402,7 @@ def to_rpkm(counts, lengths, nreads):
         rpkm = {}
         for k,v in counts.iteritems():
             rpkm[k] = 1000*(1e6*v/nreads)/lengths
-    rpkm = numpy.round(rpkm,2)
+    rpkm = nround(rpkm,2)
     return rpkm
 
 def build_custom_pileup(bamfile, transcript_mapping=None, debugfile=sys.stderr):
@@ -455,13 +455,14 @@ def rnaseq_workflow(ex, job, pileup_level=["exons","genes","transcripts"], via="
     ncond = len(conditions)
 
     # If the reads were aligned on transcriptome (maybe custom), do that and skip the rest
-    if 0 and custom_ref or job.assembly.intype==2:
+    if custom_ref or job.options.get('input_type_id')==2:
+        print "CUSTOM"
         if job.assembly.intype==2:
             tmap = assembly.get_transcript_mapping()
         else:
             tmap = {}
-            for c,length in assembly.chrmeta:
-                tmap[c] = ('','',0,length)
+            for c,meta in assembly.chrmeta:
+                tmap[c] = ('','',0,meta['length'])
         #(gene_id,gene_name,start,end,length,strand,chromosome)
         print >> logfile, "* Build pileups"; logfile.flush()
         pileups={}; nreads={};
@@ -552,8 +553,9 @@ def rnaseq_workflow(ex, job, pileup_level=["exons","genes","transcripts"], via="
     if "exons" in pileup_level:
         print >> logfile, "* Get scores of exons"; logfile.flush()
         (ecounts, erpkm) = exons_expression(exon_counts,exon_mapping,nreads)
-        ecounts = round(ecounts,0)
-        exons_data = [(e,)+tuple(ecounts[e])+tuple(erpkm[e])+itemgetter(3,4,1,2,5,6)(exon_mapping.get(e,("NA",)*6))
+        ecounts = ecounts
+        exons_data = [(e,) + tuple(nround(ecounts[e],0)) + tuple(erpkm[e])
+                           + itemgetter(3,4,1,2,5,6)(exon_mapping.get(e,("NA",)*6))
                       for e in ecounts.iterkeys()]
         header = ["ExonID"] + hconds + ["Start","End","GeneID","GeneName","Strand","Chromosome"]
         exons_file = save_results(ex, exons_data, conditions, group_ids, assembly, header=header, feature_type="EXONS")
@@ -562,8 +564,9 @@ def rnaseq_workflow(ex, job, pileup_level=["exons","genes","transcripts"], via="
     if "genes" in pileup_level:
         print >> logfile, "* Get scores of genes"; logfile.flush()
         (gcounts, grpkm) = genes_expression(exon_counts, gene_mapping, exon_mapping, ncond, nreads)
-        gcounts = round(gcounts,0)
-        genes_data = [(g,)+tuple(gcounts[g])+tuple(grpkm[g])+itemgetter(1,2,0,4,5)(gene_mapping.get(g,("NA",)*6))
+        gcounts = gcounts
+        genes_data = [(g,) + tuple(nround(gcounts[g],0)) + tuple(grpkm[g])
+                           + itemgetter(1,2,0,4,5)(gene_mapping.get(g,("NA",)*6))
                       for g in gcounts.iterkeys()]
         header = ["GeneID"] + hconds + ["Start","End","GeneName","Strand","Chromosome"]
         genes_file = save_results(ex, genes_data, conditions, group_ids, assembly, header=header, feature_type="GENES")
@@ -573,8 +576,9 @@ def rnaseq_workflow(ex, job, pileup_level=["exons","genes","transcripts"], via="
         print >> logfile, "* Get scores of transcripts"; logfile.flush()
         (tcounts,trpkm) = transcripts_expression(exon_counts, exon_mapping,
                    transcript_mapping, trans_in_gene, exons_in_trans, ncond, nreads)
-        tcounts = round(tcounts,2)
-        trans_data = [(t,)+tuple(tcounts[t])+tuple(trpkm[t])+itemgetter(2,3,0,1,5,6)(transcript_mapping.get(t,("NA",)*7))
+        tcounts = tcounts
+        trans_data = [(t,) + tuple(nround(tcounts[t],2)) + tuple(trpkm[t])
+                           + itemgetter(2,3,0,1,5,6)(transcript_mapping.get(t,("NA",)*7))
                       for t in tcounts.iterkeys()]
         header = ["TranscriptID"] + hconds + ["Start","End","GeneID","GeneName","Strand","Chromosome"]
         trans_file = save_results(ex, trans_data, conditions, group_ids, assembly, header=header, feature_type="TRANSCRIPTS")
