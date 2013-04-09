@@ -283,10 +283,9 @@ def genes_expression(exons_data, gene_mapping, exon_mapping, ncond, nreads):
     :param nreads: (numpy array) number of reads in each sample.
     """
     gene_counts={}; gene_rpkm={}
-    round = numpy.round
     for exon,counts in exons_data:
         g = exon_mapping[exon][1]
-        gene_counts[g] = gene_counts.get(g,zeros(ncond)) + round(counts,0)
+        gene_counts[g] = gene_counts.get(g,zeros(ncond)) + counts
     for g,counts in gene_counts.iteritems():
         gene_rpkm[g] = to_rpkm(counts, gene_mapping[g][3], nreads)
     return gene_counts, gene_rpkm
@@ -344,7 +343,7 @@ def transcripts_expression(exons_data, exon_mapping, transcript_mapping, trans_i
             # If only one transcript, special case for more precision
             if len(tg) == 1:
                 for c in range(ncond):
-                    trans_counts[t][c] = round(sum(ec[c]),0)
+                    trans_counts[t][c] = sum(ec[c])
                 continue
             # Compute transcript scores
             tc = []
@@ -361,7 +360,7 @@ def transcripts_expression(exons_data, exon_mapping, transcript_mapping, trans_i
             # Store results in a dict *trans_counts*
             for k,t in enumerate(tg):
                 for c in range(ncond):
-                    trans_counts[t][c] = round(tc[c][k],0)
+                    trans_counts[t][c] = tc[c][k]
         else:
             unknown += 1
     if unknown != 0:
@@ -456,7 +455,7 @@ def rnaseq_workflow(ex, job, pileup_level=["exons","genes","transcripts"], via="
     ncond = len(conditions)
 
     # If the reads were aligned on transcriptome (maybe custom), do that and skip the rest
-    if custom_ref or job.assembly.intype==2:
+    if 0 and custom_ref or job.assembly.intype==2:
         if job.assembly.intype==2:
             tmap = assembly.get_transcript_mapping()
         else:
@@ -553,6 +552,7 @@ def rnaseq_workflow(ex, job, pileup_level=["exons","genes","transcripts"], via="
     if "exons" in pileup_level:
         print >> logfile, "* Get scores of exons"; logfile.flush()
         (ecounts, erpkm) = exons_expression(exon_counts,exon_mapping,nreads)
+        ecounts = round(ecounts,0)
         exons_data = [(e,)+tuple(ecounts[e])+tuple(erpkm[e])+itemgetter(3,4,1,2,5,6)(exon_mapping.get(e,("NA",)*6))
                       for e in ecounts.iterkeys()]
         header = ["ExonID"] + hconds + ["Start","End","GeneID","GeneName","Strand","Chromosome"]
@@ -562,6 +562,7 @@ def rnaseq_workflow(ex, job, pileup_level=["exons","genes","transcripts"], via="
     if "genes" in pileup_level:
         print >> logfile, "* Get scores of genes"; logfile.flush()
         (gcounts, grpkm) = genes_expression(exon_counts, gene_mapping, exon_mapping, ncond, nreads)
+        gcounts = round(gcounts,0)
         genes_data = [(g,)+tuple(gcounts[g])+tuple(grpkm[g])+itemgetter(1,2,0,4,5)(gene_mapping.get(g,("NA",)*6))
                       for g in gcounts.iterkeys()]
         header = ["GeneID"] + hconds + ["Start","End","GeneName","Strand","Chromosome"]
@@ -572,6 +573,7 @@ def rnaseq_workflow(ex, job, pileup_level=["exons","genes","transcripts"], via="
         print >> logfile, "* Get scores of transcripts"; logfile.flush()
         (tcounts,trpkm) = transcripts_expression(exon_counts, exon_mapping,
                    transcript_mapping, trans_in_gene, exons_in_trans, ncond, nreads)
+        tcounts = round(tcounts,2)
         trans_data = [(t,)+tuple(tcounts[t])+tuple(trpkm[t])+itemgetter(2,3,0,1,5,6)(transcript_mapping.get(t,("NA",)*7))
                       for t in tcounts.iterkeys()]
         header = ["TranscriptID"] + hconds + ["Start","End","GeneID","GeneName","Strand","Chromosome"]
