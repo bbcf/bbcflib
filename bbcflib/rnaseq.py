@@ -456,13 +456,12 @@ def rnaseq_workflow(ex, job, pileup_level=["exons","genes","transcripts"], via="
 
     # If the reads were aligned on transcriptome (maybe custom), do that and skip the rest
     if custom_ref or job.options.get('input_type_id')==2:
-        print "CUSTOM"
-        if job.assembly.intype==2:
+        if assembly.intype==2:
             tmap = assembly.get_transcript_mapping()
         else:
             tmap = {}
-            for c,meta in assembly.chrmeta:
-                tmap[c] = ('','',0,meta['length'])
+            for c,meta in assembly.chrmeta.iteritems():
+                tmap[c] = ('','',0,meta['length'],0,0,c)
         #(gene_id,gene_name,start,end,length,strand,chromosome)
         print >> logfile, "* Build pileups"; logfile.flush()
         pileups={}; nreads={};
@@ -486,8 +485,9 @@ def rnaseq_workflow(ex, job, pileup_level=["exons","genes","transcripts"], via="
         tcounts={}; trpkm={}
         for t,c in trans_counts:
             tcounts[t] = c
-            trpkm[t] = to_rpkm(c, tmap[t][4]-tmap[t][3], nreads)
-        exons_data = [(t,)+tuple(tcounts[t])+tuple(trpkm[t])+itemgetter(3,4,1,2,5,6)(tmap.get(t,("NA",)*6))
+            trpkm[t] = to_rpkm(c, tmap[t][3]-tmap[t][2], nreads)
+        exons_data = [(t,) + tuple(nround(tcounts[t],0)) + tuple(trpkm[t])
+                           + itemgetter(3,4,1,2,5,6)(tmap.get(t,("NA",)*6))
                       for t in tcounts.iterkeys()]
         header = ["ExonID"] + hconds + ["Start","End","GeneID","GeneName","Strand","Chromosome"]
         trans_file = save_results(ex,exons_data,conditions,group_ids,assembly,header=header,feature_type="Transcript")
