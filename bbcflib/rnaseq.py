@@ -483,7 +483,6 @@ def rnaseq_workflow(ex, job, pileup_level=["exons","genes","transcripts"], via="
         tcounts={}; trpkm={}
         for k in range(len(ids)):
             t = ids[k]; c = counts[k]
-            print t, tmap[t], c
             if sum(c)!=0:
                 tcounts[t] = c
                 trpkm[t] = to_rpkm(c, tmap[t][3]-tmap[t][2], nreads)
@@ -565,6 +564,7 @@ def rnaseq_workflow(ex, job, pileup_level=["exons","genes","transcripts"], via="
     """ Get scores of genes from exons """
     if "genes" in pileup_level:
         print >> logfile, "* Get scores of genes"; logfile.flush()
+
         (gcounts, grpkm) = genes_expression(exon_counts, gene_mapping, exon_mapping, ncond, nreads)
         gcounts = gcounts
         genes_data = [(g,) + tuple(nround(gcounts[g],0)) + tuple(grpkm[g])
