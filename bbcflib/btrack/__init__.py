@@ -264,14 +264,18 @@ def stats(source,out=sys.stdout,hlimit=15,wlimit=100, **kwargs):
         total = 0.0
         score_idx = s.fields.index('score')
         for nfeat,x in enumerate(s):
-            sc = x[score_idx]
-            total += sc
-            distr[sc] = distr.get(sc,0.0) + 1
+            v = x[score_idx]
+            total += v
+            distr[v] = distr.get(v,0.0) + 1
         smean = total/nfeat
         vals = sorted(distr.keys())
-        lvals = len(vals)
-        if lvals%2 == 1: smedian = vals[(lvals+1)/2]
-        else: smedian = 0.5*(vals[lvals/2]+vals[lvals/2+1])
+        smedian = cumul = 0
+        lastv = vals[0]
+        for v in vals:
+            cumul += distr(vals)
+            if cumul > 0.5*total:
+                smedian = v if total%2==1 else (v+lastv)/2
+            lastv = v
         stdev = (sum((x-smean)**2 for x in vals)/nfeat)**(0.5)
         smin = vals[0]; smax = vals[-1]
     print >> out, "Fields:", str(','.join(s.fields))
