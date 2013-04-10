@@ -412,7 +412,7 @@ def build_custom_pileup(bamfile, transcript_mapping=None, debugfile=sys.stderr):
     c = Counter()
     for t in sam.references:
         ref = t.split('|')[0]
-        start,end = transcript_mapping.get(t,(0,0,0))[2:4]
+        start,end = (0, transcript_mapping.get(ref,(0,)*6)[4])
         sam.fetch(ref,start,end, callback=c)
         counts[t] = c.n
         c.n = 0
@@ -459,10 +459,11 @@ def rnaseq_workflow(ex, job, pileup_level=["exons","genes","transcripts"], via="
         if assembly.intype==2:
             tmap = assembly.get_transcript_mapping()
         else:
-            tmap = {}
-            for c,meta in assembly.chrmeta.iteritems():
-                tmap[c] = ('','',0,meta['length'],0,0,c)
-        #(gene_id,gene_name,start,end,length,strand,chromosome)
+            firstbam = job.files.itervalues().next().itervalues().next()['bam']
+            firstbamtrack = track(firstbam,format='bam')
+            tmap={}
+            for c,meta in firstbamtrack.chrmeta.iteritems():
+                tmap[c] = ('','',0,meta['length'],meta['length'],0,'') #(gene_id,gene_name,start,end,length,strand,chr)
         print >> logfile, "* Build pileups"; logfile.flush()
         pileups={}; nreads={};
         for gid,files in job.files.iteritems():
@@ -479,18 +480,19 @@ def rnaseq_workflow(ex, job, pileup_level=["exons","genes","transcripts"], via="
         nreads = asarray([nreads[cond] for cond in conditions], dtype=numpy.float_)
         counts = asarray([pileups[cond] for cond in conditions], dtype=numpy.float_).T
         del pileups
-        trans_counts = [(ids[k],counts[k]) for k in range(len(ids)) if sum(counts[k])!=0]
-        hconds = ["counts."+c for c in conditions] + ["rpkm."+c for c in conditions]
-        print >> logfile, "* Get scores"; logfile.flush()
         tcounts={}; trpkm={}
-        for t,c in trans_counts:
-            tcounts[t] = c
-            trpkm[t] = to_rpkm(c, tmap[t][3]-tmap[t][2], nreads)
-        exons_data = [(t,) + tuple(nround(tcounts[t],0)) + tuple(trpkm[t])
-                           + itemgetter(3,4,1,2,5,6)(tmap.get(t,("NA",)*6))
+        for k in range(len(ids)):
+            t = ids[k]; c = counts[k]
+            print t, tmap[t], c
+            if sum(c)!=0:
+                tcounts[t] = c
+                trpkm[t] = to_rpkm(c, tmap[t][3]-tmap[t][2], nreads)
+        trans_data = [(t,) + tuple(nround(tcounts[t],0)) + tuple(trpkm[t])
+                           + itemgetter(2,3,0,1,5,6)(tmap.get(t,("NA",)*6))
                       for t in tcounts.iterkeys()]
+        hconds = ["counts."+c for c in conditions] + ["rpkm."+c for c in conditions]
         header = ["ExonID"] + hconds + ["Start","End","GeneID","GeneName","Strand","Chromosome"]
-        trans_file = save_results(ex,exons_data,conditions,group_ids,assembly,header=header,feature_type="Transcript")
+        trans_file = save_results(ex,trans_data,conditions,group_ids,assembly,header=header,feature_type="Transcripts")
         result = {"transcripts":trans_file}
         if len(hconds) > 1:
             print >> logfile, "* Differential analysis"; logfile.flush()

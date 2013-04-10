@@ -3,7 +3,7 @@
 Module: bbcflib.workflows
 =========================
 
-This module provides a base class that can be used to construct workflows from the various 
+This module provides a base class that can be used to construct workflows from the various
 modules in this library.
 
 
@@ -32,7 +32,7 @@ class Workflow(object):
 #### but the name 4cseq is used in outputs and in variable names
         self.name = kw.get('name',self.module)
         self.opts = (
-            ("-v", "--via", "Run executions locally or remotely (can be 'local' or 'lsf')", 
+            ("-v", "--via", "Run executions locally or remotely (can be 'local' or 'lsf')",
              {'default': _via}),
             ("-k", "--key", "Alphanumeric key of the %s job" %self.name,
              {'default': None}),
@@ -43,7 +43,7 @@ class Workflow(object):
         self.opts += kw.get("opts",())
         self.usage = _usage + str(kw.get('usage',''))
         self.desc = kw.get('desc',_description)
-#### By default the workflow will execute the call 
+#### By default the workflow will execute the call
 ####     X_workflow(ex,**self.main_args) from bbcflib.X where X is the module name
 #### Can be overloaded in derived classes
         __import__('bbcflib.'+self.module)
@@ -56,7 +56,7 @@ class Workflow(object):
 
     def __call__(self,opts):
         self.opts = opts
-        if os.path.exists(self.opts.wdir): 
+        if os.path.exists(self.opts.wdir):
             os.chdir(self.opts.wdir)
         else:
             raise Usage("Working directory '%s' does not exist." %self.opts.wdir)
@@ -89,15 +89,15 @@ class Workflow(object):
                         self.job.options['fasta_file'] = os.path.abspath("ref_sequence"+ext)
             if not os.path.exists(self.job.options['fasta_file']):
                 raise Usage("Don't know where to find fasta file %s." %self.job.options["fasta_file"])
-        g_rep = genrep.GenRep( url=self.globals.get("genrep_url"), 
+        g_rep = genrep.GenRep( url=self.globals.get("genrep_url"),
                                root=self.globals.get("bwt_root") )
 ##### Configure facility LIMS
         if 'lims' in self.globals:
             from bbcflib import daflims
-            self.job.dafl = dict((loc,daflims.DAFLIMS( username=self.globals['lims']['user'], 
+            self.job.dafl = dict((loc,daflims.DAFLIMS( username=self.globals['lims']['user'],
                                                        password=pwd ))
                                  for loc,pwd in self.globals['lims']['passwd'].iteritems())
-        else: 
+        else:
             self.job.dafl = None
 ########################################################################
 ##########################  EXECUTION  #################################
@@ -106,17 +106,17 @@ class Workflow(object):
         self.logfile = open(self.opts.key+".log",'w')
         self.debugfile = open(self.opts.key+".debug",'w')
         self.debug_write(json.dumps(self.globals)+"\n")
-        with execution( M, description=self.opts.key, 
+        with execution( M, description=self.opts.key,
                         remote_working_directory=self.opts.wdir ) as ex:
             self.log_write("Enter execution. Current working directory: %s" %ex.working_directory)
-            self.job.assembly = genrep.Assembly( assembly=self.job.assembly_id, 
+            self.job.assembly = genrep.Assembly( assembly=self.job.assembly_id,
                                                  genrep=g_rep,
                                                  fasta=self.job.options.get('fasta_file'),
                                                  annot=self.job.options.get('annot_file'),
                                                  intype=self.job.options.get('input_type_id',0),
                                                  ex=ex, via=self.opts.via )
 ##### Check all the options
-            if not self.check_options(): 
+            if not self.check_options():
                 raise Usage("Problem with options %s" %self.opts)
             self.debug_write(json.dumps(self.job.options))
             self.init_files( ex )
@@ -155,7 +155,7 @@ class Workflow(object):
                     'ucsc_bigwig':(True,(self.job.assembly.intype == 0)),
                     'create_gdv_project':(False,)}
         defaults.update(more_defs)
-        for op,val in defaults.iteritems(): 
+        for op,val in defaults.iteritems():
             self.job.options.setdefault(op,val[0])
             if isinstance(self.job.options[op],basestring):
                 self.job.options[op] = self.job.options[op].lower() in ['1','true','t']
@@ -174,23 +174,23 @@ class Workflow(object):
         from bbcflib.mapseq import get_bam_wig_files
         msurl = self.globals.get('hts_mapseq',{}).get('url','')
         scpath = self.globals.get('script_path','')
-        self.job = get_bam_wig_files( ex, self.job, 
-                                      minilims=self.mapseq_minilims, 
+        self.job = get_bam_wig_files( ex, self.job,
+                                      minilims=self.mapseq_minilims,
                                       hts_url=msurl, suffix=self.suffix,
                                       script_path=scpath, via=self.opts.via )
         return True
 
-    def gdv_create(self,ex): 
+    def gdv_create(self,ex):
         from bbcflib import gdv
-        project = gdv.get_project(mail=self.globals['gdv']['email'], 
-                                  key=self.globals['gdv']['key'], 
+        project = gdv.get_project(mail=self.globals['gdv']['email'],
+                                  key=self.globals['gdv']['key'],
                                   project_key=self.job.options['gdv_key'])
         if 'error' in project:
             self.log_write("Creating GDV project.")
-            project = gdv.new_project( self.globals['gdv']['email'], 
+            project = gdv.new_project( self.globals['gdv']['email'],
                                        self.globals['gdv']['key'],
-                                       self.job.description, 
-                                       self.job.assembly.id, 
+                                       self.job.description,
+                                       self.job.assembly.id,
                                        self.globals['gdv']['url'] )
             self.debug_write("\nGDV project: "+json.dumps(project))
             add_pickle( ex, project, description=set_file_descr("gdv_json",step='gdv',type='py',view='admin') )
@@ -198,15 +198,15 @@ class Workflow(object):
         return True
 
 
-    def gdv_upload(self,files): 
+    def gdv_upload(self,files):
         glg = self.globals['gdv']
         project = self.job.options['gdv_project']['project']
         download_url = normalize_url(self.globals['hts_'+self.name]['download'])
-        urls_names = dict(("%s/%s" %(download_url,k),re.sub('\.sql.*','',str(f))) 
+        urls_names = dict(("%s/%s" %(download_url,k),re.sub('\.sql.*','',str(f)))
                           for k,f in files.iteritems())
         self.log_write("Uploading GDV tracks:\n"+" ".join(urls_names.keys())+"\n"+" ".join(urls_names.values()))
         try:
-            tr = gdv.multiple_tracks(mail=glg['email'], key=glg['key'], serv_url=glg['url'], 
+            tr = gdv.multiple_tracks(mail=glg['email'], key=glg['key'], serv_url=glg['url'],
                                      project_id=project['id'],
                                      extensions=['sql']*len(urls_names),
                                      urls=urls_names.keys(), names=urls_names.values(), force=True )
@@ -218,7 +218,7 @@ class Workflow(object):
         return {gdv_project_url: 'GDV view'}
 
     def send_email(self):
-        if not('email' in self.globals and hasattr(self.job,"email")): 
+        if not('email' in self.globals and hasattr(self.job,"email")):
             return
         from bbcflib import email
         r = email.EmailReport( sender=self.globals['email']['sender'],
