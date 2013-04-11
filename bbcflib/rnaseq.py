@@ -160,9 +160,9 @@ def build_custom_pileup(bamfile, transcript_mapping=None, debugfile=sys.stderr):
     c = Counter()
     for n,ref in enumerate(sam.references):
         start = 0
-        end = transcript_mapping.get(ref,(sam.lengths[n],)*6)[4])
+        end = transcript_mapping.get(ref,(sam.lengths[n],)*6)[4]
         sam.fetch(ref, start, end, callback=c)
-        counts[t] = c.n
+        counts[ref] = c.n
         c.n = 0
     sam.close()
     return counts
