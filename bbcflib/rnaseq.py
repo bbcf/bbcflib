@@ -34,7 +34,8 @@ class Counter(object):
     def __init__(self):
         self.n = 0
     def __call__(self, alignment):
-        self.n += 1
+        NH = [1.0/t[1] for t in alignment.tags if t[0]=='NH']+[1]
+        self.n += NH[0]
 
 def positive(x):
     """Set to zero all negative components of an array."""
@@ -162,7 +163,7 @@ def build_custom_pileup(bamfile, transcript_mapping=None, debugfile=sys.stderr):
         start = 0
         end = transcript_mapping.get(ref.split('|')[0],(sam.lengths[n],)*6)[4]
         sam.fetch(ref, start, end, callback=c)
-        counts[ref] = c.n
+        counts[ref] = int(.5+c.n)
         c.n = 0
     sam.close()
     return counts
