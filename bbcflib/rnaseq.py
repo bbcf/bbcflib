@@ -158,8 +158,7 @@ def build_custom_pileup(bamfile, transcript_mapping=None, debugfile=sys.stderr):
     try: sam = pysam.Samfile(bamfile, 'rb')
     except ValueError: sam = pysam.Samfile(bamfile,'r')
     c = Counter()
-    for t in sam.references:
-        ref = t.split('|')[0]
+    for ref in sam.references:
         start,end = (0, transcript_mapping.get(ref,(0,)*6)[4])
         sam.fetch(ref,start,end, callback=c)
         counts[t] = c.n
@@ -458,7 +457,7 @@ def rnaseq_workflow(ex, job, assembly=None,
 
     # If the reads were aligned on transcriptome (maybe custom), do that and skip the rest
     if hasattr(assembly,"fasta_origin") or assembly.intype == 2:
-        if job.assembly.intype==2:
+        if assembly.intype==2:
             tmap = assembly.get_transcript_mapping()
             ftype = "Transcripts"
         else:
