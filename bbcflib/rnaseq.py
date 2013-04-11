@@ -130,7 +130,7 @@ def lsqnonneg(C, d, x0=None, tol=None, itmax_factor=3):
 
 @timer
 def fetch_mappings(assembly):
-    """Given an assembly_id, returns a tuple
+    """Given an assembly object, returns a tuple
     ``(gene_mapping, transcript_mapping, exon_mapping, trans_in_gene, exons_in_trans)``
 
     * [0] gene_mapping is a dict ``{gene_id: (gene name,start,end,length,chromosome)}``
@@ -420,7 +420,8 @@ def to_rpkm(counts, lengths, nreads):
     return rpkm
 
 @timer
-def rnaseq_workflow(ex, job, pileup_level=["exons","genes","transcripts"], via="lsf",
+def rnaseq_workflow(ex, job, assembly=None,
+                    pileup_level=["exons","genes","transcripts"], via="lsf",
                     rpath=None, junctions=None, unmapped=None,
                     logfile=sys.stdout, debugfile=sys.stderr):
     """Main function of the workflow.
@@ -428,6 +429,7 @@ def rnaseq_workflow(ex, job, pileup_level=["exons","genes","transcripts"], via="
     :rtype: None
     :param ex: the bein's execution Id.
     :param job: a Frontend.Job object (or a dictionary of the same form).
+    :param assembly: a GenRep.Assembly object
     :param bam_files: a dictionary such as returned by mapseq.get_bam_wig_files.
     :param rpath: (str) path to the R executable.
     :param junctions: (bool) whether to search for splice junctions using SOAPsplice. [False]
@@ -435,7 +437,8 @@ def rnaseq_workflow(ex, job, pileup_level=["exons","genes","transcripts"], via="
     :param via: (str) send job via 'local' or 'lsf'. ["lsf"]
     """
     group_names={}; group_ids={}; conditions=[]
-    assembly = genrep.Assembly(assembly=job.assembly_id)
+    if assembly is None: 
+        assembly = genrep.Assembly(assembly=job.assembly_id)
     groups = job.groups
     if len(groups)==0: sys.exit("No groups/runs were given.")
     for gid,group in groups.iteritems():
@@ -454,7 +457,7 @@ def rnaseq_workflow(ex, job, pileup_level=["exons","genes","transcripts"], via="
     ncond = len(conditions)
 
     # If the reads were aligned on transcriptome (maybe custom), do that and skip the rest
-    if job.options.get('fasta_file') or job.options.get('input_type_id')==2:
+    if hasattr(assembly,"fasta_origin") or assembly.intype == 2:
         if job.assembly.intype==2:
             tmap = assembly.get_transcript_mapping()
             ftype = "Transcripts"
