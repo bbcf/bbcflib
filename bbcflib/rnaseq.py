@@ -160,6 +160,7 @@ def build_custom_pileup(bamfile, transcript_mapping=None, debugfile=sys.stderr):
     except ValueError: sam = pysam.Samfile(bamfile,'r')
     c = Counter()
     for n,ref in enumerate(sam.references):
+        ref = ref.split('|')[0]
         start = 0
         end = transcript_mapping.get(ref,(sam.lengths[n],)*6)[4]
         sam.fetch(ref, start, end, callback=c)
@@ -438,7 +439,7 @@ def rnaseq_workflow(ex, job, assembly=None,
     :param via: (str) send job via 'local' or 'lsf'. ["lsf"]
     """
     group_names={}; group_ids={}; conditions=[]
-    if assembly is None: 
+    if assembly is None:
         assembly = genrep.Assembly(assembly=job.assembly_id)
     groups = job.groups
     if len(groups)==0: sys.exit("No groups/runs were given.")
