@@ -1,6 +1,6 @@
 from bbcflib.btrack import FeatureStream
 from functools import wraps
-import sys, re, itertools
+import sys, re, itertools, operator
 from numpy import log as nlog
 from numpy import asarray,mean,median,exp,nonzero,prod,around,argsort,float_
 
@@ -255,24 +255,26 @@ def map_chromosomes( stream, chromosomes, keep=False ):
                               for x in stream if x[ic] in chrom_map),stream.fields)
 
 ####################################################################
-def score_threshold( stream, threshold=0.0, lower=False, fields='score' ):
+def score_threshold( stream, threshold=0.0, lower=False, strict=False, fields='score' ):
     """
     Filter the features of a track which score is above or below a certain threshold.
 
     :param stream: FeatureStream, or list of FeatureStream objects.
     :param threshold: (float) threshold above/below which features are retained
     :param lower: (bool) higher (False) or lower (True) bound.
+    :param strict: (bool) strictly above/below threshold.
     :param fields: (str or list of str) names of the fields to apply the filter to.
     :rtype: FeatureStream, or list of FeatureStream objects
     """
     if not(isinstance(fields,(list,tuple))):
            fields = [fields]
     def _threshold(stream,th,lower,fields):
-        if not lower: lower = -1
-        else: lower = 1
+        gt = operator.gt if strict else operator.ge
+        lower = -1 if lower else 1
         fidx = [stream.fields.index(f) for f in fields]
         for x in stream:
-            if all([lower*x[k] >= lower*th for k in fidx]):
+            print lower*x[0],lower*th, gt(lower*x[0],lower*th)
+            if all([gt(lower*x[k],lower*th) for k in fidx]):
                 yield x
     if isinstance(stream,(list,tuple)):
         return [FeatureStream(_threshold(s,threshold,lower,fields), fields=s.fields) for s in stream]
