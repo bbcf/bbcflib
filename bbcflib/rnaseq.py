@@ -160,9 +160,9 @@ def build_custom_pileup(bamfile, transcript_mapping=None, debugfile=sys.stderr):
     except ValueError: sam = pysam.Samfile(bamfile,'r')
     c = Counter()
     for n,ref in enumerate(sam.references):
-        ref = ref.split('|')[0]
+        ref = 
         start = 0
-        end = transcript_mapping.get(ref,(sam.lengths[n],)*6)[4]
+        end = transcript_mapping.get(ref.split('|')[0],(sam.lengths[n],)*6)[4]
         sam.fetch(ref, start, end, callback=c)
         counts[ref] = int(.5+c.n)
         c.n = 0
