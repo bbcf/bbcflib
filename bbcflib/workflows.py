@@ -72,6 +72,9 @@ class Workflow(object):
             self.job = htss.job( self.opts.key )
             [M.delete_execution(x) for x in \
                  M.search_executions(with_description=self.opts.key,fails=True)]
+            if self.job.options.get("config_file") \
+                    and os.path.exists(self.job.options["config_file"]):
+                self.opts.config = os.path.abspath(self.job.options["config_file"])
             if self.opts.config and os.path.exists(self.opts.config):
                 (self.job,self.globals) = frontend.parseConfig( self.opts.config, self.job, self.globals )
         elif os.path.exists(self.opts.config):
