@@ -30,7 +30,7 @@ Below is the script used by the frontend::
         job = get_bam_wig_files( ex, job, ms_limspath, gl['hts_mapseq']['url'], gl['script_path'], via=via )
         files = chipseq_workflow( ex, job, ms_files, assembly, gl['script_path'] )
     print ex.id
-    allfiles = common.get_files( ex.id, M )
+    allfiles = get_files( ex.id, M )
     print allfiles
 """
 
@@ -38,7 +38,8 @@ Below is the script used by the frontend::
 import re, os, gzip, sys, time
 
 # Internal modules #
-from bbcflib import frontend, mapseq, common
+from bbcflib import frontend, mapseq
+from bbcflib.common import unique_filename_in, set_file_descr, join_pdf, merge_sql, intersect_many_bed
 from bbcflib.btrack import track, FeatureStream, convert
 from bbcflib.bFlatMajor import stream as gm_stream
 from bbcflib.bFlatMajor import common as gm_common
@@ -65,7 +66,7 @@ def macs( read_length, genome_size, bamfile, ctrlbam=None, args=None ):
     if "-n" in macs_args:
         outname = macs_args[macs_args.index("-n")+1]
     else:
-        outname = common.unique_filename_in()
+        outname = unique_filename_in()
         macs_args += ["-n",outname]
     if not("-s" in macs_args): macs_args += ["-s",str(read_length)]
     if not("--verbose" in macs_args): macs_args += ["--verbose","1"]
@@ -118,10 +119,10 @@ def add_macs_results( ex, read_length, genome_size, bamfile,
         macs_descr2 = {'step':'macs','type':'bed','groupId':n[0][0],'ucsc':'1'}
         filename = "_vs_".join([x[1] for x in n if x[0]])
         touch( ex, p )
-        ex.add( p, description=common.set_file_descr(filename,**macs_descr0),
+        ex.add( p, description=set_file_descr(filename,**macs_descr0),
                 alias=alias )
         ex.add( p+"_peaks.xls",
-                description=common.set_file_descr(filename+"_peaks.xls",**macs_descr1),
+                description=set_file_descr(filename+"_peaks.xls",**macs_descr1),
                 associate_to_filename=p, template='%s_peaks.xls' )
         bedzip = gzip.open(p+"_peaks.bed.gz",'wb')
         bedzip.write("track name='"+filename+"_macs_peaks'\n")
@@ -129,7 +130,7 @@ def add_macs_results( ex, read_length, genome_size, bamfile,
             [bedzip.write(l) for l in bedinf]
         bedzip.close()
         ex.add( p+"_peaks.bed.gz",
-                description=common.set_file_descr(filename+"_peaks.bed.gz",**macs_descr2),
+                description=set_file_descr(filename+"_peaks.bed.gz",**macs_descr2),
                 associate_to_filename=p, template='%s_peaks.bed.gz' )
         bedzip = gzip.open(p+"_summits.bed.gz",'wb')
         bedzip.write("track name='"+filename+"_macs_summits'\n")
@@ -137,11 +138,11 @@ def add_macs_results( ex, read_length, genome_size, bamfile,
             [bedzip.write(l) for l in bedinf]
         bedzip.close()
         ex.add( p+"_summits.bed.gz",
-                description=common.set_file_descr(filename+"_summits.bed.gz",**macs_descr2),
+                description=set_file_descr(filename+"_summits.bed.gz",**macs_descr2),
                 associate_to_filename=p, template='%s_summits.bed.gz' )
         if n[1][0]:
             ex.add( p+"_negative_peaks.xls",
-                    description=common.set_file_descr(filename+"_negative_peaks.xls",**macs_descr1),
+                    description=set_file_descr(filename+"_negative_peaks.xls",**macs_descr1),
                     associate_to_filename=p, template='%s_negative_peaks.xls' )
     return prefixes
 
@@ -154,7 +155,7 @@ def camelPeaks( scores_fwd, scores_rev, peaks, chromosome_name, chromosome_lengt
     and 'read_extension', using functions from 'script_path'/deconv_fcts.R.
     Returns a pdf file and several data tracks.
     """
-    output = common.unique_filename_in()
+    output = unique_filename_in()
     args = ["-p",peaks,"-f",scores_fwd,"-r",scores_rev,"-o",output,"-c",chromosome_name,
             "-l",str(chromosome_length),"-e",str(read_extension),"-z",script_path,"-s","1500"]
     return {'arguments': ["camelPeaks.py"]+args, 'return_value': None}
@@ -170,7 +171,7 @@ def run_deconv(ex, sql, peaks, chromosomes, read_extension, script_path, via = '
     deconv_futures = {}
     stdout_files = {}
     for clen,chrom in sorted([(v['length'],k) for k,v in chromosomes.iteritems()],reverse=True):
-        stdout_files[chrom] = common.unique_filename_in()
+        stdout_files[chrom] = unique_filename_in()
         deconv_futures[chrom] = camelPeaks.nonblocking( ex, sql['fwd'], sql['rev'], peaks,
                                                         chrom, clen,
                                                         read_extension, script_path,
@@ -190,10 +191,8 @@ def run_deconv(ex, sql, peaks, chromosomes, read_extension, script_path, via = '
                 if re.search(r'\*\*\*\*\*\*\*\*\*\*\*\*OUTPUT FILES\*\*\*\*\*\*\*\*\*\*',row):
                     scan = True
     if len(deconv_out)>0:
-        pdf_future = common.join_pdf.nonblocking( ex,
-                                                  [x[0] for x in deconv_out.values() if len(x)>0],
-                                                  via=via )
-    output = common.unique_filename_in()
+        pdf_future = join_pdf.nonblocking( ex, [x[0] for x in deconv_out.values() if len(x)>0], via=via )
+    output = unique_filename_in()
     outfiles = {}
     outfiles['peaks'] = output+"_peaks.sql"
     outfiles['profile'] = output+"_deconv.sql"
@@ -330,7 +329,7 @@ def chipseq_workflow( ex, job_or_dict, assembly, script_path='', logfile=sys.std
                  for x in names['controls']])
         ##############################
         macs_neighb = gm_stream.neighborhood( macsbed, before_start=150, after_end=150 )
-        peak_list[name] = common.unique_filename_in()+".sql"
+        peak_list[name] = unique_filename_in()+".sql"
         macs_final = track( peak_list[name], chrmeta=chrlist,
                             info={'datatype':'qualitative'},
                             fields=['start','end','name','score'] )
@@ -358,7 +357,7 @@ def chipseq_workflow( ex, job_or_dict, assembly, script_path='', logfile=sys.std
                 else:
                     wig.append(m['wig'])
             if len(wig) > 1:
-                merged_wig[group_name] = dict((s,common.merge_sql(ex, [x[s] for x in wig], via=via))
+                merged_wig[group_name] = dict((s,merge_sql(ex, [x[s] for x in wig], via=via))
                                               for s in suffixes)
             else:
                 merged_wig[group_name] = wig[0]
@@ -368,8 +367,8 @@ def chipseq_workflow( ex, job_or_dict, assembly, script_path='', logfile=sys.std
                 ctrl = (name,names['controls'][0])
                 macsbed = processed['macs'][ctrl]+"_peaks.bed"
             else:
-                macsbed = common.intersect_many_bed( ex, [processed['macs'][(name,x)]+"_peaks.bed"
-                                                          for x in names['controls']], via=via )
+                macsbed = intersect_many_bed( ex, [processed['macs'][(name,x)]+"_peaks.bed"
+                                                   for x in names['controls']], via=via )
             deconv = run_deconv( ex, merged_wig[name[1]], macsbed, assembly.chrmeta,
                                  options['read_extension'], script_path, via=via )
             ##############################
@@ -378,7 +377,7 @@ def chipseq_workflow( ex, job_or_dict, assembly, script_path='', logfile=sys.std
                     rowpatt = re.search(r';FERR=([\d\.]+)$',row[4])
                     if rowpatt and float(rowpatt.groups()[0]) <= pval: yield row
             ##############################
-            peak_list[name] = common.unique_filename_in()+".bed"
+            peak_list[name] = unique_filename_in()+".bed"
             bedfile = track(peak_list[name], chrmeta=chrlist,
                             fields=["chr","start","end","name","score"])
             trbed = track(deconv['peaks'])
@@ -387,15 +386,11 @@ def chipseq_workflow( ex, job_or_dict, assembly, script_path='', logfile=sys.std
                     _filter_deconv(trbed.read(fields=trfields),0.65),fields=trfields))
             bedfile.close()
             ex.add(deconv['peaks'],
-                   description=common.set_file_descr(name[1]+'_peaks.sql',
-                                                     type='sql',
-                                                     step='deconvolution',
-                                                     groupId=name[0]))
+                   description=set_file_descr(name[1]+'_peaks.sql', type='sql',
+                                              step='deconvolution', groupId=name[0]))
             ex.add(deconv['profile'],
-                   description=common.set_file_descr(name[1]+'_deconv.sql',
-                                                     type='sql',
-                                                     step='deconvolution',
-                                                     groupId=name[0]))
+                   description=set_file_descr(name[1]+'_deconv.sql', type='sql',
+                                              step='deconvolution',  groupId=name[0]))
             bigwig = common.unique_filename_in()
             convert(deconv['profile'],(bigwig,"bigWig"))
             ex.add(bigwig,
