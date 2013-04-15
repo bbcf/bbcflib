@@ -45,19 +45,20 @@ def _end(lopts,last,**kwargs):
         names = kwargs['legend']
         robjects.r("legend('topright', c('%s'), col=1:%i%s)" %("','".join(names),len(names),lopts))
     robjects.r("dev.off()")
+
 ###################V#########################################
 ############################################################
-def venn(D,output=None,format='pdf',new=True,last=True,**kwargs):
-    """Creates a Venn diagram of D.
+def venn(D,options={},output=None,format='pdf',new=True,last=True,**kwargs):
+    """Creates a Venn diagram of D using the *VennDiagram* R package.
 
     :param D: dict `{group_name: count}`. `group_name` is either one name (e.g. 'A')
-    or a combination such as 'A|B' - if the items belong to groups A and B.
+        or a combination such as 'A|B' - if the items belong to groups A and B.
+    :param opts: VennDiagram options, given as a dict `{'option': value}`.
+        Ex. `{'euler.d':'TRUE', 'fill':['red','blue']}`
     """
     plotopt,output = _begin(output=output,format=format,new=new,**kwargs)
     groups = sorted([x for x in D if len(x.split('|'))==1])
     ngroups = len(groups)
-    #combn = sorted(D.keys())
-    #groups = [chr(i+65) for i in range(ngroups)]
     combn = [combinations(groups,k) for k in range(1,ngroups+1)]
     combn = ['|'.join(sorted(y)) for x in combn for y in x]
     if   ngroups == 2:
@@ -78,13 +79,16 @@ def venn(D,output=None,format='pdf',new=True,last=True,**kwargs):
                 n12=%d, n13=%d, n14=%d, n15=%d, n23=%d, n24=%d, n25=%d, n34=%d, n35=%d, n45=%d,
                 n123=%d, n124=%d, n125=%d, n134=%d, n135=%d, n145=%d, n234=%d, n235=%d, n245=%d, n345=%d,
                 n1234=%d, n1235=%d, n1245=%d, n1345=%d, n2345=%d""" % tuple([D.get(c,0) for c in combn])
-    print D, groups, combn
-    print """%s(%s)""" % (fun,rargs)
+    rargs += ", category=c('%s')" % '\',\''.join(groups) # group names
+    for opt,val in options.iteritems():
+        if isinstance(val,(list,tuple)):
+            val = ','.join('%s'%v if isinstance(v,str) else v for v in val)
+        rargs += ", %s=c(%s)" % (opt,val)
     robjects.r("""library(VennDiagram)""")
-    robjects.r("""%s(%s)""" % (fun,rargs))
-
+    robjects.r("""venn.plot <- %s(%s%s)""" % (fun,rargs,plotopt))
     _end(",pch=20",last,**kwargs)
     return output
+
 ############################################################
 ############################################################
 def scatterplot(X,Y,output=None,format='pdf',new=True,last=True,**kwargs):
@@ -133,8 +137,8 @@ def boxplot(values,labels,output=None,format='pdf',new=True,last=True,**kwargs):
 def heatmap(M,output=None,format='pdf',new=True,last=True,
             rows=None,columns=None,orderRows=True,orderCols=True,
             **kwargs):
-    """Creates a heatmap of the matrix `M` using `rows` as row labels and `columns` as column labels.
-    If either `orderRows` or `orderCols` is True, will cluster accordingly and display a dendrogram."""
+    """Creates a heatmap of the matrix *M* using *rows* as row labels and *columns* as column labels.
+    If either *orderRows* or *orderCols* is True, will cluster accordingly and display a dendrogram."""
     plotopt,output = _begin(output=output,format=format,new=new,**kwargs)
     robjects.r.assign('Mdata',numpy2ri.numpy2ri(M))
     if not(rows is None):
