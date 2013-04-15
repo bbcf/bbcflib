@@ -486,9 +486,9 @@ def rnaseq_workflow(ex, job, assembly=None,
         counts = asarray([pileups[cond] for cond in conditions], dtype=numpy.float_).T
         del pileups
         tcounts={}; trpkm={}
-        for k in range(len(ids)):
-            t = ids[k]; c = counts[k]
-            if sum(c)!=0:
+        for k,t in enumerate(ids):
+            c = counts[k]
+            if sum(c)!=0 and t in tmap:
                 tcounts[t] = c
                 trpkm[t] = to_rpkm(c, tmap[t][3]-tmap[t][2], nreads)
         trans_data = [(t,) + tuple(nround(tcounts[t],0)) + tuple(trpkm[t])

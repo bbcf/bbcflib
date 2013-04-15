@@ -39,7 +39,7 @@ import re, os, gzip, sys, time
 
 # Internal modules #
 from bbcflib import frontend, mapseq
-from bbcflib.common import unique_filename_in, set_file_descr, join_pdf, merge_sql, intersect_many_bed
+from bbcflib.common import unique_filename_in, set_file_descr, join_pdf, merge_sql, intersect_many_bed, gzipfile
 from bbcflib.btrack import track, FeatureStream, convert
 from bbcflib.bFlatMajor import stream as gm_stream
 from bbcflib.bFlatMajor import common as gm_common
@@ -391,22 +391,19 @@ def chipseq_workflow( ex, job_or_dict, assembly, script_path='', logfile=sys.std
             ex.add(deconv['profile'],
                    description=set_file_descr(name[1]+'_deconv.sql', type='sql',
                                               step='deconvolution',  groupId=name[0]))
-            bigwig = common.unique_filename_in()
+            bigwig = unique_filename_in()
             convert(deconv['profile'],(bigwig,"bigWig"))
             ex.add(bigwig,
-                   description=common.set_file_descr(name[1]+'_deconv.bw',
-                                                     type='bigWig', ucsc='1',
-                                                     step='deconvolution',
-                                                     groupId=name[0]))
+                   description=set_file_descr(name[1]+'_deconv.bw', type='bigWig', 
+                                              ucsc='1', step='deconvolution',
+                                              groupId=name[0]))
             ex.add(deconv['pdf'],
-                   description=common.set_file_descr(name[1]+'_deconv.pdf',
-                                                     type='pdf',
-                                                     step='deconvolution',
-                                                     groupId=name[0]))
+                   description=set_file_descr(name[1]+'_deconv.pdf', type='pdf',
+                                              step='deconvolution', groupId=name[0]))
             processed['deconv'][name] = deconv
     for name, plist in peak_list.iteritems():
         ptrack = track(plist,chrmeta=chrlist)
-        peakfile = common.unique_filename_in()
+        peakfile = unique_filename_in()
         touch(ex,peakfile)
         peakout = track(peakfile, format='txt', chrmeta=chrlist,
                               fields=['chr','start','end','name',
@@ -416,10 +413,10 @@ def chipseq_workflow( ex, job_or_dict, assembly, script_path='', logfile=sys.std
                     ptrack.read(selection=chrom),
                     assembly.gene_track(chrom)),mode='append')
         peakout.close()
-        common.gzipfile(ex,peakfile)
+        gzipfile(ex,peakfile)
         ex.add(peakfile+".gz",
-               description=common.set_file_descr(name[1]+'_annotated_peaks.txt.gz',type='text',
-                                                 step='annotation',groupId=name[0]))
+               description=set_file_descr(name[1]+'_annotated_peaks.txt.gz',type='text',
+                                          step='annotation',groupId=name[0]))
     if run_meme:
         from bbcflib.motif import parallel_meme
         logfile.write("Starting MEME.\n");logfile.flush()
