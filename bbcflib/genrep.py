@@ -192,7 +192,7 @@ class Assembly(object):
             self.index_path = bowtie_build.nonblocking(ex,fasta_files,
                                                        via=via,memory=8).wait()
             chromosomes = {}
-            for f in fasta_files: chromosomes.update(fasta_length(ex,f))
+            for f in fasta_files: chromosomes.update(fasta_length.nonblocking(ex,f,via=via).wait())
             self.stats_dict = {}
             for f in fasta_files:
                 stats = fasta_composition(ex,f)
