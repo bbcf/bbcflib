@@ -12,6 +12,7 @@ Each function takes the following arguments:
 import rpy2.robjects as robjects
 import rpy2.robjects.numpy2ri as numpy2ri
 from bbcflib.common import unique_filename_in
+from itertools import combinations
 
 def _begin(output,format,new,**kwargs):
     """Initializes the plot in *R*."""
@@ -44,7 +45,46 @@ def _end(lopts,last,**kwargs):
         names = kwargs['legend']
         robjects.r("legend('topright', c('%s'), col=1:%i%s)" %("','".join(names),len(names),lopts))
     robjects.r("dev.off()")
+###################V#########################################
+############################################################
+def venn(D,output=None,format='pdf',new=True,last=True,**kwargs):
+    """Creates a Venn diagram of D.
 
+    :param D: dict `{group_name: count}`. `group_name` is either one name (e.g. 'A')
+    or a combination such as 'A|B' - if the items belong to groups A and B.
+    """
+    plotopt,output = _begin(output=output,format=format,new=new,**kwargs)
+    groups = sorted([x for x in D if len(x.split('|'))==1])
+    ngroups = len(groups)
+    #combn = sorted(D.keys())
+    #groups = [chr(i+65) for i in range(ngroups)]
+    combn = [combinations(groups,k) for k in range(1,ngroups+1)]
+    combn = ['|'.join(sorted(y)) for x in combn for y in x]
+    if   ngroups == 2:
+        fun = 'draw.pairwise.venn'
+        rargs = "area1=%d, area2=%d, cross.area=%d" % tuple([D.get(c,0) for c in combn])
+    elif ngroups == 3:
+        fun = 'draw.triple.venn'
+        rargs = """area1=%d, area2=%d, area3=%d,
+                n12=%d, n13=%d, n23=%d, n123=%d""" % tuple([D.get(c,0) for c in combn])
+    elif ngroups == 4:
+        fun = 'draw.quad.venn'
+        rargs = """area1=%d, area2=%d,  area3=%d, area4=%d,
+                n12=%d, n13=%d, n14=%d, n23=%d, n24=%d, n34=%d,
+                n123=%d, n124=%d, n134=%d, n234=%d, n1234==%d""" % tuple([D.get(c,0) for c in combn])
+    elif ngroups == 5:
+        fun = 'draw.quintuple.venn'
+        rargs = """area1=%d, area2=%d, area3=%d, area4=%d, area5=%d,
+                n12=%d, n13=%d, n14=%d, n15=%d, n23=%d, n24=%d, n25=%d, n34=%d, n35=%d, n45=%d,
+                n123=%d, n124=%d, n125=%d, n134=%d, n135=%d, n145=%d, n234=%d, n235=%d, n245=%d, n345=%d,
+                n1234=%d, n1235=%d, n1245=%d, n1345=%d, n2345=%d""" % tuple([D.get(c,0) for c in combn])
+    print D, groups, combn
+    print """%s(%s)""" % (fun,rargs)
+    robjects.r("""library(VennDiagram)""")
+    robjects.r("""%s(%s)""" % (fun,rargs))
+
+    _end(",pch=20",last,**kwargs)
+    return output
 ############################################################
 ############################################################
 def scatterplot(X,Y,output=None,format='pdf',new=True,last=True,**kwargs):
@@ -225,4 +265,3 @@ if (exists("X")) {
 """)
     _end("",last,**kwargs)
     return output
-
