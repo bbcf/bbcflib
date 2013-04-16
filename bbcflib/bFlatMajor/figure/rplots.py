@@ -14,6 +14,11 @@ import rpy2.robjects.numpy2ri as numpy2ri
 from bbcflib.common import unique_filename_in
 from itertools import combinations
 
+def list2r(L):
+    """Transform a Python list into a string in R format: [1,2,'C'] -> "c(1,2,'C')" ."""
+    LL = ["'%s'"%v if isinstance(v,str) else str(v) for v in L] # add quotes if elements are strings
+    return "c(%s)" % ','.join(LL)
+
 def _begin(output,format,new,**kwargs):
     """Initializes the plot in *R*."""
     if new:
@@ -43,25 +48,33 @@ def _end(lopts,last,**kwargs):
     if not(last): return
     if 'legend' in kwargs:
         names = kwargs['legend']
-        robjects.r("legend('topright', c('%s'), col=1:%i%s)" %("','".join(names),len(names),lopts))
+        robjects.r("legend(x='topright', legend=%s, col=1:%i%s)" %(list2r(names),len(names),lopts))
     robjects.r("dev.off()")
 
 ###################V#########################################
 ############################################################
-def venn(D,options={},output=None,format='pdf',new=True,last=True,**kwargs):
+def venn(D,legend=None,options={},output=None,format='pdf',new=True,last=True,**kwargs):
     """Creates a Venn diagram of D using the *VennDiagram* R package.
 
     :param D: dict `{group_name: count}`. `group_name` is either one name (e.g. 'A')
         or a combination such as 'A|B' - if the items belong to groups A and B.
+        `count` must be an integer. Group 'A' means *everything* that is in group 'A',
+        including for instance 'A|B' elements.
+    :param legend: (list of str) associate each group name to a legend that will be
+        displayed in a corner.
     :param opts: VennDiagram options, given as a dict `{'option': value}`.
         Ex. `{'euler.d':'TRUE', 'fill':['red','blue']}`
+        See `<http://cran.r-project.org/web/packages/VennDiagram/VennDiagram.pdf>`_
     """
     plotopt,output = _begin(output=output,format=format,new=new,**kwargs)
     groups = sorted([x for x in D if len(x.split('|'))==1])
     ngroups = len(groups)
     combn = [combinations(groups,k) for k in range(1,ngroups+1)]
     combn = ['|'.join(sorted(y)) for x in combn for y in x]
-    if   ngroups == 2:
+    if   ngroups == 1:
+        fun = 'draw.single.venn'
+        rargs = "area=%d" % D[groups[0]]
+    elif ngroups == 2:
         fun = 'draw.pairwise.venn'
         rargs = "area1=%d, area2=%d, cross.area=%d" % tuple([D.get(c,0) for c in combn])
     elif ngroups == 3:
@@ -79,14 +92,18 @@ def venn(D,options={},output=None,format='pdf',new=True,last=True,**kwargs):
                 n12=%d, n13=%d, n14=%d, n15=%d, n23=%d, n24=%d, n25=%d, n34=%d, n35=%d, n45=%d,
                 n123=%d, n124=%d, n125=%d, n134=%d, n135=%d, n145=%d, n234=%d, n235=%d, n245=%d, n345=%d,
                 n1234=%d, n1235=%d, n1245=%d, n1345=%d, n2345=%d""" % tuple([D.get(c,0) for c in combn])
-    rargs += ", category=c('%s')" % '\',\''.join(groups) # group names
+    else: return
+    rargs += ", category=%s" % list2r(groups) # group names
     for opt,val in options.iteritems():
-        if isinstance(val,(list,tuple)):
-            val = ','.join('%s'%v if isinstance(v,str) else v for v in val)
-        rargs += ", %s=c(%s)" % (opt,val)
-    robjects.r("""library(VennDiagram)""")
-    robjects.r("""venn.plot <- %s(%s%s)""" % (fun,rargs,plotopt))
-    _end(",pch=20",last,**kwargs)
+        if  not isinstance(val,(list,tuple)): val = [val]
+        rargs += ", %s=%s" % (opt,list2r(val))
+    if legend: # not in _end() because it requires plot.new()
+        legend_opts = "x='topright', pch=%s, legend=%s" % (list2r(groups), list2r(legend))
+        robjects.r("plot.new()")
+        robjects.r("legend(%s)" % legend_opts)
+    robjects.r("library(VennDiagram)")
+    robjects.r("venn.plot <- %s(%s%s)" % (fun,rargs,plotopt))
+    _end('',last,**kwargs)
     return output
 
 ############################################################
