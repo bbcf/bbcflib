@@ -236,7 +236,7 @@ def save_results(ex, lines, conditions, group_ids, assembly, header=[], feature_
     description = set_file_descr(feature_type.lower()+"_expression.tab", step="pileup", type="txt")
     ex.add(output_tab, description=description)
     # Create one track for each group
-    if feature_type in ['GENES','EXONS','Transcripts']:
+    if feature_type in ['GENES','EXONS']:
         cols = zip(*lines)
         ncond = len(conditions)
         groups = [c.split('.')[0] for c in conditions]
@@ -495,7 +495,7 @@ def rnaseq_workflow(ex, job, assembly=None,
                            + itemgetter(2,3,0,1,5,6)(tmap.get(t,("NA",)*6))
                       for t in tcounts.iterkeys()]
         hconds = ["counts."+c for c in conditions] + ["rpkm."+c for c in conditions]
-        header = ["ExonID"] + hconds + ["Start","End","GeneID","GeneName","Strand","Chromosome"]
+        header = ["CustomID"] + hconds + ["Start","End","GeneID","GeneName","Strand","Chromosome"]
         trans_file = save_results(ex,trans_data,conditions,group_ids,assembly,header=header,feature_type=ftype)
         result = {"transcripts":trans_file}
         if len(hconds) > 1:
