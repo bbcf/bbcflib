@@ -16,6 +16,7 @@ from itertools import combinations
 
 def list2r(L):
     """Transform a Python list into a string in R format: [1,2,'C'] -> "c(1,2,'C')" ."""
+    if  not isinstance(L,(list,tuple)): L = [L] # everything is a vector in R
     LL = ["'%s'"%v if isinstance(v,str) else str(v) for v in L] # add quotes if elements are strings
     return "c(%s)" % ','.join(LL)
 
@@ -85,22 +86,27 @@ def venn(D,legend=None,options={},output=None,format='pdf',new=True,last=True,**
         fun = 'draw.quad.venn'
         rargs = """area1=%d, area2=%d,  area3=%d, area4=%d,
                 n12=%d, n13=%d, n14=%d, n23=%d, n24=%d, n34=%d,
-                n123=%d, n124=%d, n134=%d, n234=%d, n1234==%d""" % tuple([D.get(c,0) for c in combn])
-    elif ngroups == 5:
-        fun = 'draw.quintuple.venn'
-        rargs = """area1=%d, area2=%d, area3=%d, area4=%d, area5=%d,
-                n12=%d, n13=%d, n14=%d, n15=%d, n23=%d, n24=%d, n25=%d, n34=%d, n35=%d, n45=%d,
-                n123=%d, n124=%d, n125=%d, n134=%d, n135=%d, n145=%d, n234=%d, n235=%d, n245=%d, n345=%d,
-                n1234=%d, n1235=%d, n1245=%d, n1345=%d, n2345=%d""" % tuple([D.get(c,0) for c in combn])
+                n123=%d, n124=%d, n134=%d, n234=%d, n1234=%d""" % tuple([D.get(c,0) for c in combn])
+    # Present in the doc but the function does not exist in our version
+    #elif ngroups == 5:
+    #    fun = 'draw.quintuple.venn'
+    #    rargs = """area1=%d, area2=%d, area3=%d, area4=%d, area5=%d,
+    #            n12=%d, n13=%d, n14=%d, n15=%d, n23=%d, n24=%d, n25=%d, n34=%d, n35=%d, n45=%d,
+    #            n123=%d, n124=%d, n125=%d, n134=%d, n135=%d, n145=%d, n234=%d, n235=%d, n245=%d, n345=%d,
+    #            n1234=%d, n1235=%d, n1245=%d, n1345=%d, n2345=%d, n12345=%d""" \
+    #            % tuple([D.get(c,0) for c in combn])
     else: return
     rargs += ", category=%s" % list2r(groups) # group names
-    for opt,val in options.iteritems():
-        if  not isinstance(val,(list,tuple)): val = [val]
-        rargs += ", %s=%s" % (opt,list2r(val))
+    colors = ['black','blue','green','red','orange']
+    globalopt = {'cex':3, 'cat.cex':3, 'col':colors[:ngroups], 'cat.col':colors[:ngroups]}
+    for opt,val in globalopt.iteritems():
+        rargs += ", %s=%s" % (opt,list2r(options.get(opt,val)))
     if legend: # not in _end() because it requires plot.new()
         legend_opts = "x='topright', pch=%s, legend=%s" % (list2r(groups), list2r(legend))
+        legend_opts += ", cex=1.5"
         robjects.r("plot.new()")
         robjects.r("legend(%s)" % legend_opts)
+    rargs += ', margin=0.15'
     robjects.r("library(VennDiagram)")
     robjects.r("venn.plot <- %s(%s%s)" % (fun,rargs,plotopt))
     _end('',last,**kwargs)
