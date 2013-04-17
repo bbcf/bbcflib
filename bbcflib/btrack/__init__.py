@@ -249,12 +249,14 @@ def stats(source,out=sys.stdout,hlimit=15,wlimit=100, **kwargs):
     It does not load the whole file in memory, but the distribution of its scores,
     which are expected to be limited in variety for count data (normalized or not).
 
-    :param s: FeatureStream object.
+    :param source: (str) name of the file. Can also be a Track instance.
     :param out: writable/file object (defaut: stdout).
     :param hlimit: height of the distribution plot, in number of chars.
     :param wlimit: max width of the distribution plot, in number of chars.
+    :param **kwargs: ``track`` keyword arguments.
     """
-    t = track(source, **kwargs)
+    if isinstance(source, str):
+        t = track(source, **kwargs)
     s = t.read(**kwargs)
     is_score = 'score' in s.fields
     if is_score:
