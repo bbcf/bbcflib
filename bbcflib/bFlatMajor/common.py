@@ -556,7 +556,7 @@ def cobble(stream,aggregate=aggreg_functions,stranded=False,scored=False):
 
     _f = ['start','end']
     if stranded: _f += ['strand']
-    if scored:
+    if scored and 'score' in stream.fields:
         _f += ['score']
         i = len(_f)-1
         score_merge = lambda x,l,L: x[:i]+(x[i]*l/L,)+x[i+1:]
