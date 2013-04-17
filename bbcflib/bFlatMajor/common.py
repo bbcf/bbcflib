@@ -188,7 +188,8 @@ def split_field( stream, outfields, infield='name', separator=';',
     :param infield: (str) name of the field to be split. ['name']
     :param separator: (str) char separating the information in *infield*'s entries. [';']
     :param header_split: if split entries are field_name/field_value pairs, provides the separator to split them.
-    :param strip_input: (bool) if True for a field of name/value pairs, will remove from the original field the values that have been succesfully parsed.
+    :param strip_input: (bool) if True for a field of name/value pairs, will remove from the original field
+        the values that have been succesfully parsed.
     """
     _outfields = stream.fields+[f for f in outfields if not(f in stream.fields)]
     in_indx = stream.fields.index(infield)
@@ -273,7 +274,6 @@ def score_threshold( stream, threshold=0.0, lower=False, strict=False, fields='s
         lower = -1 if lower else 1
         fidx = [stream.fields.index(f) for f in fields]
         for x in stream:
-            print lower*x[0],lower*th, gt(lower*x[0],lower*th)
             if all([gt(lower*x[k],lower*th) for k in fidx]):
                 yield x
     if isinstance(stream,(list,tuple)):
@@ -455,7 +455,7 @@ def fusion(stream,aggregate=aggreg_functions,stranded=False):
     return FeatureStream( _fuse(stream,stranded), fields=stream.fields)
 
 @ordered
-def cobble(stream,aggregate=aggreg_functions,stranded=False):
+def cobble(stream,aggregate=aggreg_functions,stranded=False,scored=False):
     """Fragments overlapping features in *stream* and applies `aggregate[f]` function
     to each field `f` in common fragments.
     *stream* has to be sorted w.r.t. 'chr' (if any), 'start' and 'end'.
@@ -476,6 +476,8 @@ def cobble(stream,aggregate=aggreg_functions,stranded=False):
 
     :param stream: FeatureStream object.
     :param stranded: (bool) if True, only features of the same strand are cobbled. [False]
+    :param scored: (bool) if True, each fragment will be attributed a fraction on the
+        original score, based on its length. [False]
     :rtype: FeatureStream
     """
     def _intersect(A,B,fields):
@@ -513,15 +515,17 @@ def cobble(stream,aggregate=aggreg_functions,stranded=False):
         else: z = None            # no intersection
         return z, rest
 
-    def _fuse(stream,stranded):
+    def _fuse(stream):
         try:
-            x = stream.next()
+            X = stream.next()
         except StopIteration:
             return
-        toyield = [x]
+        toyield = [X]
         while 1:
             try:
-                x = stream.next()
+                X = stream.next()
+                x = tuple(X)
+                L = X[1]-X[0]
                 intersected = False
                 for y in toyield:
                     if stranded and x[2] != y[2]:
@@ -538,6 +542,7 @@ def cobble(stream,aggregate=aggreg_functions,stranded=False):
                 if not intersected:
                     while toyield:
                         y = toyield.pop(0)
+                        y = score_merge(y,y[1]-y[0],L)
                         yield tuple(y)
                     toyield = [x]
                 elif x:
@@ -545,12 +550,20 @@ def cobble(stream,aggregate=aggreg_functions,stranded=False):
             except StopIteration:
                 while toyield:
                     y = toyield.pop(0)
+                    y = score_merge(y,y[1]-y[0],X[1]-X[0])
                     yield tuple(y)
                 break
 
-    if stranded: stream = reorder(stream,['start','end','strand'])
-    else: stream = reorder(stream,['start','end'])
-    return FeatureStream( _fuse(stream,stranded), fields=stream.fields)
+    _f = ['start','end']
+    if stranded: _f += ['strand']
+    if scored:
+        _f += ['score']
+        i = len(_f)-1
+        print _f, i
+        score_merge = lambda x,l,L: x[:i]+(x[i]*l/L,)+x[i+1:]
+    else: score_merge = lambda x,l,L: x
+    stream = reorder(stream,_f)
+    return FeatureStream( _fuse(stream), fields=stream.fields)
 
 ####################################################################
 def normalize(M,method):
