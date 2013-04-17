@@ -156,8 +156,8 @@ class Test_Common(unittest.TestCase):
                     ('chr1',15,20,'A|B|C',0),
                     ('chr1',20,22,'B|C',-1),
                     ('chr1',22,25,'C',-1)]
-        res = cobble(stream)
-        self.assertEqual(list(res),expected)
+        res = list(cobble(stream))
+        self.assertEqual(res,expected)
 
         # stranded = True
         stream = fstream([('chr1',10,20,'A',1),('chr1',12,22,'B',-1),('chr1',15,25,'C',-1)],
@@ -166,8 +166,19 @@ class Test_Common(unittest.TestCase):
                     ('chr1',12,15,'B',-1),
                     ('chr1',15,22,'B|C',-1),
                     ('chr1',22,25,'C',-1)]
-        res = cobble(stream,stranded=True)
-        self.assertEqual(list(res),expected)
+        res = list(cobble(stream,stranded=True))
+        self.assertEqual(res,expected)
+
+        # scored = True
+        stream = fstream([('chr1',10,20,'A',1,50.0),('chr1',12,22,'B',-1,100.0),('chr1',15,25,'C',-1,20.0)],
+                         fields = ['chr','start','end','name','strand','score'])
+        expected = [('chr1',10,12,'A',1, 10.0),
+                    ('chr1',12,15,'A|B',0, 45.0),
+                    ('chr1',15,20,'A|B|C',0, 85.0),
+                    ('chr1',20,22,'B|C',-1, 24.0),
+                    ('chr1',22,25,'C',-1, 6.0)]
+        res = list(cobble(stream,scored=True))
+        self.assertEqual(res,expected)
 
     def test_concat_fields(self):
         # Concatenate fields as strings
@@ -222,13 +233,13 @@ class Test_Common(unittest.TestCase):
     def test_score_threshold(self):
         # Upper bound (lower=True))
         stream = fstream([(1,0.91),(2,0.45),(3,0.01)], fields=['start','score'])
-        res = list(score_threshold(stream,threshold=0.05,fields='score',lower=True))
+        res = list(score_threshold(stream,threshold=0.05,fields='score',lower=False))
         expected = [(1,0.91),(2,0.45)]
         self.assertListEqual(res,expected)
 
-        # Upper bound (lower=False)
+        # Lower bound (lower=False)
         stream = fstream([(1,0.91),(2,0.45),(3,0.01)], fields=['start','score'])
-        res = list(score_threshold(stream,threshold=0.05,fields='score'))
+        res = list(score_threshold(stream,threshold=0.05,fields='score',lower=True))
         expected = [(3,0.01)]
         self.assertListEqual(res,expected)
 
@@ -645,6 +656,7 @@ class Test_Signal(unittest.TestCase):
 class Test_Cobble(unittest.TestCase):
     def commonTest(self,X,R):
         T = list(cobble(fstream(X,fields=['chr','start','end','score'])))
+        print T
         self.assertEqual(T,R)
 
     def test_cobble(self):
