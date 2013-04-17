@@ -54,7 +54,7 @@ def _end(lopts,last,**kwargs):
 
 ###################V#########################################
 ############################################################
-def venn(D,legend=None,options={},output=None,format='pdf',new=True,last=True,**kwargs):
+def venn(D,legend=None,options={},output=None,format='png',new=True,last=True,**kwargs):
     """Creates a Venn diagram of D using the *VennDiagram* R package.
 
     :param D: dict `{group_name: count}`. `group_name` is either one name (e.g. 'A')
@@ -78,27 +78,22 @@ def venn(D,legend=None,options={},output=None,format='pdf',new=True,last=True,**
     elif ngroups == 2:
         fun = 'draw.pairwise.venn'
         rargs = "area1=%d, area2=%d, cross.area=%d" % tuple([D.get(c,0) for c in combn])
+        rargs += ", cat.dist=c(0.05,0.05)" # default distance of labels to contour is bad
     elif ngroups == 3:
         fun = 'draw.triple.venn'
         rargs = """area1=%d, area2=%d, area3=%d,
                 n12=%d, n13=%d, n23=%d, n123=%d""" % tuple([D.get(c,0) for c in combn])
+        rargs += ", cat.dist=c(0.05,0.05,0.05)"
     elif ngroups == 4:
         fun = 'draw.quad.venn'
         rargs = """area1=%d, area2=%d,  area3=%d, area4=%d,
                 n12=%d, n13=%d, n14=%d, n23=%d, n24=%d, n34=%d,
                 n123=%d, n124=%d, n134=%d, n234=%d, n1234=%d""" % tuple([D.get(c,0) for c in combn])
-    # Present in the doc but the function does not exist in our version
-    #elif ngroups == 5:
-    #    fun = 'draw.quintuple.venn'
-    #    rargs = """area1=%d, area2=%d, area3=%d, area4=%d, area5=%d,
-    #            n12=%d, n13=%d, n14=%d, n15=%d, n23=%d, n24=%d, n25=%d, n34=%d, n35=%d, n45=%d,
-    #            n123=%d, n124=%d, n125=%d, n134=%d, n135=%d, n145=%d, n234=%d, n235=%d, n245=%d, n345=%d,
-    #            n1234=%d, n1235=%d, n1245=%d, n1345=%d, n2345=%d, n12345=%d""" \
-    #            % tuple([D.get(c,0) for c in combn])
     else: return
     rargs += ", category=%s" % list2r(groups) # group names
-    colors = ['black','blue','green','red','orange']
-    globalopt = {'cex':3, 'cat.cex':3, 'col':colors[:ngroups], 'cat.col':colors[:ngroups]}
+    colors = ['grey','blue','green','orange']
+    globalopt = {'cex':3, 'cat.cex':3,
+                 'fill':colors[:ngroups]}
     for opt,val in globalopt.iteritems():
         rargs += ", %s=%s" % (opt,list2r(options.get(opt,val)))
     if legend: # not in _end() because it requires plot.new()
@@ -106,7 +101,7 @@ def venn(D,legend=None,options={},output=None,format='pdf',new=True,last=True,**
         legend_opts += ", cex=1.5"
         robjects.r("plot.new()")
         robjects.r("legend(%s)" % legend_opts)
-    rargs += ', margin=0.15'
+    rargs += ', margin=0.15, pty="s" ' # pty does not work... pdf format is stretched
     robjects.r("library(VennDiagram)")
     robjects.r("venn.plot <- %s(%s%s)" % (fun,rargs,plotopt))
     _end('',last,**kwargs)
