@@ -1,6 +1,6 @@
 from bbcflib.btrack import FeatureStream
 from functools import wraps
-import sys, re, itertools, operator
+import sys, re, itertools, operator, random, string
 from numpy import log as nlog
 from numpy import asarray,mean,median,exp,nonzero,prod,around,argsort,float_
 
@@ -480,7 +480,7 @@ def cobble(stream,aggregate=aggreg_functions,stranded=False,scored=False):
         original score, based on its length. [False]
     :rtype: FeatureStream
     """
-    def _intersect(A,B,fields):
+    def _intersect(A,B,fields,L):
         """Return *z*, the part that must replace A in *toyield*, and
         *rest*, that must reenter the loop instead of B."""
         rest = None
@@ -517,20 +517,24 @@ def cobble(stream,aggregate=aggreg_functions,stranded=False,scored=False):
 
     def _fuse(stream):
         try:
-            X = stream.next()
+            K = 0 # feature ID
+            X = stream.next() + (str(K),)
         except StopIteration:
             return
+        if stranded: istrand = stream.fields.index('strand')
         toyield = [X]
+        L = {str(K):X[1]-X[0]} # feature lengths
         while 1:
             try:
                 X = stream.next()
-                x = tuple(X)
-                L = X[1]-X[0]
+                K+=1
+                L[str(K)] = X[1]-X[0]
+                x = X + (str(K),)
                 intersected = False
                 for y in toyield:
-                    if stranded and x[2] != y[2]:
+                    if stranded and x[istrand] != y[istrand]:
                         continue
-                    replace, rest = _intersect(y,x,stream.fields)
+                    replace, rest = _intersect(y,x,stream.fields,L)
                     if replace:
                         intersected = True
                         iy = toyield.index(y)
@@ -540,29 +544,49 @@ def cobble(stream,aggregate=aggreg_functions,stranded=False,scored=False):
                         x = rest
                         if not x: break
                 if not intersected:
+                    if scored: _partial_scores(toyield,L)
                     while toyield:
                         y = toyield.pop(0)
-                        y = score_merge(y,y[1]-y[0],L)
-                        yield tuple(y)
+                        yield tuple(y)[:-1]
+                    L = {}
                     toyield = [x]
                 elif x:
                     toyield.append(x)
             except StopIteration:
+                if scored: _partial_scores(toyield,L)
                 while toyield:
                     y = toyield.pop(0)
-                    y = score_merge(y,y[1]-y[0],X[1]-X[0])
-                    yield tuple(y)
+                    yield tuple(y)[:-1]
                 break
 
+    def _score_merge(x):
+        if isinstance(x[0],(int, long, float, complex)):
+            return x
+        if isinstance(x[0],tuple):
+            x0 = x[0]
+            for y in x[1:]: x0 += (y,)
+            return x0
+
+    def _partial_scores(toyield,L):
+        for j,y in enumerate(toyield):
+            if not isinstance(y[2],tuple):
+                scores = (y[2],)
+            else:
+                scores = y[2]
+            LL = [L[k] for k in y[-1].split('|')]
+            s = sum( scores[i] * (y[1]-y[0]) / LL[i] for i in range(len(scores)) )
+            toyield[j] = y[:2]+(s,)+y[3:]
+        return toyield
+
     _f = ['start','end']
-    if stranded: _f += ['strand']
+    id_field = "".join([random.choice(string.letters + string.digits) for x in range(10)])
     if scored and 'score' in stream.fields:
         _f += ['score']
-        i = len(_f)-1
-        score_merge = lambda x,l,L: x[:i]+(x[i]*l/L,)+x[i+1:]
-    else: score_merge = lambda x,l,L: x
+        aggregate['score'] = _score_merge
     stream = reorder(stream,_f)
-    return FeatureStream( _fuse(stream), fields=stream.fields)
+    # Add a field for the track ID in last position; make sure its name is unused yet
+    stream.fields += [id_field]
+    return FeatureStream( _fuse(stream), fields=stream.fields[:-1])
 
 ####################################################################
 def normalize(M,method):

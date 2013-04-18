@@ -170,13 +170,13 @@ class Test_Common(unittest.TestCase):
         self.assertEqual(res,expected)
 
         # scored = True
-        stream = fstream([('chr1',10,20,'A',1,50.0),('chr1',12,22,'B',-1,100.0),('chr1',15,25,'C',-1,20.0)],
+        stream = fstream([('chr1',10,20,'A',1,50.0),('chr1',12,22,'B',-1,100.0),('chr1',15,65,'C',-1,20.0)],
                          fields = ['chr','start','end','name','strand','score'])
         expected = [('chr1',10,12,'A',1, 10.0),
                     ('chr1',12,15,'A|B',0, 45.0),
-                    ('chr1',15,20,'A|B|C',0, 85.0),
-                    ('chr1',20,22,'B|C',-1, 24.0),
-                    ('chr1',22,25,'C',-1, 6.0)]
+                    ('chr1',15,20,'A|B|C',0, 77.0),
+                    ('chr1',20,22,'B|C',-1, 20.8),
+                    ('chr1',22,65,'C',-1, 17.2)]
         res = list(cobble(stream,scored=True))
         self.assertEqual(res,expected)
 
