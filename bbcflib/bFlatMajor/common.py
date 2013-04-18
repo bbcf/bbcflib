@@ -544,7 +544,8 @@ def cobble(stream,aggregate=aggreg_functions,stranded=False,scored=False):
                         x = rest
                         if not x: break
                 if not intersected:
-                    if scored: _partial_scores(toyield,L)
+                    if scored:
+                        _partial_scores(toyield,L)
                     while toyield:
                         y = toyield.pop(0)
                         yield tuple(y)[:-1]
@@ -559,14 +560,6 @@ def cobble(stream,aggregate=aggreg_functions,stranded=False,scored=False):
                     yield tuple(y)[:-1]
                 break
 
-    def _score_merge(x):
-        if isinstance(x[0],(int, long, float, complex)):
-            return x
-        if isinstance(x[0],tuple):
-            x0 = x[0]
-            for y in x[1:]: x0 += (y,)
-            return x0
-
     def _partial_scores(toyield,L):
         for j,y in enumerate(toyield):
             if not isinstance(y[2],tuple):
@@ -579,12 +572,18 @@ def cobble(stream,aggregate=aggreg_functions,stranded=False,scored=False):
         return toyield
 
     _f = ['start','end']
-    id_field = "".join([random.choice(string.letters + string.digits) for x in range(10)])
     if scored and 'score' in stream.fields:
+        def _score_merge(x):
+            if isinstance(x[0],tuple):
+                x0 = x[0]
+                for y in x[1:]: x0 += (y,)
+                return x0
+            else: return x
         _f += ['score']
         aggregate['score'] = _score_merge
     stream = reorder(stream,_f)
     # Add a field for the track ID in last position; make sure its name is unused yet
+    id_field = "".join([random.choice(string.letters + string.digits) for x in range(10)])
     stream.fields += [id_field]
     return FeatureStream( _fuse(stream), fields=stream.fields[:-1])
 
