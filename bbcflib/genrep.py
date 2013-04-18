@@ -189,8 +189,8 @@ class Assembly(object):
             fasta_files = list(set(self.fasta_by_chrom.values()))
             [g.wait() for g in [sam_faidx.nonblocking(ex,f,via=via) \
                                     for f in fasta_files]]
-            self.index_path = bowtie_build.nonblocking(ex,fasta_files,
-                                                       via=via,memory=8).wait()
+            if len(fasta_files) > 0:
+                self.index_path = bowtie_build.nonblocking(ex,fasta_files,via=via,memory=8).wait()
             chromosomes = {}
             for f in fasta_files: chromosomes.update(fasta_length.nonblocking(ex,f,via=via).wait())
             self.stats_dict = {}
