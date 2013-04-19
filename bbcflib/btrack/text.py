@@ -174,17 +174,22 @@ class TextTrack(Track):
         if self.filehandle: self.filehandle.close()
 
     def _skip_header(self,header):
-        """Skip the first N lines if *header*=N, or the first consecutive lines starting with
-        string *header*, or by default '#','@','track','browser'."""
+        """If *header* is an int N, skip the first N lines. If it is a string or a list of strings,
+        skip the first consecutive lines starting with strings in *header*. If it is None, skips
+        consecutive lines starting with '#','@','track','browser'. If set to `False`, does nothing."""
+        if isinstance(header,str):
+            header = [header]
         if isinstance(header, int):
-            for k in range(header-1):
+            for k in range(header):
                 row = self.filehandle.readline()
                 p = self.filehandle.tell()
-        elif isinstance(header,str):
-            row = header
-            while row.startswith(header):
-                p = self.filehandle.tell()
-                row = self.filehandle.readline()
+        elif isinstance(header,(list,tuple)):
+            row = header[0]
+            for h in header:
+                while row.startswith(h):
+                    p = self.filehandle.tell()
+                    row = self.filehandle.readline()
+        elif header == False: return
         else:
             row = '#'
             while row[:6].split()[0] in ['#','@','track','browser']:

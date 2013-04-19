@@ -233,3 +233,20 @@ class Test_Conversions(unittest.TestCase):
 
     def test_to_sql(self):
         pass
+
+
+class Test_Skip_Header(unittest.TestCase):
+    def setUp(self):
+        self.assembly = 'sacCer2'
+        self.bed = os.path.join(path,"yeast_genes.bed")
+
+    def test_header(self):
+        t = track(self.bed)
+        L1 = len([line for line in t.read()]) # skips the first line by default
+        L2 = len([line for line in t.read(header=5)])
+        L3 = len([line for line in t.read(header=['track','chr'])])
+        L4 = len([line for line in t.read(header=['track','chrII'])])
+        self.assertEqual(L1-4,L2)
+        self.assertEqual(L3,0)
+        self.assertEqual(L1-11,L4)
+
