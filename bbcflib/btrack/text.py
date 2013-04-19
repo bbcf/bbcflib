@@ -78,9 +78,8 @@ class TextTrack(Track):
         self.open()
         _info = {}
         for row in self.filehandle:
-            if row.startswith("browser") or \
-                    row.startswith("#"): continue
-            if row.startswith("track"):
+            if row[:7]=="browser" or row[0]=="#": continue
+            if row[:5]=="track":
                 for x in row.split(self.separator):
                     key_val = re.search(r'(\S+)=(\S+)',x.strip())
                     if key_val: _info[key_val.groups()[0]] = key_val.groups()[1]
@@ -171,27 +170,43 @@ class TextTrack(Track):
         else:
             raise ValueError("Possible modes are 'read', 'write', 'append' and 'overwrite'.")
 
-
     def close(self):
         if self.filehandle: self.filehandle.close()
 
-    def _read(self, fields, index_list, selection, skip):
+    def _skip_header(self,header):
+        """Skip the first N lines if *header*=N, or the first consecutive lines starting with
+        string *header*, or by default '#','@','track','browser'."""
+        if isinstance(header, int):
+            for k in range(header-1):
+                row = self.filehandle.readline()
+        elif isinstance(header,str):
+            row = header
+            while row.startswith(header):
+                p = self.filehandle.tell()
+                row = self.filehandle.readline()
+        else:
+            row = '#'
+            while row[:6].split()[0] in ['#','@','track','browser']:
+                p = self.filehandle.tell()
+                row = self.filehandle.readline().strip(' \n\r')
+        self.filehandle.seek(p)
+
+    def _read(self, fields, index_list, selection, skip, header):
         self.open('read')
         if skip and selection:
             chr_toskip = self._init_skip(selection)
             next_toskip = chr_toskip.next()
         fstart = fend = 0
+        self._skip_header(header)
         try:
             while 1:
                 fstart = self.filehandle.tell()
                 row = self.filehandle.readline()
                 if not row: break
-                if row.startswith("browser") or \
-                   row.startswith("track") or \
-                   row.startswith("#") or \
-                   row.startswith("@"): continue
+                if row[0] in ['#','@']: continue
                 splitrow = [s.strip() for s in row.split(self.separator)]
                 if not any(splitrow): continue
+                if splitrow[0] in ['track','browser']: continue
                 if selection:
                     if skip:
                         fstart,fend,next_toskip = self._skip(fstart,next_toskip,chr_toskip)
@@ -205,7 +220,7 @@ class TextTrack(Track):
             raise ValueError("Bad line in file %s:\n %s%s\n" % (self.path,row,ve))
         self.close()
 
-    def read(self, selection=None, fields=None, skip=False, **kw):
+    def read(self, selection=None, fields=None, skip=False, header=None, **kw):
         """
         :param selection: list of dict of the type
             `[{'chr':'chr1','start':(12,24)},{'chr':'chr3','end':(25,45)},...]`,
@@ -216,6 +231,9 @@ class TextTrack(Track):
             The first time lines corresponding to a chromosome are read, their position in the
             file is recorded (self.index). In the next iterations, only lines corresponding to
             chromosomes either yet unread or present in *selection* will be read. [False]
+        :param header: to skip uncharacteristic header lines. If numeric, the N first lines will
+            be skipped. If it is a string, all consecutive lines beginning with this string will
+            be skipped. By default, all lines beginning with '#','@','track','browser' are skipped.
         """
         if fields is None:
             fields = self.fields
@@ -241,7 +259,7 @@ class TextTrack(Track):
                              'start': (-1,feat[end_idx]),
                              'end': (feat[start_idx],sys.maxint)})
             selection = sel2
-        return FeatureStream(self._read(fields,ilist,selection,skip),fields)
+        return FeatureStream(self._read(fields,ilist,selection,skip,header),fields)
 
     def _format_fields(self,vec,row,source_list,target_list):
         """
@@ -393,11 +411,8 @@ class BedTrack(TextTrack):
         self.open()
         rowlen = None
         for row in self.filehandle:
-            row = row.strip(' \r\n')
-            if not(row) or \
-                    row.startswith("browser") or \
-                    row.startswith("track") or \
-                    row.startswith("#"): continue
+            if not(row.strip(' \r\n')) or row[0]=='#': continue
+            if row[:6].split()[0] in ['track','browser']: continue
             rowlen = len(row.split(self.separator))
             break
         self.close()
@@ -443,12 +458,12 @@ class SgaTrack(TextTrack):
             if num > 0: return '+'
             if num < 0: return '-'
             return '0'
-        def _score_to_counts(x=0.0): return "%.2g"%float(x) # %i
+        def _score_to_counts(x=0.0): return "%i"%float(x)
         kwargs['intypes'] = {'counts':int, 'score':float}
         kwargs['outtypes'] = {'strand': _sga_strand, 'counts': _score_to_counts, 'score':float}
         TextTrack.__init__(self,path,**kwargs)
 
-    def _read(self, fields, index_list, selection, skip):
+    def _read(self, fields, index_list, selection, skip, header):
         self.open('read')
         if skip and selection:
             chr_toskip = self._init_skip(selection)
@@ -461,7 +476,7 @@ class SgaTrack(TextTrack):
             fstart = self.filehandle.tell()
             row = self.filehandle.readline()
             if not row: break
-            if row.startswith("#"): continue
+            if row[0]=="#": continue
             splitrow = [s.strip() for s in row.split(self.separator)]
             if not any(splitrow): continue
             yieldit = True
@@ -535,7 +550,7 @@ class WigTrack(TextTrack):
         kwargs['fields'] = ['chr','start','end','score']
         TextTrack.__init__(self,path,**kwargs)
 
-    def _read(self, fields, index_list, selection, skip):
+    def _read(self, fields, index_list, selection, skip, header):
         self.open('read')
         if skip and selection:
             chr_toskip = self._init_skip(selection)
@@ -550,13 +565,13 @@ class WigTrack(TextTrack):
                 fstart = self.filehandle.tell()
                 row = self.filehandle.readline()
                 if not row: break
-                if row.startswith("#"): continue
-                if row.startswith("browser") or row.startswith("track"):
+                if row[0]=="#": continue
+                if row[:7]=="browser" or row[:5]=="track":
                     fixedStep = None
                     chrom = start = end = score = step = None
                     span = 1
                     continue
-                if row.startswith("fixedStep"):
+                if row[:9]=="fixedStep":
                     fixedStep = True
                     if rowdata[1] >= 0:
                         yield tuple(self._check_type(rowdata[index_list[n]],f)
@@ -573,7 +588,7 @@ class WigTrack(TextTrack):
                     end = -1
                     start -= step
                     continue
-                if row.startswith("variableStep"):
+                if row[:12]=="variableStep":
                     fixedStep = False
                     if rowdata[1] >= 0:
                         yield tuple(self._check_type(rowdata[index_list[n]],f)
@@ -669,10 +684,9 @@ class GffTrack(TextTrack):
         self.open()
         for row in self.filehandle:
             row = row.strip(' \r\n')
-            if not(row) or \
-                    row.startswith("browser") or \
-                    row.startswith("track") or \
-                    row.startswith("#"): continue
+            if not row: continue
+            if row[0] in ['#','@']: continue
+            if row[:7].split()[:0] in ['track','browser']: continue
             rowlen = len(row.split(self.separator))
             break
         self.close()
@@ -708,7 +722,7 @@ class SamTrack(TextTrack):
         if not(os.path.exists(self.path)): return
         self.intypes.update({'flag':int, 'mapq':int, 'pnext':int, 'tlen':int})
 
-    def _read(self, fields, index_list, selection, skip):
+    def _read(self, fields, index_list, selection, skip, header):
         self.open('read')
         if skip and selection:
             chr_toskip = self._init_skip(selection)
@@ -719,7 +733,7 @@ class SamTrack(TextTrack):
                 fstart = self.filehandle.tell()
                 row = self.filehandle.readline()
                 if not row: break
-                if row.startswith("@"): continue
+                if row[0]=="@": continue
                 splitrow = [s.strip() for s in row.split(self.separator)]
                 if not any(splitrow): continue
                 if selection:
@@ -749,7 +763,7 @@ class FpsTrack(TextTrack):
         kwargs['fields'] = ['chr','start','end','name','score','strand']
         TextTrack.__init__(self,path,**kwargs)
 
-    def _read(self, fields, index_list, selection, skip):
+    def _read(self, fields, index_list, selection, skip, header):
         self.open('read')
         if skip and selection:
             chr_toskip = self._init_skip(selection)
@@ -760,9 +774,8 @@ class FpsTrack(TextTrack):
                 fstart = self.filehandle.tell()
                 row = self.filehandle.readline()
                 if not row: break
-                if not row.startswith("FP"): continue
+                if row[:2] != "FP": continue
                 splitrow = [s.strip() for s in row.split()]
-                if not any(splitrow): continue
                 splitrow = [splitrow[1],int(splitrow[5]),int(splitrow[5])+1,splitrow[0],splitrow[7],splitrow[4][1]]
                 if selection:
                     if skip:

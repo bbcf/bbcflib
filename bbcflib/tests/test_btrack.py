@@ -185,7 +185,7 @@ class Test_Index(unittest.TestCase):
             t2 = time.time()
             tskip += t2-t1
         self.assertListEqual(norm,skip)
-        self.assertLess(tskip/tnorm,0.5) # Second case it at least twice faster
+        self.assertLess(tskip,tnorm) # Second case it faster
         return t
 
     def test_index_bed(self):
