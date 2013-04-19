@@ -179,6 +179,7 @@ class TextTrack(Track):
         if isinstance(header, int):
             for k in range(header-1):
                 row = self.filehandle.readline()
+                p = self.filehandle.tell()
         elif isinstance(header,str):
             row = header
             while row.startswith(header):
