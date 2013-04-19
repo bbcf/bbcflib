@@ -4,7 +4,7 @@ import sys
 from bbcflib.bFlatMajor import common
 from bbcflib.bFlatMajor.stream import concatenate
 from bbcflib.btrack import FeatureStream
-from numpy import float as nfloat, asarray, zeros
+from numpy import asarray, zeros
 
 def _sum(scores,denom=None):
     return sum(scores)
