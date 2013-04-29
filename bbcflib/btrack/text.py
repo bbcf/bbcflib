@@ -192,7 +192,7 @@ class TextTrack(Track):
         elif header == False: return
         else:
             row = '#'
-            while row and row[:6].split()[0] in ['#','@','track','browser']:
+            while row and row[:6].split(self.separator)[0] in ['#','@','track','browser']:
                 p = self.filehandle.tell()
                 row = self.filehandle.readline().strip(' \n\r'+self.separator)
         self.filehandle.seek(p)
@@ -417,8 +417,8 @@ class BedTrack(TextTrack):
         self.open()
         rowlen = None
         for row in self.filehandle:
-            if not(row.strip(' \r\n')) or row[0]=='#': continue
-            if row[:6].split()[0] in ['track','browser']: continue
+            if not(row.strip(' \r\n'+self.separator)) or row[0]=='#': continue
+            if row[:6].split(self.separator)[0] in ['track','browser']: continue
             rowlen = len(row.split(self.separator))
             break
         self.close()
@@ -689,10 +689,10 @@ class GffTrack(TextTrack):
         rowlen = 9
         self.open()
         for row in self.filehandle:
-            row = row.strip(' \r\n')
+            row = row.strip(' \r\n'+self.separator)
             if not row: continue
             if row[0] in ['#','@']: continue
-            if row[:7].split()[:0] in ['track','browser']: continue
+            if row[:7].split(self.separator)[:0] in ['track','browser']: continue
             rowlen = len(row.split(self.separator))
             break
         self.close()
