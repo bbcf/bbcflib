@@ -192,7 +192,7 @@ class TextTrack(Track):
         elif header == False: return
         else:
             row = '#'
-            while row[:6].split()[0] in ['#','@','track','browser']:
+            while row and row[:6].split()[0] in ['#','@','track','browser']:
                 p = self.filehandle.tell()
                 row = self.filehandle.readline().strip(' \n\r')
         self.filehandle.seek(p)
