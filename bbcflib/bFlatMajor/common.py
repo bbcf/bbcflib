@@ -549,8 +549,8 @@ def cobble(stream,aggregate=aggreg_functions,stranded=False,scored=False):
                     while toyield:
                         y = toyield.pop(0)
                         yield tuple(y)[:-1]
-                    L = {}
                     toyield = [x]
+                    L = {str(x[-1]):L[x[-1]]}
                 elif x:
                     toyield.append(x)
             except StopIteration:
