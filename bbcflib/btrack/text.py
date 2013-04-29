@@ -194,7 +194,7 @@ class TextTrack(Track):
             row = '#'
             while row and row[:6].split()[0] in ['#','@','track','browser']:
                 p = self.filehandle.tell()
-                row = self.filehandle.readline().strip(' \n\r')
+                row = self.filehandle.readline().strip(' \n\r'+self.separator)
         self.filehandle.seek(p)
 
     def _read(self, fields, index_list, selection, skip, header):
