@@ -252,3 +252,9 @@ class Test_Skip_Header(unittest.TestCase):
         self.assertEqual(L4,0)
         self.assertEqual(L1-11,L5)
 
+    def test_intermediate_header(self):
+        # header lines in the middle
+        t = track(os.path.join(path,"yeast_genes_tracklines.bed"))
+        s = t.read()
+        for x in s: pass
+

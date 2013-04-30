@@ -212,7 +212,7 @@ class TextTrack(Track):
                 if row[0] in ['#','@']: continue
                 splitrow = [s.strip() for s in row.split(self.separator)]
                 if not any(splitrow): continue
-                if splitrow[0] in ['track','browser']: continue
+                if row[:5]=='track' or row[:7]=='browser': continue
                 if selection:
                     if skip:
                         fstart,fend,next_toskip = self._skip(fstart,next_toskip,chr_toskip)
@@ -418,7 +418,7 @@ class BedTrack(TextTrack):
         rowlen = None
         for row in self.filehandle:
             if not(row.strip(' \r\n'+self.separator)) or row[0]=='#': continue
-            if row[:6].split(self.separator)[0] in ['track','browser']: continue
+            if row[:5]=='track' or row[:7]=='browser': continue
             rowlen = len(row.split(self.separator))
             break
         self.close()
@@ -609,7 +609,7 @@ class WigTrack(TextTrack):
                     end = start+span
                     continue
                 if fixedStep is None: continue
-                splitrow = [s.strip() for s in row.split(self.separator)]
+                splitrow = [s.strip() for s in row.split()]
                 if not any(splitrow): continue
                 yieldit = True
                 if fixedStep:
