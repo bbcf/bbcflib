@@ -189,6 +189,7 @@ def heatmap(M,output=None,format='pdf',new=True,last=True,
                 na.rm=TRUE, density.info='none'%s)""" %plotopt)
     _end("",last,**kwargs)
     return output
+
 ############################################################
 ############################################################
 def pairs(M,X=None,labels=None,
@@ -291,3 +292,17 @@ if (exists("X")) {
 """)
     _end("",last,**kwargs)
     return output
+
+############################################################
+############################################################
+def hist(X,options={},output=None,format='pdf',new=True,last=True,**kwargs):
+    """Create a histogram of the values in vector *X*."""
+    plotopt,output = _begin(output=output,format=format,new=new,**kwargs)
+    rargs = ""
+    for opt,val in options.iteritems():
+        rargs += ", %s=%s" % (opt,list2r(val))
+    robjects.r.assign('X',numpy2ri.numpy2ri(X))
+    robjects.r("hist(X %s)" % rargs)
+    _end("",last,**kwargs)
+    return output
+
