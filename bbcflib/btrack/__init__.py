@@ -1,65 +1,5 @@
 """
-Examples::
-
-    import btrack as track
-
-    track.convert("data/test.bed","test0.sql",chrmeta='mm9')
-
-Open a bed track & copy its info into another sql track::
-
-    chrmeta = {'chr2':{'length':4000000}}
-    info = {'datatype':'features'}
-    track_in = track.track("data/test.bed",chrmeta=chrmeta)
-    track_out = track.track("test1.sql",fields=['start','end','name'],chrmeta=chrmeta,info=info)
-    track_out.write(track_in.read())
-    track_out.close()
-    track_in.close()
-
-Copy a selection of a bed track into a wig track::
-
-    track_in = track.track("data/HoxD13_4C_FB.sql")
-    track_out = track.track("test2.wig")
-    selection = [{'chr':'chr1','start':(7568000,9607000)},{'chr':'chr2','end':(3907400,4302000)}]
-    track_out.write(track_in.read(selection=selection),mode='overwrite')
-    track_out.close()
-    track_in.close()
-
-Read a track (see :func:`FeatureStream <bbcflib.btrack.FeatureStream>`)::
-
-    track_in = track.track("data/Gene_TxS_chr2.bed.gz",chrmeta='mm9',format='bed')
-    for x in track_in.read():
-        print x  #('chr2', 3030497, 3032496, 'ENSMUST00000072955_txS')
-        break
-
-Split field::
-
-    from bFlatMajor.common import split_field
-    for x in split_field(track_in.read(),['name','extension'],'name','_'):
-        print x  #['chr2', 3030497, 3032496, 'ENSMUST00000072955', 'txS']
-        break
-
-Random track::
-
-    from bFlatMajor.common import shuffled
-    for n,x in enumerate(shuffled(track_in.read('chr2'),chrlen=chrmeta['chr2']['length'])):
-        print x
-        if n>10: break
-
-Do something with the scores of a signal track only if the location is present in another features track::
-
-    selection = {'chr':'chr2','start':(7540000,75650000)}
-    track_features = track.track("data/Bricks_HoxD4_FB_05_chr2.bed")
-    track_scores = track.track("data/HoxD13_4C_FB.sql",readonly=True)
-    score = float()
-    length = float()
-    for x in track_scores.read(selection=track_features.read(selection=selection),
-                               fields=['start','end','score']):
-        score += x[2]*(x[1]-x[0])
-        length += (x[1]-x[0])
-    track_features.close()
-    track_scores.close()
-    print score/length
-
+Documentation `here <http://bbcf.epfl.ch/bbcflib/tutorial_btrack.html>`_.
 """
 
 __all__ = ['Track','track','FeatureStream','convert',
@@ -255,46 +195,30 @@ def stats(source,out=sys.stdout,hlimit=15,wlimit=100, **kwargs):
     :param wlimit: max width of the distribution plot, in number of chars.
     :param **kwargs: ``track`` keyword arguments.
     """
-    if isinstance(source, str):
-        t = track(source, **kwargs)
-    s = t.read(**kwargs)
-    is_score = 'score' in s.fields
-    if is_score:
-        distr = {}
-        smax = -sys.maxint
-        smin = sys.maxint
-        total = 0.0
-        score_idx = s.fields.index('score')
-        for nfeat,x in enumerate(s):
-            v = x[score_idx]
-            total += v
-            distr[v] = distr.get(v,0.0) + 1
-        smean = total/nfeat
-        vals = sorted(distr.keys())
+    def median(vals,distr,nfeat):
         smedian = cumul = 0
         lastv = vals[0]
         for v in vals:
             cumul += distr[v]
-            if cumul > 0.5*total:
-                smedian = v if total%2==1 else (v+lastv)/2
+            if cumul > 0.5*nfeat:
+                smedian = v if len(vals)%2==1 else (v+lastv)/2.
+                break
             lastv = v
-        stdev = (sum((x-smean)**2 for x in vals)/nfeat)**(0.5)
+        return smedian
+
+    def stats_from_distr(distr,nfeat):
+        vals = sorted(distr.keys())
+        total = float(sum(k*distr[k] for k in vals))
         smin = vals[0]; smax = vals[-1]
-    print >> out, "Fields:", str(','.join(s.fields))
-    print >> out, "Number of lines:", str(nfeat)
-    print >> out, "Score stats:"
-    if is_score:
-        print >> out, "  Total:", str(total)
-        print >> out, "  Min:", str(smin)
-        print >> out, "  Max:", str(smax)
-        print >> out, "  Median:", str(smedian)
-        print >> out, "  Mean:", str(smean)
-        print >> out, "  Standard deviation:", str(stdev)
-        print >> out, "Distribution of scores:"
-        # Console distribution plot
+        smean = total/nfeat
+        stdev = (sum((x-smean)**2 for x in vals)/nfeat)**(0.5)
+        smedian = median(vals,distr,nfeat)
+        return total,smin,smax,smean,stdev,smedian
+
+    def console_distr_plot(distr,out,hlimit,wlimit):
         try: from numpy import zeros,array
         except ImportError: return
-        scores = array([distr[v] for v in vals])
+        scores = array([distr[v] for v in sorted(distr.keys())])
         lscores = len(scores)
         L = min(lscores,wlimit)
         binw = lscores//L if lscores%L==0 else lscores//L+1
@@ -307,8 +231,62 @@ def stats(source,out=sys.stdout,hlimit=15,wlimit=100, **kwargs):
         T = zeros((hlimit+1,L))
         for k in range(hlimit,0,-1):
             T[k-1] = T[k] + array([1 if (k >= x > k-1) else 0 for x in bscores])
-            print >> out, ''.join(['#' if x else ' ' for x in T[k]])
-        print >> out, ''.join(['-']*L)
+            out.write(''.join(['#' if x else ' ' for x in T[k]])  + '\n')
+        out.write(''.join(['-']*L)  + '\n')
+
+    def score_stats(s):
+        distr = {} # distribution of scores
+        ldistr = {} # distribution of feat lengths
+        score_idx = s.fields.index('score')
+        st_idx= s.fields.index('start')
+        en_idx = s.fields.index('end')
+        for nfeat,x in enumerate(s):
+            v = x[score_idx]
+            distr[v] = distr.get(v,0.0) + 1
+            w = x[en_idx]-x[st_idx]
+            ldistr[w] = ldistr.get(w,0.0) + 1
+        return (nfeat,distr,ldistr,
+                stats_from_distr(distr,nfeat), stats_from_distr(ldistr,nfeat), )
+
+    def feat_stats():
+        ldistr = {} # distribution of feat lengths
+        st_idx= s.fields.index('start')
+        en_idx = s.fields.index('end')
+        for nfeat,x in enumerate(s):
+            w = x[en_idx]-x[st_idx]
+            ldistr[w] = ldistr.get(w,0.0) + 1
+        return nfeat,ldistr,stats_from_distr(ldistr,nfeat)
+
+    if isinstance(source, str):
+        t = track(source, **kwargs)
+    s = t.read(**kwargs)
+    is_score = 'score' in s.fields
+    if is_score:
+        nfeat,distr,ldistr,stat,lstat = score_stats(s)
+    else:
+        nfeat,ldistr,lstat = feat_stats(s)
+    out.write("Fields: " + str(','.join(s.fields)) + '\n')
+    out.write("Features stats:\n")
+    out.write("  Number of items: " + str(nfeat) + '\n')
+    out.write("  Total: " + str(lstat[0]) + '\n')
+    out.write("  Min: " + str(lstat[1]) + '\n')
+    out.write("  Max: " + str(lstat[2]) + '\n')
+    out.write("  Mean: " + str(lstat[3]) + '\n')
+    out.write("  Standard deviation: " + str(lstat[4]) + '\n')
+    out.write("  Median: " + str(lstat[5]) + '\n')
+    out.write("Distribution of features lengths: " + '\n')
+    console_distr_plot(ldistr,out,hlimit,wlimit)
+    out.write('\n')
+    if is_score:
+        out.write("Score stats:\n")
+        out.write("  Total: " + str(stat[0]) + '\n')
+        out.write("  Min: " + str(stat[1]) + '\n')
+        out.write("  Max: " + str(stat[2]) + '\n')
+        out.write("  Mean: " + str(stat[3]) + '\n')
+        out.write("  Standard deviation: " + str(stat[4]) + '\n')
+        out.write("  Median: " + str(stat[5]) + '\n')
+        out.write("Distribution of scores: " + '\n')
+        console_distr_plot(distr,out,hlimit,wlimit)
 
 ################################################################################
 
