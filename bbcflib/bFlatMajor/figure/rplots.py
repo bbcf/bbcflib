@@ -83,7 +83,8 @@ def venn(D,legend=None,options={},output=None,format='png',new=True,last=True,**
         fun = 'draw.triple.venn'
         rargs = """area1=%d, area2=%d, area3=%d,
                 n12=%d, n13=%d, n23=%d, n123=%d""" % tuple([D.get(c,0) for c in combn])
-        if D['B'] == D['A|B'] + D['B|C'] - D['A|B|C']:
+        A=groups[0]; B=groups[1]; C=groups[2]
+        if D[B] == D[A+'|'+B] + D[B+'|'+C] - D[A+'|'+B+'|'+C]:
             rargs += ", cat.dist=c(0.05,0.05,-0.45)"
         else:
             rargs += ", cat.dist=c(0.05,0.05,0.05)"

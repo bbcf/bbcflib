@@ -274,7 +274,7 @@ def stats(source,out=sys.stdout,hlimit=15,wlimit=100, **kwargs):
         smedian = cumul = 0
         lastv = vals[0]
         for v in vals:
-            cumul += distr(vals)
+            cumul += distr[v]
             if cumul > 0.5*total:
                 smedian = v if total%2==1 else (v+lastv)/2
             lastv = v
