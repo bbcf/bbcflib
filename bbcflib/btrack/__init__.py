@@ -207,6 +207,7 @@ def stats(source,out=sys.stdout,hlimit=15,wlimit=100, **kwargs):
         return smedian
 
     def stats_from_distr(distr,nfeat):
+        if nfeat==0: return (None,)*6
         vals = sorted(distr.keys())
         total = float(sum(k*distr[k] for k in vals))
         smin = vals[0]; smax = vals[-1]
@@ -240,7 +241,9 @@ def stats(source,out=sys.stdout,hlimit=15,wlimit=100, **kwargs):
         score_idx = s.fields.index('score')
         st_idx= s.fields.index('start')
         en_idx = s.fields.index('end')
-        for nfeat,x in enumerate(s):
+        nfeat = 0
+        for x in s:
+            nfeat += 1
             v = x[score_idx]
             distr[v] = distr.get(v,0.0) + 1
             w = x[en_idx]-x[st_idx]
@@ -259,14 +262,18 @@ def stats(source,out=sys.stdout,hlimit=15,wlimit=100, **kwargs):
 
     if isinstance(source, str):
         t = track(source, **kwargs)
+    else: t = source
     s = t.read(**kwargs)
     is_score = 'score' in s.fields
     if is_score:
         nfeat,distr,ldistr,stat,lstat = score_stats(s)
     else:
         nfeat,ldistr,lstat = feat_stats(s)
-    out.write("Fields: " + str(','.join(s.fields)) + '\n')
+    if nfeat == 0:
+        out.write("Empty content\n\n")
+        return
     out.write("Features stats:\n")
+    out.write("--------------\n")
     out.write("  Number of items: " + str(nfeat) + '\n')
     out.write("  Total: " + str(lstat[0]) + '\n')
     out.write("  Min: " + str(lstat[1]) + '\n')
@@ -279,6 +286,7 @@ def stats(source,out=sys.stdout,hlimit=15,wlimit=100, **kwargs):
     out.write('\n')
     if is_score:
         out.write("Score stats:\n")
+        out.write("-----------\n")
         out.write("  Total: " + str(stat[0]) + '\n')
         out.write("  Min: " + str(stat[1]) + '\n')
         out.write("  Max: " + str(stat[2]) + '\n')
@@ -287,6 +295,7 @@ def stats(source,out=sys.stdout,hlimit=15,wlimit=100, **kwargs):
         out.write("  Median: " + str(stat[5]) + '\n')
         out.write("Distribution of scores: " + '\n')
         console_distr_plot(distr,out,hlimit,wlimit)
+    out.write('\n')
 
 ################################################################################
 
