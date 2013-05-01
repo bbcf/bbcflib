@@ -451,22 +451,22 @@ class SgaTrack(TextTrack):
 
     Fields are::
 
-        ['chr','start','end','name','strand','counts']
+        ['chr','start','end','name','strand','score']
 
     Chromosome names are automatically converted to refseq ids if the assembly attribute is specified.
     """
     def __init__(self,path,**kwargs):
         kwargs['format'] = 'sga'
-        kwargs['fields'] = ['chr','start','end','name','strand','counts']
+        kwargs['fields'] = ['chr','start','end','name','strand','score']
         def _sga_strand(num=0):
             if num in ['+','-']: return num
             num = int(num)
             if num > 0: return '+'
             if num < 0: return '-'
             return '0'
-        def _score_to_counts(x=0.0): return "%i"%float(x)
-        kwargs['intypes'] = {'counts':int, 'score':float}
-        kwargs['outtypes'] = {'strand': _sga_strand, 'counts': _score_to_counts, 'score':float}
+        def _format_score(x=0.0): return "%i" % x
+        kwargs['intypes'] = {'score':float}
+        kwargs['outtypes'] = {'strand': _sga_strand, 'score':_format_score}
         TextTrack.__init__(self,path,**kwargs)
 
     def _read(self, fields, index_list, selection, skip, header):
@@ -475,7 +475,7 @@ class SgaTrack(TextTrack):
             chr_toskip = self._init_skip(selection)
             next_toskip = chr_toskip.next()
         fstart = fend = 0
-        rowdata = {'+': ['',-1,-1,'','+',''], # chr,start,end,name,strand,counts
+        rowdata = {'+': ['',-1,-1,'','+',''], # chr,start,end,name,strand,score
                    '-': ['',-1,-1,'','-',''],
                    '0': ['',-1,-1,'','.','']}
         while 1:
@@ -486,12 +486,12 @@ class SgaTrack(TextTrack):
             splitrow = [s.strip() for s in row.split(self.separator)]
             if not any(splitrow): continue
             yieldit = True
-            chr,name,pos,strand,counts = splitrow
-            if float(counts) == 0: continue
+            chr,name,pos,strand,score = splitrow
+            if float(score) == 0: continue
             pos = int(pos)
             rowdata[strand][0] = chr
             if pos-1 == rowdata[strand][2] and \
-                    counts == rowdata[strand][5] and \
+                    score == rowdata[strand][5] and \
                     name == rowdata[strand][3]:
                 rowdata[strand][2] = pos
                 yieldit = False
@@ -509,21 +509,11 @@ class SgaTrack(TextTrack):
             rowdata[strand][1] = pos-1
             rowdata[strand][2] = pos
             rowdata[strand][3] = name
-            rowdata[strand][5] = counts
+            rowdata[strand][5] = score
         for rd in rowdata.values():
             if rd[1]>=0:
                 yield tuple(self._check_type(rd[index_list[n]],f)
                             for n,f in enumerate(fields))
-
-    def write(self, source, **kw):
-        """Rename field 'score' to 'counts' just for writing, then restablish."""
-        sidx = -1
-        if 'score' in source.fields:
-            sidx = source.fields.index('score')
-            source.fields[sidx] = 'counts'
-        TextTrack.write(self,source,**kw)
-        if sidx > -1:
-            source.fields[sidx] = 'score'
 
     def _format_fields(self,vec,row,source_list,target_list):
         rowres = ['',0,0,'',0,0]
@@ -535,7 +525,7 @@ class SgaTrack(TextTrack):
             x = [rowres[0],rowres[3] or '--',
                  self.outtypes.get("start",str)(pos+1),
                  self.outtypes.get("strand",str)(rowres[4]),
-                 self.outtypes.get("counts",str)(rowres[5])]
+                 self.outtypes.get("score",str)(rowres[5])]
             if x[4] == '0': continue
             feat.append(self.separator.join(x))
         return "\n".join(feat)

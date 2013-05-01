@@ -251,7 +251,7 @@ def stats(source,out=sys.stdout,hlimit=15,wlimit=100, **kwargs):
         return (nfeat,distr,ldistr,
                 stats_from_distr(distr,nfeat), stats_from_distr(ldistr,nfeat), )
 
-    def feat_stats():
+    def feat_stats(s):
         ldistr = {} # distribution of feat lengths
         st_idx= s.fields.index('start')
         en_idx = s.fields.index('end')

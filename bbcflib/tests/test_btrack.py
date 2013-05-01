@@ -156,7 +156,7 @@ class Test_Formats(unittest.TestCase):
         t = convert(self.bed, sga)
         self.assertIsInstance(t, SgaTrack)
         s = t.read(); s.next()
-        self.assertListEqual(t.fields, ['chr','start','end','name','strand','counts'])
+        self.assertListEqual(t.fields, ['chr','start','end','name','strand','score'])
 
     def tearDown(self):
         for ext in ['','.bed','.bw','.wig','.bedGraph','.bam','.sql','.sga','.gff']:
