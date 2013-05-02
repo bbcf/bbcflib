@@ -122,26 +122,31 @@ def filter_scores(trackScores,trackFeatures,method='sum',strict=False,annotate=F
         Function to be applied to *trackFeatures* before all. [common.cobble]
     :rtype: FeatureStream
     """
-    def _stream(ts,tf,stranded):
+    def _stream(ts,tf):
         tf = common.sentinelize(tf,[sys.maxint]*len(tf.fields))
-        Y = [(-sys.maxint,-sys.maxint,0.0)]
         info_idx = [k for k,f in enumerate(tf.fields) if f not in ts.fields]
         if stranded:
             ts_strand_idx = ts.fields.index('strand')
             tf_strand_idx = tf.fields.index('strand')
             same_strand = lambda x,y:x[ts_strand_idx]==y[tf_strand_idx]
         else: same_strand = lambda x,y:True
+        Y = []
+        ynext = (-sys.maxint,-sys.maxint,0.0)
         for x in ts:
             xstart = x[0]
             xend = x[1]
-            ynext = Y[-1]
             # Load into Y all feature items which intersect score x
             while ynext[0] < xend:
+                if ynext[1] > xstart:
+                    Y.append(ynext)
                 ynext = tf.next()
-                if ynext[1] > xstart: Y.append(ynext)
-            n = 0
-            while Y[n][1] <= xstart: n+=1
-            Y = Y[n:]
+            if Y:
+                n = 0
+                try:
+                    while Y[n][1] <= xstart: n+=1
+                    Y = Y[n:]
+                except IndexError:
+                    Y = [ynext]
             for y in Y:
                 if not same_strand(x,y): continue
                 info = tuple([y[k] for k in info_idx]) if annotate else ()
@@ -160,7 +165,8 @@ def filter_scores(trackScores,trackFeatures,method='sum',strict=False,annotate=F
     else:
         _tf = flatten(trackFeatures,stranded=stranded)
     _ts = common.reorder(trackScores,['start','end'])
-    return FeatureStream(_stream(_ts,_tf,stranded), _ts.fields+_info_fields)
+    _tf = common.reorder(_tf,['start','end'])
+    return FeatureStream(_stream(_ts,_tf), _ts.fields+_info_fields)
 
 ###############################################################################
 def score_by_feature(trackScores,trackFeatures,fn='mean'):
