@@ -1161,7 +1161,7 @@ def mapseq_workflow(ex, job, assembly, map_args, gl, via="local",
             job.options['read_extension'] = mapped_files.values()[0].values()[0]['stats']['read_length']
         density_files = densities_groups( ex, job, mapped_files, chrmeta, via=via )
         logfile.write("Finished computing densities.\n");logfile.flush()
-    else: 
+    else:
         density_files = None
     return 0
 

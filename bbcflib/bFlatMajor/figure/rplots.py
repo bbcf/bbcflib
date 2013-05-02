@@ -28,7 +28,7 @@ def _begin(output,format,new,**kwargs):
         if format == 'pdf':
             robjects.r('pdf("%s",paper="a4",height=11,width=8)' %output)
         elif format == 'png':
-            robjects.r('png("%s",height=800,width=800)' %output)
+            robjects.r('png("%s",height=800,width=800,type="cairo")' %output)
         else:
             raise ValueError("Format not supported: %s" %format)
         pars = "lwd=2,cex=1.1,cex.main=1.5,cex.lab=1.3,cex.axis=1.1,mar=c(3,3,1,1),oma=c(3,3,0,3),las=1,pch=20"
