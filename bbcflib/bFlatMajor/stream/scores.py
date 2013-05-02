@@ -140,6 +140,7 @@ def filter_scores(trackScores,trackFeatures,method='sum',strict=False,annotate=F
                 if ynext[1] > xstart:
                     Y.append(ynext)
                 ynext = tf.next()
+            # Remove features that are far behind x
             if Y:
                 n = 0
                 try:
@@ -147,6 +148,7 @@ def filter_scores(trackScores,trackFeatures,method='sum',strict=False,annotate=F
                     Y = Y[n:]
                 except IndexError:
                     Y = [ynext]
+            # Yield intersections
             for y in Y:
                 if not same_strand(x,y): continue
                 info = tuple([y[k] for k in info_idx]) if annotate else ()
