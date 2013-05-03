@@ -260,9 +260,10 @@ def stats(source,out=sys.stdout,hlimit=15,wlimit=100, **kwargs):
             ldistr[w] = ldistr.get(w,0.0) + 1
         return nfeat,ldistr,stats_from_distr(ldistr,nfeat)
 
-    if isinstance(source, str):
+    if isinstance(source, basestring):
         t = track(source, **kwargs)
-    else: t = source
+    else: 
+        t = source
     s = t.read(**kwargs)
     is_score = 'score' in s.fields
     if is_score:
