@@ -55,18 +55,31 @@ def copy(stream,n=2):
     return [FeatureStream(x,stream.fields) for x in itertools.tee(stream)]
 
 ####################################################################
-def select(stream, fields):
+def select(stream, fields=None, selection={}):
     """
-    Keeps only specified *fields* from a stream.
+    Keeps only specified *fields* from a stream, and/or only elements matching *selection*.
 
-    :param stream: FeatureStream object.
+    :param stream: FeatureStream.
     :param fields: (list of str) list of fields to keep in the output.
-    :rtype: FeatureStream, or list of FeatureStream objects
+    :param selection: (dict {*field*:*val*}) keep only lines s.t. *field* has a value
+        equal to *val*, or is an element of *val*. E.g. `select(f,None,{'chr':['chr1','chr2']})`.
+    :rtype: FeatureStream, or list of FeatureStream objects.
     """
     def _select(stream,idxs):
-        for x in stream:
-            yield tuple([x[i] for i in idxs])
+        if selection:
+            sel = dict([(stream.fields.index(f),val) for f,val in selection.iteritems()])
+            for x in stream:
+                for k,val in sel.iteritems():
+                    if isinstance(val,(list,tuple)):
+                        if not x[k] in val: continue
+                    else:
+                        if not x[k] == val: continue
+                    yield tuple([x[i] for i in idxs])
+        else:
+            for x in stream:
+                yield tuple([x[i] for i in idxs])
 
+    if not fields: fields=stream.fields
     idxs = [stream.fields.index(f) for f in fields]
     assert all([x > -1 for x in idxs]), "Can only select amongst fields %s." % stream.fields
     assert hasattr(stream,'fields') and stream.fields, "Object %s has no attribute 'fields'." % stream

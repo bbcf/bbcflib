@@ -177,6 +177,7 @@ class TextTrack(Track):
         """If *header* is an int N, skip the first N lines. If it is a string or a list of strings,
         skip the first consecutive lines starting with strings in *header*. If it is None, skips
         consecutive lines starting with '#','@','track','browser'. If set to `False`, does nothing."""
+        p = 0
         if isinstance(header,str):
             header = [header]
         if isinstance(header, int):
