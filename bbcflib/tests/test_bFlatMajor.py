@@ -89,7 +89,7 @@ class Test_Common(unittest.TestCase):
 
         # by selection
         stream = fstream([('a',10,12), ('a',14,15), ('b',16,19)], fields=['name','start','end'])
-        res = list(select(stream,None,{'name':'a'}))
+        res = list(select(stream,None,{'name':['a','c']}))
         expected = [('a',10,12),('a',14,15)]
         self.assertListEqual(res,expected)
 

@@ -69,7 +69,11 @@ def select(stream, fields=None, selection={}):
         if selection:
             sel = dict([(stream.fields.index(f),val) for f,val in selection.iteritems()])
             for x in stream:
-                if all(x[k]==val for k,val in sel.iteritems()):
+                for k,val in sel.iteritems():
+                    if isinstance(val,(list,tuple)):
+                        if not x[k] in val: continue
+                    else:
+                        if not x[k] == val: continue
                     yield tuple([x[i] for i in idxs])
         else:
             for x in stream:
