@@ -474,6 +474,9 @@ class Assembly(object):
                     if chrom in chrlist:
                         line = re.sub(chrom,chrlist[chrom],line)
                         chrom = chrlist[chrom]
+                    else:
+                        chrom = re.sub(r'[;|,/\]','_',chrom)
+                        line = ">"+chrom+"\n"
                     outf.write(line)
                     genomeRef[chrom] = newfa
                 else: outf.write(line)
