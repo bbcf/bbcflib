@@ -81,9 +81,16 @@ class Test_Common(unittest.TestCase):
         self.assertEqual(list(res),expected)
 
     def test_select(self):
+        # by fields
         stream = fstream([(10,12,0.5), (14,15,1.2)], fields=['start','end','score'])
         res = list(select(stream,['score','end']))
         expected = [(0.5,12),(1.2,15)]
+        self.assertListEqual(res,expected)
+
+        # by selection
+        stream = fstream([('a',10,12), ('a',14,15), ('b',16,19)], fields=['name','start','end'])
+        res = list(select(stream,None,{'name':'a'}))
+        expected = [('a',10,12),('a',14,15)]
         self.assertListEqual(res,expected)
 
     def test_reorder(self):
