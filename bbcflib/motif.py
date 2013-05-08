@@ -109,7 +109,7 @@ def parallel_meme( ex, assembly, regions, name=None, chip=False, meme_args=None,
         meme_out = f[0]
         archive = unique_filename_in()
         tgz = tarfile.open(archive, "w:gz")
-        tgz.add( meme_out )
+        tgz.add( meme_out, arcname=n[1]+"_meme" )
         tgz.close()
         ex.add( archive, description=set_file_descr(n[1]+"_meme.tgz",
                                                     step='meme', type='tar',
