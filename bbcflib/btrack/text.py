@@ -466,8 +466,7 @@ class SgaTrack(TextTrack):
             if num < 0: return '-'
             return '0'
         def _format_score(x=0.0): return "%i" % x
-        kwargs['intypes'] = {'score':float}
-        kwargs['outtypes'] = {'strand': _sga_strand, 'score':_format_score}
+        kwargs['outtypes'] = {'strand': _sga_strand, 'score': _format_score}
         TextTrack.__init__(self,path,**kwargs)
 
     def _read(self, fields, index_list, selection, skip, header):
@@ -476,21 +475,22 @@ class SgaTrack(TextTrack):
             chr_toskip = self._init_skip(selection)
             next_toskip = chr_toskip.next()
         fstart = fend = 0
-        rowdata = {'+': ['',-1,-1,'','+',''], # chr,start,end,name,strand,score
-                   '-': ['',-1,-1,'','-',''],
-                   '0': ['',-1,-1,'','.','']}
-        while 1:
+        rowdata = {1: ['',-1,-1,'','+',''], # chr,start,end,name,strand,score
+                   -1: ['',-1,-1,'','-',''],
+                   0: ['',-1,-1,'','.','']}
+        _sga_f = ['chr','name','start','strand','score']
+        while True:
             fstart = self.filehandle.tell()
             row = self.filehandle.readline()
             if not row: break
             if row[0]=="#": continue
-            splitrow = [s.strip() for s in row.split(self.separator)]
+            splitrow = [self._check_type(s.strip(),_sga_f[n]) 
+                        for n,s in enumerate(row.split(self.separator))]
             if not any(splitrow): continue
             yieldit = True
-            chr,name,pos,strand,score = splitrow
+            chrom,name,pos,strand,score = splitrow
             if float(score) == 0: continue
-            pos = int(pos)
-            rowdata[strand][0] = chr
+            rowdata[strand][0] = chrom
             if pos-1 == rowdata[strand][2] and \
                     score == rowdata[strand][5] and \
                     name == rowdata[strand][3]:
@@ -505,16 +505,14 @@ class SgaTrack(TextTrack):
             fstart = fend
             if not(yieldit): continue
             if rowdata[strand][1]>=0:
-                yield tuple(self._check_type(rowdata[strand][index_list[n]],f)
-                            for n,f in enumerate(fields))
+                yield tuple(rowdata[strand][ind] for ind in index_list)
             rowdata[strand][1] = pos-1
             rowdata[strand][2] = pos
             rowdata[strand][3] = name
             rowdata[strand][5] = score
         for rd in rowdata.values():
             if rd[1]>=0:
-                yield tuple(self._check_type(rd[index_list[n]],f)
-                            for n,f in enumerate(fields))
+                yield tuple(rd[ind] for ind in index_list)
 
     def _format_fields(self,vec,row,source_list,target_list):
         rowres = ['',0,0,'',0,0]
