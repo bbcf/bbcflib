@@ -94,7 +94,7 @@ def convert( source, target, chrmeta=None, info=None, mode='write' ):
             ttrg = track(target[0], format=target[1], chrmeta=tsrc.chrmeta, fields=_f, info=info)
         else:
             ttrg = track(target, chrmeta=tsrc.chrmeta, fields=_f, info=info)
-        ttrg.write( tsrc.read(), mode=mode )
+        ttrg.write( tsrc.read(), mode=mode)#, clip=True )
     finally:
         ttrg.close()
         tsrc.close()
@@ -179,8 +179,9 @@ def check_format(source, **kwargs):
         except StopIteration:
             return True
         except Exception, e:
-            raise ValueError("Line %s of %s is not compatible with format %s: \n%s. \
-                              \nException raised: %s" % (n,source,t.format,x,e))
+            print "Line %s of %s is not compatible with format %s: \n%s. \
+                   \nException raised: %s" % (n,source,t.format,x,e)
+            return False
 
 def stats(source,out=sys.stdout,hlimit=15,wlimit=100, **kwargs):
     """Prints stats about the track. Draws a plot of the scores distribution (if any)
