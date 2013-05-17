@@ -65,7 +65,7 @@ def track( path, format=None, **kwargs):
     return getattr(sys.modules[_track_map[format][0]],
                    _track_map[format][1])(path,**kwargs)
 
-def convert( source, target, chrmeta=None, info=None, mode='write' ):
+def convert( source, target, chrmeta=None, info=None, mode='write', clip=False ):
     """
     Converts a file from one format to another. Format can be explicitly specified::
 
@@ -94,7 +94,7 @@ def convert( source, target, chrmeta=None, info=None, mode='write' ):
             ttrg = track(target[0], format=target[1], chrmeta=tsrc.chrmeta, fields=_f, info=info)
         else:
             ttrg = track(target, chrmeta=tsrc.chrmeta, fields=_f, info=info)
-        ttrg.write( tsrc.read(), mode=mode)#, clip=True )
+        ttrg.write( tsrc.read(), mode=mode, clip=clip )
     finally:
         ttrg.close()
         tsrc.close()
@@ -406,6 +406,11 @@ class Track(object):
         if len(_f) == 0: return None
         if num: return self.fields.index(_f[0])
         else: return _f[0]
+
+    @property
+    def name(self):
+        "returns an appropriate name for the track"
+        return self.info.get('name',os.path.splitext(os.path.basename(self.path))[0])
 
 
 ################################################################################

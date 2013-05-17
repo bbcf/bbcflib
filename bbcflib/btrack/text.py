@@ -82,7 +82,10 @@ class TextTrack(Track):
             if row[:5]=="track":
                 for x in row.split(self.separator):
                     key_val = re.search(r'(\S+)=(\S+)',x.strip())
-                    if key_val: _info[key_val.groups()[0]] = key_val.groups()[1]
+                    if key_val: 
+                        key = key_val.groups()[0].strip("\'\" ")
+                        val = key_val.groups()[1].strip("\'\" ")
+                        _info[key] = val
             break
         self.close()
         return _info

@@ -306,3 +306,80 @@ def hist(X,options={},output=None,format='pdf',new=True,last=True,**kwargs):
     _end("",last,**kwargs)
     return output
 
+
+############################################################
+############################################################
+def genomeGraph(chrmeta,SP=[],SM=[],F=[],options={},output=None,format='pdf',new=True,last=True,**kwargs):
+    """Create a whole genome overview of signals in *SP* (positive), *SM* (negative), and of features in *F*."""
+    if not(isinstance(SP,(list,tuple))): SP = [SP]
+    if not(isinstance(SM,(list,tuple))): SM = [SM]
+    if not(isinstance(F,(list,tuple))): F = [F]
+    total_tracks = len(SP)+len(SM)+len(F)
+    plotopt,output = _begin(output=output,format=format,new=new,**kwargs)
+## cut largest chromosome in 500 segments:
+    binsize = 2000*(1+max([c['length'] for c in chrmeta.values()])/1000000)
+    yscale = dict((c,0) for c in chrmeta.keys())
+    robjects.r("spmbins=list()")
+#### + signals
+    n = 0
+    for n,_sp in enumerate(SP):
+        _sd = dict((c,[0.]*(v['length']/binsize+1)) for c,v in chrmeta.iteritems())
+        for chrom, start, end, score in _sp:
+            yscale[chrom] = max(yscale[chrom],score)
+            for pos in range(start/binsize,end/binsize+1):
+                _sd[chrom][pos] = max(score,_sd[chrom][pos])
+        robjects.r("spmbins[[%i]]=list(%s)" %(n+1,",".join("'"+c+"'=list()" \
+                                                               for c in chrmeta.keys())))
+        for chrom in _sd.keys():
+            robjects.r.assign('rowtemp',numpy2ri.numpy2ri(_sd[chrom]))
+            robjects.r("spmbins[[%i]][['%s']]=rowtemp" %(n+1,chrom))
+    n0 = n+2
+#### - signals
+    for n,_sm in enumerate(SM):
+        _sd = dict((c,[0.]*(v['length']/binsize+1)) for c,v in chrmeta.iteritems())
+        for chrom, start, end, score in _sm:
+            yscale[chrom] = max(yscale[chrom],score)
+            for pos in range(start/binsize,end/binsize+1):
+                _sd[chrom][pos] = min(-score,_sd[chrom][pos])
+        robjects.r("spmbins[[%i]]=list(%s)" %(n0+n,",".join("'"+c+"'=list()" \
+                                                                for c in chrmeta.keys())))
+        for chrom in _sd.keys():
+            robjects.r.assign('rowtemp',numpy2ri.numpy2ri(_sd[chrom]))
+            robjects.r("spmbins[[%i]][['%s']]=rowtemp" %(n0+n,chrom))
+#### features
+    for n,_f in enumerate(F):
+        _fd = dict((c,[]) for c in chrmeta.keys())
+        for chrom, start, end, name in _f:
+            _fd[chrom].append(start/binsize,end/binsize+1,name)
+        robjects.r("fbins[[%i]]=list(%s)" %(n0+n,",".join("'"+c+"'=list()" \
+                                                              for c in chrmeta.keys())))
+        for chrom in _fd.keys():
+            robjects.r.assign('rowtemp',numpy2ri.numpy2ri(_fd[chrom]))
+            robjects.r("fbins[[%i]][['%s']]=rowtemp" %(n+1,chrom))
+#### chrlist
+    robjects.r("chrlist=list("+",".join(['"%s"=%i'%(k,v['length']) \
+                                             for k,v in chrmeta.iteritems()])+")")
+    robjects.r.assign('yscale_chrom',numpy2ri.numpy2ri(yscale.values()))
+    robjects.r("""
+n = length(chrlist)
+yscale = median(yscale_chrom)
+par(cex.lab=1.5,las=2)
+plot(0,0,t='n',xlim=c(0,500),ylim=c(0,n+1),xlab='',ylab='',bty='n',xaxt='n',yaxt='n')
+abline(v=seq(2e7,xscale,by=2e7),lty=2,col="grey")
+axis(side=3,at=seq(2e7,xscale,by=2e7),
+     labels=as.character(seq(2,xscale*1e-7,by=2)),las=1,lty=0)
+mtext(paste("x",expression(10^7)),side=4,at=n+1)
+for (chrom in names(chrlist)) {
+    segments(0,n,chrlist[[chrom]],n,lwd=3)
+    mtext(chrom,side=2,at=n)
+    colnb = 1
+    for (data in spmbins) {
+        ynums = n+sapply(sapply(data[[chrom]]/(3*yscale),max,-1),min,1)
+        lines(1:length(ynums),ynums,col=colnb)
+        colnb = colnb+1
+    }
+    n=n-1
+}
+"""2)
+    _end("",last,**kwargs)
+    return output
