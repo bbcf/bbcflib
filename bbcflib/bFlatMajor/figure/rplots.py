@@ -354,8 +354,9 @@ def genomeGraph(chrmeta,SP=[],SM=[],F=[],options={},output=None,format='pdf',new
         robjects.r("fbins[[%i]]=list(%s)" %(n0+n,",".join("'"+c+"'=list()" \
                                                               for c in chrmeta.keys())))
         for chrom in _fd.keys():
-            robjects.r.assign('rowtemp',numpy2ri.numpy2ri(_fd[chrom]))
-            robjects.r("fbins[[%i]][['%s']]=rowtemp" %(n+1,chrom))
+            robjects.r.assign('rowtemp1',numpy2ri.numpy2ri([x[0] for x in _fd[chrom]]))
+            robjects.r.assign('rowtemp2',numpy2ri.numpy2ri([x[1] for x in _fd[chrom]]))
+            robjects.r("fbins[[%i]][['%s']]=list(rowtemp1,rowtemp2)" %(n+1,chrom))
 #### chrlist
     robjects.r("chrlist=list("+",".join(['"%s"=%i'%(k,v['length']) \
                                              for k,v in chrmeta.iteritems()])+")")
@@ -368,9 +369,9 @@ plot(0,0,t='n',xlim=c(0,500),ylim=c(0,n+1),xlab='',ylab='',bty='n',xaxt='n',yaxt
 abline(v=seq(2e7,xscale,by=2e7),lty=2,col="grey")
 axis(side=3,at=seq(2e7,xscale,by=2e7),
      labels=as.character(seq(2,xscale*1e-7,by=2)),las=1,lty=0)
-mtext(paste("x",expression(10^7)),side=4,at=n+1)
+mtext(expression(phantom(0)*10^7),side=4,at=n+3.5,line=-3)
 for (chrom in names(chrlist)) {
-    segments(0,n,chrlist[[chrom]],n,lwd=3)
+    segments(0,n,ceiling(chrlist[[chrom]]/binsize),n,lwd=3)
     mtext(chrom,side=2,at=n)
     colnb = 1
     for (data in spmbins) {
@@ -378,8 +379,13 @@ for (chrom in names(chrlist)) {
         lines(1:length(ynums),ynums,col=colnb)
         colnb = colnb+1
     }
+    for (data in fbins) {
+        segs = data[[chrom]]
+        segments(segs[[1]],n,segs[[2]],n,col=2,lwd=5)
+        colnb = colnb+1
+    }
     n=n-1
 }
-"""2)
+""")
     _end("",last,**kwargs)
     return output
