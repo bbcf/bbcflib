@@ -371,7 +371,7 @@ yscale = median(yscale_chrom)
 ticks = seq(2e7,xscale,by=2e7)/binsize
 par(cex.lab=1.5,las=2)
 plot(0,0,t='n',xlim=c(0,500),ylim=c(0,n+1),xlab='',ylab='',bty='n',xaxt='n',yaxt='n')
-abline(v=,lty=2,col="grey")
+abline(v=ticks,lty=2,col="grey")
 axis(side=3,at=ticks,
      labels=as.character(seq(2,xscale*1e-7,by=2)),las=1,lty=0)
 mtext(expression(phantom(0)*10^7),side=4,at=n+3.5,line=-3)
@@ -386,11 +386,15 @@ for (chrom in names(chrlist)) {
     }
     for (data in fbins) {
         segs = data[[chrom]]
-        segments(segs[[1]],n,segs[[2]],n,col=2,lwd=5)
+        segments(segs[[1]],n,segs[[2]],n,col=colnb,lwd=5)
         colnb = colnb+1
     }
     n=n-1
 }
+colnb = colnb-1
 """)
+    if 'legend' in kwargs:
+        names = kwargs.pop('legend')
+        robjects.r("legend(x='bottomright', legend=%s, col=1:colnb,lty=1)" %list2r(names))
     _end("",last,**kwargs)
     return output
