@@ -310,57 +310,58 @@ def hist(X,options={},output=None,format='pdf',new=True,last=True,**kwargs):
 
 ############################################################
 ############################################################
-def genomeGraph(chrmeta,SP=[],SM=[],F=[],options={},output=None,format='pdf',new=True,last=True,**kwargs):
-    """Create a whole genome overview of signals in *SP* (positive), *SM* (negative), and of features in *F*."""
+def genomeGraph(chrlist,SP=[],SM=[],F=[],options={},output=None,format='pdf',new=True,last=True,**kwargs):
+    """Create a whole genome overview of signals in *SP* (positive), *SM* (negative), and of features in *F*.
+    *chrlist* must be a (ordered) list of pairs [(chrname, length),...]."""
     if not(isinstance(SP,(list,tuple))): SP = [SP]
     if not(isinstance(SM,(list,tuple))): SM = [SM]
     if not(isinstance(F,(list,tuple))): F = [F]
     total_tracks = len(SP)+len(SM)+len(F)
     plotopt,output = _begin(output=output,format=format,new=new,**kwargs)
 ## cut largest chromosome in 500 segments:
-    binsize = 2000*(1+max([c['length'] for c in chrmeta.values()])/1000000)
-    yscale = dict((c,0) for c in chrmeta.keys())
+    binsize = 2000*(1+max([c[1] for c in chrlist])/1000000)
+    yscale = dict((c,0) for c in [c[0] for c in chrlist])
     robjects.r("spmbins=list()")
+    robjects.r("fbins=list()")
 #### + signals
     n = 0
     for n,_sp in enumerate(SP):
-        _sd = dict((c,[0.]*(v['length']/binsize+1)) for c,v in chrmeta.iteritems())
+        _sd = dict((c,[0.]*(l/binsize+1)) for c,l in chrlist)
         for chrom, start, end, score in _sp:
             yscale[chrom] = max(yscale[chrom],score)
             for pos in range(start/binsize,end/binsize+1):
                 _sd[chrom][pos] = max(score,_sd[chrom][pos])
         robjects.r("spmbins[[%i]]=list(%s)" %(n+1,",".join("'"+c+"'=list()" \
-                                                               for c in chrmeta.keys())))
+                                                               for c in _sd.keys())))
         for chrom in _sd.keys():
             robjects.r.assign('rowtemp',numpy2ri.numpy2ri(array(_sd[chrom])))
             robjects.r("spmbins[[%i]][['%s']]=rowtemp" %(n+1,chrom))
     n0 = n+2
 #### - signals
     for n,_sm in enumerate(SM):
-        _sd = dict((c,[0.]*(v['length']/binsize+1)) for c,v in chrmeta.iteritems())
+        _sd = dict((c,[0.]*(l/binsize+1)) for c,l in chrlist)
         for chrom, start, end, score in _sm:
             yscale[chrom] = max(yscale[chrom],score)
             for pos in range(start/binsize,end/binsize+1):
                 _sd[chrom][pos] = min(-score,_sd[chrom][pos])
         robjects.r("spmbins[[%i]]=list(%s)" %(n0+n,",".join("'"+c+"'=list()" \
-                                                                for c in chrmeta.keys())))
+                                                                for c in _sd.keys())))
         for chrom in _sd.keys():
             robjects.r.assign('rowtemp',numpy2ri.numpy2ri(array(_sd[chrom])))
             robjects.r("spmbins[[%i]][['%s']]=rowtemp" %(n0+n,chrom))
 #### features
     for n,_f in enumerate(F):
-        _fd = dict((c,[]) for c in chrmeta.keys())
+        _fd = dict((c[0],[]) for c in chrlist)
         for chrom, start, end, name in _f:
             _fd[chrom].append(start/binsize,end/binsize+1,name)
         robjects.r("fbins[[%i]]=list(%s)" %(n0+n,",".join("'"+c+"'=list()" \
-                                                              for c in chrmeta.keys())))
+                                                              for c in _sd.keys())))
         for chrom in _fd.keys():
             robjects.r.assign('rowtemp1',numpy2ri.numpy2ri(array([x[0] for x in _fd[chrom]])))
             robjects.r.assign('rowtemp2',numpy2ri.numpy2ri(array([x[1] for x in _fd[chrom]])))
             robjects.r("fbins[[%i]][['%s']]=list(rowtemp1,rowtemp2)" %(n+1,chrom))
 #### chrlist
-    robjects.r("chrlist=list("+",".join(['"%s"=%i'%(k,v['length']) \
-                                             for k,v in chrmeta.iteritems()])+")")
+    robjects.r("chrlist=list("+",".join(['"%s"=%i'%(c,l) for c,l in chrlist])+")")
     robjects.r.assign('yscale_chrom',numpy2ri.numpy2ri(array(yscale.values())))
     robjects.r.assign('binsize',numpy2ri.numpy2ri(binsize))
     robjects.r("""
