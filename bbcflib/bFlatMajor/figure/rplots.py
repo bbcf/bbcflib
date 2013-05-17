@@ -13,6 +13,7 @@ import rpy2.robjects as robjects
 import rpy2.robjects.numpy2ri as numpy2ri
 from bbcflib.common import unique_filename_in
 from itertools import combinations
+from numpy import array
 
 def list2r(L):
     """Transform a Python list into a string in R format: [1,2,'C'] -> "c(1,2,'C')" ."""
@@ -331,7 +332,7 @@ def genomeGraph(chrmeta,SP=[],SM=[],F=[],options={},output=None,format='pdf',new
         robjects.r("spmbins[[%i]]=list(%s)" %(n+1,",".join("'"+c+"'=list()" \
                                                                for c in chrmeta.keys())))
         for chrom in _sd.keys():
-            robjects.r.assign('rowtemp',numpy2ri.numpy2ri(_sd[chrom]))
+            robjects.r.assign('rowtemp',numpy2ri.numpy2ri(array(_sd[chrom])))
             robjects.r("spmbins[[%i]][['%s']]=rowtemp" %(n+1,chrom))
     n0 = n+2
 #### - signals
@@ -344,7 +345,7 @@ def genomeGraph(chrmeta,SP=[],SM=[],F=[],options={},output=None,format='pdf',new
         robjects.r("spmbins[[%i]]=list(%s)" %(n0+n,",".join("'"+c+"'=list()" \
                                                                 for c in chrmeta.keys())))
         for chrom in _sd.keys():
-            robjects.r.assign('rowtemp',numpy2ri.numpy2ri(_sd[chrom]))
+            robjects.r.assign('rowtemp',numpy2ri.numpy2ri(array(_sd[chrom])))
             robjects.r("spmbins[[%i]][['%s']]=rowtemp" %(n0+n,chrom))
 #### features
     for n,_f in enumerate(F):
@@ -354,20 +355,23 @@ def genomeGraph(chrmeta,SP=[],SM=[],F=[],options={},output=None,format='pdf',new
         robjects.r("fbins[[%i]]=list(%s)" %(n0+n,",".join("'"+c+"'=list()" \
                                                               for c in chrmeta.keys())))
         for chrom in _fd.keys():
-            robjects.r.assign('rowtemp1',numpy2ri.numpy2ri([x[0] for x in _fd[chrom]]))
-            robjects.r.assign('rowtemp2',numpy2ri.numpy2ri([x[1] for x in _fd[chrom]]))
+            robjects.r.assign('rowtemp1',numpy2ri.numpy2ri(array([x[0] for x in _fd[chrom]])))
+            robjects.r.assign('rowtemp2',numpy2ri.numpy2ri(array([x[1] for x in _fd[chrom]])))
             robjects.r("fbins[[%i]][['%s']]=list(rowtemp1,rowtemp2)" %(n+1,chrom))
 #### chrlist
     robjects.r("chrlist=list("+",".join(['"%s"=%i'%(k,v['length']) \
                                              for k,v in chrmeta.iteritems()])+")")
-    robjects.r.assign('yscale_chrom',numpy2ri.numpy2ri(yscale.values()))
+    robjects.r.assign('yscale_chrom',numpy2ri.numpy2ri(array(yscale.values())))
+    robjects.r.assign('binsize',numpy2ri.numpy2ri(binsize))
     robjects.r("""
 n = length(chrlist)
+xscale = max(as.numeric(chrlist))
 yscale = median(yscale_chrom)
+ticks = seq(2e7,xscale,by=2e7)/binsize
 par(cex.lab=1.5,las=2)
 plot(0,0,t='n',xlim=c(0,500),ylim=c(0,n+1),xlab='',ylab='',bty='n',xaxt='n',yaxt='n')
-abline(v=seq(2e7,xscale,by=2e7),lty=2,col="grey")
-axis(side=3,at=seq(2e7,xscale,by=2e7),
+abline(v=,lty=2,col="grey")
+axis(side=3,at=ticks,
      labels=as.character(seq(2,xscale*1e-7,by=2)),las=1,lty=0)
 mtext(expression(phantom(0)*10^7),side=4,at=n+3.5,line=-3)
 for (chrom in names(chrlist)) {
