@@ -234,7 +234,7 @@ def score_by_feature(trackScores,trackFeatures,fn='mean'):
     if not(isinstance(trackScores,(list,tuple))): trackScores = [trackScores]
     if isinstance(trackFeatures,(list,tuple)):
         trackFeatures = concatenate(trackFeatures)
-    if len(trackScores)>1:
+    if len(trackScores)>1 or 'score' in trackFeatures.fields:
         _fields = ["score"+str(i) for i in range(len(trackScores))]
     else:
         _fields = ["score"]
