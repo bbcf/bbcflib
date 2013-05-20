@@ -424,6 +424,10 @@ def segment_features(trackList,nbins=10,upstream=None,downstream=None):
     def _split_feat(_t):
         starti = _t.fields.index('start')
         endi   = _t.fields.index('end')
+        if 'chr' in _t.fields:
+            chri = _t.fields.index('chr')
+        else:
+            chri = -1
         if 'strand' in _t.fields:
             strandi = _t.fields.index('strand')
         else:
@@ -444,7 +448,16 @@ def segment_features(trackList,nbins=10,upstream=None,downstream=None):
         else:                   # given as a fraction of the feature's length
             downrel = True
             downbins = downstream[1]
+        buffer = []
+        last_chr = ''
         for x in _t:
+            if chri >= 0:
+                cur_chr = x[chri]
+                if cur_chr != last_chr:
+                    last_chr = cur_chr
+                    for bf in buffer:
+                        yield bf[1]
+                    buffer = []
             xs = list(x)
             xlen = (xs[endi]-xs[starti])
             if uprel:
@@ -458,20 +471,32 @@ def segment_features(trackList,nbins=10,upstream=None,downstream=None):
                 start = allsteps[0]
                 ntot = len(allsteps)-2
                 for n,s in enumerate(allsteps[1:]):
+                    key = (start,s)
                     xs[starti] = start
                     xs[endi] = s
                     start = s
-                    yield tuple(xs)+(ntot-n,)
+                    buffer.append( [key,tuple(xs)+(ntot-n,)] )
+#                    yield tuple(xs)+(ntot-n,)
             else:                                 # either no 'strand' field, or forward strand
                 allsteps = [x[starti]-updist*k/upbins for k in range(upbins,0,-1)]\
                            +[x[starti]+xlen*k/nbins for k in range(nbins+1)]\
                            +[x[endi]+downdist*(k+1)/downbins for k in range(downbins)]
                 start = allsteps[0]
                 for n,s in enumerate(allsteps[1:]):
+                    key = (start,s)
                     xs[starti] = start
                     xs[endi] = s
                     start = s
-                    yield tuple(xs)+(n,)
+                    buffer.append( [key,tuple(xs)+(n,)] )
+#                    yield tuple(xs)+(n,)
+            buffer.sort()
+            for n,bf in enumerate(buffer):
+                if bf[0] > (x[starti],x[endi]): break
+                yield bf[1]
+            if n>0: buffer = buffer[n:]
+        buffer.sort()
+        for bf in buffer:
+            yield bf[1]
     if isinstance(trackList, (list,tuple)):
         return [FeatureStream(_split_feat(t), fields=t.fields+['bin'])
                 for t in trackList]
