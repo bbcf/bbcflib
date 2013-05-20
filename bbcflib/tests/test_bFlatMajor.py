@@ -372,10 +372,12 @@ class Test_Intervals(unittest.TestCase):
         self.assertListEqual(res,expected)
 
     def test_segment_features(self):
-        stream = fstream([(10,16,0.5), (24,36,1.2)], fields=['start','end','score'])
+        stream = fstream([('X',10,16,'A'), ('X',18,30,'B'), ('I',10,16,'C')],
+                         fields=['chr','start','end','name'])
         res = list(segment_features(stream,nbins=3,upstream=(2,1),downstream=(3,1)))
-        expected = [(8,10,0.5,0), (10,12,0.5,1),(12,14,0.5,2),(14,16,0.5,3), (16,19,0.5,4),
-                    (22,24,1.2,0), (24,28,1.2,1),(28,32,1.2,2),(32,36,1.2,3), (36,39,1.2,4)]
+        expected = [('X',8,10,'A',0), ('X',10,12,'A',1),('X',12,14,'A',2),('X',14,16,'A',3), ('X',16,18,'B',0),
+                    ('X',16,19,'A',4), ('X',18,22,'B',1),('X',22,26,'B',2),('X',26,30,'B',3), ('X',30,33,'B',4),
+                    ('I',8,10,'C',0), ('I',10,12,'C',1),('I',12,14,'C',2),('I',14,16,'C',3), ('I',16,19,'C',4)]
         self.assertListEqual(res,expected)
 
         # With negative strand
