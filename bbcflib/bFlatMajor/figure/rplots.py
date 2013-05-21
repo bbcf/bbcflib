@@ -333,8 +333,8 @@ def genomeGraph(chrlist,SP=[],SM=[],F=[],options={},output=None,format='pdf',new
             yscale[chrom] = max(yscale[chrom],score)
             for pos in range(start/binsize,end/binsize+1):
                 _sd[chrom][pos] = max(score,_sd[chrom][pos])
-        robjects.r("spmbins[[%i]]=list(%s)" %(n+1,",".join("'"+c+"'=list()" \
-                                                               for c in _sd.keys())))
+        robjects.r("spmbins[[%i]]=list(%s)" %(n+1,",".join("'"+c[0]+"'=list()" \
+                                                               for c in chrlist)))
         for chrom in _sd.keys():
             robjects.r.assign('rowtemp',numpy2ri.numpy2ri(array(_sd[chrom])))
             robjects.r("spmbins[[%i]][['%s']]=rowtemp" %(n+1,chrom))
@@ -346,8 +346,8 @@ def genomeGraph(chrlist,SP=[],SM=[],F=[],options={},output=None,format='pdf',new
             yscale[chrom] = max(yscale[chrom],score)
             for pos in range(start/binsize,end/binsize+1):
                 _sd[chrom][pos] = min(-score,_sd[chrom][pos])
-        robjects.r("spmbins[[%i]]=list(%s)" %(n0+n,",".join("'"+c+"'=list()" \
-                                                                for c in _sd.keys())))
+        robjects.r("spmbins[[%i]]=list(%s)" %(n0+n,",".join("'"+c[0]+"'=list()" \
+                                                               for c in chrlist)))
         for chrom in _sd.keys():
             robjects.r.assign('rowtemp',numpy2ri.numpy2ri(array(_sd[chrom])))
             robjects.r("spmbins[[%i]][['%s']]=rowtemp" %(n0+n,chrom))
@@ -356,8 +356,8 @@ def genomeGraph(chrlist,SP=[],SM=[],F=[],options={},output=None,format='pdf',new
         _fd = dict((c[0],[]) for c in chrlist)
         for chrom, start, end, name in _f:
             _fd[chrom].append((start/binsize,end/binsize+1,name))
-        robjects.r("fbins[[%i]]=list(%s)" %(n0+n,",".join("'"+c+"'=list()" \
-                                                              for c in _sd.keys())))
+        robjects.r("fbins[[%i]]=list(%s)" %(n0+n,",".join("'"+c[0]+"'=list()" \
+                                                               for c in chrlist)))
         for chrom in _fd.keys():
             robjects.r.assign('rowtemp1',numpy2ri.numpy2ri(array([x[0] for x in _fd[chrom]])))
             robjects.r.assign('rowtemp2',numpy2ri.numpy2ri(array([x[1] for x in _fd[chrom]])))
@@ -378,13 +378,15 @@ for (chrom in names(chrlist)) {
     mtext(chrom,side=2,at=n)
     colnb = 1
     for (data in spmbins) {
-        ynums = n+sapply(sapply(data[[chrom]]/(3*yscale),max,-1),min,1)
-        lines(1:length(ynums),ynums,col=colnb)
+        if (length(data[[chrom]])>0) {
+            ynums = n+sapply(sapply(data[[chrom]]/(3*yscale),max,-1),min,1)
+            lines(1:length(ynums),ynums,col=colnb)
+        }
         colnb = colnb+1
     }
     for (data in fbins) {
         segs = data[[chrom]]
-        segments(segs[[1]],n,segs[[2]],n,col=colnb,lwd=5)
+        if (length(segs) == 2) segments(segs[[1]],n,segs[[2]],n,col=colnb,lwd=5)
         colnb = colnb+1
     }
     n=n-1
