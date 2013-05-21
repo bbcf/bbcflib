@@ -376,7 +376,7 @@ plot(0,0,t='n',xlim=c(0,500),ylim=c(0,n+1),xlab='',ylab='',bty='n',xaxt='n',yaxt
 for (chrom in names(chrlist)) {
     segments(0,n,ceiling(chrlist[[chrom]]/binsize),n,lwd=3)
     mtext(chrom,side=2,at=n)
-    colnb = 1
+    colnb = 2
     for (data in spmbins) {
         if (length(data[[chrom]])>0) {
             ynums = n+sapply(sapply(data[[chrom]]/(3*yscale),max,-1),min,1)
@@ -386,19 +386,20 @@ for (chrom in names(chrlist)) {
     }
     for (data in fbins) {
         segs = data[[chrom]]
-        if (length(segs) == 2) segments(segs[[1]],n,segs[[2]],n,col=colnb,lwd=5)
+        if (length(segs) == 2 && length(segs[[1]])*length(segs[[2]]) > 0)
+            segments(segs[[1]],n,segs[[2]],n,col=colnb,lwd=5)
         colnb = colnb+1
     }
     n=n-1
 }
 abline(v=ticks,lty=2,col="grey")
-axis(side=3,at=ticks,
-     labels=as.character(seq(20,xscale*1e-6,by=20)),las=1,lty=0)
-mtext("Mb",side=4,at=n+3.5,line=-3,las=1)
+labs = as.character(seq(20,xscale*1e-6,by=20))
+axis(side=3,at=ticks,labels=labs,cex.axis=.8,line=-2,las=1,lty=0)
+mtext("Mb",side=4,at=length(chrlist)+1.6,line=-1.5,las=1)
 colnb = colnb-1
 """)
     if 'legend' in kwargs:
         names = kwargs.pop('legend')
-        robjects.r("legend(x='bottomright',legend=%s,col=1:colnb,lty=1,bg='white')" %list2r(names))
+        robjects.r("legend(x='bottomright',legend=%s,col=2:colnb,pch=15,bg='white')" %list2r(names))
     _end("",last,**kwargs)
     return output

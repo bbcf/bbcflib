@@ -80,12 +80,21 @@ class TextTrack(Track):
         for row in self.filehandle:
             if row[:7]=="browser" or row[0]=="#": continue
             if row[:5]=="track":
-                for x in row.split(self.separator):
-                    key_val = re.search(r'(\S+)=(\S+)',x.strip())
-                    if key_val: 
-                        key = key_val.groups()[0].strip("\'\" ")
-                        val = key_val.groups()[1].strip("\'\" ")
-                        _info[key] = val
+                tok = row[5:].strip().split("=")
+                key = tok.pop(0).strip("\'\" ")
+                val = tok.pop().strip("\'\" ")
+                for t in tok:
+                    if t[0] in ["\'\""]:
+                        p = re.search(t[0]+r'(.*)'+t[0]+r'\s+(\S)',t)
+                    else:
+                        p = re.search(r'(\S+)\s+(\S+)',t)
+                    if p:
+                        _info[key] = p.groups()[0]
+                        key = p.groups()[1].strip("\'\" ")
+                    else:
+                        key = ''
+                        break
+                if key and val: _info[key] = val
             break
         self.close()
         return _info
