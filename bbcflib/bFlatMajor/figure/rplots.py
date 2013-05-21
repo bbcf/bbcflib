@@ -361,7 +361,8 @@ def genomeGraph(chrlist,SP=[],SM=[],F=[],options={},output=None,format='pdf',new
         for chrom in _fd.keys():
             robjects.r.assign('rowtemp1',numpy2ri.numpy2ri(array([x[0] for x in _fd[chrom]])))
             robjects.r.assign('rowtemp2',numpy2ri.numpy2ri(array([x[1] for x in _fd[chrom]])))
-            robjects.r("fbins[[%i]][['%s']]=list(rowtemp1,rowtemp2)" %(n+1,chrom))
+            robjects.r.assign('rowtemp3',numpy2ri.numpy2ri(array([x[2] for x in _fd[chrom]])))
+            robjects.r("fbins[[%i]][['%s']]=list(rowtemp1,rowtemp2,rowtemp3)" %(n+1,chrom))
 #### chrlist
     robjects.r("chrlist=list("+",".join(['"%s"=%i'%(c,l) for c,l in chrlist])+")")
     robjects.r.assign('yscale_chrom',numpy2ri.numpy2ri(array(yscale.values())))
@@ -373,6 +374,7 @@ yscale = median(yscale_chrom)
 ticks = seq(2e7,xscale,by=2e7)/binsize
 par(cex.lab=1.5,las=2)
 plot(0,0,t='n',xlim=c(0,500),ylim=c(0,n+1),xlab='',ylab='',bty='n',xaxt='n',yaxt='n')
+abline(v=ticks,lty=2,col="grey")
 for (chrom in names(chrlist)) {
     segments(0,n,ceiling(chrlist[[chrom]]/binsize),n,lwd=3)
     mtext(chrom,side=2,at=n)
@@ -386,13 +388,14 @@ for (chrom in names(chrlist)) {
     }
     for (data in fbins) {
         segs = data[[chrom]]
-        if (length(segs) == 2 && length(segs[[1]])*length(segs[[2]]) > 0)
+        if (length(segs) == 3 && length(segs[[1]])*length(segs[[2]]) > 0) {
             segments(segs[[1]],n,segs[[2]],n,col=colnb,lwd=5)
+            text((segs[[1]]+segs[[2]])/2,n-.2,labels=segs[[3]],cex=.5)
+        }
         colnb = colnb+1
     }
     n=n-1
 }
-abline(v=ticks,lty=2,col="grey")
 labs = as.character(seq(20,xscale*1e-6,by=20))
 axis(side=3,at=ticks,labels=labs,cex.axis=.8,line=-2,las=1,lty=0)
 mtext("Mb",side=4,at=length(chrlist)+1.6,line=-1.5,las=1)
