@@ -353,7 +353,7 @@ def genomeGraph(chrlist,SP=[],SM=[],F=[],options={},output=None,format='pdf',new
     for n,_f in enumerate(F):
         _fd = dict((c[0],[]) for c in chrlist)
         for chrom, start, end, name in _f:
-            _fd[chrom].append(start/binsize,end/binsize+1,name)
+            _fd[chrom].append((start/binsize,end/binsize+1,name))
         robjects.r("fbins[[%i]]=list(%s)" %(n0+n,",".join("'"+c+"'=list()" \
                                                               for c in _sd.keys())))
         for chrom in _fd.keys():
@@ -371,10 +371,6 @@ yscale = median(yscale_chrom)
 ticks = seq(2e7,xscale,by=2e7)/binsize
 par(cex.lab=1.5,las=2)
 plot(0,0,t='n',xlim=c(0,500),ylim=c(0,n+1),xlab='',ylab='',bty='n',xaxt='n',yaxt='n')
-abline(v=ticks,lty=2,col="grey")
-axis(side=3,at=ticks,
-     labels=as.character(seq(2,xscale*1e-7,by=2)),las=1,lty=0)
-mtext(expression(phantom(0)*10^7),side=4,at=n+3.5,line=-3)
 for (chrom in names(chrlist)) {
     segments(0,n,ceiling(chrlist[[chrom]]/binsize),n,lwd=3)
     mtext(chrom,side=2,at=n)
@@ -391,10 +387,14 @@ for (chrom in names(chrlist)) {
     }
     n=n-1
 }
+abline(v=ticks,lty=2,col="grey")
+axis(side=3,at=ticks,
+     labels=as.character(seq(20,xscale*1e-6,by=20)),las=1,lty=0)
+mtext("Mb",side=4,at=n+3.5,line=-3,las=1)
 colnb = colnb-1
 """)
     if 'legend' in kwargs:
         names = kwargs.pop('legend')
-        robjects.r("legend(x='bottomright', legend=%s, col=1:colnb,lty=1)" %list2r(names))
+        robjects.r("legend(x='bottomright',legend=%s,col=1:colnb,lty=1,bg='white')" %list2r(names))
     _end("",last,**kwargs)
     return output
