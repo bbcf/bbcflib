@@ -312,6 +312,8 @@ def hist(X,options={},output=None,format='pdf',new=True,last=True,**kwargs):
 ############################################################
 def genomeGraph(chrlist,SP=[],SM=[],F=[],options={},output=None,format='pdf',new=True,last=True,**kwargs):
     """Create a whole genome overview of signals in *SP* (positive), *SM* (negative), and of features in *F*.
+    *SP,SM* must be streams with fields 'chr','start','end','score' only,
+    *F* must be streams with fields 'chr','start','end','name' only,
     *chrlist* must be a (ordered) list of pairs [(chrname, length),...]."""
     if not(isinstance(SP,(list,tuple))): SP = [SP]
     if not(isinstance(SM,(list,tuple))): SM = [SM]
