@@ -58,7 +58,8 @@ def track( path, format=None, **kwargs):
                         rstart += file.readline()
                         head = re.search(r'track\s+type=(\S+)',rstart)
                         if head: format = head.groups()[0]
-            else: raise ValueError("Format must be specified for yet empty tracks.")
+            else: 
+                raise ValueError("Format of file %s not known." %path)
     if not(format in _track_map):
         raise Exception("Format '%s' is not supported."%format)
     __import__(_track_map[format][0])
