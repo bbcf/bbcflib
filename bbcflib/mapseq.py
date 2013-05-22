@@ -1045,6 +1045,7 @@ def parallel_density_sql( ex, bamfile, chromosomes,
         trev.close()
         tfwd.close()
     else:
+        trackargs['info']['shift'] = merge
         tboth = track.track(output+"merged.sql",**trackargs)
         for k in chromosomes.keys():
             wig = str(futures[k].wait())
