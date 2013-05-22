@@ -184,7 +184,7 @@ def check_format(source, **kwargs):
                    \nException raised: %s" % (n,source,t.format,x,e)
             return False
 
-def stats(source,out=sys.stdout,hlimit=15,wlimit=100, **kwargs):
+def stats(source, out=sys.stdout, hlimit=15, wlimit=100, **kwargs):
     """Prints stats about the track. Draws a plot of the scores distribution (if any)
     directly to the console.
 
@@ -192,7 +192,7 @@ def stats(source,out=sys.stdout,hlimit=15,wlimit=100, **kwargs):
     which are expected to be limited in variety for count data (normalized or not).
 
     :param source: (str) name of the file. Can also be a Track instance.
-    :param out: writable/file object (defaut: stdout).
+    :param out: writable/file object (defaut: stdout), or a dict (will be updated).
     :param hlimit: height of the distribution plot, in number of chars.
     :param wlimit: max width of the distribution plot, in number of chars.
     :param **kwargs: ``track`` keyword arguments.
@@ -264,14 +264,21 @@ def stats(source,out=sys.stdout,hlimit=15,wlimit=100, **kwargs):
 
     if isinstance(source, basestring):
         t = track(source, **kwargs)
-    else: 
+    else:
         t = source
     s = t.read(**kwargs)
     is_score = 'score' in s.fields
     if is_score:
         nfeat,distr,ldistr,stat,lstat = score_stats(s)
+        if isinstance(out,dict):
+            out['feat_stats'] = (nfeat,ldistr,lstat)
+            out['score_stats'] = (distr,stat)
     else:
         nfeat,ldistr,lstat = feat_stats(s)
+        if isinstance(out,dict):
+            out['feat_stats'] = (nfeat,ldistr,lstat)
+    if isinstance(out,dict):
+        return out
     if nfeat == 0:
         out.write("Empty content\n\n")
         return
@@ -299,6 +306,7 @@ def stats(source,out=sys.stdout,hlimit=15,wlimit=100, **kwargs):
         out.write("Distribution of scores: " + '\n')
         console_distr_plot(distr,out,hlimit,wlimit)
     out.write('\n')
+    return out
 
 ################################################################################
 
