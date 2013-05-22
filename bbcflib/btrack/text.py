@@ -110,20 +110,30 @@ class TextTrack(Track):
         Check whether all elements in a *row* pass through the *selection* filter.
 
         :row: (list) splitted row from file - elements correspond to fields items.
-        :param selection: dict of the form {field_name: value} or {field_name: (start,end)}.
+        :param selection: dict of the form {field_name: value} or {field_name: (min,max)}.
         :rtype: boolean
         """
         tests = []
         for k,v in selection.iteritems():
-            fi = self.fields.index(k)
+            if k == 'length':
+                fi1 = self.fields.index('start')
+                fi2 = self.fields.index('end')
+            else:
+                fi = self.fields.index(k)
             if isinstance(v,(list,tuple)):
                 if k == 'chr':
                     tests.append(str(row[fi]) in v)
+                elif k == 'length':
+                    tests.append(int(row[fi2])-int(row[fi1]) >= int(v[0]))
+                    tests.append(int(row[fi2])-int(row[fi1]) <= int(v[1]))
                 else:
                     tests.append(float(row[fi]) >= float(v[0]))
                     tests.append(float(row[fi]) <= float(v[1]))
             else:
-                tests.append(str(row[fi]) == str(v))
+                if k == 'length':
+                    tests.append(int(row[fi2])-int(row[fi1]) == int(v))
+                else:
+                    tests.append(str(row[fi]) == str(v))
         return all(tests)
 
     def _index_chr(self,start,end,splitrow):
