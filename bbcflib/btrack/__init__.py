@@ -294,7 +294,7 @@ def stats(source, out=sys.stdout, plot=True, wlimit=80, **kwargs):
     else:
         nfeat,ldistr,lstat = feat_stats(s)
         if isinstance(out,dict):
-            out['feat_stats'] = (nfeat,ldistr,lstat)
+            out['feat_stats'] = (nfeat,ldistr,lstat,total_cov)
     if isinstance(out,dict):
         return out
     if nfeat == 0:
