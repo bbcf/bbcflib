@@ -506,7 +506,7 @@ class SgaTrack(TextTrack):
             row = self.filehandle.readline()
             if not row: break
             if row[0]=="#": continue
-            splitrow = [self._check_type(s.strip(),_sga_f[n]) 
+            splitrow = [self._check_type(s.strip(),_sga_f[n])
                         for n,s in enumerate(row.split(self.separator))]
             if not any(splitrow): continue
             yieldit = True
@@ -710,11 +710,11 @@ class GffTrack(TextTrack):
         if rowlen > 9 or rowlen < 8:
             raise ValueError("Gff should have 8 or 9 fields.")
         if rowlen == 8:
-            self.intypes.pop('attributes')
-            self.outtypes.pop('attributes')
+            #self.intypes.pop('attributes')
+            #self.outtypes.pop('attributes')
             self.fields = self.fields[:8]
 
-################################ GFF ##########################################
+################################ SAM ##########################################
 
 class SamTrack(TextTrack):
     """
@@ -772,7 +772,7 @@ class SamTrack(TextTrack):
         vec.pop(4) # remove 'end'
         return self.separator.join(vec)
 
-################################ GFF ##########################################
+################################ Fps ##########################################
 
 class FpsTrack(TextTrack):
     def __init__(self,path,**kwargs):
