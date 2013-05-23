@@ -270,7 +270,8 @@ def stats(source, out=sys.stdout, plot=True, wlimit=80, **kwargs):
         return nfeat,ldistr,stats_from_distr(ldistr,nfeat)
 
     def total_coverage(t):
-        from bbcflib.bFlatMajor.common import fusion
+        try: from bbcflib.bFlatMajor.common import fusion
+        except ImportError: return 0
         s = t.read(**kwargs)
         st_idx= s.fields.index('start')
         en_idx = s.fields.index('end')
