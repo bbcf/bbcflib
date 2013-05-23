@@ -289,7 +289,7 @@ def stats(source, out=sys.stdout, plot=True, wlimit=80, **kwargs):
     if is_score:
         nfeat,distr,ldistr,stat,lstat = score_stats(s)
         if isinstance(out,dict):
-            out['feat_stats'] = (nfeat,ldistr,lstat)
+            out['feat_stats'] = (nfeat,ldistr,lstat,total_cov)
             out['score_stats'] = (distr,stat)
     else:
         nfeat,ldistr,lstat = feat_stats(s)
