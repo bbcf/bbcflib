@@ -58,7 +58,7 @@ def track( path, format=None, **kwargs):
                         rstart += file.readline()
                         head = re.search(r'track\s+type=(\S+)',rstart)
                         if head: format = head.groups()[0]
-            else: 
+            else:
                 raise ValueError("Format of file %s not known." %path)
     if not(format in _track_map):
         raise Exception("Format '%s' is not supported."%format)
@@ -184,7 +184,7 @@ def check_format(source, **kwargs):
                    \nException raised: %s" % (n,source,t.format,x,e)
             return False
 
-def stats(source, out=sys.stdout, hlimit=15, wlimit=100, **kwargs):
+def stats(source, out=sys.stdout, plot=True, wlimit=80, **kwargs):
     """Prints stats about the track. Draws a plot of the scores distribution (if any)
     directly to the console.
 
@@ -192,9 +192,8 @@ def stats(source, out=sys.stdout, hlimit=15, wlimit=100, **kwargs):
     which are expected to be limited in variety for count data (normalized or not).
 
     :param source: (str) name of the file. Can also be a Track instance.
-    :param out: writable/file object (defaut: stdout), or a dict (will be updated).
-    :param hlimit: height of the distribution plot, in number of chars.
-    :param wlimit: max width of the distribution plot, in number of chars.
+    :param out: writable/file object (default: stdout), or a dict (will be updated).
+    :param wlimit: max width of the distribution plot - console screen -, in number of chars. [80]
     :param **kwargs: ``track`` keyword arguments.
     """
     def median(vals,distr,nfeat):
@@ -218,24 +217,32 @@ def stats(source, out=sys.stdout, hlimit=15, wlimit=100, **kwargs):
         smedian = median(vals,distr,nfeat)
         return total,smin,smax,smean,stdev,smedian
 
-    def console_distr_plot(distr,out,hlimit,wlimit):
-        try: from numpy import zeros,array
-        except ImportError: return
-        scores = array([distr[v] for v in sorted(distr.keys())])
-        lscores = len(scores)
-        L = min(lscores,wlimit)
-        binw = lscores//L if lscores%L==0 else lscores//L+1
-        bscores = zeros(L)
-        for b in range(L):
-            bs = scores[b*binw:(b+1)*binw]
-            bscores[b] = sum(bs)/len(bs) if len(bs)>0 else 0
-        bmax = max(bscores)
-        bscores = bscores * hlimit/bmax
-        T = zeros((hlimit+1,L))
-        for k in range(hlimit,0,-1):
-            T[k-1] = T[k] + array([1 if (k >= x > k-1) else 0 for x in bscores])
-            out.write(''.join(['#' if x else ' ' for x in T[k]])  + '\n')
-        out.write(''.join(['-']*L)  + '\n')
+    def console_distr_plot(distr,out,hlimit,wlimit,binw):
+        assert isinstance(wlimit,int) and wlimit > 1, "wlimit must be an integer."
+        vals = sorted(distr.keys())
+        maxval = vals[-1]
+        nbins = int(maxval//binw + 1)
+        bvals = [0]*nbins
+        bscores = [0]*nbins
+        for b in range(min(hlimit,nbins)):
+            bvals[b] = []
+            for v in vals:
+                if v < (b+1)*binw:
+                    bvals[b].append(v)
+                else:
+                    vals = vals[len(bvals[b]):]
+                    break
+            bscores[b] = sum(distr[v] for v in bvals[b])
+        wlimit = wlimit-8 # to leave place for a legend
+        max_bscore = max(bscores)
+        if max_bscore == 0:
+            print "| (0)"; return
+        legends = ["%.1f-%.1f"%(b*binw,(b+1)*binw) for b in range(min(hlimit,nbins))]
+        lmargin = max(len(L) for L in legends)
+        legends = [L+" "*(lmargin-len(L)) for L in legends]
+        for b in range(min(hlimit,nbins)):
+            nblocks = int(bscores[b] * wlimit/max_bscore +0.5)
+            print legends[b] + "|" + "#"*nblocks + " (%d)"%bscores[b]
 
     def score_stats(s):
         distr = {} # distribution of scores
@@ -262,10 +269,20 @@ def stats(source, out=sys.stdout, hlimit=15, wlimit=100, **kwargs):
             ldistr[w] = ldistr.get(w,0.0) + 1
         return nfeat,ldistr,stats_from_distr(ldistr,nfeat)
 
+    def total_coverage(t):
+        from bbcflib.bFlatMajor.common import fusion
+        s = t.read(**kwargs)
+        st_idx= s.fields.index('start')
+        en_idx = s.fields.index('end')
+        fs = fusion(s)
+        total_cov = sum(x[en_idx]-x[st_idx] for x in fs)
+        return total_cov
+
     if isinstance(source, basestring):
         t = track(source, **kwargs)
     else:
         t = source
+    total_cov = total_coverage(t)
     s = t.read(**kwargs)
     is_score = 'score' in s.fields
     if is_score:
@@ -284,27 +301,28 @@ def stats(source, out=sys.stdout, hlimit=15, wlimit=100, **kwargs):
         return
     out.write("Features stats:\n")
     out.write("--------------\n")
-    out.write("  Number of items: " + str(nfeat) + '\n')
-    out.write("  Total: " + str(lstat[0]) + '\n')
-    out.write("  Min: " + str(lstat[1]) + '\n')
-    out.write("  Max: " + str(lstat[2]) + '\n')
-    out.write("  Mean: " + str(lstat[3]) + '\n')
-    out.write("  Standard deviation: " + str(lstat[4]) + '\n')
-    out.write("  Median: " + str(lstat[5]) + '\n')
-    out.write("Distribution of features lengths: " + '\n')
-    console_distr_plot(ldistr,out,hlimit,wlimit)
+    out.write("  Number of items: %d\n" % nfeat)
+    out.write("  Total length: %d\n" % lstat[0])
+    out.write("  Total coverage: %d\n" % total_cov)
+    out.write("  Min: %.2f\n" % lstat[1])
+    out.write("  Max: %.2f\n" % lstat[2])
+    out.write("  Mean: %.2f\n" % lstat[3])
+    out.write("  Standard deviation: %.2f\n" % lstat[4])
+    out.write("  Median: %.2f\n" % lstat[5])
+    out.write("Distribution of features lengths:\n\n")
+    if plot: console_distr_plot(ldistr,out,hlimit=20,wlimit=wlimit,binw=200)
     out.write('\n')
     if is_score:
         out.write("Score stats:\n")
         out.write("-----------\n")
-        out.write("  Total: " + str(stat[0]) + '\n')
-        out.write("  Min: " + str(stat[1]) + '\n')
-        out.write("  Max: " + str(stat[2]) + '\n')
-        out.write("  Mean: " + str(stat[3]) + '\n')
-        out.write("  Standard deviation: " + str(stat[4]) + '\n')
-        out.write("  Median: " + str(stat[5]) + '\n')
-        out.write("Distribution of scores: " + '\n')
-        console_distr_plot(distr,out,hlimit,wlimit)
+        out.write("  Total: %.2f\n" % stat[0])
+        out.write("  Min: %.2f\n" % stat[1])
+        out.write("  Max: %.2f\n" % stat[2])
+        out.write("  Mean: %.2f\n" % stat[3])
+        out.write("  Standard deviation: %.2f\n" % stat[4])
+        out.write("  Median: %.2f\n" % stat[5])
+        out.write("Distribution of scores:\n\n")
+        if plot: console_distr_plot(distr,out,hlimit=10,wlimit=wlimit,binw=1)
     out.write('\n')
     return out
 
