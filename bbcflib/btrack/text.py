@@ -378,7 +378,7 @@ class TextTrack(Track):
         else: self.info.update(kw)
         header = "track "
         _keys = ["name","type","description","visibility","color","itemRgb"]
-        header += " ".join(["%s=%s"%(k,self.info[k]) for k in _keys if k in self.info])
+        header += " ".join(["%s='%s'"%(k,self.info[k]) for k in _keys if k in self.info])
         self.open(mode)
         self.filehandle.write(header+"\n")
         self.close()
