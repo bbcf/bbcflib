@@ -114,6 +114,9 @@ def run_fastqc( ex, job, via='lsf' ):
     """
     Returns the name of the report file.
     """
+    def _check_fastq(qcreport):
+        if not os.path.exists(qcreport):
+            raise IOError("Empty QC report: file %s is empty or not a FASTQ file.")
     futures = {}
     descr = {'step':'qc','groupId':0,'type':'zip'}
     for gid,group in job.groups.iteritems():
@@ -133,13 +136,16 @@ def run_fastqc( ex, job, via='lsf' ):
                 rname += group['run_names'].get(rid,str(rid))
             if isinstance(run,tuple):
                 qcreport = futures[gid][rid][0].wait()
+                _check_fastq(qcreport)
                 ex.add( qcreport,
                         description=set_file_descr(rname+"_R1_fastqc.zip",**descr) )
                 qcreport = futures[gid][rid][1].wait()
+                _check_fastq(qcreport)
                 ex.add( qcreport,
                         description=set_file_descr(rname+"_R2_fastqc.zip",**descr) )
             else:
                 qcreport = futures[gid][rid].wait()
+                _check_fastq(qcreport)
                 ex.add( qcreport,
                         description=set_file_descr(rname+"_fastqc.zip",**descr) )
     return None
