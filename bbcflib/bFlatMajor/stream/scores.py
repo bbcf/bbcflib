@@ -242,6 +242,7 @@ def score_by_feature(trackScores,trackFeatures,fn='mean'):
     return FeatureStream(_stream(_ts,trackFeatures), trackFeatures.fields+_fields)
 
 ###############################################################################
+@common.ordered
 def window_smoothing( trackList, window_size, step_size=1, stop_val=sys.maxint,
                       featurewise=False ):
     """
@@ -255,7 +256,7 @@ def window_smoothing( trackList, window_size, step_size=1, stop_val=sys.maxint,
 
     :param trackList: FeatureStream, or list of FeatureStream objects.
     :param window_size: (int) window size in bp.
-    :param step_size: (int) step length. [1]
+    :param step_size: (int) step length (one score returned per *step_size* positions). [1]
     :param stop_val: (int) sequence length. [sys.maxint]
     :param featurewise: (bool) bp (False), or number of features (True). [False]
     :rtype: FeatureStream
@@ -285,6 +286,7 @@ def window_smoothing( trackList, window_size, step_size=1, stop_val=sys.maxint,
             F.append(x)
             fstart = F[0][0]
             fend = F[0][1]
+            chrom = F[0][3]
             win_start = max(win_start,fstart-window_size)
             win_end = win_start+window_size
             lstart = F[-1][0]
@@ -305,12 +307,12 @@ def window_smoothing( trackList, window_size, step_size=1, stop_val=sys.maxint,
                     score += delta*sst
                     for step in xrange(sst,nsteps,step_size):
                         if score>1e-11 and win_center+step>=0 and win_center+step+step_size<=stop_val:
-                            yield (win_center+step,win_center+step+step_size,score)
+                            yield (win_center+step,win_center+step+step_size,score,chrom)
                         score += delta*step_size
                     score -= delta*sen
                 else:
                     if score>1e-11 and win_center+sst>=0 and win_center+sen+nsteps<=stop_val:
-                        yield (win_center+sst,win_center+sen+nsteps,score)
+                        yield (win_center+sst,win_center+sen+nsteps,score,chrom)
                 win_start += nsteps
                 win_end += nsteps
                 if fend <= win_start:
@@ -335,12 +337,12 @@ def window_smoothing( trackList, window_size, step_size=1, stop_val=sys.maxint,
                 score += delta*sst
                 for step in xrange(sst,nsteps,step_size):
                     if score>1e-11 and win_center+step>=0 and win_center+step+step_size<=stop_val:
-                        yield (win_center+step,win_center+step+step_size,score)
+                        yield (win_center+step,win_center+step+step_size,score,chrom)
                     score += delta*step_size
                 score -= delta*sen
             else:
                 if score>1e-11 and win_center+sst>=0 and win_center+sen+nsteps<=stop_val:
-                    yield (win_center+sst,win_center+sen+nsteps,score)
+                    yield (win_center+sst,win_center+sen+nsteps,score,chrom)
             win_start += nsteps
             win_end += nsteps
             if fend <= win_start:
@@ -354,7 +356,7 @@ def window_smoothing( trackList, window_size, step_size=1, stop_val=sys.maxint,
 
     denom = 1.0/window_size
     win_start = -window_size
-    _f = ['start','end','score']
+    _f = ['start','end','score','chr']
     if featurewise:
         call = _stepping_mean
     else:

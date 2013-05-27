@@ -514,9 +514,9 @@ class Test_Scores(unittest.TestCase):
         self.assertListEqual(res,expected)
 
     def test_window_smoothing(self):
-        stream = fstream([(4,5,10.)], fields=['start','end','score'])
+        stream = fstream([('chr1',4,5,10.)], fields=['chr','start','end','score'])
         res = list(window_smoothing(stream, window_size=2, step_size=1))
-        expected = [(4,5,5.),(5,6,5.)]
+        expected = [('chr1',4,5,5.),('chr1',5,6,5.)]
         self.assertListEqual(res,expected)
 
 
