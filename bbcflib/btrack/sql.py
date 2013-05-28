@@ -198,6 +198,8 @@ class SqlTrack(Track):
     def _make_selection(self,selection):
         query = []
         for k,v in selection.iteritems():
+            if k == "length":
+                k = "end-start"
             if isinstance(v,tuple):
                 query.append(str(k)+" >= "+str(v[0]))
                 query.append(str(k)+" <= "+str(v[1]))

@@ -401,7 +401,7 @@ def add_nh_flag(samfile, out=None):
     """
     if out == None:
         out = unique_filename_in()
-    infile = pysam.Samfile(samfile, "r")
+    infile = pysam.Samfile(samfile)
     outfile = pysam.Samfile(out, "wb", template=infile)
     for readset in read_sets(infile,keep_unmapped=True):
         nh = len(readset)
