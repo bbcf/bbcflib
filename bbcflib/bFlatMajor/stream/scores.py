@@ -61,7 +61,10 @@ def merge_scores(trackList, method='arithmetic'):
     elements = [list(x.next()) for x in tracks]
     track_denom = 1.0/len(trackList)
 
-    mean_fn = _score_functions.get(method,_arithmetic_mean)
+    if hasattr(method,'__call__'):
+        mean_fn = lambda scores,denom:method(scores)
+    else:
+        mean_fn = _score_functions.get(method,_arithmetic_mean)
     for i in xrange(len(tracks)-1, -1, -1):
         if elements[i][0] == sys.maxint:
             tracks.pop(i)
@@ -171,21 +174,21 @@ def filter_scores(trackScores,trackFeatures,method='sum',strict=False,annotate=F
     return FeatureStream(_stream(_ts,_tf), _ts.fields+_info_fields)
 
 ###############################################################################
-def score_by_feature(trackScores,trackFeatures,fn='mean'):
+def score_by_feature(trackScores,trackFeatures,method='mean'):
     """
     For every feature from *trackFeatures*, get the list of all scores it contains
-    and apply an operation *fn* on this list (by default, scores are averaged).
+    and apply an operation *method* on this list (by default, scores are averaged).
     Warning: both score and feature streams must be sorted! (use `common.sorted_stream` is necessary).
     The output is a stream similar to *trackFeatures* but with an additional `score` field
     for each stream in *trackScores*::
-        fn = 'mean':
+        method = 'mean':
 
         X: ------##########--------------##########------
         Y: ___________666666666__________6666666666______
         R: ______[   3.   ]______________[   6.   ]______
 
 
-        fn = 'sum':
+        method = 'sum':
 
         X : ------##########--------------##########------
         Y1: ___________666666666__________6666666666______
@@ -194,7 +197,7 @@ def score_by_feature(trackScores,trackFeatures,fn='mean'):
 
     :param trackScores: (list of) one or several -sorted- score track(s) (FeatureStream).
     :param trackFeatures: (FeatureStream) one -sorted- feature track.
-    :param fn: (str of function): operation applied to the list of scores from one feature.
+    :param method: (str of function): operation applied to the list of scores from one feature.
         Can be one of 'sum','mean','median','min','max', or a custom function.
     :rtype: FeatureStream
     """
@@ -203,10 +206,10 @@ def score_by_feature(trackScores,trackFeatures,fn='mean'):
         S = [[(-sys.maxint,-sys.maxint,0.0)] for t in ts]
         start_idx = tf.fields.index('start')
         end_idx = tf.fields.index('end')
-        if hasattr(fn,'__call__'):
-            _fn = lambda scores,denom:fn(scores)
+        if hasattr(method,'__call__'):
+            mean_fn = lambda scores,denom:method(scores)
         else:
-            _fn = _score_functions.get(fn,_arithmetic_mean)
+            mean_fn = _score_functions.get(method,_arithmetic_mean)
         for y in tf:
             ystart = y[start_idx]
             yend = y[end_idx]
@@ -228,7 +231,7 @@ def score_by_feature(trackScores,trackFeatures,fn='mean'):
                     if yend <  s[1]:   end   = yend
                     else:              end   = s[1]
                     scores_y.extend([s[2]]*(end-start))
-                scores += (_fn(scores_y,1.0/(yend-ystart)),)
+                scores += (mean_fn(scores_y,1.0/(yend-ystart)),)
             yield tuple(y)+scores
 
     if not(isinstance(trackScores,(list,tuple))): trackScores = [trackScores]

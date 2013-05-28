@@ -509,7 +509,7 @@ class Test_Scores(unittest.TestCase):
         features = fstream([('chr',5,15,'gene1'),('chr',30,40,'gene2')], fields=['chr','start','end','name'])
         scores1 = fstream([('chr',10,20,6.),('chr',30,40,6.)], fields=['chr','start','end','score'])
         scores2 = fstream([('chr',2,8,2.),('chr',30,33,3.)], fields=['chr','start','end','score'])
-        res = list(score_by_feature([scores1,scores2],features,fn=sum))
+        res = list(score_by_feature([scores1,scores2],features,method=sum))
         expected = [('chr',5,15,'gene1',30.,6.),('chr',30,40,'gene2',60.,9.)]
         self.assertListEqual(res,expected)
 
