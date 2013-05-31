@@ -130,14 +130,20 @@ def ensembl_to_ucsc(stream):
     return FeatureStream((item[:istart]+(item[istart]-1,)+item[istart+1:]
                           for item in stream),fields=stream.fields)
 
-def check_ordered(source, **kwargs):
+def check_ordered(source, out=sys.stderr, **kwargs):
     """Read a track-like file *source* once to verify that chromosomes are grouped,
     and that regions of each chromosome are sorted w.r.t. 'start' and 'end' in ascending order.
+    Return True if the file is sorted, False otherwise.
 
     :param source: (str) name of the file.
     :param **kwargs: ``track`` keyword arguments.
     """
-    t = track(source, **kwargs)
+    if isinstance(source, basestring):
+        t = track(source, chrmeta=kwargs.get('chrmeta'), **kwargs)
+        filename = source
+    else:
+        t = source
+        filename = os.path.basename(t.path)
     is_chr = 'chr' in t.fields
     is_start = 'start' in t.fields
     is_end = 'end' in t.fields
@@ -148,29 +154,41 @@ def check_ordered(source, **kwargs):
     visited = []
     last_chr = None
     last_start = last_end = 0
-    for row in t.read():
+    for n,row in enumerate(t.read()):
         chr   = row[chr_idx] if is_chr else None
         start = row[start_idx] if is_start else 0
         end   = row[end_idx] if is_end else 0
         if chr != last_chr:
-            if chr in visited: return False
+            if chr in visited:
+                out.write("Check order: %s: error at line %d: \
+                           \n\tChromosome %s appears twice in the file.\n\n" % (filename,n,chr))
+                return False
             visited.append(chr)
             last_start = last_end = 0
-        elif start < last_start: return False
-        elif start == last_start and end < last_end: return False
+        elif start < last_start:
+            out.write("Check order: %s: error at line %d: \
+                       \n\tStart position %d < %d.\n\n" % (filename,n,start,last_start))
+            return False
+        elif start == last_start and end < last_end:
+            out.write("Check order: %s: error at line %d: \
+                       \n\tEnd position %d < %d.\n\n" % (filename,n,end,last_end))
+            return False
         last_chr = chr
         last_start = start
         last_end = end
     return True
 
-def check_format(source, **kwargs):
+def check_format(source, out=sys.stderr, **kwargs):
     """Read a track-like file *source* completely once to ensure that each line respects
-    its format's specifications. Return True if it does.
+    its format's specifications. Return True if it does, False otherwise.
 
     :param source: (str) name of the file.
     :param **kwargs: ``track`` keyword arguments.
     """
-    t = track(source, **kwargs)
+    if isinstance(source, basestring):
+        t = track(source, chrmeta=kwargs.get('chrmeta'), **kwargs)
+    else:
+        t = source
     s = t.read()
     n = 0
     while 1:
@@ -180,8 +198,8 @@ def check_format(source, **kwargs):
         except StopIteration:
             return True
         except Exception, e:
-            print "Line %s of %s is not compatible with format %s: \n%s. \
-                   \nException raised: %s" % (n,source,t.format,x,e)
+            out.write("Check format: line %s of %s is not compatible with format %s: \n%s. \
+                       \nException raised: %s" % (n,source,t.format,x,e))
             return False
 
 def stats(source, out=sys.stdout, plot=True, wlimit=80, **kwargs):
@@ -287,7 +305,7 @@ def stats(source, out=sys.stdout, plot=True, wlimit=80, **kwargs):
         return total_cov
 
     if isinstance(source, basestring):
-        t = track(source, chrmeta=kwargs.get('chrmeta') or "guess", **kwargs)
+        t = track(source, chrmeta=kwargs.get('chrmeta'), **kwargs)
     else:
         t = source
     total_cov = total_coverage(t)
