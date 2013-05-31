@@ -236,13 +236,14 @@ def stats(source, out=sys.stdout, plot=True, wlimit=80, **kwargs):
         wlimit = wlimit-8 # to leave place for a legend
         max_bscore = max(bscores)
         if max_bscore == 0:
-            print "| (0)"; return
-        legends = ["%.1f-%.1f"%(b*binw,(b+1)*binw) for b in range(min(hlimit,nbins))]
+            out.write("| (0)\n")
+            return
+        legends = ["%.1f"%(b*binw) for b in range(min(hlimit,nbins))]
         lmargin = max(len(L) for L in legends)
         legends = [L+" "*(lmargin-len(L)) for L in legends]
         for b in range(min(hlimit,nbins)):
             nblocks = int(bscores[b] * wlimit/max_bscore +0.5)
-            print legends[b] + "|" + "#"*nblocks + " (%d)"%bscores[b]
+            out.write(legends[b] + "|" + "#"*nblocks + " (%d)\n"%bscores[b])
 
     def score_stats(s):
         distr = {} # distribution of scores
@@ -272,15 +273,20 @@ def stats(source, out=sys.stdout, plot=True, wlimit=80, **kwargs):
     def total_coverage(t):
         try: from bbcflib.bFlatMajor.common import fusion
         except ImportError: return 0
-        s = t.read(**kwargs)
-        st_idx= s.fields.index('start')
-        en_idx = s.fields.index('end')
-        fs = fusion(s)
-        total_cov = sum(x[en_idx]-x[st_idx] for x in fs)
+        total_cov = 0
+        for chrom in t.chrmeta:
+            kw = dict(kwargs)
+            if kw['selection'] is not None: kw['selection'].update({'chr':chrom})
+            else: kw['selection'] = {'chr':chrom}
+            s = t.read(**kw)
+            fs = fusion(s)
+            st_idx = fs.fields.index('start')
+            en_idx = fs.fields.index('end')
+            total_cov += sum(x[en_idx]-x[st_idx] for x in fs)
         return total_cov
 
     if isinstance(source, basestring):
-        t = track(source, **kwargs)
+        t = track(source, chrmeta=kwargs.get('chrmeta') or "guess", **kwargs)
     else:
         t = source
     total_cov = total_coverage(t)
@@ -300,28 +306,25 @@ def stats(source, out=sys.stdout, plot=True, wlimit=80, **kwargs):
     if nfeat == 0:
         out.write("Empty content\n\n")
         return
-    out.write("Features stats:\n")
-    out.write("--------------\n")
-    out.write("  Number of items: %d\n" % nfeat)
-    out.write("  Total length: %d\n" % lstat[0])
-    out.write("  Total coverage: %d\n" % total_cov)
-    out.write("  Min: %.2f\n" % lstat[1])
-    out.write("  Max: %.2f\n" % lstat[2])
-    out.write("  Mean: %.2f\n" % lstat[3])
-    out.write("  Standard deviation: %.2f\n" % lstat[4])
-    out.write("  Median: %.2f\n" % lstat[5])
-    out.write("Distribution of features lengths:\n\n")
+    out.write("  Number of features: %d\n" % nfeat)
+    out.write("  Sum of feature lengths: %d\n" % lstat[0])
+    out.write("  Total coverage (# of non-null positions): %d\n" % total_cov)
+    out.write("  Min length: %.2f\n" % lstat[1])
+    out.write("  Max length: %.2f\n" % lstat[2])
+    out.write("  Mean length: %.2f\n" % lstat[3])
+    out.write("  Lengths standard deviation: %.2f\n" % lstat[4])
+    out.write("  Median length: %.2f\n" % lstat[5])
+    out.write("Distribution of lengths:\n\n")
     if plot: console_distr_plot(ldistr,out,hlimit=20,wlimit=wlimit,binw=200)
     out.write('\n')
     if is_score:
-        out.write("Score stats:\n")
         out.write("-----------\n")
-        out.write("  Total: %.2f\n" % stat[0])
-        out.write("  Min: %.2f\n" % stat[1])
-        out.write("  Max: %.2f\n" % stat[2])
-        out.write("  Mean: %.2f\n" % stat[3])
-        out.write("  Standard deviation: %.2f\n" % stat[4])
-        out.write("  Median: %.2f\n" % stat[5])
+        out.write("  Total score: %.2f\n" % stat[0])
+        out.write("  Min score: %.2f\n" % stat[1])
+        out.write("  Max score: %.2f\n" % stat[2])
+        out.write("  Mean score: %.2f\n" % stat[3])
+        out.write("  Scores standard deviation: %.2f\n" % stat[4])
+        out.write("  Median score: %.2f\n" % stat[5])
         out.write("Distribution of scores:\n\n")
         if plot: console_distr_plot(distr,out,hlimit=10,wlimit=wlimit,binw=1)
     out.write('\n')
