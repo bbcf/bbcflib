@@ -497,16 +497,20 @@ class SgaTrack(TextTrack):
             chr_toskip = self._init_skip(selection)
             next_toskip = chr_toskip.next()
         fstart = fend = 0
-        rowdata = {1: ['',-1,-1,'','+',''], # chr,start,end,name,strand,score
+        rowdata = {'+': ['',-1,-1,'','+',''], # chr,start,end,name,strand,score
+                   '-': ['',-1,-1,'','-',''],
+                   '0': ['',-1,-1,'','.',''],
+                    1: ['',-1,-1,'','+',''],
                    -1: ['',-1,-1,'','-',''],
-                   0: ['',-1,-1,'','.','']}
-        _sga_f = ['chr','name','start','strand','score']
+                    0: ['',-1,-1,'','.','']
+                  }
+        sga_fields = ['chr','name','end','strand','score']
         while True:
             fstart = self.filehandle.tell()
             row = self.filehandle.readline()
             if not row: break
             if row[0]=="#": continue
-            splitrow = [self._check_type(s.strip(),_sga_f[n])
+            splitrow = [self._check_type(s.strip(),sga_fields[n])
                         for n,s in enumerate(row.split(self.separator))]
             if not any(splitrow): continue
             yieldit = True
