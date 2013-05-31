@@ -272,7 +272,8 @@ def stats(source, out=sys.stdout, plot=True, wlimit=80, **kwargs):
 
     def total_coverage(t):
         try: from bbcflib.bFlatMajor.common import fusion
-        except ImportError: return 0
+        except ImportError: return 'NA (ImportError)'
+        if not t.chrmeta: return 'NA (Assembly required)'
         total_cov = 0
         for chrom in t.chrmeta:
             kw = dict(kwargs)
@@ -308,7 +309,7 @@ def stats(source, out=sys.stdout, plot=True, wlimit=80, **kwargs):
         return
     out.write("  Number of features: %d\n" % nfeat)
     out.write("  Sum of feature lengths: %d\n" % lstat[0])
-    out.write("  Total coverage (# of non-null positions): %d\n" % total_cov)
+    out.write("  Total coverage (# of non-null positions): %s\n" % total_cov)
     out.write("  Min length: %.2f\n" % lstat[1])
     out.write("  Max length: %.2f\n" % lstat[2])
     out.write("  Mean length: %.2f\n" % lstat[3])
