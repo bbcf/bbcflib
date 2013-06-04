@@ -235,22 +235,35 @@ class Test_Conversions(unittest.TestCase):
         pass
 
 
-class Test_Skip_Header(unittest.TestCase):
+class Test_Header(unittest.TestCase):
     def setUp(self):
         self.assembly = 'sacCer2'
         self.bed = os.path.join(path,"yeast_genes.bed")
 
-    def test_header(self):
-        t = track(self.bed)
-        L1 = len([line for line in t.read()]) # skips the first line by default
-        L2 = len([line for line in t.read(header=5)])
-        L3 = len([line for line in t.read(header='track')])
-        L4 = len([line for line in t.read(header=['track','chr'])])
-        L5 = len([line for line in t.read(header=['track','chrII'])])
+    def test_skip_header(self):
+        t = track(self.bed) # skips the first line by default (header=None)
+        L1 = len([line for line in t.read()])
+        t = track(self.bed, header=None)
+        L11 = len([line for line in t.read()])
+        t = track(self.bed, header=True)
+        L111 = len([line for line in t.read()])
+        t = track(self.bed, header=5)
+        L2 = len([line for line in t.read()])
+        t = track(self.bed, header='track')
+        L3 = len([line for line in t.read()])
+        t = track(self.bed, header=['track','chr'])
+        L4 = len([line for line in t.read()])
+        t = track(self.bed, header=['track','chrII'])
+        L5 = len([line for line in t.read()])
+        self.assertEqual(L1,L11)
+        self.assertEqual(L1,L111)
         self.assertEqual(L1-4,L2)
         self.assertEqual(L1,L3)
         self.assertEqual(L4,0)
         self.assertEqual(L1-11,L5)
+
+    def test_write_header(self):
+        pass
 
     def test_intermediate_header(self):
         # header lines in the middle

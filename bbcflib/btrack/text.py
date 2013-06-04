@@ -36,21 +36,55 @@ class TextTrack(Track):
        Dictionary with keys field names and values functions that will be called on each item when writing the file
        (e.g. format numerics to strings).
 
-    When reading a file, lines beginning with "browser", "track" or "#" are skipped.
+    .. attribute:: header
+
+       Indicates the presence of a header.
+       * `None` to skip all consecutive lines starting with "browser", "track" or "#" (default).
+       * `False` if there is no header.
+       * `True` if it is made of a standard unique line with the same number of fields as
+         the rest of the file (R-like). Then the header will be used to guess the track fields.
+       * An int N to indicate that the first N lines of the file should be skipped.
+       * A string to indicate that all header lines start with this string.
+
+    .. attribute:: written
+
+       Boolean indicating whether the self.filehandle has already been written.
+       If it has, the default writing mode chages from 'write' to 'append'
+       (used after writing a header, for instance).
+
+    When reading a file, all lines beginning with "browser", "track" or "#" are skipped.
     The *info* attribute will be filled with "key=value" pairs found on a "track" line at the top of the file.
     The *open* method takes the argument *mode* which can be 'read' (default), 'write', 'append' or 'overwrite'.
     Path can also be a url, or a gzipped file.
     """
     def __init__(self,path,**kwargs):
         kwargs['format'] = kwargs.get("format",'txt')
-        kwargs['fields'] = kwargs.get("fields",['chr','start','end'])
-        self.separator = kwargs.get('separator',"\t")
+        #kwargs['fields'] = kwargs.get("fields",['chr','start','end'])
+        self.separator = kwargs.get('separator')#,"\t")
         Track.__init__(self,path,**kwargs) # super(TextTrack, self).__init__(self,path,**kwargs)
+        self.header = kwargs.get('header',None)
+        self.fields = self._get_fields(kwargs.get('fields'))
         self.intypes = dict((k,v) for k,v in _in_types.iteritems() if k in self.fields)
         if isinstance(kwargs.get('intypes'),dict): self.intypes.update(kwargs["intypes"])
         self.outtypes = dict((k,v) for k,v in _out_types.iteritems() if k in self.fields)
         if isinstance(kwargs.get('outtypes'),dict): self.outtypes.update(kwargs["outtypes"])
-        self.written = False # if True, 'write' mode becomes 'append' (used for adding headers)
+        self.written = False
+
+    def _get_fields(self,fields):
+        """R-like fields guessing according if `header=True` is specified.
+        Else just return keyword arguments or default value."""
+        if fields:
+            pass
+        elif self.header is True:
+            self.open()
+            header = self.filehandle.readline().split(self.separator)
+            first = self.filehandle.readline().split(self.separator)
+            if len(header) == len(first):
+                fields = [header[0].strip('# ')]+header[1:]
+            self.close()
+        else:
+            fields = ['chr','start','end']
+        return fields
 
     def _get_chrmeta(self,chrmeta=None):
         """
@@ -199,35 +233,40 @@ class TextTrack(Track):
     def _skip_header(self,header):
         """If *header* is an int N, skip the first N lines. If it is a string or a list of strings,
         skip the first consecutive lines starting with strings in *header*. If it is None, skips
-        consecutive lines starting with '#','@','track','browser'. If set to `False`, does nothing."""
+        consecutive lines starting with '#','@','track','browser'. If `True`, skips one.
+        If `False`, does nothing."""
         p = 0
         if isinstance(header,str):
             header = [header]
-        if isinstance(header, int):
+        if header is True: # skip 1 line
+            self.filehandle.readline()
+            p = self.filehandle.tell()
+        elif isinstance(header, int): # skip N lines
             for k in range(header):
                 row = self.filehandle.readline()
                 p = self.filehandle.tell()
-        elif isinstance(header,(list,tuple)):
+        elif isinstance(header,(list,tuple)): # skip all lines starting with *str*
             row = header[0]
             for h in header:
                 while row.startswith(h):
                     p = self.filehandle.tell()
                     row = self.filehandle.readline()
-        elif header == False: return
-        else:
+        elif header == False: # do not skip
+            return
+        else: # skip common track info lines
             row = '#'
-            while row and row[:6].split(self.separator)[0] in ['#','@','track','browser']:
+            while row and row[:7].split(self.separator)[0] in ['#','@','track','browser']:
                 p = self.filehandle.tell()
-                row = self.filehandle.readline().strip(' \n\r'+self.separator)
+                row = self.filehandle.readline().strip(' \n\r'+(self.separator or '\t'))
         self.filehandle.seek(p)
 
-    def _read(self, fields, index_list, selection, skip, header):
+    def _read(self, fields, index_list, selection, skip):
         self.open('read')
         if skip and selection:
             chr_toskip = self._init_skip(selection)
             next_toskip = chr_toskip.next()
         fstart = fend = 0
-        self._skip_header(header)
+        self._skip_header(self.header)
         try:
             while 1:
                 fstart = self.filehandle.tell()
@@ -250,7 +289,7 @@ class TextTrack(Track):
             raise ValueError("Bad line in file %s:\n %s%s\n" % (self.path,row,ve))
         self.close()
 
-    def read(self, selection=None, fields=None, skip=False, header=None, **kw):
+    def read(self, selection=None, fields=None, skip=False, **kw):
         """
         :param selection: list of dict of the type
             `[{'chr':'chr1','start':(12,24)},{'chr':'chr3','end':(25,45)},...]`,
@@ -261,9 +300,6 @@ class TextTrack(Track):
             The first time lines corresponding to a chromosome are read, their position in the
             file is recorded (self.index). In the next iterations, only lines corresponding to
             chromosomes either yet unread or present in *selection* will be read. [False]
-        :param header: to skip uncharacteristic header lines. If numeric, the N first lines will
-            be skipped. If it is a string, all consecutive lines beginning with this string will
-            be skipped. By default, all lines beginning with '#','@','track','browser' are skipped.
         """
         if fields is None:
             fields = self.fields
@@ -289,7 +325,7 @@ class TextTrack(Track):
                              'start': (-1,feat[end_idx]),
                              'end': (feat[start_idx],sys.maxint)})
             selection = sel2
-        return FeatureStream(self._read(fields,ilist,selection,skip,header),fields)
+        return FeatureStream(self._read(fields,ilist,selection,skip),fields)
 
     def _format_fields(self,vec,row,source_list,target_list):
         """
@@ -441,7 +477,7 @@ class BedTrack(TextTrack):
         self.open()
         rowlen = None
         for row in self.filehandle:
-            if not(row.strip(' \r\n'+self.separator)) or row[0]=='#': continue
+            if not(row.strip()) or row[0]=='#': continue
             if row[:5]=='track' or row[:7]=='browser': continue
             rowlen = len(row.split(self.separator))
             break
@@ -492,7 +528,7 @@ class SgaTrack(TextTrack):
         kwargs['outtypes'] = {'strand': _sga_strand, 'score': _format_score}
         TextTrack.__init__(self,path,**kwargs)
 
-    def _read(self, fields, index_list, selection, skip, header):
+    def _read(self, fields, index_list, selection, skip):
         self.open('read')
         if skip and selection:
             chr_toskip = self._init_skip(selection)
@@ -572,7 +608,7 @@ class WigTrack(TextTrack):
         kwargs['fields'] = ['chr','start','end','score']
         TextTrack.__init__(self,path,**kwargs)
 
-    def _read(self, fields, index_list, selection, skip, header):
+    def _read(self, fields, index_list, selection, skip):
         self.open('read')
         if skip and selection:
             chr_toskip = self._init_skip(selection)
@@ -785,7 +821,7 @@ class FpsTrack(TextTrack):
         kwargs['fields'] = ['chr','start','end','name','score','strand']
         TextTrack.__init__(self,path,**kwargs)
 
-    def _read(self, fields, index_list, selection, skip, header):
+    def _read(self, fields, index_list, selection, skip):
         self.open('read')
         if skip and selection:
             chr_toskip = self._init_skip(selection)
