@@ -416,7 +416,7 @@ class Track(object):
             return {}
 
     def _get_info(self,info=None):
-        pass
+        return info or {}
 
     def __enter__(self):
         """Called when evaluating the 'with' statement."""
