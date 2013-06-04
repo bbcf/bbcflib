@@ -50,6 +50,7 @@ class TextTrack(Track):
         if isinstance(kwargs.get('intypes'),dict): self.intypes.update(kwargs["intypes"])
         self.outtypes = dict((k,v) for k,v in _out_types.iteritems() if k in self.fields)
         if isinstance(kwargs.get('outtypes'),dict): self.outtypes.update(kwargs["outtypes"])
+        self.written = False # if True, 'write' mode becomes 'append' (used for adding headers)
 
     def _get_chrmeta(self,chrmeta=None):
         """

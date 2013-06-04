@@ -130,7 +130,7 @@ def ensembl_to_ucsc(stream):
     return FeatureStream((item[:istart]+(item[istart]-1,)+item[istart+1:]
                           for item in stream),fields=stream.fields)
 
-def check_ordered(source, out=sys.stderr, **kwargs):
+def check_ordered(source, out=sys.stdout, **kwargs):
     """Read a track-like file *source* once to verify that chromosomes are grouped,
     and that regions of each chromosome are sorted w.r.t. 'start' and 'end' in ascending order.
     Return True if the file is sorted, False otherwise.
@@ -178,7 +178,7 @@ def check_ordered(source, out=sys.stderr, **kwargs):
         last_end = end
     return True
 
-def check_format(source, out=sys.stderr, **kwargs):
+def check_format(source, out=sys.stdout, **kwargs):
     """Read a track-like file *source* completely once to ensure that each line respects
     its format's specifications. Return True if it does, False otherwise.
 
@@ -398,7 +398,6 @@ class Track(object):
         self.chrmeta = self._get_chrmeta(kwargs.get('chrmeta'))
         self.info = self._get_info(info=kwargs.get('info'))
         self.index = {}
-        self.written = False # if True, 'write' mode becomes 'append'
 
     def _get_chrmeta(self,chrmeta=None):
         """:param chrmeta: (str or dict) assembly name, or dict of the type {chr: {'length': 1234}}."""
