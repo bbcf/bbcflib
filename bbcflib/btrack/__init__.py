@@ -443,7 +443,7 @@ class Track(object):
         pass
 
     def readline(self, **kw):
-        return self.read().next()
+        return self.read(**kw).next()
 
     def write(self, **kw):
         pass
