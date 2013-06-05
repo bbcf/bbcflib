@@ -44,8 +44,11 @@ class Test_Track(unittest.TestCase):
 
     def test_read(self):
         t = track(self.bed)
-        s = t.read(); s.next()
+        s = t.read()
         self.assertIsInstance(s, FeatureStream)
+        x = s.next()
+        y = t.readline()
+        self.assertEqual(x,y)
 
         # zipped file
         t = track(self.bed+'.gz')
@@ -261,9 +264,17 @@ class Test_Header(unittest.TestCase):
         self.assertEqual(L1,L3)
         self.assertEqual(L4,0)
         self.assertEqual(L1-11,L5)
+        t.close()
 
-    def test_write_header(self):
-        pass
+    def test_make_header(self):
+        t = track(self.bed)
+        o = track("temp.bed",fields=t.fields)
+        t.open()
+        o.make_header(t.filehandle.readline()) # copy the header
+        t.filehandle.seek(0)
+        o.write(t.read())
+        o.close()
+        self.assertEqual(list(t.read()),list(o.read()))
 
     def test_intermediate_header(self):
         # header lines in the middle
@@ -271,3 +282,6 @@ class Test_Header(unittest.TestCase):
         s = t.read()
         for x in s: pass
 
+    def tearDown(self):
+        for test_file in ['temp.bed']:
+            if os.path.exists(test_file): os.remove(test_file)

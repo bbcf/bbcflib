@@ -395,8 +395,10 @@ class TextTrack(Track):
     def make_header(self, info=None, mode='write', **kw):
         """
         If *self* is an empty track, this function can be used to write a header in place
-        of the first line of its related file. Info can be given as a dictioary *info*
-        or as keyword arguments to the function. The header line starts with 'track' and
+        of the first line of its related file.
+        Info can be given as a dictionary *info*, as keyword arguments to the function,
+        or as a string. If *info* is a string, it will be written as it is.
+        In other cases, the header line will start with 'track' and
         each pair of key/value in *info* is added as 'key=value'. Example::
 
             make_header(type='bedGraph',name='aaa')
@@ -411,13 +413,18 @@ class TextTrack(Track):
             'name','description','visibility','color','itemRgb'.
         :param mode: (str) writing mode - one of 'write','overwrite','append'.
         """
-        if isinstance(info,dict): self.info.update(info)
-        else: self.info.update(kw)
-        header = "track "
-        _keys = ["name","type","description","visibility","color","itemRgb"]
-        header += " ".join(["%s='%s'"%(k,self.info[k]) for k in _keys if k in self.info])
         self.open(mode)
-        self.filehandle.write(header+"\n")
+        if isinstance(info,str):
+            self.filehandle.write(info+'\n')
+            self.header = len(info.split('\r\n'))
+        else:
+            if isinstance(info,dict): self.info.update(info)
+            else: self.info.update(kw)
+            header = "track "
+            _keys = ["name","type","description","visibility","color","itemRgb"]
+            header += " ".join(["%s='%s'"%(k,self.info[k]) for k in _keys if k in self.info])
+            self.filehandle.write(header+"\n")
+            self.header = 1
         self.close()
         self.written = True
 

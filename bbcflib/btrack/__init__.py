@@ -442,6 +442,9 @@ class Track(object):
     def read(self, **kw):
         pass
 
+    def readline(self, **kw):
+        return self.read().next()
+
     def write(self, **kw):
         pass
 
