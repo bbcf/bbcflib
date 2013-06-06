@@ -392,7 +392,7 @@ class TextTrack(Track):
         self.written = True
         self.close()
 
-    def make_header(self, info, mode='write', **kw):
+    def make_header(self, *args, **kw):
         """
         If *self* is an empty track, this function can be used to write a header in place
         of the first line of its related file.
@@ -413,7 +413,11 @@ class TextTrack(Track):
             'name','description','visibility','color','itemRgb'.
         :param mode: (str) writing mode - one of 'write','overwrite','append'.
         """
-        self.open(mode)
+        self.open(kw.get('mode','write'))
+        if len(args)>0:
+            info = args[0]
+        else:
+            info = kw.get('info')  
         if isinstance(info,str):
             self.filehandle.write(info+'\n')
             self.header = len(info.split('\r\n'))
