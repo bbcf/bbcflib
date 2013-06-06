@@ -59,7 +59,6 @@ class TextTrack(Track):
     """
     def __init__(self,path,**kwargs):
         kwargs['format'] = kwargs.get("format",'txt')
-        #kwargs['fields'] = kwargs.get("fields",['chr','start','end'])
         self.separator = kwargs.get('separator')#,"\t")
         self.header = kwargs.get('header',None)
         Track.__init__(self,path,**kwargs) # super(TextTrack, self).__init__(self,path,**kwargs)
