@@ -12,7 +12,7 @@ import sys, os, json, re, tarfile, time
 from bein import program
 from bein.util import touch
 from bbcflib.createlib import get_libForGrp
-from bbcflib.trackk import track, convert
+from bbcflib.track import track, convert
 from bbcflib.mapseq import parallel_density_sql
 from bbcflib.common import unique_filename_in, gzipfile, merge_sql, cat, gMiner_run, set_file_descr
 
