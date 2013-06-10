@@ -289,7 +289,7 @@ def stats(source, out=sys.stdout, plot=True, wlimit=80, **kwargs):
         return nfeat,ldistr,stats_from_distr(ldistr,nfeat)
 
     def total_coverage(t):
-        try: from bbcflib.bFlatMajor.common import fusion
+        try: from bbcflib.gfminer.common import fusion
         except ImportError: return 'NA (ImportError)'
         if not t.chrmeta: return 'NA (Assembly required)'
         total_cov = 0

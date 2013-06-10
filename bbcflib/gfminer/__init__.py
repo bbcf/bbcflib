@@ -2,32 +2,32 @@
 This packages provides algorithms working on :func:`FeatureStream <bbcflib.track.FeatureStream>`.
 It is divided into three major groups depending on the algorithm's return type:
 
-* :mod:`bbcflib.bFlatMajor.stream` returns :func:`FeatureStream <bbcflib.track.FeatureStream>` objects,
-* :mod:`bbcflib.bFlatMajor.numeric` returns numeric arrays or matrices,
-* :mod:`bbcflib.bFlatMajor.figure` returns figure files (pdf, png, etc.).
+* :mod:`bbcflib.gfminer.stream` returns :func:`FeatureStream <bbcflib.track.FeatureStream>` objects,
+* :mod:`bbcflib.gfminer.numeric` returns numeric arrays or matrices,
+* :mod:`bbcflib.gfminer.figure` returns figure files (pdf, png, etc.).
 
 Algorithms can be used via a direct import::
 
-    from bbcflib.bFlatMajor import stream
+    from bbcflib.gfminer import stream
     for chrom in track1.chrmeta.keys():
         catstream = stream.concatenate([track1.read(chrom),track2.read(chrom)])
 
-or via the global :func:`run <bbcflib.bFlatMajor.run>` function. The latter will take file names as input parameters, while a direct call requires :func:`FeatureStream <bbcflib.track.FeatureStream>` to be created beforehands.
+or via the global :func:`run <bbcflib.gfminer.run>` function. The latter will take file names as input parameters, while a direct call requires :func:`FeatureStream <bbcflib.track.FeatureStream>` to be created beforehands.
 
-Most functions in :mod:`bFlatMajor <bbcflib.bFlatMajor>` take one or more lists of :func:`FeatureStream <bbcflib.track.FeatureStream>` as parameters, plus additional algorithm-specific parameters.
+Most functions in :mod:`gfminer <bbcflib.gfminer>` take one or more lists of :func:`FeatureStream <bbcflib.track.FeatureStream>` as parameters, plus additional algorithm-specific parameters.
 
 """
 
-__all__ = ['bFlatMajorGroup']
+__all__ = ['gfminerGroup']
 
 import os, sys
 from bbcflib.track import track
 from bbcflib.common import unique_filename_in
 
-_here = 'bbcflib.bFlatMajor.'
+_here = 'bbcflib.gfminer.'
 _module_list = ['stream','numeric','figure']
 ###############################################################################
-class bFlatMajorGroup(object):
+class gfminerGroup(object):
     def __init__(self,members):
         self.__dict__ = members
 

@@ -195,7 +195,7 @@ def parseConfig( file, job=None, gl=None ):
                     continue
             options[k] = v
     newjob = Job( id, created_at, key, assembly_id, description, email, options )
-    if isinstance(job,Job): 
+    if isinstance(job,Job):
         newjob.groups = job.groups
         newjob.files = job.files
     for gid, group in config.get('Groups',{}).iteritems():

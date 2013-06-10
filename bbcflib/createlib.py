@@ -11,7 +11,7 @@ from bein.util import touch
 from bbcflib import genrep
 from bbcflib.track import track
 from bbcflib.common import cat, set_file_descr, unique_filename_in, coverageBed, gzipfile
-from bbcflib.bFlatMajor.common import sorted_stream
+from bbcflib.gfminer.common import sorted_stream
 import os, json, re, urllib2, time, shutil
 
 #GlobalLibPath="/archive/epfl/bbcf/data/genomes/4cLibraries"

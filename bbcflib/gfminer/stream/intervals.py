@@ -1,5 +1,5 @@
 import sys
-from bbcflib.bFlatMajor import common
+from bbcflib.gfminer import common
 from bbcflib.track import FeatureStream
 
 # "tracks" and "streams" refer to FeatureStream objects all over here.
@@ -350,7 +350,7 @@ def combine(trackList, fn, win_size=1000, aggregate={}):
     respectively for strand, chromosome and all others.
 
     :param trackList: list of FeatureStream objects.
-    :param fn: boolean function to apply, such as bbcflib.bFlatMajor.stream.union.
+    :param fn: boolean function to apply, such as bbcflib.gfminer.stream.union.
     :param win_size: (int) window size, in bp.
     :param aggregate: (dict) for each field name given as a key, its value is the function
         to apply to the vector containing all trackList's values for this field in order

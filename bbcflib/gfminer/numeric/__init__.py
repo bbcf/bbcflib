@@ -1,7 +1,7 @@
 """
 The *numeric* module contains algorithms which return numeric objects (typically `numpy.arrays`) from one or more :func:`FeatureStream <bbcflib.track.FeatureStream>` objects.
 """
-from bbcflib.bFlatMajor import *
+from bbcflib.gfminer import *
 
 ###############################################################################
 _members = {'score_array': ['trackList'],
@@ -9,9 +9,9 @@ _members = {'score_array': ['trackList'],
             'feature_matrix': ['trackScores','trackFeatures'],
             'summed_feature_matrix': ['trackScores','trackFeatures']
             }
-class numeric(bFlatMajorGroup):
+class numeric(gfminerGroup):
     def __init__(self):
-        bFlatMajorGroup.__init__(self,_members)
+        gfminerGroup.__init__(self,_members)
 ###############################################################################
 
 from .signal import *

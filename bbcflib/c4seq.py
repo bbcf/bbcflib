@@ -159,7 +159,7 @@ def c4seq_workflow( ex, job, primers_dict, assembly,
     * open the 4C-seq minilims and create execution
     * 0. get/create the library
     * 1. if necessary, calculate the density file from the bam file (mapseq.parallel_density_sql)
-    * 2. calculate the count per fragment for each denstiy file with bFlatMajor:score_by_feature to calculate)
+    * 2. calculate the count per fragment for each denstiy file with gfminer:score_by_feature to calculate)
     '''
     mapseq_files = job.files
 ### outputs

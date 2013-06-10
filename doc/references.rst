@@ -7,7 +7,7 @@ Main reference
 --------------
 .. BBCF (http://bbcf.epfl.ch/)
 
-A manuscript about the HTSstation is in preparation. 
+A manuscript about the HTSstation is in preparation.
 
 For now, please refer to us with the URL below:
 
@@ -29,5 +29,5 @@ Rey G, et al.: Genome-Wide and Phase-Specific DNA-Binding Rhythms of BMAL1 Contr
 4C-seq
 ------
 
-Noordermeer et al., The dynamic architecture of Hox gene clusters, `Science, 334:222-225, 2011 <http://www.sciencemag.org/content/334/6053/222.abstract>`_ 
+Noordermeer et al., The dynamic architecture of Hox gene clusters, `Science, 334:222-225, 2011 <http://www.sciencemag.org/content/334/6053/222.abstract>`_
 

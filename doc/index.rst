@@ -19,8 +19,8 @@ Tutorials
    tutorial_4cseq
    tutorial_rnaseq
    tutorial_snp
-   tutorial_btrack
-   tutorial_bFlatMajor
+   tutorial_track
+   tutorial_gfminer
    tutorial_config_files
 
 Methods description
@@ -54,7 +54,7 @@ Library guide
    bbcflib_rnaseq
    bbcflib_c4seq
    bbcflib_gdv
-   bbcflib_btrack
-   bbcflib_bFlatMajor
+   bbcflib_track
+   bbcflib_gfminer
 
 Also see the `developer documentation <http://bbcf.github.com/bbcflib/>`_.

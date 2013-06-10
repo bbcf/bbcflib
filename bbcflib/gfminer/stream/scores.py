@@ -1,8 +1,8 @@
 # coding: utf-8
 
 import sys
-from bbcflib.bFlatMajor import common
-from bbcflib.bFlatMajor.stream import concatenate
+from bbcflib.gfminer import common
+from bbcflib.gfminer.stream import concatenate
 from bbcflib.track import FeatureStream
 from numpy import asarray, zeros
 
@@ -107,8 +107,8 @@ def filter_scores(trackScores,trackFeatures,method='sum',strict=False,annotate=F
         Y: __________666666666___2222776_444___________
         R: __________6666__________22776_444___________
 
-    Note: *trackFeatures* is :func:`cobbled <bbcflib.bFlatMajor.common.cobble>` by default (to avoid
-    score duplications). An alternative is :func:`fusion <bbcflib.bFlatMajor.common.fusion>`, or nothing.
+    Note: *trackFeatures* is :func:`cobbled <bbcflib.gfminer.common.cobble>` by default (to avoid
+    score duplications). An alternative is :func:`fusion <bbcflib.gfminer.common.fusion>`, or nothing.
     If strand information is present in both *trackScores* and *trackFeatures*, only scores inside
     a region of the same strand are kept.
 

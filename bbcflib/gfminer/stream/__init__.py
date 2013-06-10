@@ -1,7 +1,7 @@
 """
 The *stream* module contains algorithms which produce :func:`FeatureStream <bbcflib.track.FeatureStream>` out of one or more :func:`FeatureStream <bbcflib.track.FeatureStream>` objects.
 """
-from bbcflib.bFlatMajor import *
+from bbcflib.gfminer import *
 ###############################################################################
 _members = {'merge_scores': ['trackList'],
             'filter_scores': ['trackFeatures','trackScores'],
@@ -16,9 +16,9 @@ _members = {'merge_scores': ['trackList'],
             'getNearestFeature': ['features','annotations'],
             }
 
-class stream(bFlatMajorGroup):
+class stream(gfminerGroup):
     def __init__(self):
-        bFlatMajorGroup.__init__(self,_members)
+        gfminerGroup.__init__(self,_members)
 ###############################################################################
 
 from .intervals import *

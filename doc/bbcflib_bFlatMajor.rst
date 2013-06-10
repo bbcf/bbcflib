@@ -1,63 +1,63 @@
 ==============================
-Subpackage: bbcflib.bFlatMajor
+Subpackage: bbcflib.gfminer
 ==============================
 
-.. automodule:: bbcflib.bFlatMajor
+.. automodule:: bbcflib.gfminer
     :members:
     :member-order: bysource
     :show-inheritance:
 
 .. autofunction:: run
 
-.. automodule:: bbcflib.bFlatMajor.common
+.. automodule:: bbcflib.gfminer.common
     :members:
 
-.. automodule:: bbcflib.bFlatMajor.bedtools
+.. automodule:: bbcflib.gfminer.bedtools
     :members:
     :undoc-members:
 
 ====================================
-Submodule: bbcflib.bFlatMajor.stream
+Submodule: bbcflib.gfminer.stream
 ====================================
 
-.. automodule:: bbcflib.bFlatMajor.stream
+.. automodule:: bbcflib.gfminer.stream
     :members:
 
-.. automodule:: bbcflib.bFlatMajor.stream.intervals
-    :members:
-    :member-order: bysource
-
-.. automodule:: bbcflib.bFlatMajor.stream.scores
+.. automodule:: bbcflib.gfminer.stream.intervals
     :members:
     :member-order: bysource
 
-.. automodule:: bbcflib.bFlatMajor.stream.annotate
+.. automodule:: bbcflib.gfminer.stream.scores
+    :members:
+    :member-order: bysource
+
+.. automodule:: bbcflib.gfminer.stream.annotate
     :members:
     :member-order: bysource
 
 =====================================
-Submodule: bbcflib.bFlatMajor.numeric
+Submodule: bbcflib.gfminer.numeric
 =====================================
 
-.. automodule:: bbcflib.bFlatMajor.numeric
+.. automodule:: bbcflib.gfminer.numeric
     :members:
 
-.. automodule:: bbcflib.bFlatMajor.numeric.signal
+.. automodule:: bbcflib.gfminer.numeric.signal
     :members:
     :member-order: bysource
 
-.. automodule:: bbcflib.bFlatMajor.numeric.regions
+.. automodule:: bbcflib.gfminer.numeric.regions
     :members:
     :member-order: bysource
 
 ====================================
-Submodule: bbcflib.bFlatMajor.figure
+Submodule: bbcflib.gfminer.figure
 ====================================
 
-.. automodule:: bbcflib.bFlatMajor.figure
+.. automodule:: bbcflib.gfminer.figure
     :members:
 
-.. automodule:: bbcflib.bFlatMajor.figure.rplots
+.. automodule:: bbcflib.gfminer.figure.rplots
     :members:
     :member-order: bysource
 

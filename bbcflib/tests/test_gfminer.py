@@ -4,15 +4,15 @@ import math
 # Internal modules #
 from bbcflib import track, genrep
 from bbcflib.track import FeatureStream as fstream
-from bbcflib.bFlatMajor.common import sentinelize, copy, select, reorder, unroll, sorted_stream
-from bbcflib.bFlatMajor.common import shuffled, fusion, cobble, ordered, apply, duplicate
-from bbcflib.bFlatMajor.common import concat_fields, split_field, map_chromosomes, score_threshold
-from bbcflib.bFlatMajor.stream.annotate import getNearestFeature
-from bbcflib.bFlatMajor.stream.intervals import concatenate, neighborhood, segment_features, intersect, selection
-from bbcflib.bFlatMajor.stream.intervals import exclude, require, disjunction, intersection, union, combine, overlap
-from bbcflib.bFlatMajor.stream.scores import merge_scores, score_by_feature, window_smoothing, filter_scores, normalize
-from bbcflib.bFlatMajor.numeric.regions import feature_matrix, summed_feature_matrix
-from bbcflib.bFlatMajor.numeric.signal import _normalize, correlation
+from bbcflib.gfminer.common import sentinelize, copy, select, reorder, unroll, sorted_stream
+from bbcflib.gfminer.common import shuffled, fusion, cobble, ordered, apply, duplicate
+from bbcflib.gfminer.common import concat_fields, split_field, map_chromosomes, score_threshold
+from bbcflib.gfminer.stream.annotate import getNearestFeature
+from bbcflib.gfminer.stream.intervals import concatenate, neighborhood, segment_features, intersect, selection
+from bbcflib.gfminer.stream.intervals import exclude, require, disjunction, intersection, union, combine, overlap
+from bbcflib.gfminer.stream.scores import merge_scores, score_by_feature, window_smoothing, filter_scores, normalize
+from bbcflib.gfminer.numeric.regions import feature_matrix, summed_feature_matrix
+from bbcflib.gfminer.numeric.signal import _normalize, correlation
 
 # Other modules #
 import numpy

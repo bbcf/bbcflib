@@ -1,4 +1,4 @@
-from bbcflib.bFlatMajor.common import unroll
+from bbcflib.gfminer.common import unroll
 from bbcflib.track import FeatureStream
 from numpy.fft import fft, ifft
 from numpy import conjugate,array,asarray,mean,sqrt,real,hstack

@@ -1,5 +1,5 @@
-from bbcflib.bFlatMajor.stream import score_by_feature, segment_features
-from bbcflib.bFlatMajor.common import sorted_stream
+from bbcflib.gfminer.stream import score_by_feature, segment_features
+from bbcflib.gfminer.common import sorted_stream
 import numpy
 
 def feature_matrix(trackScores,trackFeatures,segment=False,method='mean',**kw):
@@ -9,7 +9,7 @@ def feature_matrix(trackScores,trackFeatures,segment=False,method='mean',**kw):
     (average) score of some genomic feature.
 
     If *segment* is True, each feature will be segmented into bins using
-    bbcflib.bFlatMajor.stream.intervals.segment_features (additional parameters in *\*\*kw* will be passed to this function).
+    bbcflib.gfminer.stream.intervals.segment_features (additional parameters in *\*\*kw* will be passed to this function).
     Then each element of the array is itself an array with *nbins* lines and one column for each track in *trackScores*.
 
     If *segment* is False, then each element of the array is an array with one element for each track in *trackScores*.
@@ -77,7 +77,7 @@ def feature_matrix(trackScores,trackFeatures,segment=False,method='mean',**kw):
 
 def summed_feature_matrix(trackScores,trackFeatures,method='mean',**kw):
     """
-    Each feature in *trackFeatures* is segmented into bins using bbcflib.bFlatMajor.stream.segment_features
+    Each feature in *trackFeatures* is segmented into bins using bbcflib.gfminer.stream.segment_features
     (with parameters passed from *\*\*kw*).
     This creates a matrix with a column for each track in *trackScores* and a row for each bin in the segmented features.
     The values of a matrix entry is the score from one track in *trackScores* in one bin summed over all features.

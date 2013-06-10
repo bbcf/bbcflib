@@ -13,9 +13,9 @@ setup(
         classifiers     =   ['Topic :: Scientific/Engineering :: Bio-Informatics'],
         packages        =   ['bbcflib',
                              'bbcflib.track',
-                             'bbcflib.bFlatMajor',
-                             'bbcflib.bFlatMajor.stream',
-                             'bbcflib.bFlatMajor.numeric',
-                             'bbcflib.bFlatMajor.figure'
+                             'bbcflib.gfminer',
+                             'bbcflib.gfminer.stream',
+                             'bbcflib.gfminer.numeric',
+                             'bbcflib.gfminer.figure'
                             ],
     )

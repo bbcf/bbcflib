@@ -41,8 +41,8 @@ import re, os, gzip, sys, time
 from bbcflib import frontend, mapseq
 from bbcflib.common import unique_filename_in, set_file_descr, join_pdf, merge_sql, intersect_many_bed, gzipfile
 from bbcflib.track import track, FeatureStream, convert
-from bbcflib.bFlatMajor import stream as gm_stream
-from bbcflib.bFlatMajor import common as gm_common
+from bbcflib.gfminer import stream as gm_stream
+from bbcflib.gfminer import common as gm_common
 
 # Other modules #
 from bein import program

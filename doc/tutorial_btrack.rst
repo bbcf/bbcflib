@@ -241,18 +241,18 @@ Advanced features
 
     # No coverage at position 18; positions 13 to 16 have the same coverage.
 
-bFlatMajor: data manipulations
+gfminer: data manipulations
 ------------------------------
 
 **track** basically parses track files but does not transform the original data.
 To manipulate your data, the **bbcflib** library provides powerful tools to concatenate, intersect, annotate, etc.
 It will always take ``FeatureStream`` objects as input, so first open the track using ``track.track``,
-then ``read`` it and provide the output stream to one of **bFlatMajor**'s functions.
+then ``read`` it and provide the output stream to one of **gfminer**'s functions.
 Most of them will also return streams, so that you can pass it to another function,
 and write the final result to a new ``Track``.
 
-For more info, see **bFlatMajor**'s :doc:`tutorial <tutorial_bFlatMajor>`
-and :doc:`developer documentation <bbcflib_bFlatMajor>`.
+For more info, see **gfminer**'s :doc:`tutorial <tutorial_gfminer>`
+and :doc:`developer documentation <bbcflib_gfminer>`.
 
 Miscellaneous notes
 -------------------
@@ -261,7 +261,7 @@ Miscellaneous notes
 * Handling bigWig files requires UCSC's *bigWigToBedGraph* (for reading) and *bedGraphToBigWig*
   (for writing) - look `here <http://genome.ucsc.edu/goldenPath/help/bigWig.html>`_.
 * Do not forget to close tracks (``Track.close()``).
-* Looping on chromosomes is necessary for several manipulations (see :doc:`bbcflib.bFlatMajor <bbcflib_bFlatMajor>`).
+* Looping on chromosomes is necessary for several manipulations (see :doc:`bbcflib.gfminer <bbcflib_gfminer>`).
 * The ``Track`` class is the parent of multiple subclasses, one for each type of track file
   (such as :func:`bbcflib.track.text.BedTrack` or :func:`bbcflib.track.sql.SqlTrack`).
 * Look at the :doc:`developer documentation <bbcflib_track>` for more details.

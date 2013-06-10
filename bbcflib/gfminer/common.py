@@ -8,7 +8,7 @@ from numpy import asarray,mean,median,exp,nonzero,prod,around,argsort,float_
 def ordered(fn):
     """
     Decorator. Keeps the original order of fields for a stream passing through one of
-    bFlatMajor functions that take and return a FeatureStream, or a list of FeatureStream objects.
+    gfminer functions that take and return a FeatureStream, or a list of FeatureStream objects.
     """
     @wraps(fn) # makes the wrapper take the same name as the wrapped function when called
     def wrapper(*args,**kwargs):
@@ -16,7 +16,7 @@ def ordered(fn):
         if len(args) > 0:
             tracks = args[0]
         elif len(kwargs) > 0:
-            from bbcflib.bFlatMajor import stream
+            from bbcflib.gfminer import stream
             tracks = kwargs.get(stream.stream().loadable(fn.__name__)[0])
         if tracks is None:
             return fn(*args,**kwargs)
@@ -603,8 +603,8 @@ def cobble(stream,aggregate=aggreg_functions,stranded=False,scored=False):
 ####################################################################
 def normalize(M,method):
     """Normalize the vectors of a matrix *M* using the given *method*.
-    To apply it to streams, use :func:`bFlatMajor.stream.normalize
-    <bbcflib.bFlatMajor.stream.scores.normalize>`.
+    To apply it to streams, use :func:`gfminer.stream.normalize
+    <bbcflib.gfminer.stream.scores.normalize>`.
 
     :param M: (list of lists, or numpy array) matrix M to normalize.
     :param method: normalization method:

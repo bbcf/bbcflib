@@ -1,5 +1,5 @@
 import sys
-from bbcflib.bFlatMajor import common
+from bbcflib.gfminer import common
 from bbcflib.track import FeatureStream
 
 @common.ordered

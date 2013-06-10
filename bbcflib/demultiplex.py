@@ -74,7 +74,7 @@ def split_exonerate(filename,minScore,l=30):
                 files["unaligned"].write(" ".join(s)+"\n")
             else:
                 line_buffer.append((s[9],"@"+info[0]+"_"+seq+"_"+qual+"\n"+seq+"\n+\n"+qual+"\n",s,key))
-    
+
     _process_line(line_buffer)
     for f in files.itervalues():
         f.close()
@@ -92,9 +92,9 @@ def _get_minscore(dbf):
         firstl = df.readline()
         primer_len = len(firstl)-1
 ## max score = len*5, penalty for len/2 mismatches = -9*len/2 => score = len/2
-    return primer_len/2 
+    return primer_len/2
 
-def parallel_exonerate(ex, subfiles, dbFile, grp_descr, 
+def parallel_exonerate(ex, subfiles, dbFile, grp_descr,
                        minScore=77, n=1, x=22, l=30, via="local"):
     futures=[fastqToFasta.nonblocking(ex,sf,n=n,x=x,via=via) for sf in subfiles]
 
@@ -157,7 +157,7 @@ def load_paramsFile(paramsfile):
         for s in f:
             if re.search('^#',s) or not(re.search('=',s)): continue
             (k,v)=s.strip().split('=')
-            if re.search('Search the primer from base i',k): 
+            if re.search('Search the primer from base i',k):
                 params['n']=v
             if re.search('Search the primer in the next n bps of the reads',k):
                 params['x']=v
@@ -234,9 +234,9 @@ def demultiplex_workflow(ex, job, gl, file_path="../", via='lsf'):
                 allSubFiles.extend(split_file(ex,run,n_lines=8000000))
             else:
                 allSubFiles.append(run)
-        resExonerate = parallel_exonerate(ex, allSubFiles, primersFile, 
-                                          (gid, group['name']), 
-                                          minScore=int(params['s']), 
+        resExonerate = parallel_exonerate(ex, allSubFiles, primersFile,
+                                          (gid, group['name']),
+                                          minScore=int(params['s']),
                                           n=params['n'], x=params['x'],
                                           l=int(params['l']), via=via)
         filteredFastq={}
@@ -283,7 +283,7 @@ def demultiplex_workflow(ex, job, gl, file_path="../", via='lsf'):
                     groupId=gid,step="final",type="pdf"))
         else:
             log.write("*** Probable ambiguous classification: total_reads < sum(reads_by_primers) ***\n");log.flush()
-    add_pickle( ex, file_names, 
+    add_pickle( ex, file_names,
                 set_file_descr('file_names',step="final",type='py',view='admin') )
     return resFiles
 

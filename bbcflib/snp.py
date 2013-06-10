@@ -14,8 +14,8 @@ from itertools import product
 from bbcflib.common import unique_filename_in, set_file_descr, sam_faidx
 from bbcflib import mapseq
 from bbcflib.track import FeatureStream, track
-from bbcflib.bFlatMajor.common import concat_fields
-from bbcflib.bFlatMajor import stream as gm_stream
+from bbcflib.gfminer.common import concat_fields
+from bbcflib.gfminer import stream as gm_stream
 from bein import program
 
 _iupac = {'M':'AC', 'Y':'CT', 'R':'AG', 'S':'CG', 'W': 'AT', 'K':'GT',

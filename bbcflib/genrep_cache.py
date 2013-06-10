@@ -11,13 +11,13 @@ You can only call Assembly and all methods belonging to it.
 Direct calls to GenRep() or GenRepObject() are not supported
 
 Functioning :
-On import it create the configuration file `.genrepcache.conf` in your home directory with 
+On import it create the configuration file `.genrepcache.conf` in your home directory with
 parameters :
     db_name = Database name.
     time_limit = Time limit when a cached response must be reloaded (in days).
     assembly_cache = List of methods you want to cache.
     unique_ids = Important attributes in your class that will determine the uniqueness of the child object
-    connector = Default connector : change it to what you want and supported by sqlalchemy 
+    connector = Default connector : change it to what you want and supported by sqlalchemy
         (see http://docs.sqlalchemy.org/en/latest/core/engines.html#supported-databases).
 
 Then on method call, if the method is not in `assembly_cache` parameter, your call is redirected
@@ -69,7 +69,7 @@ Section in the config file.
 '''
 section = 'GenRep cache'
 
-    
+
 
 def dec(obj, func, _property=False):
     '''
@@ -96,7 +96,7 @@ def cached_ass(*args, **kw):
             return pickle.loads(str(ass.assembly))
     else :
         ass = Ass()
-    
+
     assembly = genrep.Assembly(*args, **kw)
     ass.args = str(args)
     ass.kw = str(kw)
@@ -123,7 +123,7 @@ def cached(obj, func, uid, args, kw, _property):
             return store.response
     else :
         store = Store()
-    
+
     # get the response from genRep and store it
     if _property :
         response = getattr(obj.gr, func)
@@ -133,12 +133,12 @@ def cached(obj, func, uid, args, kw, _property):
     store.args = str(args)
     store.kw = str(kw)
     store.response = str(response)
-    
+
     session.add(store)
     session.commit()
     session.close()
     return response
-    
+
 class Assembly(object):
     '''
     Assembly object that reflect the `original`.
@@ -146,18 +146,18 @@ class Assembly(object):
     def __init__(self, *args, **kw):
         '''
         Initialize the decoration system.
-        Each method in `assembly_cache` will be decorated by the 
+        Each method in `assembly_cache` will be decorated by the
         `dec` method. Others will be redirected to the Assembly decorated.
         '''
         self.uid = None
         self.gr = cached_ass(*args, **kw)
-        
-        
+
+
         for func in assembly_cache:
             if hasattr(self.gr, func):
                 v = self.gr.__class__.__dict__.get(str(func))
                 if v is None :
-                    ## instance  
+                    ## instance
                     raise AttributeError('Only function or property can be decorated : "%s" is an attribute' % func)
                 ## class
                 elif isinstance(v, property):
@@ -167,8 +167,8 @@ class Assembly(object):
                     setattr(self, str(func), dec(self, func))
             else :
                 raise AttributeError('%r object has no attribute %r' % (type(self.gr).__name__, func))
-            
-            
+
+
     def __getattr__(self, name):
         '''
         Redirect attribute search on the decorated parameter.
@@ -176,10 +176,10 @@ class Assembly(object):
         if hasattr(self.gr, name):
             return getattr(self.gr, name)
         raise AttributeError('%r object has no attribute %r' % (type(self).__name__, name))
-    
-    
-    
-    
+
+
+
+
     def unique_id(self):
         '''
         Generate an unique id with the `unique_ids attributes`.
@@ -190,13 +190,13 @@ class Assembly(object):
                 attrs += str(getattr(self.gr, att))
             self.uid = hashlib.sha1(attrs).hexdigest()
         return self.uid
-    
-    
-    
+
+
+
 '''
 Database configuration
 '''
-    
+
 Base = declarative_base()
 
 class Store(Base):
@@ -208,7 +208,7 @@ class Store(Base):
     args = Column(Text, primary_key=True)
     kw = Column(Text, primary_key=True)
     response = Column(Text)
-    date = Column(DateTime, default=datetime.datetime.now, nullable=False)                                                                                       
+    date = Column(DateTime, default=datetime.datetime.now, nullable=False)
 
 class Ass(Base):
     '''
@@ -218,9 +218,9 @@ class Ass(Base):
     args = Column(Text, primary_key=True)
     kw = Column(Text, primary_key=True)
     assembly = Column(Text)
-    date = Column(DateTime, default=datetime.datetime.now, nullable=False) 
-    
-    
+    date = Column(DateTime, default=datetime.datetime.now, nullable=False)
+
+
 metadata = MetaData()
 grc = Table('grc', metadata,
      Column('uid', Text, primary_key=True),
@@ -242,7 +242,7 @@ def init(connector, metadata, tables, echo=False):
     '''
     engine = create_engine(connector, echo=echo)
     metadata.create_all(bind=engine, tables=tables, checkfirst=True)
-    Session = sessionmaker(bind=engine)                                                                              
+    Session = sessionmaker(bind=engine)
     Session.configure(bind=engine)
     return Session
 
@@ -255,7 +255,7 @@ def configuration(config):
         with open(conf_path, 'w') as cf:
             config.write(cf)
         configuration(config)
-    
+
 
 config = ConfigParser.ConfigParser()
 configuration(config)
@@ -265,7 +265,7 @@ nb = config.getint(section, 'time_limit')
 connector = json.loads(config.get(section, 'connector'))
 assembly_cache = json.loads(config.get(section, 'assembly_cache'))
 json.loads(config.get(section, 'assembly_cache'))
-    
+
 unique_ids = json.loads(config.get(section, 'unique_ids'))
 timedelta = datetime.timedelta(days=nb)
 DBSession = init(connector, metadata, [grc, ass], echo=False)
@@ -284,7 +284,7 @@ if __name__ == '__main__':
 #    print a.fasta_path('chr1')
     print 'AGAIN'
     print a.chromosomes
-    
-    
-    
-    
+
+
+
+

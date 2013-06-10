@@ -2,7 +2,7 @@ Track manipulations
 ===================
 
 Here is a short tutorial showing how to manipulate streams of data with the Python library
-**bFlatMajor** from the **bbcflib** package.
+**gfminer** from the **bbcflib** package.
 
 What is it useful for?
 ----------------------
@@ -10,7 +10,7 @@ What is it useful for?
 The **track** library from the **bbcflib** package reads track-like files and returns iterators ("streams")
 over the data (see **track**'s :doc:`tutorial <tutorial_track>` and :doc:`documentation <bbcflib_track>`).
 Usually, one wants to modify this data through a sequence of manipulations before writing it back.
-**bFlatMajor** provides a collection of useful functions that take streams as input and perform
+**gfminer** provides a collection of useful functions that take streams as input and perform
 common manipulations such as concatenate, intersect or reorder.
 
 Before starting
@@ -49,7 +49,7 @@ First, create a stream from scratch or from a track file::
 
 Then import the function(s) that you need and give your stream as input::
 
-    >>> from bbcflib.bFlatMajor.common import duplicate
+    >>> from bbcflib.gfminer.common import duplicate
     >>> s1 = duplicate(s,'chr','newfield') # copies the 'chr' field to a new one
 
     >>> s1
@@ -61,7 +61,7 @@ Then import the function(s) that you need and give your stream as input::
 
 Of course, one can chain functions as long as they return streams::
 
-    >>> from bbcflib.bFlatMajor.common import apply
+    >>> from bbcflib.gfminer.common import apply
     >>> s2 = apply(s1,'newfield', lambda x:"aaa") # rename all 'newfield' entries to 'aaa'
     >>> s3 = apply(s2,'end', lambda x:x+12)       # add 12 to all 'end' entries
     >>> s3.next()
@@ -78,16 +78,16 @@ Finally, write the result to a new file using **track**::
     >>> t.write(s1)
     >>> t.close()
 
-For many of **bFlatMajor**'s functions,
+For many of **gfminer**'s functions,
 
 1. The track must be sorted w.r.t. chromosome, start, end (in this priority order).
    This can be done with a shell ``sort``, but we propose to use the inner
-   :func:`bbcflib.bFlatMajor.common.sorted_stream` on the stream itself for this purpose
+   :func:`bbcflib.gfminer.common.sorted_stream` on the stream itself for this purpose
    (will not modify the original file).
 
 2. The function must be applied chromosome by chromosome. Typically::
 
-    from bbcflib.bFlatMajor.common import fusion
+    from bbcflib.gfminer.common import fusion
     from bbcflib.track import track
     t = track("byfile.bed", chrmeta='mm9')
     out = track("newfile.bed")
@@ -105,7 +105,7 @@ In general, we advise to always loop on the chomosomes list.
 How do I find the function I need?
 ----------------------------------
 
-**bFlatMajor**'s functions are classified in four submodules:
+**gfminer**'s functions are classified in four submodules:
 
 * **common**: low-level, usual manipulations, usually called implicitly inside of other functions.
 * **stream**: functions that return streams.
@@ -114,96 +114,96 @@ How do I find the function I need?
 
 Here are brief descriptions of the main functions (subject to changes):
 
-bFlatMajor.common functions:
+gfminer.common functions:
 ############################
 
-``from bbcflib.bFlatMajor.common import *``
+``from bbcflib.gfminer.common import *``
 
-* :func:`copy <bbcflib.bFlatMajor.common.copy>`:
+* :func:`copy <bbcflib.gfminer.common.copy>`:
   return n independant copies of the input stream.
-* :func:`select <bbcflib.bFlatMajor.common.select>`:
+* :func:`select <bbcflib.gfminer.common.select>`:
   keep only the specified fields.
-* :func:`reorder <bbcflib.bFlatMajor.common.reorder>`:
+* :func:`reorder <bbcflib.gfminer.common.reorder>`:
   change the fields' order.
-* :func:`apply <bbcflib.bFlatMajor.common.apply>`:
+* :func:`apply <bbcflib.gfminer.common.apply>`:
   apply a custom function to all entries of the specified field(s).
-* :func:`duplicate <bbcflib.bFlatMajor.common.duplicate>`:
+* :func:`duplicate <bbcflib.gfminer.common.duplicate>`:
   copy one of the fields and its entries to a new one.
-* :func:`concat_fields <bbcflib.bFlatMajor.common.concat_fields>`:
+* :func:`concat_fields <bbcflib.gfminer.common.concat_fields>`:
   concatenate two fields and their respective entries.
-* :func:`split_field <bbcflib.bFlatMajor.common.split_field>`:
+* :func:`split_field <bbcflib.gfminer.common.split_field>`:
   when possible, split a field and its entries into two distinct ones.
-* :func:`map_chromosomes <bbcflib.bFlatMajor.common.map_chromosomes>`:
+* :func:`map_chromosomes <bbcflib.gfminer.common.map_chromosomes>`:
   translate chromosome names to GenRep standard (e.g. 'chr1').
-* :func:`score_threshold <bbcflib.bFlatMajor.common.score_threshold>`:
+* :func:`score_threshold <bbcflib.gfminer.common.score_threshold>`:
   filter scores with respect to a threshold.
-* :func:`unroll <bbcflib.bFlatMajor.common.unroll>`:
+* :func:`unroll <bbcflib.gfminer.common.unroll>`:
   return one score per genomic position.
-* :func:`sorted_stream <bbcflib.bFlatMajor.common.sorted_stream>`:
+* :func:`sorted_stream <bbcflib.gfminer.common.sorted_stream>`:
   sort the stream, by default w.r.t chr, start and end.
-* :func:`shuffled <bbcflib.bFlatMajor.common.shuffled>`:
+* :func:`shuffled <bbcflib.gfminer.common.shuffled>`:
   return a stream of randomly located features similar to the original stream.
-* :func:`fusion <bbcflib.bFlatMajor.common.fusion>`:
+* :func:`fusion <bbcflib.gfminer.common.fusion>`:
   fuse every two overlapping regions A,B into a single one A|B.
-* :func:`cobble <bbcflib.bFlatMajor.common.cobble>`:
+* :func:`cobble <bbcflib.gfminer.common.cobble>`:
   break every two overlapping regions A,B into three: A - A|B - B.
 
-bFlatMajor.stream functions:
+gfminer.stream functions:
 ############################
 
-``from bbcflib.bFlatMajor.stream import *``
+``from bbcflib.gfminer.stream import *``
 
-* :func:`getNearestFeature <bbcflib.bFlatMajor.stream.annotate.getNearestFeature>`:
+* :func:`getNearestFeature <bbcflib.gfminer.stream.annotate.getNearestFeature>`:
   find the nearest gene to each of the input's features.
-* :func:`concatenate <bbcflib.bFlatMajor.stream.intervals.concatenate>`:
+* :func:`concatenate <bbcflib.gfminer.stream.intervals.concatenate>`:
   make a single stream from the union of several ones.
-* :func:`selection <bbcflib.bFlatMajor.stream.intervals.selection>`:
+* :func:`selection <bbcflib.gfminer.stream.intervals.selection>`:
   filter elements of a stream w.r.t. some given criteria.
-* :func:`overlap <bbcflib.bFlatMajor.stream.intervals.overlap>`:
+* :func:`overlap <bbcflib.gfminer.stream.intervals.overlap>`:
   keep only items overlapping at least one element of a filter track.
-* :func:`neighborhood <bbcflib.bFlatMajor.stream.intervals.neighborhood>`:
+* :func:`neighborhood <bbcflib.gfminer.stream.intervals.neighborhood>`:
   enlarge each of the input's regions.
-* :func:`intersect <bbcflib.bFlatMajor.stream.intervals.intersect>`:
+* :func:`intersect <bbcflib.gfminer.stream.intervals.intersect>`:
   return the intersection of several streams.
-* :func:`merge_scores <bbcflib.bFlatMajor.stream.scores.merge_scores>`:
+* :func:`merge_scores <bbcflib.gfminer.stream.scores.merge_scores>`:
   return a stream with per-base average (or sum) of several signal tracks.
-* :func:`filter_scores <bbcflib.bFlatMajor.stream.scores.filter_scores>`:
+* :func:`filter_scores <bbcflib.gfminer.stream.scores.filter_scores>`:
   keep only scores belonging to a given set of regions.
-* :func:`score_by_feature <bbcflib.bFlatMajor.stream.scores.score_by_feature>`:
+* :func:`score_by_feature <bbcflib.gfminer.stream.scores.score_by_feature>`:
   attribute to each given region the sum or average of (independantly) given scores that span the region.
-* :func:`window_smoothing <bbcflib.bFlatMajor.stream.scores.window_smoothing>`:
+* :func:`window_smoothing <bbcflib.gfminer.stream.scores.window_smoothing>`:
   apply to the scores a smoothing filter along the sequence.
-* :func:`normalize <bbcflib.bFlatMajor.stream.scores.normalize>`:
+* :func:`normalize <bbcflib.gfminer.stream.scores.normalize>`:
   normalize the scores between several signal tracks.
 
-bFlatMajor.numeric functions:
+gfminer.numeric functions:
 #############################
 
-``from bbcflib.bFlatMajor.numeric import *``
+``from bbcflib.gfminer.numeric import *``
 
-* :func:`score_array <bbcflib.bFlatMajor.numeric.signal.score_array>`:
+* :func:`score_array <bbcflib.gfminer.numeric.signal.score_array>`:
   return a vector of scores, one for each unique name in the stream.
-* :func:`correlation <bbcflib.bFlatMajor.numeric.signal.correlation>`:
+* :func:`correlation <bbcflib.gfminer.numeric.signal.correlation>`:
   calculate the auto-correlation.
-* :func:`feature_matrix <bbcflib.bFlatMajor.numeric.regions.feature_matrix>`:
+* :func:`feature_matrix <bbcflib.gfminer.numeric.regions.feature_matrix>`:
   return an array with names as rows and scores as columns, one column for each input score stream.
-* :func:`summed_feature_matrix <bbcflib.bFlatMajor.numeric.regions.summed_feature_matrix>`:
+* :func:`summed_feature_matrix <bbcflib.gfminer.numeric.regions.summed_feature_matrix>`:
   return an array with for each input score stream, the average score over all features.
 
-bFlatMajor.figure functions:
+gfminer.figure functions:
 ############################
 
-``from bbcflib.bFlatMajor.figure import *``
+``from bbcflib.gfminer.figure import *``
 
-* :func:`scatterplot <bbcflib.bFlatMajor.figure.rplots.scatterplot>`:
+* :func:`scatterplot <bbcflib.gfminer.figure.rplots.scatterplot>`:
   scatter plot (2-d points).
-* :func:`lineplot <bbcflib.bFlatMajor.figure.rplots.lineplot>`:
+* :func:`lineplot <bbcflib.gfminer.figure.rplots.lineplot>`:
   same, but points are bounded by lines.
-* :func:`boxplot <bbcflib.bFlatMajor.figure.rplots.boxplot>`:
+* :func:`boxplot <bbcflib.gfminer.figure.rplots.boxplot>`:
   box plot (quantile plot).
-* :func:`heatmap <bbcflib.bFlatMajor.figure.rplots.heatmap>`:
+* :func:`heatmap <bbcflib.gfminer.figure.rplots.heatmap>`:
   heat map (2-d colored matrix).
-* :func:`pairs <bbcflib.bFlatMajor.figure.rplots.pairs>`:
+* :func:`pairs <bbcflib.gfminer.figure.rplots.pairs>`:
   a scatter plot of each pair of variables one against the other.
 
 Common errors
@@ -245,9 +245,9 @@ Advanced features
   The order of stream fields should not matter in most cases, since all functions listed
   here use field names to get the information.
 
-* The function :func:`combine <bbcflib.bFlatMajor.stream.intervals.combine>` permits
+* The function :func:`combine <bbcflib.gfminer.stream.intervals.combine>` permits
   to apply any custom boolean operation to a list of tracks.
-  :func:`intersect <bbcflib.bFlatMajor.stream.intervals.intersect>` is just an example
+  :func:`intersect <bbcflib.gfminer.stream.intervals.intersect>` is just an example
   using the AND boolean operator. Here is a more complex one:
 
   Let A,B,C be three streams, one could ask for
@@ -270,8 +270,8 @@ More documentation
 ------------------
 
 * For more details on how each individual function works,
-  look at the :doc:`developer documentation <bbcflib_bFlatMajor>`.
-* Numerous tests are available with the source code (`bbcflib/bbcflib/tests/test_bFlatMajor.py`)
+  look at the :doc:`developer documentation <bbcflib_gfminer>`.
+* Numerous tests are available with the source code (`bbcflib/bbcflib/tests/test_gfminer.py`)
   that give for each function at least one simple example of usage.
 
 

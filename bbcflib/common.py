@@ -279,7 +279,7 @@ try:
     @program
     def fasta_length(file):
         """Binds the `fastalength` program and returns a `chromosomes` dictionary::
-           
+
             {'chr1': {'name': 'chr1', 'length': xxxx}, ...}
 
         """
