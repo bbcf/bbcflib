@@ -60,21 +60,25 @@ def sam_pileup(assembly,bamfile,refGenome):
             "return_value": None}
 
 def find_snp(info,mincov,minsnp,assembly):
-    """Parse the output of samtools pileup, provided as a list of already split *info*::
+    """
+    Parse the output of samtools pileup, provided as a list of already split *info*::
 
-        info = ['chrV', '18', 'G', 'R', '4', '4', '60', '4', 'a,.^~.', 'LLLL', '~~~~\n']
-        info = [chr, pos, ref, consensus, cons_qual, snp_qual, max_map_qual, nreads, 'a,.^~.', 'LLLL', '~~~~\n']
+        info = ['chrV', '18', 'G', 'R', '4', '4', '60', '4', 'a,.^~.', 'LLLL', '~~~~']
+        info = [chr, pos, ref, consensus, cons_qual, snp_qual, max_map_qual, nreads, 'a,.^~.', 'LLLL', '~~~~']
                  0    1    2       3          4         5           6           7       8         9       10
-        cons_qual : consensus quality is the Phred-scaled probability that the consensus is wrong.
-        snp_qual: SNP quality is the Phred-scaled probability that the consensus is identical to the reference.
 
-        In case of indels:
+    * cons_qual: consensus quality is the Phred-scaled probability that the consensus is wrong.
+    * snp_qual: SNP quality is the Phred-scaled probability that the consensus is identical to the reference.
+
+    In case of indels::
+
         info = ['chrV', '18', '*', '*/+CT', '5', '5', '37', '11', '*', '+CT', '10', '1', '0', '0', '0']
         info = [chr, pos, *, c1/c2, cons_qual, snp_qual, max_map_qual, nreads, c1, c2, nindel, nref, n3rd]
                  0    1   2    3        4         5           6           7    8   9     10     11    12
-        c1/c2: consensus on strand1/strand2, of the form \[+-][0-9]+[ACGTNacgtn]+ .
-        nindel/nref/n3rd: number of reads supporting the indel/reference/3rd allele.
-        `http://samtools.sourceforge.net/cns0.shtml`_
+
+    * c1/c2: consensus on strand1/strand2, of the form \[+-][0-9]+[ACGTNacgtn]+ .
+    * nindel/nref/n3rd: number of reads supporting the indel/reference/3rd allele.
+    See `http://samtools.sourceforge.net/cns0.shtml`_ .
     """
     ref = info[2].upper()  # reference base
     cons = info[3].upper() # consensus base

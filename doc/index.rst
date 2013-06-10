@@ -37,7 +37,6 @@ Methods description
 
 Library guide
 '''''''''''''
-.. specification
 
 .. toctree::
    :maxdepth: 1
@@ -53,6 +52,7 @@ Library guide
    bbcflib_chipseq
    bbcflib_rnaseq
    bbcflib_c4seq
+   bbcflib_snp
    bbcflib_gdv
    bbcflib_track
    bbcflib_gfminer
