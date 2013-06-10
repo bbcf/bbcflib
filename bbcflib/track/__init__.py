@@ -1,5 +1,5 @@
 """
-Documentation `here <http://bbcf.epfl.ch/bbcflib/tutorial_btrack.html>`_.
+Documentation `here <http://bbcf.epfl.ch/bbcflib/tutorial_track.html>`_.
 """
 
 __all__ = ['Track','track','FeatureStream','convert',
@@ -9,23 +9,23 @@ __all__ = ['Track','track','FeatureStream','convert',
 import sys, os, re
 
 _track_map = {
-    'sql': ('bbcflib.btrack.sql','SqlTrack'),
-    'db':  ('bbcflib.btrack.sql','SqlTrack'),
-    'text':('bbcflib.btrack.text','TextTrack'),
-    'txt': ('bbcflib.btrack.text','TextTrack'),
-    'bed': ('bbcflib.btrack.text','BedTrack'),
-    'bedGraph': ('bbcflib.btrack.text','BedGraphTrack'),
-    'bedgraph': ('bbcflib.btrack.text','BedGraphTrack'),
-    'sga': ('bbcflib.btrack.text','SgaTrack'),
-    'wig': ('bbcflib.btrack.text','WigTrack'),
-    'gff': ('bbcflib.btrack.text','GffTrack'),
-    'gtf': ('bbcflib.btrack.text','GffTrack'),
-    'bigWig': ('bbcflib.btrack.bin','BigWigTrack'),
-    'bigwig': ('bbcflib.btrack.bin','BigWigTrack'),
-    'bw':  ('bbcflib.btrack.bin','BigWigTrack'),
-    'bam': ('bbcflib.btrack.bin','BamTrack'),
-    'sam': ('bbcflib.btrack.text','SamTrack'),
-    'fps': ('bbcflib.btrack.text','FpsTrack'),
+    'sql': ('bbcflib.track.sql','SqlTrack'),
+    'db':  ('bbcflib.track.sql','SqlTrack'),
+    'text':('bbcflib.track.text','TextTrack'),
+    'txt': ('bbcflib.track.text','TextTrack'),
+    'bed': ('bbcflib.track.text','BedTrack'),
+    'bedGraph': ('bbcflib.track.text','BedGraphTrack'),
+    'bedgraph': ('bbcflib.track.text','BedGraphTrack'),
+    'sga': ('bbcflib.track.text','SgaTrack'),
+    'wig': ('bbcflib.track.text','WigTrack'),
+    'gff': ('bbcflib.track.text','GffTrack'),
+    'gtf': ('bbcflib.track.text','GffTrack'),
+    'bigWig': ('bbcflib.track.bin','BigWigTrack'),
+    'bigwig': ('bbcflib.track.bin','BigWigTrack'),
+    'bw':  ('bbcflib.track.bin','BigWigTrack'),
+    'bam': ('bbcflib.track.bin','BamTrack'),
+    'sam': ('bbcflib.track.text','SamTrack'),
+    'fps': ('bbcflib.track.text','FpsTrack'),
 }
 
 def track( path, format=None, **kwargs):
@@ -354,8 +354,8 @@ def stats(source, out=sys.stdout, plot=True, wlimit=80, **kwargs):
 class Track(object):
     """
     Metaclass regrouping the track properties. Subclasses for each specific format
-    are respectively in `btrack/text.py`, `btrack/bin.py`, `btrack/sql.py`,
-    and are instanciated when ``btrack.track()`` is called on a file.
+    are respectively in `track/text.py`, `track/bin.py`, `track/sql.py`,
+    and are instanciated when ``track.track()`` is called on a file.
 
     .. attribute:: path
 

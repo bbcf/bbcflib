@@ -2,8 +2,8 @@
 import math
 
 # Internal modules #
-from bbcflib import btrack, genrep
-from bbcflib.btrack import FeatureStream as fstream
+from bbcflib import track, genrep
+from bbcflib.track import FeatureStream as fstream
 from bbcflib.bFlatMajor.common import sentinelize, copy, select, reorder, unroll, sorted_stream
 from bbcflib.bFlatMajor.common import shuffled, fusion, cobble, ordered, apply, duplicate
 from bbcflib.bFlatMajor.common import concat_fields, split_field, map_chromosomes, score_threshold
@@ -617,8 +617,8 @@ class Test_Signal(unittest.TestCase):
         # Make tracks out of them and compute cross-correlation with our own function
         X = [('chr',k,k+1,s) for k,s in enumerate(x)]
         Y = [('chr',k,k+1,s) for k,s in enumerate(y)]
-        X = btrack.FeatureStream(iter(X),fields=['chr','start','end','score'])
-        Y = btrack.FeatureStream(iter(Y),fields=['chr','start','end','score'])
+        X = track.FeatureStream(iter(X),fields=['chr','start','end','score'])
+        Y = track.FeatureStream(iter(Y),fields=['chr','start','end','score'])
         corr = correlation([X,Y], regions=(0,N))#, limits=[-N+1,N-1])
 
         # Compute cross-correlation "by hand" and using numpy.correlate(mode='valid')

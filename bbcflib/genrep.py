@@ -33,7 +33,7 @@ from operator import itemgetter
 
 # Internal modules #
 from bbcflib.common import normalize_url, unique_filename_in, fasta_length, fasta_composition, sam_faidx
-from bbcflib.btrack import track, ensembl_to_ucsc, FeatureStream
+from bbcflib.track import track, ensembl_to_ucsc, FeatureStream
 from bbcflib.bFlatMajor.common import shuffled as track_shuffle, split_field, map_chromosomes
 
 # Constants #
@@ -780,7 +780,7 @@ class Assembly(object):
         :chrom_list: (list of str) return only features in the specified chromosomes.
         :biotype: (list of str, or None) return only features with the specified biotype(s).
             If None, all biotypes are selected.
-        :rtype: btrack.FeatureStream
+        :rtype: track.FeatureStream
         """
         if chromlist is None: chromlist = self.chrnames
         elif isinstance(chromlist,basestring): chromlist = [chromlist]

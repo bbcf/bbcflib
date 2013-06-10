@@ -1,4 +1,4 @@
-from bbcflib.btrack import FeatureStream
+from bbcflib.track import FeatureStream
 from functools import wraps
 import sys, re, itertools, operator, random, string
 from numpy import log as nlog

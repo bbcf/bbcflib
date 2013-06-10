@@ -1,4 +1,4 @@
-from bbcflib.btrack import *
+from bbcflib.track import *
 import re, urllib2, gzip, os, sys
 
 _in_types = {'start':        int,
@@ -416,7 +416,7 @@ class TextTrack(Track):
         if len(args)>0:
             info = args[0]
         else:
-            info = kw.get('info')  
+            info = kw.get('info')
         if isinstance(info,str):
             self.filehandle.write(info+'\n')
             self.header = len(info.split('\r\n'))

@@ -9,19 +9,19 @@ Functions to create and manage a restrition fragments library in a 4c-seq analys
 from bein import program
 from bein.util import touch
 from bbcflib import genrep
-from bbcflib.btrack import track
+from bbcflib.track import track
 from bbcflib.common import cat, set_file_descr, unique_filename_in, coverageBed, gzipfile
 from bbcflib.bFlatMajor.common import sorted_stream
 import os, json, re, urllib2, time, shutil
 
 #GlobalLibPath="/archive/epfl/bbcf/data/genomes/4cLibraries"
-GlobalHtsUrl="http://htsstation.epfl.ch" 
+GlobalHtsUrl="http://htsstation.epfl.ch"
 GlobalRepbasePath="/archive/epfl/bbcf/data/genomes/repeats"
 
 @program
 def getRestEnzymeOccAndSeq(fasta_file, prim_site, sec_site, l_seg, l_type='typeI'):
     """
-    Creates segments and fragments files of the new library from the genome sequence 
+    Creates segments and fragments files of the new library from the genome sequence
     (via a call to getRestEnzymeOccAndSeq.pl).
     """
     segFile = unique_filename_in()
@@ -110,8 +110,8 @@ def getEnzymeSeqId(enzyme_id,byId=False,enzymes_list=[],url=GlobalHtsUrl):
     """
     Returns the restriction site corresponding to a given enzyme id (from existing enzymes)
     """
-    
-    if len(enzymes_list) == 0 and not(url is None): 
+
+    if len(enzymes_list) == 0 and not(url is None):
         enzymes_list.extend( json.load(urllib2.urlopen( url+"/enzymes.json" )) )
     if byId:
         src = 'site'
@@ -162,10 +162,10 @@ def createLibrary(ex, assembly_or_fasta, params, url=GlobalHtsUrl, via='local'):
         allfiles["lib"] = assembly_or_fasta
         chrnames = ["lib"]
 
-    libfiles = dict((c, getRestEnzymeOccAndSeq.nonblocking( ex, f, 
+    libfiles = dict((c, getRestEnzymeOccAndSeq.nonblocking( ex, f,
                                                             params['primary'], params['secondary'],
-                                                            params['length'],  params['type'], 
-                                                            via=via )) 
+                                                            params['length'],  params['type'],
+                                                            via=via ))
                     for c, f in allfiles.iteritems())
     resfile = unique_filename_in()
     os.mkdir(resfile)
@@ -192,7 +192,7 @@ def createLibrary(ex, assembly_or_fasta, params, url=GlobalHtsUrl, via='local'):
     return [ libfiles, bedfiles, resfile, infos_lib ]
 
 def get_libForGrp(ex, group, fasta_or_assembly, new_libraries, grpId, url=None, lib_dir=None, via='lsf'):
-#wd_archive="/archive/epfl/bbcf/mleleu/pipeline_vMarion/pipeline_3Cseq/vWebServer_Bein/" 
+#wd_archive="/archive/epfl/bbcf/mleleu/pipeline_vMarion/pipeline_3Cseq/vWebServer_Bein/"
     def _libfile(id_lib):
         libs_list = json.load(urllib2.urlopen( url+"/libraries.json" ))
         for lib in libs_list:

@@ -11,7 +11,7 @@ import re, os, tarfile
 from operator import add
 
 # Internal modules #
-from bbcflib.btrack import track, FeatureStream
+from bbcflib.track import track, FeatureStream
 from bbcflib.common import set_file_descr, unique_filename_in, gzipfile, fasta_length
 
 # Other modules #
@@ -96,11 +96,11 @@ def parallel_meme( ex, assembly, regions, name=None, chip=False, meme_args=None,
         tmpfile = unique_filename_in()
         outdir = unique_filename_in()
         if chip:
-            futures[n] = (outdir, memechip.nonblocking( ex, fasta, outdir, background, 
+            futures[n] = (outdir, memechip.nonblocking( ex, fasta, outdir, background,
                                                         args=meme_args, via=via, stderr=tmpfile, memory=6 ))
         else:
-            futures[n] = (outdir, meme.nonblocking( ex, fasta, outdir, background, 
-                                                    maxsize=(size*3)/2, args=meme_args, 
+            futures[n] = (outdir, meme.nonblocking( ex, fasta, outdir, background,
+                                                    maxsize=(size*3)/2, args=meme_args,
                                                     via=via, stderr=tmpfile, memory=6 ))
         fasta_files[n] = fasta
     all_res = {}
@@ -115,7 +115,7 @@ def parallel_meme( ex, assembly, regions, name=None, chip=False, meme_args=None,
                                                     step='meme', type='tar',
                                                     groupId=n[0]) )
         gzipfile(ex,fasta_files[n])
-        ex.add( fasta_files[n]+".gz", 
+        ex.add( fasta_files[n]+".gz",
                 description=set_file_descr(n[1]+"_sites.fa.gz",
                                            step='meme', type='fasta',
                                            groupId=n[0]) )
@@ -132,7 +132,7 @@ def parallel_meme( ex, assembly, regions, name=None, chip=False, meme_args=None,
                 ex.add( meme_res['matrices'][motif],
                         description=set_file_descr(n[1]+"_meme_"+motif+".txt",
                                                    step='meme', type='txt', groupId=n[0]) )
-                ex.add( os.path.join(meme_out, "logo"+str(i+1)+".png"), 
+                ex.add( os.path.join(meme_out, "logo"+str(i+1)+".png"),
                         description=set_file_descr(n[1]+"_meme_"+motif+".png",
                                                    step='meme', type='png', groupId=n[0]) )
             all_res[n] = meme_res
@@ -144,7 +144,7 @@ def motif_scan( fasta, motif, background, threshold=0 ):
     call = ["S1K", motif, background, str(threshold), fasta]
     return {"arguments": call, "return_value": None}
 
-def save_motif_profile( ex, motifs, assembly, regions=None, fasta=None, background=None, keep_max_only=False, 
+def save_motif_profile( ex, motifs, assembly, regions=None, fasta=None, background=None, keep_max_only=False,
                         threshold=0, output=None, description=None, via='lsf' ):
     """
     Scans a set of motifs on a set of regions and saves the results as a track file.
@@ -162,14 +162,14 @@ def save_motif_profile( ex, motifs, assembly, regions=None, fasta=None, backgrou
     else:
         chroms = fasta_length.nonblocking( ex, fasta, via=via ).wait()
         chrmeta = dict([(v['name'], {'length': v['length']}) for v in chroms.values()])
-    if output is None: 
+    if output is None:
         sqlout = unique_filename_in()
     else:
         sqlout = output
     if not(isinstance(motifs, dict)):
         motifs = {"_": motifs}
     futures = {}
-    if background is None: 
+    if background is None:
         background = assembly.statistics(unique_filename_in(),frequency=True,
                                          matrix_format=True)
     for name, pwm in motifs.iteritems():
@@ -278,7 +278,7 @@ def sqlite_to_false_discovery_rate( ex, motif, background, assembly, regions, al
     thresholded profile.
     """
     threshold = FDR_threshold( motif, background, assembly, regions, alpha=alpha, nb_samples=nb_samples, via=via )
-    outtrack = save_motif_profile( ex, motif, assembly, regions, background=background, 
+    outtrack = save_motif_profile( ex, motif, assembly, regions, background=background,
                                    threshold=threshold, description=description, via=via )
     return outtrack, threshold
 

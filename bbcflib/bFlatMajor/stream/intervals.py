@@ -1,6 +1,6 @@
 import sys
 from bbcflib.bFlatMajor import common
-from bbcflib.btrack import FeatureStream
+from bbcflib.track import FeatureStream
 
 # "tracks" and "streams" refer to FeatureStream objects all over here.
 

@@ -139,7 +139,7 @@ class DAFLIMS(object):
         and ``'qc'``, each referring to a URL in the LIMS where that
         file is stored.
         """
-        check_type = {'fastq': ['fastq','fastq_gz','fastq_tgz'], 
+        check_type = {'fastq': ['fastq','fastq_gz','fastq_tgz'],
                       'export': ['gerald_gz'], 'qc': [None]}
         self._check_description(facility, machine, run, lane)
         response = self._run_method(type, facility, machine, run, lane).splitlines()

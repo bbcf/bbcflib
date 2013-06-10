@@ -3,7 +3,7 @@
 import sys
 from bbcflib.bFlatMajor import common
 from bbcflib.bFlatMajor.stream import concatenate
-from bbcflib.btrack import FeatureStream
+from bbcflib.track import FeatureStream
 from numpy import asarray, zeros
 
 def _sum(scores,denom=None):

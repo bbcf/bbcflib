@@ -1,4 +1,4 @@
-from bbcflib.btrack import *
+from bbcflib.track import *
 from bbcflib.common import program_exists
 import subprocess, tempfile, os
 

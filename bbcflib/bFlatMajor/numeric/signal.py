@@ -1,5 +1,5 @@
 from bbcflib.bFlatMajor.common import unroll
-from bbcflib.btrack import FeatureStream
+from bbcflib.track import FeatureStream
 from numpy.fft import fft, ifft
 from numpy import conjugate,array,asarray,mean,sqrt,real,hstack
 from numpy import concatenate as ncat

@@ -12,10 +12,10 @@ setup(
         install_requires=   ['mailer', 'bein', 'rpy2', 'pysam', 'scipy', 'numpy', 'sqlalchemy', 'sqlite3'],
         classifiers     =   ['Topic :: Scientific/Engineering :: Bio-Informatics'],
         packages        =   ['bbcflib',
-                             'bbcflib.btrack',
+                             'bbcflib.track',
                              'bbcflib.bFlatMajor',
                              'bbcflib.bFlatMajor.stream',
                              'bbcflib.bFlatMajor.numeric',
-                             'bbcflib.bFlatMajor.figure' 
+                             'bbcflib.bFlatMajor.figure'
                             ],
     )

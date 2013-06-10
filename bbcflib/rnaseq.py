@@ -20,7 +20,7 @@ from bbcflib.common import set_file_descr, unique_filename_in, cat, timer
 from bbcflib import mapseq, genrep
 from bbcflib.mapseq import add_and_index_bam, sam_to_bam
 from bbcflib.bFlatMajor.common import cobble, sorted_stream, map_chromosomes, duplicate, apply
-from bbcflib.btrack import track, FeatureStream, convert
+from bbcflib.track import track, FeatureStream, convert
 from bein import program
 
 # Other modules #

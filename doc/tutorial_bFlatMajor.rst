@@ -7,8 +7,8 @@ Here is a short tutorial showing how to manipulate streams of data with the Pyth
 What is it useful for?
 ----------------------
 
-The **btrack** library from the **bbcflib** package reads track-like files and returns iterators ("streams")
-over the data (see **btrack**'s :doc:`tutorial <tutorial_btrack>` and :doc:`documentation <bbcflib_btrack>`).
+The **track** library from the **bbcflib** package reads track-like files and returns iterators ("streams")
+over the data (see **track**'s :doc:`tutorial <tutorial_track>` and :doc:`documentation <bbcflib_track>`).
 Usually, one wants to modify this data through a sequence of manipulations before writing it back.
 **bFlatMajor** provides a collection of useful functions that take streams as input and perform
 common manipulations such as concatenate, intersect or reorder.
@@ -17,8 +17,8 @@ Before starting
 ---------------
 
 This tutorial assumes that you already went through
-:doc:`btrack's tutorial <tutorial_btrack>`,
-and thus a "stream" in this context is a short name for a :func:`bbcflib.btrack.FeatureStream` object.
+:doc:`track's tutorial <tutorial_track>`,
+and thus a "stream" in this context is a short name for a :func:`bbcflib.track.FeatureStream` object.
 
 A ``FeatureStream`` is an iterator, thus **a stream can be read only once**.
 To read the data a second time, one must recreate the stream (read the track again).
@@ -26,7 +26,7 @@ To read the data a second time, one must recreate the stream (read the track aga
 Glossary
 --------
 
-* **Stream**: a :func:`FeatureStream <bbcflib.btrack.FeatureStream>` object.
+* **Stream**: a :func:`FeatureStream <bbcflib.track.FeatureStream>` object.
 * **Feature**: a genomic region, usually an entity such as a gene, exon, etc.
 * **Feature track/stream**: a sequence of genomic regions, usually describing annotation
   (e.g. position of all genes).
@@ -38,12 +38,12 @@ How do I use it?
 
 First, create a stream from scratch or from a track file::
 
-    >>> from bbcflib.btrack import FeatureStream
+    >>> from bbcflib.track import FeatureStream
     >>> s = FeatureStream([('chr1',12,13),('chr1',24,28)],fields=['chr','start','end'])
 
     # or
 
-    >>> from bbcflib.btrack import track
+    >>> from bbcflib.track import track
     >>> t = track("myfile.bed")
     >>> s = t.read(fields=['chr','start','end'])
 
@@ -53,7 +53,7 @@ Then import the function(s) that you need and give your stream as input::
     >>> s1 = duplicate(s,'chr','newfield') # copies the 'chr' field to a new one
 
     >>> s1
-    <bbcflib.btrack.FeatureStream object at 0x534248907>
+    <bbcflib.track.FeatureStream object at 0x534248907>
     >>> s1.next()
     ('chr1',12,13,'chr1')
     >>> s1.fields
@@ -71,9 +71,9 @@ Of course, one can chain functions as long as they return streams::
 
     >>> s3 = apply(apply(duplicate(s,...) ,...) ,...)
 
-Finally, write the result to a new file using **btrack**::
+Finally, write the result to a new file using **track**::
 
-    >>> from bbcflib.btrack import track
+    >>> from bbcflib.track import track
     >>> t = track("newfile.bed", fields=s1.fields)
     >>> t.write(s1)
     >>> t.close()
@@ -88,7 +88,7 @@ For many of **bFlatMajor**'s functions,
 2. The function must be applied chromosome by chromosome. Typically::
 
     from bbcflib.bFlatMajor.common import fusion
-    from bbcflib.btrack import track
+    from bbcflib.track import track
     t = track("byfile.bed", chrmeta='mm9')
     out = track("newfile.bed")
     for chr in t.chrmeta:

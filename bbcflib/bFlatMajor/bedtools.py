@@ -83,7 +83,7 @@ def bedToBam(ex,bedfile,genomefile,wait=True,via='local',**kw):
     kw.update({"-i":bedfile,"-g":genomefile})
     return _wait(wait,outfile,
                  bedtools.nonblocking(ex,"bedtobam",kw,via=via,stdout=outfile))
- 
+
 def bedToIgv(ex,bedfile,wait=True,via='local',**kw):
     outfile = _outfile(kw)
     kw["-i"] = bedfile
@@ -95,7 +95,7 @@ def closestBed(ex,afile,bfile,wait=True,via='local',**kw):
     kw.update({"-a": afile,"-b": bfile})
     return _wait(wait,outfile,
                  bedtools.nonblocking(ex,"closest",kw,via=via,stdout=outfile))
- 
+
 def clusterBed(ex,bedfile,wait=True,via='local',**kw):
     outfile = _outfile(kw)
     kw["-i"] = bedfile
@@ -107,14 +107,14 @@ def complementBed(ex,bedfile,genomefile,wait=True,via='local',**kw):
     kw.update({"-i":bedfile,"-g":genomefile})
     return _wait(wait,outfile,
                  bedtools.nonblocking(ex,"complement",kw,via=via,stdout=outfile))
- 
+
 def coverageBed(ex,bfile,afile=None,bamfile=None,wait=True,via='local',**kw):
     outfile = _outfile(kw)
     if not(afile is None):
         kw["-a"] = afile
     elif not(bamfile is None):
         kw["-abam"] = bamfile
-    else: 
+    else:
         raise ValueError("Need either a bed or a bam in coverageBed.")
     kw["-b"] = bfile
     return _wait(wait,outfile,
@@ -125,7 +125,7 @@ def expandCols(ex,bedfile,column,wait=True,via='local',**kw):
     kw.update({"-i":bedfile,"-c":str(column)})
     return _wait(wait,outfile,
                  bedtools.nonblocking(ex,"expand",kw,via=via,stdout=outfile))
- 
+
 def fastaFromBed(ex,bedfile,fastafile,wait=True,via='local',**kw):
     outfile = kw.pop('fo',kw.pop('-fo',_outfile(kw)))
     kw.update({"-fi": fastafile,"-bed": bedfile,"-fo":outfile})
@@ -155,7 +155,7 @@ def getOverlap(ex,bedfile,wait=True,via='local',**kw):
     kw["-i"] = bedfile
     return _wait(wait,outfile,
                  bedtools.nonblocking(ex,"overlap",kw,via=via,stdout=outfile))
- 
+
 def groupBy(ex,bedfile,groupcol,opcol,operation,wait=True,via='local',**kw):
     outfile = _outfile(kw)
     if isinstance(groupcol,(list,tuple)):
@@ -163,14 +163,14 @@ def groupBy(ex,bedfile,groupcol,opcol,operation,wait=True,via='local',**kw):
     kw.update({"-i":bedfile,"-g":str(groupcol),"-c":str(opcol),"-o":operation})
     return _wait(wait,outfile,
                  bedtools.nonblocking(ex,"groupby",kw,via=via,stdout=outfile))
- 
+
 def intersectBed(ex,bfile,afile=None,bamfile=None,wait=True,via='local',**kw):
     outfile = _outfile(kw)
     if not(afile is None):
         kw["-a"] = afile
     elif not(bamfile is None):
         kw["-abam"] = bamfile
-    else: 
+    else:
         raise ValueError("Need either a bed or a bam in intersectBed.")
     kw["-b"] = bfile
     return _wait(wait,outfile,
@@ -181,25 +181,25 @@ def linksBed(ex,bedfile,wait=True,via='local',**kw):
     kw["-i"] = bedfile
     return _wait(wait,outfile,
                  bedtools.nonblocking(ex,"links",kw,via=via,stdout=outfile))
- 
+
 def mapBed(ex,afile,bfile,wait=True,via='local',**kw):
     outfile = _outfile(kw)
     kw.update({"-a":afile,"-b":bfile})
     return _wait(wait,outfile,
                  bedtools.nonblocking(ex,"map",kw,via=via,stdout=outfile))
- 
+
 def maskFastaFromBed(ex,bedfile,fastafile,wait=True,via='local',**kw):
     outfile = kw.pop('fo',kw.pop('-fo',_outfile(kw)))
     kw.update({"-fi":fastafile,"-bed":bedfile})
     return _wait(wait,outfile,
                  bedtools.nonblocking(ex,"maskfasta",kw,via=via))
- 
+
 def mergeBed(ex,bedfile,wait=True,via='local',**kw):
     outfile = _outfile(kw)
     kw["-i"] = bedfile
     return _wait(wait,outfile,
                  bedtools.nonblocking(ex,"merge",kw,via=via,stdout=outfile))
-  
+
 def multiBamCov(ex,bedfile,bamfiles,wait=True,via='local',**kw):
     outfile = _outfile(kw)
     if not(isinstance(bamfiles,(list,tuple))):
@@ -215,25 +215,25 @@ def multiIntersectBed(ex,bedfiles,wait=True,via='local',**kw):
     kw["-i"] = list(bedfiles)
     return _wait(wait,outfile,
                  bedtools.nonblocking(ex,"multiinter",kw,via=via,stdout=outfile))
- 
+
 def nucBed(ex,bedfile,fastafile,wait=True,via='local',**kw):
     outfile = _outfile(kw)
     kw.update({"-fi":fastafile,"-bed":bedfile})
     return _wait(wait,outfile,
                  bedtools.nonblocking(ex,"nuc",kw,via=via,stdout=outfile))
- 
+
 def pairToBed(ex,bfile,afile=None,bamfile=None,wait=True,via='local',**kw):
     outfile = _outfile(kw)
     if not(afile is None):
         kw["-a"] = afile
     elif not(bamfile is None):
         kw["-abam"] = bamfile
-    else: 
+    else:
         raise ValueError("Need either a bed or a bam in pairToBed.")
     kw["-b"] = bfile
     return _wait(wait,outfile,
                  bedtools.nonblocking(ex,"pairtobed",kw,via=via,stdout=outfile))
- 
+
 def pairToPair(ex,afile,bfile,wait=True,via='local',**kw):
     outfile = _outfile(kw)
     kw.update({"-a":afile,"-b":bfile})
@@ -251,25 +251,25 @@ def shuffleBed(ex,bedfile,genomefile,wait=True,via='local',**kw):
     kw.update({"-i":bedfile,"-g":genomefile})
     return _wait(wait,outfile,
                  bedtools.nonblocking(ex,"shuffle",kw,via=via,stdout=outfile))
- 
+
 def slopBed(ex,bedfile,genomefile,wait=True,via='local',**kw):
     outfile = _outfile(kw)
     kw.update({"-i":bedfile,"-g":genomefile})
     return _wait(wait,outfile,
                  bedtools.nonblocking(ex,"slop",kw,via=via,stdout=outfile))
- 
+
 def sortBed(ex,bedfile,wait=True,via='local',**kw):
     outfile = _outfile(kw)
     kw["-i"] = bedfile
     return _wait(wait,outfile,
                  bedtools.nonblocking(ex,"sort",kw,via=via,stdout=outfile))
- 
+
 def subtractBed(ex,afile,bfile,wait=True,via='local',**kw):
     outfile = _outfile(kw)
     kw.update({"-a":afile,"-b":bfile})
     return _wait(wait,outfile,
                  bedtools.nonblocking(ex,"subtract",kw,via=via,stdout=outfile))
- 
+
 def tagBam(ex,bedfiles,labels,bamfile,wait=True,via='local',**kw):
     outfile = _outfile(kw)
     if not(isinstance(bedfiles,(list,tuple))):
@@ -281,7 +281,7 @@ def tagBam(ex,bedfiles,labels,bamfile,wait=True,via='local',**kw):
     kw.update({"-i":bamfile,"-files":list(bedfiles),"-labels":list(labels)})
     return _wait(wait,outfile,
                  bedtools.nonblocking(ex,"tag",kw,via=via,stdout=outfile))
- 
+
 def unionBedGraphs(ex,files,wait=True,via='local',**kw):
     outfile = _outfile(kw)
     if not(isinstance(files,(list,tuple))):
@@ -289,26 +289,26 @@ def unionBedGraphs(ex,files,wait=True,via='local',**kw):
     kw["-i"] = list(files)
     return _wait(wait,outfile,
                  bedtools.nonblocking(ex,"unionbedg",kw,via=via,stdout=outfile))
- 
+
 def windowBed(ex,bfile,afile=None,bamfile=None,wait=True,via='local',**kw):
     outfile = _outfile(kw)
     if not(afile is None):
         kw["-a"] = afile
     elif not(bamfile is None):
         kw["-abam"] = bamfile
-    else: 
+    else:
         raise ValueError("Need either a bed or a bam in windowBed.")
     kw["-b"] = bfile
     return _wait(wait,outfile,
                  bedtools.nonblocking(ex,"window",kw,via=via,stdout=outfile))
- 
+
 def windowMaker(ex,bedfile=None,genomefile=None,wait=True,via='local',**kw):
     outfile = _outfile(kw)
     if not(bedfile is None):
         kw["-b"] = bedfile
     elif not(genomefile is None):
         kw["-g"] = genomefile
-    else: 
+    else:
         raise ValueError("Need either a bed or a genome in windowMaker.")
     return _wait(wait,outfile,
                  bedtools.nonblocking(ex,"makewindows",kw,via=via,stdout=outfile))

@@ -24,9 +24,9 @@ def _gdv_request(**kw):
 
 def get_project(mail, key, project_key=None, project_id=None, serv_url=default_url):
     """
-    Retrieves properties of all projects own by a user, 
+    Retrieves properties of all projects own by a user,
     or a single project specified by key or id.
-    
+
     :param mail: user email.
     :param key: user key.
     :param project_key: (optional) project key.
@@ -40,7 +40,7 @@ def get_project(mail, key, project_key=None, project_id=None, serv_url=default_u
 def new_project(mail, key, name, assembly_id, serv_url=default_url):
     """
     Create a new project on GDV.
-    
+
     :param mail: user email.
     :param key: user key.
     :param name: project name.
@@ -93,7 +93,7 @@ def multiple_tracks(mail, key, assembly_id=None, project_id=None,
     :param urls: a list of urls.
     :param extensions: a list of extensions, in the same order as the urls.
     :param names: a list of track names, in the same order as the urls.
-    
+
     For other params: see single_track
     """
     tracks = []

@@ -1,23 +1,23 @@
 ==========================
-Subpackage: bbcflib.btrack
+Subpackage: bbcflib.track
 ==========================
 
-.. automodule:: bbcflib.btrack
+.. automodule:: bbcflib.track
     :members:
     :member-order: bysource
     :show-inheritance:
 
-.. automodule:: bbcflib.btrack.sql
+.. automodule:: bbcflib.track.sql
     :members:
     :member-order: bysource
     :show-inheritance:
 
-.. automodule:: bbcflib.btrack.text
+.. automodule:: bbcflib.track.text
     :members:
     :member-order: bysource
     :show-inheritance:
 
-.. automodule:: bbcflib.btrack.bin
+.. automodule:: bbcflib.track.bin
     :members:
     :member-order: bysource
     :show-inheritance:

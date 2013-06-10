@@ -1,6 +1,6 @@
 import sys
 from bbcflib.bFlatMajor import common
-from bbcflib.btrack import FeatureStream
+from bbcflib.track import FeatureStream
 
 @common.ordered
 def getNearestFeature(features, annotations, thresholdPromot=2000, thresholdInter=20000, thresholdUTR=10):

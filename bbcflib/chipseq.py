@@ -40,7 +40,7 @@ import re, os, gzip, sys, time
 # Internal modules #
 from bbcflib import frontend, mapseq
 from bbcflib.common import unique_filename_in, set_file_descr, join_pdf, merge_sql, intersect_many_bed, gzipfile
-from bbcflib.btrack import track, FeatureStream, convert
+from bbcflib.track import track, FeatureStream, convert
 from bbcflib.bFlatMajor import stream as gm_stream
 from bbcflib.bFlatMajor import common as gm_common
 
@@ -394,7 +394,7 @@ def chipseq_workflow( ex, job_or_dict, assembly, script_path='', logfile=sys.std
             bigwig = unique_filename_in()
             convert(deconv['profile'],(bigwig,"bigWig"))
             ex.add(bigwig,
-                   description=set_file_descr(name[1]+'_deconv.bw', type='bigWig', 
+                   description=set_file_descr(name[1]+'_deconv.bw', type='bigWig',
                                               ucsc='1', step='deconvolution',
                                               groupId=name[0]))
             ex.add(deconv['pdf'],

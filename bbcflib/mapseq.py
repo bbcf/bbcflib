@@ -75,7 +75,7 @@ import sys, os, re, json, shutil, gzip, tarfile, bz2, pickle, urllib, time
 # Internal modules #
 from bbcflib import frontend, genrep, daflims
 from bbcflib.common import cat, set_file_descr, merge_sql, gzipfile, unique_filename_in, fasta_length
-import bbcflib.btrack as track
+from bbcflib import track
 
 # Other modules #
 import pysam

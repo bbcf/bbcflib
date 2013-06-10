@@ -2,10 +2,10 @@
 import os, shutil, time
 
 # Internal modules #
-from bbcflib.btrack import track, convert, FeatureStream, check_ordered, check_format
-from bbcflib.btrack.text import BedTrack, BedGraphTrack, WigTrack, SgaTrack, GffTrack
-from bbcflib.btrack.bin import BigWigTrack, BamTrack
-from bbcflib.btrack.sql import SqlTrack
+from bbcflib.track import track, convert, FeatureStream, check_ordered, check_format
+from bbcflib.track.text import BedTrack, BedGraphTrack, WigTrack, SgaTrack, GffTrack
+from bbcflib.track.bin import BigWigTrack, BamTrack
+from bbcflib.track.sql import SqlTrack
 
 # Unitesting module #
 try:
@@ -18,7 +18,7 @@ except ImportError:
 __test__ = True
 
 # Path to testing files
-path = "test_data/btrack/"
+path = "test_data/track/"
 
 
 class Test_Track(unittest.TestCase):
@@ -97,7 +97,7 @@ class Test_Track(unittest.TestCase):
             if os.path.exists(test_file): os.remove(test_file)
 
 class Test_Formats(unittest.TestCase):
-    """Converting from bed to every other available format, using btrack.convert."""
+    """Converting from bed to every other available format, using track.convert."""
     def setUp(self):
         self.assembly = 'sacCer2'
         self.bed = os.path.join(path,"yeast_genes.bed")

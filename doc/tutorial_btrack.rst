@@ -1,7 +1,7 @@
 Genomic tracks
 ==============
 
-Here is a short tutorial showing how to manage track files with the Python library **btrack** from the **bbcflib** package.
+Here is a short tutorial showing how to manage track files with the Python library **track** from the **bbcflib** package.
 
 What is it useful for?
 ----------------------
@@ -10,7 +10,7 @@ Bioinformaticians have to deal with large files in multiple formats.
 This involves tedious conversions, manipulations, and hundreds of very similar scripts that each of us rewrites constantly.
 Also, shell commands have their limits, and most of the time it is simpler/mandatory to use a real
 programming language instead (here we choose Python).
-The purpose of **btrack** is to provide an immediate access to the file's content, neither having
+The purpose of **track** is to provide an immediate access to the file's content, neither having
 to think about formats' specificities, nor convert or decode binary formats.
 
 What formats are supported?
@@ -47,9 +47,9 @@ Glossary
 How does is work?
 -----------------
 
-The library is made of two main functions: :func:`track <bbcflib.btrack.track>`
-and :func:`convert <bbcflib.btrack.convert>`, and two main classes:
-:func:`Track <bbcflib.btrack.Track>` and :func:`FeatureStream <bbcflib.btrack.FeatureStream>`.
+The library is made of two main functions: :func:`track <bbcflib.track.track>`
+and :func:`convert <bbcflib.track.convert>`, and two main classes:
+:func:`Track <bbcflib.track.Track>` and :func:`FeatureStream <bbcflib.track.FeatureStream>`.
 
 When one calls the ``track`` function on a file name, it creates a ``Track`` instance that knows
 the format of the file and its field names, and records genomic information about the species (if specified).
@@ -69,11 +69,11 @@ How do I use it?
 
 1. Create (open) a track::
 
-    >>> from bbcflib.btrack import track
+    >>> from bbcflib.track import track
     >>> t = track("myfile.bed")
 
     >>> t
-    <bbcflib.btrack.text.BedTrack object at 0x1004a1710>
+    <bbcflib.track.text.BedTrack object at 0x1004a1710>
     >>> t.fields
     ['chr', 'start', 'end', 'name', 'score', 'strand']
     >>> t.format
@@ -84,7 +84,7 @@ How do I use it?
     >>> s = t.read()
 
     >>> s
-    <bbcflib.btrack.FeatureStream object at 0x101244350>
+    <bbcflib.track.FeatureStream object at 0x101244350>
     >>> s.next()
     ('chrII', 45975, 46367, 'YBL092W', 6.0, 1)
     >>> s.next()
@@ -109,7 +109,7 @@ How do I use it?
     >>> out.close()
 
     >>> out
-    <bbcflib.btrack.text.WigTrack object at 0x101769e90>
+    <bbcflib.track.text.WigTrack object at 0x101769e90>
 
    Note: the file "newfile.wig" is created only at the time you begin writing to it.
 
@@ -117,7 +117,7 @@ How do I use it?
 
 4. Convert a track::
 
-    >>> from bbcflib.btrack import convert
+    >>> from bbcflib.track import convert
     >>> convert("myfile.bed", "myfile.wig")
 
 5. Add genomic information to a Track (from GenRep)::
@@ -169,7 +169,7 @@ Advanced features
 
 * Streams can be created programmatically, without reference to a track file, either using a list, or an iterator::
 
-    from bbcflib.btrack import FeatureStream
+    from bbcflib.track import FeatureStream
     s = FeatureStream([('chr1',12,13,'a'),('chr1',23,28,'b')],
                       fields=['chr','start','end','name'])
 
@@ -207,18 +207,18 @@ Advanced features
 
 * To ensure that a track file is sorted (w.r.t. chromosome, start and end), one can use the following function::
 
-    >>> from bbcflib.btrack import check_ordered
+    >>> from bbcflib.track import check_ordered
     >>> check_ordered("myfile.bed")
     True
 
 * To test if all lines of the track file fit the given format::
 
-    >>> from bbcflib.btrack import check_format
+    >>> from bbcflib.track import check_format
     >>> check_format("myfile.bed")
     True
 
-* BAM tracks have special methods: :func:`count <bbcflib.btrack.bin.BamTrack.count>` and
-  :func:`coverage <bbcflib.btrack.bin.BamTrack.coverage>`. The first counts the number of
+* BAM tracks have special methods: :func:`count <bbcflib.track.bin.BamTrack.count>` and
+  :func:`coverage <bbcflib.track.bin.BamTrack.coverage>`. The first counts the number of
   reads spanning each of a given set of regions; the second returns the basepair-wise coverage
   within a given region. Both return FeatureStream objects::
 
@@ -244,9 +244,9 @@ Advanced features
 bFlatMajor: data manipulations
 ------------------------------
 
-**btrack** basically parses track files but does not transform the original data.
+**track** basically parses track files but does not transform the original data.
 To manipulate your data, the **bbcflib** library provides powerful tools to concatenate, intersect, annotate, etc.
-It will always take ``FeatureStream`` objects as input, so first open the track using ``btrack.track``,
+It will always take ``FeatureStream`` objects as input, so first open the track using ``track.track``,
 then ``read`` it and provide the output stream to one of **bFlatMajor**'s functions.
 Most of them will also return streams, so that you can pass it to another function,
 and write the final result to a new ``Track``.
@@ -263,8 +263,8 @@ Miscellaneous notes
 * Do not forget to close tracks (``Track.close()``).
 * Looping on chromosomes is necessary for several manipulations (see :doc:`bbcflib.bFlatMajor <bbcflib_bFlatMajor>`).
 * The ``Track`` class is the parent of multiple subclasses, one for each type of track file
-  (such as :func:`bbcflib.btrack.text.BedTrack` or :func:`bbcflib.btrack.sql.SqlTrack`).
-* Look at the :doc:`developer documentation <bbcflib_btrack>` for more details.
+  (such as :func:`bbcflib.track.text.BedTrack` or :func:`bbcflib.track.sql.SqlTrack`).
+* Look at the :doc:`developer documentation <bbcflib_track>` for more details.
 
 
 

@@ -1,5 +1,5 @@
 """
-The *stream* module contains algorithms which produce :func:`FeatureStream <bbcflib.btrack.FeatureStream>` out of one or more :func:`FeatureStream <bbcflib.btrack.FeatureStream>` objects.
+The *stream* module contains algorithms which produce :func:`FeatureStream <bbcflib.track.FeatureStream>` out of one or more :func:`FeatureStream <bbcflib.track.FeatureStream>` objects.
 """
 from bbcflib.bFlatMajor import *
 ###############################################################################
@@ -11,7 +11,7 @@ _members = {'merge_scores': ['trackList'],
             'concatenate': ['trackList'],
             'selection': ['trackList'],
             'neighborhood': ['trackList'],
-            'combine': ['trackList'],  
+            'combine': ['trackList'],
             'segment_features': ['trackList'],
             'getNearestFeature': ['features','annotations'],
             }
