@@ -236,17 +236,17 @@ try:
         return {"arguments": ["track_convert"]+args, "return_value": fileOut}
         #-------------------------------------------------------------------------#
     @program
-    def gMiner_run( job ):
+    def gfminer_run( job ):
         gminer_args = ["--"+str(k)+"="+str(v) for k,v in job.iteritems()]
         def _split_output(p):
             files = ''.join(p.stdout).strip().split(',')
             return files
-        return {"arguments": ["gminer_run"]+gminer_args,
+        return {"arguments": ["gfminer_run"]+gminer_args,
                 "return_value": _split_output}
 
         #-------------------------------------------------------------------------#
     def merge_sql( ex, sqls, outdir=None, datatype='quantitative', via='lsf' ):
-        """Run ``gMiner``'s 'merge_scores' function on a set of sql files
+        """Run ``gfminer``'s 'merge_scores' function on a set of sql files
         """
         if outdir == None:
             outdir = unique_filename_in()
@@ -254,10 +254,10 @@ try:
             os.mkdir(outdir)
         if len(sqls) == 1:
             return sqls[0]
-        gMiner_job = {"operation": "merge_scores", "output": outdir,
-                      "datatype": datatype,
-                      "args": "'"+json.dumps({"trackList":",".join(sqls)})+"'"}
-        files = gMiner_run.nonblocking(ex,gMiner_job,via=via).wait()
+        gfminer_job = {"operation": "merge_scores", "output": outdir,
+                       "datatype": datatype,
+                       "args": "'"+json.dumps({"trackList":",".join(sqls)})+"'"}
+        files = gfminer_run.nonblocking(ex,gfminer_job,via=via).wait()
         return files[0]
 
         #-------------------------------------------------------------------------#

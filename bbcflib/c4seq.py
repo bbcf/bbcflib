@@ -14,7 +14,7 @@ from bein.util import touch
 from bbcflib.createlib import get_libForGrp
 from bbcflib.track import track, convert
 from bbcflib.mapseq import parallel_density_sql
-from bbcflib.common import unique_filename_in, gzipfile, merge_sql, cat, gMiner_run, set_file_descr
+from bbcflib.common import unique_filename_in, gzipfile, merge_sql, cat, gfminer_run, set_file_descr
 
 # *** Create a dictionary with infos for each primer (from file primers.fa)
 # ex: primers_dict=loadPrimers('/archive/epfl/bbcf/data/DubouleDaan/finalAnalysis/XmNGdlXjqoj6BN8Rj2Tl/primers.fa')
@@ -95,13 +95,13 @@ def density_to_countsPerFrag( ex, file_dict, groups, assembly, regToExclude, scr
 #                    scores.read(selection=ch),
 #                    features.read(selection=ch)), mode='append')
             bedfile = unique_filename_in()+".bed"
-            gMiner_job = {"operation": "score_by_feature",
-                          "output": bedfile,
-                          "datatype": "qualitative",
-                          "args": "'"+json.dumps({"trackScores":density_file,
-                                                  "trackFeatures":chref,
-                                                  "chromosome":ch})+"'"}
-            gm_futures.append((gMiner_run.nonblocking(ex,gMiner_job,via=via),
+            gfminer_job = {"operation": "score_by_feature",
+                           "output": bedfile,
+                           "datatype": "qualitative",
+                           "args": "'"+json.dumps({"trackScores":density_file,
+                                                   "trackFeatures":chref,
+                                                   "chromosome":ch})+"'"}
+            gm_futures.append((gfminer_run.nonblocking(ex,gfminer_job,via=via),
                                bedfile))
         outsql = unique_filename_in()+".sql"
         sqlouttr = track( outsql, chrmeta=assembly.chrmeta,
