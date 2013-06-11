@@ -91,6 +91,13 @@ class Test_Track(unittest.TestCase):
             s = t.read(chr)
             out.write(s)
 
+    def test_get_chrmeta(self):
+        t = track(self.bed,chrmeta=self.assembly)
+        self.assertEqual(t.chrmeta['chrV'],{'length':576869, 'ac':'2508_NC_001137.2'})
+        # "guess"
+        t = track(self.bed,chrmeta="guess")
+        self.assertEqual(t.chrmeta, {'chrII':{'length':607135}, 'chrIII':{'length':178216},
+                                     'chrIV':{'length':1402556}} )
     def tearDown(self):
         for test_file in ['temp1','temp2','temp3','temp4','temp5','temp6']:
             test_file = os.path.join(path,test_file)+'.txt'
