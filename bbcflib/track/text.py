@@ -790,7 +790,7 @@ class SamTrack(TextTrack):
         if not(os.path.exists(self.path)): return
         self.intypes.update({'flag':int, 'mapq':int, 'pnext':int, 'tlen':int})
 
-    def _read(self, fields, index_list, selection, skip, header):
+    def _read(self, fields, index_list, selection, skip):
         self.open('read')
         if skip and selection:
             chr_toskip = self._init_skip(selection)

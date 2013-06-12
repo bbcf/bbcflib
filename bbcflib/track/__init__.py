@@ -90,11 +90,11 @@ def convert( source, target, chrmeta=None, info=None, mode='write', clip=False )
         tsrc = track(source, chrmeta=chrmeta)
     _f = tsrc.fields
     if not('chr' in _f): _f = ['chr']+_f
+    if isinstance(target, tuple):
+        ttrg = track(target[0], format=target[1], chrmeta=tsrc.chrmeta, fields=_f, info=info)
+    else:
+        ttrg = track(target, chrmeta=tsrc.chrmeta, fields=_f, info=info)
     try:
-        if isinstance(target, tuple):
-            ttrg = track(target[0], format=target[1], chrmeta=tsrc.chrmeta, fields=_f, info=info)
-        else:
-            ttrg = track(target, chrmeta=tsrc.chrmeta, fields=_f, info=info)
         ttrg.write( tsrc.read(), mode=mode, clip=clip )
     finally:
         ttrg.close()

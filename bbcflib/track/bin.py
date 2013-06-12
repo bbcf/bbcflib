@@ -142,7 +142,7 @@ try:
         def __init__(self,path,**kwargs):
             kwargs['format'] = 'bam'
             kwargs['fields'] = ['chr','start','end','score','name','strand',
-                                'flag','seq','qual','cigar','tags','paired','positions']
+                                'flag','seq','qual','cigar','tags','paired']
             BinTrack.__init__(self,path,**kwargs)
             self.filehandle = None
             self.open()
@@ -185,8 +185,7 @@ try:
                                read.pos, read.pos+read.rlen,
                                read.mapq, read.qname, (-1 if read.is_reverse else 1),
                                read.flag, read.seq, read.qual, read.cigar, read.tags,
-                               (0 if not read.is_paired else (1 if read.is_read1 else 2)),
-                               read.positions]
+                               (0 if not read.is_paired else (1 if read.is_read1 else 2)),]
                         yield tuple([row[n] for n in srcl])
                 self.close()
             return FeatureStream(_bamrecord(self.filehandle,srcl),fields)
