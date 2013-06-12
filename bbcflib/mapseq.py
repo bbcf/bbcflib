@@ -942,17 +942,16 @@ def bam_to_density( bamfile, output, chromosome_accession=None, chromosome_name=
                     nreads=-1, merge=-1, read_extension=-1, convert=True, sql=False,
                     args=None ):
     """
-    input parameters:
-    bamfile = input BAM file
-    output = basename of output file
-    chromosome_accession = globally unique chromosome identifier
-    chromosome_name = specific chromosome in species context
-    nreads = If 0: normalise by total tag count per megabase, if >0: uses 1e-7*nreads as factor, by default: no normalization
-    merge = only if -p is not specified, specify it with this value
-    read_extension = bam2wig argument 'Tags (pseudo-)size'
-    convert = whether or not to convert chromosome labels
-    sql = whether or not to create an SQL database
-    args = bam2wig arguments given directly by the user
+    :param bamfile: input BAM file
+    :param output: basename of output file
+    :param chromosome_accession: globally unique chromosome identifier
+    :param chromosome_name: specific chromosome in species context
+    :param nreads: If 0: normalise by total tag count per megabase, if >0: uses 1e-7*nreads as factor, by default: no normalization
+    :param merge: only if -p is not specified, specify it with this value
+    :param read_extension: bam2wig argument 'Tags (pseudo-)size'
+    :param convert: whether or not to convert chromosome labels
+    :param sql: whether or not to create an SQL database
+    :param args: bam2wig arguments given directly by the user
 
     Runs the ``bam2wig`` program on a bam file and
     normalizes for the total number of reads
