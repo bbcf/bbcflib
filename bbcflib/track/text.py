@@ -563,10 +563,11 @@ class SgaTrack(TextTrack):
             yieldit = True
             chrom,name,pos,strand,score = splitrow
             if float(score) == 0: continue
-            rowdata[strand][0] = chrom
+            # if pos is the last pos +1 and other info is the same, just increase pos, not yield
             if pos-1 == rowdata[strand][2] and \
-                    score == rowdata[strand][5] and \
-                    name == rowdata[strand][3]:
+               score == rowdata[strand][5] and \
+               name == rowdata[strand][3] and \
+               chrom == rowdata[strand][0]:
                 rowdata[strand][2] = pos
                 yieldit = False
             if selection:
@@ -579,6 +580,7 @@ class SgaTrack(TextTrack):
             if not(yieldit): continue
             if rowdata[strand][1]>=0:
                 yield tuple(rowdata[strand][ind] for ind in index_list)
+            rowdata[strand][0] = chrom
             rowdata[strand][1] = pos-1
             rowdata[strand][2] = pos
             rowdata[strand][3] = name
