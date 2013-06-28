@@ -39,7 +39,7 @@ class Workflow(object):
             ("-w", "--working-directory", "Directory to run execution in",
              {'default': os.getcwd(), 'dest':"wdir"}),
             ("-c", "--config", "Configuration file", {'default': None}),
-            ("--basepath","HTS data basepath", {'default': _basepath}))
+            ("--basepath","HTS data basepath (%s MiniLIMS)"%self.name, {'default': _basepath}))
         self.opts += kw.get("opts",())
         self.usage = _usage + str(kw.get('usage',''))
         self.desc = kw.get('desc',_description)
