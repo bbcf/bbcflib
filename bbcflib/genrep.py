@@ -134,7 +134,7 @@ class Assembly(object):
                 #raise ValueError("URL not found: %s." % url)
                 sys.stderr.write("URL not found: %s." % url)
                 try:
-                    assembly_json = os.path.join(self.genrep.root,"%s.json" % assembly)
+                    assembly_json = os.path.join(self.genrep.root,"nr_assemblies/info_json/%s.json" % assembly)
                     assembly_info = json.load(open(assembly_json))
                 except IOError:
                     raise IOError("%s not found." % assembly_json)
