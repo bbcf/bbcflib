@@ -215,7 +215,7 @@ def build_pileup(bamfile, assembly, gene_mapping, exon_mapping, trans_in_gene, e
     return counts
 
 @timer
-def save_results(ex, lines, conditions, group_ids, assembly, header=[], feature_type='features'):
+def save_results(ex, lines, conditions, group_ids, assembly, header, feature_type='features'):
     """Save results in a tab-delimited file, one line per feature, one column per run.
 
     :param ex: bein's execution.
@@ -457,11 +457,14 @@ def rnaseq_workflow(ex, job, assembly=None,
             c = counts[k]
             if sum(c)!=0 and t in tmap:
                 tcounts[t] = c
-                trpk[t] = to_rpk(c, tmap[t][3]-tmap[t][2])#, nreads)
-        trans_data = [(t,) + tuple(nround(tcounts[t],0)) + tuple(trpk[t])
+        tcounts_matrix = asarray(tcounts.values())
+        tnorm_matrix, sf = estimate_size_factors(tcounts_matrix)
+        lengths = [tmap[t][3]-tmap[t][2] for t in tcounts.iterkeys()]
+        trpk_matrix = to_rpk(tnorm_matrix, lengths)
+        trans_data = [(t,) + tuple(tcounts_matrix[k]) + tuple(tnorm_matrix[k]) + tuple(trpk_matrix[k])
                            + itemgetter(2,3,0,1,5,6)(tmap.get(t,("NA",)*6))
-                      for t in tcounts.iterkeys()]
-        hconds = ["counts."+c for c in conditions] + ["rpk."+c for c in conditions]
+                      for k,t in enumerate(tcounts.iterkeys())]
+        hconds = ["counts."+c for c in conditions] + ["norm."+c for c in conditions] + ["rpk."+c for c in conditions]
         header = ["CustomID"] + hconds + ["Start","End","GeneID","GeneName","Strand","Chromosome"]
         trans_file = save_results(ex,trans_data,conditions,group_ids,assembly,header=header,feature_type=ftype)
         result = {"transcripts":trans_file}
@@ -584,13 +587,13 @@ def clean_before_deseq(filename):
     filename_clean = unique_filename_in()
     with open(filename,"rb") as f:
         with open(filename_clean,"wb") as g:
-            header = f.readline()
-            ncond = sum([h.split('.').count("counts") for h in header.split('\t')])
-            header = '\t'.join(header.split('\t')[:1+ncond])+'\n'
+            header = f.readline().split('t')
+            ncond = sum([h.split('.').count("counts") for h in header])
+            header = '\t'.join(header[0]+header[1+ncond,1+3*ncond])+'\n' #[1:1+ncond])+'\n'
             g.write(header)
             for line in f:
                 l = line.split('\t')
-                scores = l[1:1+ncond]
+                scores = l[1+ncond:1+3*ncond] #l[1:1+ncond]
                 if any([float(x) for x in scores]):
                     label = '|'.join([l[0],l[-3],l[-2],l[-1].strip('\r\n')]) # geneID|geneName|strand|chr
                     line = label + '\t' + '\t'.join(scores) + '\n'
