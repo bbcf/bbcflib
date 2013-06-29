@@ -27,7 +27,7 @@ equally well be written::
 """
 
 # Built-in modules #
-import urllib2, json, os, re, gzip, tarfile, bz2, sqlite3
+import urllib2, json, os, sys, re, gzip, tarfile, bz2, sqlite3
 from datetime import datetime
 from operator import itemgetter
 
@@ -128,9 +128,18 @@ class Assembly(object):
             try:
                 url = """%s/assemblies.json?assembly_name=%s""" %(self.genrep.url, assembly)
                 assembly_info = json.load(urllib2.urlopen(urllib2.Request(url)))[0]
-            except IndexError: raise ValueError("URL not found: %s." % url)
-            chromosomes = json.load(urllib2.urlopen(urllib2.Request(
+                chromosomes = json.load(urllib2.urlopen(urllib2.Request(
                             """%s/chromosomes.json?assembly_name=%s""" %(self.genrep.url, assembly))))
+            except (IndexError, urllib2.URLError):
+                #raise ValueError("URL not found: %s." % url)
+                sys.stderr.write("URL not found: %s." % url)
+                try:
+                    assembly_json = os.path.join(self.genrep.root,"%s.json" % assembly)
+                    assembly_info = json.load(open(assembly_json))
+                except IOError:
+                    raise IOError("%s not found." % assembly_json)
+                except ValueError:
+                    raise ValueError("%s could not be decoded: not a JSON." % assembly_json)
         self._add_info(**dict((str(k),v) for k,v in assembly_info['assembly'].iteritems()))
         root = os.path.join(self.genrep.root,"nr_assemblies/bowtie")
         if self.intype == 1:
