@@ -170,8 +170,11 @@ class SqlTrack(Track):
             return dict((x[columns['name']].encode('ascii'),
                          dict((k.encode('ascii'),x[n]) for k,n in columns.iteritems() if k != 'name'))
                         for x in query)
-        except (sqlite3.OperationalError, sqlite3.ProgrammingError) as err:
-            raise Exception("Sql error: %s\n on file %s, with\n%s" % (err,self.path,sql_command))
+        except (sqlite3.OperationalError,sqlite3.ProgrammingError) as err:
+            reason = ""
+            if err.message == "no such table: chrNames":
+                reason = "\nNeed to specify an assembly."
+            raise Exception("Sql error: %s\n on file %s, with\n%s%s" % (err,self.path,sql_command,reason))
 
 ################################ Read ##########################################
     def _check_selection(self,selection):
