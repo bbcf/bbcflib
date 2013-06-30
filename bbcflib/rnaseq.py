@@ -27,7 +27,7 @@ from bein import program
 
 # Other modules #
 import numpy
-from numpy import zeros, asarray, nonzero, round as nround
+from numpy import zeros, asarray, nonzero
 
 numpy.set_printoptions(precision=3,suppress=True)
 numpy.seterr(divide='ignore')
@@ -227,17 +227,22 @@ def save_results(ex, lines, conditions, group_ids, assembly, header, feature_typ
     :param feature_type: (str) the kind of feature of which you measure the expression.
     """
     # Tab-delimited output with all information
+    ncond = len(conditions)
     output_tab = unique_filename_in()
     with open(output_tab,'wb') as f:
         f.write('\t'.join(header)+'\n')
         for l in lines:
-            f.write('\t'.join([str(x) for x in l])+'\n')
+            tid = str(l[0])
+            counts = ["%d"%x for x in l[1:ncond+1]]
+            norm = ["%.2f"%x for x in l[ncond+1:2*ncond+1]]
+            rpk = ["%.2f"%x for x in  l[2*ncond+1:3*ncond+1]]
+            rest = [str(x) for x in l[3*ncond+1:]]
+            f.write('\t'.join([tid]+counts+norm+rpk+rest)+'\n')
     description = set_file_descr(feature_type.lower()+"_expression.tab", step="pileup", type="txt")
     ex.add(output_tab, description=description)
     # Create one track for each group
     if feature_type in ['GENES','EXONS']:
         cols = zip(*lines)
-        ncond = len(conditions)
         groups = [c.split('.')[0] for c in conditions]
         start = cols[3*ncond+1]
         end = cols[3*ncond+2]
@@ -379,14 +384,13 @@ def estimate_size_factors(counts):
     loggeomeans = numpy.mean(numpy.log(cnts), 1)
     size_factors = numpy.exp(numpy.median(numpy.log(cnts).T - loggeomeans, 1))
     res = counts / size_factors
-    print "Size factors:",size_factors
     return res, size_factors
 
 def to_rpk(counts, lengths):
     """Divides read counts by the transcript length.
     *counts* is a numpy array or int or float, *lengths*, too."""
-    rpk = 1000*counts/lengths
-    rpk = nround(rpk,2)
+    rpk = 1000.*counts/(lengths[:,numpy.newaxis]) # transpose *lengths* without copying
+    rpk = numpy.round(rpk,2)
     return rpk
 
 @timer
@@ -406,6 +410,8 @@ def rnaseq_workflow(ex, job, assembly=None,
     :param unmapped: (bool) whether to remap to the transcriptome reads that did not map the genome. [False]
     :param via: (str) send job via 'local' or 'lsf'. ["lsf"]
     """
+    logfile = sys.stdout
+    debugfile = sys.stderr
     group_names={}; group_ids={}; conditions=[]
     if assembly is None:
         assembly = genrep.Assembly(assembly=job.assembly_id)
@@ -452,7 +458,7 @@ def rnaseq_workflow(ex, job, assembly=None,
         del pileup
         counts = asarray([pileups[cond] for cond in conditions], dtype=numpy.float_).T
         del pileups
-        tcounts={}; trpk={}
+        tcounts={}
         for k,t in enumerate(ids):
             c = counts[k]
             if sum(c)!=0 and t in tmap:
@@ -512,12 +518,14 @@ def rnaseq_workflow(ex, job, assembly=None,
                 additionals.pop(cond)
             exon_pileups[cond] = exon_pileup.values()
             print >> logfile, "  ....Pileup", cond, "done"; logfile.flush()
-    exon_ids = exon_pileup.keys() # same for all conds
+    exon_ids = asarray(exon_pileup.keys()) # same for all conds
     del exon_pileup
 
     """ Arrange exon counts in a matrix """
     ecounts_matrix = asarray([exon_pileups[cond] for cond in conditions], dtype=numpy.float_).T
-    #ecounts_matrix = ecounts_matrix[nonzero(ecounts_matrix)]
+    nonzero_exons = nonzero(numpy.sum(ecounts_matrix,1))
+    ecounts_matrix = ecounts_matrix[nonzero_exons]
+    exon_ids = exon_ids[nonzero_exons]
     del exon_pileups
 
     hconds = ["counts."+c for c in conditions] + ["norm."+c for c in conditions] + ["rpk."+c for c in conditions]
@@ -527,27 +535,29 @@ def rnaseq_workflow(ex, job, assembly=None,
     if "exons" in pileup_level:
         print >> logfile, "* Get scores of exons"; logfile.flush()
         header = ["ExonID"] + hconds + ["Start","End","GeneID","GeneName","Strand","Chromosome"]
-        enorm_matrix, sf = estimate_size_factors(ecounts_matrix)
         lengths = asarray([exon_mapping[e][4]-exon_mapping[e][3] for e in exon_ids])
+        enorm_matrix, sf = estimate_size_factors(ecounts_matrix)
         erpk_matrix = to_rpk(enorm_matrix, lengths)
-        exons_data = [(e,) + tuple(ecounts_matrix[k],0) + tuple(enorm_matrix[k]) + tuple(erpk_matrix[k])
+        exons_data = [(e,) + tuple(ecounts_matrix[k]) + tuple(enorm_matrix[k]) + tuple(erpk_matrix[k])
                            + itemgetter(3,4,1,2,5,6)(exon_mapping.get(e,("NA",)*6))
                       for k,e in enumerate(exon_ids)]
         exons_file = save_results(ex, exons_data, conditions, group_ids, assembly, header=header, feature_type="EXONS")
+        del exons_data, enorm_matrix, erpk_matrix
 
     """ Get scores of genes from exons """
     if "genes" in pileup_level:
         print >> logfile, "* Get scores of genes"; logfile.flush()
         header = ["GeneID"] + hconds + ["Start","End","GeneName","Strand","Chromosome"]
         gcounts = genes_expression(exon_ids, ecounts_matrix, gene_mapping, exon_mapping, ncond)
+        lengths = asarray([gene_mapping[g][3] for g in gcounts.iterkeys()])
         gcounts_matrix = asarray(gcounts.values())
         gnorm_matrix, sf = estimate_size_factors(gcounts_matrix)
-        lengths = asarray([gene_mapping[g][3] for g in gcounts.iterkeys()])
         grpk_matrix = to_rpk(gcounts_matrix, lengths)
         genes_data = [(g,) + tuple(gcounts_matrix[k]) + tuple(gnorm_matrix[k]) + tuple(grpk_matrix[k])
                            + itemgetter(1,2,0,4,5)(gene_mapping.get(g,("NA",)*6))
                       for k,g in enumerate(gcounts.iterkeys())]
         genes_file = save_results(ex, genes_data, conditions, group_ids, assembly, header=header, feature_type="GENES")
+        del genes_data, gnorm_matrix, grpk_matrix
 
     """ Get scores of transcripts from exons, using non-negative least-squares """
     if "transcripts" in pileup_level:
@@ -555,14 +565,15 @@ def rnaseq_workflow(ex, job, assembly=None,
         header = ["TranscriptID"] + hconds + ["Start","End","GeneID","GeneName","Strand","Chromosome"]
         tcounts = transcripts_expression(exon_ids, ecounts_matrix, exon_mapping,
                    transcript_mapping, trans_in_gene, exons_in_trans, ncond)
+        lengths = asarray([transcript_mapping[t][4] for t in tcounts.iterkeys()])
         tcounts_matrix = asarray(tcounts.values())
         tnorm_matrix, sf = estimate_size_factors(tcounts_matrix)
-        lengths = asarray([transcript_mapping[t][4] for t in tcounts.iterkeys()])
         trpk_matrix = to_rpk(tcounts_matrix, lengths)
         trans_data = [(t,) + tuple(tcounts_matrix[k]) + tuple(tnorm_matrix[k]) + tuple(trpk_matrix[k])
                            + itemgetter(2,3,0,1,5,6)(transcript_mapping.get(t,("NA",)*7))
                       for k,t in enumerate(tcounts.iterkeys())]
         trans_file = save_results(ex, trans_data, conditions, group_ids, assembly, header=header, feature_type="TRANSCRIPTS")
+        del trans_data, tnorm_matrix, trpk_matrix
 
     result = {"exons":exons_file, "genes":genes_file, "transcripts":trans_file}
     if len(hconds) > 1:
@@ -582,18 +593,21 @@ def run_glm(rpath, data_file, options=[]):
     return {'arguments': ["R","--slave","-f",script_path,"--args",data_file]+opts,
             'return_value': output_file}
 
-def clean_before_deseq(filename):
+def clean_before_deseq(filename, norm='rpk'):
     """Delete all lines of *filename* where counts are 0 in every run."""
+    if norm == 'counts': w = 1
+    if norm == 'norm': w = 2
+    if norm == 'rpk': w = 3
     filename_clean = unique_filename_in()
     with open(filename,"rb") as f:
         with open(filename_clean,"wb") as g:
-            header = f.readline().split('t')
+            header = f.readline().split('\t')
             ncond = sum([h.split('.').count("counts") for h in header])
-            header = '\t'.join(header[0]+header[1+ncond,1+3*ncond])+'\n' #[1:1+ncond])+'\n'
+            header = '\t'.join(header[0:1]+header[1+(w-1)*ncond:1+w*ncond])+'\n' # ID & 'rpk' columns
             g.write(header)
             for line in f:
                 l = line.split('\t')
-                scores = l[1+ncond:1+3*ncond] #l[1:1+ncond]
+                scores = l[1+2*ncond:1+3*ncond]
                 if any([float(x) for x in scores]):
                     label = '|'.join([l[0],l[-3],l[-2],l[-1].strip('\r\n')]) # geneID|geneName|strand|chr
                     line = label + '\t' + '\t'.join(scores) + '\n'
@@ -720,9 +734,7 @@ def find_junctions(ex,job,assembly,soapsplice_index=None,path_to_soapsplice=None
                                         options=soapsplice_options, via=via, memory=4, threads=soapsplice_options['-p'])
         template = future.wait()
         junc_file = template+'.junc'
-        sql,bed = convert_junc_file(junc_file,assembly)
-        sql_descr = set_file_descr('junctions_%s.sql' % group['name'], \
-                                   groupId=gid,type='sql',step='1',gdv=1)
+        bed = convert_junc_file(junc_file,assembly)
         bed_descr = set_file_descr('junctions_%s.bed' % group['name'], \
                                    groupId=gid,type='bed',step='1',ucsc=1)
         bam_descr = set_file_descr('junctions_%s.bam' % group['name'], \
@@ -734,7 +746,6 @@ def find_junctions(ex,job,assembly,soapsplice_index=None,path_to_soapsplice=None
             ex.add(bam, description=bam_descr)
         except Exception, e:
             print >> logfile, "%s\n(Qualities may be in the wrong format, try with '-q 0'.)" % e; logfile.flush()
-        ex.add(sql, description=sql_descr)
         ex.add(bed, description=bed_descr)
 
 def convert_junc_file(filename, assembly):
@@ -751,14 +762,12 @@ def convert_junc_file(filename, assembly):
     s2 = duplicate(s1,'strand','name')
     C = itertools.count()
     s3 = apply(s2,'name', lambda x: 'junction'+str(C.next()))
-    # Convert to sql and bed formats
+    # Convert to bed format
     outfile = unique_filename_in()
-    sql = outfile + '.sql'
     bed = outfile + '.bed'
-    out = track(sql, fields=s3.fields, chrmeta=assembly.chrmeta)
+    out = track(bed, fields=s3.fields, chrmeta=assembly.chrmeta)
     out.write(s3)
-    convert(sql,bed)
-    return sql, bed
+    return bed
 
 
 #-------------------------- UNMAPPED READS ----------------------------#
