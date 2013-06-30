@@ -118,28 +118,26 @@ class Assembly(object):
 
         :param assembly: integer giving the assembly ID, or a string giving the assembly name.
         """
-        try:
-            assembly = int(assembly)
-            assembly_info = json.load(urllib2.urlopen(urllib2.Request(
-                            """%s/assemblies/%d.json""" % (self.genrep.url, assembly))))
-            chromosomes = json.load(urllib2.urlopen(urllib2.Request(
-                            """%s/chromosomes.json?assembly_id=%d""" %(self.genrep.url, assembly))))
-        except:
+        try: # Local db
+            assembly_json = os.path.join(self.genrep.root,"nr_assemblies/info_json/%s.json" % assembly)
+            assembly_info = json.load(open(assembly_json))[0]
+            chromosomes_json = os.path.join(self.genrep.root,"nr_assemblies/info_json/%s_chromosomes.json" % assembly)
+            chromosomes = json.load(open(chromosomes_json))
+        except: # Online GenRep
             try:
-                url = """%s/assemblies.json?assembly_name=%s""" %(self.genrep.url, assembly)
-                assembly_info = json.load(urllib2.urlopen(urllib2.Request(url)))[0]
-                chromosomes = json.load(urllib2.urlopen(urllib2.Request(
-                            """%s/chromosomes.json?assembly_name=%s""" %(self.genrep.url, assembly))))
-            except (IndexError, urllib2.URLError):
-                #raise ValueError("URL not found: %s." % url)
-                sys.stderr.write("URL not found: %s." % url)
+                assembly = int(assembly)
+                url = """%s/assemblies/%d.json""" % (self.genrep.url, assembly)
+                assembly_info = json.load(urllib2.urlopen(urllib2.Request(url)))
+                url2 = """%s/chromosomes.json?assembly_id=%d""" %(self.genrep.url, assembly)
+                chromosomes = json.load(urllib2.urlopen(urllib2.Request(url2)))
+            except:
                 try:
-                    assembly_json = os.path.join(self.genrep.root,"nr_assemblies/info_json/%s.json" % assembly)
-                    assembly_info = json.load(open(assembly_json))
-                except IOError:
-                    raise IOError("%s not found." % assembly_json)
-                except ValueError:
-                    raise ValueError("%s could not be decoded: not a JSON." % assembly_json)
+                    url = """%s/assemblies.json?assembly_name=%s""" %(self.genrep.url, assembly)
+                    assembly_info = json.load(urllib2.urlopen(urllib2.Request(url)))[0]
+                    url2 = """%s/chromosomes.json?assembly_name=%s""" %(self.genrep.url, assembly)
+                    chromosomes = json.load(urllib2.urlopen(urllib2.Request(url2)))
+                except (IndexError, urllib2.URLError):
+                    raise ValueError("URL not found: %s." % url)
         self._add_info(**dict((str(k),v) for k,v in assembly_info['assembly'].iteritems()))
         root = os.path.join(self.genrep.root,"nr_assemblies/bowtie")
         if self.intype == 1:
