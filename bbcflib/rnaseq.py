@@ -10,7 +10,7 @@ on the exons, add them to get counts on genes, and uses least-squares to infer
 counts on transcripts, avoiding to map on either genome or transcriptome.
 Note that the resulting counts on transcripts are approximate.
 
-run_htsstation.py rnaseq -c /Users/julien/Workspace/rnaseq/config/gapkowt.txt -p genes --basepath ./
+run_htsstation.py rnaseq -c config/gapkowt.txt -p genes --basepath ./
 """
 
 # Built-in modules #
@@ -405,6 +405,19 @@ def to_rpk(counts, lengths):
     rpk = 1000.*counts/(lengths[:,numpy.newaxis]) # transpose *lengths* without copying
     return rpk
 
+def norm_and_format(ids,counts,lengths,map,map_idx):
+    """Normalize, compute RPK values and format array lines as they will be printed."""
+    if isinstance(counts,dict):
+        counts_matrix = asarray(counts.values())
+    else: counts_matrix = counts
+    norm_matrix, sf = estimate_size_factors(counts_matrix)
+    rpk_matrix = to_rpk(norm_matrix, lengths)
+    map_nitems = len(map.iteritems().next())
+    data = [(t,) + tuple(counts_matrix[k]) + tuple(norm_matrix[k]) + tuple(rpk_matrix[k])
+                 + itemgetter(*map_idx)(map.get(t,("NA",)*map_nitems))
+            for k,t in enumerate(ids)]
+    return data
+
 @timer
 def rnaseq_workflow(ex, job, assembly=None,
                     pileup_level=["exons","genes","transcripts"], via="lsf",
@@ -477,12 +490,7 @@ def rnaseq_workflow(ex, job, assembly=None,
             if sum(c)!=0 and t in tmap:
                 tcounts[t] = c
         lengths = asarray([tmap[t][3]-tmap[t][2] for t in tcounts.iterkeys()])
-        tcounts_matrix = asarray(tcounts.values())
-        tnorm_matrix, sf = estimate_size_factors(tcounts_matrix)
-        trpk_matrix = to_rpk(tnorm_matrix, lengths)
-        trans_data = [(t,) + tuple(tcounts_matrix[k]) + tuple(tnorm_matrix[k]) + tuple(trpk_matrix[k])
-                           + itemgetter(2,3,0,1,5,6)(tmap.get(t,("NA",)*6))
-                      for k,t in enumerate(tcounts.iterkeys())]
+        trans_data = norm_and_format(tcounts.iterkeys(),tcounts,lengths,tmap,(2,3,0,1,5,6))
         hconds = ["counts."+c for c in conditions] + ["norm."+c for c in conditions] + ["rpk."+c for c in conditions]
         header = ["CustomID"] + hconds + ["Start","End","GeneID","GeneName","Strand","Chromosome"]
         trans_file = save_results(ex,trans_data,conditions,group_ids,assembly,header=header,feature_type=ftype)
@@ -549,13 +557,9 @@ def rnaseq_workflow(ex, job, assembly=None,
         print >> logfile, "* Get scores of exons"; logfile.flush()
         header = ["ExonID"] + hconds + ["Start","End","GeneID","GeneName","Strand","Chromosome"]
         lengths = asarray([exon_mapping[e][4]-exon_mapping[e][3] for e in exon_ids])
-        enorm_matrix, sf = estimate_size_factors(ecounts_matrix)
-        erpk_matrix = to_rpk(enorm_matrix, lengths)
-        exons_data = [(e,) + tuple(ecounts_matrix[k]) + tuple(enorm_matrix[k]) + tuple(erpk_matrix[k])
-                           + itemgetter(3,4,1,2,5,6)(exon_mapping.get(e,("NA",)*6))
-                      for k,e in enumerate(exon_ids)]
+        exons_data = norm_and_format(exon_ids,ecounts_matrix,lengths,exon_mapping,(3,4,1,2,5,6))
         exons_file = save_results(ex, exons_data, conditions, group_ids, assembly, header=header, feature_type="EXONS")
-        del exons_data, enorm_matrix, erpk_matrix
+        del exons_data
 
     """ Get scores of genes from exons """
     if "genes" in pileup_level:
@@ -563,14 +567,9 @@ def rnaseq_workflow(ex, job, assembly=None,
         header = ["GeneID"] + hconds + ["Start","End","GeneName","Strand","Chromosome"]
         gcounts = genes_expression(exon_ids, ecounts_matrix, gene_mapping, exon_mapping, ncond)
         lengths = asarray([gene_mapping[g][3] for g in gcounts.iterkeys()])
-        gcounts_matrix = asarray(gcounts.values())
-        gnorm_matrix, sf = estimate_size_factors(gcounts_matrix)
-        grpk_matrix = to_rpk(gcounts_matrix, lengths)
-        genes_data = [(g,) + tuple(gcounts_matrix[k]) + tuple(gnorm_matrix[k]) + tuple(grpk_matrix[k])
-                           + itemgetter(1,2,0,4,5)(gene_mapping.get(g,("NA",)*6))
-                      for k,g in enumerate(gcounts.iterkeys())]
+        genes_data = norm_and_format(gcounts.iterkeys(),gcounts,lengths,gene_mapping,(1,2,0,4,5))
         genes_file = save_results(ex, genes_data, conditions, group_ids, assembly, header=header, feature_type="GENES")
-        del genes_data, gnorm_matrix, grpk_matrix
+        del genes_data
 
     """ Get scores of transcripts from exons, using non-negative least-squares """
     if "transcripts" in pileup_level:
@@ -579,14 +578,9 @@ def rnaseq_workflow(ex, job, assembly=None,
         tcounts = transcripts_expression(exon_ids, ecounts_matrix, exon_mapping,
                    transcript_mapping, trans_in_gene, exons_in_trans, ncond)
         lengths = asarray([transcript_mapping[t][4] for t in tcounts.iterkeys()])
-        tcounts_matrix = asarray(tcounts.values())
-        tnorm_matrix, sf = estimate_size_factors(tcounts_matrix)
-        trpk_matrix = to_rpk(tcounts_matrix, lengths)
-        trans_data = [(t,) + tuple(tcounts_matrix[k]) + tuple(tnorm_matrix[k]) + tuple(trpk_matrix[k])
-                           + itemgetter(2,3,0,1,5,6)(transcript_mapping.get(t,("NA",)*7))
-                      for k,t in enumerate(tcounts.iterkeys())]
+        trans_data = norm_and_format(tcounts.iterkeys(),tcounts,lengths,transcript_mapping,(2,3,0,1,5,6))
         trans_file = save_results(ex, trans_data, conditions, group_ids, assembly, header=header, feature_type="TRANSCRIPTS")
-        del trans_data, tnorm_matrix, trpk_matrix
+        del trans_data
 
     result = {"exons":exons_file, "genes":genes_file, "transcripts":trans_file}
     if len(hconds) > 1:
