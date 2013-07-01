@@ -32,6 +32,8 @@ from numpy import zeros, asarray, nonzero
 numpy.set_printoptions(precision=3,suppress=True)
 numpy.seterr(divide='ignore')
 
+test = False
+
 class Counter(object):
     def __init__(self):
         self.n = 0
@@ -146,11 +148,20 @@ def fetch_mappings(assembly):
     (e.g. 11, 76 or 'hg19' for H.Sapiens), or a path to a file containing a
     pickle object which is read to get the mapping.
     """
-    gene_mapping = assembly.get_gene_mapping()
-    transcript_mapping = assembly.get_transcript_mapping()
-    exon_mapping = assembly.get_exon_mapping()
-    exons_in_trans = assembly.get_exons_in_trans()
-    trans_in_gene = assembly.get_trans_in_gene()
+    if test:
+        import pickle
+        map_path = '../mappings/'
+        gene_mapping = pickle.load(open(os.path.join(map_path,'gene_mapping.pickle')))
+        exon_mapping = pickle.load(open(os.path.join(map_path,'exon_mapping.pickle')))
+        transcript_mapping = pickle.load(open(os.path.join(map_path,'transcript_mapping.pickle')))
+        trans_in_gene = pickle.load(open(os.path.join(map_path,'trans_in_gene.pickle')))
+        exons_in_trans = pickle.load(open(os.path.join(map_path,'exons_in_trans.pickle')))
+    else:
+        gene_mapping = assembly.get_gene_mapping()
+        transcript_mapping = assembly.get_transcript_mapping()
+        exon_mapping = assembly.get_exon_mapping()
+        exons_in_trans = assembly.get_exons_in_trans()
+        trans_in_gene = assembly.get_trans_in_gene()
     mapping = (gene_mapping, transcript_mapping, exon_mapping, trans_in_gene, exons_in_trans)
     return mapping
 
@@ -267,10 +278,12 @@ def save_results(ex, lines, conditions, group_ids, assembly, header, feature_typ
                                          groupId=group_ids[group], gdv='1')
             ex.add(filename+'.sql', description=description)
             # bigWig track - UCSC
-            convert(filename+'.sql',filename+'.bw')
-            description = set_file_descr(feature_type.lower()+"_"+group+".bw",
-                                         step="pileup", type="bw", groupId=group_ids[group], ucsc='1')
-            ex.add(filename+'.bw', description=description)
+            try: # if the bigWig conversion program fails, the file is not created
+                convert(filename+'.sql',filename+'.bw')
+                description = set_file_descr(feature_type.lower()+"_"+group+".bw",
+                                             step="pileup", type="bw", groupId=group_ids[group], ucsc='1')
+                ex.add(filename+'.bw', description=description)
+            except IOError: pass
     print "  "+feature_type+": Done successfully."
     return os.path.abspath(output_tab)
 
@@ -390,7 +403,6 @@ def to_rpk(counts, lengths):
     """Divides read counts by the transcript length.
     *counts* is a numpy array or int or float, *lengths*, too."""
     rpk = 1000.*counts/(lengths[:,numpy.newaxis]) # transpose *lengths* without copying
-    rpk = numpy.round(rpk,2)
     return rpk
 
 @timer
@@ -410,8 +422,9 @@ def rnaseq_workflow(ex, job, assembly=None,
     :param unmapped: (bool) whether to remap to the transcriptome reads that did not map the genome. [False]
     :param via: (str) send job via 'local' or 'lsf'. ["lsf"]
     """
-    logfile = sys.stdout
-    debugfile = sys.stderr
+    if test:
+        logfile = sys.stdout
+        debugfile = sys.stderr
     group_names={}; group_ids={}; conditions=[]
     if assembly is None:
         assembly = genrep.Assembly(assembly=job.assembly_id)
@@ -463,9 +476,9 @@ def rnaseq_workflow(ex, job, assembly=None,
             c = counts[k]
             if sum(c)!=0 and t in tmap:
                 tcounts[t] = c
+        lengths = asarray([tmap[t][3]-tmap[t][2] for t in tcounts.iterkeys()])
         tcounts_matrix = asarray(tcounts.values())
         tnorm_matrix, sf = estimate_size_factors(tcounts_matrix)
-        lengths = [tmap[t][3]-tmap[t][2] for t in tcounts.iterkeys()]
         trpk_matrix = to_rpk(tnorm_matrix, lengths)
         trans_data = [(t,) + tuple(tcounts_matrix[k]) + tuple(tnorm_matrix[k]) + tuple(trpk_matrix[k])
                            + itemgetter(2,3,0,1,5,6)(tmap.get(t,("NA",)*6))
