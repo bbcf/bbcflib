@@ -3,7 +3,6 @@
 Module: bbcflib.motif
 =====================
 
-No documentation
 """
 
 # Built-in modules #

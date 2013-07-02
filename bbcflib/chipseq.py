@@ -197,7 +197,7 @@ def run_deconv(ex, sql, peaks, chromosomes, read_extension, script_path, via = '
     outfiles['peaks'] = output+"_peaks.sql"
     outfiles['profile'] = output+"_deconv.sql"
     outbed = track(outfiles['peaks'], chrmeta=chromosomes,
-                   fields=["start","end","score","name"],
+                   fields=["start","end","name","score"],
                    info={'datatype':'qualitative'})
     outwig = track(outfiles['profile'], chrmeta=chromosomes,
                    fields=["start","end","score"],
@@ -206,8 +206,8 @@ def run_deconv(ex, sql, peaks, chromosomes, read_extension, script_path, via = '
     outwig.open()
     for c,fout in deconv_out.iteritems():
         if len(fout) < 3: continue
-        outbed.write(track(fout[1],chrmeta=chromosomes).read())
-        outwig.write(track(fout[2],chrmeta=chromosomes).read())
+        outbed.write(track(fout[1]).read(),chrom=c)
+        outwig.write(track(fout[2]).read(),chrom=c)
     outbed.close()
     outwig.close()
     if len(deconv_out)>0:
@@ -378,13 +378,9 @@ def chipseq_workflow( ex, job_or_dict, assembly, script_path='', logfile=sys.std
                     if rowpatt and float(rowpatt.groups()[0]) <= pval: yield row
             ##############################
             peak_list[name] = unique_filename_in()+".bed"
-            bedfile = track(peak_list[name], chrmeta=chrlist,
-                            fields=["chr","start","end","name","score"])
-            trbed = track(deconv['peaks'])
-            trfields = ['chr']+trbed.fields
-            bedfile.write(FeatureStream(
-                    _filter_deconv(trbed.read(fields=trfields),0.65),fields=trfields))
-            bedfile.close()
+            trbed = track(deconv['peaks']).read()
+            with track(peak_list[name], chrmeta=chrlist, fields=trbed.fields) as bedfile:
+                bedfile.write(FeatureStream(_filter_deconv(,0.65),fields=trbed.fields))
             ex.add(deconv['peaks'],
                    description=set_file_descr(name[1]+'_peaks.sql', type='sql',
                                               step='deconvolution', groupId=name[0]))
@@ -402,12 +398,11 @@ def chipseq_workflow( ex, job_or_dict, assembly, script_path='', logfile=sys.std
                                               step='deconvolution', groupId=name[0]))
             processed['deconv'][name] = deconv
     for name, plist in peak_list.iteritems():
-        ptrack = track(plist,chrmeta=chrlist)
+        ptrack = track(plist,chrmeta=chrlist,fields=["chr","start","end","name","score"])
         peakfile = unique_filename_in()
         touch(ex,peakfile)
         peakout = track(peakfile, format='txt', chrmeta=chrlist,
-                              fields=['chr','start','end','name',
-                                      'gene','location_type','distance'])
+                        fields=['chr','start','end','name','score','gene','location_type','distance'])
         for chrom in assembly.chrnames:
             peakout.write(gm_stream.getNearestFeature(
                     ptrack.read(selection=chrom),
