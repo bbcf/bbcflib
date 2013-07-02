@@ -380,7 +380,7 @@ def chipseq_workflow( ex, job_or_dict, assembly, script_path='', logfile=sys.std
             peak_list[name] = unique_filename_in()+".bed"
             trbed = track(deconv['peaks']).read()
             with track(peak_list[name], chrmeta=chrlist, fields=trbed.fields) as bedfile:
-                bedfile.write(FeatureStream(_filter_deconv(,0.65),fields=trbed.fields))
+                bedfile.write(FeatureStream(_filter_deconv(trbed,0.65),fields=trbed.fields))
             ex.add(deconv['peaks'],
                    description=set_file_descr(name[1]+'_peaks.sql', type='sql',
                                               step='deconvolution', groupId=name[0]))
