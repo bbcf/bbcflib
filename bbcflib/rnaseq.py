@@ -10,7 +10,7 @@ on the exons, add them to get counts on genes, and uses least-squares to infer
 counts on transcripts, avoiding to map on either genome or transcriptome.
 Note that the resulting counts on transcripts are approximate.
 
-run_htsstation.py rnaseq -c /Users/julien/Workspace/rnaseq/config/gapkowt.txt -p genes --basepath ./
+run_htsstation.py rnaseq -c config/gapkowt.txt -p genes --basepath ./
 """
 
 # Built-in modules #
@@ -31,6 +31,8 @@ from numpy import zeros, asarray, nonzero
 
 numpy.set_printoptions(precision=3,suppress=True)
 numpy.seterr(divide='ignore')
+
+test = False
 
 class Counter(object):
     def __init__(self):
@@ -146,11 +148,20 @@ def fetch_mappings(assembly):
     (e.g. 11, 76 or 'hg19' for H.Sapiens), or a path to a file containing a
     pickle object which is read to get the mapping.
     """
-    gene_mapping = assembly.get_gene_mapping()
-    transcript_mapping = assembly.get_transcript_mapping()
-    exon_mapping = assembly.get_exon_mapping()
-    exons_in_trans = assembly.get_exons_in_trans()
-    trans_in_gene = assembly.get_trans_in_gene()
+    if test:
+        import pickle
+        map_path = '../mappings/'
+        gene_mapping = pickle.load(open(os.path.join(map_path,'gene_mapping.pickle')))
+        exon_mapping = pickle.load(open(os.path.join(map_path,'exon_mapping.pickle')))
+        transcript_mapping = pickle.load(open(os.path.join(map_path,'transcript_mapping.pickle')))
+        trans_in_gene = pickle.load(open(os.path.join(map_path,'trans_in_gene.pickle')))
+        exons_in_trans = pickle.load(open(os.path.join(map_path,'exons_in_trans.pickle')))
+    else:
+        gene_mapping = assembly.get_gene_mapping()
+        transcript_mapping = assembly.get_transcript_mapping()
+        exon_mapping = assembly.get_exon_mapping()
+        exons_in_trans = assembly.get_exons_in_trans()
+        trans_in_gene = assembly.get_trans_in_gene()
     mapping = (gene_mapping, transcript_mapping, exon_mapping, trans_in_gene, exons_in_trans)
     return mapping
 
@@ -267,10 +278,12 @@ def save_results(ex, lines, conditions, group_ids, assembly, header, feature_typ
                                          groupId=group_ids[group], gdv='1')
             ex.add(filename+'.sql', description=description)
             # bigWig track - UCSC
-            convert(filename+'.sql',filename+'.bw')
-            description = set_file_descr(feature_type.lower()+"_"+group+".bw",
-                                         step="pileup", type="bw", groupId=group_ids[group], ucsc='1')
-            ex.add(filename+'.bw', description=description)
+            try: # if the bigWig conversion program fails, the file is not created
+                convert(filename+'.sql',filename+'.bw')
+                description = set_file_descr(feature_type.lower()+"_"+group+".bw",
+                                             step="pileup", type="bw", groupId=group_ids[group], ucsc='1')
+                ex.add(filename+'.bw', description=description)
+            except IOError: pass
     print "  "+feature_type+": Done successfully."
     return os.path.abspath(output_tab)
 
@@ -278,7 +291,7 @@ def save_results(ex, lines, conditions, group_ids, assembly, header, feature_typ
 def genes_expression(exon_ids, ecounts_matrix, gene_mapping, exon_mapping, ncond):
     """Get gene counts/rpk from exon counts (sum).
 
-    Returns two dictionaries, one for counts and one for rpk, of the form ``{gene_id: scores}``.
+    Returns a dictionary of the form ``{gene_id: scores}``.
 
     :param gene_mapping: dictionary ``{gene_id: (gene name,start,end,length,strand,chromosome)}``
     :param exon_mapping: dictionary ``{exon_id: ([transcript_id's],gene_id,gene_name,start,end,strand,chromosome)}``
@@ -294,7 +307,7 @@ def genes_expression(exon_ids, ecounts_matrix, gene_mapping, exon_mapping, ncond
 def transcripts_expression(exon_ids, ecounts_matrix, exon_mapping, transcript_mapping, trans_in_gene, exons_in_trans, ncond):
     """Get transcript rpks from exon rpks.
 
-    Returns two dictionaries, one for counts and one for rpk, of the form ``{transcript_id: score}``.
+    Returns a dictionary of the form ``{transcript_id: score}``.
 
     :param exon_mapping: dictionary ``{exon_id: ([transcript_ids],gene_id,gene_name,start,end,strand,chromosome)}``
     :param transcript_mapping: dictionary ``{transcript_id: (gene_id,gene_name,start,end,length,strand,chromosome)}``
@@ -388,10 +401,24 @@ def estimate_size_factors(counts):
 
 def to_rpk(counts, lengths):
     """Divides read counts by the transcript length.
-    *counts* is a numpy array or int or float, *lengths*, too."""
+    *counts* and *lengths* are numpy arrays."""
     rpk = 1000.*counts/(lengths[:,numpy.newaxis]) # transpose *lengths* without copying
-    rpk = numpy.round(rpk,2)
     return rpk
+
+def norm_and_format(counts,lengths,map,map_idx,ids=None):
+    """Normalize, compute RPK values and format array lines as they will be printed."""
+    if isinstance(counts,dict):
+        counts_matrix = asarray(counts.values())
+        ids = counts.iterkeys()
+    else: counts_matrix = counts
+    norm_matrix, sf = estimate_size_factors(counts_matrix)
+    rpk_matrix = to_rpk(norm_matrix, lengths)
+    map_nitems = len(map.iteritems().next())
+    data = [(t,) + tuple(counts_matrix[k]) + tuple(norm_matrix[k]) + tuple(rpk_matrix[k])
+                 + itemgetter(*map_idx)(map.get(t,("NA",)*map_nitems))
+            for k,t in enumerate(ids)]
+    data = sorted(data, key=itemgetter(-1,-map_nitems,-map_nitems+1,-2)) # sort wrt. chr,start,end,strand
+    return data
 
 @timer
 def rnaseq_workflow(ex, job, assembly=None,
@@ -410,8 +437,9 @@ def rnaseq_workflow(ex, job, assembly=None,
     :param unmapped: (bool) whether to remap to the transcriptome reads that did not map the genome. [False]
     :param via: (str) send job via 'local' or 'lsf'. ["lsf"]
     """
-    logfile = sys.stdout
-    debugfile = sys.stderr
+    if test:
+        logfile = sys.stdout
+        debugfile = sys.stderr
     group_names={}; group_ids={}; conditions=[]
     if assembly is None:
         assembly = genrep.Assembly(assembly=job.assembly_id)
@@ -434,10 +462,10 @@ def rnaseq_workflow(ex, job, assembly=None,
 
     # If the reads were aligned on transcriptome (maybe custom), do that and skip the rest
     if hasattr(assembly,"fasta_origin") or assembly.intype == 2:
-        if assembly.intype==2:
+        if assembly.intype==2: # usual transcriptome
             tmap = assembly.get_transcript_mapping()
             ftype = "Transcripts"
-        else:
+        else: # build custom transcriptome
             firstbam = job.files.itervalues().next().itervalues().next()['bam']
             firstbamtrack = track(firstbam,format='bam')
             tmap={}
@@ -455,28 +483,19 @@ def rnaseq_workflow(ex, job, assembly=None,
                 pileups[cond] = pileup.values()
                 print >> logfile, "  ....Pileup", cond, "done"; logfile.flush()
         ids = pileup.keys()
-        del pileup
         counts = asarray([pileups[cond] for cond in conditions], dtype=numpy.float_).T
-        del pileups
+        del pileup, pileups
         tcounts={}
         for k,t in enumerate(ids):
             c = counts[k]
             if sum(c)!=0 and t in tmap:
                 tcounts[t] = c
-        tcounts_matrix = asarray(tcounts.values())
-        tnorm_matrix, sf = estimate_size_factors(tcounts_matrix)
-        lengths = [tmap[t][3]-tmap[t][2] for t in tcounts.iterkeys()]
-        trpk_matrix = to_rpk(tnorm_matrix, lengths)
-        trans_data = [(t,) + tuple(tcounts_matrix[k]) + tuple(tnorm_matrix[k]) + tuple(trpk_matrix[k])
-                           + itemgetter(2,3,0,1,5,6)(tmap.get(t,("NA",)*6))
-                      for k,t in enumerate(tcounts.iterkeys())]
+        lengths = asarray([tmap[t][3]-tmap[t][2] for t in tcounts.iterkeys()])
+        trans_data = norm_and_format(tcounts,lengths,tmap,(2,3,0,1,5,6))
         hconds = ["counts."+c for c in conditions] + ["norm."+c for c in conditions] + ["rpk."+c for c in conditions]
         header = ["CustomID"] + hconds + ["Start","End","GeneID","GeneName","Strand","Chromosome"]
         trans_file = save_results(ex,trans_data,conditions,group_ids,assembly,header=header,feature_type=ftype)
-        result = {"transcripts":trans_file}
-        if len(hconds) > 1:
-            print >> logfile, "* Differential analysis"; logfile.flush()
-            differential_analysis(ex, result, rpath, logfile)
+        differential_analysis(ex, trans_data, header, rpath, logfile, feature_type=ftype.lower())
         return 0
 
     print >> logfile, "* Load mappings"; logfile.flush()
@@ -523,7 +542,7 @@ def rnaseq_workflow(ex, job, assembly=None,
 
     """ Arrange exon counts in a matrix """
     ecounts_matrix = asarray([exon_pileups[cond] for cond in conditions], dtype=numpy.float_).T
-    nonzero_exons = nonzero(numpy.sum(ecounts_matrix,1))
+    nonzero_exons = nonzero(numpy.sum(ecounts_matrix,1)) # indices of non-zero lines
     ecounts_matrix = ecounts_matrix[nonzero_exons]
     exon_ids = exon_ids[nonzero_exons]
     del exon_pileups
@@ -536,13 +555,10 @@ def rnaseq_workflow(ex, job, assembly=None,
         print >> logfile, "* Get scores of exons"; logfile.flush()
         header = ["ExonID"] + hconds + ["Start","End","GeneID","GeneName","Strand","Chromosome"]
         lengths = asarray([exon_mapping[e][4]-exon_mapping[e][3] for e in exon_ids])
-        enorm_matrix, sf = estimate_size_factors(ecounts_matrix)
-        erpk_matrix = to_rpk(enorm_matrix, lengths)
-        exons_data = [(e,) + tuple(ecounts_matrix[k]) + tuple(enorm_matrix[k]) + tuple(erpk_matrix[k])
-                           + itemgetter(3,4,1,2,5,6)(exon_mapping.get(e,("NA",)*6))
-                      for k,e in enumerate(exon_ids)]
+        exons_data = norm_and_format(ecounts_matrix,lengths,exon_mapping,(3,4,1,2,5,6),ids=exon_ids)
         exons_file = save_results(ex, exons_data, conditions, group_ids, assembly, header=header, feature_type="EXONS")
-        del exons_data, enorm_matrix, erpk_matrix
+        differential_analysis(ex, exons_data, header, rpath, logfile, feature_type='exons')
+        del exons_data
 
     """ Get scores of genes from exons """
     if "genes" in pileup_level:
@@ -550,14 +566,10 @@ def rnaseq_workflow(ex, job, assembly=None,
         header = ["GeneID"] + hconds + ["Start","End","GeneName","Strand","Chromosome"]
         gcounts = genes_expression(exon_ids, ecounts_matrix, gene_mapping, exon_mapping, ncond)
         lengths = asarray([gene_mapping[g][3] for g in gcounts.iterkeys()])
-        gcounts_matrix = asarray(gcounts.values())
-        gnorm_matrix, sf = estimate_size_factors(gcounts_matrix)
-        grpk_matrix = to_rpk(gcounts_matrix, lengths)
-        genes_data = [(g,) + tuple(gcounts_matrix[k]) + tuple(gnorm_matrix[k]) + tuple(grpk_matrix[k])
-                           + itemgetter(1,2,0,4,5)(gene_mapping.get(g,("NA",)*6))
-                      for k,g in enumerate(gcounts.iterkeys())]
+        genes_data = norm_and_format(gcounts,lengths,gene_mapping,(1,2,0,4,5))
         genes_file = save_results(ex, genes_data, conditions, group_ids, assembly, header=header, feature_type="GENES")
-        del genes_data, gnorm_matrix, grpk_matrix
+        differential_analysis(ex, genes_data, header, rpath, logfile, feature_type='genes')
+        del genes_data
 
     """ Get scores of transcripts from exons, using non-negative least-squares """
     if "transcripts" in pileup_level:
@@ -566,19 +578,10 @@ def rnaseq_workflow(ex, job, assembly=None,
         tcounts = transcripts_expression(exon_ids, ecounts_matrix, exon_mapping,
                    transcript_mapping, trans_in_gene, exons_in_trans, ncond)
         lengths = asarray([transcript_mapping[t][4] for t in tcounts.iterkeys()])
-        tcounts_matrix = asarray(tcounts.values())
-        tnorm_matrix, sf = estimate_size_factors(tcounts_matrix)
-        trpk_matrix = to_rpk(tcounts_matrix, lengths)
-        trans_data = [(t,) + tuple(tcounts_matrix[k]) + tuple(tnorm_matrix[k]) + tuple(trpk_matrix[k])
-                           + itemgetter(2,3,0,1,5,6)(transcript_mapping.get(t,("NA",)*7))
-                      for k,t in enumerate(tcounts.iterkeys())]
+        trans_data = norm_and_format(tcounts,lengths,transcript_mapping,(2,3,0,1,5,6))
         trans_file = save_results(ex, trans_data, conditions, group_ids, assembly, header=header, feature_type="TRANSCRIPTS")
-        del trans_data, tnorm_matrix, trpk_matrix
-
-    result = {"exons":exons_file, "genes":genes_file, "transcripts":trans_file}
-    if len(hconds) > 1:
-        print >> logfile, "* Differential analysis"; logfile.flush()
-        differential_analysis(ex, result, rpath, logfile)
+        differential_analysis(ex, trans_data, header, rpath, logfile, feature_type='transcripts')
+        del trans_data
     return 0
 
 
@@ -593,26 +596,29 @@ def run_glm(rpath, data_file, options=[]):
     return {'arguments': ["R","--slave","-f",script_path,"--args",data_file]+opts,
             'return_value': output_file}
 
-def clean_before_deseq(filename, norm='rpk'):
+def clean_before_deseq(data, header, keep=0.6):
     """Delete all lines of *filename* where counts are 0 in every run."""
-    if norm == 'counts': w = 1
-    if norm == 'norm': w = 2
-    if norm == 'rpk': w = 3
     filename_clean = unique_filename_in()
-    with open(filename,"rb") as f:
+    ncond = sum([h.split('.').count("counts") for h in header]) # a regexp would be better
+    if ncond >1:
+        rownames = asarray(['%s|%s|%s|%s' % (x[0],x[-3],x[-2],x[-1]) for x in data])
+        M = asarray([x[1+2*ncond:1+3*ncond] for x in data]) # 'rpk' columns
+        colnames = header[0:1]+header[1+2*ncond:1+3*ncond]
+        # Remove 40% lowest counts
+        sums = numpy.sum(M,1)
+        filter = asarray([x[1] for x in sorted(zip(sums,range(len(sums))))])
+        filter = filter[:len(filter)/keep]
+        M = M[filter]
+        rownames = rownames[filter]
+        # Create the input tab file
         with open(filename_clean,"wb") as g:
-            header = f.readline().split('\t')
-            ncond = sum([h.split('.').count("counts") for h in header])
-            header = '\t'.join(header[0:1]+header[1+(w-1)*ncond:1+w*ncond])+'\n' # ID & 'rpk' columns
+            header = '\t'.join(colnames)+'\n' # ID & 'rpk' columns
             g.write(header)
-            for line in f:
-                l = line.split('\t')
-                scores = l[1+2*ncond:1+3*ncond]
-                if any([float(x) for x in scores]):
-                    label = '|'.join([l[0],l[-3],l[-2],l[-1].strip('\r\n')]) # geneID|geneName|strand|chr
-                    line = label + '\t' + '\t'.join(scores) + '\n'
+            for i,scores in enumerate(M):
+                if any(scores):
+                    line = rownames[i] + '\t' + '\t'.join([str(x) for x in scores]) + '\n'
                     g.write(line)
-    return filename_clean
+    return filename_clean, ncond
 
 def clean_deseq_output(filename):
     """Delete all lines of *filename* with NA's everywhere, add 0.5 to zero scores
@@ -625,7 +631,7 @@ def clean_deseq_output(filename):
             header[2] = 'baseMean'+contrast[0].strip()
             header[3] = 'baseMean'+contrast[1].strip()
             g.write('-'.join(contrast))
-            g.write('\t'.join(header))
+            g.write('\t'.join(header[:8]))
             for line in f:
                 line = line.split("\t")[1:]
                 if not (line[2]=="0" and line[3]=="0"):
@@ -634,32 +640,34 @@ def clean_deseq_output(filename):
                     fold = meanB/meanA
                     log2fold = math.log(fold,2)
                     line[2] = str(meanA); line[3] = str(meanB); line[4] = str(fold); line[5] = str(log2fold)
-                    line = '\t'.join(line)
+                    line = '\t'.join(line[:8])
                     g.write(line)
     return filename_clean
 
 @timer
-def differential_analysis(ex, result, rpath, logfile):
+def differential_analysis(ex, data, header, rpath, logfile, feature_type):
     """For each file in *result*, launch an analysis of differential expression on the count
     values, and saves the output in the MiniLIMS.
 
-    :param result: dictionary of the form ``{feature_type:filename}`` as returned by `rnaseq_workflow`.
     :param rpath: path to the R scripts ("negbin.test.R").
     """
-    for type,res_file in result.iteritems():
-        if res_file and rpath and os.path.exists(rpath):
-            res_file = clean_before_deseq(res_file)
-            options = ['-s','tab']
-            try:
-                glmfile = run_glm(ex, rpath, res_file, options)
-            except Exception as exc:
-                print >> logfile,"Skipped differential analysis: %s \n" % exc; logfile.flush()
-                break
-            output_files = [f for f in os.listdir(ex.working_directory) if glmfile in f]
-            for o in output_files:
-                desc = set_file_descr(type+"_differential"+o.split(glmfile)[1]+".txt", step='stats', type='txt')
-                o = clean_deseq_output(o)
-                ex.add(o, description=desc)
+    if rpath and os.path.exists(rpath):
+        res_file, ncond = clean_before_deseq(data, header)
+        if ncond < 2:
+            print >> logfile,"  Skipped differential analysis: less than two groups.\n"; logfile.flush()
+        else:
+            print >> logfile, "  Differential analysis"; logfile.flush()
+        options = ['-s','tab']
+        try:
+            glmfile = run_glm(ex, rpath, res_file, options)
+        except Exception as exc:
+            print >> logfile,"  Skipped differential analysis: %s \n" % exc; logfile.flush()
+            return
+        output_files = [f for f in os.listdir(ex.working_directory) if glmfile in f]
+        for o in output_files:
+            desc = set_file_descr(feature_type+"_differential"+o.split(glmfile)[1]+".txt", step='stats', type='txt')
+            o = clean_deseq_output(o)
+            ex.add(o, description=desc)
 
 
 #-------------------------- SPLICE JUNCTIONS SEARCH ----------------------------#
