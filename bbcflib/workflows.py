@@ -10,7 +10,7 @@ modules in this library.
 """
 
 import sys, os, re, json
-from bbcflib import genrep, frontend, gdv
+from bbcflib import genrep, frontend
 from bbcflib.common import normalize_url, get_files, set_file_descr
 from bein.util import use_pickle, add_pickle
 from bein import execution, MiniLIMS
