@@ -291,7 +291,7 @@ def save_results(ex, lines, conditions, group_ids, assembly, header, feature_typ
 def genes_expression(exon_ids, ecounts_matrix, gene_mapping, exon_mapping, ncond):
     """Get gene counts/rpk from exon counts (sum).
 
-    Returns two dictionaries, one for counts and one for rpk, of the form ``{gene_id: scores}``.
+    Returns a dictionary of the form ``{gene_id: scores}``.
 
     :param gene_mapping: dictionary ``{gene_id: (gene name,start,end,length,strand,chromosome)}``
     :param exon_mapping: dictionary ``{exon_id: ([transcript_id's],gene_id,gene_name,start,end,strand,chromosome)}``
@@ -307,7 +307,7 @@ def genes_expression(exon_ids, ecounts_matrix, gene_mapping, exon_mapping, ncond
 def transcripts_expression(exon_ids, ecounts_matrix, exon_mapping, transcript_mapping, trans_in_gene, exons_in_trans, ncond):
     """Get transcript rpks from exon rpks.
 
-    Returns two dictionaries, one for counts and one for rpk, of the form ``{transcript_id: score}``.
+    Returns a dictionary of the form ``{transcript_id: score}``.
 
     :param exon_mapping: dictionary ``{exon_id: ([transcript_ids],gene_id,gene_name,start,end,strand,chromosome)}``
     :param transcript_mapping: dictionary ``{transcript_id: (gene_id,gene_name,start,end,length,strand,chromosome)}``
@@ -495,7 +495,7 @@ def rnaseq_workflow(ex, job, assembly=None,
         hconds = ["counts."+c for c in conditions] + ["norm."+c for c in conditions] + ["rpk."+c for c in conditions]
         header = ["CustomID"] + hconds + ["Start","End","GeneID","GeneName","Strand","Chromosome"]
         trans_file = save_results(ex,trans_data,conditions,group_ids,assembly,header=header,feature_type=ftype)
-        differential_analysis(ex, trans_data, header, rpath, logfile, feature_type='custom')
+        differential_analysis(ex, trans_data, header, rpath, logfile, feature_type=ftype.lower())
         return 0
 
     print >> logfile, "* Load mappings"; logfile.flush()
@@ -631,7 +631,7 @@ def clean_deseq_output(filename):
             header[2] = 'baseMean'+contrast[0].strip()
             header[3] = 'baseMean'+contrast[1].strip()
             g.write('-'.join(contrast))
-            g.write('\t'.join(header))
+            g.write('\t'.join(header[:8]))
             for line in f:
                 line = line.split("\t")[1:]
                 if not (line[2]=="0" and line[3]=="0"):
@@ -640,7 +640,7 @@ def clean_deseq_output(filename):
                     fold = meanB/meanA
                     log2fold = math.log(fold,2)
                     line[2] = str(meanA); line[3] = str(meanB); line[4] = str(fold); line[5] = str(log2fold)
-                    line = '\t'.join(line)
+                    line = '\t'.join(line[:8])
                     g.write(line)
     return filename_clean
 
@@ -654,14 +654,15 @@ def differential_analysis(ex, data, header, rpath, logfile, feature_type):
     if rpath and os.path.exists(rpath):
         res_file, ncond = clean_before_deseq(data, header)
         if ncond < 2:
-            print >> logfile,"Skipped differential analysis: less than two groups.\n"; logfile.flush()
+            print >> logfile,"  Skipped differential analysis: less than two groups.\n"; logfile.flush()
         else:
-            print >> logfile, "* Differential analysis"; logfile.flush()
+            print >> logfile, "  Differential analysis"; logfile.flush()
         options = ['-s','tab']
         try:
             glmfile = run_glm(ex, rpath, res_file, options)
         except Exception as exc:
-            print >> logfile,"Skipped differential analysis: %s \n" % exc; logfile.flush()
+            print >> logfile,"  Skipped differential analysis: %s \n" % exc; logfile.flush()
+            return
         output_files = [f for f in os.listdir(ex.working_directory) if glmfile in f]
         for o in output_files:
             desc = set_file_descr(feature_type+"_differential"+o.split(glmfile)[1]+".txt", step='stats', type='txt')
