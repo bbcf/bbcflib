@@ -185,6 +185,10 @@ def run_deconv(ex, sql, peaks, chromosomes, read_extension, script_path, via = '
         with open(stdout_files[c]) as sout:
             for row in sout:
                 if scan:
+                    if re.search(r'\*\*\*\*\*\*\*\*\*\*\*\*PARAMETERS\*\*\*\*\*\*\*\*\*\*',row):
+                        row = sout.next().strip()
+                        deconv_out[c].append(dict(x.split("=") for x in row.split("|")))
+                        break
                     outf = row.strip()
                     if os.path.exists(outf):
                         deconv_out[c].append(outf)
@@ -197,8 +201,8 @@ def run_deconv(ex, sql, peaks, chromosomes, read_extension, script_path, via = '
     outfiles['peaks'] = output+"_peaks.sql"
     outfiles['profile'] = output+"_deconv.sql"
     outbed = track(outfiles['peaks'], chrmeta=chromosomes,
-                   fields=["start","end","name","score"],
-                   info={'datatype':'qualitative'})
+                   fields=["start","end","name","score"])
+    info = {'datatype':'qualitative','len':'','mu':'','lambda':''}
     outwig = track(outfiles['profile'], chrmeta=chromosomes,
                    fields=["start","end","score"],
                    info={'datatype':'quantitative'})
@@ -208,6 +212,11 @@ def run_deconv(ex, sql, peaks, chromosomes, read_extension, script_path, via = '
         if len(fout) < 3: continue
         outbed.write(track(fout[1]).read(),chrom=c)
         outwig.write(track(fout[2]).read(),chrom=c)
+        if len(fout) > 3:
+            info['len'] = fout[3].get('len','')
+            info['mu'] += ","+fout[3].get('mu','')
+            info['lambda'] += ","+fout[3].get('lambda','')
+    outbed._fix_attributes(info)
     outbed.close()
     outwig.close()
     if len(deconv_out)>0:
