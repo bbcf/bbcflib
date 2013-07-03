@@ -395,7 +395,10 @@ def estimate_size_factors(counts):
     counts = numpy.asarray(counts)
     cnts = counts[nonzero(counts[:,0]*counts[:,1])] # none of the counts is zero
     loggeomeans = numpy.mean(numpy.log(cnts), 1)
-    size_factors = numpy.exp(numpy.median(numpy.log(cnts).T - loggeomeans, 1))
+    try:
+        size_factors = numpy.exp(numpy.median(numpy.log(cnts).T - loggeomeans, 1))
+    except RuntimeWarning, e:
+        pass
     res = counts / size_factors
     return res, size_factors
 
@@ -495,7 +498,7 @@ def rnaseq_workflow(ex, job, assembly=None,
         hconds = ["counts."+c for c in conditions] + ["norm."+c for c in conditions] + ["rpk."+c for c in conditions]
         header = ["CustomID"] + hconds + ["Start","End","GeneID","GeneName","Strand","Chromosome"]
         trans_file = save_results(ex,trans_data,conditions,group_ids,assembly,header=header,feature_type=ftype)
-        differential_analysis(ex, trans_data, header, rpath, logfile, feature_type=ftype.lower())
+        differential_analysis(ex, trans_data, header, rpath, logfile, feature_type=ftype.lower(),via=via)
         return 0
 
     print >> logfile, "* Load mappings"; logfile.flush()
@@ -557,7 +560,7 @@ def rnaseq_workflow(ex, job, assembly=None,
         lengths = asarray([exon_mapping[e][4]-exon_mapping[e][3] for e in exon_ids])
         exons_data = norm_and_format(ecounts_matrix,lengths,exon_mapping,(3,4,1,2,5,6),ids=exon_ids)
         exons_file = save_results(ex, exons_data, conditions, group_ids, assembly, header=header, feature_type="EXONS")
-        differential_analysis(ex, exons_data, header, rpath, logfile, feature_type='exons')
+        differential_analysis(ex, exons_data, header, rpath, logfile, feature_type='exons',via=via)
         del exons_data
 
     """ Get scores of genes from exons """
@@ -568,7 +571,7 @@ def rnaseq_workflow(ex, job, assembly=None,
         lengths = asarray([gene_mapping[g][3] for g in gcounts.iterkeys()])
         genes_data = norm_and_format(gcounts,lengths,gene_mapping,(1,2,0,4,5))
         genes_file = save_results(ex, genes_data, conditions, group_ids, assembly, header=header, feature_type="GENES")
-        differential_analysis(ex, genes_data, header, rpath, logfile, feature_type='genes')
+        differential_analysis(ex, genes_data, header, rpath, logfile, feature_type='genes',via=via)
         del genes_data
 
     """ Get scores of transcripts from exons, using non-negative least-squares """
@@ -580,7 +583,7 @@ def rnaseq_workflow(ex, job, assembly=None,
         lengths = asarray([transcript_mapping[t][4] for t in tcounts.iterkeys()])
         trans_data = norm_and_format(tcounts,lengths,transcript_mapping,(2,3,0,1,5,6))
         trans_file = save_results(ex, trans_data, conditions, group_ids, assembly, header=header, feature_type="TRANSCRIPTS")
-        differential_analysis(ex, trans_data, header, rpath, logfile, feature_type='transcripts')
+        differential_analysis(ex, trans_data, header, rpath, logfile, feature_type='transcripts',via=via)
         del trans_data
     return 0
 
@@ -645,11 +648,12 @@ def clean_deseq_output(filename):
     return filename_clean
 
 @timer
-def differential_analysis(ex, data, header, rpath, logfile, feature_type):
+def differential_analysis(ex, data, header, rpath, logfile, feature_type, via='lsf'):
     """For each file in *result*, launch an analysis of differential expression on the count
     values, and saves the output in the MiniLIMS.
 
     :param rpath: path to the R scripts ("negbin.test.R").
+    :param via: (str) send job via 'local' or 'lsf'. ["lsf"]
     """
     if rpath and os.path.exists(rpath):
         res_file, ncond = clean_before_deseq(data, header)
@@ -659,7 +663,7 @@ def differential_analysis(ex, data, header, rpath, logfile, feature_type):
             print >> logfile, "  Differential analysis"; logfile.flush()
         options = ['-s','tab']
         try:
-            glmfile = run_glm(ex, rpath, res_file, options)
+            glmfile = run_glm(ex, rpath, res_file, options, via=via)
         except Exception as exc:
             print >> logfile,"  Skipped differential analysis: %s \n" % exc; logfile.flush()
             return
