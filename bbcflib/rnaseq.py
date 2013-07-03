@@ -30,8 +30,8 @@ import numpy
 from numpy import zeros, asarray, nonzero
 
 numpy.set_printoptions(precision=3,suppress=True)
-numpy.seterr(all='print')
-#numpy.seterr(divide='ignore')
+numpy.seterr(invalid='print')
+numpy.seterr(divide='ignore')
 
 test = False
 
