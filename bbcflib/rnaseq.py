@@ -30,7 +30,8 @@ import numpy
 from numpy import zeros, asarray, nonzero
 
 numpy.set_printoptions(precision=3,suppress=True)
-numpy.seterr(all='ignore')
+numpy.seterr(all='print')
+#numpy.seterr(divide='ignore')
 
 test = False
 
@@ -391,9 +392,8 @@ def estimate_size_factors(counts):
     :param counts: an array of counts, each line representing a transcript, each
                    column a different sample.
     """
-    numpy.seterr(all='ignore')
     counts = numpy.asarray(counts)
-    cnts = counts[nonzero(sum(counts,1))] # none of the counts is zero
+    cnts = counts[nonzero(numpy.prod(counts,1))] # none of the counts is zero
     logcnt = numpy.log(cnts)
     loggeomeans = numpy.mean(logcnt, 1)
     size_factors = numpy.exp(numpy.median(logcnt.T - loggeomeans, 1))
