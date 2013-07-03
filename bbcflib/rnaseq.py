@@ -394,9 +394,10 @@ def estimate_size_factors(counts):
     numpy.seterr(divide='ignore')
     counts = numpy.asarray(counts)
     cnts = counts[nonzero(counts[:,0]*counts[:,1])] # none of the counts is zero
-    loggeomeans = numpy.mean(numpy.log(cnts), 1)
     try:
-        size_factors = numpy.exp(numpy.median(numpy.log(cnts).T - loggeomeans, 1))
+        logcnt = numpy.log(cnts)
+        loggeomeans = numpy.mean(logcnt, 1)
+        size_factors = numpy.exp(numpy.median(logcnt.T - loggeomeans, 1))
     except RuntimeWarning, e:
         pass
     res = counts / size_factors
