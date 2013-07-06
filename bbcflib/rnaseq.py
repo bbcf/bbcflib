@@ -132,7 +132,6 @@ def lsqnonneg(C, d, x0=None, tol=None, itmax_factor=3):
         w = numpy.dot(C.T, resid)
     return (x, sum(resid*resid), resid)
 
-@timer
 def fetch_mappings(assembly):
     """Given an assembly object, returns a tuple
     ``(gene_mapping, transcript_mapping, exon_mapping, trans_in_gene, exons_in_trans)``
@@ -180,7 +179,6 @@ def build_custom_pileup(bamfile, transcript_mapping=None, debugfile=sys.stderr):
     sam.close()
     return counts
 
-@timer
 def build_pileup(bamfile, assembly, gene_mapping, exon_mapping, trans_in_gene, exons_in_trans, debugfile=sys.stderr):
     """From a BAM file, returns a dictionary of the form {feature_id: number of reads that mapped to it}.
 
@@ -226,7 +224,6 @@ def build_pileup(bamfile, assembly, gene_mapping, exon_mapping, trans_in_gene, e
     sam.close()
     return counts
 
-@timer
 def save_results(ex, lines, conditions, group_ids, assembly, header, feature_type='features'):
     """Save results in a tab-delimited file, one line per feature, one column per run.
 
@@ -288,7 +285,6 @@ def save_results(ex, lines, conditions, group_ids, assembly, header, feature_typ
     print "  "+feature_type+": Done successfully."
     return os.path.abspath(output_tab)
 
-@timer
 def genes_expression(exon_ids, ecounts_matrix, gene_mapping, exon_mapping, ncond):
     """Get gene counts/rpk from exon counts (sum).
 
@@ -304,8 +300,8 @@ def genes_expression(exon_ids, ecounts_matrix, gene_mapping, exon_mapping, ncond
         gene_counts[g] = gene_counts.get(g,zeros(ncond)) + counts
     return gene_counts
 
-@timer
-def transcripts_expression(exon_ids, ecounts_matrix, exon_mapping, transcript_mapping, trans_in_gene, exons_in_trans, ncond):
+def transcripts_expression(exon_ids, ecounts_matrix, exon_mapping, transcript_mapping, trans_in_gene, exons_in_trans,
+                           ncond, debugfile=sys.stderr):
     """Get transcript rpks from exon rpks.
 
     Returns a dictionary of the form ``{transcript_id: score}``.
@@ -362,7 +358,7 @@ def transcripts_expression(exon_ids, ecounts_matrix, exon_mapping, transcript_ma
             M = numpy.vstack((M,numpy.ones(M.shape[1]))) # add constraint |E| = |T|
             L = numpy.vstack((L,numpy.ones(M.shape[1])))
             N = M*L
-            for c in range(ncond): # - counts
+            for c in range(ncond):
                 Ec = ec[c]
                 Ec = numpy.hstack((Ec,asarray(sum(Ec))))
                 tol = 10*2.22e-16*norm(N,1)*(max(N.shape)+1)
@@ -376,8 +372,8 @@ def transcripts_expression(exon_ids, ecounts_matrix, exon_mapping, transcript_ma
         else:
             unknown += 1
     if unknown != 0:
-        print "\tUnknown transcripts for %d of %d genes (%.2f %%)" \
-              % (unknown, len(genes), 100*float(unknown)/float(len(genes)) )
+        debugfile.write("\tUnknown transcripts for %d of %d genes (%.2f %%)" \
+              % (unknown, len(genes), 100*float(unknown)/float(len(genes))) )
     return trans_counts
 
 def estimate_size_factors(counts):
@@ -577,7 +573,7 @@ def rnaseq_workflow(ex, job, assembly=None,
         print >> logfile, "* Get scores of transcripts"; logfile.flush()
         header = ["TranscriptID"] + hconds + ["Start","End","GeneID","GeneName","Strand","Chromosome"]
         tcounts = transcripts_expression(exon_ids, ecounts_matrix, exon_mapping,
-                   transcript_mapping, trans_in_gene, exons_in_trans, ncond)
+                   transcript_mapping, trans_in_gene, exons_in_trans, ncond, debugfile)
         lengths = asarray([transcript_mapping[t][4] for t in tcounts.iterkeys()])
         trans_data = norm_and_format(tcounts,lengths,transcript_mapping,(2,3,0,1,5,6))
         trans_file = save_results(ex, trans_data, conditions, group_ids, assembly, header=header, feature_type="TRANSCRIPTS")
@@ -661,8 +657,8 @@ def differential_analysis(ex, data, header, rpath, logfile, feature_type, via='l
             print >> logfile, "  Differential analysis"; logfile.flush()
         options = ['-s','tab']
         try:
-            #glmfile = run_glm.nonblocking(ex, rpath, res_file, options, via=via, memory=8).wait()
-            glmfile = run_glm(ex, rpath, res_file, options)
+            glmfile = run_glm.nonblocking(ex, rpath, res_file, options, via=via).wait()
+            #glmfile = run_glm(ex, rpath, res_file, options)
         except Exception as exc:
             print >> logfile,"  Skipped differential analysis: %s \n" % exc; logfile.flush()
             return
