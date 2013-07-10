@@ -165,6 +165,7 @@ def fetch_mappings(assembly):
     mapping = (gene_mapping, transcript_mapping, exon_mapping, trans_in_gene, exons_in_trans)
     return mapping
 
+@timer
 def build_custom_pileup(bamfile, transcript_mapping=None, debugfile=sys.stderr):
     counts = {}
     try: sam = pysam.Samfile(bamfile, 'rb')
@@ -179,6 +180,7 @@ def build_custom_pileup(bamfile, transcript_mapping=None, debugfile=sys.stderr):
     sam.close()
     return counts
 
+@timer
 def build_pileup(bamfile, assembly, gene_mapping, exon_mapping, trans_in_gene, exons_in_trans, debugfile=sys.stderr):
     """From a BAM file, returns a dictionary of the form {feature_id: number of reads that mapped to it}.
 
@@ -224,6 +226,7 @@ def build_pileup(bamfile, assembly, gene_mapping, exon_mapping, trans_in_gene, e
     sam.close()
     return counts
 
+@timer
 def save_results(ex, lines, conditions, group_ids, assembly, header, feature_type='features'):
     """Save results in a tab-delimited file, one line per feature, one column per run.
 
@@ -285,6 +288,7 @@ def save_results(ex, lines, conditions, group_ids, assembly, header, feature_typ
     print "  "+feature_type+": Done successfully."
     return os.path.abspath(output_tab)
 
+@timer
 def genes_expression(exon_ids, ecounts_matrix, gene_mapping, exon_mapping, ncond):
     """Get gene counts/rpk from exon counts (sum).
 
@@ -300,6 +304,7 @@ def genes_expression(exon_ids, ecounts_matrix, gene_mapping, exon_mapping, ncond
         gene_counts[g] = gene_counts.get(g,zeros(ncond)) + counts
     return gene_counts
 
+@timer
 def transcripts_expression(exon_ids, ecounts_matrix, exon_mapping, transcript_mapping, trans_in_gene, exons_in_trans,
                            ncond, debugfile=sys.stderr):
     """Get transcript rpks from exon rpks.
