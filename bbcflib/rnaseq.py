@@ -661,7 +661,8 @@ def differential_analysis(ex, data, header, rpath, logfile, feature_type, via='l
             print >> logfile, "  Differential analysis"; logfile.flush()
         options = ['-s','tab']
         try:
-            glmfile = run_glm.nonblocking(ex, rpath, res_file, options, via=via, memory=8).wait()
+            #glmfile = run_glm.nonblocking(ex, rpath, res_file, options, via=via, memory=8).wait()
+            glmfile = run_glm(ex, rpath, res_file, options)
         except Exception as exc:
             print >> logfile,"  Skipped differential analysis: %s \n" % exc; logfile.flush()
             return
