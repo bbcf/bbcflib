@@ -599,12 +599,16 @@ def run_glm(rpath, data_file, options=[]):
 
 def clean_before_deseq(data, header, keep=0.6):
     """Delete all lines of *filename* where counts are 0 in every run."""
+    norm = 'rpk'
+    if norm == 'counts': w = 0
+    elif norm == 'sf': w = 1
+    elif norm == 'rpk': w = 2
     filename_clean = unique_filename_in()
     ncond = sum([h.split('.').count("counts") for h in header]) # a regexp would be better
     if ncond >1:
         rownames = asarray(['%s|%s|%s|%s' % (x[0],x[-3],x[-2],x[-1]) for x in data])
-        M = asarray([x[1+2*ncond:1+3*ncond] for x in data]) # 'rpk' columns
-        colnames = header[0:1]+header[1+2*ncond:1+3*ncond]
+        M = asarray([x[1+w*ncond:1+w*ncond] for x in data]) # 'rpk' columns
+        colnames = header[0:1]+header[1+w*ncond:1+w*ncond]
         # Remove 40% lowest counts
         sums = numpy.sum(M,1)
         filter = asarray([x[1] for x in sorted(zip(sums,range(len(sums))))])
@@ -661,8 +665,8 @@ def differential_analysis(ex, data, header, rpath, logfile, feature_type, via='l
             print >> logfile, "  Differential analysis"; logfile.flush()
         options = ['-s','tab']
         try:
-            #glmfile = run_glm.nonblocking(ex, rpath, res_file, options, via=via, memory=8).wait()
-            glmfile = run_glm(ex, rpath, res_file, options)
+            glmfile = run_glm.nonblocking(ex, rpath, res_file, options, via=via, memory=8).wait()
+            #glmfile = run_glm(ex, rpath, res_file, options)
         except Exception as exc:
             print >> logfile,"  Skipped differential analysis: %s \n" % exc; logfile.flush()
             return
