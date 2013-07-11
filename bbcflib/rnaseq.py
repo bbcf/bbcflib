@@ -639,14 +639,14 @@ def clean_deseq_output(filename):
             g.write('-'.join(contrast))
             g.write('\t'.join(header[:8]))
             for line in f:
-                line = line.split("\t")[1:]
+                line = line.split("\t")[1:9] # 1:: remove row ids and variances
                 if not (line[2]=="0" and line[3]=="0"):
                     meanA = float(line[2]) or 0.5
                     meanB = float(line[3]) or 0.5
                     fold = meanB/meanA
                     log2fold = math.log(fold,2)
-                    line[2] = str(meanA); line[3] = str(meanB); line[4] = str(fold); line[5] = str(log2fold)
-                    line = '\t'.join(line[:8])
+                    line[2]='%.2f'%meanA; line[3]='%.2f'%meanB; line[4]='%.2f'%fold; line[5]='%.2f'%log2fold
+                    line = '\t'.join(line)
                     g.write(line)
     return filename_clean
 
