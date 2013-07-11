@@ -383,7 +383,7 @@ def chipseq_workflow( ex, job_or_dict, assembly, script_path='', logfile=sys.std
             ##############################
             def _filter_deconv( stream, pval ):
                 for row in stream:
-                    rowpatt = re.search(r';FERR=([\d\.]+)$',row[4])
+                    rowpatt = re.search(r';FERR=([\d\.]+)$',row[3])
                     if rowpatt and float(rowpatt.groups()[0]) <= pval: yield row
             ##############################
             peak_list[name] = unique_filename_in()+".bed"
