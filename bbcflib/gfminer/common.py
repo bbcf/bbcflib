@@ -367,7 +367,7 @@ def sorted_stream(stream,chrnames=[],fields=['chr','start','end'],reverse=False)
     feature_list = list(stream)
     sort_list = []
     for n,f in enumerate(feature_list):
-        if chri>=0 and f[fidx[chri]] in chrnames: fchr = chrnames.index(f[fidx[chri]])
+        if chri >= 0 and f[fidx[chri]] in chrnames: fchr = chrnames.index(f[fidx[chri]])
         else: fchr = f[fidx[chri]]
         x = tuple(f[i] for i in fidx[:chri])+(fchr,)+tuple(f[i] for i in fidx[chri+1:])+(n,)
         sort_list.append(x)

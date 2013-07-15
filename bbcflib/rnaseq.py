@@ -600,16 +600,16 @@ def run_glm(rpath, data_file, options=[]):
 
 def clean_before_deseq(data, header, keep=0.6):
     """Delete all lines of *filename* where counts are 0 in every run."""
-    norm = 'rpk'
+    norm = 'counts'
     if norm == 'counts': w = 0
-    elif norm == 'sf': w = 1
+    elif norm == 'norm': w = 1
     elif norm == 'rpk': w = 2
     filename_clean = unique_filename_in()
     ncond = sum([h.split('.').count("counts") for h in header]) # a regexp would be better
     if ncond >1:
         rownames = asarray(['%s|%s|%s|%s' % (x[0],x[-3],x[-2],x[-1]) for x in data])
-        M = asarray([x[1+w*ncond:1+w*ncond] for x in data]) # 'rpk' columns
-        colnames = header[0:1]+header[1+w*ncond:1+w*ncond]
+        M = asarray([x[1+w*ncond:1+(w+1)*ncond] for x in data]) # *norm* columns
+        colnames = header[0:1]+header[1:1+ncond] # 'counts' column names
         # Remove 40% lowest counts
         sums = numpy.sum(M,1)
         filter = asarray([x[1] for x in sorted(zip(sums,range(len(sums))))])
@@ -618,7 +618,7 @@ def clean_before_deseq(data, header, keep=0.6):
         rownames = rownames[filter]
         # Create the input tab file
         with open(filename_clean,"wb") as g:
-            header = '\t'.join(colnames)+'\n' # ID & 'rpk' columns
+            header = '\t'.join(colnames)+'\n' # ID & *norm* columns
             g.write(header)
             for i,scores in enumerate(M):
                 if any(scores):
