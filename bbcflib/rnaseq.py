@@ -9,8 +9,6 @@ From a BAM file produced by an alignement on the genome or the exonome, gets cou
 on the exons, add them to get counts on genes, and uses least-squares to infer
 counts on transcripts, avoiding to map on either genome or transcriptome.
 Note that the resulting counts on transcripts are approximate.
-
-run_htsstation.py rnaseq -c config/gapkowt.txt -p genes --basepath ./
 """
 
 # Built-in modules #
@@ -34,6 +32,7 @@ numpy.seterr(invalid='print')
 numpy.seterr(divide='ignore')
 
 test = False
+#run_htsstation.py rnaseq -c config/gapkowt.txt -p genes --basepath ./
 
 class Counter(object):
     def __init__(self):
