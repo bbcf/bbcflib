@@ -148,7 +148,7 @@ def fetch_mappings(assembly):
     (e.g. 11, 76 or 'hg19' for H.Sapiens), or a path to a file containing a
     pickle object which is read to get the mapping.
     """
-    if test:
+    if test and os.path.exists('../mappings/'):
         import pickle
         map_path = '../mappings/'
         gene_mapping = pickle.load(open(os.path.join(map_path,'gene_mapping.pickle')))
@@ -219,7 +219,7 @@ def build_pileup(bamfile, assembly, gene_mapping, exon_mapping, trans_in_gene, e
                 #The callback (c.n += 1) is executed for each alignment in a region
                 sam.fetch(ref,start,end, callback=c)
             except ValueError,ve: # unknown reference
-                print >> debugfile, ve; debugfile.flush()
+                debugfile.write(ve); debugfile.flush()
             for exon in ex:
                 counts[exon] = counts.get(exon,0) + c.n/float(len(ex))
             c.n = 0
@@ -227,7 +227,7 @@ def build_pileup(bamfile, assembly, gene_mapping, exon_mapping, trans_in_gene, e
     return counts
 
 @timer
-def save_results(ex, lines, conditions, group_ids, assembly, header, feature_type='features'):
+def save_results(ex, lines, conditions, group_ids, assembly, header, feature_type='features', logfile=sys.stdout):
     """Save results in a tab-delimited file, one line per feature, one column per run.
 
     :param ex: bein's execution.
@@ -285,7 +285,7 @@ def save_results(ex, lines, conditions, group_ids, assembly, header, feature_typ
                                              step="pileup", type="bw", groupId=group_ids[group], ucsc='1')
                 ex.add(filename+'.bw', description=description)
             except IOError: pass
-    print "  "+feature_type+": Done successfully."
+    logfile.write("  %s: Done successfully.\n" % feature_type); logfile.flush()
     return os.path.abspath(output_tab)
 
 @timer
@@ -440,8 +440,11 @@ def rnaseq_workflow(ex, job, assembly=None,
     :param via: (str) send job via 'local' or 'lsf'. ["lsf"]
     """
     if test:
+        via = 'local'
         logfile = sys.stdout
         debugfile = sys.stderr
+        repo_rpath = '/home/jdelafon/repos/bbcfutils/R/'
+        if os.path.exists(repo_rpath): rpath = repo_rpath
     group_names={}; group_ids={}; conditions=[]
     if assembly is None:
         assembly = genrep.Assembly(assembly=job.assembly_id)
@@ -474,7 +477,7 @@ def rnaseq_workflow(ex, job, assembly=None,
             for c,meta in firstbamtrack.chrmeta.iteritems():
                 tmap[c] = ('','',0,meta['length'],meta['length'],0,'') #(gene_id,gene_name,start,end,length,strand,chr)
             ftype = "Custom"
-        print >> logfile, "* Build pileups"; logfile.flush()
+        logfile.write("* Build pileups\n"); logfile.flush()
         pileups={}
         for gid,files in job.files.iteritems():
             k = 0
@@ -483,7 +486,7 @@ def rnaseq_workflow(ex, job, assembly=None,
                 cond = group_names[gid]+'.'+str(k)
                 pileup = build_custom_pileup(f['bam'],tmap,debugfile)
                 pileups[cond] = pileup.values()
-                print >> logfile, "  ....Pileup", cond, "done"; logfile.flush()
+                logfile.write("  ....Pileup %s done\n" % cond); logfile.flush()
         ids = pileup.keys()
         counts = asarray([pileups[cond] for cond in conditions], dtype=numpy.float_).T
         del pileup, pileups
@@ -500,7 +503,7 @@ def rnaseq_workflow(ex, job, assembly=None,
         differential_analysis(ex, trans_data, header, rpath, logfile, feature_type=ftype.lower(),via=via)
         return 0
 
-    print >> logfile, "* Load mappings"; logfile.flush()
+    logfile.write("* Load mappings\n"); logfile.flush()
     """ [0] gene_mapping is a dict ``{gene_id: (gene_name,start,end,length,strand,chromosome)}``
         [1] transcript_mapping is a dictionary ``{transcript_id: (gene_id,gene_name,start,end,length,strand,chromosome)}``
         [2] exon_mapping is a dictionary ``{exon_id: ([transcript_ids],gene_id,gene_name,start,end,strand,chromosome)}``
@@ -510,21 +513,21 @@ def rnaseq_workflow(ex, job, assembly=None,
 
     """ Map remaining reads to transcriptome """
     if unmapped:
-        print >> logfile, "* Align unmapped reads on transcriptome"; logfile.flush()
+        logfile.write("* Align unmapped reads on transcriptome\n"); logfile.flush()
         try: unmapped_fastq,additionals = align_unmapped(ex,job,assembly,group_names,
                                                          exon_mapping,transcript_mapping,exons_in_trans,via)
         except Exception as error:
-            print >> debugfile, error; debugfile.flush()
+            debugfile.write(error); debugfile.flush()
 
     """ Find splice junctions """
     if junctions:
-        print >> logfile, "* Search for splice junctions"; logfile.flush()
-        try: find_junctions(ex,job,assembly,logfile=logfile,via=via)
+        logfile.write("* Search for splice junctions\n"); logfile.flush()
+        try: find_junctions(ex,job,assembly,logfile=logfile,debugfile=debugfile,via=via)
         except Exception as error:
-            print >> debugfile, error; debugfile.flush()
+            debugfile.write(error); debugfile.flush()
 
     """ Build exon pileups from bam files """
-    print >> logfile, "* Build pileups"; logfile.flush()
+    logfile.write("* Build pileups\n"); logfile.flush()
     exon_pileups={}
     for gid,files in job.files.iteritems():
         k = 0
@@ -538,7 +541,7 @@ def rnaseq_workflow(ex, job, assembly=None,
                         exon_pileup[a] += x
                 additionals.pop(cond)
             exon_pileups[cond] = exon_pileup.values()
-            print >> logfile, "  ....Pileup", cond, "done"; logfile.flush()
+            logfile.write("  ....Pileup %s done\n" % cond); logfile.flush()
     exon_ids = asarray(exon_pileup.keys()) # same for all conds
     del exon_pileup
 
@@ -554,7 +557,7 @@ def rnaseq_workflow(ex, job, assembly=None,
 
     """ Print counts for exons """
     if "exons" in pileup_level:
-        print >> logfile, "* Get scores of exons"; logfile.flush()
+        logfile.write("* Get scores of exons\n"); logfile.flush()
         header = ["ExonID"] + hconds + ["Start","End","GeneID","GeneName","Strand","Chromosome"]
         lengths = asarray([exon_mapping[e][4]-exon_mapping[e][3] for e in exon_ids])
         exons_data = norm_and_format(ecounts_matrix,lengths,exon_mapping,(3,4,1,2,5,6),ids=exon_ids)
@@ -564,7 +567,7 @@ def rnaseq_workflow(ex, job, assembly=None,
 
     """ Get scores of genes from exons """
     if "genes" in pileup_level:
-        print >> logfile, "* Get scores of genes"; logfile.flush()
+        logfile.write("* Get scores of genes\n"); logfile.flush()
         header = ["GeneID"] + hconds + ["Start","End","GeneName","Strand","Chromosome"]
         gcounts = genes_expression(exon_ids, ecounts_matrix, gene_mapping, exon_mapping, ncond)
         lengths = asarray([gene_mapping[g][3] for g in gcounts.iterkeys()])
@@ -575,7 +578,7 @@ def rnaseq_workflow(ex, job, assembly=None,
 
     """ Get scores of transcripts from exons, using non-negative least-squares """
     if "transcripts" in pileup_level:
-        print >> logfile, "* Get scores of transcripts"; logfile.flush()
+        logfile.write("* Get scores of transcripts\n"); logfile.flush()
         header = ["TranscriptID"] + hconds + ["Start","End","GeneID","GeneName","Strand","Chromosome"]
         tcounts = transcripts_expression(exon_ids, ecounts_matrix, exon_mapping,
                    transcript_mapping, trans_in_gene, exons_in_trans, ncond, debugfile)
@@ -609,7 +612,7 @@ def clean_before_deseq(data, header, keep=0.6):
     if ncond >1:
         rownames = asarray(['%s|%s|%s|%s' % (x[0],x[-3],x[-2],x[-1]) for x in data])
         M = asarray([x[1+w*ncond:1+(w+1)*ncond] for x in data]) # *norm* columns
-        colnames = header[0:1]+header[1:1+ncond] # 'counts' column names
+        colnames = header[0:1]+header[1:1+ncond] # 'counts' column names, always
         # Remove 40% lowest counts
         sums = numpy.sum(M,1)
         filter = asarray([x[1] for x in sorted(zip(sums,range(len(sums))))])
@@ -637,9 +640,9 @@ def clean_deseq_output(filename):
             header[2] = 'baseMean'+contrast[0].strip()
             header[3] = 'baseMean'+contrast[1].strip()
             g.write('-'.join(contrast))
-            g.write('\t'.join(header[:8]))
+            g.write('\t'.join(header[:10]))
             for line in f:
-                line = line.split("\t")[1:9] # 1:: remove row ids and variances
+                line = line.split("\t")[1:11] # 1:: remove row ids
                 if not (line[2]=="0" and line[3]=="0"):
                     meanA = float(line[2]) or 0.5
                     meanB = float(line[3]) or 0.5
@@ -661,15 +664,18 @@ def differential_analysis(ex, data, header, rpath, logfile, feature_type, via='l
     if rpath and os.path.exists(rpath):
         res_file, ncond = clean_before_deseq(data, header)
         if ncond < 2:
-            print >> logfile,"  Skipped differential analysis: less than two groups.\n"; logfile.flush()
+            logfile.write("  Skipped differential analysis: less than two groups.\n"); logfile.flush()
         else:
-            print >> logfile, "  Differential analysis"; logfile.flush()
+            logfile.write("  Differential analysis\n"); logfile.flush()
+            logfile.write("  ....R path: '%s'\n" % rpath); logfile.flush()
         options = ['-s','tab']
         try:
             glmfile = run_glm.nonblocking(ex, rpath, res_file, options, via=via).wait()
-            #glmfile = run_glm(ex, rpath, res_file, options)
         except Exception as exc:
-            print >> logfile,"  Skipped differential analysis: %s \n" % exc; logfile.flush()
+            logfile.write("  Skipped differential analysis: %s \n" % exc); logfile.flush()
+            return
+        if not glmfile:
+            logfile.write("  ....Empty file.\n"); logfile.flush()
             return
         output_files = [f for f in os.listdir(ex.working_directory) if glmfile in f]
         for o in output_files:
@@ -716,7 +722,7 @@ def soapsplice(unmapped_R1, unmapped_R2, index, output=None, path_to_soapsplice=
 
 @timer
 def find_junctions(ex,job,assembly,soapsplice_index=None,path_to_soapsplice=None,soapsplice_options={},
-                   logfile=sys.stdout,via='lsf'):
+                   logfile=sys.stdout,debugfile=sys.stderr,via='lsf'):
     """
     Retrieve unmapped reads from a precedent mapping and runs SOAPsplice on them.
     Return the names of .bed and .sql tracks indicating the junctions positions, as well as
@@ -738,10 +744,10 @@ def find_junctions(ex,job,assembly,soapsplice_index=None,path_to_soapsplice=None
         for rid, run in group['runs'].iteritems():
             unmapped = job.files[gid][rid].get('unmapped_fastq')
             if not unmapped:
-                print >> logfile, "No unmapped reads found. Skip."; logfile.flush()
+                logfile.write("No unmapped reads found. Skip.\n"); logfile.flush()
                 continue
             elif not isinstance(unmapped,tuple):
-                print >> logfile, "Pair-end reads required. Skip."; logfile.flush()
+                logfile.write("Pair-end reads required. Skip.\n"); logfile.flush()
                 continue
             unmapped_fastq[gid].append(unmapped)
         R1 = cat(zip(*unmapped_fastq[gid])[0])
@@ -761,7 +767,7 @@ def find_junctions(ex,job,assembly,soapsplice_index=None,path_to_soapsplice=None
             add_and_index_bam(ex, bam, description=bam_descr)
             ex.add(bam, description=bam_descr)
         except Exception, e:
-            print >> logfile, "%s\n(Qualities may be in the wrong format, try with '-q 0'.)" % e; logfile.flush()
+            debugfile.write("%s\n(Qualities may be in the wrong format, try with '-q 0'.)\n" % e); logfile.flush()
         ex.add(bed, description=bed_descr)
 
 def convert_junc_file(filename, assembly):
