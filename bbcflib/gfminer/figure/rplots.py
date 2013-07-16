@@ -371,7 +371,18 @@ def genomeGraph(chrlist,SP=[],SM=[],F=[],options={},output=None,format='pdf',new
 n = length(chrlist)
 xscale = max(as.numeric(chrlist))
 yscale = median(yscale_chrom)
-ticks = seq(2e7,xscale,by=2e7)/binsize
+inMb = (xscale>1e7)
+if (inMb) {
+    unit = "Mb"
+    tstep = ceiling(xscale*1e-8)*10
+    ticks = seq(tstep*1e6,xscale,by=tstep*1e6)/binsize
+    labs = as.character(seq(tstep,xscale*1e-6,by=tstep))
+} else {
+    unit = "kb"
+    tstep = ceiling(xscale*1e-5)*10
+    ticks = seq(tstep*1e3,xscale,by=tstep*1e3)/binsize
+    labs = as.character(seq(tstep,xscale*1e-3,by=tstep))
+}
 par(cex.lab=1.5,las=2)
 plot(0,0,t='n',xlim=c(0,500),ylim=c(0,n+1),xlab='',ylab='',bty='n',xaxt='n',yaxt='n')
 abline(v=ticks,lty=2,col="grey")
@@ -396,9 +407,8 @@ for (chrom in names(chrlist)) {
     }
     n=n-1
 }
-labs = as.character(seq(20,xscale*1e-6,by=20))
 axis(side=3,at=ticks,labels=labs,cex.axis=.8,line=-2,las=1,lty=0)
-mtext("Mb",side=4,at=length(chrlist)+1.6,line=-1.5,las=1)
+mtext(unit,side=4,at=length(chrlist)+1.6,line=-1.5,las=1)
 colnb = colnb-1
 """)
     if 'legend' in kwargs:
