@@ -17,8 +17,8 @@ from numpy import array
 
 def list2r(L):
     """Transform a Python list into a string in R format: [1,2,'C'] -> "c(1,2,'C')" ."""
-    if  not isinstance(L,(list,tuple)): L = [L] # everything is a vector in R
-    LL = ["'%s'"%v if isinstance(v,str) else str(v) for v in L] # add quotes if elements are strings
+    if not isinstance(L,(list,tuple)): L = [L] # everything is a vector in R
+    LL = ["'%s'"%v if isinstance(v,basestring) else str(v) for v in L] # add quotes if elements are strings
     return "c(%s)" % ','.join(LL)
 
 def _begin(output,format,new,**kwargs):
