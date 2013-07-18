@@ -743,17 +743,17 @@ class GffTrack(TextTrack):
         TextTrack.__init__(self,path,**kwargs)
         def _gff_score(x=0.0):
             if str(x) == '.': return '.'
-            return float(x)
+            else: return float(x)
         def _gff_frame(x=0.0):
             if str(x) == '.': return '.'
-            return int(x)
+            else: return int(x)
         self.intypes.update({'score': _gff_score, 'frame': _gff_frame})
         self.outtypes.pop('score')
         if not(os.path.exists(self.path)): return
         rowlen = 9
         self.open()
         for row in self.filehandle:
-            row = row.strip(' \r\n'+self.separator)
+            row = row.strip(' \r\n'+(self.separator or '\t'))
             if not row: continue
             if row[0] in ['#','@']: continue
             if row[:7].split(self.separator)[:0] in ['track','browser']: continue
