@@ -246,21 +246,18 @@ pcor = function(x, y, M, X, ...) {
     par(usr=usr)
 }
 ppoints = function (x, y, col, ...) {
+    if (par("xlog")) x1 = log(x)
+    else x1 = x
+    if (par("ylog")) y1 = log(y)
+    else y1 = y
     colramp = colorRampPalette(c("lightgrey",col),interpolate="spline")
-    points(x,y,col=densCols(x,y,colramp=colramp),...)
+    points(x,y,col=densCols(x1,y1,colramp=colramp),...)
     abline(0,1,col='black',lty=2)
 }
 qpoints = function (x, y, col, ...) {
     colramp = colorRampPalette(c("lightgrey",col),interpolate="spline")
     qq = qqplot(x,y,plot.it=FALSE)
     points(qq$x,qq$y,...)
-}
-ptext = function(x=0.5, y=0.5, txt, cex, font) {
-    ylog = par("ylog")
-    xlog = par("xlog")
-    if (xlog) par(xlog=FALSE,ylog=FALSE)
-    text(x, y, txt, cex=cex, font=font)
-    par(ylog=ylog,xlog=xlog)
 }
 phist = function (x, col, ...) {
     usr = par("usr")
@@ -288,7 +285,7 @@ if (exists("X")) {
           diag.panel=pline1, lower.panel=pcor, upper.panel=pline2)
 } else {
     pairs(Mdata, labels, log='xy', col=col,
-          diag.panel=phist, lower.panel=qpoints, upper.panel=ppoints, text.panel=ptext)
+          diag.panel=phist, lower.panel=qpoints, upper.panel=ppoints)
 }
 """)
     _end("",last,**kwargs)
