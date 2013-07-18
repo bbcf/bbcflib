@@ -202,10 +202,9 @@ def run_deconv(ex, sql, peaks, chromosomes, read_extension, script_path, via = '
     outfiles['profile'] = output+"_deconv.sql"
     outbed = track(outfiles['peaks'], chrmeta=chromosomes,
                    fields=["start","end","name","score"])
-    info = {'datatype':'qualitative','len':'','mu':'','lambda':''}
+    info = {'datatype':'qualitative','len':'','mu':[],'lambda':[]}
     outwig = track(outfiles['profile'], chrmeta=chromosomes,
-                   fields=["start","end","score"],
-                   info={'datatype':'quantitative'})
+                   fields=["start","end","score"], info={'datatype':'quantitative'})
     outbed.open()
     outwig.open()
     for c,fout in deconv_out.iteritems():
@@ -213,9 +212,11 @@ def run_deconv(ex, sql, peaks, chromosomes, read_extension, script_path, via = '
         outbed.write(track(fout[1]).read(),chrom=c)
         outwig.write(track(fout[2]).read(),chrom=c)
         if len(fout) > 3:
-            info['len'] = fout[3].get('len','')
-            info['mu'] += ","+fout[3].get('mu','')
-            info['lambda'] += ","+fout[3].get('lambda','')
+            info['len'] = int(fout[3].get('len',0))
+            info['mu'].append("%.1f"%fout[3].get('mu',0))
+            info['lambda'].append("%.1f"%fout[3].get('lambda',0))
+    info['mu'] = ",".join(info['mu'])
+    info['lambda'] = ",".join(info['lambda'])
     outbed._fix_attributes(info)
     outbed.close()
     outwig.close()
