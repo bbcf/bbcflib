@@ -709,8 +709,8 @@ class WigTrack(TextTrack):
             if rowdata[1] >= 0:
                 yield tuple(self._check_type(rowdata[index_list[n]],f)
                             for n,f in enumerate(fields))
-        except ValueError:
-            raise ValueError("Bad line in file %s:\n %s\n" % (self.path,row))
+        except ValueError as ve:
+            raise ValueError("Bad line in file %s:\n %s%s\n" % (self.path,row,ve))
         self.close()
         if fixedStep is None:
             raise IOError("Please specify 'fixedStep' or 'variableStep'.")
