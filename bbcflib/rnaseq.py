@@ -141,8 +141,6 @@ def fetch_mappings(assembly):
     * [3] trans_in_gene is a dict ``{gene_id: [IDs of the transcripts it contains]}``
     * [4] exons_in_trans is a dict ``{transcript_id: [IDs of the exons it contains]}``
 
-    'Lenghts' are always the sum of the lengths of the exons in the gene/transcript.
-
     :param path_or_assembly_id: can be a numeric or nominal ID for GenRep
     (e.g. 11, 76 or 'hg19' for H.Sapiens), or a path to a file containing a
     pickle object which is read to get the mapping.
@@ -188,6 +186,27 @@ def build_pileup(bamfile, assembly, gene_mapping, exon_mapping, trans_in_gene, e
     :type bamfile: string
     :type exons: list
     """
+    class Counter(object):
+        def __init__(self):
+            self.n = 0 # total number of reads
+            self.start = 0 # exon start
+            self.counts = [] # vector of counts per non-zero position
+        def __call__(self, alignment):
+            NH = [1.0/t[1] for t in alignment.tags if t[0]=='NH']
+            self.n += NH
+            self.counts[alignment.pos-self.start] += NH
+        @property
+        def remove_duplicates(self):
+            """Fetches all reads mapped to a transcript, checks if there are mapping positions
+            where the number of reads is more than N times the average for this gene, with themselves
+            removed. If there are, shrink them to the same level as the others."""
+            Nsigma = 50 # arbitrary
+            argmax = self.counts.index(max(self.counts))
+            average = sum(self.counts[:argmax]+self.counts[argmax+1:]) / (len(self.counts)-1)
+            variance = average # Poisson approx
+            limit = round(average+Nsigma*(variance**0.5)+0.5) # avg + N * stdev
+            self.counts = [c if c <= limit else average for c in self.counts]
+
     counts = {}
     try: sam = pysam.Samfile(bamfile, 'rb')
     except ValueError: sam = pysam.Samfile(bamfile,'r')
@@ -215,13 +234,16 @@ def build_pileup(bamfile, assembly, gene_mapping, exon_mapping, trans_in_gene, e
                 start = e[1]-ostart; end = e[2]-ostart
             if not ref: continue
             try:
-                #The callback (c.n += 1) is executed for each alignment in a region
+                #The callback is executed for each alignment in a region
+                c.n = 0
+                c.counts = [0]*(end-start+1)
+                c.start = start
                 sam.fetch(ref,start,end, callback=c)
+                #c.remove_duplicates()
             except ValueError,ve: # unknown reference
                 debugfile.write(ve); debugfile.flush()
             for exon in ex:
                 counts[exon] = counts.get(exon,0) + c.n/float(len(ex))
-            c.n = 0
     sam.close()
     return counts
 
