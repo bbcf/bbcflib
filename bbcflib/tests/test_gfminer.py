@@ -2,17 +2,15 @@
 import math
 
 # Internal modules #
-from bbcflib import track, genrep
-from bbcflib.track import FeatureStream as fstream
+from bbcflib import genrep
+from bbcflib.track import track, FeatureStream as fstream
 from bbcflib.gfminer.common import sentinelize, copy, select, reorder, unroll, sorted_stream
 from bbcflib.gfminer.common import shuffled, fusion, cobble, ordered, apply, duplicate
 from bbcflib.gfminer.common import concat_fields, split_field, map_chromosomes, score_threshold
-from bbcflib.gfminer.stream.annotate import getNearestFeature
-from bbcflib.gfminer.stream.intervals import concatenate, neighborhood, segment_features, intersect, selection
-from bbcflib.gfminer.stream.intervals import exclude, require, disjunction, intersection, union, combine, overlap
-from bbcflib.gfminer.stream.scores import merge_scores, score_by_feature, window_smoothing, filter_scores, normalize
-from bbcflib.gfminer.numeric.regions import feature_matrix, summed_feature_matrix
-from bbcflib.gfminer.numeric.signal import _normalize, correlation
+from bbcflib.gfminer.stream import getNearestFeature, concatenate, neighborhood, segment_features, intersect
+from bbcflib.gfminer.stream import selection, exclude, require, disjunction, intersection, union, combine
+from bbcflib.gfminer.stream import overlap, merge_scores, score_by_feature, window_smoothing, filter_scores, normalize
+from bbcflib.gfminer.numeric import feature_matrix, summed_feature_matrix, vec_reduce, correlation
 
 # Other modules #
 import numpy
@@ -599,7 +597,7 @@ class Test_Signal(unittest.TestCase):
 
     def test__normalize(self):
         x = [1,2,3,4,5] # mean=15/5=3, var=(1/5)*(4+1+0+1+4)=2
-        assert_almost_equal(_normalize(x), numpy.array([-2,-1,0,1,2])*(1/math.sqrt(2)))
+        assert_almost_equal(vec_reduce(x), numpy.array([-2,-1,0,1,2])*(1/math.sqrt(2)))
 
     def test_correlation(self):
         numpy.set_printoptions(precision=3,suppress=True)
@@ -617,8 +615,8 @@ class Test_Signal(unittest.TestCase):
         # Make tracks out of them and compute cross-correlation with our own function
         X = [('chr',k,k+1,s) for k,s in enumerate(x)]
         Y = [('chr',k,k+1,s) for k,s in enumerate(y)]
-        X = track.FeatureStream(iter(X),fields=['chr','start','end','score'])
-        Y = track.FeatureStream(iter(Y),fields=['chr','start','end','score'])
+        X = fstream(iter(X),fields=['chr','start','end','score'])
+        Y = fstream(iter(Y),fields=['chr','start','end','score'])
         corr = correlation([X,Y], regions=(0,N))#, limits=[-N+1,N-1])
 
         # Compute cross-correlation "by hand" and using numpy.correlate(mode='valid')

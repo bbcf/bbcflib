@@ -19,7 +19,7 @@ def score_array(trackList,fields=['score']):
         nums = hstack((nums,[dico[k] for k in labs]))
     return (nums,labs)
 
-def _normalize(x):
+def vec_reduce(x):
     """Substracts the average and divides by the standard deviation."""
     x = asarray(x)
     if any(abs(x-x[0])>1e-6):
@@ -74,7 +74,7 @@ def correlation(trackList, regions, limits=(-1000,1000), with_acf=False):
         _reg = []
     else:
         x = [array([s[0] for s in unroll(t,regions)]) for t in trackList]
-    x = [_normalize(t) for t in x]
+    x = [vec_reduce(t) for t in x]
     if limits[1]-limits[0] > 2*len(x[0]):
         limits = (-len(x[0])+1,len(x[0])-1)
     N = len(x[0])+limits[1]-limits[0]-1

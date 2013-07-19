@@ -61,13 +61,25 @@ class TextTrack(Track):
         kwargs['format'] = kwargs.get("format",'txt')
         self.separator = kwargs.get('separator',"\t")
         self.header = kwargs.get('header',None)
-        Track.__init__(self,path,**kwargs) # super(TextTrack, self).__init__(self,path,**kwargs)
+        Track.__init__(self,path,**kwargs)
         self.fields = self._get_fields(kwargs.get('fields'))
         self.intypes = dict((k,v) for k,v in _in_types.iteritems() if k in self.fields)
         if isinstance(kwargs.get('intypes'),dict): self.intypes.update(kwargs["intypes"])
         self.outtypes = dict((k,v) for k,v in _out_types.iteritems() if k in self.fields)
         if isinstance(kwargs.get('outtypes'),dict): self.outtypes.update(kwargs["outtypes"])
+        self.separator = self._check_sep()
         self.written = False
+
+    def _check_sep(self):
+        if self.separator is None: return None
+        self.open('read')
+        for row in self.filehandle:
+            if not row: break
+            if self._skip_header(row): continue
+            if row.count(self.separator) > 1: return self.separator
+            if row.count(" ") > 1: return " "
+            if row.count("\t") > 1: return "\t"
+        return self.separator
 
     def _get_fields(self,fields):
         """R-like fields guessing according if `header=True` is specified.
@@ -112,14 +124,14 @@ class TextTrack(Track):
         self.open()
         _info = {}
         for row in self.filehandle:
-            if row[:7]=="browser" or row[0]=="#": continue
+            if row[:7]=="browser" or row[0] in ['#','@']: continue
             if row[:5]=="track":
                 tok = row[5:].strip().split("=")
                 key = tok.pop(0).strip("\'\" ")
                 val = tok.pop().strip("\'\" ")
                 for t in tok:
-                    if t[0] in ["\'\""]:
-                        p = re.search(t[0]+r'(.*)'+t[0]+r'\s+(\S)',t)
+                    if t[0] in ["'",'"']:
+                        p = re.search(t[0]+r'(.*)'+t[0]+r'\s+(\S+)',t)
                     else:
                         p = re.search(r'(\S+)\s+(\S+)',t)
                     if p:
@@ -229,35 +241,27 @@ class TextTrack(Track):
     def close(self):
         if self.filehandle: self.filehandle.close()
 
-    def _skip_header(self,header):
+    def _skip_header(self,row):
         """If *header* is an int N, skip the first N lines. If it is a string or a list of strings,
         skip the first consecutive lines starting with strings in *header*. If it is None, skips
         consecutive lines starting with '#','@','track','browser'. If `True`, skips one.
         If `False`, does nothing."""
-        p = 0
-        if isinstance(header,str):
-            header = [header]
-        if header is True: # skip 1 line
-            self.filehandle.readline()
-            p = self.filehandle.tell()
-        elif isinstance(header, int): # skip N lines
-            for k in range(header):
-                row = self.filehandle.readline()
-                p = self.filehandle.tell()
-        elif isinstance(header,(list,tuple)): # skip all lines starting with *str*
-            row = header[0]
-            for h in header:
-                while row.startswith(h):
-                    p = self.filehandle.tell()
-                    row = self.filehandle.readline()
-        elif header == False: # do not skip
-            return
+        if isinstance(self.header,basestring):
+            self.header = [self.header]
+        if self.header is True: # skip 1 line
+            self.header = False
+            return True
+        elif isinstance(self.header, int): # skip N lines
+            if self.header < 1: return False
+            self.header -= 1
+            return True
+        elif isinstance(self.header,(list,tuple)): # skip all lines starting with *str*
+            return any(row.startswith(h) for h in self.header+['#','@'])
         else: # skip common track info lines
-            row = '#'
-            while row and row[:7].split(self.separator)[0] in ['#','@','track','browser']:
-                p = self.filehandle.tell()
-                row = self.filehandle.readline().strip(' \n\r'+(self.separator or '\t'))
-        self.filehandle.seek(p)
+            if row[0] in ['#','@'] or row[:5]=='track' or row[:7]=='browser': 
+                return True
+        return False
+
 
     def _read(self, fields, index_list, selection, skip):
         self.open('read')
@@ -265,16 +269,15 @@ class TextTrack(Track):
             chr_toskip = self._init_skip(selection)
             next_toskip = chr_toskip.next()
         fstart = fend = 0
-        self._skip_header(self.header)
+        _head = self.header
         try:
             while 1:
                 fstart = self.filehandle.tell()
                 row = self.filehandle.readline()
                 if not row: break
-                if row[0] in ['#','@']: continue
+                if self._skip_header(row): continue
                 splitrow = [s.strip() for s in row.split(self.separator)]
                 if not any(splitrow): continue
-                if row[:5]=='track' or row[:7]=='browser': continue
                 if selection:
                     if skip:
                         fstart,fend,next_toskip = self._skip(fstart,next_toskip,chr_toskip)
@@ -287,6 +290,7 @@ class TextTrack(Track):
         except (ValueError,IndexError) as ve:
             raise ValueError("Bad line in file %s:\n %s%s\n" % (self.path,row,ve))
         self.close()
+        self.header = _head
 
     def read(self, selection=None, fields=None, skip=False, **kw):
         """
@@ -758,8 +762,7 @@ class GffTrack(TextTrack):
         for row in self.filehandle:
             row = row.strip(tostrip)
             if not row: continue
-            if row[0] in ['#','@']: continue
-            if row[:7]=="browser" or row[:5]=="track": continue
+            if row[0] in ['#','@'] or row[:5]=='track' or row[:7]=='browser': continue 
             rowlen = len(row.split(self.separator))
             break
         self.close()
