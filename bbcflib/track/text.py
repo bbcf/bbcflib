@@ -67,7 +67,7 @@ class TextTrack(Track):
         if isinstance(kwargs.get('intypes'),dict): self.intypes.update(kwargs["intypes"])
         self.outtypes = dict((k,v) for k,v in _out_types.iteritems() if k in self.fields)
         if isinstance(kwargs.get('outtypes'),dict): self.outtypes.update(kwargs["outtypes"])
-        self.separator = self._check_sep()
+        if os.path.exists(self.path): self.separator = self._check_sep()
         self.written = False
 
     def _check_sep(self):
