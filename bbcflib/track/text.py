@@ -59,7 +59,7 @@ class TextTrack(Track):
     """
     def __init__(self,path,**kwargs):
         kwargs['format'] = kwargs.get("format",'txt')
-        self.separator = kwargs.get('separator')#,"\t")
+        self.separator = kwargs.get('separator',"\t")
         self.header = kwargs.get('header',None)
         Track.__init__(self,path,**kwargs) # super(TextTrack, self).__init__(self,path,**kwargs)
         self.fields = self._get_fields(kwargs.get('fields'))
@@ -351,6 +351,7 @@ class TextTrack(Track):
         """
         if self.written and mode=='write':
             mode='append'
+        initial_separator = self.separator
         if self.separator is None:
             self.separator = "\t"
         if hasattr(source, 'fields'):
@@ -389,6 +390,7 @@ class TextTrack(Track):
                 row = row[:eidx]+(end,)+row[(eidx+1):]
             self.filehandle.write(self._format_fields(voidvec,row,srcl,trgl)+"\n")
         self.written = True
+        self.separator = initial_separator
         self.close()
 
     def make_header(self, *args, **kw):
@@ -752,11 +754,12 @@ class GffTrack(TextTrack):
         if not(os.path.exists(self.path)): return
         rowlen = 9
         self.open()
+        tostrip = ' \r\n'+(self.separator or '\t')
         for row in self.filehandle:
-            row = row.strip(' \r\n'+(self.separator or '\t'))
+            row = row.strip(tostrip)
             if not row: continue
             if row[0] in ['#','@']: continue
-            if row[:7].split(self.separator)[:0] in ['track','browser']: continue
+            if row[:7]=="browser" or row[:5]=="track": continue
             rowlen = len(row.split(self.separator))
             break
         self.close()
