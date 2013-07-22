@@ -109,8 +109,10 @@ class Workflow(object):
 ##########################  EXECUTION  #################################
 ########################################################################
 ##### Logging
-        self.logfile = open(self.opts.key+".log",'w')
-        self.debugfile = open(self.opts.key+".debug",'w')
+        logfile_name = os.path.abspath(self.opts.key+".log")
+        debugfile_name = os.path.abspath(self.opts.key+".debug")
+        self.logfile = open(logfile_name,'w')
+        self.debugfile = open(debugfile_name,'w')
         self.debug_write(json.dumps(self.globals)+"\n")
         with execution( M, description=self.opts.key,
                         remote_working_directory=self.opts.wdir ) as ex:
@@ -129,6 +131,14 @@ class Workflow(object):
 ##### Run workflow
             self.log_write("Starting workflow.")
             self.main_func(ex,**self.main_args)
+##### Add logs to the LIMS in admin mode
+            self.logfile.flush()
+            self.debugfile.flush()
+            log_desc = set_file_descr('logfile.txt', step='log', type='txt', view=0)
+            debug_desc = set_file_descr('debug.txt', step='log', type='txt', view=0)
+            ex.add(os.path.join(logfile_name), description=log_desc)
+            ex.add(os.path.join(debugfile_name), description=debug_desc)
+##### Create GDV project
             if self.job.options['create_gdv_project']: self.gdv_create(ex)
 
 ########################################################################
