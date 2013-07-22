@@ -524,7 +524,7 @@ def rnaseq_workflow(ex, job, assembly=None,
         hconds = ["counts."+c for c in conditions] + ["norm."+c for c in conditions] + ["rpk."+c for c in conditions]
         header = ["CustomID"] + hconds + ["Start","End","GeneID","GeneName","Strand","Chromosome"]
         trans_file = save_results(ex,trans_data,conditions,group_ids,assembly,header=header,feature_type=ftype)
-        differential_analysis(ex, trans_data, header, rpath, logfile, feature_type=ftype.lower(),via=via)
+        differential_analysis(ex, trans_data, header, rpath, logfile, debugfile, feature_type=ftype.lower(),via=via)
         return 0
 
     logfile.write("* Load mappings\n"); logfile.flush()
@@ -586,7 +586,7 @@ def rnaseq_workflow(ex, job, assembly=None,
         lengths = asarray([exon_mapping[e][4]-exon_mapping[e][3] for e in exon_ids])
         exons_data = norm_and_format(ecounts_matrix,lengths,exon_mapping,(3,4,1,2,5,6),ids=exon_ids)
         exons_file = save_results(ex, exons_data, conditions, group_ids, assembly, header=header, feature_type="EXONS")
-        differential_analysis(ex, exons_data, header, rpath, logfile, feature_type='exons',via=via)
+        differential_analysis(ex, exons_data, header, rpath, logfile, debugfile, feature_type='exons',via=via)
         del exons_data
 
     """ Get scores of genes from exons """
@@ -597,7 +597,7 @@ def rnaseq_workflow(ex, job, assembly=None,
         lengths = asarray([gene_mapping[g][3] for g in gcounts.iterkeys()])
         genes_data = norm_and_format(gcounts,lengths,gene_mapping,(1,2,0,4,5))
         genes_file = save_results(ex, genes_data, conditions, group_ids, assembly, header=header, feature_type="GENES")
-        differential_analysis(ex, genes_data, header, rpath, logfile, feature_type='genes',via=via)
+        differential_analysis(ex, genes_data, header, rpath, logfile, debugfile, feature_type='genes',via=via)
         del genes_data
 
     """ Get scores of transcripts from exons, using non-negative least-squares """
@@ -609,7 +609,7 @@ def rnaseq_workflow(ex, job, assembly=None,
         lengths = asarray([transcript_mapping[t][4] for t in tcounts.iterkeys()])
         trans_data = norm_and_format(tcounts,lengths,transcript_mapping,(2,3,0,1,5,6))
         trans_file = save_results(ex, trans_data, conditions, group_ids, assembly, header=header, feature_type="TRANSCRIPTS")
-        differential_analysis(ex, trans_data, header, rpath, logfile, feature_type='transcripts',via=via)
+        differential_analysis(ex, trans_data, header, rpath, logfile, debugfile, feature_type='transcripts',via=via)
         del trans_data
     return 0
 
@@ -678,7 +678,7 @@ def clean_deseq_output(filename):
     return filename_clean
 
 @timer
-def differential_analysis(ex, data, header, rpath, logfile, feature_type, via='lsf'):
+def differential_analysis(ex, data, header, rpath, logfile, debugfile, feature_type, via='lsf'):
     """For each file in *result*, launch an analysis of differential expression on the count
     values, and saves the output in the MiniLIMS.
 
@@ -691,7 +691,7 @@ def differential_analysis(ex, data, header, rpath, logfile, feature_type, via='l
             logfile.write("  Skipped differential analysis: less than two groups.\n"); logfile.flush()
         else:
             logfile.write("  Differential analysis\n"); logfile.flush()
-            logfile.write("  ....R path: '%s'\n" % rpath); logfile.flush()
+            debugfile.write("DE: R path: '%s'\n" % rpath); logfile.flush()
         options = ['-s','tab']
         try:
             glmfile = run_glm.nonblocking(ex, rpath, res_file, options, via=via).wait()
@@ -706,6 +706,7 @@ def differential_analysis(ex, data, header, rpath, logfile, feature_type, via='l
             desc = set_file_descr(feature_type+"_differential"+o.split(glmfile)[1]+".txt", step='stats', type='txt')
             o = clean_deseq_output(o)
             ex.add(o, description=desc)
+        logfile.write("  ....done.\n"); logfile.flush()
 
 
 #-------------------------- SPLICE JUNCTIONS SEARCH ----------------------------#
