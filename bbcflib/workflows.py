@@ -16,7 +16,8 @@ from bein.util import use_pickle, add_pickle
 from bein import execution, MiniLIMS
 
 ###DEFAULTS VALUES
-_usage = "run_htsstation.py module [-h] [-w wdir] [-k job_key] [-u via] [-c config_file] "
+_usage = "run_htsstation.py module [-h] [-w wdir] [-k job_key] [-u via] [-c config_file] \
+                                   [--basepath minilims_path]"
 _description = "High-throughput sequencing data analysis workflows."
 _basepath = "/archive/epfl/bbcf/data/htsstation"
 _via = "lsf"
