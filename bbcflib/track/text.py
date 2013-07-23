@@ -258,7 +258,7 @@ class TextTrack(Track):
         elif isinstance(self.header,(list,tuple)): # skip all lines starting with *str*
             return any(row.startswith(h) for h in self.header+['#','@'])
         else: # skip common track info lines
-            if row[0] in ['#','@'] or row[:5]=='track' or row[:7]=='browser': 
+            if row[0] in ['#','@'] or row[:5]=='track' or row[:7]=='browser':
                 return True
         return False
 
@@ -527,9 +527,15 @@ class SgaTrack(TextTrack):
 
     Fields are::
 
-        ['chr','start','end','name','strand','score']
+        ['chr','start','end','name','strand','score'] (when read)
+
+        ['chr','name','end','strand','score']         (when written)
 
     Chromosome names are automatically converted to refseq ids if the assembly attribute is specified.
+
+    The SGA format is NOT made to store every nonzero-score position of the genome in a file,
+    but is used only in Philippe Bucher's lab as a useless bed-like format to locate peak centers,
+    saving one column of space at the expense of compatibility.
     """
     def __init__(self,path,**kwargs):
         kwargs['format'] = 'sga'
@@ -540,7 +546,8 @@ class SgaTrack(TextTrack):
             if num > 0: return '+'
             if num < 0: return '-'
             return '0'
-        def _format_score(x=0.0): return "%i" % x
+        def _format_score(x=0.0):
+            return "%i" % (x+0.5,) # round to upper int
         kwargs['outtypes'] = {'strand': _sga_strand, 'score': _format_score}
         TextTrack.__init__(self,path,**kwargs)
 
@@ -550,13 +557,7 @@ class SgaTrack(TextTrack):
             chr_toskip = self._init_skip(selection)
             next_toskip = chr_toskip.next()
         fstart = fend = 0
-        rowdata = {'+': ['',-1,-1,'','+',''], # chr,start,end,name,strand,score
-                   '-': ['',-1,-1,'','-',''],
-                   '0': ['',-1,-1,'','.',''],
-                    1: ['',-1,-1,'','+',''],
-                   -1: ['',-1,-1,'','-',''],
-                    0: ['',-1,-1,'','.','']
-                  }
+        translate_strand = {'+':1, '-':-1, '0':0, 1:1, -1:-1, 0:0}
         sga_fields = ['chr','name','end','strand','score']
         while True:
             fstart = self.filehandle.tell()
@@ -566,49 +567,28 @@ class SgaTrack(TextTrack):
             splitrow = [self._check_type(s.strip(),sga_fields[n])
                         for n,s in enumerate(row.split(self.separator))]
             if not any(splitrow): continue
-            yieldit = True
             chrom,name,pos,strand,score = splitrow
-            if float(score) == 0: continue
-            # if pos is the last pos +1 and other info is the same, just increase pos, not yield
-            if pos-1 == rowdata[strand][2] and \
-               score == rowdata[strand][5] and \
-               name == rowdata[strand][3] and \
-               chrom == rowdata[strand][0]:
-                rowdata[strand][2] = pos
-                yieldit = False
+            strand = translate_strand[strand]
+            rowdata = (chrom,pos-1,pos,name,strand,score)
+            yield tuple(rowdata[ind] for ind in index_list)
             if selection:
                 if skip:
                     fstart,fend,next_toskip = self._skip(fstart,next_toskip,chr_toskip)
                     self._index_chr(fstart,fend,splitrow)
-                if not any(self._select_values(rowdata[strand],s) for s in selection):
+                if not any(self._select_values(rowdata,s) for s in selection):
                     continue
             fstart = fend
-            if not(yieldit): continue
-            if rowdata[strand][1]>=0:
-                yield tuple(rowdata[strand][ind] for ind in index_list)
-            rowdata[strand][0] = chrom
-            rowdata[strand][1] = pos-1
-            rowdata[strand][2] = pos
-            rowdata[strand][3] = name
-            rowdata[strand][5] = score
-        for rd in rowdata.values():
-            if rd[1]>=0:
-                yield tuple(rd[ind] for ind in index_list)
 
     def _format_fields(self,vec,row,source_list,target_list):
         rowres = ['',0,0,'',0,0]
         for k,n in enumerate(source_list):
             rowres[target_list[k]] = row[n]
         rowres[0] = self.chrmeta.get(rowres[0],{}).get('ac',rowres[0]) # '3075_NC_000001.10'-like chr names
-        feat = []
-        for pos in range(int(rowres[1]),int(rowres[2])):
-            x = [rowres[0],rowres[3] or '--',
-                 self.outtypes.get("start",str)(pos+1),
-                 self.outtypes.get("strand",str)(rowres[4]),
-                 self.outtypes.get("score",str)(rowres[5])]
-            if x[4] == '0': continue
-            feat.append(self.separator.join(x))
-        return "\n".join(feat)
+        x = [rowres[0],rowres[3] or '--',                  # chrom, name
+             self.outtypes.get("start",str)(rowres[1]+1),  # end = start+1
+             self.outtypes.get("strand",str)(rowres[4]),
+             self.outtypes.get("score",str)(rowres[5])]
+        return self.separator.join(x)
 
 ################################### Wig ############################################
 
@@ -762,7 +742,7 @@ class GffTrack(TextTrack):
         for row in self.filehandle:
             row = row.strip(tostrip)
             if not row: continue
-            if row[0] in ['#','@'] or row[:5]=='track' or row[:7]=='browser': continue 
+            if row[0] in ['#','@'] or row[:5]=='track' or row[:7]=='browser': continue
             rowlen = len(row.split(self.separator))
             break
         self.close()
