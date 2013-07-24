@@ -73,12 +73,18 @@ class TextTrack(Track):
     def _check_sep(self):
         if self.separator is None: return None
         self.open('read')
+        _h = self.header
         for row in self.filehandle:
             if not row: break
             if self._skip_header(row): continue
-            if row.count(self.separator) > 1: return self.separator
-            if row.count(" ") > 1: return " "
-            if row.count("\t") > 1: return "\t"
+            if row.count(self.separator) > 1: break
+            if row.count(" ") > 1: 
+                self.separator = " "
+                break
+            if row.count("\t") > 1: 
+                self.separator = "\t"
+                break
+        self.header = _h
         return self.separator
 
     def _get_fields(self,fields):
