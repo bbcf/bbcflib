@@ -580,14 +580,20 @@ class SgaTrack(TextTrack):
             yield tuple(rowdata[ind] for ind in index_list)
 
     def _format_fields(self,vec,row,source_list,target_list):
+        """'Bucher' conversion expecting the source to be a result of `bam2wig -q 1`.
+        Each entry represents a read start."""
         rowres = ['',0,0,'',0,0]
         for k,n in enumerate(source_list):
             rowres[target_list[k]] = row[n]
-        x = [rowres[0],rowres[3] or '--',                  # chrom, name
-             self.outtypes.get("start",str)(rowres[1]+1),  # end = start+1
-             self.outtypes.get("strand",str)(rowres[4]),
-             self.outtypes.get("score",str)(rowres[5])]
-        return self.separator.join(x)
+        feat = []
+        for pos in range(int(rowres[1]),int(rowres[2])):
+            x = [rowres[0],rowres[3] or '--',
+                 self.outtypes.get("start",str)(pos+1),
+                 self.outtypes.get("strand",str)(rowres[4]),
+                 self.outtypes.get("score",str)(rowres[5])]
+            if x[4] == '0': continue
+            feat.append(self.separator.join(x))
+        return "\n".join(feat)
 
 ################################### Wig ############################################
 

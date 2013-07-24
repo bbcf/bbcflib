@@ -253,17 +253,17 @@ class Test_Header(unittest.TestCase):
     def test_skip_header(self):
         t = track(self.bed) # skips the first line by default (header=None)
         L1 = len([line for line in t.read()])
-        t = track(self.bed, header=None)
+        t = track(self.bed, header=None) # same
         L11 = len([line for line in t.read()])
-        t = track(self.bed, header=True)
+        t = track(self.bed, header=True) # skips the first line
         L111 = len([line for line in t.read()])
-        t = track(self.bed, header=5)
+        t = track(self.bed, header=5) # skips 5 lines
         L2 = len([line for line in t.read()])
-        t = track(self.bed, header='track')
+        t = track(self.bed, header='track') # skips lines starting with 'track'
         L3 = len([line for line in t.read()])
-        t = track(self.bed, header=['track','chr'])
+        t = track(self.bed, header=['track','chr']) # skips lines starting with 'track' or 'chr'
         L4 = len([line for line in t.read()])
-        t = track(self.bed, header=['track','chrII'])
+        t = track(self.bed, header=['track','chrII']) # skips lines starting with 'track' or 'chrII'
         L5 = len([line for line in t.read()])
         self.assertEqual(L1,L11)
         self.assertEqual(L1,L111)
