@@ -531,7 +531,7 @@ class SgaTrack(TextTrack):
 
         ['chr','name','end','strand','score']         (when written)
 
-    Chromosome names are automatically converted to refseq ids if the assembly attribute is specified.
+    Scores are rounded to the upper integer when written (but are supposed to be integer originally).
 
     The SGA format is NOT made to store every nonzero-score position of the genome in a file,
     but is used only in Philippe Bucher's lab as a useless bed-like format to locate peak centers,
@@ -567,23 +567,22 @@ class SgaTrack(TextTrack):
             splitrow = [self._check_type(s.strip(),sga_fields[n])
                         for n,s in enumerate(row.split(self.separator))]
             if not any(splitrow): continue
-            chrom,name,pos,strand,score = splitrow
-            strand = translate_strand[strand]
-            rowdata = (chrom,pos-1,pos,name,strand,score)
-            yield tuple(rowdata[ind] for ind in index_list)
             if selection:
                 if skip:
                     fstart,fend,next_toskip = self._skip(fstart,next_toskip,chr_toskip)
                     self._index_chr(fstart,fend,splitrow)
-                if not any(self._select_values(rowdata,s) for s in selection):
+                if not any(self._select_values(splitrow,s) for s in selection):
                     continue
             fstart = fend
+            chrom,name,pos,strand,score = splitrow
+            strand = translate_strand[strand]
+            rowdata = (chrom,pos-1,pos,name,strand,score)
+            yield tuple(rowdata[ind] for ind in index_list)
 
     def _format_fields(self,vec,row,source_list,target_list):
         rowres = ['',0,0,'',0,0]
         for k,n in enumerate(source_list):
             rowres[target_list[k]] = row[n]
-        rowres[0] = self.chrmeta.get(rowres[0],{}).get('ac',rowres[0]) # '3075_NC_000001.10'-like chr names
         x = [rowres[0],rowres[3] or '--',                  # chrom, name
              self.outtypes.get("start",str)(rowres[1]+1),  # end = start+1
              self.outtypes.get("strand",str)(rowres[4]),
