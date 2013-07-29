@@ -150,7 +150,7 @@ def createLibrary(ex, assembly_or_fasta, params, url=GlobalHtsUrl, via='local'):
     """
     Main call to create the library
     """
-    if len(params['primary'])<2 or len(params['secondary'])<2:
+    if len(params['primary'])<2:
         print('Some parameters are missing, cannot create the library')
         print('primary='+params['primary']+" ; "+'secondary='+params['secondary'])
         return [None,None,None,None]
