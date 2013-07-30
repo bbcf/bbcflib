@@ -268,7 +268,7 @@ class TextTrack(Track):
                 row = self.filehandle.readline()
         self.filehandle.seek(p)
         row = "#"
-        while row[0] in ['#','@'] or row[:5]=='track' or row[:7]=='browser':
+        while row and (row[0] in ['#','@'] or row[:5]=='track' or row[:7]=='browser'):
             p = self.filehandle.tell()
             row = self.filehandle.readline()
         self.filehandle.seek(p)
