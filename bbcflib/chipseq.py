@@ -213,8 +213,8 @@ def run_deconv(ex, sql, peaks, chromosomes, read_extension, script_path, via = '
         outwig.write(track(fout[2]).read(),chrom=c)
         if len(fout) > 3:
             info['len'] = int(fout[3].get('len',0))
-            info['mu'].append("%.1f"%fout[3].get('mu',0))
-            info['lambda'].append("%.1f"%fout[3].get('lambda',0))
+            info['mu'].append("%.1f"%float(fout[3].get('mu',0)))
+            info['lambda'].append("%.1f"%float(fout[3].get('lambda',0)))
     info['mu'] = ",".join(info['mu'])
     info['lambda'] = ",".join(info['lambda'])
     outbed._fix_attributes(info)
