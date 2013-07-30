@@ -90,13 +90,18 @@ arch_basepath = "/archive/epfl/bbcf/data/"
 ###############
 @program
 def fastq_dump(filename, options=None):
-    """ Binds ``fastq-dump`` to convert *sra* (short reads archive) to *fastq* format.
+    """ 
+    Binds ``fastq-dump`` to convert *sra* (short reads archive) to *fastq* format.
+    If ``--split-files`` is given as option, the return value is a pair *(read_1.fastq,read_2.fastq)*.
     """
-    if not(isinstance(options,list)): options = []
+    if not isinstance(options,list): options = []
     suffix = '.fastq'
     if "--gzip" in options: suffix += '.gz'
     fastq = re.sub(".lite","",re.sub(".sra","",os.path.basename(filename)))
-    fastq += suffix
+    if "--split-files" in options:
+        fastq = (fastq+"_1"+suffix,fastq+"_2"+suffix)
+    else:
+        fastq += suffix
     return {'arguments': ["fastq-dump"]+options+[filename],'return_value': fastq }
 
 @program
@@ -193,7 +198,8 @@ def get_fastq_files( ex, job, set_seed_length=True ):
             _rewrite(input_file,target2)
             input_file.close()
         elif run.endswith(".sra"):
-            target2 = fastq_dump(ex,target)
+            target2 = fastq_dump(ex,target,options=["--split-files"])
+            if not os.path.exists(target2[1]): target2 = target2[0]
         else:
             target2 = target
         return target2
