@@ -93,7 +93,7 @@ class TextTrack(Track):
         elif self.header is True:
             self.open()
             header = self.filehandle.readline().split(self.separator)
-            self._skip_header(): 
+            self._skip_header()
             first = self.filehandle.readline().split(self.separator)
             if len(header) == len(first):
                 fields = [header[0].strip('# ')]+header[1:]
@@ -266,6 +266,7 @@ class TextTrack(Track):
             while any(row.startswith(h) for h in header):
                 p = self.filehandle.tell()
                 row = self.filehandle.readline()
+        self.filehandle.seek(p)
         row = "#"
         while row[0] in ['#','@'] or row[:5]=='track' or row[:7]=='browser':
             p = self.filehandle.tell()
@@ -281,6 +282,7 @@ class TextTrack(Track):
         self._skip_header()
         try:
             while 1:
+                fstart = self.filehandle.tell()
                 row = self.filehandle.readline()
                 if not row: break
                 if row[0] in ['#','@']: continue
