@@ -144,17 +144,21 @@ def all_snps(ex,chrom,dictPileup,outall,assembly,sample_names,mincov,minsnp,
     tarname = unique_filename_in()
     tarfh = tarfile.open(tarname, "w:gz")
     for pileup_filename,trio in dictPileup.iteritems():
-        trio[0].wait() #file p is created from samtools pileup
-        snames.append(trio[1])
+        future, sample_name, bam_filename = trio
+        logfile.write("  Run samtools pileup - group %s\n" % sample_name); logfile.flush()
+        future.wait() #file p is created from samtools pileup
+        logfile.write("  ...Done.\n"); logfile.flush()
+        snames.append(sample_name)
         pileup_files.append(open(pileup_filename))
-        tarfh.add(pileup_filename,arcname=trio[1]+"_"+chrom+".pileup")
-        bam_tracks.append(track(trio[2],format='bam'))
+        tarfh.add(pileup_filename,arcname=sample_name+"_"+chrom+".pileup")
+        bam_tracks.append(track(bam_filename,format='bam'))
     tarfh.close()
     ex.add( tarname, description=set_file_descr("pileups_%s.tgz"%chrom,step="pileup",type="tar",view='admin') )
     nsamples = len(snames)
     sorder = [snames.index(x) for x in sample_names]
     current = [pileup_files[i].readline().split('\t') for i in sorder]
     lastpos = 0
+    logfile.write("  Filter SNPs\n"); logfile.flush()
     while any([len(x)>1 for x in current]):
         current_pos = [int(x[1]) if len(x)>1 else sys.maxint for x in current]
         pos = min(current_pos)
@@ -178,10 +182,12 @@ def all_snps(ex,chrom,dictPileup,outall,assembly,sample_names,mincov,minsnp,
     for f in pileup_files: f.close()
     for b in bam_tracks: b.close()
 
+    logfile.write("  Annotate all SNPs\n"); logfile.flush()
     snp_read = FeatureStream(allsnps, fields=['chr','start','end','name']+sample_names)
     annotation = assembly.gene_track(chrom)
     annotated_stream = gm_stream.getNearestFeature(snp_read,annotation,
                                                    thresholdPromot=3000,thresholdInter=3000,thresholdUTR=10)
+    logfile.write("  Write all SNPs\n"); logfile.flush()
     with open(outall,"a") as fout:
         for snp in annotated_stream:
             # snp: ('chrV',154529, 154530, 'T', 'A', '* A', 'YER002W|NOP16_YER001W|MNN1', 'Upstream_Included', '2271_1011')
@@ -271,6 +277,7 @@ def exon_snps(chrom,outexons,allsnps,assembly,sample_names,genomeRef={},
     annotstream = FeatureStream((x[:3]+(x[1:3]+x[3],) for x in annotstream),fields=annotstream.fields)
     _buffer = {1:[], -1:[]}
     last_start = {1:-1, -1:-1}
+    logfile.write("  Intersection with CDS - codon changes\n"); logfile.flush()
     for x in gm_stream.intersect([inclstream, annotstream]):
         # x = ('chrV',1606,1607, ('T','C (43%)', 1612,1724,'YEL077C|YEL077C',-1,0, 1712,1723,'YEL077W-A|YEL077W-A',1,0))
         nsamples = len(sample_names)
@@ -347,18 +354,19 @@ def snp_workflow(ex, job, assembly, minsnp=40, mincov=5, path_to_ref='', via='lo
     for gid in sorted(job.files.keys()):
         sample_name = job.groups[gid]['name']
         sample_names.append(sample_name)
-    logfile.write("* Run samtools pileup\n"); logfile.flush()
+    logfile.write("* Merge runs and prepare pileup\n"); logfile.flush()
     pileup_dict = pileup(ex,job,assembly,genomeRef,via,logfile,debugfile)
-    logfile.write("* Annotate SNPs\n"); logfile.flush()
+    logfile.write("* Find SNPs\n"); logfile.flush()
     outall = unique_filename_in()
     outexons = unique_filename_in()
     with open(outall,"w") as fout:
         fout.write('#'+'\t'.join(['chromosome','position','reference']+sample_names+['gene','location_type','distance'])+'\n')
     for chrom in assembly.chrnames:
+        logfile.write("  \nChromosome %s\n" % chrom); logfile.flush()
         dictPileup = pileup_dict[chrom]
-        logfile.write("  ...All SNPs\n"); logfile.flush()
+        logfile.write("  - All SNPs\n"); logfile.flush()
         allsnps = all_snps(ex,chrom,dictPileup,outall,assembly,sample_names,mincov,minsnp,logfile,debugfile)
-        logfile.write("  ...Exonic SNPs\n"); logfile.flush()
+        logfile.write("  - Exonic SNPs\n"); logfile.flush()
         exon_snps(chrom,outexons,allsnps,assembly,sample_names,genomeRef,logfile,debugfile)
     description = set_file_descr("allSNP.txt",step="SNPs",type="txt")
     ex.add(outall,description=description)
