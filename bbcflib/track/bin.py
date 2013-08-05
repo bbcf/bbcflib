@@ -332,6 +332,7 @@ try:
                 buffer = {}
                 for read in self.fetch(*region[:3]):
                     if read.is_reverse: continue
+                    if not read.is_proper_pair: continue
                     flen = read.isize
                     midpos = read.pos+flen/2
                     if midpos in buffer: buffer[midpos].append(flen)

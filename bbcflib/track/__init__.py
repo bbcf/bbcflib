@@ -461,8 +461,11 @@ class Track(object):
 
     @property
     def name(self):
-        "returns an appropriate name for the track"
-        return self.info.get('name',os.path.splitext(os.path.basename(self.path))[0])
+        "Returns an appropriate name for the track"
+        name = os.path.basename(self.path)
+        if name.endswith(".gzip"): name = name[:-5]
+        if name.endswith(".gz"): name = name[:-3]
+        return self.info.get('name',os.path.splitext(name)[0])
 
 
 ################################################################################
