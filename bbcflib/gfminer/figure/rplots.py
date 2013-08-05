@@ -56,7 +56,7 @@ def _end(lopts,last,**kwargs):
 ###################V#########################################
 ############################################################
 def venn(D,legend=None,options={},output=None,format='png',new=True,last=True,**kwargs):
-    """Creates a Venn diagram of D using the *VennDiagram* R package.
+    """Creates a Venn diagram of D using the *VennDiagram* R package. Up to 4-way.
 
     :param D: dict `{group_name: count}`. `group_name` is either one name (e.g. 'A')
         or a combination such as 'A|B' - if the items belong to groups A and B.
@@ -68,7 +68,16 @@ def venn(D,legend=None,options={},output=None,format='png',new=True,last=True,**
         Ex. `{'euler.d':'TRUE', 'fill':['red','blue']}`
         See `<http://cran.r-project.org/web/packages/VennDiagram/VennDiagram.pdf>`_
     """
-    plotopt,output = _begin(output=output,format=format,new=new,**kwargs)
+    if new:
+        if output is None:
+            output = unique_filename_in()
+        if format == 'pdf':
+            robjects.r('pdf("%s",paper="a4",height=8,width=8)' %output)
+        elif format == 'png':
+            robjects.r('png("%s",height=800,width=800,type="cairo")' %output)
+        else:
+            raise ValueError("Format not supported: %s" %format)
+    #plotopt,output = _begin(output=output,format=format,new=new,**kwargs)
     groups = sorted([x for x in D if len(x.split('|'))==1])
     ngroups = len(groups)
     combn = [combinations(groups,k) for k in range(1,ngroups+1)]
@@ -102,13 +111,16 @@ def venn(D,legend=None,options={},output=None,format='png',new=True,last=True,**
     for opt,val in globalopt.iteritems():
         rargs += ", %s=%s" % (opt,list2r(options.get(opt,val)))
     if legend: # not in _end() because it requires plot.new()
+        print legend
+        legend = [legend[g] for g in groups]
         legend_opts = "x='topright', pch=%s, legend=%s" % (list2r(groups), list2r(legend))
         legend_opts += ", cex=1.5"
         robjects.r("plot.new()")
         robjects.r("legend(%s)" % legend_opts)
-    rargs += ', margin=0.15, pty="s" ' # pty does not work... pdf format is stretched
+    rargs += ', margin=0.15 ' # pty does not work... pdf format is stretched
     robjects.r("library(VennDiagram)")
-    robjects.r("venn.plot <- %s(%s%s)" % (fun,rargs,plotopt))
+    robjects.r('pdf.options(height=8)')
+    robjects.r("venn.plot <- %s(%s)" % (fun,rargs))
     _end('',last,**kwargs)
     return output
 

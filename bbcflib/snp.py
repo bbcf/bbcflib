@@ -156,7 +156,7 @@ def all_snps(ex,chrom,dictPileup,outall,assembly,sample_names,mincov,minsnp,
     ex.add( tarname, description=set_file_descr("pileups_%s.tgz"%chrom,step="pileup",type="tar",view='admin') )
     nsamples = len(snames)
     sorder = [snames.index(x) for x in sample_names]
-    current = [pileup_files[i].readline().split('\t') for i in sorder]
+    current = [pileup_files[i].readline().split('\t') for i in sorder] # one splitted line per sample
     lastpos = 0
     logfile.write("  Filter SNPs\n"); logfile.flush()
     while any([len(x)>1 for x in current]):
