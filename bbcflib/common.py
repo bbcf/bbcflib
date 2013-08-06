@@ -7,7 +7,7 @@ Utility functions common to several pipelines.
 """
 
 # Built-in modules #
-import os, sys, time, csv, string, random, pickle, re, json, functools
+import os, sys, time, string, random, re, json, functools
 
 
 #-------------------------------------------------------------------------#
@@ -146,7 +146,7 @@ def timer(function):
         t1 = time.time()
         result = function(*args, **kwargs)
         t2 = time.time()
-        print "  Execution time of function", function.__name__, ":", str(t2-t1), "s."
+        print "  Execution time of function '%s': %.3f s." % (function.__name__, t2-t1)
         return result
     return wrapper
 

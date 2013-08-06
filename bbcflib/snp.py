@@ -7,7 +7,7 @@ From a set of BAM files produced by an alignement on the genome, calls snps and 
 with respect to a set of coding genes on the same genome.
 """
 # Built-in modules #
-import os, sys, tarfile
+import os, sys, tarfile, time
 from itertools import product
 
 # Internal modules #
@@ -17,6 +17,9 @@ from bbcflib.track import FeatureStream, track
 from bbcflib.gfminer.common import concat_fields
 from bbcflib.gfminer import stream as gm_stream
 from bein import program
+
+
+test = 0
 
 _iupac = {'M':'AC', 'Y':'CT', 'R':'AG', 'S':'CG', 'W': 'AT', 'K':'GT',
           'B':'CGT', 'D':'AGT', 'H':'ACT', 'V':'ACG',
@@ -47,20 +50,19 @@ def _ploidy(assembly):
         ploidy = 2 # eucaryote
     return ploidy
 
-@program
-def sam_pileup(assembly,bamfile,refGenome):
-    """Binds 'samtools pileup'.
-
-    :param assembly: Genrep.Assembly object.
-    :param bamfile: path to the BAM file.
-    :param refGenome: path to the reference genome fasta file.
-    """
-    ploidy = _ploidy(assembly)
-    return {"arguments": ["samtools","pileup","-Bcvsf",refGenome,"-N",str(ploidy),bamfile],
-            "return_value": None}
-
 @timer
 def pileup(ex,job,assembly,genomeRef,via,logfile,debugfile):
+    @program
+    def sam_pileup(assembly,bamfile,refGenome):
+        """Binds 'samtools pileup'.
+
+        :param assembly: Genrep.Assembly object.
+        :param bamfile: path to the BAM file.
+        :param refGenome: path to the reference genome fasta file.
+        """
+        ploidy = _ploidy(assembly)
+        return {"arguments": ["samtools","pileup","-Bcvsf",refGenome,"-N",str(ploidy),bamfile],
+                "return_value": None}
     bam = {}
     pileup_dict = dict((chrom,{}) for chrom in genomeRef.keys()) # {chr: {}}
     for gid in sorted(job.files.keys()):
@@ -77,7 +79,7 @@ def pileup(ex,job,assembly,genomeRef,via,logfile,debugfile):
             pileup_filename = unique_filename_in()
             future = sam_pileup.nonblocking(ex,assembly,bam,ref,via=via,stdout=pileup_filename )
             pileup_dict[chrom][pileup_filename] = (future,sample_name,bam)
-        logfile.write("....Group %s done.\n" % sample_name); logfile.flush()
+        logfile.write("  ...Group %s done.\n" % sample_name); logfile.flush()
     return pileup_dict
 
 def find_snp(info,mincov,minsnp,assembly):
@@ -99,6 +101,7 @@ def find_snp(info,mincov,minsnp,assembly):
 
     * c1/c2: consensus on strand1/strand2, of the form \[+-][0-9]+[ACGTNacgtn]+ .
     * nindel/nref/n3rd: number of reads supporting the indel/reference/3rd allele.
+
     See `http://samtools.sourceforge.net/cns0.shtml`_ .
     """
     ref = info[2].upper()  # reference base
@@ -145,9 +148,12 @@ def all_snps(ex,chrom,dictPileup,outall,assembly,sample_names,mincov,minsnp,
     tarfh = tarfile.open(tarname, "w:gz")
     for pileup_filename,trio in dictPileup.iteritems():
         future, sample_name, bam_filename = trio
-        logfile.write("  Run samtools pileup - group %s\n" % sample_name); logfile.flush()
+        logfile.write("  Wait for samtools pileup - group %s" % sample_name); logfile.flush()
+        t1 = time.time()
         future.wait() #file p is created from samtools pileup
+        t2 = time.time()
         logfile.write("  ...Done.\n"); logfile.flush()
+        logfile.write("  Time elapsed: %.3f s.\n" % (t2-t1)); logfile.flush()
         snames.append(sample_name)
         pileup_files.append(open(pileup_filename))
         tarfh.add(pileup_filename,arcname=sample_name+"_"+chrom+".pileup")
@@ -190,7 +196,7 @@ def all_snps(ex,chrom,dictPileup,outall,assembly,sample_names,mincov,minsnp,
     logfile.write("  Write all SNPs\n"); logfile.flush()
     with open(outall,"a") as fout:
         for snp in annotated_stream:
-            # snp: ('chrV',154529, 154530, 'T', 'A', '* A', 'YER002W|NOP16_YER001W|MNN1', 'Upstream_Included', '2271_1011')
+            # snp: ('chrV',154529, 154530,'T','A','* A','YER002W|NOP16_YER001W|MNN1','Upstream_Included','2271_1011')
             fout.write('\t'.join([str(x) for x in (snp[0],)+snp[2:]])+'\n')
             # chrV  1606    T   43.48% C / 56.52% T YEL077W-A|YEL077W-A_YEL077C|YEL077C 3UTR_Included   494_-2491
     return allsnps
@@ -333,7 +339,6 @@ def create_tracks(ex, outall, sample_names, assembly):
         snp = dict((name, _row_to_annot(x,ref,n)) for n,name in enumerate(sample_names))
         for name, tr in outtracks.iteritems():
             if snp[name]: tr[0].write([coord+(snp[name],)],mode='append')
-        #convert(out+'.sql',out+'.bed.gz',mode='append')
     for name, tr in outtracks.iteritems():
         tr[0].close()
         description = set_file_descr(name+"_SNPs.bed.gz",type='bed',step='tracks',gdv='1',ucsc='1')
@@ -341,28 +346,37 @@ def create_tracks(ex, outall, sample_names, assembly):
 
 
 @timer
-def snp_workflow(ex, job, assembly, minsnp=40, mincov=5, path_to_ref='', via='local',
+def snp_workflow(ex, job, assembly, minsnp=40, mincov=5, path_to_ref=None, via='local',
                  logfile=sys.stdout, debugfile=sys.stderr):
     """Main function of the workflow"""
-    if path_to_ref is None:
-        path_to_ref = os.path.join(assembly.genrep.root,'nr_assemblies/fasta',assembly.md5+'.tar.gz')
-    assert os.path.exists(path_to_ref), "Reference sequence not found: %s." % path_to_ref
-    genomeRef = assembly.untar_genome_fasta(path_to_ref, convert=True)
-    [g.wait() for g in [sam_faidx.nonblocking(ex,f,via=via) \
-                            for f in set(genomeRef.values())]]
+    logfile.write("\n* Prepare reference sequence\n"); logfile.flush()
+    if test:
+        print 'Current working dir:',os.getcwd()
+        path_to_ref = '/scratch/cluster/monthly/jdelafon/snp/sequence/hg19/'
+        genomeRef = dict((c,path_to_ref+c) for c in assembly.chrmeta)
+    else:
+        if path_to_ref is None:
+            path_to_ref = os.path.join(assembly.genrep.root,'nr_assemblies/fasta',assembly.md5+'.tar.gz')
+        assert os.path.exists(path_to_ref), "Reference sequence not found: %s." % path_to_ref
+        genomeRef = assembly.untar_genome_fasta(path_to_ref, convert=True)
+
+    [g.wait() for g in [sam_faidx.nonblocking(ex,f,via=via) for f in set(genomeRef.values())]]
     sample_names = []
     for gid in sorted(job.files.keys()):
         sample_name = job.groups[gid]['name']
         sample_names.append(sample_name)
-    logfile.write("* Merge runs and prepare pileup\n"); logfile.flush()
+
+    logfile.write("\n* Merge runs and launch samtools pileup\n"); logfile.flush()
     pileup_dict = pileup(ex,job,assembly,genomeRef,via,logfile,debugfile)
-    logfile.write("* Find SNPs\n"); logfile.flush()
+
+    logfile.write("\n* Find SNPs\n"); logfile.flush()
     outall = unique_filename_in()
     outexons = unique_filename_in()
     with open(outall,"w") as fout:
-        fout.write('#'+'\t'.join(['chromosome','position','reference']+sample_names+['gene','location_type','distance'])+'\n')
+        fout.write('#'+'\t'.join(['chromosome','position','reference']+sample_names+ \
+                                 ['gene','location_type','distance'])+'\n')
     for chrom in assembly.chrnames:
-        logfile.write("  \nChromosome %s\n" % chrom); logfile.flush()
+        logfile.write("\n  > Chromosome '%s'\n" % chrom); logfile.flush()
         dictPileup = pileup_dict[chrom]
         logfile.write("  - All SNPs\n"); logfile.flush()
         allsnps = all_snps(ex,chrom,dictPileup,outall,assembly,sample_names,mincov,minsnp,logfile,debugfile)
@@ -372,6 +386,7 @@ def snp_workflow(ex, job, assembly, minsnp=40, mincov=5, path_to_ref='', via='lo
     ex.add(outall,description=description)
     description = set_file_descr("exonsSNP.txt",step="SNPs",type="txt")
     ex.add(outexons,description=description)
-    logfile.write("* Create tracks\n"); logfile.flush()
+
+    logfile.write("\n* Create tracks\n"); logfile.flush()
     create_tracks(ex,outall,sample_names,assembly)
     return 0
