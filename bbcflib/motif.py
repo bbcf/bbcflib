@@ -82,7 +82,9 @@ def parse_meme_xml( ex, meme_file, chrmeta ):
 
 
 def parallel_meme( ex, assembly, regions, name=None, chip=False, meme_args=None, via='lsf' ):
-    """Fetches sequences, then calls ``meme`` on them and finally saves the results in the repository."""
+    """Fetches sequences, then calls ``meme`` on them and finally saves the results in the repository.
+    
+    """
     if meme_args is None: meme_args = []
     if not(isinstance(regions,list)): regions = [regions]
     if not(isinstance(name,list)): name = [name or '_']
@@ -96,7 +98,8 @@ def parallel_meme( ex, assembly, regions, name=None, chip=False, meme_args=None,
         outdir = unique_filename_in()
         if chip:
             futures[n] = (outdir, memechip.nonblocking( ex, fasta, outdir, background,
-                                                        args=meme_args, via=via, stderr=tmpfile, memory=6 ))
+                                                        args=meme_args, via=via, 
+                                                        stderr=tmpfile, memory=6 ))
         else:
             futures[n] = (outdir, meme.nonblocking( ex, fasta, outdir, background,
                                                     maxsize=(size*3)/2, args=meme_args,
@@ -119,21 +122,25 @@ def parallel_meme( ex, assembly, regions, name=None, chip=False, meme_args=None,
                                            step='meme', type='fasta',
                                            groupId=n[0]) )
         if not(chip) and os.path.exists(os.path.join(meme_out, "meme.xml")):
-            meme_res = parse_meme_xml( ex, os.path.join(meme_out, "meme.xml"), assembly.chrmeta )
+            meme_res = parse_meme_xml( ex, os.path.join(meme_out, "meme.xml"),
+                                       assembly.chrmeta )
             if os.path.exists(os.path.join(meme_out, "meme.html")):
                 ex.add( os.path.join(meme_out, "meme.html"),
                         description=set_file_descr(n[1]+"_meme.html",
-                                                   step='meme', type='html', groupId=n[0]) )
+                                                   step='meme', type='html', 
+                                                   groupId=n[0]) )
             ex.add( meme_res['sql'], description=set_file_descr(n[1]+"_meme_sites.sql",
                                                                 step='meme', type='sql',
                                                                 groupId=n[0]) )
             for i,motif in enumerate(meme_res['matrices'].keys()):
                 ex.add( meme_res['matrices'][motif],
                         description=set_file_descr(n[1]+"_meme_"+motif+".txt",
-                                                   step='meme', type='txt', groupId=n[0]) )
+                                                   step='meme', type='txt', 
+                                                   groupId=n[0]) )
                 ex.add( os.path.join(meme_out, "logo"+str(i+1)+".png"),
                         description=set_file_descr(n[1]+"_meme_"+motif+".png",
-                                                   step='meme', type='png', groupId=n[0]) )
+                                                   step='meme', type='png', 
+                                                   groupId=n[0]) )
             all_res[n] = meme_res
     return all_res
 

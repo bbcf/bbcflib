@@ -127,7 +127,8 @@ def density_to_countsPerFrag( ex, file_dict, groups, assembly, regToExclude, scr
         touch(ex,FragFile)
         futures[gid] = (FragFile,
                         segToFrag.nonblocking( ex, countsPerFragFile, regToExclude[gid],
-                                               script_path, via=via, stdout=FragFile ))
+                                               script_path, via=via, stdout=FragFile ,
+                                               memory=4 ))
     def _parse_select_frag(stream):
         for s in stream:
             sr = s.strip().split('\t')
