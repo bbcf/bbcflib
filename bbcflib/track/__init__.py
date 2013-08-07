@@ -289,23 +289,18 @@ def stats(source, out=sys.stdout, plot=True, wlimit=80, **kwargs):
         return nfeat,ldistr,stats_from_distr(ldistr,nfeat)
 
     def total_coverage(t):
-        try: from bbcflib.gfminer.common import fusion
-        except ImportError: return 'NA (ImportError)'
-        if not t.chrmeta: return 'NA (Assembly required)'
+        from bbcflib.gfminer.common import fusion
         total_cov = 0
-        for chrom in t.chrmeta:
-            kw = dict(kwargs)
-            if kw['selection'] is not None: kw['selection'].update({'chr':chrom})
-            else: kw['selection'] = {'chr':chrom}
-            s = t.read(**kw)
-            fs = fusion(s)
-            st_idx = fs.fields.index('start')
-            en_idx = fs.fields.index('end')
-            total_cov += sum(x[en_idx]-x[st_idx] for x in fs)
+        kw = dict(kwargs)
+        s = t.read(**kw)
+        fs = fusion(s)
+        st_idx = fs.fields.index('start')
+        en_idx = fs.fields.index('end')
+        total_cov += sum(x[en_idx]-x[st_idx] for x in fs)
         return total_cov
 
     if isinstance(source, basestring):
-        t = track(source, chrmeta=kwargs.get('chrmeta'), **kwargs)
+        t = track(source, **kwargs)
     else:
         t = source
     total_cov = total_coverage(t)
