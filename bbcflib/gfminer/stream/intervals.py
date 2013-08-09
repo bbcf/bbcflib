@@ -501,5 +501,4 @@ def segment_features(trackList,nbins=10,upstream=None,downstream=None):
         return [FeatureStream(_split_feat(t), fields=t.fields+['bin'])
                 for t in trackList]
     else:
-        return FeatureStream(_split_feat(trackList),
-                                   fields=trackList.fields+['bin'])
+        return FeatureStream(_split_feat(trackList), fields=trackList.fields+['bin'])

@@ -96,7 +96,7 @@ class TextTrack(Track):
             self._skip_header()
             first = self.filehandle.readline().split(self.separator)
             if len(header) == len(first):
-                fields = [header[0].strip('# ')]+header[1:]
+                fields = [header[0].strip('# ')]+header[1:-1]+[header[-1][:-1]]
             self.close()
         else:
             fields = ['chr','start','end']
