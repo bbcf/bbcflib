@@ -180,7 +180,9 @@ try:
             def _bamrecord(stream, srcl):
                 for sel in selection:
                     reg = self._make_selection(sel)
-                    for read in stream.fetch(reference=reg[0],start=int(reg[1]),end=int(reg[2])):
+                    if reg[1] is not None: reg[1] = int(reg[1])
+                    if reg[2] is not None: reg[2] = int(reg[2])
+                    for read in stream.fetch(*reg):
                         row = [self.filehandle.getrname(read.tid),
                                read.pos, read.pos+read.rlen,
                                read.mapq, read.qname, (-1 if read.is_reverse else 1),

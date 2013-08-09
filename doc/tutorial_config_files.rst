@@ -225,6 +225,6 @@ In the ChIP-seq module, the following options are valid, with the following defa
     b2w_args=[]
     peak_deconvolution=False# run the deconvolution algorithm
     run_meme=False# run Meme motif search on peaks
-    macs_args=["--bw=200"]# list of MACS command-line arguments
+    macs_args=["--bw","200"]# list of MACS command-line arguments
 
 
