@@ -142,7 +142,7 @@ def add_macs_results( ex, read_length, genome_size, bamfile,
                 associate_to_filename=p, template='%s_summits.bed.gz' )
         if n[1][0]:
             ex.add( p+"_negative_peaks.xls",
-                    description=set_file_descr(filename+"_negative_peaks.xls",**macs_descr1),
+                    description=set_file_descr(filename+"_negative_peaks.xls",**macs_descr0),
                     associate_to_filename=p, template='%s_negative_peaks.xls' )
     return prefixes
 

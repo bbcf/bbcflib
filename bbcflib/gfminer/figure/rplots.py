@@ -190,10 +190,18 @@ def heatmap(M,output=None,format='pdf',new=True,last=True,
         plotopt += ",Colv=F,dendrogram='row',lhei=c(10,1,2),lwid=c(1,3),mar=c(2,2),lmat=matrix(c(2,0,3,1,0,4),ncol=2)"
     else:
         plotopt += ",Colv=F,Rowv=F,dendrogram='none',lhei=c(10,1,1,2),lwid=c(1),mar=c(2,2),lmat=matrix(c(1,2,3,4),ncol=1)"
+    if kwargs.get('ymin') is not None:
+        robjects.r("ymin=%f" %kwargs['ymin'])
+    else:
+        robjects.r("ymin=floor(min(Mdata,na.rm=T))")
+    if kwargs.get('ymax') is not None:
+        robjects.r("ymax=%f" %kwargs['ymax'])
+    else:
+        robjects.r("ymax=ceiling(max(Mdata,na.rm=T))")
     robjects.r("""
       library(gplots)
       library(RColorBrewer)
-      myBreaks=seq(floor(min(Mdata,na.rm=T)),ceiling(max(Mdata,na.rm=T)),length.out=15)
+      myBreaks=seq(ymin,ymax,length.out=15)
       myColors=rev(colorRampPalette(brewer.pal(10,"RdYlBu"))(length(myBreaks)-1))
 #      myCor = function(x) {as.dist(1-cor(t(x),use="pairwise.complete.ob"))}
       par(cex.main=1)
