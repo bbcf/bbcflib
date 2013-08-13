@@ -90,7 +90,7 @@ arch_basepath = "/archive/epfl/bbcf/data/"
 ###############
 @program
 def fastq_dump(filename, options=None):
-    """ 
+    """
     Binds ``fastq-dump`` to convert *sra* (short reads archive) to *fastq* format.
     If ``--split-files`` is given as option, the return value is a pair *(read_1.fastq,read_2.fastq)*.
     """
@@ -566,7 +566,31 @@ def bowtie(index, reads, args="-Sra"):
     if isinstance(reads, tuple):
         reads = "-1 "+reads[0]+" -2 "+reads[1]
         if not("-X" in options): options += ["-X","800"]
-    return {"arguments": ["bowtie"]+options+[index, reads, sam_filename],
+    return {"arguments": ["bowtie2"]+options+["-x",index, reads, sam_filename],
+            "return_value": sam_filename}
+
+@program
+def bowtie2(index, reads, args=''):
+    """Run bowtie with *args* to map *reads* against *index*.
+
+    Returns the filename of bowtie's output file.  *args* gives the
+    command line arguments to bowtie, and may be either a string ("-k 20 ...") or a
+    list of strings (["-k","20",...]).
+    """
+    sam_filename = unique_filename_in()
+    if isinstance(args, (tuple,list)):
+        options = list(args)
+    elif isinstance(args, basestring):
+        options = args.split()
+    else:
+        raise ValueError("bowtie2's args keyword argument requires a string or a "+\
+                         "list of strings.  Received: "+str(args))
+    if isinstance(reads, list):
+        reads = "-U " + ",".join(reads)
+    if isinstance(reads, tuple):
+        reads = "-1 " + reads[0] + " -2 " + reads[1]
+        if not("-X" in options): options += ["-X","800"]
+    return {"arguments": ["bowtie"]+options+[index, reads, "-S", sam_filename],
             "return_value": sam_filename}
 
 @program
