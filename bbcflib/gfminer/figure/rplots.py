@@ -222,10 +222,6 @@ def pairs(M,X=None,labels=None,
         If *X* is `None` then *M* must be an *n x m* matrix and the *(i,j)* plot will
         show *M[i,] ~ M[j,]* as a density plot.
     :param labels: a vector of *n* strings used to label plots, defaults to *1,...,n*.
-    :param output: (str) name of the output file
-    :param format: (str) image format
-    :param new: (bool) ?
-    :param last: (bool) ?
     :rtype: str
     """
     plotopt,output = _begin(output=output,format=format,new=new,**kwargs)
@@ -252,6 +248,10 @@ rowcol = rbind(1+1:n,rowcol)
         robjects.r("labels=as.character(1:n)")
     else:
         robjects.r.assign('labels',numpy2ri.numpy2ri(labels))
+    if kwargs.get('col') is not None: 
+        robjects.r("col = '%s'" %kwargs['col'])
+    else: 
+        robjects.r("col = 'red'")
     robjects.r("""
 library(RColorBrewer)
 pline1 = function (y, M, X, col, ...) lines(X,M[,y[y[1]]],col=col,...)
@@ -275,7 +275,6 @@ ppoints = function (x, y, col, ...) {
     abline(0,1,col='black',lty=2)
 }
 qpoints = function (x, y, col, ...) {
-    colramp = colorRampPalette(c("lightgrey",col),interpolate="spline")
     qq = qqplot(x,y,plot.it=FALSE)
     points(qq$x,qq$y,...)
 }
@@ -299,7 +298,6 @@ phist = function (x, col, ...) {
     par(usr=usr,ylog=ylog,xlog=xlog)
 }
 
-col = 'red'
 if (exists("X")) {
     pairs(rowcol, labels, M=Mdata, X=X, xlim=range(X), ylim=c(-1,1.5), col=col,
           diag.panel=pline1, lower.panel=pcor, upper.panel=pline2)
