@@ -111,7 +111,6 @@ def venn(D,legend=None,options={},output=None,format='png',new=True,last=True,**
     for opt,val in globalopt.iteritems():
         rargs += ", %s=%s" % (opt,list2r(options.get(opt,val)))
     if legend: # not in _end() because it requires plot.new()
-        print legend
         legend = [legend[g] for g in groups]
         legend_opts = "x='topright', pch=%s, legend=%s" % (list2r(groups), list2r(legend))
         legend_opts += ", cex=1.5"
@@ -213,7 +212,7 @@ def heatmap(M,output=None,format='pdf',new=True,last=True,
 
 ############################################################
 ############################################################
-def pairs(M,X=None,labels=None,
+def pairs(M,X=None,labels=None,highlights=[],
           output=None,format='pdf',new=True,last=True,**kwargs):
     """Pairs plot. Returns the name of the output figure.
 
@@ -251,7 +250,13 @@ rowcol = rbind(1+1:n,rowcol)
     if kwargs.get('col') is not None: 
         robjects.r("col = '%s'" %kwargs['col'])
     else: 
-        robjects.r("col = 'red'")
+        robjects.r("col = 'orange'")
+    if len(highlights) > 1:
+        robjects.r("""
+hili = %s
+pch_list = c(3:6,8,15,19,21,22)
+col_list = c("green3","blue","red","cyan","magenta","black","yellow","gray")
+"""%list2r(highlights))
     robjects.r("""
 library(RColorBrewer)
 pline1 = function (y, M, X, col, ...) lines(X,M[,y[y[1]]],col=col,...)
@@ -265,13 +270,21 @@ pcor = function(x, y, M, X, ...) {
     if (cmax>0.5) text(0.5, 0.5, ctext, cex=par('cex')*3*cmax)
     par(usr=usr)
 }
-ppoints = function (x, y, col, ...) {
+ppoints = function (x, y, col, hili=c(), ...) {
     if (par("xlog")) x1 = log(x)
     else x1 = x
     if (par("ylog")) y1 = log(y)
     else y1 = y
     colramp = colorRampPalette(c("lightgrey",col),interpolate="spline")
     points(x,y,col=densCols(x1,y1,colramp=colramp),...)
+    if (length(hili)>0) {
+        for (n in 1:(length(hili)-1)) {
+            I = (hili[n]+1):hili[n+1]
+            pchn = pch_list[1+(n-1) %% length(pch_list)]
+            coln = col_list[1+(n-1) %% length(col_list)]
+            points(x[I],y[I],col=coln,pch=pchn,...)
+        }
+    }
     abline(0,1,col='black',lty=2)
 }
 qpoints = function (x, y, col, ...) {
@@ -302,7 +315,7 @@ if (exists("X")) {
     pairs(rowcol, labels, M=Mdata, X=X, xlim=range(X), ylim=c(-1,1.5), col=col,
           diag.panel=pline1, lower.panel=pcor, upper.panel=pline2)
 } else {
-    pairs(Mdata, labels, log='xy', col=col,
+    pairs(Mdata, labels, log='xy', col=col, hili=hili,
           diag.panel=phist, lower.panel=qpoints, upper.panel=ppoints)
 }
 """)
