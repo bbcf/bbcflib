@@ -88,22 +88,19 @@ def venn(D,options={},output=None,format='png',new=True,last=True,**kwargs):
         else:
             rargs += ", cat.dist=c(0.05,0.05,0.05)"
     elif ngroups == 4:
-        fun = 'draw.quad.venn'
+        fun = 'quad'
         rargs = """area1=%d, area2=%d, area3=%d, area4=%d,
                 n12=%d, n13=%d, n14=%d, n23=%d, n24=%d, n34=%d,
                 n123=%d, n124=%d, n134=%d, n234=%d, n1234=%d""" %combn
     else:
         return
     rargs += ", category=%s, cex=3, cat.cex=3, fill=1:%i, margin=0.15"%(list2r(groups),ngroups)
-    lopts = ''
-    if 'legend' in kwargs: # not in _end() because it requires plot.new()
-        lopts = ", pch=%s" %list2r(groups)
-        robjects.r("plot.new()")
     robjects.r("""
+plot.new()
 library(VennDiagram)
 palette(c('grey','blue','green','orange'))
 venn.plot = draw.%s.venn(%s)""" % (fun,rargs))
-    _end(lopts,last,**kwargs)
+    _end(", pch=%s" %list2r(groups),last,**kwargs)
     return output
 
 ############################################################
