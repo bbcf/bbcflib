@@ -500,7 +500,7 @@ def cobble(stream,aggregate=aggreg_functions,stranded=False,scored=False):
 
     :param stream: FeatureStream object.
     :param stranded: (bool) if True, only features of the same strand are cobbled. [False]
-    :param scored: (bool) if True, each fragment will be attributed a fraction on the
+    :param scored: (bool) if True, each fragment will be attributed a fraction of the
         original score, based on its length. [False]
     :rtype: FeatureStream
     """
