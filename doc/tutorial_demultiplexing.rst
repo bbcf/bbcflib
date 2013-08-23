@@ -52,12 +52,10 @@ Here is the command line used for this step::
 As the alignment score depends on the length of the sequences being aligned, we recommand to adjust it to your situation (see `Exonerate Manual <http://www.ebi.ac.uk/~guy/exonerate/exonerate.man.html>`_ for more details). In the following example, the score has been set up for a sequence of length 22. 
 
 
-In addition, to maximize the accuracy of the results, we limit the alignments to the first bps of each reads. This is defined by the two first parameters (`Search the primer...` ). We also limit the lengths of the barcodes to be search and advise to keep the same length for all. This is defined in the primer file (See description below)
+In addition, to maximize the accuracy of the results, we limit the alignments to the first bps of each reads. This is defined by the two first parameters (`Search the primer...` ). We also limit the lengths of the barcodes to search and advise to keep the same length for all. This is defined in the primer file (see description below).
 
 
-The last parameter defines the length of the sequence for each read that will be kept for further analysis, after having removed the barcode. 
-
-::
+The last parameter defines the length of the sequence for each read that will be kept for further analysis, after having removed the barcode. ::
 
     Search the primer from base i (-n)=2
     Search the primer in the next n bps of the reads [i to i+n] (-x 22)=22
