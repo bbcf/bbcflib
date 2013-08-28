@@ -82,7 +82,8 @@ import pysam
 from bein import program, ProgramFailed, MiniLIMS
 from bein.util import add_pickle, touch, split_file, count_lines
 
-demultiplex_path = "/archive/epfl/bbcf/data/htsstation/demultiplexing_minilims.files/"
+from bbcflib.workflows import _basepath
+demultiplex_path = os.path.join(_basepath,"demultiplexing_minilims.files/")
 arch_basepath = "/archive/epfl/bbcf/data/"
 
 ###############
