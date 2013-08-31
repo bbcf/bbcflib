@@ -567,7 +567,7 @@ def bowtie(index, reads, args="-Sra"):
     if isinstance(reads, tuple):
         reads = "-1 "+reads[0]+" -2 "+reads[1]
         if not("-X" in options): options += ["-X","800"]
-    return {"arguments": ["bowtie2"]+options+["-x",index, reads, sam_filename],
+    return {"arguments": ["bowtie"]+options+["-x",index, reads, sam_filename],
             "return_value": sam_filename}
 
 @program
@@ -591,7 +591,7 @@ def bowtie2(index, reads, args=''):
     if isinstance(reads, tuple):
         reads = "-1 " + reads[0] + " -2 " + reads[1]
         if not("-X" in options): options += ["-X","800"]
-    return {"arguments": ["bowtie"]+options+[index, reads, "-S", sam_filename],
+    return {"arguments": ["bowtie2"]+options+[index, reads, "-S", sam_filename],
             "return_value": sam_filename}
 
 @program
