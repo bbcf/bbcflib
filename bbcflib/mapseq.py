@@ -556,7 +556,7 @@ def bowtie(index, reads, args="-Sra"):
     command line arguments to bowtie, and may be either a string or a
     list of strings.
     """
-    index = re.sub('/bowtie2/','/bowtie/',index)
+    index = re.sub(r'([/_])bowtie2/',r'\1bowtie/',index)
     sam_filename = unique_filename_in()
     if isinstance(args, (tuple,list)):
         options = list(args)
@@ -591,7 +591,7 @@ def bowtie2(index, reads, args=''):
     :param args: (str or list) command line arguments to bowtie - either a string ("-k 20 ...")
         or a list of strings (["-k","20",...]).
     """
-    index = re.sub('/bowtie/','/bowtie2/',index)
+    index = re.sub(r'([/_])bowtie/',r'\1bowtie2/',index)
     sam_filename = unique_filename_in()
     options = ["-x",index,"-S",sam_filename]
     if isinstance(args, (tuple,list)):
