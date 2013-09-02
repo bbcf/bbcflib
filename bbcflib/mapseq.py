@@ -204,7 +204,7 @@ def get_fastq_files( ex, job, set_seed_length=True ):
             target2 = target
         return target2
 #########
-    if  hasattr(job,"dafl") and not isinstance(job.dafl.values()[0],daflims.DAFLIMS):
+    if  hasattr(job,"dafl") and job.dafl and not isinstance(job.dafl.values()[0],daflims.DAFLIMS):
         raise ValueError("Need DAFLIMS objects in get_fastq_files.")
     for gid,group in job.groups.iteritems():
         job.groups[gid]['seed_lengths'] = {}
@@ -520,21 +520,23 @@ def bwa_sw(reads_path, reference_path, sam_path, z=7):
 ########
 # Bowtie
 ########
-def add_bowtie_index(execution, files, description="", alias=None, index=None):
-    """Adds an index of a list of FASTA files to the repository.
+def add_bowtie2_index(execution, files, description="", alias=None, index=None, bowtie1=False):
+    """Add an index of a list of FASTA files to the repository.
+    Returns the prefix of the bowtie index.
 
-    *files* is a list of filenames of FASTA files.  The files are
-    indexed with bowtie-build, then a placeholder is written to the
-    repository, and the six files of the bowtie index are associated
-    to it.  Using the placeholder in an execution will properly set up
-    the whole index.
-
-    *alias* is an optional alias to give to the whole index so it may
-    be referred to by name in future.  *index* lets you set the actual
-    name of the index created.
+    :param files: (list of str) a list of file names of FASTA files. The files are
+        indexed with `bowtie2-build`, then a placeholder is written to the
+        repository, and the six files of the bowtie index are associated
+        to it. Using the placeholder in an execution will properly set up
+        the whole index.
+    :param description: (str) MiniLIMS description for the index files.
+    :param alias: (str) an optional alias to give to the whole index so it may
+        be referred to by name in future.
+    :param index: (str) lets you set the actual name of the index created.
+    :param bowtie1: (bool) if True, use `bowtie-build` instead of `bowtie2-build`.
     """
     if isinstance(description,dict): description = str(description)
-    index = bowtie_build(execution, files, index=index)
+    index = bowtie2_build(execution, files, index=index, bowtie1=bowtie1)
     touch(execution, index)
     execution.add(index, description=description, alias=alias)
     execution.add(index + ".1.ebwt", associate_to_filename=index, template='%s.1.ebwt')
@@ -546,37 +548,21 @@ def add_bowtie_index(execution, files, description="", alias=None, index=None):
     return index
 
 @program
-def bowtie(index, reads, args="-Sra"):
-    """Run bowtie with *args* to map *reads* against *index*.
+def bowtie2(index, reads, args='', bowtie1=False):
+    """Run `bowtie2` with *args* to map *reads* against *index*.
+    Returns the name of bowtie's output file.
 
-    Returns the filename of bowtie's output file.  *args* gives the
-    command line arguments to bowtie, and may be either a string or a
-    list of strings.
+    :param index: (str) path to the bowtie2 index.
+    :param reads: (list or tuple) if unpaired, a list of paths to each of the fastq files;
+        if paired, a tuple `(path_to_R1, path_to_R2)`.
+    :param args: (str or list) command line arguments to bowtie - either a string ("-k 20 ...")
+        or a list of strings (["-k","20",...]).
+    :param bowtie1: (bool) if True, use `bowtie1` instead of `bowtie2`.
     """
-    sam_filename = unique_filename_in()
-    if isinstance(args, (tuple,list)):
-        options = list(args)
-    elif isinstance(args, basestring):
-        options = args.split(" ")
-    else:
-        raise ValueError("bowtie's args keyword argument requires a string or a "+\
-                         "list of strings.  Received: "+str(args))
-    if isinstance(reads, list):
-        reads = ",".join(reads)
-    if isinstance(reads, tuple):
-        reads = "-1 "+reads[0]+" -2 "+reads[1]
-        if not("-X" in options): options += ["-X","800"]
-    return {"arguments": ["bowtie2"]+options+["-x",index, reads, sam_filename],
-            "return_value": sam_filename}
-
-@program
-def bowtie2(index, reads, args=''):
-    """Run bowtie with *args* to map *reads* against *index*.
-
-    Returns the filename of bowtie's output file.  *args* gives the
-    command line arguments to bowtie, and may be either a string ("-k 20 ...") or a
-    list of strings (["-k","20",...]).
-    """
+    main_call = "bowtie2"
+    if bowtie1:
+        main_call = "bowtie"
+        args += '-Sra'
     sam_filename = unique_filename_in()
     if isinstance(args, (tuple,list)):
         options = list(args)
@@ -588,34 +574,44 @@ def bowtie2(index, reads, args=''):
     if isinstance(reads, list):
         reads = "-U " + ",".join(reads)
     if isinstance(reads, tuple):
-        reads = "-1 " + reads[0] + " -2 " + reads[1]
+        if isinstance(reads[0],list):
+            reads1 = ",".join(reads[0])
+        if isinstance(reads[1],list):
+            reads2 = ",".join(reads[1])
+        else:
+            reads1 = reads[0]
+            reads2 = reads[1]
+        reads = "-1 " + reads1 + " -2 " + reads2
         if not("-X" in options): options += ["-X","800"]
-    return {"arguments": ["bowtie"]+options+[index, reads, "-S", sam_filename],
+    return {"arguments": [main_call]+options+["-x", index, reads, "-S", sam_filename],
             "return_value": sam_filename}
 
 @program
-def bowtie_build(files, index=None):
-    """Created a bowtie index from *files*.
+def bowtie2_build(files, index=None, bowtie1=False):
+    """Create a bowtie2 index from *files*.
+    Return the prefix of the resulting bowtie index.
 
-    *files* can be a string giving the name of a FASTA file, or a list
-    of strings giving the names of several FASTA files.  The prefix of
-    the resulting bowtie index is returned.
+    :param files: (str or list) name of a FASTA file, or a list
+        giving the names of several FASTA files.
+    :param bowtie1: (bool) if True, use `bowtie-build` instead of `bowtie2-build`.
     """
+    main_call = "bowtie2-build"
+    if bowtie1: main_call = "bowtie-build"
     if index == None:
         index = unique_filename_in()
     if isinstance(files,list):
         files = ",".join(files)
-    return {'arguments': ['bowtie-build', '-f', files, index], 'return_value': index}
+    return {'arguments': [main_call, '-f', files, index], 'return_value': index}
 
 
-def parallel_bowtie(ex, index, reads, unmapped=None, n_lines=1000000, bowtie_args="-Sra", add_nh_flags=False, via='local'):
-    """Run bowtie in parallel on pieces of *reads*.
+def parallel_bowtie2(ex, index, reads, unmapped=None, n_lines=1000000, bowtie_args='',
+                    add_nh_flags=False, bowtie1=False, via='local'):
+    """Run bowtie2 in parallel on pieces of *reads*.
 
-    Splits *reads* into chunks *n_lines* long, then runs bowtie with
-    arguments *bowtie_args* to map each chunk against *index*.  One of
-    the arguments needs to be -S so the output takes the form of SAM
-    files, because the results are converted to BAM and merged.  The
-    filename of the single, merged BAM file is returned.
+    Splits *reads* into chunks *n_lines* long, then runs `bowtie2` with
+    arguments *bowtie_args* to map each chunk against *index*.
+    The results are converted to BAM and merged.
+    The name of the single, merged BAM file is returned.
 
     Bowtie does not set the NH flag on its SAM file output.  If the
     *add_nh_flags* argument is ``True``, this function calculates
@@ -630,14 +626,18 @@ def parallel_bowtie(ex, index, reads, unmapped=None, n_lines=1000000, bowtie_arg
         sf2 = sorted(split_file(ex, reads[1], n_lines = n_lines))
         subfiles = [(f,sf2[n]) for n,f in enumerate(sf1)]
         mlim = 8
+        un_cmd = "--un-conc"
     else:
         subfiles = split_file(ex, reads, n_lines = n_lines)
         mlim = 4
+        un_cmd = "--un"
     if unmapped:
-        futures = [bowtie.nonblocking(ex, index, sf, args=bowtie_args+["--un",unmapped+"_"+str(n)], via=via, memory=mlim)
+        futures = [bowtie2.nonblocking(ex, index, sf, args=bowtie_args+[un_cmd,unmapped+"_"+str(n)], \
+                                       bowtie1=bowtie1, via=via, memory=mlim)
                    for n,sf in enumerate(subfiles)]
     else:
-        futures = [bowtie.nonblocking(ex, index, sf, args=bowtie_args, via=via, memory=mlim)
+        futures = [bowtie2.nonblocking(ex, index, sf, args=bowtie_args,
+                                       bowtie1=bowtie1, via=via, memory=mlim)
                    for sf in subfiles]
     samfiles = [f.wait() for f in futures]
     futures = []
@@ -790,29 +790,39 @@ def map_reads( ex, fastq_file, chromosomes, bowtie_index,
     The mapping statistics dictionary is pickled and added to the execution's
     repository, as well as both the full and filtered bam files.
     """
+    # Bowtie 2 options
     if bwt_args is None:
         bwt_args = []
     maxhits = int(maxhits)
-    antibody_enrichment=int(antibody_enrichment)
-    bwtarg = ["-Sam", str(max(20,maxhits))]+bwt_args
-    if not("--best" in bwtarg):     bwtarg += ["--best"]
-    if not("--strata" in bwtarg):   bwtarg += ["--strata"]
-    if not("--chunkmbs" in bwtarg): bwtarg += ["--chunkmbs","512"]
-    unmapped = unique_filename_in()
+    bwtarg = ["-k", str(max(20,maxhits))]+bwt_args
+    if not ("--local" in bwtarg or "--end-to-end" in bwtarg):
+        bwtarg += "--end-to-end" #"--local"
+    preset = ["--very-fast","--fast","--sensitive","--very-sensitive"]
+    preset_local = [p for p in preset] # [p+'-local' for p in preset]
+    presets = preset + preset_local
+    if not any(p in bwtarg for p in presets):
+        if "--local" in bwtarg:
+            bwtarg += ["--sensitive-local"]
+        else:
+            bwtarg += ["--sensitive"]
+
     is_paired_end = isinstance(fastq_file,tuple)
     if is_paired_end:
         linecnt = count_lines( ex, fastq_file[0] )
         mlim = 8
+        un_cmd = "--un-conc"
     else:
         linecnt = count_lines( ex, fastq_file )
         mlim = 4
+        un_cmd = "--un"
+    unmapped = unique_filename_in()
     if linecnt>10000000:
-        bam = parallel_bowtie( ex, bowtie_index, fastq_file, unmapped=unmapped,
-                               n_lines=8000000, bowtie_args=bwtarg,
-                               add_nh_flags=True, via=via )
+        bam = parallel_bowtie2( ex, bowtie_index, fastq_file, unmapped=unmapped,
+                                n_lines=8000000, bowtie_args=bwtarg,
+                                add_nh_flags=True, via=via )
     else:
-        bwtarg += ["--un",unmapped]
-        future = bowtie.nonblocking( ex, bowtie_index, fastq_file, bwtarg, via=via, memory=mlim )
+        bwtarg += [un_cmd, unmapped]
+        future = bowtie2.nonblocking( ex, bowtie_index, fastq_file, bwtarg, via=via, memory=mlim )
         samfile = future.wait()
         bam = add_nh_flag( samfile )
     sorted_bam = sort_bam.nonblocking(ex, bam, via=via).wait()
@@ -829,7 +839,7 @@ def map_reads( ex, fastq_file, chromosomes, bowtie_index,
         gzipfile( ex, unmapped )
         return_dict['unmapped'] = unmapped
     if remove_pcr_duplicates:
-        thresh = poisson_threshold( antibody_enrichment*full_stats["actual_coverage"] )
+        thresh = poisson_threshold( int(antibody_enrichment)*full_stats["actual_coverage"] )
         bam2 = remove_duplicate_reads( sorted_bam, chromosomes, maxhits, thresh, convert=True )
         return_dict['poisson_threshold'] = thresh
         reduced_bam = sort_bam.nonblocking(ex, bam2, via=via).wait()
@@ -864,7 +874,7 @@ def map_reads( ex, fastq_file, chromosomes, bowtie_index,
 
 ############################################################
 
-def map_groups( ex, job_or_dict, assembly, map_args=None ):
+def map_groups( ex, job_or_dict, assembly, map_args=None, bowtie1=False, logfile=sys.stdout, debugfile=sys.stderr ):
     """Fetches fastq files and bowtie indexes, and runs the 'map_reads' function for
     a collection of samples described in a 'Frontend' 'job'.
 
@@ -880,6 +890,10 @@ def map_groups( ex, job_or_dict, assembly, map_args=None ):
 
     Returns a dictionary with keys *group_id* from the job object and values dictionaries
     mapping *run_id* to the corresponding return value of the 'map_reads' function.
+
+    :param bowtie1: if True, `bowtie` will be used instead of `bowtie2`. The paths to both
+        indexes are expected to differ only by the name of the last containing directory, namely
+        `bowtie` or `bowtie2` respectively.
     """
     processed = {}
     file_names = {}
@@ -908,6 +922,11 @@ def map_groups( ex, job_or_dict, assembly, map_args=None ):
     if assembly.intype == 2: # transcriptome is more redundant
         map_args['maxhits'] = max(int(map_args.get('maxhits') or 50),50)
     index_path = assembly.index_path
+    if bowtie1:
+        dirname,md5 = os.path.split(index_path)
+        dirname = re.sub('bowtie2$','bowtie',dirname)
+        assert os.path.exists(dirname), "Bowtie1 index not found at %s." % dirname
+        index_path = os.path.join(dirname,md5)
     for gid,group in groups.iteritems():
         processed[gid] = {}
         file_names[gid] = {}
@@ -921,12 +940,12 @@ def map_groups( ex, job_or_dict, assembly, map_args=None ):
             if 'seed_lengths' in group and group['seed_lengths'].get(rid) > 0:
                 seed_len = str(group['seed_lengths'][rid])
                 if 'bwt_args' in map_args:
-                    if "-l" in map_args['bwt_args']:
-                        map_args['bwt_args'][map_args['bwt_args'].index("-l")+1] = seed_len
+                    if "-L" in map_args['bwt_args']:
+                        map_args['bwt_args'][map_args['bwt_args'].index("-L")+1] = seed_len
                     else:
-                        map_args['bwt_args'] += ["-l",seed_len]
+                        map_args['bwt_args'] += ["-L",seed_len]
                 else:
-                    map_args['bwt_args'] = ["-l",seed_len]
+                    map_args['bwt_args'] = ["-L",seed_len]
             name = group_name
             if len(group['runs'])>1:
                 name += "_"
@@ -1175,11 +1194,11 @@ def densities_groups( ex, job_or_dict, file_dict, chromosomes, via='lsf' ):
                       'genome_size': mapped.values()[0]['stats']['genome_size']})
     return processed
 
-def mapseq_workflow(ex, job, assembly, map_args, gl, via="local",
+def mapseq_workflow(ex, job, assembly, map_args, gl, bowtie1=False, via="local",
                     logfile=sys.stdout, debugfile=sys.stderr):
     logfile.write("Map reads.\n");logfile.flush()
     map_args.setdefault("via",via)
-    mapped_files = map_groups( ex, job, assembly, map_args )
+    mapped_files = map_groups( ex, job, assembly, map_args, bowtie1, logfile, debugfile )
     logfile.write("Make stats:\n");logfile.flush()
     logfile.write("GroupId_GroupName:\t")
     for k,v in job.groups.iteritems():
