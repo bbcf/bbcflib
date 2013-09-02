@@ -8,7 +8,7 @@ from bein import program
 from bein.util import touch, add_pickle, split_file, count_lines
 from common import set_file_descr, gzipfile, unique_filename_in, cat
 from bbcflib import daflims
-from mapseq import bowtie_build, bowtie,get_fastq_files#, add_bowtie_index
+from mapseq import bowtie_build, bowtie,get_fastq_files
 import os, urllib, shutil, re
 
 #MLPath="/archive/epfl/bbcf/mleleu/pipeline_vMarion/pipeline_3Cseq/vWebServer_Bein/"

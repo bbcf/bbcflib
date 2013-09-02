@@ -139,11 +139,11 @@ class Assembly(object):
                 except (IndexError, urllib2.URLError):
                     raise ValueError("URL not found: %s." % url)
         self._add_info(**dict((str(k),v) for k,v in assembly_info['assembly'].iteritems()))
-        root = os.path.join(self.genrep.root,"nr_assemblies/bowtie2")
+        root = os.path.join(self.genrep.root,"nr_assemblies/bowtie")
         if self.intype == 1:
-            root = os.path.join(self.genrep.root,"nr_assemblies/exons_bowtie2")
+            root = os.path.join(self.genrep.root,"nr_assemblies/exons_bowtie")
         elif self.intype == 2:
-            root = os.path.join(self.genrep.root,"nr_assemblies/cdna_bowtie2")
+            root = os.path.join(self.genrep.root,"nr_assemblies/cdna_bowtie")
         elif self.intype == 3:
             root = os.path.join(self.genrep.root,"nr_assemblies/soapsplice")
         self.index_path = os.path.join(root,self.md5)
@@ -155,11 +155,11 @@ class Assembly(object):
             self._add_chromosome(**chrom)
         return None
 
-    def build_assembly(self, ex, assembly, fasta, annot, via, bowtie1=False):
+    def build_assembly(self, ex, assembly, fasta, annot, via, bowtie2=False):
         """
         Build an Assembly object from files.
         """
-        from bbcflib.mapseq import bowtie2_build
+        from bbcflib.mapseq import bowtie_build
         if assembly is None:
             if fasta is not None:
                 self.name = os.path.splitext( os.path.basename( fasta ) )[0]
@@ -197,7 +197,7 @@ class Assembly(object):
             [g.wait() for g in [sam_faidx.nonblocking(ex,f,via=via) \
                                     for f in fasta_files]]
             if len(fasta_files) > 0:
-                self.index_path = bowtie2_build.nonblocking(ex,fasta_files,via=via,memory=8,bowtie1=bowtie1).wait()
+                self.index_path = bowtie_build.nonblocking(ex,fasta_files,bowtie2=bowtie2,via=via,memory=8).wait()
             chromosomes = {}
             for f in fasta_files: chromosomes.update(fasta_length.nonblocking(ex,f,via=via).wait())
             self.stats_dict = {}

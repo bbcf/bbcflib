@@ -103,8 +103,6 @@ class Workflow(object):
             self.job.dafl = dict((loc,daflims.DAFLIMS( username=self.globals['lims']['user'],
                                                        password=pwd ))
                                  for loc,pwd in self.globals['lims']['passwd'].iteritems())
-        else:
-            self.job.dafl = None
 ########################################################################
 ##########################  EXECUTION  #################################
 ########################################################################
