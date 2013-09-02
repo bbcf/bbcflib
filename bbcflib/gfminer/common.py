@@ -55,6 +55,17 @@ def copy(stream,n=2):
     return [FeatureStream(x,stream.fields) for x in itertools.tee(stream)]
 
 ####################################################################
+def add_name_field(stream):
+    """
+    Adds a unique name to each record in the stream.
+    """
+    ci = stream.fields.index('chr')
+    si = stream.fields.index('start')
+    ei = stream.fields.index('end')
+    _f = stream.fields+['name']
+    return FeatureStream((r+("%s:%i-%i"%(r[ci],r[si],r[ei]),) for r in stream), 
+                         fields=_f)
+####################################################################
 def select(stream, fields=None, selection={}):
     """
     Keeps only specified *fields* from a stream, and/or only elements matching *selection*.
@@ -489,7 +500,7 @@ def cobble(stream,aggregate=aggreg_functions,stranded=False,scored=False):
 
     :param stream: FeatureStream object.
     :param stranded: (bool) if True, only features of the same strand are cobbled. [False]
-    :param scored: (bool) if True, each fragment will be attributed a fraction on the
+    :param scored: (bool) if True, each fragment will be attributed a fraction of the
         original score, based on its length. [False]
     :rtype: FeatureStream
     """

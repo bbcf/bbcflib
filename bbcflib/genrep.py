@@ -979,23 +979,26 @@ class GenRep(object):
         request = urllib2.Request(self.url + "/genomes.json")
         genome_list = {}
         assembly_list = {}
-        for g in json.load(urllib2.urlopen(request)):
-            species = str(g['genome'].get('name')).strip()
-            gid = g['genome'].get('id')
-            if species and gid:
-                genome_list[gid] = species
-        request = urllib2.Request(self.url + "/assemblies.json")
-        for a in json.load(urllib2.urlopen(request)):
-            name = str(a['assembly'].get('name'))
-            if name == None: continue
-            if filter_valid and not a['assembly'].get('bbcf_valid'): continue
-            species = genome_list.get(a['assembly'].get('genome_id'))
-            info = "%s (%s)" %(species,name)
-            if name == assembly: return info
-            if species not in assembly_list: assembly_list[species] = []
-            assembly_list[species].append((name,info))
-        if assembly == None:
-            return [x for k in sorted(assembly_list.keys()) for x in assembly_list[k]]
+        try:
+            for g in json.load(urllib2.urlopen(request)):
+                species = str(g['genome'].get('name')).strip()
+                gid = g['genome'].get('id')
+                if species and gid:
+                    genome_list[gid] = species
+            request = urllib2.Request(self.url + "/assemblies.json")
+            for a in json.load(urllib2.urlopen(request)):
+                name = str(a['assembly'].get('name'))
+                if name == None: continue
+                if filter_valid and not a['assembly'].get('bbcf_valid'): continue
+                species = genome_list.get(a['assembly'].get('genome_id'))
+                info = "%s (%s)" %(species,name)
+                if name == assembly: return info
+                if species not in assembly_list: assembly_list[species] = []
+                assembly_list[species].append((name,info))
+            if assembly == None:
+                return [x for k in sorted(assembly_list.keys()) for x in assembly_list[k]]
+        except urllib2.URLError:
+            return []
 
     def get_sequence(self, chr_id, coord_list, path_to_ref=None, chr_name=None):
         """Parse a slice request to the repository.

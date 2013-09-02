@@ -82,7 +82,8 @@ import pysam
 from bein import program, ProgramFailed, MiniLIMS
 from bein.util import add_pickle, touch, split_file, count_lines
 
-demultiplex_path = "/archive/epfl/bbcf/data/htsstation/demultiplexing_minilims.files/"
+from bbcflib.workflows import _basepath
+demultiplex_path = os.path.join(_basepath,"demultiplexing_minilims.files/")
 arch_basepath = "/archive/epfl/bbcf/data/"
 
 ###############
@@ -548,6 +549,7 @@ def add_bowtie2_index(execution, files, description="", alias=None, index=None, 
     return index
 
 @program
+<<<<<<< HEAD
 def bowtie2(index, reads, args='', bowtie1=False):
     """Run `bowtie2` with *args* to map *reads* against *index*.
     Returns the name of bowtie's output file.
@@ -558,6 +560,37 @@ def bowtie2(index, reads, args='', bowtie1=False):
     :param args: (str or list) command line arguments to bowtie - either a string ("-k 20 ...")
         or a list of strings (["-k","20",...]).
     :param bowtie1: (bool) if True, use `bowtie1` instead of `bowtie2`.
+=======
+def bowtie(index, reads, args="-Sra"):
+    """Run bowtie with *args* to map *reads* against *index*.
+
+    Returns the filename of bowtie's output file.  *args* gives the
+    command line arguments to bowtie, and may be either a string or a
+    list of strings.
+    """
+    sam_filename = unique_filename_in()
+    if isinstance(args, (tuple,list)):
+        options = list(args)
+    elif isinstance(args, basestring):
+        options = args.split(" ")
+    else:
+        raise ValueError("bowtie's args keyword argument requires a string or a "+\
+                         "list of strings.  Received: "+str(args))
+    if isinstance(reads, list):
+        reads = ",".join(reads)
+    if isinstance(reads, tuple):
+        reads = "-1 "+reads[0]+" -2 "+reads[1]
+        if not("-X" in options): options += ["-X","800"]
+    return {"arguments": ["bowtie"]+options+["-x",index, reads, sam_filename],
+            "return_value": sam_filename}
+
+@program
+def bowtie2(index, reads, args=''):
+    """Run bowtie with *args* to map *reads* against *index*.
+
+    Returns the filename of bowtie's output file.  *args* gives the
+    command line arguments to bowtie, and may be either a string ("-k 20 ...") or a
+    list of strings (["-k","20",...]).
     """
     main_call = "bowtie2"
     if bowtie1:
