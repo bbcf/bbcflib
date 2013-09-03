@@ -17,8 +17,8 @@ from operator import itemgetter
 
 # Internal modules #
 from bbcflib.common import set_file_descr, unique_filename_in, cat, timer
-from bbcflib import mapseq, genrep
-from bbcflib.mapseq import add_and_index_bam, sam_to_bam
+from bbcflib.genrep import Assembly
+from bbcflib.mapseq import add_and_index_bam, sam_to_bam, map_reads
 from bbcflib.gfminer.common import cobble, sorted_stream, map_chromosomes, duplicate, apply
 from bbcflib.track import track, FeatureStream, convert
 from bein import program
@@ -456,7 +456,7 @@ def rnaseq_workflow(ex, job, assembly=None,
     :rtype: None
     :param ex: the bein's execution Id.
     :param job: a Frontend.Job object (or a dictionary of the same form).
-    :param assembly: a GenRep.Assembly object
+    :param assembly: a genrep.Assembly object
     :param bam_files: a dictionary such as returned by mapseq.get_bam_wig_files.
     :param rpath: (str) path to the R executable.
     :param junctions: (bool) whether to search for splice junctions using SOAPsplice. [False]
@@ -471,7 +471,7 @@ def rnaseq_workflow(ex, job, assembly=None,
         if os.path.exists(repo_rpath): rpath = repo_rpath
     group_names={}; group_ids={}; conditions=[]
     if assembly is None:
-        assembly = genrep.Assembly(assembly=job.assembly_id)
+        assembly = Assembly(assembly=job.assembly_id)
     groups = job.groups
     if len(groups)==0: sys.exit("No groups/runs were given.")
     for gid,group in groups.iteritems():
@@ -758,7 +758,7 @@ def find_junctions(ex,job,assembly,soapsplice_index=None,path_to_soapsplice=None
     :param soapsplice_options: (dict) SOAPsplice options, e.g. {'-m':2}.
     :rtype: str, str, str
     """
-    assembly = genrep.Assembly(assembly.id, intype=3)
+    assembly = Assembly(assembly.id, intype=3)
     soapsplice_index = soapsplice_index or os.path.join(assembly.index_path,assembly.md5+'.index')
     soapsplice_options.update(job.options.get('soapsplice_options',{}))
     soapsplice_options.setdefault('-p',16) # number of threads
@@ -820,7 +820,8 @@ def convert_junc_file(filename, assembly):
 #-------------------------- UNMAPPED READS ----------------------------#
 
 @timer
-def align_unmapped(ex,job,assembly,group_names,exon_mapping,transcript_mapping,exons_in_trans,via):
+def align_unmapped( ex, job, assembly, group_names, 
+                    exon_mapping, transcript_mapping, exons_in_trans, via ):
     """
     Map reads that did not map to the exons to a collection of annotated transcripts,
     in order to add counts to pairs of exons involved in splicing junctions.
@@ -830,19 +831,22 @@ def align_unmapped(ex,job,assembly,group_names,exon_mapping,transcript_mapping,e
 
     :param group_names: dict of the form ``{group_id: group_name}``.
     """
-    assembly = genrep.Assembly(assembly.id, intype=2)
+    assembly = Assembly(assembly.id, intype=2)
     additionals = {}; unmapped_bam = {}; unmapped_fastq = {}
     refseq_path = assembly.index_path
+    bwt2 = job.options.get("bowtie2",True)
     for gid, group in job.groups.iteritems():
         k = 0
         for rid, run in group['runs'].iteritems():
-            k +=1
+            k += 1
             cond = group_names[gid]+'.'+str(k)
             unmapped_fastq[cond] = job.files[gid][rid].get('unmapped_fastq')
             if unmapped_fastq[cond] and os.path.exists(refseq_path+".1.ebwt"):
                 try:
-                    unmapped_bam[cond] = mapseq.map_reads(ex, unmapped_fastq[cond], {}, refseq_path, \
-                          remove_pcr_duplicates=False, bwt_args=[], via=via)['bam']
+                    unmapped_bam[cond] = map_reads( ex, unmapped_fastq[cond], 
+                                                    {}, refseq_path, bowtie_2=bwt2,
+                                                    remove_pcr_duplicates=False, 
+                                                    via=via )['bam']
                 except: continue
                 if unmapped_bam[cond]:
                     sam = pysam.Samfile(unmapped_bam[cond])

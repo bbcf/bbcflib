@@ -43,7 +43,8 @@ default_root = '/db/genrep'
 ################################################################################
 class Assembly(object):
     def __init__(self, assembly=None, genrep=None, intype=0,
-                 fasta=None, annot=None, ex=None, via='local'):
+                 fasta=None, annot=None, ex=None, via='local', 
+                 bowtie2=False):
         """
         A representation of a GenRep assembly.
         To get an assembly from the repository, call the Assembly
@@ -104,7 +105,7 @@ class Assembly(object):
         self.intype = int(intype)
         self.chromosomes = {}
         if fasta is not None:
-            self.build_assembly(ex,assembly,fasta,annot,via)
+            self.build_assembly(ex,assembly,fasta,annot,via,bowtie2=bowtie2)
         elif assembly is not None:
             self.set_assembly(assembly)
             if annot is not None and os.path.exists(annot):

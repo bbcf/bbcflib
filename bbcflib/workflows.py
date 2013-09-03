@@ -120,7 +120,8 @@ class Workflow(object):
                                                  fasta=self.job.options.get('fasta_file'),
                                                  annot=self.job.options.get('annot_file'),
                                                  intype=self.job.options.get('input_type_id',0),
-                                                 ex=ex, via=self.opts.via )
+                                                 ex=ex, via=self.opts.via,
+                                                 bowtie2=self.job.options.get("bowtie2",True) )
 ##### Check all the options
             if not self.check_options():
                 raise Usage("Problem with options %s" %self.opts)
