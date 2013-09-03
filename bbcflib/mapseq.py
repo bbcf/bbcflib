@@ -521,7 +521,8 @@ def bwa_sw(reads_path, reference_path, sam_path, z=7):
 ########
 # Bowtie
 ########
-def add_bowtie_index(execution, files, description="", alias=None, index=None, bowtie2=False):
+def add_bowtie_index(execution, files, description="", 
+                     alias=None, index=None, bowtie2=False):
     """Add an index of a list of FASTA files to the repository.
     Returns the prefix of the bowtie index.
 
@@ -634,7 +635,7 @@ def bowtie_build(files, index=None, bowtie2=False):
 
 
 def parallel_bowtie( ex, index, reads, unmapped=None, n_lines=1000000, bowtie_args='',
-                     add_nh_flags=False, bowtie2=False, via='local' ):
+                     add_nh_flags=False, bowtie_2=False, via='local' ):
     """Run bowtie in parallel on pieces of *reads*.
 
     Splits *reads* into chunks *n_lines* long, then runs `bowtie` with
@@ -656,19 +657,19 @@ def parallel_bowtie( ex, index, reads, unmapped=None, n_lines=1000000, bowtie_ar
         sf2 = sorted(split_file(ex, reads[1], n_lines = n_lines))
         subfiles = [(f,sf2[n]) for n,f in enumerate(sf1)]
         mlim = 8
-        if bowtie2: un_cmd = "--un-conc"
+        if bowtie_2: un_cmd = "--un-conc"
     else:
         subfiles = split_file(ex, reads, n_lines = n_lines)
         mlim = 4
-    if bowtie2: call = bowtie2.nonblocking
-    else:       call = bowtie.nonblocking
+    if bowtie_2: btcall = bowtie2.nonblocking
+    else:        btcall = bowtie.nonblocking
     if unmapped:
-        futures = [call(ex, index, sf, 
-                        args=bowtie_args+[un_cmd,unmapped+"_"+str(n)],
-                        via=via, memory=mlim)
+        futures = [btcall(ex, index, sf, 
+                          args=bowtie_args+[un_cmd,unmapped+"_"+str(n)],
+                          via=via, memory=mlim)
                    for n,sf in enumerate(subfiles)]
     else:
-        futures = [call(ex, index, sf, args=bowtie_args, via=via, memory=mlim)
+        futures = [btcall(ex, index, sf, args=bowtie_args, via=via, memory=mlim)
                    for sf in subfiles]
     samfiles = [f.wait() for f in futures]
     futures = []
@@ -804,7 +805,7 @@ def pprint_bamstats(sample_stats, textfile=None):
 ############################################################
 
 def map_reads( ex, fastq_file, chromosomes, bowtie_index,
-               bowtie2=False, maxhits=5, antibody_enrichment=50,
+               bowtie_2=False, maxhits=5, antibody_enrichment=50,
                remove_pcr_duplicates=True, bwt_args=None, via='lsf' ):
     """Runs ``bowtie`` in parallel over lsf for the `fastq_file` input.
     Returns the full bamfile, its filtered version (see 'remove_duplicate_reads')
@@ -821,11 +822,10 @@ def map_reads( ex, fastq_file, chromosomes, bowtie_index,
     The mapping statistics dictionary is pickled and added to the execution's
     repository, as well as both the full and filtered bam files.
     """
-    # Bowtie 2 options
     if bwt_args is None: bwt_args = []
     maxhits = int(maxhits)
     antibody_enrichment = int(antibody_enrichment)
-    if bowtie2:
+    if bowtie_2:
         bwtarg = ["-k", str(max(20,maxhits))]+bwt_args
         if not ("--local" in bwtarg or "--end-to-end" in bwtarg):
             bwtarg += "--end-to-end" #"--local"
@@ -836,18 +836,20 @@ def map_reads( ex, fastq_file, chromosomes, bowtie_index,
                 bwtarg += ["--sensitive-local"]
             else:
                 bwtarg += ["--sensitive"]
+        btcall = bowtie2.nonblocking
     else:
         bwtarg = ["-Sam", str(max(20,maxhits))]+bwt_args
         if not("--best" in bwtarg):     bwtarg += ["--best"]
         if not("--strata" in bwtarg):   bwtarg += ["--strata"]
         if not("--chunkmbs" in bwtarg): bwtarg += ["--chunkmbs","512"]
         unmapped = unique_filename_in()
+        btcall = bowtie.nonblocking
     is_paired_end = isinstance(fastq_file,tuple)
     un_cmd = "--un"
     if is_paired_end:
         linecnt = count_lines( ex, fastq_file[0] )
         mlim = 8
-        if bowtie2: un_cmd = "--un-conc"
+        if bowtie_2: un_cmd = "--un-conc"
     else:
         linecnt = count_lines( ex, fastq_file )
         mlim = 4
@@ -855,15 +857,10 @@ def map_reads( ex, fastq_file, chromosomes, bowtie_index,
     if linecnt>10000000:
         bam = parallel_bowtie( ex, bowtie_index, fastq_file, unmapped=unmapped,
                                n_lines=8000000, bowtie_args=bwtarg,
-                               add_nh_flags=True, bowtie2=bowtie2, via=via )
+                               add_nh_flags=True, bowtie_2=bowtie_2, via=via )
     else:
         bwtarg += [un_cmd, unmapped]
-        if bowtie2: 
-            future = bowtie2.nonblocking( ex, bowtie_index, fastq_file, bwtarg,
-                                         via=via, memory=mlim )
-        else:
-            future = bowtie.nonblocking( ex, bowtie_index, fastq_file, bwtarg,
-                                         via=via, memory=mlim )
+        future = btcall( ex, bowtie_index, fastq_file, bwtarg, via=via, memory=mlim )
         samfile = future.wait()
         bam = add_nh_flag( samfile )
     sorted_bam = sort_bam.nonblocking(ex, bam, via=via).wait()
@@ -981,7 +978,7 @@ def map_groups( ex, job_or_dict, assembly, map_args=None,
             if len(group['runs'])>1:
                 name += "_"
                 name += group['run_names'].get(rid,str(rid))
-            m = map_reads( ex, run, chromosomes, index_path, bowtie2=bowtie2,
+            m = map_reads( ex, run, chromosomes, index_path, bowtie_2=bowtie2,
                            remove_pcr_duplicates=pcr_dupl, **map_args )
             descr = {'step':'bowtie', 'groupId':gid}
             bam_descr = {'type': 'bam', 'ucsc': '1'}
