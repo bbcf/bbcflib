@@ -604,7 +604,9 @@ def bowtie2(index, reads, args=''):
                          "list of strings.  Received: "+str(args))
     if isinstance(reads, list):
         options += ["-U",",".join(reads)]
-    if isinstance(reads, tuple):
+    elif isinstance(reads, basestring):
+        options += ["-U",reads]
+    elif isinstance(reads, tuple):
         if isinstance(reads[0],list):
             reads1 = ",".join(reads[0])
         if isinstance(reads[1],list):
