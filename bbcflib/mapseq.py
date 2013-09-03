@@ -521,7 +521,7 @@ def bwa_sw(reads_path, reference_path, sam_path, z=7):
 ########
 # Bowtie
 ########
-def add_bowtie_index(execution, files, description="", 
+def add_bowtie_index(execution, files, description="",
                      alias=None, index=None, bowtie2=False):
     """Add an index of a list of FASTA files to the repository.
     Returns the prefix of the bowtie index.
@@ -666,7 +666,7 @@ def parallel_bowtie( ex, index, reads, unmapped=None, n_lines=1000000, bowtie_ar
     if bowtie_2: btcall = bowtie2.nonblocking
     else:        btcall = bowtie.nonblocking
     if unmapped:
-        futures = [btcall(ex, index, sf, 
+        futures = [btcall(ex, index, sf,
                           args=bowtie_args+[un_cmd,unmapped+"_"+str(n)],
                           via=via, memory=mlim)
                    for n,sf in enumerate(subfiles)]
@@ -914,7 +914,7 @@ def map_reads( ex, fastq_file, chromosomes, bowtie_index,
 
 ############################################################
 
-def map_groups( ex, job_or_dict, assembly, map_args=None, 
+def map_groups( ex, job_or_dict, assembly, map_args=None,
                 bowtie2=False, logfile=sys.stdout, debugfile=sys.stderr ):
     """Fetches fastq files and bowtie indexes, and runs the 'map_reads' function for
     a collection of samples described in a 'Frontend' 'job'.
@@ -1267,7 +1267,10 @@ def get_bam_wig_files( ex, job, minilims=None, hts_url=None, suffix=['fwd','rev'
             group_name = str(gid)
         job.groups[gid]['name'] = group_name
         for rid,run in group['runs'].iteritems():
-            file_loc = re.search(r'^[\"\']?([^\"\';]+)[\"\']?',str(run['url']).strip()).groups()[0]
+            try:
+                file_loc = re.search(r'^[\"\']?([^\"\';]+)[\"\']?',str(run['url']).strip()).groups()[0]
+            except AttributeError:
+                raise AttributeError("BAM files not found.")
             bamfile = unique_filename_in()
             wig = {}
             name = group_name
