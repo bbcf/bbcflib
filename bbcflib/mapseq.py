@@ -831,13 +831,19 @@ def map_reads( ex, fastq_file, chromosomes, bowtie_index,
         bwtarg = ["-k", str(max(20,maxhits))]+bwt_args
         if not ("--local" in bwtarg or "--end-to-end" in bwtarg):
             bwtarg += ["--end-to-end"] #"--local"
-        preset = ["--very-fast","--fast","--sensitive","--very-sensitive"]
-        #preset += [p+'-local' for p in preset]
-        if not any(p in bwtarg for p in preset):
-            if "--local" in bwtarg:
-                bwtarg += ["--sensitive-local"]
-            else:
-                bwtarg += ["--sensitive"]
+        if any(opt in bwtarg for opt in ["-D","-R","-N","-i"]): # Specific custom options from user by config file
+            pass #and use bowtie2's default values              # "-L" is always passed by `map_groups`
+        else: # Use presets
+            preset = ["--very-fast","--fast","--sensitive","--very-sensitive"]
+            #preset += [p+'-local' for p in preset] # Uncomment if --local becomes the defaut mode some day
+            if not any(p in bwtarg for p in preset): # No specific options or preset set by user: default preset
+                if "--local" in bwtarg:
+                    bwtarg += ["--sensitive-local"]
+                else:
+                    bwtarg += ["--sensitive"]
+            # Presets have constraints on the seed length: use the preset's value
+            seedlen_idx = bwtarg.index("-L")
+            bwtarg = bwtarg[:seedlen_idx]+bwtarg[seedlen_idx+2:]
         btcall = bowtie2.nonblocking
     else:
         bwtarg = ["-Sam", str(max(20,maxhits))]+bwt_args
