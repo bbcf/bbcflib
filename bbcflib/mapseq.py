@@ -205,7 +205,7 @@ def get_fastq_files( ex, job, set_seed_length=True ):
             target2 = target
         return target2
 #########
-    if  hasattr(job,"dafl") and not isinstance(job.dafl.values()[0],daflims.DAFLIMS):
+    if  hasattr(job,"dafl") and job.dafl.values() and not isinstance(job.dafl.values()[0],daflims.DAFLIMS):
         raise ValueError("Need DAFLIMS objects in get_fastq_files.")
     for gid,group in job.groups.iteritems():
         job.groups[gid]['seed_lengths'] = {}

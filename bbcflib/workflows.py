@@ -98,6 +98,7 @@ class Workflow(object):
         g_rep = genrep.GenRep( url=self.globals.get("genrep_url"),
                                root=self.globals.get("bwt_root") )
 ##### Configure facility LIMS
+        self.job.dafl = {}
         if 'lims' in self.globals:
             from bbcflib import daflims
             self.job.dafl = dict((loc,daflims.DAFLIMS( username=self.globals['lims']['user'],
