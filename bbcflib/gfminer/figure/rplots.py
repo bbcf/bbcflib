@@ -49,8 +49,9 @@ def _end(lopts,last,**kwargs):
     """Adds the legend and closes the figure."""
     if not(last): return
     if 'legend' in kwargs:
-        names = kwargs['legend']
-        robjects.r("legend(x='topright', legend=%s, col=1:%i%s)" %(list2r(names),len(names),lopts))
+        names = kwargs.get('legend')
+        if names:
+            robjects.r("legend(x='topright', legend=%s, col=1:%i%s)" %(list2r(names),len(names),lopts))
     robjects.r("dev.off()")
 
 ###################V#########################################
@@ -229,9 +230,9 @@ rowcol = rbind(1+1:n,rowcol)
         robjects.r("labels=as.character(1:n)")
     else:
         robjects.r.assign('labels',numpy2ri.numpy2ri(labels))
-    if kwargs.get('col') is not None: 
+    if kwargs.get('col') is not None:
         robjects.r("col = '%s'" %kwargs['col'])
-    else: 
+    else:
         robjects.r("col = 'orange'")
     if len(highlights[0]) > 1:
         robjects.r("""
