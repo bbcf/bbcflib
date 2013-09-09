@@ -534,6 +534,8 @@ def rnaseq_workflow(ex, job, assembly=None,
         [3] trans_in_gene is a dict ``{gene_id: [IDs of the transcripts it contains]}``
         [4] exons_in_trans is a dict ``{transcript_id: [IDs of the exons it contains]}`` """
     (gene_mapping, transcript_mapping, exon_mapping, trans_in_gene, exons_in_trans) = fetch_mappings(assembly)
+    if len(exon_mapping) == 0 or len(gene_mapping) == 0:
+        raise ValueError("No genes found for this genome. Abort.")
 
     """ Map remaining reads to transcriptome """
     if unmapped:
@@ -820,7 +822,7 @@ def convert_junc_file(filename, assembly):
 #-------------------------- UNMAPPED READS ----------------------------#
 
 @timer
-def align_unmapped( ex, job, assembly, group_names, 
+def align_unmapped( ex, job, assembly, group_names,
                     exon_mapping, transcript_mapping, exons_in_trans, via ):
     """
     Map reads that did not map to the exons to a collection of annotated transcripts,
@@ -843,9 +845,9 @@ def align_unmapped( ex, job, assembly, group_names,
             unmapped_fastq[cond] = job.files[gid][rid].get('unmapped_fastq')
             if unmapped_fastq[cond] and os.path.exists(refseq_path+".1.ebwt"):
                 try:
-                    unmapped_bam[cond] = map_reads( ex, unmapped_fastq[cond], 
+                    unmapped_bam[cond] = map_reads( ex, unmapped_fastq[cond],
                                                     {}, refseq_path, bowtie_2=bwt2,
-                                                    remove_pcr_duplicates=False, 
+                                                    remove_pcr_duplicates=False,
                                                     via=via )['bam']
                 except: continue
                 if unmapped_bam[cond]:
