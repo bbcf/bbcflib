@@ -183,8 +183,8 @@ def heatmap(M,output=None,format='pdf',new=True,last=True,
     robjects.r("""
       library(gplots)
       library(RColorBrewer)
-      myBreaks=seq(ymin,ymax,length.out=15)
-      myColors=rev(colorRampPalette(brewer.pal(10,"RdYlBu"))(length(myBreaks)-1))
+      myBreaks = seq(ymin,ymax,length.out=15)
+      myColors = rev(colorRampPalette(brewer.pal(10,"RdYlBu"))(length(myBreaks)-1))
 #      myCor = function(x) {as.dist(1-cor(t(x),use="pairwise.complete.ob"))}
       par(cex.main=1)
       heatmap.2(as.matrix(Mdata),

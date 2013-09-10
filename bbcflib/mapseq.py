@@ -225,7 +225,7 @@ def get_fastq_files( ex, job, set_seed_length=True ):
                                               run['run'], run['lane'],
                                               libname=run.get('sequencing_library') )
                 job.groups[gid]['runs'][rid] = daf_data['path']
-                if (set_seed_length):
+                if set_seed_length:
                     job.groups[gid]['seed_lengths'][rid] = max(28,int(0.7*daf_data['cycle']))
             elif isinstance(run,str):
                 run = re.search(r'^[\"\']?([^\"\';]+)[\"\']?',run).groups()[0]
@@ -831,19 +831,19 @@ def map_reads( ex, fastq_file, chromosomes, bowtie_index,
         bwtarg = ["-k", str(max(20,maxhits))]+bwt_args
         if not ("--local" in bwtarg or "--end-to-end" in bwtarg):
             bwtarg += ["--end-to-end"] #"--local"
-        if any(opt in bwtarg for opt in ["-D","-R","-N","-i"]): # Specific custom options from user by config file
-            pass #and use bowtie2's default values              # "-L" is always passed by `map_groups`
-        else: # Use presets
+        if not any(opt in bwtarg for opt in ["-D","-R","-N","-i"]): 
+# Specific custom options from user by config file
             preset = ["--very-fast","--fast","--sensitive","--very-sensitive"]
-            #preset += [p+'-local' for p in preset] # Uncomment if --local becomes the defaut mode some day
-            if not any(p in bwtarg for p in preset): # No specific options or preset set by user: default preset
-                if "--local" in bwtarg:
-                    bwtarg += ["--sensitive-local"]
-                else:
-                    bwtarg += ["--sensitive"]
-            # Presets have constraints on the seed length: use the preset's value
-            seedlen_idx = bwtarg.index("-L")
-            bwtarg = bwtarg[:seedlen_idx]+bwtarg[seedlen_idx+2:]
+            #preset += [p+'-local' for p in preset] 
+# Uncomment if --local becomes the defaut mode some day
+            if not any(p in bwtarg for p in preset): 
+# No specific options or preset set by user: default preset
+                if "--local" in bwtarg: bwtarg += ["--sensitive-local"]
+                else:                   bwtarg += ["--sensitive"]
+# Presets have constraints on the seed length: use the preset's value
+            if "-L" in bwtarg:
+                seedlen_idx = bwtarg.index("-L")
+                bwtarg = bwtarg[:seedlen_idx]+bwtarg[seedlen_idx+2:]
         btcall = bowtie2.nonblocking
     else:
         bwtarg = ["-Sam", str(max(20,maxhits))]+bwt_args
@@ -964,8 +964,6 @@ def map_groups( ex, job_or_dict, assembly, map_args=None,
     if assembly.intype == 2: # transcriptome is more redundant
         map_args['maxhits'] = max(int(map_args.get('maxhits') or 50),50)
     index_path = assembly.index_path
-    if bowtie2: seed_opt = "-L"
-    else:       seed_opt = "-l"
     for gid,group in groups.iteritems():
         processed[gid] = {}
         file_names[gid] = {}
@@ -976,12 +974,12 @@ def map_groups( ex, job_or_dict, assembly, map_args=None,
         if not 'runs' in group:
             group = {'runs': group}
         for rid,run in group['runs'].iteritems():
-            if 'seed_lengths' in group and group['seed_lengths'].get(rid) > 0:
+            if (not bowtie2) and 'seed_lengths' in group and group['seed_lengths'].get(rid) > 0:
                 seed_len = str(group['seed_lengths'][rid])
-                if seed_opt in map_args['bwt_args']:
-                    map_args['bwt_args'][map_args['bwt_args'].index(seed_opt)+1] = seed_len
+                if "-l" in map_args['bwt_args']:
+                    map_args['bwt_args'][map_args['bwt_args'].index("-l")+1] = seed_len
                 else:
-                    map_args['bwt_args'] += [seed_opt,seed_len]
+                    map_args['bwt_args'] += ["-l",seed_len]
             name = group_name
             if len(group['runs'])>1:
                 name += "_"
