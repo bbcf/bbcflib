@@ -41,8 +41,8 @@ import re, os, gzip, sys, time
 from bbcflib import frontend, mapseq
 from bbcflib.common import unique_filename_in, set_file_descr, join_pdf, merge_sql, intersect_many_bed, gzipfile
 from bbcflib.track import track, FeatureStream, convert
-from bbcflib.gfminer import stream as gm_stream
-from bbcflib.gfminer import common as gm_common
+from bbcflib.gfminer.stream import concatenate, neighborhood, getNearestFeature
+from bbcflib.gfminer.common import fusion
 
 # Other modules #
 from bein import program
@@ -333,17 +333,16 @@ def chipseq_workflow( ex, job_or_dict, assembly, script_path='', logfile=sys.std
             macsbed = track(processed['macs'][ctrl]+"_summits.bed",
                             chrmeta=chrlist, fields=_fields).read(selection=_select)
         else:
-            macsbed = gm_stream.concatenate(
-                [track(processed['macs'][(name,x)]+"_summits.bed",
-                       chrmeta=chrlist, fields=_fields).read(selection=_select)
-                 for x in names['controls']])
+            macsbed = concatenate([track(processed['macs'][(name,x)]+"_summits.bed",
+                                         chrmeta=chrlist, fields=_fields).read(selection=_select)
+                                   for x in names['controls']])
         ##############################
-        macs_neighb = gm_stream.neighborhood( macsbed, before_start=150, after_end=150 )
+        macs_neighb = neighborhood( macsbed, before_start=150, after_end=150 )
         peak_list[name] = unique_filename_in()+".sql"
         macs_final = track( peak_list[name], chrmeta=chrlist,
                             info={'datatype':'qualitative'},
                             fields=['start','end','name','score'] )
-        macs_final.write(gm_common.fusion(macs_neighb),clip=True)
+        macs_final.write(fusion(macs_neighb),clip=True)
         macs_final.close()
         ##############################
     if peak_deconvolution:
@@ -383,16 +382,16 @@ def chipseq_workflow( ex, job_or_dict, assembly, script_path='', logfile=sys.std
                                  options['read_extension'], script_path, via=via )
             ##############################
             def _filter_deconv( stream, pval ):
-                for row in stream:
-                    rowpatt = re.search(r';FERR=([\d\.]+)$',row[3])
-                    if rowpatt and float(rowpatt.groups()[0]) <= pval: 
-                        cen = (row[2]+row[1])/2
-                        yield (row[0],)+(cen-150,cen+150)+row[3:]
+                ferr = re.compile(r';FERR=([\d\.]+)$')
+                return FeatureStream( ((x[0],)+((x[2]+x[1])/2-150,(x[2]+x[1])/2+150)+x[3:] 
+                                       for x in stream 
+                                       if "FERR=" in x[3] and float(ferr.search(x[3])) <= pval), 
+                                     fields=stream.fields )
             ##############################
             peak_list[name] = unique_filename_in()+".bed"
             trbed = track(deconv['peaks']).read()
             with track(peak_list[name], chrmeta=chrlist, fields=trbed.fields) as bedfile:
-                bedfile.write(FeatureStream(_filter_deconv(trbed,0.65),fields=trbed.fields))
+                bedfile.write(fusion(_filter_deconv(trbed,0.65)))
             ex.add(deconv['peaks'],
                    description=set_file_descr(name[1]+'_peaks.sql', type='sql',
                                               step='deconvolution', groupId=name[0]))
@@ -416,9 +415,8 @@ def chipseq_workflow( ex, job_or_dict, assembly, script_path='', logfile=sys.std
         peakout = track(peakfile, format='txt', chrmeta=chrlist,
                         fields=['chr','start','end','name','score','gene','location_type','distance'])
         for chrom in assembly.chrnames:
-            peakout.write(gm_stream.getNearestFeature(
-                    ptrack.read(selection=chrom),
-                    assembly.gene_track(chrom)),mode='append')
+            peakout.write(getNearestFeature(ptrack.read(selection=chrom),assembly.gene_track(chrom)),
+                          mode='append')
         peakout.close()
         gzipfile(ex,peakfile)
         ex.add(peakfile+".gz",
