@@ -385,7 +385,7 @@ def chipseq_workflow( ex, job_or_dict, assembly, script_path='', logfile=sys.std
                 ferr = re.compile(r';FERR=([\d\.]+)$')
                 return FeatureStream( ((x[0],)+((x[2]+x[1])/2-150,(x[2]+x[1])/2+150)+x[3:] 
                                        for x in stream 
-                                       if "FERR=" in x[3] and float(ferr.search(x[3])) <= pval), 
+                                       if "FERR=" in x[3] and float(ferr.search(x[3]).groups()[0]) <= pval), 
                                      fields=stream.fields )
             ##############################
             peak_list[name] = unique_filename_in()+".bed"

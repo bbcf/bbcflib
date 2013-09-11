@@ -111,12 +111,13 @@ def parallel_meme( ex, assembly, regions, name=None, chip=False, meme_args=None,
         meme_out = f[0]
         archive = unique_filename_in()
         tgz = tarfile.open(archive, "w:gz")
-        tgz.add( meme_out, arcname=n[1]+"_meme" )
+        tgz.add( meme_out, arcname=n[1]+"_meme",
+                 exclude=lambda x: os.path.basename(x) in [fasta_files[n],background] )
         tgz.close()
         ex.add( archive, description=set_file_descr(n[1]+"_meme.tgz",
                                                     step='meme', type='tar',
                                                     groupId=n[0]) )
-        gzipfile(ex,fasta_files[n])
+        gzipfile(ex,fasta_files[n],args=["-f"])
         ex.add( fasta_files[n]+".gz",
                 description=set_file_descr(n[1]+"_sites.fa.gz",
                                            step='meme', type='fasta',
