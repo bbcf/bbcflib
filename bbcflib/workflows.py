@@ -6,7 +6,6 @@ Module: bbcflib.workflows
 This module provides a base class that can be used to construct workflows from the various
 modules in this library.
 
-
 """
 
 import sys, os, re, json
@@ -98,7 +97,6 @@ class Workflow(object):
         g_rep = genrep.GenRep( url=self.globals.get("genrep_url"),
                                root=self.globals.get("bwt_root") )
 ##### Configure facility LIMS
-        self.job.dafl = {}
         if 'lims' in self.globals:
             from bbcflib import daflims
             self.job.dafl = dict((loc,daflims.DAFLIMS( username=self.globals['lims']['user'],

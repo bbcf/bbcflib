@@ -205,8 +205,6 @@ def get_fastq_files( ex, job, set_seed_length=True ):
             target2 = target
         return target2
 #########
-    if  hasattr(job,"dafl") and job.dafl.values() and not isinstance(job.dafl.values()[0],daflims.DAFLIMS):
-        raise ValueError("Need DAFLIMS objects in get_fastq_files.")
     for gid,group in job.groups.iteritems():
         job.groups[gid]['seed_lengths'] = {}
         job.groups[gid]['run_names'] = {}
@@ -220,6 +218,8 @@ def get_fastq_files( ex, job, set_seed_length=True ):
             if run.get('url'):
                 run = str(run['url']).strip()
             if isinstance(run,dict) and all([x in run for x in ['facility','machine','run','lane']]):
+                if not(hasattr(job,"dafl") and isinstance(job.dafl.values()[0],daflims.DAFLIMS)):
+                    raise ValueError("Need DAFLIMS objects in get_fastq_files.")
                 dafl1 = job.dafl[run['facility']]
                 daf_data = dafl1.fetch_fastq( str(run['facility']), str(run['machine']),
                                               run['run'], run['lane'],
