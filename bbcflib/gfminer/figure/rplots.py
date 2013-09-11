@@ -241,6 +241,8 @@ hilabs = %s
 pch_list = c(3:6,8,15,19,21,22)
 col_list = c("green3","blue","red","cyan","magenta","black","yellow","gray")
 """ %(list2r(highlights[0]),list2r(highlights[1])))
+    else:
+        robjects.r("hili = c()")
     robjects.r("""
 library(RColorBrewer)
 pline1 = function (y, M, X, col, ...) lines(X,M[,y[y[1]]],col=col,...)
