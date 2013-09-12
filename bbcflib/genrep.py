@@ -168,39 +168,22 @@ class Assembly(object):
                 self.name = os.path.splitext( os.path.basename( fasta ) )[0]
             else:
                 self.name = "_custom_"
+            fasta_by_chrom = {}
         else:
-            chromosomes = {}
-            try:
-                assembly = int(assembly)
-                assembly_info = json.load(urllib2.urlopen(urllib2.Request(
-                                """%s/assemblies/%d.json""" % (self.genrep.url, assembly))))
-                chromosomes = json.load(urllib2.urlopen(urllib2.Request(
-                                """%s/chromosomes.json?assembly_id=%d""" %(self.genrep.url, assembly))))
-            except:
-                try:
-                    url = """%s/assemblies.json?assembly_name=%s""" %(self.genrep.url, assembly)
-                    assembly_info = json.load(urllib2.urlopen(urllib2.Request(url)))[0]
-                    chromosomes = json.load(urllib2.urlopen(urllib2.Request(
-                                """%s/chromosomes.json?assembly_name=%s""" %(self.genrep.url, assembly))))
-                except:
-                    pass
-            for c in chromosomes:
-                chrom = dict((str(k),v) for k,v in c['chromosome'].iteritems())
-                cnames = chrom.pop('chr_names')
-                chrom['name'] = (str(x['chr_name']['value']) for x in cnames \
-                                 if x['chr_name']['assembly_id'] == assembly_info['assembly']['id']).next()
-                self._add_chromosome(**chrom)
+            self.set_assembly(assembly)
+            fasta_by_chrom = self.untar_genome_fasta()
             self.name = assembly
         if fasta is not None:
             self.fasta_origin = fasta
-            self.fasta_by_chrom = self.untar_genome_fasta()
-            fasta_files = list(set(self.fasta_by_chrom.values()))
-            [g.wait() for g in [sam_faidx.nonblocking(ex,f,via=via) \
-                                    for f in fasta_files]]
+            chromosomes = {}
+            add_chrom = self.untar_genome_fasta()
+            fasta_files = list(set(add_chrom.values()))
+            for f in fasta_files: chromosomes.update(fasta_length.nonblocking(ex,f,via=via).wait())
+            fasta_by_chrom.update( add_chrom )
+            fasta_files = list(set(fasta_by_chrom.values()))
+            [g.wait() for g in [sam_faidx.nonblocking(ex,f,via=via) for f in fasta_files]]
             if len(fasta_files) > 0:
                 self.index_path = bowtie_build.nonblocking(ex,fasta_files,bowtie2=bowtie2,via=via,memory=8).wait()
-            chromosomes = {}
-            for f in fasta_files: chromosomes.update(fasta_length.nonblocking(ex,f,via=via).wait())
             self.stats_dict = {}
             for f in fasta_files:
                 stats = fasta_composition(ex,f)
@@ -213,8 +196,9 @@ class Assembly(object):
                         chromosomes[chrom['name']]['synonyms'] = chrom['synonyms']+","+chrom_ac
                     else:
                         chromosomes[chrom['name']]['synonyms'] = chrom_ac
-            self.chromosomes = dict(((k,None,None),v)
-                                    for k,v in chromosomes.iteritems())
+            self.chromosomes.update(dict(((k,None,None),v)
+                                         for k,v in chromosomes.iteritems()))
+            self.fasta_by_chrom = fasta_by_chrom
             if hasattr(self,"annot_origin"):
                 archive = tarfile.open(fasta)
                 input_file = archive.extractfile(self.annot_origin)

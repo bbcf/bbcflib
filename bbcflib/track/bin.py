@@ -331,16 +331,17 @@ try:
             """
             def _frag_cover(region):
                 self.open()
-                buffer = {}
+                _buff = {}
                 for read in self.fetch(*region[:3]):
-                    if read.is_reverse: continue
-                    if not read.is_proper_pair: continue
+                    if read.is_reverse or not read.is_proper_pair: continue
                     flen = read.isize
-                    midpos = read.pos+flen/2
-                    if midpos in buffer: buffer[midpos].append(flen)
-                    else: buffer[midpos] = [flen]
-                for p in sorted(buffer.keys()):
-                    fraglen = buffer[p]
+                    for _p in range(read.pos,read.pos+flen):
+                        _buff[_p] = _buff.get(_p,[]).append(fl)
+#                    midpos = read.pos+flen/2
+#                    if midpos in _buff: _buff[midpos].append(flen)
+#                    else: _buff[midpos] = [flen]
+                for p in sorted(_buff.keys()):
+                    fraglen = _buff[p]
                     score = sum(fraglen)/float(len(fraglen))
                     yield (p,score)
                 self.close()
