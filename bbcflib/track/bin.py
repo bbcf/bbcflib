@@ -322,7 +322,7 @@ try:
             """
             Retrieves fragment sizes from paired-end data, and returns a bedgraph-style track::
 
-                (chr,start,end,score) = fragment mid-point coordinates, average fragment size
+                (chr,start,end,score) = genomic coordinates, average fragment size covering the coordinate
 
             :param region: tuple `(chr,start,end)`. `chr` has to be
                 present in the BAM file's header. `start` and `end` are 0-based
@@ -335,8 +335,13 @@ try:
                 for read in self.fetch(*region[:3]):
                     if read.is_reverse or not read.is_proper_pair: continue
                     flen = read.isize
-                    for _p in range(read.pos,read.pos+flen):
-                        _buff[_p] = _buff.get(_p,[]).append(fl)
+                    for p in range(read.pos,read.pos+flen):
+                        _buff[p] = _buff.get(p,[])+[flen]
+                    for p in sorted(_buff.keys()):
+                        if p >= read.pos: break
+                        fraglen = _buff.pop(p)
+                        score = sum(fraglen)/float(len(fraglen))
+                        yield (p,score)
 #                    midpos = read.pos+flen/2
 #                    if midpos in _buff: _buff[midpos].append(flen)
 #                    else: _buff[midpos] = [flen]
