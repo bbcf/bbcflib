@@ -336,7 +336,8 @@ try:
                     if read.is_reverse or not read.is_proper_pair: continue
                     flen = read.isize
                     for p in range(read.pos,read.pos+flen):
-                        _buff[p] = _buff.get(p,[])+[flen]
+                        if p in _buff: _buff[p].append(flen)
+                        else: _buff[p] = [flen]
                     for p in sorted(_buff.keys()):
                         if p >= read.pos: break
                         fraglen = _buff.pop(p)
