@@ -71,21 +71,21 @@ Below is an example of such file::
 
 The header contains information about each individual primer. The sequence is the primer sequence previously used during the de-multiplexing.
 
-Header::
+Header:
 
-    1. >
-    2. primer name (without any spaces or special characters). Should be exactly the same as the groups name!
-    3. primer sequence extended up to the restriction site (e.g., CATG for NlaIII)
-    4. coordinates of the restriction fragments used as viewpoint
-    5. sequence recognized by the primary restriction enzyme (e.g. CATG for NlaIII)
-    6. (optional) sequences to be filter out, separated by the character "|" . Examples of such sequences are undigested, self-ligated and bait sequences. Ideally, both forward and reverse complement sequences of 40bp long are given. Shorter or incomplete sequences can be filled in with "---".
-    7. (optional) regions that should be excluded from the analysis (e.g. a region surrounding the viewpoint) Reads and fragments overlapping with this region will be excluded. The input for these coordinates should be preceded by the string "Exclude=". Multiple regions may be separated by a comma "," (e.g., Exclude=chr2:74521560-74562637,chr2:74601162-74604549)
+1. >
+2. primer name (without any spaces or special characters). Should be exactly the same as the groups name!
+3. primer sequence extended up to the restriction site (e.g., CATG for NlaIII)
+4. coordinates of the restriction fragments used as viewpoint
+5. sequence recognized by the primary restriction enzyme (e.g. CATG for NlaIII)
+6. (optional) sequences to be filter out, separated by the character "|" . Examples of such sequences are undigested, self-ligated and bait sequences. Ideally, both forward and reverse complement sequences of 40bp long are given. Shorter or incomplete sequences can be filled in with "---".
+7. (optional) regions that should be excluded from the analysis (e.g. a region surrounding the viewpoint) Reads and fragments overlapping with this region will be excluded. The input for these coordinates should be preceded by the string "Exclude=". Multiple regions may be separated by a comma "," (e.g., Exclude=chr2:74521560-74562637,chr2:74601162-74604549)
 
 Fields must be separated by the character "|" (pipe - usually Alt+7) without spaces in between, and order should be respected.
 
 
-Sequence::
+Sequence:
 
-    The sequence of your primer. For optimal results, we suggest to truncate the sequence as defined by n-3 (as defined in the parameter file for de-multiplexing).
+* The sequence of your primer. For optimal results, we suggest to truncate the sequence as defined by n-3 (as defined in the parameter file for de-multiplexing).
 
 
