@@ -658,11 +658,11 @@ def parallel_bowtie( ex, index, reads, unmapped=None, n_lines=1000000, bowtie_ar
         sf1 = sorted(split_file(ex, reads[0], n_lines = n_lines))
         sf2 = sorted(split_file(ex, reads[1], n_lines = n_lines))
         subfiles = [(f,sf2[n]) for n,f in enumerate(sf1)]
-        mlim = 8
+        mlim = 12
         if bowtie_2: un_cmd = "--un-conc"
     else:
         subfiles = split_file(ex, reads, n_lines = n_lines)
-        mlim = 4
+        mlim = 6
     if bowtie_2: btcall = bowtie2.nonblocking
     else:        btcall = bowtie.nonblocking
     if unmapped:
