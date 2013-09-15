@@ -18,14 +18,14 @@ MACS peak calling
 -----------------
 
 The `MACS <http://liulab.dfci.harvard.edu/MACS/index.html>`_ v1.4.0 software is used on the BAM files to perform peak detection. Parameters are given as follows, for every pair `(sample.bam, control.bam)`:
- * -t sample.bam -c control.bam -f BAM -g genome_size -s read_length -m 10,100 --bw=200 --verbose 1 --keep-dup all
+* -t sample.bam -c control.bam -f BAM -g genome_size -s read_length -m 10,100 --bw=200 --verbose 1 --keep-dup all
 
 If no sample is tagged as a `control` the `-c` option is ommitted.
 Output files returned are
- * sample_vs_control_peaks.xls (annotated table of peaks)
- * sample_vs_control_negative_peaks.xls (peaks found in the control, if available)
- * sample_vs_control_peaks.bed (bed file of enriched regions)
- * sample_vs_control_summits.bed (bed file of peak summits)
+* sample_vs_control_peaks.xls (annotated table of peaks)
+* sample_vs_control_negative_peaks.xls (peaks found in the control, if available)
+* sample_vs_control_peaks.bed (bed file of enriched regions)
+* sample_vs_control_summits.bed (bed file of peak summits)
 
 Peak deconvolution
 ------------------
@@ -39,6 +39,6 @@ MEME motif search
 
 Using the list of MACS peaks (or the refined list if deconvolution was run), the corresponding
 genomic sequences are extracted and used as input to the `MEME <http://meme.nbcr.net/meme4_6_1/meme-intro.html>`_ software, using the following options (**S** = 1.5*total_input_sequence_length):
- * -nmotifs 4 -revcomp -dna -maxsize **S**
+* -nmotifs 4 -revcomp -dna -maxsize **S**
 
 The full results directory is provided as a tar archive, together with all motif logos and motif sites.

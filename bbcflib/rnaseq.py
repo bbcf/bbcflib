@@ -3,7 +3,7 @@
 Module: bbcflib.rnaseq
 ======================
 
-Methods of the bbcflib's RNA-seq worflow. The main function is ``rnaseq_workflow()``,
+Methods of the bbcflib's RNA-seq worflow. The main function is ``rnaseq_workflow()``.
 
 From a BAM file produced by an alignement on the genome or the exonome, gets counts of reads
 on the exons, add them to get counts on genes, and uses least-squares to infer
@@ -528,16 +528,16 @@ def rnaseq_workflow(ex, job, assembly=None,
         return 0
 
     logfile.write("* Load mappings\n"); logfile.flush()
-    """ [0] gene_mapping is a dict ``{gene_id: (gene_name,start,end,length,strand,chromosome)}``
-        [1] transcript_mapping is a dictionary ``{transcript_id: (gene_id,gene_name,start,end,length,strand,chromosome)}``
-        [2] exon_mapping is a dictionary ``{exon_id: ([transcript_ids],gene_id,gene_name,start,end,strand,chromosome)}``
-        [3] trans_in_gene is a dict ``{gene_id: [IDs of the transcripts it contains]}``
-        [4] exons_in_trans is a dict ``{transcript_id: [IDs of the exons it contains]}`` """
+    #    [0] gene_mapping is a dict ``{gene_id: (gene_name,start,end,length,strand,chromosome)}``
+    #    [1] transcript_mapping is a dictionary ``{transcript_id: (gene_id,gene_name,start,end,length,strand,chromosome)}``
+    #    [2] exon_mapping is a dictionary ``{exon_id: ([transcript_ids],gene_id,gene_name,start,end,strand,chromosome)}``
+    #    [3] trans_in_gene is a dict ``{gene_id: [IDs of the transcripts it contains]}``
+    #    [4] exons_in_trans is a dict ``{transcript_id: [IDs of the exons it contains]}`` 
     (gene_mapping, transcript_mapping, exon_mapping, trans_in_gene, exons_in_trans) = fetch_mappings(assembly)
     if len(exon_mapping) == 0 or len(gene_mapping) == 0:
         raise ValueError("No genes found for this genome. Abort.")
 
-    """ Map remaining reads to transcriptome """
+    # Map remaining reads to transcriptome 
     if unmapped:
         logfile.write("* Align unmapped reads on transcriptome\n"); logfile.flush()
         try: unmapped_fastq,additionals = align_unmapped(ex,job,assembly,group_names,
@@ -545,14 +545,14 @@ def rnaseq_workflow(ex, job, assembly=None,
         except Exception as error:
             debugfile.write(error); debugfile.flush()
 
-    """ Find splice junctions """
+    # Find splice junctions 
     if junctions:
         logfile.write("* Search for splice junctions\n"); logfile.flush()
         try: find_junctions(ex,job,assembly,logfile=logfile,debugfile=debugfile,via=via)
         except Exception as error:
             debugfile.write(error); debugfile.flush()
 
-    """ Build exon pileups from bam files """
+    # Build exon pileups from bam files 
     logfile.write("* Build pileups\n"); logfile.flush()
     exon_pileups={}
     for gid,files in job.files.iteritems():
@@ -571,7 +571,7 @@ def rnaseq_workflow(ex, job, assembly=None,
     exon_ids = asarray(exon_pileup.keys()) # same for all conds
     del exon_pileup
 
-    """ Arrange exon counts in a matrix """
+    # Arrange exon counts in a matrix 
     ecounts_matrix = asarray([exon_pileups[cond] for cond in conditions], dtype=numpy.float_).T
     nonzero_exons = nonzero(numpy.sum(ecounts_matrix,1)) # indices of non-zero lines
     ecounts_matrix = ecounts_matrix[nonzero_exons]
@@ -581,7 +581,7 @@ def rnaseq_workflow(ex, job, assembly=None,
     hconds = ["counts."+c for c in conditions] + ["norm."+c for c in conditions] + ["rpk."+c for c in conditions]
     exons_file = None; genes_file = None; trans_file = None
 
-    """ Print counts for exons """
+    # Print counts for exons 
     if "exons" in pileup_level:
         logfile.write("* Get scores of exons\n"); logfile.flush()
         header = ["ExonID"] + hconds + ["Start","End","GeneID","GeneName","Strand","Chromosome"]
@@ -591,7 +591,7 @@ def rnaseq_workflow(ex, job, assembly=None,
         differential_analysis(ex, exons_data, header, rpath, logfile, debugfile, feature_type='exons',via=via)
         del exons_data
 
-    """ Get scores of genes from exons """
+    # Get scores of genes from exons 
     if "genes" in pileup_level:
         logfile.write("* Get scores of genes\n"); logfile.flush()
         header = ["GeneID"] + hconds + ["Start","End","GeneName","Strand","Chromosome"]
@@ -602,7 +602,7 @@ def rnaseq_workflow(ex, job, assembly=None,
         differential_analysis(ex, genes_data, header, rpath, logfile, debugfile, feature_type='genes',via=via)
         del genes_data
 
-    """ Get scores of transcripts from exons, using non-negative least-squares """
+    # Get scores of transcripts from exons, using non-negative least-squares 
     if "transcripts" in pileup_level:
         logfile.write("* Get scores of transcripts\n"); logfile.flush()
         header = ["TranscriptID"] + hconds + ["Start","End","GeneID","GeneName","Strand","Chromosome"]
@@ -728,17 +728,18 @@ def soapsplice(unmapped_R1, unmapped_R2, index, output=None, path_to_soapsplice=
 
     Main options::
 
-        -p: number of threads, <= 20. [1]
-        -S: 1: forward strand, 2: reverse strand, 3: both. [3]
-        -m: maximum mismatch for one-segment alignment, <= 5. [3]
-        -g: maximum indel for one-segment alignment, <= 2. [2]
-        -i: length of tail that can be ignored in one-segment alignment. [7]
-        -t: longest gap between two segments in two-segment alignment. [500000]
-        -a: shortest length of a segment in two-segment alignment. [8]
-        -q: input quality type in FASTQ file (0: old Illumina, 1: Sanger). [0]
-        -L: maximum distance between paired-end reads. [500000]
-        -l: minimum distance between paired-end reads. [50]
-        -I: insert length of paired-end reads.
+    -p: number of threads, <= 20. [1]
+    -S: 1: forward strand, 2: reverse strand, 3: both. [3]
+    -m: maximum mismatch for one-segment alignment, <= 5. [3]
+    -g: maximum indel for one-segment alignment, <= 2. [2]
+    -i: length of tail that can be ignored in one-segment alignment. [7]
+    -t: longest gap between two segments in two-segment alignment. [500000]
+    -a: shortest length of a segment in two-segment alignment. [8]
+    -q: input quality type in FASTQ file (0: old Illumina, 1: Sanger). [0]
+    -L: maximum distance between paired-end reads. [500000]
+    -l: minimum distance between paired-end reads. [50]
+    -I: insert length of paired-end reads.
+
     """
     if not output: output = unique_filename_in()
     path_to_soapsplice = path_to_soapsplice or 'soapsplice'

@@ -42,64 +42,65 @@ default_root = '/db/genrep'
 
 ################################################################################
 class Assembly(object):
+    """
+    A representation of a GenRep assembly.
+    To get an assembly from the repository, call the Assembly
+    constructor with either the integer assembly ID or the string assembly
+    name.  This returns an Assembly object::
+
+        a = Assembly(3)
+        b = Assembly('mm9')
+
+    An Assembly has the following fields:
+
+    .. attribute:: id
+
+       An integer giving the assembly ID in GenRep.
+
+    .. attribute:: name
+
+       A string giving the name of the assembly in GenRep.
+
+    .. attribute:: index_path
+
+       The absolute path to the bowtie/bowtie2/SOAPsplice index for this assembly.
+
+    .. attribute:: chromosomes
+
+       A dictionary of chromosomes in the assembly.  The dictionary
+       values are tuples of the form (chromsome id, RefSeq locus,
+       RefSeq version), and the values are dictionaries with the keys
+       'name' and 'length'.
+
+    .. attribute:: bbcf_valid
+
+       Boolean.
+
+    .. attribute:: updated_at
+
+    .. attribute:: created_at
+
+       ``datetime`` objects.
+
+    .. attribute:: nr_assembly_id
+
+    .. attribute:: genome_id
+
+    .. attribute:: source_id
+
+    .. attribute:: intype
+
+       All integers. ``intype`` is '0' for genomic data, '1' for exons, '2' for transcripts, '3' for junctions.
+
+    .. attribute:: source_name
+
+    .. attribute:: md5
+
+
+    """
     def __init__(self, assembly=None, genrep=None, intype=0,
                  fasta=None, annot=None, ex=None, via='local', 
                  bowtie2=False):
-        """
-        A representation of a GenRep assembly.
-        To get an assembly from the repository, call the Assembly
-        constructor with either the integer assembly ID or the string assembly
-        name.  This returns an Assembly object::
-
-            a = Assembly(3)
-            b = Assembly('mm9')
-
-        An Assembly has the following fields:
-
-        .. attribute:: id
-
-        An integer giving the assembly ID in GenRep.
-
-        .. attribute:: name
-
-        A string giving the name of the assembly in GenRep.
-
-        .. attribute:: index_path
-
-        The absolute path to the bowtie/bowtie2/SOAPsplice index for this assembly.
-
-        .. attribute:: chromosomes
-
-        A dictionary of chromosomes in the assembly.  The dictionary
-        values are tuples of the form (chromsome id, RefSeq locus,
-        RefSeq version), and the values are dictionaries with the keys
-        'name' and 'length'.
-
-        .. attribute:: bbcf_valid
-
-        Boolean.
-
-        .. attribute:: updated_at
-
-        .. attribute:: created_at
-
-        ``datetime`` objects.
-
-        .. attribute:: nr_assembly_id
-
-        .. attribute:: genome_id
-
-        .. attribute:: source_id
-
-        .. attribute:: intype
-
-        All integers. ``intype`` is '0' for genomic data, '1' for exons, '2' for transcripts, '3' for junctions.
-
-        .. attribute:: source_name
-
-        .. attribute:: md5
-
-        """
         if genrep is None: genrep = GenRep()
         self.genrep = genrep
         self.intype = int(intype)
@@ -403,7 +404,7 @@ class Assembly(object):
         If *matrix_format* is True, *output* is like::
 
              >Assembly: sacCer2
-            1   0.309798640038793   0.308714120881750   0.190593944221299   0.190893294858157
+             1   0.309798640038793   0.308714120881750   0.190593944221299   0.190893294858157
         """
         if hasattr(self,"stats_dict"):
             stat = self.stats_dict
@@ -861,41 +862,30 @@ class Assembly(object):
 ################################################################################
 class GenRep(object):
     """
-    Attributes:
+    Create an object to query a GenRep repository.
+    
+    GenRep is the in-house repository for sequence assemblies for the
+    BBCF in Lausanne.  This is an object that wraps its use in Python
+    in an idiomatic way.
+    
+    Create a GenRep object with the base URL to the GenRep system, and
+    the root path of GenRep's files.  For instance::
+    
+        g = GenRep('genrep.epfl.ch', '/path/to/genrep/indices')
+    
+    To get an assembly from the repository, call the assembly
+    method with either the integer assembly ID or the string assembly
+    name.  This returns an Assembly object::
+    
+        a = g.assembly(3)
+        b = g.assembly('mm9')
 
-    .. attribute:: url
+    You can also pass this to the Assembly call directly::
 
-        GenRep url ('genrep.epfl.ch').
+        a = Assembly(assembly='mm9',genrep=g)
 
-    .. attribute:: root
-
-        Path to GenRep indexes.
     """
     def __init__(self, url=None, root=None, config=None, section='genrep'):
-        """
-        Create an object to query a GenRep repository.
-
-        GenRep is the in-house repository for sequence assemblies for the
-        BBCF in Lausanne.  This is an object that wraps its use in Python
-        in an idiomatic way.
-
-        Create a GenRep object with the base URL to the GenRep system, and
-        the root path of GenRep's files.  For instance::
-
-            g = GenRep('genrep.epfl.ch', '/path/to/genrep/indices')
-
-        To get an assembly from the repository, call the assembly
-        method with either the integer assembly ID or the string assembly
-        name.  This returns an Assembly object::
-
-            a = g.assembly(3)
-            b = g.assembly('mm9')
-
-        You can also pass this to the Assembly call directly::
-
-            a = Assembly(assembly='mm9',genrep=g)
-
-        """
         if not(config is None):
             if url is None:
                 url = config.get(section, 'genrep_url')
@@ -922,9 +912,9 @@ class GenRep(object):
         """
         List motifs available in genrep, returns a list like (first number is genome id)::
 
-        [('6 ABF1', 'Saccharomyces cerevisiae S288c - ABF1'),
-        ('6 ABF2', 'Saccharomyces cerevisiae S288c - ABF2'),
-        ('6 ACE2', 'Saccharomyces cerevisiae S288c - ACE2'), ...]
+            [('6 ABF1', 'Saccharomyces cerevisiae S288c - ABF1'),
+            ('6 ABF2', 'Saccharomyces cerevisiae S288c - ABF2'),
+            ('6 ACE2', 'Saccharomyces cerevisiae S288c - ACE2'), ...]
 
         """
         request = urllib2.Request(self.url + "/genomes.json")

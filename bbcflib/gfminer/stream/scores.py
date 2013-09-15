@@ -51,7 +51,6 @@ def merge_scores(trackList, method='arithmetic'):
 
     :param trackList: list of FeatureStream objects.
     :param method: (str) type of average: one of 'arithmetic','geometric', or 'sum' (no average).
-        If one of the scores is 0, 1 is used instead for calculating the mean.
     :rtype: FeatureStream
     """
     tracks = [FeatureStream(common.sentinelize(x,[sys.maxint]*len(x.fields)), x.fields)

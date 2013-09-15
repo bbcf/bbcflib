@@ -103,7 +103,7 @@ def find_snp(info,mincov,minsnp,assembly):
     * c1/c2: consensus on strand1/strand2, of the form \[+-][0-9]+[ACGTNacgtn]+ .
     * nindel/nref/n3rd: number of reads supporting the indel/reference/3rd allele.
 
-    See `http://samtools.sourceforge.net/cns0.shtml`_ .
+    See `Samtools <http://samtools.sourceforge.net/cns0.shtml>`_ .
     """
     ref = info[2].upper()  # reference base
     cons = info[3].upper() # consensus base
