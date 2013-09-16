@@ -20,7 +20,8 @@ The image bellow gives an example for multiple groups and runs of sequences.
 
 Defining several groups (with `Add group of runs`) means that the demultiplexing will be done separately for each group of runs. When a group is composed by several runs (defined with `Add run in this group`), then all the reads coming from the different datasets will be merged up and considered as a single fastq file. 
 
-Do not forget to name each group. This name is used for naming the results files as well as in the reports. This name should be identical to the one used in the primer file (see `demultiplexing options`). Make sure to use short names without spaces (prefer "_" character to separate words) and without any special characters in it (e.g,  %&?! ...) 
+Do not forget to name each group. This name is used for naming the results files as well as in the reports. 
+Make sure to use short names without spaces (prefer "_" character to separate words) and without any special characters in it (e.g,  %&?! ...) 
 
  
 General Parameters

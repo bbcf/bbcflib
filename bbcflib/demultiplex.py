@@ -206,7 +206,8 @@ def createReport(numbersFile,reportFile,script_path='./'):
            'return_value':None}
 
 
-def demultiplex_workflow(ex, job, gl, file_path="../", via='lsf'):
+def demultiplex_workflow(ex, job, gl, file_path="../", via='lsf',
+                         logfile=sys.stdout, debugfile=sys.stderr):
     script_path=gl['script_path']
     file_names = {}
     job_groups=job.groups
@@ -221,7 +222,7 @@ def demultiplex_workflow(ex, job, gl, file_path="../", via='lsf'):
         paramsFilename = 'group_' + group['name'] + "_param_file.txt"
         paramsFile = os.path.join(file_path,paramsFilename)
         ex.add(paramsFile,description=set_file_descr(paramsFilename,groupId=gid,step="init",type="txt"))
-        params=load_paramsFile(paramsFile)
+        params = load_paramsFile(paramsFile)
 
         infiles = []
         tot_counts = 0
@@ -239,50 +240,45 @@ def demultiplex_workflow(ex, job, gl, file_path="../", via='lsf'):
                                           minScore=int(params['s']),
                                           n=params['n'], x=params['x'],
                                           l=int(params['l']), via=via)
-        filteredFastq={}
-        counts_primers={}
-        counts_primers_filtered={}
+        filteredFastq = {}
+        counts_primers = {}
+        counts_primers_filtered = {}
         for k,f in resExonerate.iteritems():
-            ex.add(f,description=set_file_descr(group['name']+"_"+k+".fastq",
-                                                groupId=gid,step="demultiplexing",type="fastq"))
-            counts_primers[k]=count_lines(ex,f)/4
-            counts_primers_filtered[k]=0
-            file_names[gid][k]=group['name']+"_"+k
-        logfile=unique_filename_in()
-        log=open(logfile,"w")
-        log.write("Will get sequences to filter\n");log.flush()
-        seqToFilter=getSeqToFilter(ex,primersFile)
+            ex.add(f,description = set_file_descr(group['name']+"_"+k+".fastq",
+                                                  groupId=gid,step="demultiplexing",type="fastq"))
+            counts_primers[k] = count_lines(ex,f)/4
+            counts_primers_filtered[k] = 0
+            file_names[gid][k] = group['name']+"_"+k
+        logfile.write("Will get sequences to filter\n");logfile.flush()
+        seqToFilter = getSeqToFilter(ex,primersFile)
 
-        log.write("Will filter the sequences\n")
-        filteredFastq=filterSeq(ex,resExonerate,seqToFilter,(gid,group['name']),via=via)
+        logfile.write("Will filter the sequences\n")
+        filteredFastq = filterSeq(ex,resExonerate,seqToFilter,(gid,group['name']),via=via)
 
-        log.write("After filterSeq, filteredFastq=\n")
-        log.write(str(filteredFastq));log.flush()
+        logfile.write("After filterSeq, filteredFastq=%s\n" %filteredFastq);logfile.flush()
 
         for k,f in filteredFastq.iteritems():
-            log.write("\nWill add filtered file "+f+" with descr="+group['name']+"_"+k+"_filtered.fastq\n");log.flush()
+            logfile.write("\nWill add filtered file "+f+" with descr="+group['name']+"_"+k+"_filtered.fastq\n");logfile.flush()
             ex.add(f,description=set_file_descr(group['name']+"_"+k+"_filtered.fastq",
                                                 grouId=gid,step="filtering",
                                                 type="fastq"))
-            counts_primers_filtered[k]=count_lines(ex,f)/4
-            file_names[gid][k]=group['name']+"_"+k+"_filtered"
+            counts_primers_filtered[k] = count_lines(ex,f)/4
+            file_names[gid][k] = group['name']+"_"+k+"_filtered"
 
-        ex.add(logfile,description=set_file_descr("logfile",groupId=gid,
-                                                  step="final",type="txt",view="admin"))
         # Prepare report per group of runs
-        report_ok,reportFile=prepareReport(ex,group['name'],tot_counts,
-                                           counts_primers,counts_primers_filtered)
-        ex.add(reportFile,description=set_file_descr(
+        report_ok,reportFile = prepareReport(ex,group['name'],tot_counts,
+                                             counts_primers,counts_primers_filtered)
+        ex.add(reportFile,description = set_file_descr(
                 group['name']+"_report_demultiplexing.txt",
                 groupId=gid,step="final",type="txt",view="admin"))
         if report_ok:
-            reportFile_pdf=unique_filename_in()
+            reportFile_pdf = unique_filename_in()
             createReport(ex,reportFile,reportFile_pdf,script_path)
             ex.add(reportFile_pdf,description=set_file_descr(
                     group['name']+"_report_demultiplexing.pdf",
                     groupId=gid,step="final",type="pdf"))
         else:
-            log.write("*** Probable ambiguous classification: total_reads < sum(reads_by_primers) ***\n");log.flush()
+            logfile.write("*** Probable ambiguous classification: total_reads < sum(reads_by_primers) ***\n");logfile.flush()
     add_pickle( ex, file_names,
                 set_file_descr('file_names',step="final",type='py',view='admin') )
     return resFiles
@@ -317,7 +313,7 @@ def filterSeq(ex,fastqFiles,seqToFilter,grp_descr,via='lsf'):
                                             groupId=gid,step="filtering",
                                             type="fa",view="admin"))
         if k in fastqFiles:
-            indexFiles[k]=bowtie_build.nonblocking(ex,f,via=via)
+            indexFiles[k] = bowtie_build.nonblocking(ex,f,via=via)
 
     unalignedFiles={}
     futures=[]
