@@ -682,11 +682,11 @@ def parallel_bowtie( ex, index, reads, unmapped=None, n_lines=1000000, bowtie_ar
     if unmapped:
         if isinstance(reads,tuple):
             if bowtie_2:
-            cat([unmapped+"_"+str(n)+".1" for n in range(len(subfiles))],unmapped+"_1")
-            cat([unmapped+"_"+str(n)+".2" for n in range(len(subfiles))],unmapped+"_2")
-        else:
-            cat([unmapped+"_"+str(n)+"_1" for n in range(len(subfiles))],unmapped+"_1")
-            cat([unmapped+"_"+str(n)+"_2" for n in range(len(subfiles))],unmapped+"_2")
+                cat([unmapped+"_"+str(n)+".1" for n in range(len(subfiles))],unmapped+"_1")
+                cat([unmapped+"_"+str(n)+".2" for n in range(len(subfiles))],unmapped+"_2")
+            else:
+                cat([unmapped+"_"+str(n)+"_1" for n in range(len(subfiles))],unmapped+"_1")
+                cat([unmapped+"_"+str(n)+"_2" for n in range(len(subfiles))],unmapped+"_2")
         else:
             cat([unmapped+"_"+str(n) for n in range(len(subfiles))],unmapped)
     bamfiles = [f.wait() for f in futures]
