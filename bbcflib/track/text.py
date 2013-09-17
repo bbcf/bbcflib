@@ -577,16 +577,16 @@ class SgaTrack(TextTrack):
             splitrow = [self._check_type(s.strip(),sga_fields[n])
                         for n,s in enumerate(row.split(self.separator))]
             if not any(splitrow): continue
-            if selection:
-                if skip:
-                    fstart,fend,next_toskip = self._skip(fstart,next_toskip,chr_toskip)
-                    self._index_chr(fstart,fend,splitrow)
-                if not any(self._select_values(splitrow,s) for s in selection):
-                    continue
-            fstart = fend
             chrom,name,pos,strand,score = splitrow
             strand = translate_strand[strand]
             rowdata = (chrom,pos-1,pos,name,strand,score)
+            if selection:
+                if skip:
+                    fstart,fend,next_toskip = self._skip(fstart,next_toskip,chr_toskip)
+                    self._index_chr(fstart,fend,rowdata)
+                if not any(self._select_values(rowdata,s) for s in selection):
+                    continue
+            fstart = fend
             yield tuple(rowdata[ind] for ind in index_list)
 
     def _format_fields(self,vec,row,source_list,target_list):
