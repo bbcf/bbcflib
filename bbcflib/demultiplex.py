@@ -9,7 +9,7 @@ from bein.util import touch, add_pickle, split_file, count_lines
 from common import set_file_descr, gzipfile, unique_filename_in, cat
 from bbcflib import daflims
 from mapseq import bowtie_build, bowtie, get_fastq_files
-import os, urllib, shutil, re
+import os, urllib, shutil, re, sys, tarfile
 
 #MLPath="/archive/epfl/bbcf/mleleu/pipeline_vMarion/pipeline_3Cseq/vWebServer_Bein/"
 
@@ -240,30 +240,39 @@ def demultiplex_workflow(ex, job, gl, file_path="../", via='lsf',
                                           minScore=int(params['s']),
                                           n=params['n'], x=params['x'],
                                           l=int(params['l']), via=via)
-        filteredFastq = {}
-        counts_primers = {}
-        counts_primers_filtered = {}
-        for k,f in resExonerate.iteritems():
-            ex.add(f,description = set_file_descr(group['name']+"_"+k+".fastq",
-                                                  groupId=gid,step="demultiplexing",type="fastq"))
-            counts_primers[k] = count_lines(ex,f)/4
-            counts_primers_filtered[k] = 0
-            file_names[gid][k] = group['name']+"_"+k
         logfile.write("Will get sequences to filter\n");logfile.flush()
         seqToFilter = getSeqToFilter(ex,primersFile)
 
         logfile.write("Will filter the sequences\n")
-        filteredFastq = filterSeq(ex,resExonerate,seqToFilter,(gid,group['name']),via=via)
+        filteredFastq = filterSeq(ex,resExonerate,seqToFilter,gid,group['name'],via=via)
 
         logfile.write("After filterSeq, filteredFastq=%s\n" %filteredFastq);logfile.flush()
 
-        for k,f in filteredFastq.iteritems():
-            logfile.write("\nWill add filtered file "+f+" with descr="+group['name']+"_"+k+"_filtered.fastq\n");logfile.flush()
-            ex.add(f,description=set_file_descr(group['name']+"_"+k+"_filtered.fastq",
-                                                grouId=gid,step="filtering",
-                                                type="fastq"))
-            counts_primers_filtered[k] = count_lines(ex,f)/4
-            file_names[gid][k] = group['name']+"_"+k+"_filtered"
+        counts_primers = {}
+        counts_primers_filtered = {}
+        if len(filteredFastq): 
+            archive = unique_filename_in()
+            tgz = tarfile.open(archive, "w:gz")
+        for k,f in resExonerate.iteritems():
+            counts_primers[k] = count_lines(ex,f)/4
+            if k in filteredFastq:
+                file_names[gid][k] = group['name']+"_"+k+"_filtered"
+                ex.add(filteredFastq[k],description=set_file_descr(file_names[gid][k]+".fastq",
+                                                                   groupId=gid,step="final",
+                                                                   type="fastq"))
+                counts_primers_filtered[k] = count_lines(ex,filteredFastq[k])/4
+                tgz.add( f, arcname=group['name']+"_"+k+".fastq" )
+            else:
+                file_names[gid][k] = group['name']+"_"+k
+                ex.add(f,description=set_file_descr(file_names[gid][k]+".fastq",
+                                                    groupId=gid,step="final",
+                                                    type="fastq"))
+                counts_primers_filtered[k] = 0
+        if len(filteredFastq): 
+            tgz.close()
+            ex.add(archive,description=set_file_descr(group['name']+"_unfiltered_fastq.tgz",
+                                                      groupId=gid,step="filtering",
+                                                      type="tar"))
 
         # Prepare report per group of runs
         report_ok,reportFile = prepareReport(ex,group['name'],tot_counts,
@@ -285,28 +294,24 @@ def demultiplex_workflow(ex, job, gl, file_path="../", via='lsf',
 
 
 def getSeqToFilter(ex,primersFile):
-    allSeqToFilter={}
-    filenames={}
+    filenames = {}
     with open(primersFile,"r") as f:
         for s in f:
             if not(re.search(r'^>',s)): continue
-            s_split=s.split('|')
-            key=s_split[0].replace(">","")
-            filenames[key]=unique_filename_in()
-            allSeqToFilter[key]=open(filenames[key],"w")
-            for i in range(4,len(s_split)):
-                if not re.search('Exclude',s_split[i]):
-                    allSeqToFilter[key].write(">seq"+str(i)+"\n"+s_split[i].replace(".","")+"\n")
-
-    for f in allSeqToFilter.values(): f.close()
+            s_split = s.split('|')
+            key = s_split[0].replace(">","")
+            filenames[key] = unique_filename_in()
+            with open(filenames[key],"w") as fout:
+                for i in range(4,len(s_split)):
+                    if not re.search('Exclude',s_split[i]):
+                        fout.write(">seq"+str(i)+"\n"+s_split[i].replace(".","")+"\n")
     return filenames
 
 
-def filterSeq(ex,fastqFiles,seqToFilter,grp_descr,via='lsf'):
+def filterSeq(ex,fastqFiles,seqToFilter,gid,grp_name,via='lsf'):
 #seqToFilter=`awk -v primer=${curPrimer} '{if($0 ~ /^>/){n=split($0,a,"|");curPrimer=a[1];gsub(">","",curPrimer); if(curPrimer == primer){seqToFilter="";for(i=5;i<n;i++){if(a[i] !~ /Exclude=/){seqToFilter=seqToFilter""a[i]","}} if(a[n] !~ /Exclude=/){seqToFilter=seqToFilter""a[n]}else{gsub(/,$/,"",seqToFilter)};print seqToFilter}}}' ${primersFile}`
-    indexSeqToFilter={}
-    indexFiles={}
-    gid, grp_name = grp_descr
+    indexSeqToFilter = {}
+    indexFiles = {}
     for k,f in seqToFilter.iteritems():
         if os.path.getsize(f) == 0: continue
         ex.add(f,description=set_file_descr(grp_name+"_"+k+"_seqToFilter.fa",
@@ -315,11 +320,11 @@ def filterSeq(ex,fastqFiles,seqToFilter,grp_descr,via='lsf'):
         if k in fastqFiles:
             indexFiles[k] = bowtie_build.nonblocking(ex,f,via=via)
 
-    unalignedFiles={}
-    futures=[]
-    bwtarg=["-a","-q","-n","2","-l","20","--un"]
+    unalignedFiles = {}
+    futures = []
+    bwtarg = ["-a","-q","-n","2","-l","20","--un"]
     for k,f in indexFiles.iteritems():
-        unalignedFiles[k]=unique_filename_in()
+        unalignedFiles[k] = unique_filename_in()
         touch(ex,unalignedFiles[k])
         futures.append(bowtie.nonblocking( ex, f.wait(), fastqFiles[k],
                                            bwtarg+[unalignedFiles[k]], via='lsf'))
