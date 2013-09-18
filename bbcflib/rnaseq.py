@@ -550,7 +550,7 @@ def rnaseq_workflow(ex, job, assembly=None,
         logfile.write("* Search for splice junctions\n"); logfile.flush()
         try: find_junctions(ex,job,assembly,logfile=logfile,debugfile=debugfile,via=via)
         except Exception as error:
-            debugfile.write(error); debugfile.flush()
+            debugfile.write(str(error)); debugfile.flush()
 
     # Build exon pileups from bam files 
     logfile.write("* Build pileups\n"); logfile.flush()
