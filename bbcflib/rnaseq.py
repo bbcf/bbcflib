@@ -299,7 +299,7 @@ def save_results(ex, lines, conditions, group_ids, assembly, header, feature_typ
                 towrite.setdefault(c,[]).append((int(start[n]),int(end[n]),rpk[group][n]))
             for chrom, feats in towrite.iteritems():
                 tr.write(cobble(sorted_stream(FeatureStream(feats, fields=['start','end','score']))),chrom=chrom,clip=True)
-            description = set_file_descr(feature_type.lower()+"_"+group+".sql", step="pileup", type="sql", \
+            description = set_file_descr(feature_type.lower()+"_"+group+".sql", step="pileup", type="sql", 
                                          groupId=group_ids[group], gdv='1')
             ex.add(filename+'.sql', description=description)
             # bigWig track - UCSC
@@ -780,14 +780,16 @@ def find_junctions(ex,job,assembly,soapsplice_index=None,path_to_soapsplice=None
             unmapped_fastq[gid].append(unmapped)
         R1 = cat(zip(*unmapped_fastq[gid])[0])
         R2 = cat(zip(*unmapped_fastq[gid])[1])
-        future = soapsplice.nonblocking(ex,R1,R2,soapsplice_index,path_to_soapsplice=path_to_soapsplice,
-                                        options=soapsplice_options, via=via, memory=4, threads=soapsplice_options['-p'])
+        future = soapsplice.nonblocking(ex,R1,R2,soapsplice_index,
+                                        path_to_soapsplice=path_to_soapsplice,
+                                        options=soapsplice_options, 
+                                        via=via, memory=4, threads=soapsplice_options['-p'])
         template = future.wait()
         junc_file = template+'.junc'
         bed = convert_junc_file(junc_file,assembly)
-        bed_descr = set_file_descr('junctions_%s.bed' % group['name'], \
+        bed_descr = set_file_descr('junctions_%s.bed' % group['name'],
                                    groupId=gid,type='bed',step='1',ucsc=1)
-        bam_descr = set_file_descr('junctions_%s.bam' % group['name'], \
+        bam_descr = set_file_descr('junctions_%s.bam' % group['name'],
                                    groupId=gid,type='bam',step='1')
         sam = template+'.sam'
         try:
