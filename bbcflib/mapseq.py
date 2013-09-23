@@ -179,7 +179,7 @@ def get_fastq_files( ex, job, set_seed_length=True ):
                 while True:
                     chunk = input_file.read(10000000) #10Mb
                     if chunk == '': break
-                    else: 
+                    else:
                         g.write(chunk)
                         g.flush()
 
@@ -504,7 +504,7 @@ def remove_duplicate_reads( bamfile, chromosomes,
 # BWA
 ########
 @program
-def bwa_sw(reads_path, reference_path, sam_path, z=7):
+def bwa_sw(reads_path, reference_path, sam_path, z=7, version=''):
     """Calls the BWA-SW aligner.
     http://bio-bwa.sourceforge.net/
 
@@ -515,9 +515,12 @@ def bwa_sw(reads_path, reference_path, sam_path, z=7):
     :param sam_path: The place were the SAM file will be created.
     :type sam_path: str
     :param z: A balance between quality and speed. Small z is speed.
+    :param version: BWA version, for instance '0.7.5a'.
     :type z: int
     """
-    return {'arguments': ["bwa", "bwasw", "-z", str(z), "-f", sam_path, reference_path, reads_path],
+    if version: bwa_path = os.path.join('/software/UHTS/Aligner/bwa',str(version),'bwa')
+    else: bwa_path = 'bwa'
+    return {'arguments': [bwa_path, "bwasw", "-z", str(z), "-f", sam_path, reference_path, reads_path],
             'return_value': sam_path}
 
 ########
@@ -837,12 +840,12 @@ def map_reads( ex, fastq_file, chromosomes, bowtie_index,
         bwtarg = ["-k", str(max(20,maxhits))]+bwt_args
         if not ("--local" in bwtarg or "--end-to-end" in bwtarg):
             bwtarg += ["--end-to-end"] #"--local"
-        if not any(opt in bwtarg for opt in ["-D","-R","-N","-i"]): 
+        if not any(opt in bwtarg for opt in ["-D","-R","-N","-i"]):
 # Specific custom options from user by config file
             preset = ["--very-fast","--fast","--sensitive","--very-sensitive"]
-            #preset += [p+'-local' for p in preset] 
+            #preset += [p+'-local' for p in preset]
 # Uncomment if --local becomes the defaut mode some day
-            if not any(p in bwtarg for p in preset): 
+            if not any(p in bwtarg for p in preset):
 # No specific options or preset set by user: default preset
                 if "--local" in bwtarg: bwtarg += ["--sensitive-local"]
                 else:                   bwtarg += ["--sensitive"]
@@ -1356,7 +1359,7 @@ def get_bam_wig_files( ex, job, minilims=None, hts_url=None, suffix=['fwd','rev'
                             while True:
                                 chunk = temp.read(10000000) #10Mb
                                 if chunk == '': break
-                                else: 
+                                else:
                                     f.write(chunk)
                                     f.flush()
                             temp.close()
