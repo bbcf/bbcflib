@@ -15,8 +15,7 @@ from bein.util import use_pickle, add_pickle
 from bein import execution, MiniLIMS
 
 ###DEFAULTS VALUES
-_usage = "run_htsstation.py module [-h] [-w wdir] [-k job_key] [-u via] [-c config_file] \
-                                   [--basepath minilims_path]"
+_usage = "run_htsstation.py module [-h] [-w wdir] [-k job_key] [-u via] [-c config_file] [--basepath minilims_path]"
 _description = "High-throughput sequencing data analysis workflows."
 _basepath = "/data/epfl/bbcf/htsstation/data"
 _via = "lsf"
@@ -191,7 +190,9 @@ class Workflow(object):
         self.job = get_bam_wig_files( ex, self.job,
                                       minilims=self.mapseq_minilims,
                                       hts_url=msurl, suffix=self.suffix,
-                                      script_path=scpath, via=self.opts.via )
+                                      script_path=scpath, 
+                                      fetch_unmapped=self.main_args.get('unmapped',False),
+                                      via=self.opts.via )
         return True
 
     def gdv_create(self,ex):
