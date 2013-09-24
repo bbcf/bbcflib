@@ -173,7 +173,7 @@ class Workflow(object):
             if isinstance(self.job.options[op],basestring):
                 self.job.options[op] = self.job.options[op].lower() in ['1','true','t']
             self.job.options[op] &= all(val[1:])
-        self.job.options['gdv_project'] = {'project':{'id': self.job.options.get('gdv_project_id',0)}}
+        self.job.options['gdv_project'] = {'project':{'id': int(self.job.options.get('gdv_project_id',0))}}
         self.job.options.setdefault('gdv_key',"")
         if hasattr(self.opts,"mapseq_minilims") and self.opts.mapseq_minilims:
             self.mapseq_minilims = self.opts.mapseq_minilims
