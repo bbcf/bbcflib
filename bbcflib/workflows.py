@@ -142,7 +142,8 @@ class Workflow(object):
 ########################  POSTPROCESSING  ##############################
 ########################################################################
         allfiles = get_files( ex.id, M )
-        if self.job.options['gdv_project'].get('project',{}).get('id',0)>0:
+        if self.job.options['create_gdv_project'] and \
+                self.job.options['gdv_project'].get('project',{}).get('id',0)>0:
             allfiles['url'] = self.gdv_upload(allfiles.get('sql',{}))
         self.logfile.close()
         self.debugfile.close()
