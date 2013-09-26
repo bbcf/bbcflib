@@ -517,13 +517,14 @@ def rnaseq_workflow(ex, job, assembly=None,
         tcounts={}
         for k,t in enumerate(ids):
             c = counts[k]
-            if sum(c)!=0 and t in tmap:
+            if sum(c) != 0 and t in tmap:
                 tcounts[t] = c
         lengths = asarray([tmap[t][3]-tmap[t][2] for t in tcounts.iterkeys()])
         trans_data = norm_and_format(tcounts,lengths,tmap,(2,3,0,1,5,6))
         hconds = ["counts."+c for c in conditions] + ["norm."+c for c in conditions] + ["rpk."+c for c in conditions]
         header = ["CustomID"] + hconds + ["Start","End","GeneID","GeneName","Strand","Chromosome"]
-        trans_file = save_results(ex,trans_data,conditions,group_ids,assembly,header=header,feature_type=ftype)
+        trans_file = save_results(ex,trans_data,conditions,group_ids,assembly,
+                                  header=header,feature_type=ftype,logfile=logfile)
         differential_analysis(ex, trans_data, header, rpath, logfile, debugfile, feature_type=ftype.lower(),via=via)
         return 0
 
@@ -540,15 +541,17 @@ def rnaseq_workflow(ex, job, assembly=None,
     # Map remaining reads to transcriptome
     if unmapped:
         logfile.write("* Align unmapped reads on transcriptome\n"); logfile.flush()
-        try: unmapped_fastq,additionals = align_unmapped(ex,job,assembly,group_names,
-                                                         exon_mapping,transcript_mapping,exons_in_trans,via)
+        try: 
+            unmapped_fastq,additionals = align_unmapped(ex,job,assembly,group_names,
+                                                        exon_mapping,transcript_mapping,exons_in_trans,via)
         except Exception as error:
             debugfile.write(error); debugfile.flush()
 
     # Find splice junctions
     if junctions:
         logfile.write("* Search for splice junctions\n"); logfile.flush()
-        try: find_junctions(ex,job,assembly,logfile=logfile,debugfile=debugfile,via=via)
+        try: 
+            find_junctions(ex,job,assembly,logfile=logfile,debugfile=debugfile,via=via)
         except Exception as error:
             debugfile.write(str(error)); debugfile.flush()
 
@@ -761,8 +764,8 @@ def find_junctions(ex,job,assembly,soapsplice_index=None,path_to_soapsplice=None
     :param soapsplice_options: (dict) SOAPsplice options, e.g. {'-m':2}.
     :rtype: str, str, str
     """
-    assembly = Assembly(assembly.id, intype=3)
-    soapsplice_index = soapsplice_index or os.path.join(assembly.index_path,assembly.md5+'.index')
+    assembly.set_index_path(intype=3)
+    soapsplice_index = soapsplice_index or assembly.index_path
     soapsplice_options.update(job.options.get('soapsplice_options',{}))
     soapsplice_options.setdefault('-p',16) # number of threads
     soapsplice_options.setdefault('-q',1)  # Sanger format
@@ -799,7 +802,7 @@ def find_junctions(ex,job,assembly,soapsplice_index=None,path_to_soapsplice=None
             add_and_index_bam(ex, bam, description=bam_descr)
             ex.add(bam, description=bam_descr)
         except Exception, e:
-            debugfile.write("%s\n(Qualities may be in the wrong format, try with '-q 0'.)\n" % e); logfile.flush()
+            debugfile.write("%s\n(Qualities may be in the wrong format, try with '-q 0'.)\n" % e); debugfile.flush()
         ex.add(bed, description=bed_descr)
 
 def convert_junc_file(filename, assembly):
@@ -838,7 +841,7 @@ def align_unmapped( ex, job, assembly, group_names,
 
     :param group_names: dict of the form ``{group_id: group_name}``.
     """
-    assembly = Assembly(assembly.id, intype=2)
+    assembly.set_index_path(intype=2)
     additionals = {}; unmapped_bam = {}; unmapped_fastq = {}
     refseq_path = assembly.index_path
     bwt2 = job.options.get("bowtie2",True)
@@ -854,7 +857,8 @@ def align_unmapped( ex, job, assembly, group_names,
                                                     {}, refseq_path, bowtie_2=bwt2,
                                                     remove_pcr_duplicates=False,
                                                     via=via )['bam']
-                except: continue
+                except: 
+                    continue
                 if unmapped_bam[cond]:
                     sam = pysam.Samfile(unmapped_bam[cond])
                 else: continue

@@ -141,14 +141,7 @@ class Assembly(object):
                 except (IndexError, urllib2.URLError):
                     raise ValueError("URL not found: %s." % url)
         self._add_info(**dict((str(k),v) for k,v in assembly_info['assembly'].iteritems()))
-        root = os.path.join(self.genrep.root,"nr_assemblies/bowtie")
-        if self.intype == 1:
-            root = os.path.join(self.genrep.root,"nr_assemblies/exons_bowtie")
-        elif self.intype == 2:
-            root = os.path.join(self.genrep.root,"nr_assemblies/cdna_bowtie")
-        elif self.intype == 3:
-            root = os.path.join(self.genrep.root,"nr_assemblies/soapsplice")
-        self.index_path = os.path.join(root,self.md5)
+        self.set_index_path()
         for c in chromosomes:
             chrom = dict((str(k),v) for k,v in c['chromosome'].iteritems())
             cnames = chrom.pop('chr_names')
@@ -156,6 +149,20 @@ class Assembly(object):
                              if x['chr_name']['assembly_id'] == self.id).next()
             self._add_chromosome(**chrom)
         return None
+    
+    def set_index_path(self,intype=None):
+        if intype is not None: self.intype = int(intype)
+        root = os.path.join(self.genrep.root,"nr_assemblies/bowtie")
+        if self.intype == 1:
+            root = os.path.join(self.genrep.root,"nr_assemblies/exons_bowtie")
+        elif self.intype == 2:
+            root = os.path.join(self.genrep.root,"nr_assemblies/cdna_bowtie")
+        elif self.intype == 3:
+            root = os.path.join(self.genrep.root,"nr_assemblies/soapsplice")
+        if self.intype == 3:
+            self.index_path = os.path.join(root,self.md5,self.md5+'.index')
+        else:
+            self.index_path = os.path.join(root,self.md5)
 
     def build_assembly(self, ex, assembly, fasta, annot, via, bowtie2=False):
         """
