@@ -788,8 +788,9 @@ def find_junctions(ex,job,assembly,soapsplice_index=None,path_to_soapsplice=None
         future = soapsplice.nonblocking(ex,R1,R2,soapsplice_index,
                                         path_to_soapsplice=path_to_soapsplice,
                                         options=soapsplice_options, 
-                                        via=via, memory=4, threads=soapsplice_options['-p'])
+                                        via=via, memory=8, threads=soapsplice_options['-p'])
         template = future.wait()
+        if not template: return
         junc_file = template+'.junc'
         bed = convert_junc_file(junc_file,assembly)
         bed_descr = set_file_descr('junctions_%s.bed' % group['name'],
@@ -842,7 +843,8 @@ def align_unmapped( ex, job, assembly, group_names,
     :param group_names: dict of the form ``{group_id: group_name}``.
     """
     assembly.set_index_path(intype=2)
-    additionals = {}; unmapped_bam = {}; unmapped_fastq = {}
+    additionals = {}
+    unmapped_fastq = {}
     refseq_path = assembly.index_path
     bwt2 = job.options.get("bowtie2",True)
     for gid, group in job.groups.iteritems():
@@ -850,18 +852,17 @@ def align_unmapped( ex, job, assembly, group_names,
         for rid, run in group['runs'].iteritems():
             k += 1
             cond = group_names[gid]+'.'+str(k)
-            unmapped_fastq[cond] = job.files[gid][rid].get('unmapped_fastq')
+            _fastq = job.files[gid][rid].get('unmapped_fastq')
             if unmapped_fastq[cond] and os.path.exists(refseq_path+".1.ebwt"):
                 try:
-                    unmapped_bam[cond] = map_reads( ex, unmapped_fastq[cond],
-                                                    {}, refseq_path, bowtie_2=bwt2,
-                                                    remove_pcr_duplicates=False,
-                                                    via=via )['bam']
+                    _bam = map_reads( ex, _fastq, {}, refseq_path, bowtie_2=bwt2,
+                                      remove_pcr_duplicates=False, via=via )['bam']
                 except: 
                     continue
-                if unmapped_bam[cond]:
-                    sam = pysam.Samfile(unmapped_bam[cond])
-                else: continue
+                if _bam:
+                    sam = pysam.Samfile(_bam)
+                else: 
+                    continue
                 additional = {}
                 for read in sam:
                     t_id = sam.getrname(read.tid).split('|')[0]
@@ -873,12 +874,11 @@ def align_unmapped( ex, job, assembly, group_names,
                         for e in E:
                             e_start, e_end = exon_mapping[e][3:5]
                             e_len = e_end-e_start
-                            if lag <= r_start <= lag+e_len:
-                                additional[e] = additional.get(e,0) + 0.5
-                            if lag <= r_end <= lag+e_len:
+                            if r_start <= lag+e_len and lag <= r_end: 
                                 additional[e] = additional.get(e,0) + 0.5
                             lag += e_len
                 additionals[cond] = additional
+                unmapped_fastq[cond] = _fastq
                 sam.close()
     return unmapped_fastq,additionals
 
