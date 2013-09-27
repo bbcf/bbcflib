@@ -172,13 +172,11 @@ def get_fastq_files( ex, job, set_seed_length=True ):
         if is_bz2: run_strip = re.sub('.bz[2]*','',run)
 
         def _rewrite(input_file,output_file):
-            with open(output_file,'w') as g:
+            with open(output_file,'wb',10000000) as g:
                 while True:
                     chunk = input_file.read(10000000) #10Mb
                     if chunk == '': break
-                    else:
-                        g.write(chunk)
-                        g.flush()
+                    else: g.write(chunk)
 
         if run_strip.endswith(".tar"):
             mode = 'r'
@@ -1351,14 +1349,12 @@ def get_bam_wig_files( ex, job, minilims=None, hts_url=None, suffix=['fwd','rev'
                         fastq_loc = []
                         fastqfiles = ()
                     for i,fqf in enumerate(fastq_loc):
-                        with open(fastqfiles[i],'w') as f:
+                        with open(fastqfiles[i],'wb',10000000) as f:
                             temp = gzip.open(fqf, 'rb')
                             while True:
                                 chunk = temp.read(10000000) #10Mb
                                 if chunk == '': break
-                                else:
-                                    f.write(chunk)
-                                    f.flush()
+                                else: f.write(chunk)
                             temp.close()
                     if len(fastqfiles) == 1:
                         fastqfiles = fastqfiles[0]
