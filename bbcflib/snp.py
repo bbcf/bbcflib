@@ -272,8 +272,6 @@ def exon_snps(chrom,outexons,allsnps,assembly,sample_names,genomeRef={},
 
     #############################################################
     outex = open(outexons,"a")
-    outex.write('#'+'\t'.join(['chromosome','position','reference']+sample_names+['exon','strand','ref_aa'] \
-                                  + ['new_aa_'+s for s in sample_names])+'\n')
     snp_stream = FeatureStream(allsnps, fields=['chr','start','end','ref']+sample_names)
     inclstream = concat_fields(snp_stream, infields=snp_stream.fields[3:], as_tuple=True)
     snp_stream = FeatureStream(allsnps, fields=['chr','start','end','ref']+sample_names)
@@ -376,6 +374,9 @@ def snp_workflow(ex, job, assembly, minsnp=40, mincov=5, path_to_ref=None, via='
     with open(outall,"w") as fout:
         fout.write('#'+'\t'.join(['chromosome','position','reference']+sample_names+ \
                                  ['gene','location_type','distance'])+'\n')
+    with open(outexons,"w") as fout:
+        fout.write('#'+'\t'.join(['chromosome','position','reference']+sample_names+['exon','strand','ref_aa'] \
+                                  + ['new_aa_'+s for s in sample_names])+'\n')
     for chrom in assembly.chrnames:
         logfile.write("\n  > Chromosome '%s'\n" % chrom); logfile.flush()
         dictPileup = pileup_dict[chrom]
