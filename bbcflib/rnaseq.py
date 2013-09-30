@@ -244,7 +244,7 @@ def build_pileup(bamfile, assembly, gene_mapping, exon_mapping, trans_in_gene, e
                 sam.fetch(ref,start,end, callback=c)
                 c.remove_duplicates()
             except ValueError,ve: # unknown reference
-                debugfile.write(ve); debugfile.flush()
+                debugfile.write(str(ve)); debugfile.flush()
             for exon in ex:
                 counts[exon] = counts.get(exon,0) + c.n/float(len(ex))
     sam.close()
@@ -545,7 +545,7 @@ def rnaseq_workflow(ex, job, assembly=None,
             unmapped_fastq,additionals = align_unmapped(ex,job,assembly,group_names,
                                                         exon_mapping,transcript_mapping,exons_in_trans,via)
         except Exception, error:
-            debugfile.write(error); debugfile.flush()
+            debugfile.write(str(error)); debugfile.flush()
 
     # Find splice junctions
     if junctions:
@@ -553,7 +553,7 @@ def rnaseq_workflow(ex, job, assembly=None,
         try: 
             find_junctions(ex,job,assembly,logfile=logfile,debugfile=debugfile,via=via)
         except Exception, error:
-            debugfile.write(error); debugfile.flush()
+            debugfile.write(str(error)); debugfile.flush()
 
     # Build exon pileups from bam files
     logfile.write("* Build pileups\n"); logfile.flush()
@@ -803,7 +803,7 @@ def find_junctions(ex,job,assembly,soapsplice_index=None,path_to_soapsplice=None
             add_and_index_bam(ex, bam, description=bam_descr)
             ex.add(bam, description=bam_descr)
         except Exception, e:
-            debugfile.write("%s\n(Qualities may be in the wrong format, try with '-q 0'.)\n" % e); debugfile.flush()
+            debugfile.write("%s\n(Qualities may be in the wrong format, try with '-q 0'.)\n" %str(e)); debugfile.flush()
         ex.add(bed, description=bed_descr)
 
 def convert_junc_file(filename, assembly):
