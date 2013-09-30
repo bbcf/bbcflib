@@ -539,6 +539,7 @@ def rnaseq_workflow(ex, job, assembly=None,
         raise ValueError("No genes found for this genome. Abort.")
 
     # Map remaining reads to transcriptome
+    unmapped_fastq = {}
     if unmapped:
         logfile.write("* Align unmapped reads on transcriptome\n"); logfile.flush()
         try: 
@@ -564,7 +565,7 @@ def rnaseq_workflow(ex, job, assembly=None,
             k+=1
             cond = group_names[gid]+'.'+str(k)
             exon_pileup = build_pileup(f['bam'],assembly,gene_mapping,exon_mapping,trans_in_gene,exons_in_trans,debugfile)
-            if unmapped and unmapped_fastq[cond] and cond in additionals:
+            if unmapped and cond in unmapped_fastq and cond in additionals:
                 for a,x in additionals[cond].iteritems():
                     if exon_pileup.get(a):
                         exon_pileup[a] += x
@@ -853,7 +854,7 @@ def align_unmapped( ex, job, assembly, group_names,
             k += 1
             cond = group_names[gid]+'.'+str(k)
             _fastq = job.files[gid][rid].get('unmapped_fastq')
-            if unmapped_fastq[cond] and os.path.exists(refseq_path+".1.ebwt"):
+            if _fastq and os.path.exists(refseq_path+".1.ebwt"):
                 try:
                     _bam = map_reads( ex, _fastq, {}, refseq_path, bowtie_2=bwt2,
                                       remove_pcr_duplicates=False, via=via )['bam']
