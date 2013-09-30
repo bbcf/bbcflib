@@ -510,7 +510,8 @@ def bwa_sw(reads_path, reference_path, sam_path, z=7, version=''):
     :param sam_path: The place were the SAM file will be created.
     :type sam_path: str
     :param z: A balance between quality and speed. Small z is speed.
-    :param version: BWA version, for instance '0.7.5a'.
+    :param version: BWA version, for instance '0.7.5a'. Currently available:
+        0.5.9, 0.6.1, 0.6.2, 0.7.2, 0.7.5a
     :type z: int
     """
     if version: bwa_path = os.path.join('/software/UHTS/Aligner/bwa',str(version),'bwa')
