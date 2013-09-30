@@ -544,7 +544,7 @@ def rnaseq_workflow(ex, job, assembly=None,
         try: 
             unmapped_fastq,additionals = align_unmapped(ex,job,assembly,group_names,
                                                         exon_mapping,transcript_mapping,exons_in_trans,via)
-        except Exception as error:
+        except Exception, error:
             debugfile.write(error); debugfile.flush()
 
     # Find splice junctions
@@ -552,8 +552,8 @@ def rnaseq_workflow(ex, job, assembly=None,
         logfile.write("* Search for splice junctions\n"); logfile.flush()
         try: 
             find_junctions(ex,job,assembly,logfile=logfile,debugfile=debugfile,via=via)
-        except Exception as error:
-            debugfile.write(str(error)); debugfile.flush()
+        except Exception, error:
+            debugfile.write(error); debugfile.flush()
 
     # Build exon pileups from bam files
     logfile.write("* Build pileups\n"); logfile.flush()
