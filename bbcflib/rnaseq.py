@@ -271,9 +271,9 @@ def save_results(ex, lines, conditions, group_ids, assembly, header, feature_typ
             tid = str(l[0])
             counts = ["%d"%x for x in l[1:ncond+1]]
             norm = ["%.2f"%x for x in l[ncond+1:2*ncond+1]]
-            rpk = ["%.2f"%x for x in  l[2*ncond+1:3*ncond+1]]
+            rpkm = ["%.2f"%x for x in  l[2*ncond+1:3*ncond+1]]
             rest = [str(x) for x in l[3*ncond+1:]]
-            f.write('\t'.join([tid]+counts+norm+rpk+rest)+'\n')
+            f.write('\t'.join([tid]+counts+norm+rpkm+rest)+'\n')
     description = set_file_descr(feature_type.lower()+"_expression.tab", step="pileup", type="txt")
     ex.add(output_tab, description=description)
     # Create one track for each group
@@ -283,12 +283,12 @@ def save_results(ex, lines, conditions, group_ids, assembly, header, feature_typ
         start = cols[3*ncond+1]
         end = cols[3*ncond+2]
         chromosomes = cols[-1]
-        rpk = {}; output_sql = {}
+        rpkm = {}; output_sql = {}
         for i in range(ncond):
             group = conditions[i].split('.')[0]
             nruns = groups.count(group)
             # Average all replicates in the group
-            rpk[group] = asarray(rpk.get(group,zeros(len(start)))) + asarray(cols[i+2*ncond+1]) / nruns
+            rpkm[group] = asarray(rpkm.get(group,zeros(len(start)))) + asarray(cols[i+2*ncond+1]) / nruns
             output_sql[group] = output_sql.get(group,unique_filename_in())
         for group,filename in output_sql.iteritems():
             # SQL track - GDV
@@ -296,7 +296,7 @@ def save_results(ex, lines, conditions, group_ids, assembly, header, feature_typ
             towrite = {}
             for n,c in enumerate(chromosomes):
                 if c not in tr.chrmeta: continue
-                towrite.setdefault(c,[]).append((int(start[n]),int(end[n]),rpk[group][n]))
+                towrite.setdefault(c,[]).append((int(start[n]),int(end[n]),rpkm[group][n]))
             for chrom, feats in towrite.iteritems():
                 tr.write(cobble(sorted_stream(FeatureStream(feats, fields=['start','end','score']))),chrom=chrom,clip=True)
             description = set_file_descr(feature_type.lower()+"_"+group+".sql", step="pileup", type="sql", 
@@ -314,7 +314,7 @@ def save_results(ex, lines, conditions, group_ids, assembly, header, feature_typ
 
 @timer
 def genes_expression(exon_ids, ecounts_matrix, gene_mapping, exon_mapping, ncond):
-    """Get gene counts/rpk from exon counts (sum).
+    """Get gene counts/rpkm from exon counts (sum).
 
     Returns a dictionary of the form ``{gene_id: scores}``.
 
@@ -331,7 +331,7 @@ def genes_expression(exon_ids, ecounts_matrix, gene_mapping, exon_mapping, ncond
 @timer
 def transcripts_expression(exon_ids, ecounts_matrix, exon_mapping, transcript_mapping, trans_in_gene, exons_in_trans,
                            ncond, debugfile=sys.stderr):
-    """Get transcript rpks from exon rpks.
+    """Get transcript rpkms from exon rpkms.
 
     Returns a dictionary of the form ``{transcript_id: score}``.
 
@@ -425,22 +425,22 @@ def estimate_size_factors(counts):
     res = counts / size_factors
     return res, size_factors
 
-def to_rpk(counts, lengths):
+def to_rpkm(counts, lengths):
     """Divides read counts by the transcript length.
     *counts* and *lengths* are numpy arrays."""
-    rpk = 1000.*counts/(lengths[:,numpy.newaxis]) # transpose *lengths* without copying
-    return rpk
+    rpkm = 1000.*counts/(lengths[:,numpy.newaxis]) # transpose *lengths* without copying
+    return rpkm
 
 def norm_and_format(counts,lengths,map,map_idx,ids=None):
-    """Normalize, compute RPK values and format array lines as they will be printed."""
+    """Normalize, compute RPKM values and format array lines as they will be printed."""
     if isinstance(counts,dict):
         counts_matrix = asarray(counts.values())
         ids = counts.iterkeys()
     else: counts_matrix = counts
     norm_matrix, sf = estimate_size_factors(counts_matrix)
-    rpk_matrix = to_rpk(norm_matrix, lengths)
+    rpkm_matrix = to_rpkm(norm_matrix, lengths)
     map_nitems = len(map.iteritems().next())
-    data = [(t,) + tuple(counts_matrix[k]) + tuple(norm_matrix[k]) + tuple(rpk_matrix[k])
+    data = [(t,) + tuple(counts_matrix[k]) + tuple(norm_matrix[k]) + tuple(rpkm_matrix[k])
                  + itemgetter(*map_idx)(map.get(t,("NA",)*map_nitems))
             for k,t in enumerate(ids)]
     data = sorted(data, key=itemgetter(-1,-map_nitems,-map_nitems+1,-2)) # sort wrt. chr,start,end,strand
@@ -521,7 +521,7 @@ def rnaseq_workflow(ex, job, assembly=None,
                 tcounts[t] = c
         lengths = asarray([tmap[t][3]-tmap[t][2] for t in tcounts.iterkeys()])
         trans_data = norm_and_format(tcounts,lengths,tmap,(2,3,0,1,5,6))
-        hconds = ["counts."+c for c in conditions] + ["norm."+c for c in conditions] + ["rpk."+c for c in conditions]
+        hconds = ["counts."+c for c in conditions] + ["norm."+c for c in conditions] + ["rpkm."+c for c in conditions]
         header = ["CustomID"] + hconds + ["Start","End","GeneID","GeneName","Strand","Chromosome"]
         trans_file = save_results(ex,trans_data,conditions,group_ids,assembly,
                                   header=header,feature_type=ftype,logfile=logfile)
@@ -582,7 +582,7 @@ def rnaseq_workflow(ex, job, assembly=None,
     exon_ids = exon_ids[nonzero_exons]
     del exon_pileups
 
-    hconds = ["counts."+c for c in conditions] + ["norm."+c for c in conditions] + ["rpk."+c for c in conditions]
+    hconds = ["counts."+c for c in conditions] + ["norm."+c for c in conditions] + ["rpkm."+c for c in conditions]
     exons_file = None; genes_file = None; trans_file = None
 
     # Print counts for exons
@@ -636,7 +636,7 @@ def clean_before_deseq(data, header, keep=0.6):
     norm = 'counts'
     if norm == 'counts': w = 0
     elif norm == 'norm': w = 1
-    elif norm == 'rpk': w = 2
+    elif norm == 'rpkm': w = 2
     filename_clean = unique_filename_in()
     ncond = sum([h.split('.').count("counts") for h in header]) # a regexp would be better
     if ncond >1:
