@@ -257,6 +257,7 @@ def c4seq_workflow( ex, job, primers_dict, assembly,
             start = False
             tarname = job.groups[gid]['name']+"_domainogram.tar.gz"
             res_tar = tarfile.open(tarname, "w:gz")
+            if logFile is None: continue
             with open(logFile) as f:
                 for s in f:
                     s = s.strip()
