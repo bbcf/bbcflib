@@ -243,11 +243,11 @@ def c4seq_workflow( ex, job, primers_dict, assembly,
             regCoord = regToExclude[gid] or primers_dict[grName]['baitcoord']
             if before_profile_correction[gid]:
                 futures2[gid] += (runDomainogram.nonblocking( ex, bedGraph, grName, regCoord=regCoord,
-                                                              script_path=script_path, via=via, memory=10 ), )
+                                                              script_path=script_path, via=via, memory=15 ), )
             else:
                 futures2[gid] += (runDomainogram.nonblocking( ex, profileCorrectedFile, grName,
                                                               regCoord=regCoord.split(':')[0], skip=1,
-                                                              script_path=script_path, via=via, memory=10 ), )
+                                                              script_path=script_path, via=via, memory=15 ), )
     for gid, f in futures2.iteritems():
         futures[gid][1].wait()
         f[0].wait()
