@@ -62,7 +62,8 @@ def pileup(ex,job,assembly,genomeRef,via,logfile,debugfile):
         :param refGenome: path to the reference genome fasta file.
         """
         ploidy = _ploidy(assembly)
-        return {"arguments": ["samtools","pileup","-Bcvsf",refGenome,"-N",str(ploidy),bamfile],
+        samtools_path= "/mnt/common/epfl/dev/bin/samtools"
+        return {"arguments": [samtools_path,"pileup","-Bcvsf",refGenome,"-N",str(ploidy),bamfile],
                 "return_value": None}
     bam = {}
     pileup_dict = dict((chrom,{}) for chrom in genomeRef.keys()) # {chr: {}}
