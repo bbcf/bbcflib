@@ -19,7 +19,7 @@ from bbcflib.gfminer import stream as gm_stream
 from bein import program
 
 
-test = 0
+test = 1
 
 _iupac = {'M':'AC', 'Y':'CT', 'R':'AG', 'S':'CG', 'W': 'AT', 'K':'GT',
           'B':'CGT', 'D':'AGT', 'H':'ACT', 'V':'ACG',
@@ -51,6 +51,24 @@ def _ploidy(assembly):
         ploidy = 2 # diploid
     return ploidy
 
+@program
+def pileup(bams,path_to_ref,wdir,logfile):
+    """Use 'samtools mpileup' followed by 'bcftools view' and 'vcfutils'
+    to call for SNPs. Ref.: http://samtools.sourceforge.net/mpileup.shtml"""
+    if not isinstance(bams,(list,tuple)): bams = [bams]
+    bams = ' '.join(bams)
+    bcf = unique_filename_in()
+    vcf = unique_filename_in()
+    script_name = os.path.join(wdir, unique_filename_in()+'.sh')
+    script = "#!/bin/sh\n"
+    script += "samtools mpileup -uDS -f %s %s | bcftools view -bvcg - > %s ;\n" % (path_to_ref,bams,bcf)
+    script += "bcftools view %s | vcfutils.pl varFilter -D100 > %s ;" % (bcf,vcf) # D100: max read depth to call snp
+    with open(script_name,'w') as s:
+        s.write(script)
+    logfile.write(".. Executed script:\n"+script); logfile.flush()
+    os.chmod(script_name,0777)
+    return {'arguments': [script_name], 'return_value': vcf}
+
 def parse_vcf(vcf_line):
     """
     qual: -10 log_10 P(call in ALT is wrong) - the higher, the best.
@@ -58,19 +76,19 @@ def parse_vcf(vcf_line):
     info: useless trash.
     format: genotype fields - for the next columns.
     """
-    if vcf_line[:2]=='##': return # info line
-    elif vcf_line[0]=='#': return # header
+    if not vcf_line: return vcf_line
     line = vcf_line.strip().split('\t')
-    chrbam,pos,id,ref,alt,qual,filter,info,format = line[:8]
+    chrbam,pos,id,ref,alt,qual,filter,info,format = line[:9]
     alts = alt.split(',')
     sample = line[9]
     genotype,phred_likelihood,depth,strand_bias,genotype_qual = sample.split(':') # format = GT:PL:DP:SP:GQ
     genotype = [alts[int(i)-1] for i in genotype.split('/')]
+    genotype = '|'.join(genotype)
     # genotype: '1/1', sample_genotype: 'A/A' if alt='A'
     # genotype_qual: -10 log_10 P(genotype call is wrong | the site being variant)
     return (chrbam,int(pos),ref,alt,float(qual),genotype,int(depth))
 
-def filter_snp(info):
+def filter_snp(info,mincov,minsnp,assembly):
     return info[5]
 
 @timer
@@ -87,14 +105,11 @@ def all_snps(ex,chrom,vcfs,bams, outall,assembly,sample_names, mincov,minsnp,
     :param minsnp: (int) Minimum percentage of reads supporting the SNP for it to be returned.
         N.B.: Effectively, half of it on each strand for diploids. [40]
     """
-    snames = []
-    bam_tracks = []
     allsnps = []
-    nsamples = len(snames)
-    sorder = [snames.index(x) for x in sample_names]
-
-    current = [None]*len(vcfs)
-    vcf_handles = [open(v) for v in vcfs]
+    nsamples = len(sample_names)
+    current = [None]*nsamples
+    bam_tracks = [track(v,format='bam') for k,v in sorted(bams.items())]
+    vcf_handles = [open(v) for k,v in sorted(vcfs.items())]
     for i,vh in enumerate(vcf_handles):
         line = '#'
         while line and line[0]=='#':
@@ -112,7 +127,7 @@ def all_snps(ex,chrom,vcfs,bams, outall,assembly,sample_names, mincov,minsnp,
             ref = info[2].upper()
             current_snps[i] = filter_snp(info,mincov,minsnp,assembly)
         for i in set(range(nsamples))-current_snp_idx:
-            try: coverage = bam_tracks[sorder[i]].coverage((chrbam,pos-1,pos)).next()[-1]
+            try: coverage = bam_tracks[i].coverage((chrbam,pos-1,pos)).next()[-1]
             except StopIteration: coverage = 0
             current_snps[i] = ref if coverage else "0"
         if not all([s in ["0",ref] for s in current_snps]):
@@ -138,6 +153,90 @@ def all_snps(ex,chrom,vcfs,bams, outall,assembly,sample_names, mincov,minsnp,
     return allsnps
 
 @timer
+def snp_workflow(ex, job, assembly, minsnp=40, mincov=5, path_to_ref=None, via='local',
+                 logfile=sys.stdout, debugfile=sys.stderr):
+    """Main function of the workflow"""
+    logfile.write("\n* Prepare reference sequence\n"); logfile.flush()
+    if test:
+        print 'Current working dir:',os.getcwd()
+        path_to_ref = '/archive/epfl/bbcf/jdelafon/test_snp/reference/'
+        ref_genome = dict((c,path_to_ref+c+'.fa') for c in ['chr4'])#assembly.chrmeta)
+    else:
+        if path_to_ref is None:
+            path_to_ref = os.path.join(assembly.genrep.root,'nr_assemblies/fasta',assembly.md5+'.tar.gz')
+        assert os.path.exists(path_to_ref), "Reference sequence not found: %s." % path_to_ref
+        ref_genome = assembly.untar_genome_fasta(path_to_ref, convert=True)
+    [g.wait() for g in [sam_faidx.nonblocking(ex,f,via=via) for f in set(ref_genome.values())]]
+
+    sample_names = []
+    for gid in sorted(job.files.keys()):
+        sample_name = job.groups[gid]['name']
+        sample_names.append(sample_name)
+
+    logfile.write("\n* Generate pileups for each chrom/group\n"); logfile.flush()
+    pileups = dict((chrom,{}) for chrom in ref_genome.keys()) # {chr: {}}
+    bams = dict((chrom,{}) for chrom in ref_genome.keys()) # {chr: {}}
+    bam = {}
+    # Launch the jobs
+    for gid in sorted(job.files.keys()):
+        sample_name = job.groups[gid]['name']
+        # Merge all bams belonging to the same group
+        runs = [r['bam'] for r in job.files[gid].itervalues()]
+        if len(runs) > 1:
+            bam = mapseq.merge_bam(ex,runs)
+            mapseq.index_bam(ex,bam)
+        else:
+            bam = runs[0]
+        # Samtools mpileup + bcftools + vcfutils.pl
+        for chrom,ref in ref_genome.iteritems():
+            future = pileup.nonblocking(ex,bam,ref,ex.working_directory, logfile, via=via)
+            pileups[chrom][gid] = future
+            bams[chrom][gid] = bam
+        logfile.write("  ...Group %s running.\n" % sample_name); logfile.flush()
+    # Get the output and save vcf files
+    for gid in sorted(job.files.keys()):
+        sample_name = job.groups[gid]['name']
+        for chrom,ref in ref_genome.iteritems():
+            vcf = pileups[chrom][gid].wait()
+            tarname = unique_filename_in()
+            tarfh = tarfile.open(tarname, "w:gz")
+            tarfh.add(vcf,arcname=sample_name+"_"+chrom+".pileup")
+            tarfh.close()
+            ex.add( tarname, description=set_file_descr("pileups_%s.tgz"%chrom,step="pileup",type="tar",view='admin') )
+            pileups[chrom][gid] = vcf
+        logfile.write("  ...Group %s done.\n"); logfile.flush()
+
+    logfile.write("\n* Merge info from vcf files\n"); logfile.flush()
+    outall = unique_filename_in()
+    #outexons = unique_filename_in()
+    with open(outall,"w") as fout:
+        fout.write('#'+'\t'.join(['chromosome','position','reference']+sample_names+ \
+                                 ['gene','location_type','distance'])+'\n')
+    #with open(outexons,"w") as fout:
+    #    fout.write('#'+'\t'.join(['chromosome','position','reference']+sample_names+['exon','strand','ref_aa'] \
+    #                              + ['new_aa_'+s for s in sample_names])+'\n')
+    for chrom,v in pileups.iteritems():
+        logfile.write("  > Chromosome '%s'\n" % chrom); logfile.flush()
+        logfile.write("  - All SNPs\n"); logfile.flush()
+    # Put together info from all vcf files
+        allsnps = all_snps(ex,chrom,pileups[chrom],bams[chrom],outall,assembly,
+                           sample_names,mincov,minsnp,logfile,debugfile)
+        #logfile.write("  - Exonic SNPs\n"); logfile.flush()
+        #exon_snps(chrom,outexons,allsnps,assembly,sample_names,ref_genome,logfile,debugfile)
+    description = set_file_descr("allSNP.txt",step="SNPs",type="txt")
+    ex.add(outall,description=description)
+    #description = set_file_descr("exonsSNP.txt",step="SNPs",type="txt")
+    #ex.add(outexons,description=description)
+
+    #logfile.write("\n* Create tracks\n"); logfile.flush()
+    #create_tracks(ex,outall,sample_names,assembly)
+    return 0
+
+
+
+
+
+
 def exon_snps(chrom,outexons,allsnps,assembly,sample_names,ref_genome={},
               logfile=sys.stdout,debugfile=sys.stderr):
     """Annotates SNPs described in `filedict` (a dictionary of the form {chromosome: filename}
@@ -279,123 +378,4 @@ def create_tracks(ex, outall, sample_names, assembly):
         ex.add(tr[1], description=description)
 
 
-#@program
-#def samtools_mpileup(bams, path_to_ref, opts=[]):
-#    """Binds 'samtools mpileup'.
-#
-#    :param path_to_ref: path to the reference genome fasta file.
-#    :param bams: (str, or list of str) path(s) to the BAM file(s).
-#    """
-#    if not isinstance(bams,(list,tuple)): bams = [bams]
-#    cmd = ['samtools mpileup','-uDS','-f',path_to_ref] + opts + bams
-#    return {'arguments': cmd, 'return_value': None}
-
-#@program
-#def bcftools_view(bcf, opts=[]):
-#    """Binds 'bcftools view'.
-#
-#    :param bcf: (str) path(s) to the VCF file produced by samtools pileup.
-#    """
-#    cmd = ['bcftools view -bvcg'] + opts + [bcf]
-#    return {'arguments': cmd, 'return_value': None}
-
-
-@program
-def pileup(bams,path_to_ref):
-    """Use 'samtools mpileup' followed by 'bcftools view' and 'vcfutils'
-    to call for SNPs. Ref.: http://samtools.sourceforge.net/mpileup.shtml"""
-    if not isinstance(bams,(list,tuple)): bams = [bams]
-    bams = ' '.join(bams)
-    bcf = unique_filename_in()
-    vcf = unique_filename_in()
-    script_name = unique_filename_in()+'.sh'
-    script = "samtools mpileup -uDS -f %s %s | bcftools view -bvcg - > %s;\n" % (path_to_ref,bams,bcf)
-    script += "bcftools view %s | vcfutils.pl varFilter -D100 > %s\n" % (bcf,vcf) # D100: max read depth to call snp
-    with open(script_name,'w') as s:
-        s.write(script)
-    return {'arguments': [script_name], 'return_value': vcf}
-
-
-@timer
-def snp_workflow(ex, job, assembly, minsnp=40, mincov=5, path_to_ref=None, via='local',
-                 logfile=sys.stdout, debugfile=sys.stderr):
-    """Main function of the workflow"""
-    logfile.write("\n* Prepare reference sequence\n"); logfile.flush()
-    if test:
-        print 'Current working dir:',os.getcwd()
-        path_to_ref = '/scratch/cluster/monthly/jdelafon/Jerome/ANTXR2/'
-        ref_genome = dict((c,path_to_ref+c+'.fa') for c in assembly.chrmeta)
-    else:
-        if path_to_ref is None:
-            path_to_ref = os.path.join(assembly.genrep.root,'nr_assemblies/fasta',assembly.md5+'.tar.gz')
-        assert os.path.exists(path_to_ref), "Reference sequence not found: %s." % path_to_ref
-        ref_genome = assembly.untar_genome_fasta(path_to_ref, convert=True)
-    [g.wait() for g in [sam_faidx.nonblocking(ex,f,via=via) for f in set(ref_genome.values())]]
-
-    sample_names = []
-    for gid in sorted(job.files.keys()):
-        sample_name = job.groups[gid]['name']
-        sample_names.append(sample_name)
-
-    logfile.write("\n* Generate pileups for each chrom/group\n"); logfile.flush()
-    pileups = dict((chrom,{}) for chrom in ref_genome.keys()) # {chr: {}}
-    bams = dict((chrom,{}) for chrom in ref_genome.keys()) # {chr: {}}
-    bam = {}
-    # Launch the jobs
-    for gid in sorted(job.files.keys()):
-        sample_name = job.groups[gid]['name']
-        # Merge all bams belonging to the same group
-        runs = [r['bam'] for r in job.files[gid].itervalues()]
-        if len(runs) > 1:
-            bam = mapseq.merge_bam(ex,runs)
-            mapseq.index_bam(ex,bam)
-        else: bam = runs[0]
-        bams[chrom][gid] = bam
-        # Samtools mpileup + bcftools + vcfutils.pl
-        for chrom,ref in ref_genome.iteritems():
-            future = pileup.nonblocking(ex,bam,ref, via=via)
-            pileups[chrom][gid] = future
-        logfile.write("  ...Group %s running.\n" % sample_name); logfile.flush()
-    # Get the output and save vcf files
-    for gid in sorted(job.files.keys()):
-        sample_name = job.groups[gid]['name']
-        for chrom,ref in ref_genome.iteritems():
-            vcf = pileups[chrom][gid].wait()
-            tarname = unique_filename_in()
-            tarfh = tarfile.open(tarname, "w:gz")
-            tarfh.add(vcf,arcname=sample_name+"_"+chrom+".pileup")
-            tarfh.close()
-            ex.add( tarname, description=set_file_descr("pileups_%s.tgz"%chrom,step="pileup",type="tar",view='admin') )
-            pileups[chrom][gid] = vcf
-        logfile.write("  ...Group %s done.\n"); logfile.flush()
-
-
-    logfile.write("\n* Merge info from vcf files\n"); logfile.flush()
-    outall = unique_filename_in()
-    #outexons = unique_filename_in()
-    with open(outall,"w") as fout:
-        fout.write('#'+'\t'.join(['chromosome','position','reference']+sample_names+ \
-                                 ['gene','location_type','distance'])+'\n')
-    #with open(outexons,"w") as fout:
-    #    fout.write('#'+'\t'.join(['chromosome','position','reference']+sample_names+['exon','strand','ref_aa'] \
-    #                              + ['new_aa_'+s for s in sample_names])+'\n')
-    for chrom,v in pileups.iteritems():
-        logfile.write("\n  > Chromosome '%s'\n" % chrom); logfile.flush()
-        logfile.write("  - All SNPs\n"); logfile.flush()
-    # Put together info from all vcf files
-        allsnps = all_snps(ex,chrom,pileups[chrom],bams[chrom],outall,assembly,sample_names,mincov,minsnp,logfile,debugfile)
-        #logfile.write("  - Exonic SNPs\n"); logfile.flush()
-        #exon_snps(chrom,outexons,allsnps,assembly,sample_names,ref_genome,logfile,debugfile)
-    description = set_file_descr("allSNP.txt",step="SNPs",type="txt")
-    ex.add(outall,description=description)
-    #description = set_file_descr("exonsSNP.txt",step="SNPs",type="txt")
-    #ex.add(outexons,description=description)
-
-    #logfile.write("\n* Create tracks\n"); logfile.flush()
-    #create_tracks(ex,outall,sample_names,assembly)
-    return 0
-
-
-# samtools mpileup -u -DS -f chr4.fa -r chr4:80898662-80994477 KH1_ANTXR2.bam KH2_ANTXR2.bam KG_ANTXR2.bam | bcftools view -bvcg - > varK.raw.bcf
-# bcftools view varK.raw.bcf | vcfutils.pl varFilter -D100 > varK.flt.vcf
 
