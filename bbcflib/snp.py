@@ -65,7 +65,7 @@ def pileup(bams,path_to_ref,wdir,logfile):
     script += "bcftools view %s | vcfutils.pl varFilter -D100 > %s ;" % (bcf,vcf) # D100: max read depth to call snp
     with open(script_name,'w') as s:
         s.write(script)
-    logfile.write(".. Executed script:\n"+script); logfile.flush()
+    logfile.write("  ...Executed script:\n"+script); logfile.flush()
     os.chmod(script_name,0777)
     return {'arguments': [script_name], 'return_value': vcf}
 
@@ -73,16 +73,18 @@ def parse_vcf(vcf_line):
     """
     qual: -10 log_10 P(call in ALT is wrong) - the higher, the best.
     filter: semicolon-sep list of filters that failed to call snp.
-    info: useless trash.
+    info: useless trash except SB: strand bias.
     format: genotype fields - for the next columns.
     """
     if not vcf_line: return vcf_line
     line = vcf_line.strip().split('\t')
     chrbam,pos,id,ref,alt,qual,filter,info,format = line[:9]
+    info = dict(x.split('=') for x in info.split(';'))
     alts = alt.split(',')
     sample = line[9]
-    genotype,phred_likelihood,depth,strand_bias,genotype_qual = sample.split(':') # format = GT:PL:DP:SP:GQ
-    genotype = [alts[int(i)-1] for i in genotype.split('/')]
+    genotype,phred_likelihood,depth,SP,genotype_qual = sample.split(':') # format = GT:PL:DP:SP:GQ
+    sep = '/' if '/' in genotype else '|'  # phased if |, unphased if /
+    genotype = [alts[int(i)-1] for i in genotype.split(sep)]
     genotype = '|'.join(genotype)
     # genotype: '1/1', sample_genotype: 'A/A' if alt='A'
     # genotype_qual: -10 log_10 P(genotype call is wrong | the site being variant)
@@ -126,10 +128,12 @@ def all_snps(ex,chrom,vcfs,bams, outall,assembly,sample_names, mincov,minsnp,
             chrbam = info[0]
             ref = info[2].upper()
             current_snps[i] = filter_snp(info,mincov,minsnp,assembly)
+        # Check if for other samples there are no reads or just no snp
         for i in set(range(nsamples))-current_snp_idx:
             try: coverage = bam_tracks[i].coverage((chrbam,pos-1,pos)).next()[-1]
             except StopIteration: coverage = 0
             current_snps[i] = ref if coverage else "0"
+        # If there were still snp called at this position after filtering
         if not all([s in ["0",ref] for s in current_snps]):
             if pos != lastpos: # indel can be located at the same position as an SNP
                 allsnps.append((chrom,pos-1,pos,ref)+tuple(current_snps))
