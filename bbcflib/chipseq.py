@@ -427,7 +427,7 @@ def chipseq_workflow( ex, job_or_dict, assembly, script_path='', logfile=sys.std
         logfile.write("Starting MEME.\n");logfile.flush()
         processed['meme'] = parallel_meme( ex, assembly,
                                            peak_list.values(), name=peak_list.keys(),
-                                           chip=True, meme_args=['-meme-nmotifs','4'],
+                                           chip=True, meme_args=['-meme-nmotifs','4','-meme-mod','zoops'],
                                            via=via )
     return processed
 

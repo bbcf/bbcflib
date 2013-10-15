@@ -164,15 +164,15 @@ def save_motif_profile( ex, motifs, assembly, regions=None, fasta=None, backgrou
         fasta, size = assembly.fasta_from_regions( regions )
     if fasta is None:
         raise ValueError("Provide either a fasta file or a valid list of regions")
-    if assembly:
-        chrmeta = assembly.chrmeta
-    else:
-        chroms = fasta_length.nonblocking( ex, fasta, via=via ).wait()
-        chrmeta = dict([(v['name'], {'length': v['length']}) for v in chroms.values()])
+#    if assembly:
+#        chrmeta = assembly.chrmeta
+#    else:
+#        chroms = fasta_length.nonblocking( ex, fasta, via=via ).wait()
+#        chrmeta = dict([(v['name'], {'length': v['length']}) for v in chroms.values()])
     if output is None:
-        sqlout = unique_filename_in()
+        bedout = unique_filename_in()
     else:
-        sqlout = output
+        bedout = output
     if not(isinstance(motifs, dict)):
         motifs = {"_": motifs}
     futures = {}
@@ -212,14 +212,14 @@ def save_motif_profile( ex, motifs, assembly, regions=None, fasta=None, backgrou
             for x in maxscore.values():
                 yield x
 ##############
-    track_result = track( sqlout, chrmeta=chrmeta, info={'datatype':'qualitative'},
+    track_result = track( bedout, format='bed', info={'datatype':'qualitative'},
                           fields=['chr','start','end','name','score','strand'] )
     for name, future in futures.iteritems():
         future[1].wait()
         track_result.write( FeatureStream(_parse_s1k(future[0], name), fields=track_result.fields) )
     track_result.close()
-    if description is not None: ex.add( sqlout, description=description )
-    return sqlout
+    if description is not None: ex.add( bedout, description=description )
+    return bedout
 
 def FDR_threshold( ex, motif, background, assembly, regions, alpha=.1, nb_samples=1, via='lsf' ):
     """
