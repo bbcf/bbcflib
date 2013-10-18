@@ -9,7 +9,7 @@ New Job
 
 An RNA-seq analysis works from reads aligned on a reference genome or exonome, given as BAM file(s) through the BAM URL field (there is one BAM file per run). Each BAM file represents a sample ("run"); several samples that were produced in the same conditions (replicates) form a "group".
 
-The BAM URLs can be given directly as an `http://` or `ftp://` address accessible from outside. You can add manually as many groups and as many runs per group you want by using the links `Add group of runs` and `Add run in this group`. Each sample will then be labeled *group_name.run_index* in the output files. Make sure to use short group names, without spaces (prefer the "_" character to separate words) and without any special character in it (e.g. "%&?!").
+The BAM URLs can be given directly as an `http://` or `ftp://` address accessible from outside. You can add manually as many groups and as many runs per group you want by using the links `Add group of runs` and `Add run in this group`. Each sample will then be labeled *group_name.run_index* in the output files. Make sure to use short group names, without spaces (prefer the "_" character to separate words) and without any special character in it (e.g. "%&?!"). Groups are considered to represent different experimental conditions, while runs typically represent techical replicates. This is important for statistical analysis - see below.
 
 If you used the HTSstation `mapping module <http://htsstation.epfl.ch/mapseq/>`_ to do the mapping, you can copy the 20-random characters keys obtained as a result into the `Mapping key` field, and validate using the link `Add data from Mapping`. In such case, all relevant fields will be automatically filled in (see tutorial of our `mapping module <http://htsstation.epfl.ch/mapseq/>`_ for more details about those fields). To add samples from other independant mappings, successively enter the correponding keys and click on `Add data from Mapping`.
 
@@ -30,6 +30,10 @@ Results
 -------
 
 When the job finishes successfully, you will receive an e-mail with a link to the page where you can download the results. Results consist in tab-delimited files containing counts and rpkm for genes, exons and transcripts, a differential expression analysis for each pair of groups in the experiment, and mapping reports of reads that did not map to the genome/exonome first.
+
+.. warning::
+
+    Differential expression analysis will not be very reliable if there are no replicates (i.e. only one run per group): in this case all groups will be pooled and the variation between them considered as background biological variability. Prefer considering fold changes over p-values if you have no of few replicates.
 
 
 Interactive MA-plot
