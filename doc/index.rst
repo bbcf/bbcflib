@@ -52,4 +52,5 @@ Library guide
    bbcflib_track
    bbcflib_gfminer
 
-Also see the `developer documentation <http://bbcf.github.com/bbcflib/>`_.
+See also the `developer documentation <http://bbcf.github.com/bbcflib/>`_ and 
+the :download:`poster <Poster_HTSstation_small.pdf>`.
