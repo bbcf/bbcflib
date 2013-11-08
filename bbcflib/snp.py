@@ -355,9 +355,6 @@ def snp_workflow(ex, job, assembly, minsnp=40, mincov=5, path_to_ref=None, via='
         path_to_ref = '/scratch/cluster/monthly/jdelafon/snp/sequence/hg19/'
         genomeRef = dict((c,path_to_ref+c) for c in assembly.chrmeta)
     else:
-        if path_to_ref is None:
-            path_to_ref = os.path.join(assembly.genrep.root,'nr_assemblies/fasta',assembly.md5+'.tar.gz')
-        assert os.path.exists(path_to_ref), "Reference sequence not found: %s." % path_to_ref
         genomeRef = assembly.untar_genome_fasta(path_to_ref, convert=True)
 
     [g.wait() for g in [sam_faidx.nonblocking(ex,f,via=via) for f in set(genomeRef.values())]]
