@@ -615,6 +615,8 @@ class Assembly(object):
         if not(method in ["dico","boundaries"]): return data
         # Sqlite3 request to /db/
         dbpath = self.sqlite_path()
+        if dbpath is None:
+            raise ValueError("Annotations not available for this assembly.")
         if os.path.exists(dbpath) and not h.get('at_pos'):
             if chromosomes == [None]: chromosomes = self.chrnames
             db = sqlite3.connect(dbpath)

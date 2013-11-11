@@ -192,13 +192,13 @@ def all_snps(ex,chrom,dictPileup,outall,assembly,sample_names,mincov,minsnp,
 
     logfile.write("  Annotate all SNPs\n"); logfile.flush()
     snp_read = FeatureStream(allsnps, fields=['chr','start','end','name']+sample_names)
-    if assembly.sqlite_path() is not None:
+    try:
         annotation = assembly.gene_track(chrom)
         annotated_stream = gm_stream.getNearestFeature(snp_read,annotation,
                                                        thresholdPromot=3000,
                                                        thresholdInter=3000,
                                                        thresholdUTR=10)
-    else:
+    except:
         annotated_stream = snp_read
     logfile.write("  Write all SNPs\n"); logfile.flush()
     with open(outall,"a") as fout:
