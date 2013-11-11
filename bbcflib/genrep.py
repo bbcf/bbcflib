@@ -784,6 +784,8 @@ class Assembly(object):
             If None, all biotypes are selected.
         :rtype: track.FeatureStream
         """
+        if self.sqlite_path() is None:
+            raise ValueError("Annotations not available for this assembly.")
         if chromlist is None: chromlist = self.chrnames
         elif isinstance(chromlist,basestring): chromlist = [chromlist]
         _fields = ['chr','start','end','name','strand']
