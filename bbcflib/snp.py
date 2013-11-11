@@ -192,9 +192,13 @@ def all_snps(ex,chrom,dictPileup,outall,assembly,sample_names,mincov,minsnp,
 
     logfile.write("  Annotate all SNPs\n"); logfile.flush()
     snp_read = FeatureStream(allsnps, fields=['chr','start','end','name']+sample_names)
-    annotation = assembly.gene_track(chrom)
-    annotated_stream = gm_stream.getNearestFeature(snp_read,annotation,
-                                                   thresholdPromot=3000,thresholdInter=3000,thresholdUTR=10)
+    try:
+        annotation = assembly.gene_track(chrom)
+        annotated_stream = gm_stream.getNearestFeature(snp_read,annotation,
+                                                       thresholdPromot=3000,thresholdInter=3000,
+                                                       thresholdUTR=10)
+    except:
+        annotated_stream = snp_read
     logfile.write("  Write all SNPs\n"); logfile.flush()
     with open(outall,"a") as fout:
         for snp in annotated_stream:
