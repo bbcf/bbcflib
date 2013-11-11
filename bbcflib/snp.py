@@ -277,18 +277,21 @@ def exon_snps(chrom,outexons,allsnps,assembly,sample_names,genomeRef={},
             outex.write("\t".join([str(r) for r in result])+"\n")
 
     #############################################################
-    outex = open(outexons,"a")
     snp_stream = FeatureStream(allsnps, fields=['chr','start','end','ref']+sample_names)
     inclstream = concat_fields(snp_stream, infields=snp_stream.fields[3:], as_tuple=True)
     snp_stream = FeatureStream(allsnps, fields=['chr','start','end','ref']+sample_names)
     inclstream = concat_fields(snp_stream, infields=snp_stream.fields[3:], as_tuple=True)
 
-    annotstream = concat_fields(assembly.annot_track('CDS',chrom),
-                                infields=['name','strand','frame'], as_tuple=True)
-    annotstream = FeatureStream((x[:3]+(x[1:3]+x[3],) for x in annotstream),fields=annotstream.fields)
+    try:
+        annotstream = concat_fields(assembly.annot_track('CDS',chrom),
+                                    infields=['name','strand','frame'], as_tuple=True)
+        annotstream = FeatureStream((x[:3]+(x[1:3]+x[3],) for x in annotstream),fields=annotstream.fields)
+    except:
+        return False
     _buffer = {1:[], -1:[]}
     last_start = {1:-1, -1:-1}
     logfile.write("  Intersection with CDS - codon changes\n"); logfile.flush()
+    outex = open(outexons,"a")
     for x in gm_stream.intersect([inclstream, annotstream]):
         # x = ('chrV',1606,1607, ('T','C (43%)', 1612,1724,'YEL077C|YEL077C',-1,0, 1712,1723,'YEL077W-A|YEL077W-A',1,0))
         nsamples = len(sample_names)
@@ -318,7 +321,7 @@ def exon_snps(chrom,outexons,allsnps,assembly,sample_names,genomeRef={},
                 last_start[strand] = codon_start
     for strand in [1,-1]: _write_buffer(_buffer[strand],outex)
     outex.close()
-    return outexons
+    return True
 
 def create_tracks(ex, outall, sample_names, assembly):
     """Write BED tracks showing SNPs found in each sample."""
@@ -375,22 +378,25 @@ def snp_workflow(ex, job, assembly, minsnp=40, mincov=5, path_to_ref=None, via='
     outall = unique_filename_in()
     outexons = unique_filename_in()
     with open(outall,"w") as fout:
-        fout.write('#'+'\t'.join(['chromosome','position','reference']+sample_names+ \
-                                 ['gene','location_type','distance'])+'\n')
+        fout.write('#'+'\t'.join(['chromosome','position','reference']+sample_names
+                                 +['gene','location_type','distance'])+'\n')
     with open(outexons,"w") as fout:
-        fout.write('#'+'\t'.join(['chromosome','position','reference']+sample_names+['exon','strand','ref_aa'] \
-                                  + ['new_aa_'+s for s in sample_names])+'\n')
+        fout.write('#'+'\t'.join(['chromosome','position','reference']+sample_names
+                                 +['exon','strand','ref_aa']
+                                 +['new_aa_'+s for s in sample_names])+'\n')
+    _exon_ok = False
     for chrom in assembly.chrnames:
         logfile.write("\n  > Chromosome '%s'\n" % chrom); logfile.flush()
         dictPileup = pileup_dict[chrom]
         logfile.write("  - All SNPs\n"); logfile.flush()
         allsnps = all_snps(ex,chrom,dictPileup,outall,assembly,sample_names,mincov,minsnp,logfile,debugfile)
         logfile.write("  - Exonic SNPs\n"); logfile.flush()
-        exon_snps(chrom,outexons,allsnps,assembly,sample_names,genomeRef,logfile,debugfile)
+        _exon_ok |= exon_snps(chrom,outexons,allsnps,assembly,sample_names,genomeRef,logfile,debugfile)
     description = set_file_descr("allSNP.txt",step="SNPs",type="txt")
     ex.add(outall,description=description)
-    description = set_file_descr("exonsSNP.txt",step="SNPs",type="txt")
-    ex.add(outexons,description=description)
+    if _exon_ok:
+        description = set_file_descr("exonsSNP.txt",step="SNPs",type="txt")
+        ex.add(outexons,description=description)
 
     logfile.write("\n* Create tracks\n"); logfile.flush()
     create_tracks(ex,outall,sample_names,assembly)
