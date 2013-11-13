@@ -192,7 +192,7 @@ def build_pileup(bamfile, assembly, gene_mapping, exon_mapping, trans_in_gene, e
             self.start = 0 # exon start
             self.counts = [] # vector of counts per non-zero position
         def __call__(self, alignment):
-            NH = [1.0/t[1] for t in alignment.tags if t[0]=='NH'] or [1]
+            NH = [1.0/t[1] for t in alignment.tags if t[0]=='NH']+[1]
             self.n += NH[0]
             try:
                 self.counts[alignment.pos-self.start] += NH[0]

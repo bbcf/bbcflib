@@ -25,7 +25,7 @@ def fastqToFasta(fqFile,n=1,x=22,output=None):
     return{'arguments': ["fastqToFasta.py","-i",fqFile,"-o",faFile,"-n",str(n),"-x",str(x)],
            'return_value':faFile}
 
-def split_exonerate(filename,minScore,l=30):
+def split_exonerate(filename,minScore,l=30,n=1):
     correction = {}
     files = {}
     filenames = {}
@@ -59,9 +59,9 @@ def split_exonerate(filename,minScore,l=30):
             prev_idLine = idLine
             if not key in correction:
                 if len(s_split) > 3:
-                    correction[key]=len(s_split[1])-len(s_split[3])+1
+                    correction[key]=len(s_split[1])-len(s_split[3])+n-1
                 else:
-                    correction[key]=len(s_split[1])+1
+                    correction[key]=len(s_split[1])+n-1
                 filenames[key]=unique_filename_in()
                 files[key]=open(filenames[key],"w")
             k=int(s[3])-int(s[7])+correction[key]
@@ -114,7 +114,7 @@ def parallel_exonerate(ex, subfiles, dbFile, grp_descr,
         resExonerate.append(subResFile)
     for n,f in enumerate(resExonerate):
         futures2[n].wait()
-        (resSplitExonerate,alignments) = split_exonerate(f,minScore,l=l)
+        (resSplitExonerate,alignments) = split_exonerate(f,minScore,l=l,n=n)
         all_unaligned.append(alignments["unaligned"])
         all_ambiguous.append(alignments["ambiguous"])
         res.append(resSplitExonerate)
