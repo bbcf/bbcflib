@@ -167,23 +167,24 @@ def all_snps(ex,chrom,dictPileup,outall,assembly,sample_names,mincov,minsnp,
     current = [pileup_files[i].readline().split('\t') for i in sorder] # one split line per sample
     lastpos = 0
     logfile.write("  Filter SNPs\n"); logfile.flush()
-    while any([len(x)>1 for x in current]):
+    pos = -1
+    while pos < sys.maxint:
         current_pos = [int(x[1]) if len(x)>1 else sys.maxint for x in current]
         pos = min(current_pos)
         current_snp_idx = set(i for i in range(nsamples) if current_pos[i]==pos)
-        current_snps = [None]*nsamples
+        current_snps = ["0"]*nsamples
         for i in current_snp_idx:
             info = current[i]
             chrbam = info[0]
             ref = info[2].upper()
             current_snps[i] = find_snp(info,mincov,minsnp,assembly)
-        if any(s not in ["0",ref] for s in current_snps):
+        if any(current_snps[i] != ref for i in current_snp_idx):
             for i in set(range(nsamples))-current_snp_idx:
                 try: 
                     coverage = bam_tracks[sorder[i]].coverage((chrbam,pos-1,pos)).next()[-1]
                 except StopIteration:
                     coverage = 0
-                current_snps[i] = ref if coverage else "0"
+                current_snps[i] = ref if coverage
             if pos != lastpos: # indel can be located at the same position as an SNP
                 allsnps.append((chrom,pos-1,pos,ref)+tuple(current_snps))
             lastpos = pos
