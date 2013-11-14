@@ -164,7 +164,7 @@ def all_snps(ex,chrom,dictPileup,outall,assembly,sample_names,mincov,minsnp,
     ex.add( tarname, description=set_file_descr("pileups_%s.tgz"%chrom,step="pileup",type="tar",view='admin') )
     nsamples = len(snames)
     sorder = [snames.index(x) for x in sample_names]
-    current = [pileup_files[i].readline().split('\t') for i in sorder] # one splitted line per sample
+    current = [pileup_files[i].readline().split('\t') for i in sorder] # one split line per sample
     lastpos = 0
     logfile.write("  Filter SNPs\n"); logfile.flush()
     while any([len(x)>1 for x in current]):
@@ -177,11 +177,13 @@ def all_snps(ex,chrom,dictPileup,outall,assembly,sample_names,mincov,minsnp,
             chrbam = info[0]
             ref = info[2].upper()
             current_snps[i] = find_snp(info,mincov,minsnp,assembly)
-        for i in set(range(nsamples))-current_snp_idx:
-            try: coverage = bam_tracks[sorder[i]].coverage((chrbam,pos-1,pos)).next()[-1]
-            except StopIteration: coverage = 0
-            current_snps[i] = ref if coverage else "0"
-        if not all([s in ["0",ref] for s in current_snps]):
+        if any(s not in ["0",ref] for s in current_snps):
+            for i in set(range(nsamples))-current_snp_idx:
+                try: 
+                    coverage = bam_tracks[sorder[i]].coverage((chrbam,pos-1,pos)).next()[-1]
+                except StopIteration:
+                    coverage = 0
+                current_snps[i] = ref if coverage else "0"
             if pos != lastpos: # indel can be located at the same position as an SNP
                 allsnps.append((chrom,pos-1,pos,ref)+tuple(current_snps))
             lastpos = pos
