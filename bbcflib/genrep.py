@@ -545,8 +545,8 @@ class Assembly(object):
         _intypes = {'exon_number': _exon_number}
         std_outfields = ['gene_id','gene_name','transcript_id','transcript_name','exon_id','exon_number']
         sql_params = {'info': {'datatype':'relational'},
-                  'outtypes': {'exon_number': 'integer'},
-                  'chrmeta': self.chrmeta }
+                      'outtypes': {'exon_number': 'integer'},
+                      'chrmeta': self.chrmeta }
         gtf_read_fields = ['chr','source','name','start','end','strand','frame','attributes']
         sql_fields = ['chr','biotype','type','start','end','strand','frame']+std_outfields
         exon_count = 1
