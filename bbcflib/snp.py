@@ -45,7 +45,7 @@ _translate = {"TTT": "F", "TTC": "F", "TTA": "L", "TTG": "L/START",
 def _ploidy(assembly):
     if str(assembly.name) in ["EB1_e_coli_k12","MLeprae_TN","mycoSmeg_MC2_155",
                               "mycoTube_H37RV","NA1000","vibrChol1","TB40-BAC4",
-                              "rbR25","pombe","sacCer2","sacCer3"]:
+                              "tbR25","pombe","sacCer2","sacCer3","ASM1346v1"]:
         ploidy = 1 # haploid
     else:
         ploidy = 2 # diploid
