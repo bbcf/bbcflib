@@ -7,7 +7,7 @@ From a set of BAM files produced by an alignement on the genome, calls snps and 
 with respect to a set of coding genes on the same genome.
 """
 # Built-in modules #
-import os, sys, tarfile, time
+import os, sys, tarfile, time, re
 from itertools import product
 
 # Internal modules #
@@ -119,6 +119,11 @@ def find_snp(info,mincov,minsnp,assembly):
             consensus.append("%s/%s (%.2f%% of %s)" %(info[8],info[9],denom*nindel,nreads))
     else:
         #nref = info[8].count(".") + info[8].count(",") # number of reads supporting wild type (.fwd and ,rev)
+        pieup = [x for y in info[8].split('+') for x in y.split('-')]
+        for t in pieup[1:]:
+            shift,tt = re.search(r'(\d+)(\D+)',t).groups()
+            pieup[0] += tt[int(shift):]
+        info[8] = pieup[0]
         for char in _iupac.get(cons,cons):
             if char == ref: continue
             nvar = info[8].count(char)+info[8].count(char.lower())
