@@ -198,6 +198,7 @@ Mapping parameters
 In the mapping module, the following options are valid, with the following defaults::
 
     [Options]
+    bowtie2=True# if False will use bowtie1
     input_type=0# type of mapping: 0=genome, 1=exonome, 2=transcriptome
     compute_densities=True# run bam2wig after bowtie
     ucsc_bigwig=False# create bigwig to upload to UCSC genome browser
@@ -211,6 +212,10 @@ In the mapping module, the following options are valid, with the following defau
 See :py:func:`bbcflib.mapseq.map_reads` for the arguments that can be passed via `map_args`, for example, to use custom bowtie options, the number of hits allowed for each read and the expected enrichement ratio::
 
     map_args={"maxhits":1,"antibody_enrichment":100,"bwt_args":["-5","10","-n","1"]}
+
+To use "local" mapping mode with bowtie2::
+
+    map_args={"bwt_args":["--local"]}
 
 ChIP-seq parameters
 '''''''''''''''''''
