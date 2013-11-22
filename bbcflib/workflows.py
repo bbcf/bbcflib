@@ -191,7 +191,7 @@ class Workflow(object):
         self.job = get_bam_wig_files( ex, self.job,
                                       minilims=self.mapseq_minilims,
                                       hts_url=msurl, suffix=self.suffix,
-                                      script_path=scpath, 
+                                      script_path=scpath,
                                       fetch_unmapped=self.main_args.get('unmapped',False),
                                       via=self.opts.via )
         return True

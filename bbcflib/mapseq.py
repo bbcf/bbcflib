@@ -637,7 +637,7 @@ def bowtie_build(files, index=None, bowtie2=False):
     return {'arguments': [main_call, '-f', files, index], 'return_value': index}
 
 
-def parallel_bowtie( ex, index, reads, unmapped=None, n_lines=1000000, bowtie_args='',
+def parallel_bowtie( ex, index, reads, unmapped=None, n_lines=16000000, bowtie_args='',
                      add_nh_flags=False, bowtie_2=False, via='local' ):
     """Run bowtie in parallel on pieces of *reads*.
 
@@ -662,7 +662,7 @@ def parallel_bowtie( ex, index, reads, unmapped=None, n_lines=1000000, bowtie_ar
         mlim = 12
         if bowtie_2: un_cmd = "--un-conc"
     else:
-        subfiles = split_file(ex, reads, n_lines = n_lines)
+        subfiles = split_file(ex, reads, n_lines=n_lines)
         mlim = 6
     if bowtie_2: btcall = bowtie2.nonblocking
     else:        btcall = bowtie.nonblocking
@@ -813,7 +813,8 @@ def pprint_bamstats(sample_stats, textfile=None):
 
 def map_reads( ex, fastq_file, chromosomes, bowtie_index,
                bowtie_2=False, maxhits=5, antibody_enrichment=50,
-               remove_pcr_duplicates=True, bwt_args=None, via='lsf' ):
+               keep_unmapped=True, remove_pcr_duplicates=True, bwt_args=None, 
+               via='lsf' ):
     """Runs ``bowtie`` in parallel over lsf for the `fastq_file` input.
     Returns the full bamfile, its filtered version (see 'remove_duplicate_reads')
     and the mapping statistics dictionary (see 'bamstats').
@@ -866,10 +867,13 @@ def map_reads( ex, fastq_file, chromosomes, bowtie_index,
     else:
         linecnt = count_lines( ex, fastq_file )
         mlim = 4
-    unmapped = unique_filename_in()
-    if linecnt>10000000:
+    if keep_unmapped:
+        unmapped = unique_filename_in()
+    else:
+        unmapped = None
+    if linecnt>30000000:
         bam = parallel_bowtie( ex, bowtie_index, fastq_file, unmapped=unmapped,
-                               n_lines=8000000, bowtie_args=bwtarg,
+                               n_lines=32000000, bowtie_args=bwtarg,
                                add_nh_flags=True, bowtie_2=bowtie_2, via=via )
     else:
         bwtarg += [un_cmd, unmapped]

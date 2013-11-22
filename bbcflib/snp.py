@@ -11,8 +11,9 @@ import os, sys, tarfile, time, re
 from itertools import product
 
 # Internal modules #
-from bbcflib.common import unique_filename_in, set_file_descr, sam_faidx, timer
+from bbcflib.common import unique_filename_in, set_file_descr, sam_faidx, timer, iupac, translate
 from bbcflib import mapseq
+from bbcflib.genrep import ploidy
 from bbcflib.track import FeatureStream, track
 from bbcflib.gfminer.common import concat_fields
 from bbcflib.gfminer import stream as gm_stream
@@ -20,36 +21,6 @@ from bein import program
 
 
 test = 0
-
-_iupac = {'M':'AC', 'Y':'CT', 'R':'AG', 'S':'CG', 'W': 'AT', 'K':'GT',
-          'B':'CGT', 'D':'AGT', 'H':'ACT', 'V':'ACG',
-          'N': 'ACGT'}
-
-_translate = {"TTT": "F", "TTC": "F", "TTA": "L", "TTG": "L/START",
-              "CTT": "L", "CTC": "L", "CTA": "L", "CTG": "L",
-              "ATT": "I", "ATC": "I", "ATA": "I", "ATG": "M & START",
-              "GTT": "V", "GTA": "V", "GTC": "V", "GTG": "V/START",
-              "TCT": "S", "TCC": "S", "TCA": "S", "TCG": "S",
-              "CCT": "P", "CCC": "P", "CCA": "P", "CCG": "P",
-              "ACT": "T", "ACC": "T", "ACA": "T", "ACG": "T",
-              "GCT": "A", "GCC": "A", "GCA": "A", "GCG": "A",
-              "TAT": "Y", "TAC": "Y", "TAA": "STOP", "TAG": "STOP",
-              "CAT": "H", "CAC": "H", "CAA": "Q", "CAG": "Q",
-              "AAT": "N", "AAC": "N", "AAA": "K", "AAG": "K",
-              "GAT": "D", "GAC": "D", "GAA": "E", "GAG": "E",
-              "TGT": "C", "TGC": "C", "TGA": "STOP", "TGG": "W",
-              "CGT": "R", "CGC": "R", "CGA": "R", "CGG": "R",
-              "AGT": "S", "AGC": "S", "AGA": "R", "AGG": "R",
-              "GGT": "G", "GGC": "G", "GGA": "G", "GGG": "G" }
-
-def _ploidy(assembly):
-    if str(assembly.name) in ["EB1_e_coli_k12","MLeprae_TN","mycoSmeg_MC2_155",
-                              "mycoTube_H37RV","NA1000","vibrChol1","TB40-BAC4",
-                              "tbR25","pombe","sacCer2","sacCer3","ASM1346v1"]:
-        ploidy = 1 # haploid
-    else:
-        ploidy = 2 # diploid
-    return ploidy
 
 @timer
 def pileup(ex,job,assembly,genomeRef,via,logfile,debugfile):
@@ -61,9 +32,9 @@ def pileup(ex,job,assembly,genomeRef,via,logfile,debugfile):
         :param bamfile: path to the BAM file.
         :param refGenome: path to the reference genome fasta file.
         """
-        ploidy = _ploidy(assembly)
+        _ploidy = ploidy(assembly)
         samtools_path= "/mnt/common/epfl/dev/bin/samtools"
-        return {"arguments": [samtools_path,"pileup","-Bcvsf",refGenome,"-N",str(ploidy),bamfile],
+        return {"arguments": [samtools_path,"pileup","-Bcvsf",refGenome,"-N",str(_ploidy),bamfile],
                 "return_value": None}
     bam = {}
     pileup_dict = dict((chrom,{}) for chrom in genomeRef.keys()) # {chr: {}}
@@ -110,24 +81,24 @@ def find_snp(info,mincov,minsnp,assembly):
     cons = info[3].upper() # consensus base
     nreads = int(info[7])  # total coverage at this position
     denom = 100/float(nreads)
-    ploidy = _ploidy(assembly)
+    _ploidy = ploidy(assembly)
     #snp_qual = 10**(-float(info[5])/10)
     consensus = []
     if ref == "*": # indel
         nindel = int(info[10])
-        if nindel >= mincov and 100*nindel*ploidy >= minsnp*nreads:
+        if nindel >= mincov and 100*nindel*_ploidy >= minsnp*nreads:
             consensus.append("%s/%s (%.2f%% of %s)" %(info[8],info[9],denom*nindel,nreads))
     else:
         #nref = info[8].count(".") + info[8].count(",") # number of reads supporting wild type (.fwd and ,rev)
         pieup = [x for y in info[8].split('+') for x in y.split('-')]
         for t in pieup[1:]:
-            shift,tt = re.search(r'(\d+)(\D+)',t).groups()
+            shift,tt = getattr(re.search(r'(\d+)(\D+)',t),"groups",lambda:(0,t))()
             pieup[0] += tt[int(shift):]
         info[8] = pieup[0]
-        for char in _iupac.get(cons,cons):
+        for char in iupac.get(cons,cons):
             if char == ref: continue
             nvar = info[8].count(char)+info[8].count(char.lower())
-            if nvar >= mincov and 100*nvar*ploidy >= minsnp*nreads:
+            if nvar >= mincov and 100*nvar*_ploidy >= minsnp*nreads:
                 consensus.append("%s (%.2f%% of %s)" %(char,denom*nvar,nreads))
     consensus = ", ".join(consensus) or ref
     return consensus
@@ -269,18 +240,18 @@ def exon_snps(chrom,outexons,allsnps,assembly,sample_names,genomeRef={},
             ref_codon = _revcomp(ref_codon)
             new_codon = [[_revcomp(s) for s in c] for c in new_codon]
         for chr,pos,refbase,variants,cds,strand,dummy,shift in _buffer:
-            refc = [_iupac.get(x,x) for x in ref_codon]
+            refc = [iupac.get(x,x) for x in ref_codon]
             ref_codon = [''.join(x) for x in product(*refc)]
-            newc = [[[_iupac.get(x,x) for x in variant] for variant in sample]
+            newc = [[[iupac.get(x,x) for x in variant] for variant in sample]
                     for sample in new_codon]
             new_codon = [[''.join(x) for codon in sample for x in product(*codon)] for sample in newc]
             if refbase == "*":
                 result = [chr, pos+1, refbase] + list(variants) + [cds, strand] \
-                         + [','.join([_translate.get(refc,'?') for refc in ref_codon])] + ["indel"]
+                         + [','.join([translate.get(refc,'?') for refc in ref_codon])] + ["indel"]
             else:
                 result = [chr, pos+1, refbase] + list(variants) + [cds, strand] \
-                         + [','.join([_translate.get(refc,'?') for refc in ref_codon])] \
-                         + [','.join([_translate.get(s,'?') for s in newc]) for newc in new_codon]
+                         + [','.join([translate.get(refc,'?') for refc in ref_codon])] \
+                         + [','.join([translate.get(s,'?') for s in newc]) for newc in new_codon]
             outex.write("\t".join([str(r) for r in result])+"\n")
 
     #############################################################

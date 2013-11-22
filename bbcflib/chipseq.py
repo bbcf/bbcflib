@@ -175,6 +175,7 @@ def run_deconv(ex, sql, peaks, chromosomes, read_extension, script_path, via = '
         deconv_futures[chrom] = camelPeaks.nonblocking( ex, sql['fwd'], sql['rev'], peaks,
                                                         chrom, clen,
                                                         read_extension, script_path,
+                                                        queue="long",
                                                         via=via, stdout=stdout_files[chrom] )
         time.sleep(150) ##avoid too many processes reading same sql
     deconv_out = {}

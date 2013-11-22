@@ -206,7 +206,8 @@ In the mapping module, the following options are valid, with the following defau
     discard_pcr_duplicates=True# apply PCR artifact filter
     merge_strand=-1# shift value for merging the two strand-specific densities, -1 means no merging
     read_extension=-1# value of the read extension, the -q parameter of bam2wig (-1 means read length)
-    map_args={}# a dictionary of arguments passed to map_reads
+    map_args={"maxhits":5, "antibody_enrichment":50,
+               "keep_unmapped":True, "bwt_args":None}# a dictionary of arguments passed to map_reads
     b2w_args=[]# list of options to the bam2wig program
 
 See :py:func:`bbcflib.mapseq.map_reads` for the arguments that can be passed via `map_args`, for example, to use custom bowtie options, the number of hits allowed for each read and the expected enrichement ratio::
