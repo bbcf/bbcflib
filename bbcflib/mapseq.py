@@ -872,8 +872,9 @@ def map_reads( ex, fastq_file, chromosomes, bowtie_index,
     else:
         unmapped = None
     if linecnt>10000000:
+        n_lines = 4*(linecnt/40+1)#has to be a multiple of 4
         sorted_bam = parallel_bowtie( ex, bowtie_index, fastq_file, unmapped=unmapped,
-                                      n_lines=linecnt/10+1, bowtie_args=bwtarg,
+                                      n_lines=n_lines, bowtie_args=bwtarg,
                                       add_nh_flags=True, bowtie_2=bowtie_2, via=via )
     else:
         bwtarg += [un_cmd, unmapped]
