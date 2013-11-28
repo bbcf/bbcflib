@@ -2,7 +2,7 @@
 import os, shutil, time
 
 # Internal modules #
-from bbcflib.track import track, convert, FeatureStream, check_ordered, check_format
+from bbcflib.track import track, convert, FeatureStream, check
 from bbcflib.track.text import BedTrack, BedGraphTrack, WigTrack, SgaTrack, GffTrack
 from bbcflib.track.bin import BigWigTrack, BamTrack
 from bbcflib.track.sql import SqlTrack
@@ -55,33 +55,44 @@ class Test_Track(unittest.TestCase):
         s = t.read(); s.next()
         self.assertIsInstance(s, FeatureStream)
 
-    def test_check_ordered(self):
+    def test_check(self):
+        self.assertTrue(check(self.bed))
+
         # All sorted
         tempfile = os.path.join(path,'temp2.txt')
         with open(tempfile,'wb') as g:
             g.writelines(["chrX\t1\t2\n", "chrX\t3\t4\n", "chrV\t1\t2\n"])
-        self.assertEqual(check_ordered(tempfile),True)
+        self.assertEqual(check(tempfile, check_sorted=True),True)
 
         # Chromosomes unsorted
         tempfile = os.path.join(path,'temp3.txt')
         with open(tempfile,'wb') as g:
             g.writelines(["chrX\t1\t2\n", "chrV\t1\t2\n", "chrX\t3\t4\n"])
-        self.assertEqual(check_ordered(tempfile),False)
+        self.assertEqual(check(tempfile, check_sorted=True),False)
 
         # Starts unsorted
         tempfile = os.path.join(path,'temp4.txt')
         with open(tempfile,'wb') as g:
             g.writelines(["chrX\t3\t4\n", "chrX\t1\t2\n", "chrV\t1\t2\n"])
-        self.assertEqual(check_ordered(tempfile),False)
+        self.assertEqual(check(tempfile, check_sorted=True),False)
 
         # Ends unsorted
         tempfile = os.path.join(path,'temp5.txt')
         with open(tempfile,'wb') as g:
             g.writelines(["chrX\t1\t4\n", "chrX\t1\t3\n", "chrV\t1\t2\n"])
-        self.assertEqual(check_ordered(tempfile),False)
+        self.assertEqual(check(tempfile, check_sorted=True),False)
 
-    def test_check_format(self):
-        self.assertTrue(check_format(self.bed))
+        # Duplicates
+        tempfile = os.path.join(path,'temp5.txt')
+        with open(tempfile,'wb') as g:
+            g.writelines(["chrX\t1\t4\n", "chrX\t1\t4\n", "chrV\t1\t2\n"])
+        self.assertEqual(check(tempfile, check_duplicates=True),False)
+
+        # Empty regions
+        tempfile = os.path.join(path,'temp5.txt')
+        with open(tempfile,'wb') as g:
+            g.writelines(["chrX\t1\t4\n", "chrX\t3\t3\n", "chrV\t1\t2\n"])
+        self.assertEqual(check(tempfile, check_zerosize=True),False)
 
     def test_chr_loop(self):
         tempfile = os.path.join(path,'temp6.txt')
