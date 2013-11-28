@@ -63,7 +63,7 @@ def add_name_field(stream):
     si = stream.fields.index('start')
     ei = stream.fields.index('end')
     _f = stream.fields+['name']
-    return FeatureStream((r+("%s:%i-%i"%(r[ci],r[si],r[ei]),) for r in stream), 
+    return FeatureStream((r+("%s:%i-%i"%(r[ci],r[si],r[ei]),) for r in stream),
                          fields=_f)
 ####################################################################
 def select(stream, fields=None, selection={}):
@@ -74,6 +74,8 @@ def select(stream, fields=None, selection={}):
     :param fields: (list of str) list of fields to keep in the output.
     :param selection: (dict {*field*:*val*}) keep only lines s.t. *field* has a value
         equal to *val*, or is an element of *val*. E.g. `select(f,None,{'chr':['chr1','chr2']})`.
+        *val* can also be a function returning True or False when applied to an element of the field;
+        if True, the element is kept.
     :rtype: FeatureStream, or list of FeatureStream objects.
     """
     def _select(stream,idxs):
@@ -83,6 +85,8 @@ def select(stream, fields=None, selection={}):
                 for k,val in sel.iteritems():
                     if isinstance(val,(list,tuple)):
                         if not x[k] in val: continue
+                    elif hasattr(val,'__call__'):
+                        if not val(x[k]): continue
                     else:
                         if not x[k] == val: continue
                     yield tuple([x[i] for i in idxs])
