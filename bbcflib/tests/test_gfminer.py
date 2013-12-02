@@ -325,7 +325,7 @@ class Test_Intervals(unittest.TestCase):
 
     def test_overlap(self):
         s1 = [('chr',0,4,'n',1.), ('chr',7,12,'n',2.), ('chr',16,19,'n',3.), ('chr',22,27,'n',4.)]
-        s2 = [('chr',2,9,'m'), ('chr',13,14,'m'), ('chr',25,30,'m')]
+        s2 = [('chr',2,9,'m'), ('chr',13,14,'m'), ('chr',22,23,'m'), ('chr',26,27,'m')]
         stream1 = fstream(s1, fields=['chr','start','end','name','score'])
         stream2 = fstream(s2, fields=['chr','start','end','name'])
         res = overlap(stream1,stream2)
