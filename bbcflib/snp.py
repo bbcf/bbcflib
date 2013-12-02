@@ -70,28 +70,53 @@ def pileup(bams,path_to_ref,wdir,logfile,seq_depth=1000):
     return {'arguments': [script_name], 'return_value': vcf}
 
 def parse_vcf(vcf_line):
-    """
-    qual: -10 log_10 P(call in ALT is wrong) - the higher, the best.
-    filter: semicolon-sep list of filters that failed to call snp.
-    info: useless trash except SB: strand bias.
-    format: genotype fields - for the next columns.
-    """
-    if not vcf_line: return vcf_line
+    """cf. ``http://samtools.sourceforge.net/mpileup.shtml``"""
+    snp_info = {}
+    if not vcf_line.strip(): return ''
     line = vcf_line.strip().split('\t')
     chrbam,pos,id,ref,alt,qual,filter,info,format = line[:9]
-    info = dict(x.split('=') for x in info.split(';'))
+    #   qual  : -10 log_10 P(call in ALT is wrong) - the higher, the best.
+    #   filter: semicolon-sep list of filters that failed to call snp.
+    #   info  : added by bcftools about SNP calling.
+    #   format: genotype fields - for parsing the next columns.
+    general = (chrbam,int(pos),ref.upper(),alt,float(qual))
+    for x in info.split(';'):
+        if x != 'INDEL':
+            a,b = x.split('=')
+            snp_info[a] = b
+        else:
+            snp_info['INDEL'] = True
+    sample_stats = (format,line[9]) # for us, always one sample at a time
+    return (general,snp_info,sample_stats)
+
+def filter_snp(general,snp_info,sample_stats,mincov,minsnp,assembly):
+    ref = general[2]
+    ploidy = _ploidy(assembly)
+    dp4 = map(int, snp_info.get('DP4','0,0,0,0').split(',')) # fw.ref, rev.ref, fw.alt, rev.alt (filtered)
+    total_reads = sum(dp4)
+    total_fwd = dp4[2]+dp4[0]
+    total_rev = dp4[3]+dp4[1]
+    if dp4[2]+dp4[3] < mincov:
+        return ref  # too few supporting alt
+    alt = general[3]
+    sample = sample_stats[1]  # accord to *format*?
+    #   GT: '1/1' -> 'A/A' if alt='A'
+    #   GQ: -10 log_10 P(genotype call is wrong | the site being variant)
     alts = alt.split(',')
-    sample = line[9]
-    genotype,phred_likelihood,depth,SP,genotype_qual = sample.split(':') # format = GT:PL:DP:SP:GQ
+    genotype = sample.split(':')[0] # format = GT:PL:DP:SP:GQ
     sep = '/' if '/' in genotype else '|'  # phased if |, unphased if /
     genotype = [alts[int(i)-1] for i in genotype.split(sep)]
-    genotype = '|'.join(genotype)
-    # genotype: '1/1', sample_genotype: 'A/A' if alt='A'
-    # genotype_qual: -10 log_10 P(genotype call is wrong | the site being variant)
-    return (chrbam,int(pos),ref,alt,float(qual),genotype,int(depth))
-
-def filter_snp(info,mincov,minsnp,assembly):
-    return info[5]
+    if ploidy == 1:
+        ratio = 100*(dp4[2]+dp4[3])/float(total_reads)
+        if ratio < mincov: return ref
+        genotype = "%s (%.0f%% of %d)" % (genotype[0],ratio,total_reads)
+    elif ploidy == 2:
+        fwd_ratio = 100*dp4[2]/float(total_fwd)
+        rev_ratio = 100*dp4[3]/float(total_rev)
+        if fwd_ratio < mincov: return ref
+        if rev_ratio < mincov: return ref
+        genotype = "%s (%.0f%%|%.0f%% of %d|%d)" % ('|'.join(genotype),fwd_ratio,rev_ratio,total_fwd,total_rev)
+    return genotype
 
 @timer
 def all_snps(ex,chrom,vcfs,bams, outall,assembly,sample_names, mincov,minsnp,
@@ -118,16 +143,16 @@ def all_snps(ex,chrom,vcfs,bams, outall,assembly,sample_names, mincov,minsnp,
             line = vh.readline()
         current[i] = parse_vcf(line)
     lastpos = 0
-    while any([len(x)>1 for x in current]):
-        current_pos = [int(x[1]) if len(x)>1 else sys.maxint for x in current]
+    while any(current):
+        current_pos = [int(x[0][1]) if x else sys.maxint for x in current]
         pos = min(current_pos)
         current_snp_idx = set(i for i in range(nsamples) if current_pos[i]==pos)
         current_snps = [None]*nsamples
         for i in current_snp_idx:
-            info = current[i]
-            chrbam = info[0]
-            ref = info[2].upper()
-            current_snps[i] = filter_snp(info,mincov,minsnp,assembly)
+            general,snp_info,sample_stats = current[i]
+            chrbam = general[0]
+            ref = general[2]
+            current_snps[i] = filter_snp(general,snp_info,sample_stats, mincov,minsnp,assembly)
         # Check if for other samples there are no reads or just no snp
         for i in set(range(nsamples))-current_snp_idx:
             try: coverage = bam_tracks[i].coverage((chrbam,pos-1,pos)).next()[-1]
@@ -193,13 +218,13 @@ def snp_workflow(ex, job, assembly, minsnp=40, mincov=5, path_to_ref=None, via='
             pileups[chrom][gid] = future
             bams[chrom][gid] = bam
         logfile.write("  ...Group %s running.\n" % sample_name); logfile.flush()
-    # Get the output and save vcf files
+    # Wait for pileups to finish and store them in *pileups[chrom][gid]*
     for gid in sorted(job.files.keys()):
         sample_name = job.groups[gid]['name']
         for chrom,ref in ref_genome.iteritems():
             vcf = pileups[chrom][gid].wait()
             pileups[chrom][gid] = vcf
-        logfile.write("  ...Group %s done.\n"); logfile.flush()
+        logfile.write("  ...Group %s done.\n" % sample_name); logfile.flush()
     # Targz the pileup files (vcf)
     for chrom,v in pileups.iteritems():
         tarname = unique_filename_in()
