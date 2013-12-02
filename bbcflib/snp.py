@@ -52,7 +52,7 @@ def _ploidy(assembly):
     return ploidy
 
 @program
-def pileup(bams,path_to_ref,wdir,logfile):
+def pileup(bams,path_to_ref,wdir,logfile,seq_depth=1000):
     """Use 'samtools mpileup' followed by 'bcftools view' and 'vcfutils'
     to call for SNPs. Ref.: http://samtools.sourceforge.net/mpileup.shtml"""
     if not isinstance(bams,(list,tuple)): bams = [bams]
@@ -62,7 +62,7 @@ def pileup(bams,path_to_ref,wdir,logfile):
     script_name = os.path.join(wdir, unique_filename_in()+'.sh')
     script = "#!/bin/sh\n"
     script += "samtools mpileup -uDS -f %s %s | bcftools view -bvcg - > %s ;\n" % (path_to_ref,bams,bcf)
-    script += "bcftools view %s | vcfutils.pl varFilter -D100 > %s ;" % (bcf,vcf) # D100: max read depth to call snp
+    script += "bcftools view %s | vcfutils.pl varFilter -D%d > %s ;" % (bcf,seq_depth,vcf)
     with open(script_name,'w') as s:
         s.write(script)
     #logfile.write("  ...Executed script:\n"+script); logfile.flush()
@@ -198,13 +198,16 @@ def snp_workflow(ex, job, assembly, minsnp=40, mincov=5, path_to_ref=None, via='
         sample_name = job.groups[gid]['name']
         for chrom,ref in ref_genome.iteritems():
             vcf = pileups[chrom][gid].wait()
-            tarname = unique_filename_in()
-            tarfh = tarfile.open(tarname, "w:gz")
-            tarfh.add(vcf,arcname=sample_name+"_"+chrom+".pileup")
-            tarfh.close()
-            ex.add( tarname, description=set_file_descr("pileups_%s.tgz"%chrom,step="pileup",type="tar",view='admin') )
             pileups[chrom][gid] = vcf
         logfile.write("  ...Group %s done.\n"); logfile.flush()
+    # Targz the pileup files (vcf)
+    for chrom,v in pileups.iteritems():
+        tarname = unique_filename_in()
+        tarfh = tarfile.open(tarname, "w:gz")
+        for gid,vcf in v.iteritems():
+            tarfh.add(vcf, arcname="%s_%s.pileup" % (job.groups[gid]['name'],chrom))
+        tarfh.close()
+        ex.add( tarname, description=set_file_descr("pileups_%s.tar.gz"%chrom,step="pileup",type="tar",view='admin') )
 
     logfile.write("\n* Merge info from vcf files\n"); logfile.flush()
     outall = unique_filename_in()
