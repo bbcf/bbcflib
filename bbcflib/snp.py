@@ -236,7 +236,7 @@ def snp_workflow(ex, job, assembly, minsnp=40, mincov=5, path_to_ref=None, via='
 
     logfile.write("\n* Merge info from vcf files\n"); logfile.flush()
     outall = unique_filename_in()
-    #outexons = unique_filename_in()
+    outexons = unique_filename_in()
     with open(outall,"w") as fout:
         fout.write('#'+'\t'.join(['chromosome','position','reference']+sample_names+ \
                                  ['gene','location_type','distance'])+'\n')
@@ -245,15 +245,16 @@ def snp_workflow(ex, job, assembly, minsnp=40, mincov=5, path_to_ref=None, via='
     #                              + ['new_aa_'+s for s in sample_names])+'\n')
     for chrom,v in pileups.iteritems():
         logfile.write("  > Chromosome '%s'\n" % chrom); logfile.flush()
-        logfile.write("  - All SNPs\n"); logfile.flush()
     # Put together info from all vcf files
+        logfile.write("  - All SNPs\n"); logfile.flush()
         allsnps = all_snps(ex,chrom,pileups[chrom],bams[chrom],outall,assembly,
                            sample_names,mincov,minsnp,logfile,debugfile)
+    # Annotate SNPs and check synonymy
         #logfile.write("  - Exonic SNPs\n"); logfile.flush()
         #exon_snps(chrom,outexons,allsnps,assembly,sample_names,ref_genome,logfile,debugfile)
     description = set_file_descr("allSNP.txt",step="SNPs",type="txt")
     ex.add(outall,description=description)
-    #description = set_file_descr("exonsSNP.txt",step="SNPs",type="txt")
+    description = set_file_descr("exonsSNP.txt",step="SNPs",type="txt")
     #ex.add(outexons,description=description)
 
     #logfile.write("\n* Create tracks\n"); logfile.flush()
