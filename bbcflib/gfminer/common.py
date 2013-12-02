@@ -442,8 +442,8 @@ def generic_merge(x):
 aggreg_functions = {'strand': strand_merge, 'chr': no_merge}
 
 @ordered
-def fusion(stream,aggregate=aggreg_functions,stranded=False):
-    """Fuses overlapping features in *stream* and applies *aggregate[f]* function to each field $f$.
+def fusion(stream,aggregate={},stranded=False):
+    """Fuses overlapping features in *stream* and applies *aggregate[f]* function to each field *f*.
     *stream* has to be sorted w.r.t. 'chr' (if any), 'start' and 'end'.
 
     Example::
@@ -459,6 +459,9 @@ def fusion(stream,aggregate=aggreg_functions,stranded=False):
     :param stranded: (bool) if True, only features of the same strand are fused. [False]
     :rtype: FeatureStream
     """
+    aggreg = dict(aggreg_functions)
+    aggreg.update(aggregate)
+
     def _fuse(s,stranded):
         try:
             x = list(s.next())
@@ -472,7 +475,7 @@ def fusion(stream,aggregate=aggreg_functions,stranded=False):
             new_str = stranded and (x[stridx] != y[stridx])
             if y[0] < x[1] and not (new_chr or new_str):
                 x[1] = max(x[1], y[1])
-                x[2:] = [aggregate.get(f,generic_merge)((x[n+2],y[n+2]))
+                x[2:] = [aggreg.get(f,generic_merge)((x[n+2],y[n+2]))
                          for n,f in enumerate(s.fields[2:])]
             else:
                 yield tuple(x)
@@ -483,7 +486,7 @@ def fusion(stream,aggregate=aggreg_functions,stranded=False):
     return FeatureStream( _fuse(stream,stranded), fields=stream.fields)
 
 @ordered
-def cobble(stream,aggregate=aggreg_functions,stranded=False,scored=False):
+def cobble(stream,aggregate={},stranded=False,scored=False):
     """Fragments overlapping features in *stream* and applies `aggregate[f]` function
     to each field `f` in common fragments.
     *stream* has to be sorted w.r.t. 'chr' (if any), 'start' and 'end'.
@@ -508,13 +511,16 @@ def cobble(stream,aggregate=aggreg_functions,stranded=False,scored=False):
         original score, based on its length. [False]
     :rtype: FeatureStream
     """
+    aggreg = dict(aggreg_functions)
+    aggreg.update(aggregate)
+
     def _intersect(A,B,fields,L):
         """Return *z*, the part that must replace A in *toyield*, and
         *rest*, that must reenter the loop instead of B."""
         rest = None
         a = tuple(A[2:])
         b = tuple(B[2:])
-        ab = tuple([aggregate.get(f,generic_merge)((A[k+2],B[k+2])) for k,f in enumerate(fields[2:])])
+        ab = tuple([aggreg.get(f,generic_merge)((A[k+2],B[k+2])) for k,f in enumerate(fields[2:])])
         if B[0] < A[1]:           # has an intersection
             if B[1] < A[1]:
                 if B[0] == A[0]:  # same left border, A is bigger
@@ -608,7 +614,7 @@ def cobble(stream,aggregate=aggreg_functions,stranded=False,scored=False):
                 return x0
             else: return x
         _f += ['score']
-        aggregate['score'] = _score_merge
+        aggreg['score'] = aggreg.get('score',_score_merge)
     stream = reorder(stream,_f)
     # Add a field for the track ID in last position; make sure its name is unused yet
     id_field = "".join([random.choice(string.letters + string.digits) for x in range(10)])
