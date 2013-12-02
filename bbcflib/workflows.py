@@ -38,6 +38,7 @@ class Workflow(object):
             ("-w", "--working-directory", "Directory to run execution in",
              {'default': os.getcwd(), 'dest':"wdir"}),
             ("-c", "--config", "Configuration file", {'default': None}),
+            ("--no-email", "Do not send email", {'action':"store_true", 'dest':"noemail"}),
             ("--basepath","HTS data basepath (%s MiniLIMS)"%self.name, {'default': _basepath}))
         self.opts += kw.get("opts",())
         self.usage = _usage + str(kw.get('usage',''))
@@ -234,7 +235,7 @@ class Workflow(object):
         return {gdv_project_url: 'GDV view'}
 
     def send_email(self):
-        if not('email' in self.globals and hasattr(self.job,"email")):
+        if self.opts.noemail or not('email' in self.globals and hasattr(self.job,"email")):
             return
         from bbcflib import email
         r = email.EmailReport( sender=self.globals['email']['sender'],
