@@ -19,7 +19,7 @@ from bbcflib.gfminer import stream as gm_stream
 from bein import program
 
 
-test = 1
+test = 0
 
 _iupac = {'M':'AC', 'Y':'CT', 'R':'AG', 'S':'CG', 'W': 'AT', 'K':'GT',
           'B':'CGT', 'D':'AGT', 'H':'ACT', 'V':'ACG',
@@ -65,7 +65,7 @@ def pileup(bams,path_to_ref,wdir,logfile):
     script += "bcftools view %s | vcfutils.pl varFilter -D100 > %s ;" % (bcf,vcf) # D100: max read depth to call snp
     with open(script_name,'w') as s:
         s.write(script)
-    logfile.write("  ...Executed script:\n"+script); logfile.flush()
+    #logfile.write("  ...Executed script:\n"+script); logfile.flush()
     os.chmod(script_name,0777)
     return {'arguments': [script_name], 'return_value': vcf}
 
@@ -160,16 +160,12 @@ def all_snps(ex,chrom,vcfs,bams, outall,assembly,sample_names, mincov,minsnp,
 def snp_workflow(ex, job, assembly, minsnp=40, mincov=5, path_to_ref=None, via='local',
                  logfile=sys.stdout, debugfile=sys.stderr):
     """Main function of the workflow"""
+    logfile.write('Current working dir: %s'%os.getcwd()); logfile.flush()
     logfile.write("\n* Prepare reference sequence\n"); logfile.flush()
-    if test:
-        print 'Current working dir:',os.getcwd()
-        path_to_ref = '/archive/epfl/bbcf/jdelafon/test_snp/reference/'
-        ref_genome = dict((c,path_to_ref+c+'.fa') for c in ['chr4'])#assembly.chrmeta)
-    else:
-        if path_to_ref is None:
-            path_to_ref = os.path.join(assembly.genrep.root,'nr_assemblies/fasta',assembly.md5+'.tar.gz')
-        assert os.path.exists(path_to_ref), "Reference sequence not found: %s." % path_to_ref
-        ref_genome = assembly.untar_genome_fasta(path_to_ref, convert=True)
+    if path_to_ref is None:
+        path_to_ref = os.path.join(assembly.genrep.root,'nr_assemblies/fasta',assembly.md5+'.tar.gz')
+    assert os.path.exists(path_to_ref), "Reference sequence not found: %s." % path_to_ref
+    ref_genome = assembly.untar_genome_fasta(path_to_ref, convert=True)
     [g.wait() for g in [sam_faidx.nonblocking(ex,f,via=via) for f in set(ref_genome.values())]]
 
     sample_names = []
