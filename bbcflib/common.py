@@ -295,8 +295,28 @@ try:
 
         #-------------------------------------------------------------------------#
     @program
-    def sam_faidx(fasta):
-        return {"arguments": ["samtools","faidx",str(fasta)], "return_value": None}
+    def sam_faidx(fasta,locus=[]):
+        """
+        Locus a list of regions to extract, such as::
+
+            ["2738_NC_000073.5:10456789-10458795",
+             "2738_NC_000073.5:12456789-12458795"]
+        """
+        def _parse_fasta(p):
+            retval = []
+            seq = ''
+            for x in p.stdout:
+                if x.startswith('>'): 
+                    if seq: 
+                        retval.append(seq.upper())
+                        seq = ''
+                    continue
+                seq += x.strip(' \t\r\n')
+            if seq: retval.append(seq.upper())
+            return retval
+                
+        return {"arguments": ["samtools","faidx",str(fasta)]+locus, 
+                "return_value": _parse_fasta}
 
     @program
     def fasta_length(file):
