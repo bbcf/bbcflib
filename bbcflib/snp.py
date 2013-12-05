@@ -80,25 +80,16 @@ def filter_snp(general,snp_info,sample_stats,mincov,minsnp,assembly):
     total_reads = sum(dp4)
     if dp4[2]+dp4[3] < mincov: return ref  # too few supporting alt
     alt = general[3]
-    sample = sample_stats[1]  # accord to *format*?
+    sample = sample_stats[1]  # todo: better according to *format*
     #   GT: '1/1' -> 'A/A' if alt='A'
     #   GQ: -10 log_10 P(genotype call is wrong | the site being variant)
     alts = alt.split(',')
     genotype = sample.split(':')[0] # format = GT:PL:DP:SP:GQ
     sep = '/' if '/' in genotype else '|'  # phased if |, unphased if /
     genotype = [alts[int(i)-1] for i in genotype.split(sep)]
-    #if _ploidy == 1:
     ratio = 100.0*(dp4[2]+dp4[3])/total_reads
     if ratio < minsnp/_ploidy: return "0"
     genotype = "%s (%.0f%% of %d)" % (genotype[0],ratio,total_reads)
-    #elif _ploidy == 2:
-    #    total_fwd = dp4[2]+dp4[0] or 1
-    #    total_rev = dp4[3]+dp4[1] or 1
-    #    fwd_ratio = 100.0*dp4[2]/total_fwd
-    #    rev_ratio = 100.0*dp4[3]/total_rev
-    #    if fwd_ratio < minsnp/_ploidy or rev_ratio < minsnp/_ploidy: return ref
-    #    genotype = "%s (%.0f%% of %d)" % ('|'.join(genotype),(fwd_ratio+rev_ratio)/2,total_reads)
-    #    # the two sides of genotype - X|Y - do not correspond to the two ratios - R1/R2 -, counts on each strand.
     return genotype
 
 @timer
