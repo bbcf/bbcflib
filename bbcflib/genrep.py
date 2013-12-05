@@ -40,6 +40,13 @@ from bbcflib.gfminer.common import shuffled as track_shuffle, split_field, map_c
 default_url = 'http://bbcf-serv01.epfl.ch/genrep/'
 default_root = '/db/genrep'
 
+### This is a hack for SNPs, should go in the database at some point
+def ploidy(assembly):
+    _p = {"EB1_e_coli_k12":1,"MLeprae_TN":1,"mycoSmeg_MC2_155":1,
+          "mycoTube_H37RV":1,"NA1000":1,"vibrChol1":1,"TB40-BAC4":1,
+          "tbR25":1,"pombe":1,"sacCer2":1,"sacCer3":1,"ASM1346v1":1}
+    return _p.get(assembly.name,2)
+
 ################################################################################
 class Assembly(object):
     """
@@ -99,7 +106,7 @@ class Assembly(object):
 
     """
     def __init__(self, assembly=None, genrep=None, intype=0,
-                 fasta=None, annot=None, ex=None, via='local', 
+                 fasta=None, annot=None, ex=None, via='local',
                  bowtie2=False):
         if genrep is None: genrep = GenRep()
         self.genrep = genrep
@@ -149,7 +156,7 @@ class Assembly(object):
                              if x['chr_name']['assembly_id'] == self.id).next()
             self._add_chromosome(**chrom)
         return None
-    
+
     def set_index_path(self,intype=None):
         if intype is not None: self.intype = int(intype)
         root = os.path.join(self.genrep.root,"nr_assemblies/bowtie")
@@ -545,8 +552,8 @@ class Assembly(object):
         _intypes = {'exon_number': _exon_number}
         std_outfields = ['gene_id','gene_name','transcript_id','transcript_name','exon_id','exon_number']
         sql_params = {'info': {'datatype':'relational'},
-                  'outtypes': {'exon_number': 'integer'},
-                  'chrmeta': self.chrmeta }
+                      'outtypes': {'exon_number': 'integer'},
+                      'chrmeta': self.chrmeta }
         gtf_read_fields = ['chr','source','name','start','end','strand','frame','attributes']
         sql_fields = ['chr','biotype','type','start','end','strand','frame']+std_outfields
         exon_count = 1
@@ -615,6 +622,8 @@ class Assembly(object):
         if not(method in ["dico","boundaries"]): return data
         # Sqlite3 request to /db/
         dbpath = self.sqlite_path()
+        if dbpath is None:
+            raise ValueError("Annotations not available for this assembly.")
         if os.path.exists(dbpath) and not h.get('at_pos'):
             if chromosomes == [None]: chromosomes = self.chrnames
             db = sqlite3.connect(dbpath)
@@ -782,6 +791,8 @@ class Assembly(object):
             If None, all biotypes are selected.
         :rtype: track.FeatureStream
         """
+        if self.sqlite_path() is None:
+            raise ValueError("Annotations not available for this assembly.")
         if chromlist is None: chromlist = self.chrnames
         elif isinstance(chromlist,basestring): chromlist = [chromlist]
         _fields = ['chr','start','end','name','strand']
@@ -847,7 +858,7 @@ class Assembly(object):
 
     def transcript_track(self,chromlist=None,biotype=["protein_coding"]):
         """Return a FeatureStream over all protein coding transcripts annotation in the genome:
-        ('chr', start, end, 'gene_id|gene_name', strand)."""
+        ('chr', start, end, 'transcript_id|gene_name', strand)."""
         return self.annot_track(annot_type='transcript',chromlist=chromlist,biotype=biotype)
 
     @property
@@ -870,20 +881,20 @@ class Assembly(object):
 class GenRep(object):
     """
     Create an object to query a GenRep repository.
-    
+
     GenRep is the in-house repository for sequence assemblies for the
     BBCF in Lausanne.  This is an object that wraps its use in Python
     in an idiomatic way.
-    
+
     Create a GenRep object with the base URL to the GenRep system, and
     the root path of GenRep's files.  For instance::
-    
+
         g = GenRep('genrep.epfl.ch', '/path/to/genrep/indices')
-    
+
     To get an assembly from the repository, call the assembly
     method with either the integer assembly ID or the string assembly
     name.  This returns an Assembly object::
-    
+
         a = g.assembly(3)
         b = g.assembly('mm9')
 

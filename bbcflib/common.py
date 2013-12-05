@@ -9,6 +9,28 @@ Utility functions common to several pipelines.
 # Built-in modules #
 import os, sys, time, string, random, re, json, functools
 
+#-------------------------------------------------------------------------#
+
+iupac = {'M':'AC', 'Y':'CT', 'R':'AG', 'S':'CG', 'W': 'AT', 'K':'GT',
+         'B':'CGT', 'D':'AGT', 'H':'ACT', 'V':'ACG',
+         'N': 'ACGT'}
+
+translate = {"TTT": "F", "TTC": "F", "TTA": "L", "TTG": "L/START",
+             "CTT": "L", "CTC": "L", "CTA": "L", "CTG": "L",
+             "ATT": "I", "ATC": "I", "ATA": "I", "ATG": "M & START",
+             "GTT": "V", "GTA": "V", "GTC": "V", "GTG": "V/START",
+             "TCT": "S", "TCC": "S", "TCA": "S", "TCG": "S",
+             "CCT": "P", "CCC": "P", "CCA": "P", "CCG": "P",
+             "ACT": "T", "ACC": "T", "ACA": "T", "ACG": "T",
+             "GCT": "A", "GCC": "A", "GCA": "A", "GCG": "A",
+             "TAT": "Y", "TAC": "Y", "TAA": "STOP", "TAG": "STOP",
+             "CAT": "H", "CAC": "H", "CAA": "Q", "CAG": "Q",
+             "AAT": "N", "AAC": "N", "AAA": "K", "AAG": "K",
+             "GAT": "D", "GAC": "D", "GAA": "E", "GAG": "E",
+             "TGT": "C", "TGC": "C", "TGA": "STOP", "TGG": "W",
+             "CGT": "R", "CGC": "R", "CGA": "R", "CGG": "R",
+             "AGT": "S", "AGC": "S", "AGA": "R", "AGG": "R",
+             "GGT": "G", "GGC": "G", "GGA": "G", "GGG": "G" }
 
 #-------------------------------------------------------------------------#
 def unique_filename_in(path=None):
@@ -273,8 +295,28 @@ try:
 
         #-------------------------------------------------------------------------#
     @program
-    def sam_faidx(fasta):
-        return {"arguments": ["samtools","faidx",str(fasta)], "return_value": None}
+    def sam_faidx(fasta,locus=[]):
+        """
+        Locus a list of regions to extract, such as::
+
+            ["2738_NC_000073.5:10456789-10458795",
+             "2738_NC_000073.5:12456789-12458795"]
+        """
+        def _parse_fasta(p):
+            retval = []
+            seq = ''
+            for x in p.stdout:
+                if x.startswith('>'):
+                    if seq:
+                        retval.append(seq.upper())
+                        seq = ''
+                    continue
+                seq += x.strip(' \t\r\n')
+            if seq: retval.append(seq.upper())
+            return retval
+
+        return {"arguments": ["samtools","faidx",str(fasta)]+locus,
+                "return_value": _parse_fasta}
 
     @program
     def fasta_length(file):

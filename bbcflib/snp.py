@@ -11,45 +11,17 @@ import os, sys, tarfile, time
 from itertools import product
 
 # Internal modules #
-from bbcflib.common import unique_filename_in, set_file_descr, sam_faidx, timer
+from bbcflib.common import unique_filename_in, set_file_descr, sam_faidx, timer, iupac, translate
 from bbcflib import mapseq
+from bbcflib.genrep import ploidy
 from bbcflib.track import FeatureStream, track
 from bbcflib.gfminer.common import concat_fields
 from bbcflib.gfminer import stream as gm_stream
 from bein import program
 
 
-test = 0
+_DEBUG_ = False
 
-_iupac = {'M':'AC', 'Y':'CT', 'R':'AG', 'S':'CG', 'W': 'AT', 'K':'GT',
-          'B':'CGT', 'D':'AGT', 'H':'ACT', 'V':'ACG',
-          'N': 'ACGT'}
-
-_translate = {"TTT": "F", "TTC": "F", "TTA": "L", "TTG": "L/START",
-              "CTT": "L", "CTC": "L", "CTA": "L", "CTG": "L",
-              "ATT": "I", "ATC": "I", "ATA": "I", "ATG": "M & START",
-              "GTT": "V", "GTA": "V", "GTC": "V", "GTG": "V/START",
-              "TCT": "S", "TCC": "S", "TCA": "S", "TCG": "S",
-              "CCT": "P", "CCC": "P", "CCA": "P", "CCG": "P",
-              "ACT": "T", "ACC": "T", "ACA": "T", "ACG": "T",
-              "GCT": "A", "GCC": "A", "GCA": "A", "GCG": "A",
-              "TAT": "Y", "TAC": "Y", "TAA": "STOP", "TAG": "STOP",
-              "CAT": "H", "CAC": "H", "CAA": "Q", "CAG": "Q",
-              "AAT": "N", "AAC": "N", "AAA": "K", "AAG": "K",
-              "GAT": "D", "GAC": "D", "GAA": "E", "GAG": "E",
-              "TGT": "C", "TGC": "C", "TGA": "STOP", "TGG": "W",
-              "CGT": "R", "CGC": "R", "CGA": "R", "CGG": "R",
-              "AGT": "S", "AGC": "S", "AGA": "R", "AGG": "R",
-              "GGT": "G", "GGC": "G", "GGA": "G", "GGG": "G" }
-
-def _ploidy(assembly):
-    if str(assembly.name) in ["EB1_e_coli_k12","MLeprae_TN","mycoSmeg_MC2_155",
-                              "mycoTube_H37RV","NA1000","vibrChol1","TB40-BAC4",
-                              "rbR25","pombe","sacCer2","sacCer3"]:
-        ploidy = 1 # haploid
-    else:
-        ploidy = 2 # diploid
-    return ploidy
 
 @program
 def pileup(bams,path_to_ref,wdir,logfile,seq_depth=1000):
@@ -61,12 +33,23 @@ def pileup(bams,path_to_ref,wdir,logfile,seq_depth=1000):
     vcf = unique_filename_in()
     script_name = os.path.join(wdir, unique_filename_in()+'.sh')
     script = "#!/bin/sh\n"
-    script += "samtools mpileup -uDS -f %s %s | bcftools view -bvcg - > %s ;\n" % (path_to_ref,bams,bcf)
-    script += "bcftools view %s | vcfutils.pl varFilter -D%d > %s ;" % (bcf,seq_depth,vcf)
+    if _DEBUG_:
+        pileup = unique_filename_in()
+        vcf_raw = unique_filename_in()
+        script += "samtools mpileup -uDS -f %s %s > %s; \n" % (path_to_ref,bams,pileup) # remove -u: readable
+        script += "bcftools view -bvcg %s > %s; \n" % (pileup, bcf) # remove -b: readable (vcf)
+        script += "bcftools view %s > %s; \n" % (bcf,vcf_raw)
+        script += "vcfutils.pl varFilter -D%d %s > %s;" % (seq_depth,vcf_raw,vcf)
+        print script
+    else:
+        #script += "samtools mpileup -uDS -f %s %s | bcftools view -bvcg - > %s ;\n" % (path_to_ref,bams,bcf)
+        #script += "bcftools view %s | vcfutils.pl varFilter -D%d > %s ;" % (bcf,seq_depth,vcf)
+        script += "samtools mpileup -uDS -f %s %s | bcftools view -vcg - | vcfutils.pl varFilter -D%d > %s ;" \
+                  % (path_to_ref,bams,seq_depth,vcf)                 # ^  the dash is important
     with open(script_name,'w') as s:
         s.write(script)
     #logfile.write("  ...Executed script:\n"+script); logfile.flush()
-    os.chmod(script_name,0777)
+    os.chmod(script_name,0755)
     return {'arguments': [script_name], 'return_value': vcf}
 
 def parse_vcf(vcf_line):
@@ -91,7 +74,7 @@ def parse_vcf(vcf_line):
 
 def filter_snp(general,snp_info,sample_stats,mincov,minsnp,assembly):
     ref = general[2]
-    ploidy = _ploidy(assembly)
+    _ploidy = ploidy(assembly)
     dp4 = map(int, snp_info.get('DP4','0,0,0,0').split(',')) # fw.ref, rev.ref, fw.alt, rev.alt (filtered)
     total_reads = sum(dp4)
     total_fwd = dp4[2]+dp4[0]
@@ -106,11 +89,11 @@ def filter_snp(general,snp_info,sample_stats,mincov,minsnp,assembly):
     genotype = sample.split(':')[0] # format = GT:PL:DP:SP:GQ
     sep = '/' if '/' in genotype else '|'  # phased if |, unphased if /
     genotype = [alts[int(i)-1] for i in genotype.split(sep)]
-    if ploidy == 1:
+    if _ploidy == 1:
         ratio = 100*(dp4[2]+dp4[3])/float(total_reads)
         if ratio < mincov: return ref
         genotype = "%s (%.0f%% of %d)" % (genotype[0],ratio,total_reads)
-    elif ploidy == 2:
+    elif _ploidy == 2:
         fwd_ratio = 100*dp4[2]/float(total_fwd)
         rev_ratio = 100*dp4[3]/float(total_rev)
         if fwd_ratio < mincov: return ref
@@ -134,6 +117,7 @@ def all_snps(ex,chrom,vcfs,bams, outall,assembly,sample_names, mincov,minsnp,
     """
     allsnps = []
     nsamples = len(sample_names)
+    sorder = range(len(sample_names))
     current = [None]*nsamples
     bam_tracks = [track(v,format='bam') for k,v in sorted(bams.items())]
     vcf_handles = [open(v) for k,v in sorted(vcfs.items())]
@@ -143,23 +127,24 @@ def all_snps(ex,chrom,vcfs,bams, outall,assembly,sample_names, mincov,minsnp,
             line = vh.readline()
         current[i] = parse_vcf(line)
     lastpos = 0
+    pos = -1
     while any(current):
         current_pos = [int(x[0][1]) if x else sys.maxint for x in current]
         pos = min(current_pos)
+        if pos == sys.maxint: break
         current_snp_idx = set(i for i in range(nsamples) if current_pos[i]==pos)
-        current_snps = [None]*nsamples
+        current_snps = ["0"]*nsamples
         for i in current_snp_idx:
             general,snp_info,sample_stats = current[i]
             chrbam = general[0]
             ref = general[2]
             current_snps[i] = filter_snp(general,snp_info,sample_stats, mincov,minsnp,assembly)
-        # Check if for other samples there are no reads or just no snp
-        for i in set(range(nsamples))-current_snp_idx:
-            try: coverage = bam_tracks[i].coverage((chrbam,pos-1,pos)).next()[-1]
-            except StopIteration: coverage = 0
-            current_snps[i] = ref if coverage else "0"
         # If there were still snp called at this position after filtering
-        if not all([s in ["0",ref] for s in current_snps]):
+        if any(current_snps[i] != ref for i in current_snp_idx):
+            for i in set(range(nsamples))-current_snp_idx:
+                for coverage in bam_tracks[sorder[i]].coverage((chrbam,pos-1,pos)):
+                    if coverage[-1] > 0:
+                        current_snps[i] = ref
             if pos != lastpos: # indel can be located at the same position as an SNP
                 allsnps.append((chrom,pos-1,pos,ref)+tuple(current_snps))
             lastpos = pos
@@ -170,9 +155,12 @@ def all_snps(ex,chrom,vcfs,bams, outall,assembly,sample_names, mincov,minsnp,
 
     logfile.write("  Annotate all SNPs\n"); logfile.flush()
     snp_read = FeatureStream(allsnps, fields=['chr','start','end','name']+sample_names)
-    annotation = assembly.gene_track(chrom)
-    annotated_stream = gm_stream.getNearestFeature(snp_read,annotation,
-                                                   thresholdPromot=3000,thresholdInter=3000,thresholdUTR=10)
+    try:
+        annotation = assembly.gene_track(chrom)
+        annotated_stream = gm_stream.getNearestFeature(snp_read,annotation,
+            thresholdPromot=3000, thresholdInter=3000, thresholdUTR=10)
+    except:
+        annotated_stream = snp_read
     logfile.write("  Write all SNPs\n"); logfile.flush()
     with open(outall,"a") as fout:
         for snp in annotated_stream:
@@ -181,15 +169,13 @@ def all_snps(ex,chrom,vcfs,bams, outall,assembly,sample_names, mincov,minsnp,
             # chrV  1606    T   43.48% C / 56.52% T YEL077W-A|YEL077W-A_YEL077C|YEL077C 3UTR_Included   494_-2491
     return allsnps
 
+
 @timer
 def snp_workflow(ex, job, assembly, minsnp=40, mincov=5, path_to_ref=None, via='local',
                  logfile=sys.stdout, debugfile=sys.stderr):
     """Main function of the workflow"""
     logfile.write('Current working dir: %s'%os.getcwd()); logfile.flush()
     logfile.write("\n* Prepare reference sequence\n"); logfile.flush()
-    if path_to_ref is None:
-        path_to_ref = os.path.join(assembly.genrep.root,'nr_assemblies/fasta',assembly.md5+'.tar.gz')
-    assert os.path.exists(path_to_ref), "Reference sequence not found: %s." % path_to_ref
     ref_genome = assembly.untar_genome_fasta(path_to_ref, convert=True)
     [g.wait() for g in [sam_faidx.nonblocking(ex,f,via=via) for f in set(ref_genome.values())]]
 
@@ -198,8 +184,8 @@ def snp_workflow(ex, job, assembly, minsnp=40, mincov=5, path_to_ref=None, via='
         sample_name = job.groups[gid]['name']
         sample_names.append(sample_name)
 
-    logfile.write("\n* Generate pileups for each chrom/group\n"); logfile.flush()
-    pileups = dict((chrom,{}) for chrom in ref_genome.keys()) # {chr: {}}
+    logfile.write("\n* Generate vcfs for each chrom/group\n"); logfile.flush()
+    vcfs = dict((chrom,{}) for chrom in ref_genome.keys()) # {chr: {}}
     bams = dict((chrom,{}) for chrom in ref_genome.keys()) # {chr: {}}
     bam = {}
     # Launch the jobs
@@ -215,24 +201,24 @@ def snp_workflow(ex, job, assembly, minsnp=40, mincov=5, path_to_ref=None, via='
         # Samtools mpileup + bcftools + vcfutils.pl
         for chrom,ref in ref_genome.iteritems():
             future = pileup.nonblocking(ex,bam,ref,ex.working_directory, logfile, via=via)
-            pileups[chrom][gid] = future
+            vcfs[chrom][gid] = future
             bams[chrom][gid] = bam
         logfile.write("  ...Group %s running.\n" % sample_name); logfile.flush()
-    # Wait for pileups to finish and store them in *pileups[chrom][gid]*
+    # Wait for vcfs to finish and store them in *vcfs[chrom][gid]*
     for gid in sorted(job.files.keys()):
         sample_name = job.groups[gid]['name']
         for chrom,ref in ref_genome.iteritems():
-            vcf = pileups[chrom][gid].wait()
-            pileups[chrom][gid] = vcf
+            vcf = vcfs[chrom][gid].wait()
+            vcfs[chrom][gid] = vcf
         logfile.write("  ...Group %s done.\n" % sample_name); logfile.flush()
     # Targz the pileup files (vcf)
-    for chrom,v in pileups.iteritems():
+    for chrom,v in vcfs.iteritems():
         tarname = unique_filename_in()
         tarfh = tarfile.open(tarname, "w:gz")
         for gid,vcf in v.iteritems():
-            tarfh.add(vcf, arcname="%s_%s.pileup" % (job.groups[gid]['name'],chrom))
+            tarfh.add(vcf, arcname="%s_%s.vcf" % (job.groups[gid]['name'],chrom))
         tarfh.close()
-        ex.add( tarname, description=set_file_descr("pileups_%s.tar.gz"%chrom,step="pileup",type="tar",view='admin') )
+        ex.add( tarname, description=set_file_descr("vcfs_%s.tar.gz"%chrom,step="pileup",type="tar",view='admin') )
 
     logfile.write("\n* Merge info from vcf files\n"); logfile.flush()
     outall = unique_filename_in()
@@ -243,11 +229,11 @@ def snp_workflow(ex, job, assembly, minsnp=40, mincov=5, path_to_ref=None, via='
     #with open(outexons,"w") as fout:
     #    fout.write('#'+'\t'.join(['chromosome','position','reference']+sample_names+['exon','strand','ref_aa'] \
     #                              + ['new_aa_'+s for s in sample_names])+'\n')
-    for chrom,v in pileups.iteritems():
+    for chrom,v in vcfs.iteritems():
         logfile.write("  > Chromosome '%s'\n" % chrom); logfile.flush()
     # Put together info from all vcf files
         logfile.write("  - All SNPs\n"); logfile.flush()
-        allsnps = all_snps(ex,chrom,pileups[chrom],bams[chrom],outall,assembly,
+        allsnps = all_snps(ex,chrom,vcfs[chrom],bams[chrom],outall,assembly,
                            sample_names,mincov,minsnp,logfile,debugfile)
     # Annotate SNPs and check synonymy
         #logfile.write("  - Exonic SNPs\n"); logfile.flush()
@@ -266,7 +252,8 @@ def snp_workflow(ex, job, assembly, minsnp=40, mincov=5, path_to_ref=None, via='
 
 
 
-def exon_snps(chrom,outexons,allsnps,assembly,sample_names,ref_genome={},
+@timer
+def exon_snps(chrom,outexons,allsnps,assembly,sample_names,genomeRef={},
               logfile=sys.stdout,debugfile=sys.stderr):
     """Annotates SNPs described in `filedict` (a dictionary of the form {chromosome: filename}
     where `filename` is an output of parse_pileupFile).
@@ -279,7 +266,7 @@ def exon_snps(chrom,outexons,allsnps,assembly,sample_names,ref_genome={},
     :param allsnps: list of tuples (chr,start,end,ref) as returned by all_snps().
     :param assembly: genrep.Assembly object
     :param sample_names: list of sample names.
-    :param ref_genome: dict of the form {'chr1': filename}, where filename is the name of a fasta file
+    :param genomeRef: dict of the form {'chr1': filename}, where filename is the name of a fasta file
         containing the reference sequence for the chromosome.
     """
     def _revcomp(seq):
@@ -319,33 +306,36 @@ def exon_snps(chrom,outexons,allsnps,assembly,sample_names,ref_genome={},
             ref_codon = _revcomp(ref_codon)
             new_codon = [[_revcomp(s) for s in c] for c in new_codon]
         for chr,pos,refbase,variants,cds,strand,dummy,shift in _buffer:
-            refc = [_iupac.get(x,x) for x in ref_codon]
+            refc = [iupac.get(x,x) for x in ref_codon]
             ref_codon = [''.join(x) for x in product(*refc)]
-            newc = [[[_iupac.get(x,x) for x in variant] for variant in sample]
+            newc = [[[iupac.get(x,x) for x in variant] for variant in sample]
                     for sample in new_codon]
             new_codon = [[''.join(x) for codon in sample for x in product(*codon)] for sample in newc]
             if refbase == "*":
                 result = [chr, pos+1, refbase] + list(variants) + [cds, strand] \
-                         + [','.join([_translate.get(refc,'?') for refc in ref_codon])] + ["indel"]
+                         + [','.join([translate.get(refc,'?') for refc in ref_codon])] + ["indel"]
             else:
                 result = [chr, pos+1, refbase] + list(variants) + [cds, strand] \
-                         + [','.join([_translate.get(refc,'?') for refc in ref_codon])] \
-                         + [','.join([_translate.get(s,'?') for s in newc]) for newc in new_codon]
+                         + [','.join([translate.get(refc,'?') for refc in ref_codon])] \
+                         + [','.join([translate.get(s,'?') for s in newc]) for newc in new_codon]
             outex.write("\t".join([str(r) for r in result])+"\n")
 
     #############################################################
-    outex = open(outexons,"a")
     snp_stream = FeatureStream(allsnps, fields=['chr','start','end','ref']+sample_names)
     inclstream = concat_fields(snp_stream, infields=snp_stream.fields[3:], as_tuple=True)
     snp_stream = FeatureStream(allsnps, fields=['chr','start','end','ref']+sample_names)
     inclstream = concat_fields(snp_stream, infields=snp_stream.fields[3:], as_tuple=True)
 
-    annotstream = concat_fields(assembly.annot_track('CDS',chrom),
-                                infields=['name','strand','frame'], as_tuple=True)
-    annotstream = FeatureStream((x[:3]+(x[1:3]+x[3],) for x in annotstream),fields=annotstream.fields)
+    try:
+        annotstream = concat_fields(assembly.annot_track('CDS',chrom),
+                                    infields=['name','strand','frame'], as_tuple=True)
+        annotstream = FeatureStream((x[:3]+(x[1:3]+x[3],) for x in annotstream),fields=annotstream.fields)
+    except:
+        return False
     _buffer = {1:[], -1:[]}
     last_start = {1:-1, -1:-1}
     logfile.write("  Intersection with CDS - codon changes\n"); logfile.flush()
+    outex = open(outexons,"a")
     for x in gm_stream.intersect([inclstream, annotstream]):
         # x = ('chrV',1606,1607, ('T','C (43%)', 1612,1724,'YEL077C|YEL077C',-1,0, 1712,1723,'YEL077W-A|YEL077W-A',1,0))
         nsamples = len(sample_names)
@@ -362,7 +352,7 @@ def exon_snps(chrom,outexons,allsnps,assembly,sample_names,ref_genome={},
                 continue
             codon_start = pos-shift
             ref_codon = assembly.fasta_from_regions({chr: [[codon_start,codon_start+3]]}, out={},
-                                                    path_to_ref=ref_genome.get(chr))[0][chr][0]
+                                                    path_to_ref=genomeRef.get(chr))[0][chr][0]
             info = [chr,pos,refbase,list(rest[1:nsamples+1]),cds,strand,
                     ref_codon.upper(),shift]
             # Either the codon is the same as the previous one on this strand, or it will never be.
@@ -375,7 +365,7 @@ def exon_snps(chrom,outexons,allsnps,assembly,sample_names,ref_genome={},
                 last_start[strand] = codon_start
     for strand in [1,-1]: _write_buffer(_buffer[strand],outex)
     outex.close()
-    return outexons
+    return True
 
 def create_tracks(ex, outall, sample_names, assembly):
     """Write BED tracks showing SNPs found in each sample."""
@@ -405,6 +395,4 @@ def create_tracks(ex, outall, sample_names, assembly):
         tr[0].close()
         description = set_file_descr(name+"_SNPs.bed.gz",type='bed',step='tracks',gdv='1',ucsc='1')
         ex.add(tr[1], description=description)
-
-
 
