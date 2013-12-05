@@ -167,8 +167,9 @@ def check(source, out=sys.stdout,
         except StopIteration:
             return True
         except Exception, e:
-            out.write("Check format: line %s of %s is not compatible with format %s: \n%s. \
-                       \nException raised: %s" % (n,source,t.format,row,e))
+
+            out.write("Check format: line %s of %s is not compatible with format %s. \
+                       \nException raised: %s" % (n,source,t.format,e))
             return False
         if check_duplicates and row == lastrow and len(row)!=0:
             out.write("Check duplicates: %s: duplicate at line %d. \n\n" % (filename,n))
