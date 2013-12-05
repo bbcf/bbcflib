@@ -196,7 +196,8 @@ def getNearestFeature(features, annotations, thresholdPromot=2000, thresholdInte
                             typeLoc = "3UTR"
             if included == 1:
                 gene += "_"+includedGene if gene else includedGene
-                dist = str(dist)+"_"+str(includedDist) if dist else str(includedDist)
+                dist = str(dist)
+                dist = dist+"_"+str(includedDist) if dist else str(includedDist)
                 typeLoc += "_Included" if typeLoc else "Included"
             yield peak+(gene,typeLoc,dist)
     if isinstance(features,(tuple,list)): features = features[0]
