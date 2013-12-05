@@ -26,7 +26,8 @@ _DEBUG_ = False
 @program
 def pileup(bams,path_to_ref,wdir,logfile,seq_depth=1000):
     """Use 'samtools mpileup' followed by 'bcftools view' and 'vcfutils'
-    to call for SNPs. Ref.: http://samtools.sourceforge.net/mpileup.shtml"""
+    to call for SNPs. Ref.: http://samtools.sourceforge.net/mpileup.shtml
+    !! No indel call, to speed it up, until their output is implemented."""
     if not isinstance(bams,(list,tuple)): bams = [bams]
     bams = ' '.join(bams)
     bcf = unique_filename_in()
@@ -44,7 +45,7 @@ def pileup(bams,path_to_ref,wdir,logfile,seq_depth=1000):
     else:
         #script += "samtools mpileup -uDS -f %s %s | bcftools view -bvcg - > %s ;\n" % (path_to_ref,bams,bcf)
         #script += "bcftools view %s | vcfutils.pl varFilter -D%d > %s ;" % (bcf,seq_depth,vcf)
-        script += "samtools mpileup -uDS -f %s %s | bcftools view -vcg - | vcfutils.pl varFilter -D%d > %s ;" \
+        script += "samtools mpileup -uDS -I -f %s %s | bcftools view -vcg - | vcfutils.pl varFilter -D%d > %s ;" \
                   % (path_to_ref,bams,seq_depth,vcf)                 # ^  the dash is important
     with open(script_name,'w') as s:
         s.write(script)
@@ -77,10 +78,7 @@ def filter_snp(general,snp_info,sample_stats,mincov,minsnp,assembly):
     _ploidy = ploidy(assembly)
     dp4 = map(int, snp_info.get('DP4','0,0,0,0').split(',')) # fw.ref, rev.ref, fw.alt, rev.alt (filtered)
     total_reads = sum(dp4)
-    total_fwd = dp4[2]+dp4[0]
-    total_rev = dp4[3]+dp4[1]
-    if dp4[2]+dp4[3] < mincov:
-        return ref  # too few supporting alt
+    if dp4[2]+dp4[3] < mincov: return ref  # too few supporting alt
     alt = general[3]
     sample = sample_stats[1]  # accord to *format*?
     #   GT: '1/1' -> 'A/A' if alt='A'
@@ -89,16 +87,18 @@ def filter_snp(general,snp_info,sample_stats,mincov,minsnp,assembly):
     genotype = sample.split(':')[0] # format = GT:PL:DP:SP:GQ
     sep = '/' if '/' in genotype else '|'  # phased if |, unphased if /
     genotype = [alts[int(i)-1] for i in genotype.split(sep)]
-    if _ploidy == 1:
-        ratio = 100*(dp4[2]+dp4[3])/float(total_reads)
-        if ratio < mincov: return ref
-        genotype = "%s (%.0f%% of %d)" % (genotype[0],ratio,total_reads)
-    elif _ploidy == 2:
-        fwd_ratio = 100*dp4[2]/float(total_fwd)
-        rev_ratio = 100*dp4[3]/float(total_rev)
-        if fwd_ratio < mincov: return ref
-        if rev_ratio < mincov: return ref
-        genotype = "%s (%.0f%%|%.0f%% of %d|%d)" % ('|'.join(genotype),fwd_ratio,rev_ratio,total_fwd,total_rev)
+    #if _ploidy == 1:
+    ratio = 100.0*(dp4[2]+dp4[3])/total_reads
+    if ratio < minsnp/_ploidy: return "0"
+    genotype = "%s (%.0f%% of %d)" % (genotype[0],ratio,total_reads)
+    #elif _ploidy == 2:
+    #    total_fwd = dp4[2]+dp4[0] or 1
+    #    total_rev = dp4[3]+dp4[1] or 1
+    #    fwd_ratio = 100.0*dp4[2]/total_fwd
+    #    rev_ratio = 100.0*dp4[3]/total_rev
+    #    if fwd_ratio < minsnp/_ploidy or rev_ratio < minsnp/_ploidy: return ref
+    #    genotype = "%s (%.0f%% of %d)" % ('|'.join(genotype),(fwd_ratio+rev_ratio)/2,total_reads)
+    #    # the two sides of genotype - X|Y - do not correspond to the two ratios - R1/R2 -, counts on each strand.
     return genotype
 
 @timer
@@ -171,7 +171,7 @@ def all_snps(ex,chrom,vcfs,bams, outall,assembly,sample_names, mincov,minsnp,
 
 
 @timer
-def snp_workflow(ex, job, assembly, minsnp=40, mincov=5, path_to_ref=None, via='local',
+def snp_workflow(ex, job, assembly, minsnp=40., mincov=5, path_to_ref=None, via='local',
                  logfile=sys.stdout, debugfile=sys.stderr):
     """Main function of the workflow"""
     logfile.write('Current working dir: %s'%os.getcwd()); logfile.flush()
@@ -226,22 +226,22 @@ def snp_workflow(ex, job, assembly, minsnp=40, mincov=5, path_to_ref=None, via='
     with open(outall,"w") as fout:
         fout.write('#'+'\t'.join(['chromosome','position','reference']+sample_names+ \
                                  ['gene','location_type','distance'])+'\n')
-    #with open(outexons,"w") as fout:
-    #    fout.write('#'+'\t'.join(['chromosome','position','reference']+sample_names+['exon','strand','ref_aa'] \
-    #                              + ['new_aa_'+s for s in sample_names])+'\n')
+    with open(outexons,"w") as fout:
+        fout.write('#'+'\t'.join(['chromosome','position','reference']+sample_names+['exon','strand','ref_aa'] \
+                                  + ['new_aa_'+s for s in sample_names])+'\n')
     for chrom,v in vcfs.iteritems():
         logfile.write("  > Chromosome '%s'\n" % chrom); logfile.flush()
     # Put together info from all vcf files
         logfile.write("  - All SNPs\n"); logfile.flush()
         allsnps = all_snps(ex,chrom,vcfs[chrom],bams[chrom],outall,assembly,
-                           sample_names,mincov,minsnp,logfile,debugfile)
+                           sample_names,mincov,float(minsnp),logfile,debugfile)
     # Annotate SNPs and check synonymy
-        #logfile.write("  - Exonic SNPs\n"); logfile.flush()
-        #exon_snps(chrom,outexons,allsnps,assembly,sample_names,ref_genome,logfile,debugfile)
+        logfile.write("  - Exonic SNPs\n"); logfile.flush()
+        exon_snps(chrom,outexons,allsnps,assembly,sample_names,ref_genome,logfile,debugfile)
     description = set_file_descr("allSNP.txt",step="SNPs",type="txt")
     ex.add(outall,description=description)
     description = set_file_descr("exonsSNP.txt",step="SNPs",type="txt")
-    #ex.add(outexons,description=description)
+    ex.add(outexons,description=description)
 
     #logfile.write("\n* Create tracks\n"); logfile.flush()
     #create_tracks(ex,outall,sample_names,assembly)
