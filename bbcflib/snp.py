@@ -11,14 +11,14 @@ import os, sys, tarfile, time
 from itertools import product
 
 # Internal modules #
-from bbcflib.common import unique_filename_in, set_file_descr, sam_faidx, timer, iupac, translate
-from bbcflib import mapseq
-from bbcflib.genrep import ploidy
+from bbcflib.common import unique_filename_in, set_file_descr, sam_faidx, timer, iupac, translate, unique
+from bbcflib.mapseq import merge_bam, index_bam, replace_bam_header
 from bbcflib.track import FeatureStream, track
 from bbcflib.gfminer.common import concat_fields
 from bbcflib.gfminer import stream as gm_stream
 from bein import program
 
+import pysam
 
 _DEBUG_ = False
 
@@ -73,23 +73,28 @@ def parse_vcf(vcf_line):
     sample_stats = (format,line[9]) # for us, always one sample at a time
     return (general,snp_info,sample_stats)
 
-def filter_snp(general,snp_info,sample_stats,mincov,minsnp,assembly):
+def filter_snp(general,snp_info,sample_stats,mincov,minsnp,ploidy):
     ref = general[2]
-    _ploidy = ploidy(assembly)
     dp4 = map(int, snp_info.get('DP4','0,0,0,0').split(',')) # fw.ref, rev.ref, fw.alt, rev.alt (filtered)
     total_reads = sum(dp4)
-    if dp4[2]+dp4[3] < mincov: return ref  # too few supporting alt
-    alt = general[3]
-    sample = sample_stats[1]  # todo: better according to *format*
-    #   GT: '1/1' -> 'A/A' if alt='A'
-    #   GQ: -10 log_10 P(genotype call is wrong | the site being variant)
-    alts = alt.split(',')
-    genotype = sample.split(':')[0] # format = GT:PL:DP:SP:GQ
-    sep = '/' if '/' in genotype else '|'  # phased if |, unphased if /
-    genotype = [alts[int(i)-1] for i in genotype.split(sep)]
+    if dp4[2]+dp4[3] < mincov:  # too few supporting alt
+        return '-'  # '/'.join([ref]*ploidy)
     ratio = 100.0*(dp4[2]+dp4[3])/total_reads
-    if ratio < minsnp/_ploidy: return "0"
-    genotype = "%s (%.0f%% of %d)" % (genotype[0],ratio,total_reads)
+    if ratio < minsnp/ploidy:
+        return "0"
+    alt = general[3]
+    alts = [ref]+alt.split(',')
+    sample = sample_stats[1]  # ex: "0/1:48,0,53:14:0:50"
+    genotype = sample.split(':')[0]  # todo: better according to *format* = GT:PL:DP:SP:GQ
+    sep = '/' if '/' in genotype else '|'  # phased if |, unphased if /
+    genotype = [alts[int(i)] for i in genotype.split(sep)]
+    #   Diploid:  GT: '0/1' -> 'T/A (50% of 8)'  [if ref='T' and alt='A']
+    #   Haploid:  GT: '0/1' -> 'A (50% of 8)'
+    if ploidy == 1:
+        genotype = unique(genotype)
+        if ref in genotype: genotype.remove(ref)
+    genotype = sep.join(genotype)
+    genotype = "%s (%.0f%% of %d)" % (genotype,ratio,total_reads)
     return genotype
 
 @timer
@@ -106,6 +111,7 @@ def all_snps(ex,chrom,vcfs,bams, outall,assembly,sample_names, mincov,minsnp,
     :param minsnp: (int) Minimum percentage of reads supporting the SNP for it to be returned.
         N.B.: Effectively, half of it on each strand for diploids. [40]
     """
+    ploidy = assembly.ploidy
     allsnps = []
     nsamples = len(sample_names)
     sorder = range(len(sample_names))
@@ -129,13 +135,13 @@ def all_snps(ex,chrom,vcfs,bams, outall,assembly,sample_names, mincov,minsnp,
             general,snp_info,sample_stats = current[i]
             chrbam = general[0]
             ref = general[2]
-            current_snps[i] = filter_snp(general,snp_info,sample_stats, mincov,minsnp,assembly)
+            current_snps[i] = filter_snp(general,snp_info,sample_stats, mincov,minsnp,ploidy)
         # If there were still snp called at this position after filtering
-        if any(current_snps[i] != ref for i in current_snp_idx):
+        if any(current_snps[i] not in ("-","0") for i in current_snp_idx):
             for i in set(range(nsamples))-current_snp_idx:
                 for coverage in bam_tracks[sorder[i]].coverage((chrbam,pos-1,pos)):
                     if coverage[-1] > 0:
-                        current_snps[i] = ref
+                        current_snps[i] = '-'  # '/'.join([ref]*ploidy)
             if pos != lastpos: # indel can be located at the same position as an SNP
                 allsnps.append((chrom,pos-1,pos,ref)+tuple(current_snps))
             lastpos = pos
@@ -155,10 +161,161 @@ def all_snps(ex,chrom,vcfs,bams, outall,assembly,sample_names, mincov,minsnp,
     logfile.write("  Write all SNPs\n"); logfile.flush()
     with open(outall,"a") as fout:
         for snp in annotated_stream:
-            # snp: ('chrV',154529, 154530,'T','A','* A','YER002W|NOP16_YER001W|MNN1','Upstream_Included','2271_1011')
-            fout.write('\t'.join([str(x) for x in (snp[0],)+snp[2:]])+'\n')
-            # chrV  1606    T   43.48% C / 56.52% T YEL077W-A|YEL077W-A_YEL077C|YEL077C 3UTR_Included   494_-2491
+            # snp: ('chrV',154529, 154530,'T','A (50% of 10)','A (80% of 10)',
+            #       'YER002W|NOP16_YER001W|MNN1','Upstream_Included','2271_1011')
+            fout.write('\t'.join(str(x) for x in (snp[0],)+snp[2:])+'\n')  # just remove end coord
     return allsnps
+
+
+@timer
+def exon_snps(chrom,outexons,allsnps,assembly,sample_names,genomeRef={},
+              logfile=sys.stdout,debugfile=sys.stderr):
+    """Annotates SNPs described in `filedict` (a dictionary of the form {chromosome: filename}
+    where `filename` is an output of parse_pileupFile).
+    Adds columns 'gene', 'location_type' and 'distance' to the output of parse_pileupFile.
+    Returns two files: the first contains all SNPs annotated with their position respective to genes in
+    the specified assembly, and the second contains only SNPs found within CDS regions.
+
+    :param chrom: (str) chromosome name.
+    :param outexons: (str) name of the file containing the list of SNPs on exons.
+    :param allsnps: list of tuples (chr,start,end,ref,alt1..altN) as returned by all_snps().
+        Ex: [('chr', 3684115, 3684116, 'G', 'G', 'G', 'G', 'T (56% of 167)', 'G'), ...]
+    :param assembly: genrep.Assembly object
+    :param sample_names: list of sample names.
+    :param genomeRef: dict of the form {'chr1': filename}, where filename is the name of a fasta file
+        containing the reference sequence for the chromosome.
+    """
+    def _revcomp(seq):
+        cmpl = dict((('A','T'),('C','G'),('T','A'),('G','C'),
+                     ('a','t'),('c','g'),('t','a'),('g','c'),
+                     ('M','K'),('K','M'),('Y','R'),('R','Y'),('S','S'),('W','W'),
+                     ('m','k'),('k','m'),('y','r'),('r','y'),('s','s'),('w','w'),
+                     ('B','V'),('D','H'),('H','D'),('V','B'),
+                     ('b','v'),('d','h'),('h','d'),('v','b'),
+                     ('N','N'),('n','n')))
+        return "".join(reversed([cmpl.get(x,x) for x in seq]))
+
+    def _write_buffer(_buffer, outex):
+        new_codon = None
+        # One position at a time
+        for chr,pos,refbase,variants,cds,strand,ref_codon,shift in _buffer:
+            varbase = list(variants)  # Ex: ['G','G','G','T (56% of 167)','G'],  ['A/A','G/G (100% of 7)']
+            if new_codon is None:
+                new_codon = [[ref_codon] for _ in range(len(varbase))]
+            variants = []  # [[variants sample1], [variants sample2], ...]
+            # One sample at a time
+            for variant in varbase:
+                if variant in ['0','-']:
+                    variants.append([refbase])
+                else: # Ex: 'C/G (80% of 10)' : heterozygous simple (ref is C) or double snp (ref is not C)
+                    v = variant.split()[0]  # Ex: C/G
+                    v = unique(v.split('/'))  # Ex: G/G -> 'G'
+                    if refbase in v: v.remove(refbase)  # Ex: C/G -> 'G' (if ref is C)
+                    variants.append(v)
+            # One sample at a time
+            for k,v in enumerate(variants):
+                cnumb = len(new_codon[k])
+                newc = new_codon[k]*len(v)
+                for i,vari in enumerate(v):
+                    for j in range(cnumb):
+                        newc[i*cnumb+j] = newc[i*cnumb+j][:shift]  +vari +newc[i*cnumb+j][shift+1:]
+                        assert ref_codon[shift] == refbase, "bug with shift within codon"
+                new_codon[k] = newc
+        if new_codon is None: return
+        if strand == -1:
+            ref_codon = _revcomp(ref_codon)
+            new_codon = [[_revcomp(s) for s in c] for c in new_codon]
+        for chr,pos,refbase,variants,cds,strand,dummy,shift in _buffer:
+            refc = [iupac.get(x,x) for x in ref_codon]
+            ref_codon = [''.join(x) for x in product(*refc)]
+            newc = [[[iupac.get(x,x) for x in variant] for variant in sample]
+                    for sample in new_codon]
+            new_codon = [[''.join(x) for codon in sample for x in product(*codon)] for sample in newc]
+            if refbase == "*":
+                result = [chr, pos+1, refbase] + list(variants) + [cds, strand] \
+                         + [','.join([translate.get(refc,'?') for refc in ref_codon])] + ["indel"]
+            else:
+                result = [chr, pos+1, refbase] + list(variants) + [cds, strand] \
+                         + [','.join([translate.get(refc,'?') for refc in ref_codon])] \
+                         + [','.join([translate.get(s,'?') for s in newc]) for newc in new_codon]
+            outex.write("\t".join([str(r) for r in result])+"\n")
+
+    #############################################################
+    snp_stream = FeatureStream(allsnps, fields=['chr','start','end','ref']+sample_names)
+    inclstream = concat_fields(snp_stream, infields=snp_stream.fields[3:], as_tuple=True)
+    snp_stream = FeatureStream(allsnps, fields=['chr','start','end','ref']+sample_names)
+    inclstream = concat_fields(snp_stream, infields=snp_stream.fields[3:], as_tuple=True)
+    try:
+        annotstream = concat_fields(assembly.annot_track('CDS',chrom),
+                                    infields=['name','strand','frame'], as_tuple=True)
+        annotstream = FeatureStream((x[:3]+(x[1:3]+x[3],) for x in annotstream),fields=annotstream.fields)
+    except:
+        return False
+    _buffer = {1:[], -1:[]}
+    last_start = {1:-1, -1:-1}
+    logfile.write("  Intersection with CDS - codon changes\n"); logfile.flush()
+    outex = open(outexons,"a")
+    for x in gm_stream.intersect([inclstream, annotstream]):
+        # x = (chr,   start,end, (alt1,alt2,   , start1,end1,cds1,strand1,phase1,  start2,end2,cds2,strand2,phase2    ))
+        # x = ('chrV',1606,1607, ('T','C (43%)', 1612,1724,'YEL077C|YEL077C',-1,0, 1712,1723,'YEL077W-A|YEL077W-A',1,0))
+        nsamples = len(sample_names)
+        chr = x[0]; pos = x[1]; rest = x[3]
+        refbase = rest[0]
+        annot = [rest[5*i+nsamples+1 : 5*i+5+nsamples+1]
+                 for i in range(len(rest[nsamples+1:])/5)] # list of (start,end,cds,strand,phase)
+        for es,ee,cds,strand,phase in annot:
+            if strand == 1:
+                shift = (pos-es-phase) % 3
+            elif strand == -1:
+                shift = (pos-ee+phase) % 3
+            else:
+                continue
+            codon_start = pos-shift
+            ref_codon = assembly.fasta_from_regions({chr: [[codon_start,codon_start+3]]}, out={},
+                                                    path_to_ref=genomeRef.get(chr))[0][chr][0]
+            info = [chr,pos,refbase,list(rest[1:nsamples+1]),cds,strand,
+                    ref_codon.upper(),shift]
+            # Either the codon is the same as the previous one on this strand, or it will never be.
+            # Only if one codon is passed, can write its snps to a file.
+            if codon_start == last_start[strand]:
+                _buffer[strand].append(info)
+            else:
+                _write_buffer(_buffer[strand],outex)
+                _buffer[strand] = [info]
+                last_start[strand] = codon_start
+    for strand in [1,-1]:
+        _write_buffer(_buffer[strand],outex)
+    outex.close()
+    return True
+
+def create_tracks(ex, outall, sample_names, assembly):
+    """Write BED tracks showing SNPs found in each sample."""
+    ###### TODO: tracks for coverage + quality + heterozyg.
+    infields = ['chromosome','position','reference']+sample_names+['gene','location_type','distance']
+    intrack = track(outall, format='text', fields=infields, chrmeta=assembly.chrmeta,
+                    intypes={'position':int})
+    instream = intrack.read(fields=infields[:-3])
+    outtracks = {}
+    for sample_name in sample_names:
+        out = unique_filename_in()+'.bed.gz'
+        t = track(out,fields=['name'])
+        t.make_header(name=sample_name+"_SNPs")
+        outtracks[sample_name] = (t,out)
+
+    def _row_to_annot(x,ref,n):
+        if x[3+n][0] == ref: return None
+        else: return "%s>%s"%(ref,x[3+n][0])
+
+    for x in instream:
+        coord = (x[0],x[1]-1,x[1])
+        ref = x[2]
+        snp = dict((name, _row_to_annot(x,ref,n)) for n,name in enumerate(sample_names))
+        for name, tr in outtracks.iteritems():
+            if snp[name]: tr[0].write([coord+(snp[name],)],mode='append')
+    for name, tr in outtracks.iteritems():
+        tr[0].close()
+        description = set_file_descr(name+"_SNPs.bed.gz",type='bed',step='tracks',gdv='1',ucsc='1')
+        ex.add(tr[1], description=description)
 
 
 @timer
@@ -184,11 +341,19 @@ def snp_workflow(ex, job, assembly, minsnp=40., mincov=5, path_to_ref=None, via=
         sample_name = job.groups[gid]['name']
         # Merge all bams belonging to the same group
         runs = [r['bam'] for r in job.files[gid].itervalues()]
+        bam = pysam.Samfile(runs[0])
+        header = bam.header
+        headerfile = unique_filename_in()
+        for h in header["SQ"]:
+            if h["SN"] in assembly.chrmeta:
+                h["SN"] = assembly.chrmeta[h["SN"]]["ac"]
+        head = pysam.Samfile( headerfile, "wh", header=header )
+        head.close()
         if len(runs) > 1:
-            bam = mapseq.merge_bam(ex,runs)
-            mapseq.index_bam(ex,bam)
+            bam = merge_bam(ex,runs,headerfile)
         else:
-            bam = runs[0]
+            bam = replace_bam_header( ex, headerfile, runs[0], stdout=unique_filename_in() )
+        index_bam(ex,bam)
         # Samtools mpileup + bcftools + vcfutils.pl
         for chrom,ref in ref_genome.iteritems():
             future = pileup.nonblocking(ex,bam,ref,ex.working_directory, logfile, via=via)
@@ -233,157 +398,10 @@ def snp_workflow(ex, job, assembly, minsnp=40., mincov=5, path_to_ref=None, via=
     ex.add(outall,description=description)
     description = set_file_descr("exonsSNP.txt",step="SNPs",type="txt")
     ex.add(outexons,description=description)
-
-    #logfile.write("\n* Create tracks\n"); logfile.flush()
-    #create_tracks(ex,outall,sample_names,assembly)
+    # Create UCSC bed tracks
+    logfile.write("\n* Create tracks\n"); logfile.flush()
+    create_tracks(ex,outall,sample_names,assembly)
     return 0
 
 
-
-
-
-
-@timer
-def exon_snps(chrom,outexons,allsnps,assembly,sample_names,genomeRef={},
-              logfile=sys.stdout,debugfile=sys.stderr):
-    """Annotates SNPs described in `filedict` (a dictionary of the form {chromosome: filename}
-    where `filename` is an output of parse_pileupFile).
-    Adds columns 'gene', 'location_type' and 'distance' to the output of parse_pileupFile.
-    Returns two files: the first contains all SNPs annotated with their position respective to genes in
-    the specified assembly, and the second contains only SNPs found within CDS regions.
-
-    :param chrom: (str) chromosome name.
-    :param outexons: (str) name of the file containing the list of SNPs on exons.
-    :param allsnps: list of tuples (chr,start,end,ref) as returned by all_snps().
-    :param assembly: genrep.Assembly object
-    :param sample_names: list of sample names.
-    :param genomeRef: dict of the form {'chr1': filename}, where filename is the name of a fasta file
-        containing the reference sequence for the chromosome.
-    """
-    def _revcomp(seq):
-        cmpl = dict((('A','T'),('C','G'),('T','A'),('G','C'),
-                     ('a','t'),('c','g'),('t','a'),('g','c'),
-                     ('M','K'),('K','M'),('Y','R'),('R','Y'),('S','S'),('W','W'),
-                     ('m','k'),('k','m'),('y','r'),('r','y'),('s','s'),('w','w'),
-                     ('B','V'),('D','H'),('H','D'),('V','B'),
-                     ('b','v'),('d','h'),('h','d'),('v','b'),
-                     ('N','N'),('n','n')))
-        return "".join(reversed([cmpl.get(x,x) for x in seq]))
-
-    def _write_buffer(_buffer, outex):
-        new_codon = None
-        for chr,pos,refbase,variants,cds,strand,ref_codon,shift in _buffer:
-            if refbase == "*":
-                break
-            varbase = list(variants)
-            if new_codon is None:
-                new_codon = [[ref_codon] for _ in range(len(varbase))]
-            variants = []
-            for variant in varbase:
-                if variant == '0':
-                    variants.append([refbase])
-                else: # 'C (43%),G (12%)' : heterozygous double snp
-                    variants.append([v[0] for v in variant.split(',')])
-            for k,v in enumerate(variants):
-                cnumb = len(new_codon[k])
-                newc = new_codon[k]*len(v)
-                for i,vari in enumerate(v):
-                    for j in range(cnumb):
-                        newc[i*cnumb+j] = newc[i*cnumb+j][:shift]  +vari +newc[i*cnumb+j][shift+1:]
-                        assert ref_codon[shift] == refbase, "bug with shift within codon"
-                new_codon[k] = newc
-        if new_codon is None: return
-        if strand == -1:
-            ref_codon = _revcomp(ref_codon)
-            new_codon = [[_revcomp(s) for s in c] for c in new_codon]
-        for chr,pos,refbase,variants,cds,strand,dummy,shift in _buffer:
-            refc = [iupac.get(x,x) for x in ref_codon]
-            ref_codon = [''.join(x) for x in product(*refc)]
-            newc = [[[iupac.get(x,x) for x in variant] for variant in sample]
-                    for sample in new_codon]
-            new_codon = [[''.join(x) for codon in sample for x in product(*codon)] for sample in newc]
-            if refbase == "*":
-                result = [chr, pos+1, refbase] + list(variants) + [cds, strand] \
-                         + [','.join([translate.get(refc,'?') for refc in ref_codon])] + ["indel"]
-            else:
-                result = [chr, pos+1, refbase] + list(variants) + [cds, strand] \
-                         + [','.join([translate.get(refc,'?') for refc in ref_codon])] \
-                         + [','.join([translate.get(s,'?') for s in newc]) for newc in new_codon]
-            outex.write("\t".join([str(r) for r in result])+"\n")
-
-    #############################################################
-    snp_stream = FeatureStream(allsnps, fields=['chr','start','end','ref']+sample_names)
-    inclstream = concat_fields(snp_stream, infields=snp_stream.fields[3:], as_tuple=True)
-    snp_stream = FeatureStream(allsnps, fields=['chr','start','end','ref']+sample_names)
-    inclstream = concat_fields(snp_stream, infields=snp_stream.fields[3:], as_tuple=True)
-
-    try:
-        annotstream = concat_fields(assembly.annot_track('CDS',chrom),
-                                    infields=['name','strand','frame'], as_tuple=True)
-        annotstream = FeatureStream((x[:3]+(x[1:3]+x[3],) for x in annotstream),fields=annotstream.fields)
-    except:
-        return False
-    _buffer = {1:[], -1:[]}
-    last_start = {1:-1, -1:-1}
-    logfile.write("  Intersection with CDS - codon changes\n"); logfile.flush()
-    outex = open(outexons,"a")
-    for x in gm_stream.intersect([inclstream, annotstream]):
-        # x = ('chrV',1606,1607, ('T','C (43%)', 1612,1724,'YEL077C|YEL077C',-1,0, 1712,1723,'YEL077W-A|YEL077W-A',1,0))
-        nsamples = len(sample_names)
-        chr = x[0]; pos = x[1]; rest = x[3]
-        refbase = rest[0]
-        annot = [rest[5*i+nsamples+1 : 5*i+5+nsamples+1]
-                 for i in range(len(rest[nsamples+1:])/5)] # list of (start,end,cds,strand,phase)
-        for es,ee,cds,strand,phase in annot:
-            if strand == 1:
-                shift = (pos-es-phase) % 3
-            elif strand == -1:
-                shift = (pos-ee+phase) % 3
-            else:
-                continue
-            codon_start = pos-shift
-            ref_codon = assembly.fasta_from_regions({chr: [[codon_start,codon_start+3]]}, out={},
-                                                    path_to_ref=genomeRef.get(chr))[0][chr][0]
-            info = [chr,pos,refbase,list(rest[1:nsamples+1]),cds,strand,
-                    ref_codon.upper(),shift]
-            # Either the codon is the same as the previous one on this strand, or it will never be.
-            # Only if one codon is passed, can write its snps to a file.
-            if codon_start == last_start[strand]:
-                _buffer[strand].append(info)
-            else:
-                _write_buffer(_buffer[strand],outex)
-                _buffer[strand] = [info]
-                last_start[strand] = codon_start
-    for strand in [1,-1]: _write_buffer(_buffer[strand],outex)
-    outex.close()
-    return True
-
-def create_tracks(ex, outall, sample_names, assembly):
-    """Write BED tracks showing SNPs found in each sample."""
-    ###### TODO: tracks for coverage + quality + heterozyg.
-    infields = ['chromosome','position','reference']+sample_names+['gene','location_type','distance']
-    intrack = track(outall, format='text', fields=infields, chrmeta=assembly.chrmeta,
-                    intypes={'position':int})
-    instream = intrack.read(fields=infields[:-3])
-    outtracks = {}
-    for sample_name in sample_names:
-        out = unique_filename_in()+'.bed.gz'
-        t = track(out,fields=['name'])
-        t.make_header(name=sample_name+"_SNPs")
-        outtracks[sample_name] = (t,out)
-
-    def _row_to_annot(x,ref,n):
-        if x[3+n][0] == ref: return None
-        else: return "%s>%s"%(ref,x[3+n][0])
-
-    for x in instream:
-        coord = (x[0],x[1]-1,x[1])
-        ref = x[2]
-        snp = dict((name, _row_to_annot(x,ref,n)) for n,name in enumerate(sample_names))
-        for name, tr in outtracks.iteritems():
-            if snp[name]: tr[0].write([coord+(snp[name],)],mode='append')
-    for name, tr in outtracks.iteritems():
-        tr[0].close()
-        description = set_file_descr(name+"_SNPs.bed.gz",type='bed',step='tracks',gdv='1',ucsc='1')
-        ex.add(tr[1], description=description)
 

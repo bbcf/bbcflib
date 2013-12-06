@@ -40,13 +40,6 @@ from bbcflib.gfminer.common import shuffled as track_shuffle, split_field, map_c
 default_url = 'http://bbcf-serv01.epfl.ch/genrep/'
 default_root = '/db/genrep'
 
-### This is a hack for SNPs, should go in the database at some point
-def ploidy(assembly):
-    _p = {"EB1_e_coli_k12":1,"MLeprae_TN":1,"mycoSmeg_MC2_155":1,
-          "mycoTube_H37RV":1,"NA1000":1,"vibrChol1":1,"TB40-BAC4":1,
-          "tbR25":1,"pombe":1,"sacCer2":1,"sacCer3":1,"ASM1346v1":1}
-    return _p.get(assembly.name,2)
-
 ################################################################################
 class Assembly(object):
     """
@@ -120,6 +113,14 @@ class Assembly(object):
                 self.annot_path = self.gtf_to_sql(annot)
         else:
             raise ValueError("Need an assembly or a fasta file.")
+        self.ploidy = self.set_ploidy()
+
+    ### This is a hack for SNPs, should go in the database at some point
+    def set_ploidy(self):
+        _p = {"EB1_e_coli_k12":1,"MLeprae_TN":1,"mycoSmeg_MC2_155":1,
+              "mycoTube_H37RV":1,"NA1000":1,"vibrChol1":1,"TB40-BAC4":1,
+              "tbR25":1,"pombe":1,"sacCer2":1,"sacCer3":1,"ASM1346v1":1}
+        return _p.get(self.name,2)
 
     def set_assembly(self, assembly):
         """
