@@ -52,10 +52,9 @@ def pileup(ex,job,assembly,genomeRef,via,logfile,debugfile):
         head = pysam.Samfile( headerfile, "wh", header=header )
         head.close()
         if len(runs) > 1:
-            bam = merge_bam(ex,runs,headerfile)
-        else:
-            bam = unique_filename_in()
-            replace_bam_header( ex, headerfile, runs[0], stdout=bam )
+            runs[0] = merge_bam(ex,runs)
+        bam = unique_filename_in()
+        replace_bam_header( ex, headerfile, runs[0], stdout=bam )
         index_bam(ex,bam)
         # Samtools pileup
         for chrom,ref in genomeRef.iteritems():
