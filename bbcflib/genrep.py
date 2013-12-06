@@ -213,7 +213,7 @@ class Assembly(object):
                         chromosomes[chrom['name']]['synonyms'] = chrom_ac
             self.chromosomes.update(dict(((k,None,None),v)
                                          for k,v in chromosomes.iteritems()))
-            self.fasta_by_chrom = fasta_by_chrom
+            self._fasta_by_chrom = fasta_by_chrom
             if hasattr(self,"annot_origin"):
                 archive = tarfile.open(fasta)
                 input_file = archive.extractfile(self.annot_origin)
@@ -244,9 +244,9 @@ class Assembly(object):
             assembly.map_chromosome_names([3,5,6,47])
 
             {'3': (2701, u'NC_001135', 4),
-            '47': None,
-            '5': (2508, u'NC_001137', 2),
-            '6': (2580, u'NC_001138', 4)}
+             '47': None,
+             '5': (2508, u'NC_001137', 2),
+             '6': (2580, u'NC_001138', 4)}
 
         """
         if not(isinstance(names,(list,tuple))):
@@ -279,7 +279,7 @@ class Assembly(object):
                 """%s/nr_assemblies/get_links/%s.json?%s""" %(self.genrep.url,self.nr_assembly_id,request)))
         return url.read()
 
-    def fasta_from_regions(self, regions, out=None, path_to_ref=None, chunk=50000, shuffled=False):
+    def fasta_from_regions(self, regions, out=None, path_to_ref=None, chunk=50000, shuffled=False, ex=None):
         """
         Get a fasta file with sequences corresponding to the features in the
         bed or sqlite file.
@@ -302,7 +302,7 @@ class Assembly(object):
         if isinstance(out,basestring):
             _is_filename = True
             out = open(out,"w")
-        if path_to_ref is None and hasattr(self,"fasta_by_chrom"):
+        if path_to_ref is None:
             path_to_ref = self.fasta_by_chrom
 
         def _push_slices(slices,start,end,name,cur_chunk):
@@ -318,10 +318,13 @@ class Assembly(object):
             names = slices['names']
             coord = slices['coord']
             if isinstance(out,file):
-                for i,s in enumerate(self.genrep.get_sequence(chrid,coord,path_to_ref=path_to_ref,chr_name=chrn)):
-                    if s: out.write(">"+names[i]+"|"+chrn+":"+str(coord[i][0])+"-"+str(coord[i][1])+"\n"+s+"\n")
+                for i,s in enumerate(self.genrep.get_sequence(chrid, coord, path_to_ref=path_to_ref,
+                                                              chr_name=chrn, ex=ex)):
+                    if s: 
+                        out.write(">"+names[i]+"|"+chrn+":"+str(coord[i][0])+"-"+str(coord[i][1])+"\n"+s+"\n")
             else:
-                out[chrn].extend([s for s in self.genrep.get_sequence(chrid,coord,path_to_ref=path_to_ref,chr_name=chrn)])
+                out[chrn].extend(self.genrep.get_sequence(chrid, coord, path_to_ref=path_to_ref,
+                                                          chr_name=chrn, ex=ex))
             return {'coord':[],'names':[]}
 
         slices = {'coord':[],'names':[]}
@@ -330,7 +333,7 @@ class Assembly(object):
             reg_dict = {}
             for reg in regions:
                 chrom = reg[0]
-                if not(chrom in reg_dict):
+                if chrom not in reg_dict:
                     reg_dict[chrom] = []
                 reg_dict[chrom].append(reg[1:])
             regions = reg_dict
@@ -339,25 +342,29 @@ class Assembly(object):
             for cid,chrom in self.chromosomes.iteritems():
                 if not(chrom['name'] in regions): continue
                 if isinstance(out,dict): out[chrom['name']] = []
-                if isinstance(path_to_ref,dict): pref = path_to_ref.get(chrom['name'])
-                else: pref = path_to_ref
+                if isinstance(path_to_ref,dict): 
+                    pref = path_to_ref.get(chrom['name'])
+                else: 
+                    pref = path_to_ref
                 for row in regions[chrom['name']]:
                     s = max(row[0],0)
                     e = min(row[1],chrom['length'])
                     slices,cur_chunk = _push_slices(slices,s,e,self.name,cur_chunk)
                     if cur_chunk > chunk:
                         size += cur_chunk
-                        slices = _flush_slices(slices,cid[0],chrom['name'],out,pref)
+                        slices = _flush_slices(slices,cid,chrom['name'],out,pref)
                         cur_chunk = 0
                 size += cur_chunk
-                slices = _flush_slices(slices,cid[0],chrom['name'],out,pref)
+                slices = _flush_slices(slices,cid,chrom['name'],out,pref)
         else:
             with track(regions, chrmeta=self.chrmeta) as t:
                 _f = [f for f in ["start","end","name"] if f in t.fields]
                 cur_chunk = 0
                 for cid,chrom in self.chromosomes.iteritems():
-                    if isinstance(path_to_ref,dict): pref = path_to_ref.get(chrom['name'])
-                    else: pref = path_to_ref
+                    if isinstance(path_to_ref,dict):
+                        pref = path_to_ref.get(chrom['name'])
+                    else:
+                        pref = path_to_ref
                     features = t.read(selection=chrom['name'],fields=_f)
                     if shuffled:
                         features = track_shuffle( features, chrlen=chrom['length'],
@@ -369,10 +376,10 @@ class Assembly(object):
                         slices,cur_chunk = _push_slices(slices,s,e,name,cur_chunk)
                         if cur_chunk > chunk: # buffer is full, write
                             size += cur_chunk
-                            slices = _flush_slices(slices,cid[0],chrom['name'],out,pref)
+                            slices = _flush_slices(slices,cid,chrom['name'],out,pref)
                             cur_chunk = 0
                     size += cur_chunk
-                    slices = _flush_slices(slices,cid[0],chrom['name'],out,pref)
+                    slices = _flush_slices(slices,cid,chrom['name'],out,pref)
         if _is_filename:
             out.close()
             out = out.name
@@ -420,12 +427,13 @@ class Assembly(object):
              >Assembly: sacCer2
              1   0.309798640038793   0.308714120881750   0.190593944221299   0.190893294858157
         """
+        bases = ["A","C","G","T"]
         if hasattr(self,"stats_dict"):
             stat = self.stats_dict
         else:
-            request = urllib2.Request("%s/nr_assemblies/%d.json?data_type=counts" % (self.genrep.url, self.nr_assembly_id))
-            stat    = json.load(urllib2.urlopen(request))
-        total   = float(stat["A"]+stat["T"]+stat["G"]+stat["C"])
+            request = urllib2.Request("%s/nr_assemblies/%d.json?data_type=counts" %(self.genrep.url, self.nr_assembly_id))
+            stat = json.load(urllib2.urlopen(request))
+        total = sum(float(stat[k]) for k in bases)
         if frequency:
             stat = dict((k,x/total) for k,x in stat.iteritems())
         if output == None:
@@ -434,27 +442,28 @@ class Assembly(object):
             with open(output, "w") as f:
                 if matrix_format:
                     f.write(">Assembly: %s\n" % self.name)
-                    f.write("1\t%s\t%s\t%s\t%s" %(stat["A"],stat["C"],stat["G"],stat["T"]))
+                    f.write("1\t%s\t%s\t%s\t%s" %tuple(stat[x] for x in bases))
                     f.write("\n")
                 else:
                     f.write("#Assembly: %s\n" % self.name)
-                    [f.write("%s\t%s\n" % (x,stat[x])) for x in ["A","C","G","T"]]
+                    [f.write("%s\t%s\n" % (x,stat[x])) for x in bases]
                     f.write("#\n")
-                    [[f.write("%s\t%s\n" % (x+y,stat[x+y])) for y in ["A","C","G","T"]] for x in ["A","C","G","T"]]
+                    [[f.write("%s\t%s\n" % (x+y,stat[x+y])) for y in bases] for x in bases]
             return output
 
     def fasta_path(self, chromosome=None):
         """Return the path to the compressed fasta file, for the whole assembly or for a single chromosome."""
         if hasattr(self,"fasta_origin"):
             if chromosome is not None:
-                return self.fasta_by_chrom[chromosome]
+                return self._fasta_by_chrom[chromosome]
             return self.fasta_origin
         root = os.path.join(self.genrep.root,"nr_assemblies/fasta")
         path = os.path.join(root,self.md5+".tar.gz")
         if chromosome is not None:
-            chr_id = str(chromosome[0])+"_"+str(chromosome[1])+"."+str(chromosome[2])
+            chr_id = str(chromosome[0])
+            if chromosome[1]: chr_id += "_"+str(chromosome[1])+"."+str(chromosome[2]) 
             root = os.path.join(self.genrep.root,"chromosomes/fasta")
-            path = os.path.join(root,chr_id+".fa.gz")
+            path = os.path.join(root,chr_id+".fa")
         elif self.intype == 1:
             root = os.path.join(self.genrep.root,"nr_assemblies/exons_fasta")
             path = os.path.join(root,self.md5+".fa.gz")
@@ -489,7 +498,7 @@ class Assembly(object):
                 else: outf.write(line)
             outf.close()
 
-        if hasattr(self,"fasta_by_chrom"): return self.fasta_by_chrom
+        if hasattr(self,"_fasta_by_chrom"): return self._fasta_by_chrom
         if path_to_ref is None: path_to_ref = self.fasta_path()
         if not(os.path.exists(path_to_ref)):
             raise ValueError("Reference fasta archive not found: %s."%path_to_ref)
@@ -862,6 +871,15 @@ class Assembly(object):
         return self.annot_track(annot_type='transcript',chromlist=chromlist,biotype=biotype)
 
     @property
+    def fasta_by_chrom(self):
+        """
+        Returns a dictionary of single chromosome fasta files.
+        """
+        return getattr(self,"_fasta_by_chrom",
+                       dict((v['name'],self.fasta_path(chromosome=k))
+                            for k,v in self.chromosomes.iteritems()))
+
+    @property
     def chrmeta(self):
         """
         Return a dictionary of chromosome meta data of the type
@@ -931,8 +949,8 @@ class GenRep(object):
         List motifs available in genrep, returns a list like (first number is genome id)::
 
             [('6 ABF1', 'Saccharomyces cerevisiae S288c - ABF1'),
-            ('6 ABF2', 'Saccharomyces cerevisiae S288c - ABF2'),
-            ('6 ACE2', 'Saccharomyces cerevisiae S288c - ACE2'), ...]
+             ('6 ABF2', 'Saccharomyces cerevisiae S288c - ABF2'),
+             ('6 ACE2', 'Saccharomyces cerevisiae S288c - ACE2'), ...]
 
         """
         request = urllib2.Request(self.url + "/genomes.json")
@@ -993,58 +1011,71 @@ class GenRep(object):
         except urllib2.URLError:
             return []
 
-    def get_sequence(self, chr_id, coord_list, path_to_ref=None, chr_name=None):
+    def get_sequence(self, chr_id, coord_list, path_to_ref=None, chr_name=None, ex=None):
         """Parse a slice request to the repository.
 
         :param chr_id: (int) chromosome number (keys of Assembly.chromosomes).
         :param coord_list: (list of (int,int)) sequences' (start,end) coordinates.
         :param path_to_ref: (str) path to a fasta file containing the whole reference sequence.
+        :param ex: an optional bein execution to use the `sam_faidx` program.
         """
+        def _read_fasta(path,coord):
+            a = 0
+            with open(path) as f:
+                sequences = []
+                cl = iter(coord)
+                start,end = cl.next()
+                seq = ''
+                line = True
+                chrom = None
+                for i,line in enumerate(f):
+                    headpatt = re.search(r'^>(\S+)\s',line)
+                    line = line.strip(' \t\r\n')
+                    if headpatt:
+                        chrom = headpatt.groups()[0]
+                    if line.startswith('>'): continue
+                    if not chrom in (chr_id[0], chr_name): continue
+                    b = a+len(line)
+                    while start <= b:
+                        start = max(a,start)
+                        if end <= b:
+                            seq += line[start-a:end-a]
+                            sequences.append(seq.upper())
+                            seq = ''
+                            try:
+                                start,end = cl.next()
+                            except StopIteration:
+                                f.close()
+                                return sequences
+                        elif end > b:
+                            seq += line[start-a:]
+                            a = b
+                            break
+                    a = b
+            return sequences
+
         if len(coord_list) == 0:
             return []
         for k,c in enumerate(coord_list):
             if c[1] < c[0]: coord_list[k] = (c[1],c[0]) # end < start
             elif c[1] == c[0]: coord_list.pop(k)        # end = start
         coord_list = sorted(coord_list)
-        # to do += make it work with gzip + tar files > 'decompress' function to bbcflib.common
         if path_to_ref and os.path.exists(path_to_ref):
-            a = 0
-            f = open(path_to_ref)
-            sequences = []
-            coord_list = iter(coord_list)
-            start,end = coord_list.next()
-            seq = ''
-            line = True
-            chrom = None
-            for i,line in enumerate(f):
-                headpatt = re.search(r'^>(\S+)\s',line)
-                line = line.strip(' \t\r\n')
-                if headpatt:
-                    chrom = headpatt.groups()[0]
-                if line.startswith('>'): continue
-                if not chrom in (chr_id, chr_name): continue
-                b = a+len(line)
-                while start <= b:
-                    start = max(a,start)
-                    if end <= b:
-                        seq += line[start-a:end-a]
-                        sequences.append(seq.upper())
-                        seq = ''
-                        try:
-                            start,end = coord_list.next()
-                        except StopIteration:
-                            f.close()
-                            return sequences
-                    elif end > b:
-                        seq += line[start-a:]
-                        a = b
-                        break
-                a = b
-            f.close()
-            return sequences
+            chrname = str(chr_id[0])+"_"+str(chr_id[1])+"."+str(chr_id[2]) if chr_id[1] else str(chr_id[0])
+            try:
+                locus = ["%s:%i-%i"%(chrname,start,end) for start,end in coord_list]
+                if ex:
+                    seq_all = sam_faidx(ex,path_to_ref,locus)
+                else: 
+                    from bein import execution
+                    with execution(None) as ex:
+                        seq_all = sam_faidx(ex,path_to_ref,locus)
+                return seq_all
+            except:
+                return _read_fasta(path_to_ref,coord_list)
         else:
             slices  = ','.join([','.join([str(y) for y in x]) for x in coord_list])
-            url     = """%s/chromosomes/%i/get_sequence_part?slices=%s""" % (self.url, chr_id, slices)
+            url     = """%s/chromosomes/%i/get_sequence_part?slices=%s""" % (self.url, chr_id[0], slices)
             request = urllib2.Request(url)
             return urllib2.urlopen(request).read().split(',')
 

@@ -7,12 +7,12 @@ From a set of BAM files produced by an alignement on the genome, calls snps and 
 with respect to a set of coding genes on the same genome.
 """
 # Built-in modules #
-import os, sys, tarfile, time, re
+import os, sys, tarfile, time, re, pysam
 from itertools import product
 
 # Internal modules #
 from bbcflib.common import unique_filename_in, set_file_descr, sam_faidx, timer, iupac, translate
-from bbcflib import mapseq
+from bbcflib.mapseq import merge_bam, index_bam, replace_bam_header
 from bbcflib.genrep import ploidy
 from bbcflib.track import FeatureStream, track
 from bbcflib.gfminer.common import concat_fields
@@ -43,10 +43,19 @@ def pileup(ex,job,assembly,genomeRef,via,logfile,debugfile):
         sample_name = job.groups[gid]['name']
         # Merge all bams belonging to the same group
         runs = [r['bam'] for r in files.itervalues()]
+        bam = pysam.Samfile(runs[0])
+        header = bam.header
+        headerfile = unique_filename_in()
+        for h in header["SQ"]:
+            if h["SN"] in assembly.chrmeta:
+                h["SN"] = assembly.chrmeta[h["SN"]]["ac"]
+        head = pysam.Samfile( headerfile, "wh", header=header )
+        head.close()
         if len(runs) > 1:
-            bam = mapseq.merge_bam(ex,runs)
-            mapseq.index_bam(ex,bam)
-        else: bam = runs[0]
+            bam = merge_bam(ex,runs,headerfile)
+        else:
+            bam = replace_bam_header( ex, headerfile, runs[0], stdout=unique_filename_in() )
+        index_bam(ex,bam)
         # Samtools pileup
         for chrom,ref in genomeRef.iteritems():
             pileup_filename = unique_filename_in()
@@ -341,9 +350,10 @@ def snp_workflow(ex, job, assembly, minsnp=40, mincov=5, path_to_ref=None, via='
         path_to_ref = '/scratch/cluster/monthly/jdelafon/snp/sequence/hg19/'
         genomeRef = dict((c,path_to_ref+c) for c in assembly.chrmeta)
     else:
-        genomeRef = assembly.untar_genome_fasta(path_to_ref, convert=True)
+        genomeRef = assembly.fasta_by_chrom
+#        genomeRef = assembly.untar_genome_fasta(path_to_ref, convert=True)
 
-    [g.wait() for g in [sam_faidx.nonblocking(ex,f,via=via) for f in set(genomeRef.values())]]
+#    [g.wait() for g in [sam_faidx.nonblocking(ex,f,via=via) for f in set(genomeRef.values())]]
     sample_names = []
     for gid in sorted(job.files.keys()):
         sample_name = job.groups[gid]['name']

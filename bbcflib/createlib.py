@@ -157,7 +157,7 @@ def createLibrary(ex, assembly_or_fasta, params, url=GlobalHtsUrl, via='local'):
 
     if isinstance(assembly_or_fasta,genrep.Assembly):
         chrnames = assembly_or_fasta.chrnames
-        allfiles = assembly_or_fasta.untar_genome_fasta()
+        allfiles = assembly_or_fasta.fasta_by_chrom  #assembly_or_fasta.untar_genome_fasta()
     else:
         allfiles["lib"] = assembly_or_fasta
         chrnames = ["lib"]
