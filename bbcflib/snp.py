@@ -54,7 +54,8 @@ def pileup(ex,job,assembly,genomeRef,via,logfile,debugfile):
         if len(runs) > 1:
             bam = merge_bam(ex,runs,headerfile)
         else:
-            bam = replace_bam_header( ex, headerfile, runs[0], stdout=unique_filename_in() )
+            bam = unique_filename_in()
+            replace_bam_header( ex, headerfile, runs[0], stdout=bam )
         index_bam(ex,bam)
         # Samtools pileup
         for chrom,ref in genomeRef.iteritems():
@@ -137,7 +138,7 @@ def all_snps(ex,chrom,dictPileup,outall,assembly,sample_names,mincov,minsnp,
         future, sample_name, bam_filename = trio
         logfile.write("  Wait for samtools pileup - group %s" % sample_name); logfile.flush()
         t1 = time.time()
-        future.wait() #file p is created from samtools pileup
+        future.wait()
         t2 = time.time()
         logfile.write("  ...Done.\n"); logfile.flush()
         logfile.write("  Time elapsed: %.3f s.\n" % (t2-t1)); logfile.flush()

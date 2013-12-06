@@ -1063,7 +1063,7 @@ class GenRep(object):
         if path_to_ref and os.path.exists(path_to_ref):
             chrname = str(chr_id[0])+"_"+str(chr_id[1])+"."+str(chr_id[2]) if chr_id[1] else str(chr_id[0])
             try:
-                locus = ["%s:%i-%i"%(chrname,start,end) for start,end in coord_list]
+                locus = ["%s:%i-%i"%(chrname,start+1,end) for start,end in coord_list]
                 if ex:
                     seq_all = sam_faidx(ex,path_to_ref,locus)
                 else: 
