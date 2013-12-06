@@ -637,7 +637,7 @@ def bowtie_build(files, index=None, bowtie2=False):
     return {'arguments': [main_call, '-f', files, index], 'return_value': index}
 
 
-def parallel_bowtie( ex, index, reads, unmapped=None, n_lines=1000000, bowtie_args='',
+def parallel_bowtie( ex, index, reads, unmapped=None, n_lines=16000000, bowtie_args='',
                      add_nh_flags=False, bowtie_2=False, via='local' ):
     """Run bowtie in parallel on pieces of *reads*.
 
@@ -662,18 +662,18 @@ def parallel_bowtie( ex, index, reads, unmapped=None, n_lines=1000000, bowtie_ar
         mlim = 12
         if bowtie_2: un_cmd = "--un-conc"
     else:
-        subfiles = split_file(ex, reads, n_lines = n_lines)
+        subfiles = split_file(ex, reads, n_lines=n_lines)
         mlim = 6
     if bowtie_2: btcall = bowtie2.nonblocking
     else:        btcall = bowtie.nonblocking
     if unmapped:
         futures = [btcall(ex, index, sf,
-                          args=bowtie_args+[un_cmd,unmapped+"_"+str(n)],
-                          via=via, memory=mlim)
+                          args=bowtie_args+[un_cmd,unmapped+"_"+str(n),"-p","5"],
+                          via=via, memory=mlim, threads=5)
                    for n,sf in enumerate(subfiles)]
     else:
-        futures = [btcall(ex, index, sf, args=bowtie_args, via=via, memory=mlim)
-                   for sf in subfiles]
+        futures = [btcall(ex, index, sf, args=bowtie_args+["-p","5"], 
+                          via=via, memory=mlim, threads=5) for sf in subfiles]
     samfiles = [f.wait() for f in futures]
     futures = []
     if add_nh_flags:
@@ -690,8 +690,8 @@ def parallel_bowtie( ex, index, reads, unmapped=None, n_lines=1000000, bowtie_ar
                 cat([unmapped+"_"+str(n)+"_2" for n in range(len(subfiles))],unmapped+"_2")
         else:
             cat([unmapped+"_"+str(n) for n in range(len(subfiles))],unmapped)
-    bamfiles = [f.wait() for f in futures]
-    return merge_bam.nonblocking(ex, bamfiles, via=via).wait()
+    bamfiles = [sort_bam.nonblocking(ex, f.wait(), via=via) for f in futures]
+    return merge_bam.nonblocking(ex, [f.wait() for f in bamfiles], via=via).wait()
 
 ################################################################################
 # Postprocessing #
@@ -813,7 +813,8 @@ def pprint_bamstats(sample_stats, textfile=None):
 
 def map_reads( ex, fastq_file, chromosomes, bowtie_index,
                bowtie_2=False, maxhits=5, antibody_enrichment=50,
-               remove_pcr_duplicates=True, bwt_args=None, via='lsf' ):
+               keep_unmapped=True, remove_pcr_duplicates=True, bwt_args=None, 
+               via='lsf' ):
     """Runs ``bowtie`` in parallel over lsf for the `fastq_file` input.
     Returns the full bamfile, its filtered version (see 'remove_duplicate_reads')
     and the mapping statistics dictionary (see 'bamstats').
@@ -866,17 +867,21 @@ def map_reads( ex, fastq_file, chromosomes, bowtie_index,
     else:
         linecnt = count_lines( ex, fastq_file )
         mlim = 4
-    unmapped = unique_filename_in()
+    if keep_unmapped:
+        unmapped = unique_filename_in()
+    else:
+        unmapped = None
     if linecnt>10000000:
-        bam = parallel_bowtie( ex, bowtie_index, fastq_file, unmapped=unmapped,
-                               n_lines=8000000, bowtie_args=bwtarg,
-                               add_nh_flags=True, bowtie_2=bowtie_2, via=via )
+        n_lines = 4*(linecnt/40+1)#has to be a multiple of 4
+        sorted_bam = parallel_bowtie( ex, bowtie_index, fastq_file, unmapped=unmapped,
+                                      n_lines=n_lines, bowtie_args=bwtarg,
+                                      add_nh_flags=True, bowtie_2=bowtie_2, via=via )
     else:
         bwtarg += [un_cmd, unmapped]
-        future = btcall( ex, bowtie_index, fastq_file, bwtarg, via=via, memory=mlim )
+        future = btcall( ex, bowtie_index, fastq_file, bwtarg+["-p","5"], via=via, memory=mlim, threads=5 )
         samfile = future.wait()
         bam = add_nh_flag( samfile )
-    sorted_bam = sort_bam.nonblocking(ex, bam, via=via).wait()
+        sorted_bam = sort_bam.nonblocking(ex, bam, via=via).wait()
     sorted_bai = index_bam(ex, sorted_bam)
 ###    sorted_bam = add_and_index_bam( ex, bam, set_file_descr(name+"complete.bam",**bam_descr) )
     full_stats = bamstats( ex, sorted_bam )
@@ -891,9 +896,9 @@ def map_reads( ex, fastq_file, chromosomes, bowtie_index,
         return_dict['unmapped'] = unmapped
     if remove_pcr_duplicates:
         thresh = poisson_threshold( int(antibody_enrichment)*full_stats["actual_coverage"] )
-        bam2 = remove_duplicate_reads( sorted_bam, chromosomes, maxhits, thresh, convert=True )
+        reduced_bam = remove_duplicate_reads( sorted_bam, chromosomes, maxhits, thresh, convert=True )
         return_dict['poisson_threshold'] = thresh
-        reduced_bam = sort_bam.nonblocking(ex, bam2, via=via).wait()
+#        reduced_bam = sort_bam.nonblocking(ex, bam2, via=via).wait()
         index2 = index_bam(ex, reduced_bam)
 #        reduced_bam = add_and_index_bam( ex, bam2, set_file_descr(name+"filtered.bam",**bam_descr) )
         filtered_stats = bamstats( ex, reduced_bam )
@@ -902,12 +907,12 @@ def map_reads( ex, fastq_file, chromosomes, bowtie_index,
         return_dict['stats'] = filtered_stats
     else:
         infile = pysam.Samfile( sorted_bam, "rb" )
-        bam2 = unique_filename_in()
+        reduced_bam = unique_filename_in()
         header = infile.header
         for h in header["SQ"]:
             if h["SN"] in chromosomes:
                 h["SN"] = chromosomes[h["SN"]]["name"]
-        outfile = pysam.Samfile( bam2, "wb", header=header )
+        outfile = pysam.Samfile( reduced_bam, "wb", header=header )
         for read in infile:
             nh = dict(read.tags).get('NH',1)
             if nh < 1:
@@ -916,7 +921,7 @@ def map_reads( ex, fastq_file, chromosomes, bowtie_index,
                 outfile.write(read)
         outfile.close()
         infile.close()
-        reduced_bam = sort_bam.nonblocking(ex, bam2, via=via).wait()
+#        reduced_bam = sort_bam.nonblocking(ex, bam2, via=via).wait()
         index2 = index_bam(ex, reduced_bam)
 #        reduced_bam = add_and_index_bam( ex, bam2, set_file_descr(name+"filtered.bam",**bam_descr) )
         return_dict['bam'] = reduced_bam
