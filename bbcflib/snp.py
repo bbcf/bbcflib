@@ -7,7 +7,7 @@ From a set of BAM files produced by an alignement on the genome, calls snps and 
 with respect to a set of coding genes on the same genome.
 """
 # Built-in modules #
-import os, sys, tarfile, time
+import os, sys, tarfile
 from itertools import product
 
 # Internal modules #
@@ -350,9 +350,9 @@ def snp_workflow(ex, job, assembly, minsnp=40., mincov=5, path_to_ref=None, via=
         head = pysam.Samfile( headerfile, "wh", header=header )
         head.close()
         if len(runs) > 1:
-            bam = merge_bam(ex,runs,headerfile)
+            bam = merge_bam(ex,runs)
         else:
-            bam = replace_bam_header( ex, headerfile, runs[0], stdout=unique_filename_in() )
+            bam = replace_bam_header(ex,headerfile,runs[0],stdout=unique_filename_in())
         index_bam(ex,bam)
         # Samtools mpileup + bcftools + vcfutils.pl
         for chrom,ref in ref_genome.iteritems():
