@@ -306,8 +306,7 @@ def replace_bam_header(header, bamfile):
 
     The header in *header* should be that of a SAM file.
     """
-    return {'arguments': ['samtools','reheader',header,bamfile],
-            'return_value': bamfile}
+    return {'arguments': ['samtools','reheader',header,bamfile], 'return_value': bamfile}
 
 @program
 def sort_bam(bamfile, filename=None):
@@ -373,19 +372,20 @@ def index_bam(bamfile):
 
 
 @program
-def merge_bam(files):
+def merge_bam(files,header=None):
     """Merge a list of BAM files.
 
     *files* should be a list of filenames of BAM files.  They are
     merged into a single BAM file, and the filename of that new file
     is returned.
     """
+    args = ['samtools','merge']
+    if header: args += ["-h",header]
     if len(files) == 1:
         return {'arguments': ['echo'], 'return_value': files[0]}
     else:
         filename = unique_filename_in()
-        return {'arguments': ['samtools','merge',filename] + files,
-                'return_value': filename}
+        return {'arguments': args+[filename]+files, 'return_value': filename}
 
 
 @program
@@ -1266,7 +1266,8 @@ def mapseq_workflow(ex, job, assembly, map_args, gl, bowtie2=False, via="local",
     return 0
 
 
-def get_bam_wig_files( ex, job, minilims=None, hts_url=None, suffix=['fwd','rev'], script_path='', fetch_unmapped=False, via='lsf' ):
+def get_bam_wig_files( ex, job, minilims=None, hts_url=None, suffix=['fwd','rev'], 
+                       script_path='', fetch_unmapped=False, via='lsf' ):
     """
     Will replace file references by actual file paths in the 'job' object.
     These references are either 'mapseq' keys or urls.
