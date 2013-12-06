@@ -43,8 +43,6 @@ def pileup(bams,path_to_ref,wdir,logfile,seq_depth=1000):
         script += "vcfutils.pl varFilter -D%d %s > %s;" % (seq_depth,vcf_raw,vcf)
         print script
     else:
-        #script += "samtools mpileup -uDS -f %s %s | bcftools view -bvcg - > %s ;\n" % (path_to_ref,bams,bcf)
-        #script += "bcftools view %s | vcfutils.pl varFilter -D%d > %s ;" % (bcf,seq_depth,vcf)
         script += "samtools mpileup -uDS -I -f %s %s | bcftools view -vcg - | vcfutils.pl varFilter -D%d > %s ;" \
                   % (path_to_ref,bams,seq_depth,vcf)                 # ^  the dash is important
     with open(script_name,'w') as s:
