@@ -32,6 +32,16 @@ translate = {"TTT": "F", "TTC": "F", "TTA": "L", "TTG": "L/START",
              "AGT": "S", "AGC": "S", "AGA": "R", "AGG": "R",
              "GGT": "G", "GGC": "G", "GGA": "G", "GGG": "G" }
 
+def revcomp(seq):
+    cmpl = dict((('A','T'),('C','G'),('T','A'),('G','C'),
+                 ('a','t'),('c','g'),('t','a'),('g','c'),
+                 ('M','K'),('K','M'),('Y','R'),('R','Y'),('S','S'),('W','W'),
+                 ('m','k'),('k','m'),('y','r'),('r','y'),('s','s'),('w','w'),
+                 ('B','V'),('D','H'),('H','D'),('V','B'),
+                 ('b','v'),('d','h'),('h','d'),('v','b'),
+                 ('N','N'),('n','n')))
+    return "".join(reversed([cmpl.get(x,x) for x in seq]))
+
 #-------------------------------------------------------------------------#
 def unique_filename_in(path=None):
     """Return a random filename unique in the given path.

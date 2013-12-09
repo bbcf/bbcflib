@@ -11,7 +11,7 @@ import sys, tarfile
 from itertools import product
 
 # Internal modules #
-from bbcflib.common import unique_filename_in, set_file_descr, sam_faidx, timer, iupac, translate, unique
+from bbcflib.common import unique_filename_in, set_file_descr, sam_faidx, timer, iupac, translate, revcomp, unique
 from bbcflib.mapseq import merge_bam, index_bam
 from bbcflib.track import FeatureStream, track
 from bbcflib.gfminer.common import concat_fields
@@ -164,16 +164,6 @@ def exon_snps(chrom,outexons,allsnps,assembly,sample_names,genomeRef={},
     :param genomeRef: dict of the form {'chr1': filename}, where filename is the name of a fasta file
         containing the reference sequence for the chromosome.
     """
-    def _revcomp(seq):
-        cmpl = dict((('A','T'),('C','G'),('T','A'),('G','C'),
-                     ('a','t'),('c','g'),('t','a'),('g','c'),
-                     ('M','K'),('K','M'),('Y','R'),('R','Y'),('S','S'),('W','W'),
-                     ('m','k'),('k','m'),('y','r'),('r','y'),('s','s'),('w','w'),
-                     ('B','V'),('D','H'),('H','D'),('V','B'),
-                     ('b','v'),('d','h'),('h','d'),('v','b'),
-                     ('N','N'),('n','n')))
-        return "".join(reversed([cmpl.get(x,x) for x in seq]))
-
     def _write_buffer(_buffer, outex):
         new_codon = None
         # One position at a time
@@ -202,8 +192,8 @@ def exon_snps(chrom,outexons,allsnps,assembly,sample_names,genomeRef={},
                 new_codon[k] = newc
         if new_codon is None: return
         if strand == -1:
-            ref_codon = _revcomp(ref_codon)
-            new_codon = [[_revcomp(s) for s in c] for c in new_codon]
+            ref_codon = revcomp(ref_codon)
+            new_codon = [[revcomp(s) for s in c] for c in new_codon]
         for chr,pos,refbase,variants,cds,strand,dummy,shift in _buffer:
             refc = [iupac.get(x,x) for x in ref_codon]
             ref_codon = [''.join(x) for x in product(*refc)]
