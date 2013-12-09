@@ -306,16 +306,16 @@ try:
             retval = []
             seq = ''
             for x in p.stdout:
-                if x.startswith('>'): 
-                    if seq: 
+                if x.startswith('>'):
+                    if seq:
                         retval.append(seq.upper())
                         seq = ''
                     continue
                 seq += x.strip(' \t\r\n')
             if seq: retval.append(seq.upper())
             return retval
-                
-        return {"arguments": ["samtools","faidx",str(fasta)]+locus, 
+
+        return {"arguments": ["samtools","faidx",str(fasta)]+locus,
                 "return_value": _parse_fasta}
 
     @program

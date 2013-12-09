@@ -2,7 +2,7 @@ from distutils.core import setup
 
 setup(
         name            =   'bbcflib',
-        version         =   '2.0.0',
+        version         =   '2.0.1',
         description     =   'Utility modules for deploying workflows in the BBCF',
         long_description=   open('README.md').read(),
         license         =   'GNU General Public License 3.0',

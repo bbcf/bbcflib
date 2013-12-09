@@ -1,4 +1,4 @@
-bbcflib 2.0.0
+bbcflib 2.0.1
 
 Copyright 2012 EPFL BBCF <webmaster dot bbcf at epfl dot ch>
 
