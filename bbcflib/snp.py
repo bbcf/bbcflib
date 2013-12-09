@@ -12,7 +12,7 @@ from itertools import product
 
 # Internal modules #
 from bbcflib.common import unique_filename_in, set_file_descr, sam_faidx, timer, iupac, translate, unique
-from bbcflib.mapseq import merge_bam, index_bam, replace_bam_header
+from bbcflib.mapseq import merge_bam, index_bam
 from bbcflib.track import FeatureStream, track
 from bbcflib.gfminer.common import concat_fields
 from bbcflib.gfminer import stream as gm_stream
@@ -24,31 +24,13 @@ _DEBUG_ = False
 
 
 @program
-def pileup(bams,path_to_ref,seq_depth=1000):
+def pileup(bam,fasta,seq_depth=1000,header=None):
     """Use 'samtools mpileup' followed by 'bcftools view' and 'vcfutils'
     to call for SNPs. Ref.: http://samtools.sourceforge.net/mpileup.shtml
     !! No indel call, to speed it up, until their output is implemented."""
-    if not isinstance(bams,(list,tuple)): bams = [bams]
-    bams = ' '.join(bams)
-    bcf = unique_filename_in()
-    vcf = unique_filename_in()
-    script_name = unique_filename_in()
-    if _DEBUG_:
-        pileup = unique_filename_in()
-        vcf_raw = unique_filename_in()
-        script = """
-samtools mpileup -uDS -f %s %s > %s
-bcftools view -bvcg %s > %s
-bcftools view %s > %s
-vcfutils.pl varFilter -D%d %s > %s;
-""" %(path_to_ref, bams, pileup, pileup, bcf, bcf, vcf_raw, seq_depth, vcf_raw, vcf)
-        print script
-    else:
-        with open(script_name,'w') as s:
-            s.write("""
-samtools mpileup -uDS -I -f %s %s | bcftools view -vcg - | vcfutils.pl varFilter -D%d > %s 
-""" % (path_to_ref,bams,seq_depth,vcf))              # ^  the dash is important
-    return {'arguments': ["sh",script_name], 'return_value': vcf}
+    args = [fasta,str(seq_depth),bam]
+    if header: args += [header]
+    return {'arguments': ["sam_mpileup.sh"]+args, 'return_value': None}
 
 def parse_vcf(vcf_line):
     """cf. ``http://samtools.sourceforge.net/mpileup.shtml``"""
@@ -344,14 +326,13 @@ def snp_workflow(ex, job, assembly, minsnp=40., mincov=5, path_to_ref=None, via=
         head = pysam.Samfile( headerfile, "wh", header=header )
         head.close()
         if len(runs) > 1:
-            runs[0] = merge_bam(ex,runs)
-        bam = unique_filename_in()
-        replace_bam_header(ex,headerfile,runs[0],stdout=bam)
-        index_bam(ex,bam)
+            bam = merge_bam(ex,runs)
+            index_bam(ex,bam)
+        else: 
+            bam = runs[0]
         # Samtools mpileup + bcftools + vcfutils.pl
         for chrom,ref in ref_genome.iteritems():
-            future = pileup.nonblocking(ex, bam, ref, via=via)
-            vcfs[chrom][gid] = future
+            vcfs[chrom][gid] = pileup.nonblocking(ex, bam, ref, headerfile, via=via)
             bams[chrom][gid] = bam
         logfile.write("  ...Group %s running.\n" % sample_name); logfile.flush()
     # Wait for vcfs to finish and store them in *vcfs[chrom][gid]*
