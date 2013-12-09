@@ -332,15 +332,18 @@ def snp_workflow(ex, job, assembly, minsnp=40., mincov=5, path_to_ref=None, via=
             bam = runs[0]
         # Samtools mpileup + bcftools + vcfutils.pl
         for chrom,ref in ref_genome.iteritems():
-            vcfs[chrom][gid] = pileup.nonblocking(ex, bam, ref, headerfile, via=via)
+            vcf = unique_filename_in()
+            vcfs[chrom][gid] = (vcf,
+                                pileup.nonblocking(ex, bam, ref, headerfile, 
+                                                   via=via, stdout=vcf))
             bams[chrom][gid] = bam
         logfile.write("  ...Group %s running.\n" % sample_name); logfile.flush()
     # Wait for vcfs to finish and store them in *vcfs[chrom][gid]*
     for gid in sorted(job.files.keys()):
         sample_name = job.groups[gid]['name']
         for chrom,ref in ref_genome.iteritems():
-            vcf = vcfs[chrom][gid].wait()
-            vcfs[chrom][gid] = vcf
+            vcfs[chrom][gid][1].wait()
+            vcfs[chrom][gid] = vcfs[chrom][gid][0]
         logfile.write("  ...Group %s done.\n" % sample_name); logfile.flush()
     # Targz the pileup files (vcf)
     for chrom,v in vcfs.iteritems():
