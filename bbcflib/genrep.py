@@ -118,7 +118,7 @@ class Assembly(object):
         _p = {"EB1_e_coli_k12":1,"MLeprae_TN":1,"mycoSmeg_MC2_155":1,
               "mycoTube_H37RV":1,"NA1000":1,"vibrChol1":1,"TB40-BAC4":1,
               "tbR25":1,"pombe":1,"sacCer2":1,"sacCer3":1,"ASM1346v1":1}
-        self.ploidy = _p.get(assembly.name,2)
+        self.ploidy = _p.get(self.name,2)
 
     def set_assembly(self, assembly):
         """
