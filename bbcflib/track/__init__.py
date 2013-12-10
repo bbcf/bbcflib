@@ -139,7 +139,7 @@ def check(source, out=sys.stdout,
     :param check_sorted: verify that the file is sorted: chromosomes are grouped,
         and regions of each chromosome are sorted w.r.t. 'start' and 'end' in ascending order.
     :param check_duplicates: verify that no line is repeated exactly (except empty lines).
-    :param check_zerosize: verify that no region has length zero (start==end).
+    :param check_zerosize: verify that no region has length zero (start >= end).
     :param **kwargs: ``track`` keyword arguments.
     """
     if isinstance(source, basestring):
@@ -176,7 +176,7 @@ def check(source, out=sys.stdout,
         chr   = row[chr_idx] if is_chr else None
         start = row[start_idx] if is_start else 0
         end   = row[end_idx] if is_end else 0
-        if check_zerosize and start == end:
+        if check_zerosize and start >= end:
             out.write("Check zero size: %s: empty region at line %d.\n\n" % (filename,n))
             return False
         if check_sorted:
