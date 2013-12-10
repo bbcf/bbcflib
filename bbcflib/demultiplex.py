@@ -14,16 +14,10 @@ import os, urllib, shutil, re, sys, tarfile
 #MLPath="/archive/epfl/bbcf/mleleu/pipeline_vMarion/pipeline_3Cseq/vWebServer_Bein/"
 
 @program
-def exportToFasta(exportFile,n=1,x=22,output=None):
-    faFile=output or unique_filename_in()
-    return{'arguments': ["exportToFasta.py","-i",exportFile,"-n",str(n),"-x",str(x)],
-           'return_value':faFile}
-
-@program
 def fastqToFasta(fqFile,n=1,x=22,output=None):
-    faFile=output or unique_filename_in()
-    return{'arguments': ["fastqToFasta.py","-i",fqFile,"-o",faFile,"-n",str(n),"-x",str(x)],
-           'return_value':faFile}
+    if output is None: output = unique_filename_in()
+    return {'arguments': ["fastqToFasta.py","-i",fqFile,"-o",output,"-n",str(n),"-x",str(x)],
+            'return_value': output}
 
 def split_exonerate(filename,minScore,l=30,n=1):
     correction = {}
@@ -48,7 +42,7 @@ def split_exonerate(filename,minScore,l=30,n=1):
     with open(filename,"r") as f:
         for s in f:
             if not(re.search(r'vulgar',s)): continue
-            s=s.strip().split(' ')
+            s = s.strip().split(' ')
             s_split = s[5].split('|')
             key = s_split[0]
             info = s[1].split('_')
@@ -59,20 +53,20 @@ def split_exonerate(filename,minScore,l=30,n=1):
             prev_idLine = idLine
             if not key in correction:
                 if len(s_split) > 3:
-                    correction[key]=len(s_split[1])-len(s_split[3])+n-1
+                    correction[key] = len(s_split[1])-len(s_split[3])+n-1
                 else:
-                    correction[key]=len(s_split[1])+n-1
-                filenames[key]=unique_filename_in()
-                files[key]=open(filenames[key],"w")
-            k=int(s[3])-int(s[7])+correction[key]
-            l_linename=len(info[0])
-            l_seq=len(info[1])
-            full_qual=s[1][int(l_linename)+int(l_seq)+2:int(l_linename)+2*int(l_seq)+2]
-            seq=info[1][k:l+k]
-            qual=full_qual[k:l+k]
+                    correction[key] = len(s_split[1])+n-1
+                filenames[key] = unique_filename_in()
+                files[key] = open(filenames[key],"w")
+            k = int(s[3])-int(s[7])+correction[key]
+            l_linename = len(info[0])
+            l_seq = len(info[1])
+            full_qual = s[1][int(l_linename)+int(l_seq)+2:int(l_linename)+2*int(l_seq)+2]
+            seq = info[1][k:l+k]
+            qual = full_qual[k:l+k]
             if s[9] < minScore:
                 files["unaligned"].write(" ".join(s)+"\n")
-            else:
+            elif len(seq) >= l: 
                 line_buffer.append((s[9],"@"+info[0]+"_"+seq+"_"+qual+"\n"+seq+"\n+\n"+qual+"\n",s,key))
 
     _process_line(line_buffer)
@@ -96,7 +90,7 @@ def _get_minscore(dbf):
 
 def parallel_exonerate(ex, subfiles, dbFile, grp_descr,
                        minScore=77, n=1, x=22, l=30, via="local"):
-    futures=[fastqToFasta.nonblocking(ex,sf,n=n,x=x,via=via) for sf in subfiles]
+    futures = [fastqToFasta.nonblocking(ex,sf,n=n,x=x,via=via) for sf in subfiles]
 
     futures2 = []
     res = []
