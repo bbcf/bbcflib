@@ -64,7 +64,7 @@ def split_exonerate(filename,minScore,l=30,n=1):
             full_qual = s[1][int(l_linename)+int(l_seq)+2:int(l_linename)+2*int(l_seq)+2]
             seq = info[1][k:l+k]
             qual = full_qual[k:l+k]
-            if s[9] < minScore:
+            if int(s[9]) < minScore:
                 files["unaligned"].write(" ".join(s)+"\n")
             elif len(seq) >= l: 
                 line_buffer.append((s[9],"@"+info[0]+"_"+seq+"_"+qual+"\n"+seq+"\n+\n"+qual+"\n",s,key))
