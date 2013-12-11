@@ -131,15 +131,16 @@ def ensembl_to_ucsc(stream):
                           for item in stream),fields=stream.fields)
 
 def check(source, out=sys.stdout,
-          check_sorted=True, check_duplicates=True, check_zerosize=True, **kwargs):
+          check_sorted=True, check_noduplicates=True, check_positive=True, check_nooverlaps=False, **kwargs):
     """Read a track-like file *source* once to check that it is correctly formatted
     (according to ``*source*.format``), plus other optional filters.
 
     :param source: (str) name of the file.
     :param check_sorted: verify that the file is sorted: chromosomes are grouped,
-        and regions of each chromosome are sorted w.r.t. 'start' and 'end' in ascending order.
-    :param check_duplicates: verify that no line is repeated exactly (except empty lines).
-    :param check_zerosize: verify that no region has length zero (start >= end).
+        and regions of each chromosome are sorted w.r.t. 'start' and 'end' in ascending order. [True]
+    :param check_noduplicates: verify that no line is repeated exactly (except empty lines). [True]
+    :param check_positive: verify that no region has zero or negative length (start >= end). [True]
+    :param check_nooverlaps: verify that intervals never overlap (requires *check_sorted*). [False]
     :param **kwargs: ``track`` keyword arguments.
     """
     if isinstance(source, basestring):
@@ -170,30 +171,33 @@ def check(source, out=sys.stdout,
             out.write("Check format: line %s of %s is not compatible with format %s. \
                        \nException raised: %s" % (n,source,t.format,e))
             return False
-        if check_duplicates and row == lastrow and len(row)!=0:
-            out.write("Check duplicates: %s: duplicate at line %d. \n\n" % (filename,n))
+        if check_noduplicates and row == lastrow and len(row)!=0:
+            out.write("Check no duplicates: %s: duplicate at line %d.\n\n" % (filename,n))
             return False
         chr   = row[chr_idx] if is_chr else None
         start = row[start_idx] if is_start else 0
         end   = row[end_idx] if is_end else 0
-        if check_zerosize and start >= end:
-            out.write("Check zero size: %s: empty region at line %d.\n\n" % (filename,n))
+        if check_positive and start >= end:
+            out.write("Check positive: %s: empty or reverse region at line %d.\n\n" % (filename,n))
             return False
         if check_sorted:
             if chr != last_chr:
                 if chr in visited_chr:
-                    out.write("Check order: %s: error at line %d: \
+                    out.write("Check sorted: %s: error at line %d: \
                                \n\tChromosome %s appears twice in the file.\n\n" % (filename,n,chr))
                     return False
                 visited_chr.append(chr)
                 last_start = last_end = 0
             elif start < last_start:
-                out.write("Check order: %s: error at line %d: \
+                out.write("Check sorted: %s: error at line %d: \
                            \n\tStart position %d < %d.\n\n" % (filename,n,start,last_start))
                 return False
             elif start == last_start and end < last_end:
-                out.write("Check order: %s: error at line %d: \
+                out.write("Check sorted: %s: error at line %d: \
                            \n\tEnd position %d < %d.\n\n" % (filename,n,end,last_end))
+                return False
+            elif check_nooverlaps and start <= last_end:
+                out.write("Check no overlaps: %s: overlap at line %d.\n\n" % (filename,n))
                 return False
         last_chr = chr
         last_start = start
