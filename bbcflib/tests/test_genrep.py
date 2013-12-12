@@ -200,8 +200,10 @@ class Test_GenRep(unittest.TestCase):
     def test_get_sequence(self):
         expected = ['G','C','AAGCCTAAGCCTAAGCCTAA','TTTTTGAAAT']
         coord_list = [(0,1),(1,2),(10,30),(1010,1020)]
-        url_seq = self.assembly.genrep.get_sequence(chr_id=3066, coord_list=coord_list)
-        custom_seq = self.assembly.genrep.get_sequence(chr_id=0, coord_list=coord_list,
+        # Sequence existing in genrep
+        url_seq = self.assembly.genrep.get_sequence(chr_id=(3066,u'NC_003279',6), coord_list=coord_list)
+        # Custom fasta
+        custom_seq = self.assembly.genrep.get_sequence(chr_id=None, chr_name='chrI', coord_list=coord_list,
                                               path_to_ref=os.path.join(path,"chrI_ce6_30lines.fa"))
         self.assertEqual(url_seq,expected)
         self.assertEqual(custom_seq,expected)

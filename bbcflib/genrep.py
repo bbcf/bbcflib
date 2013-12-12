@@ -319,8 +319,8 @@ class Assembly(object):
             if isinstance(out,file):
                 for i,s in enumerate(self.genrep.get_sequence(chrid, coord, path_to_ref=path_to_ref,
                                                               chr_name=chrn, ex=ex)):
-                    if s: 
-                        out.write(">"+names[i]+"|"+chrn+":"+str(coord[i][0])+"-"+str(coord[i][1])+"\n"+s+"\n")
+                    if s:
+                        out.write(">%s|%s:%d-%d\n%s\n" % (names[i],chrn,coord[i][0],coord[i][1],s))
             else:
                 out[chrn].extend(self.genrep.get_sequence(chrid, coord, path_to_ref=path_to_ref,
                                                           chr_name=chrn, ex=ex))
@@ -328,7 +328,7 @@ class Assembly(object):
 
         slices = {'coord':[],'names':[]}
         size = 0
-        if isinstance(regions,list): # convert to a dict
+        if isinstance(regions,(list,tuple)): # convert to a dict
             reg_dict = {}
             for reg in regions:
                 chrom = reg[0]
@@ -341,9 +341,9 @@ class Assembly(object):
             for cid,chrom in self.chromosomes.iteritems():
                 if not(chrom['name'] in regions): continue
                 if isinstance(out,dict): out[chrom['name']] = []
-                if isinstance(path_to_ref,dict): 
+                if isinstance(path_to_ref,dict):
                     pref = path_to_ref.get(chrom['name'])
-                else: 
+                else:
                     pref = path_to_ref
                 for row in regions[chrom['name']]:
                     s = max(row[0],0)
@@ -460,7 +460,7 @@ class Assembly(object):
         path = os.path.join(root,self.md5+".tar.gz")
         if chromosome is not None:
             chr_id = str(chromosome[0])
-            if chromosome[1]: chr_id += "_"+str(chromosome[1])+"."+str(chromosome[2]) 
+            if chromosome[1]: chr_id += "_"+str(chromosome[1])+"."+str(chromosome[2])
             root = os.path.join(self.genrep.root,"chromosomes/fasta")
             path = os.path.join(root,chr_id+".fa")
         elif self.intype == 1:
@@ -1013,10 +1013,14 @@ class GenRep(object):
     def get_sequence(self, chr_id, coord_list, path_to_ref=None, chr_name=None, ex=None):
         """Parse a slice request to the repository.
 
-        :param chr_id: (int) chromosome number (keys of Assembly.chromosomes).
+        :param chr_id: tuple of the type ``(3066, u'NC_003279', 6)`` (keys of Assembly.chromosomes).
         :param coord_list: (list of (int,int)) sequences' (start,end) coordinates.
         :param path_to_ref: (str) path to a fasta file containing the whole reference sequence.
         :param ex: an optional bein execution to use the `sam_faidx` program.
+
+        Fasta headers are assumed to be of the form ">3066_NC_003279.6 (...)".
+        If *path_to_ref* is given and the header is different, give any random value to *chr_id*
+        and set *chr_name* to be the fasta header. E.g. *chr_name*='chrI' if the fasta has ">chrI".
         """
         def _read_fasta(path,coord):
             a = 0
@@ -1060,12 +1064,16 @@ class GenRep(object):
             elif c[1] == c[0]: coord_list.pop(k)        # end = start
         coord_list = sorted(coord_list)
         if path_to_ref and os.path.exists(path_to_ref):
-            chrname = str(chr_id[0])+"_"+str(chr_id[1])+"."+str(chr_id[2]) if chr_id[1] else str(chr_id[0])
+            if isinstance(chr_id,tuple):
+                chrname = "%s_%s.%s"%chr_id if chr_id[1] else str(chr_id[0])
+            else:
+                chrname = chr_name
+                chr_id = (chr_name,'',0)
+            locus = ["%s:%i-%i"%(chrname,start+1,end) for start,end in coord_list]
             try:
-                locus = ["%s:%i-%i"%(chrname,start+1,end) for start,end in coord_list]
                 if ex:
                     seq_all = sam_faidx(ex,path_to_ref,locus)
-                else: 
+                else:
                     from bein import execution
                     with execution(None) as ex:
                         seq_all = sam_faidx(ex,path_to_ref,locus)
