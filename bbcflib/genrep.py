@@ -306,7 +306,7 @@ class Assembly(object):
 
         def _push_slices(slices,start,end,name,cur_chunk):
             """Add a feature to *slices*, and increment the buffer size *cur_chunk* by the feature's size."""
-            if end>start:
+            if end > start:
                 slices['coord'].append([start,end])
                 slices['names'].append(name)
                 cur_chunk += end-start
@@ -332,8 +332,7 @@ class Assembly(object):
             reg_dict = {}
             for reg in regions:
                 chrom = reg[0]
-                if chrom not in reg_dict:
-                    reg_dict[chrom] = []
+                reg_dict.setdefault(chrom, [])
                 reg_dict[chrom].append(reg[1:])
             regions = reg_dict
         if isinstance(regions,dict):
@@ -360,6 +359,7 @@ class Assembly(object):
                 _f = [f for f in ["start","end","name"] if f in t.fields]
                 cur_chunk = 0
                 for cid,chrom in self.chromosomes.iteritems():
+                    chrlen = chrom['length']
                     if isinstance(path_to_ref,dict):
                         pref = path_to_ref.get(chrom['name'])
                     else:
@@ -370,7 +370,7 @@ class Assembly(object):
                                                   repeat_number=1, sorted=False )
                     for row in features:
                         s = max(row[0],0)
-                        e = min(row[1],chrom['length'])
+                        e = min(row[1],chrlen)
                         name = re.sub('\s+','_',row[2]) if len(row)>2 else chrom['name']
                         slices,cur_chunk = _push_slices(slices,s,e,name,cur_chunk)
                         if cur_chunk > chunk: # buffer is full, write
@@ -1020,7 +1020,7 @@ class GenRep(object):
 
         Fasta headers are assumed to be of the form ">3066_NC_003279.6 (...)".
         If *path_to_ref* is given and the header is different, give any random value to *chr_id*
-        and set *chr_name* to be the fasta header. E.g. *chr_name*='chrI' if the fasta has ">chrI".
+        and set *chr_name* to be the fasta header. E.g. *chr_name='chrI'* if the fasta has ">chrI".
         """
         def _read_fasta(path,coord):
             a = 0
