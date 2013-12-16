@@ -62,45 +62,42 @@ class Test_Assembly(unittest.TestCase):
         self.assertEqual(custom_seq, expected)
 
     def test_transcripts_fasta(self):
+        import sqlite3,itertools
         # cDNA fasta headers are of the form ">trans_id (...)"
         def _intersect_transcripts(regions):
-            import json
-            from bbcflib.gfminer.common import select
-            exons_in_trans = self.assembly.get_exons_in_trans()
-            exon_mapping = self.assembly.get_exon_mapping()
-            #with open('exons_in_trans_ce6.json','wb') as f:
-            #    json.dump(exons_in_trans,f)
-            #with open('exon_mapping_ce6.json','wb') as f:
-            #    json.dump(exon_mapping,f)
-            with open('exons_in_trans_ce6.json') as f:
-                exons_in_trans = json.load(f)
-            with open('exon_mapping_ce6.json') as f:
-                exon_mapping = json.load(f)
             transcript_regions = {}
+            dbpath = self.assembly.sqlite_path()
+            db = sqlite3.connect(dbpath)
+            cursor = db.cursor()
             for chrom,regs in regions.iteritems():
                 regs = sorted(regs)
-                tt = self.assembly.transcript_track(chromlist=[chrom])
-                tt = select(tt, fields=['start','end','name'])
-                trans = tt.next()
-                transcripts = []
                 for reg in regs:
-                    while reg[1] <= trans[0]:   # region is disjoint, before transcript
-                        continue
-                    while trans[1] <= reg[0]:   # transcript is disjoint, before region
-                        trans = tt.next()
-                        transcripts = []
-                    while trans[0] <= reg[1]:   # while there is still an intersection
-                        transcripts.append(trans)
-                        trans = tt.next()
-                    for tstart,tend,tname in transcripts:
-                        tid = tname.split('|')[0]
-                        exons = sorted([exon_mapping[eid][3:5] for eid in exons_in_trans[tid]])
-                        for exon in exons:
+                    request = """SELECT DISTINCT transcript_id,exon_id,start,end from '%s'
+                                 WHERE end>=%d AND start<%d AND type='exon';""" \
+                              % (chrom,reg[0],reg[1])
+                    cursor.execute(request)
+                    transcripts = dict((key,sorted((g[2],g[3]) for g in group)) \
+                                       for key,group in itertools.groupby(cursor, lambda x: x[0]))
+                    for tid,exon_coords in transcripts.iteritems():
+                        tstart = exon_coords[0][0]
+                        for exon in exon_coords:
                             st = max(exon[0],reg[0])
                             en = min(exon[1],reg[1])
                             if en > st:
                                 transcript_regions.setdefault(tid, []).append((st-tstart,en-tstart))
             return transcript_regions
+
+        #import json
+        #exon_mapping = self.assembly.get_exon_mapping()
+        #exons_in_trans = self.assembly.get_exons_in_trans()
+        #with open('exons_in_trans_ce6.json','wb') as f:
+        #    json.dump(exons_in_trans,f)
+        #with open('exon_mapping_ce6.json','wb') as f:
+        #    json.dump(exon_mapping,f)
+        #with open('exons_in_trans_ce6.json') as f:
+        #    exons_in_trans = json.load(f)
+        #with open('exon_mapping_ce6.json') as f:
+        #    exon_mapping = json.load(f)
 
         intype = self.assembly.intype
         chromosomes = self.assembly.chromosomes

@@ -606,6 +606,7 @@ class Assembly(object):
 
         :param chr: (str, or list of str) chromosomes on which to perform the request. By default,
         every chromosome is searched.
+        :param method: "dico" or "boundaries": ?
 
         Available keys for *h*, and possible values:
 
