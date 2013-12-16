@@ -617,8 +617,12 @@ class Assembly(object):
 
         where
 
-        * $ holds for any column name in the database
+        * $ holds for any column/field name in the database
         * # holds for any value in the database
+
+        Available database fields:
+
+        biotype, type, start, end, strand, frame, gene_id, gene_name, transcript_id, exon_id, exon_number.
 
         Note: giving several field names to "keys" permits to select unique combinations of these fields.
         The corresponding keys of *data* are a concatenation (by ';') of these fields.
