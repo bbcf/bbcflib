@@ -458,17 +458,17 @@ class Assembly(object):
             return self.fasta_origin
         root = os.path.join(self.genrep.root,"nr_assemblies/fasta")
         path = os.path.join(root,self.md5+".tar.gz")
-        if chromosome is not None:
-            chr_id = str(chromosome[0])
-            if chromosome[1]: chr_id += "_"+str(chromosome[1])+"."+str(chromosome[2])
-            root = os.path.join(self.genrep.root,"chromosomes/fasta")
-            path = os.path.join(root,chr_id+".fa")
-        elif self.intype == 1:
+        if self.intype == 1:
             root = os.path.join(self.genrep.root,"nr_assemblies/exons_fasta")
             path = os.path.join(root,self.md5+".fa.gz")
         elif self.intype == 2:
             root = os.path.join(self.genrep.root,"nr_assemblies/cdna")
             path = os.path.join(root,self.md5+".fa.gz")
+        elif chromosome is not None:
+            chr_id = str(chromosome[0])
+            if chromosome[1]: chr_id += "_"+str(chromosome[1])+"."+str(chromosome[2])
+            root = os.path.join(self.genrep.root,"chromosomes/fasta")
+            path = os.path.join(root,chr_id+".fa")
         return path
 
     def untar_genome_fasta(self, path_to_ref=None, convert=True):

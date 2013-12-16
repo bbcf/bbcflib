@@ -452,8 +452,8 @@ def fusion(stream,aggregate={},stranded=False):
 
         yields
 
-        (10, 18, 'chr1', 'A|B', 0)
-        (18, 25, 'chr1', 'C', -1)
+        ('chr1', 10, 18, 'A|B', 0)
+        ('chr1', 18, 25, 'C', -1)
 
     :param stream: FeatureStream object.
     :param stranded: (bool) if True, only features of the same strand are fused. [False]
