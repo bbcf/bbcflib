@@ -307,7 +307,7 @@ class Assembly(object):
         def _push_slices(slices,start,end,name,cur_chunk):
             """Add a feature to *slices*, and increment the buffer size *cur_chunk* by the feature's size."""
             if end > start:
-                slices['coord'].append([start,end])
+                slices['coord'].append((start,end))
                 slices['names'].append(name)
                 cur_chunk += end-start
             return slices,cur_chunk
@@ -450,18 +450,20 @@ class Assembly(object):
                     [[f.write("%s\t%s\n" % (x+y,stat[x+y])) for y in bases] for x in bases]
             return output
 
-    def fasta_path(self, chromosome=None):
+    def fasta_path(self, intype=None, chromosome=None):
         """Return the path to the compressed fasta file, for the whole assembly or for a single chromosome."""
+        if not intype:
+            intype = self.intype
         if hasattr(self,"fasta_origin"):
             if chromosome is not None:
                 return self._fasta_by_chrom[chromosome]
             return self.fasta_origin
         root = os.path.join(self.genrep.root,"nr_assemblies/fasta")
         path = os.path.join(root,self.md5+".tar.gz")
-        if self.intype == 1:
+        if intype == 1:
             root = os.path.join(self.genrep.root,"nr_assemblies/exons_fasta")
             path = os.path.join(root,self.md5+".fa.gz")
-        elif self.intype == 2:
+        elif intype == 2:
             root = os.path.join(self.genrep.root,"nr_assemblies/cdna")
             path = os.path.join(root,self.md5+".fa.gz")
         elif chromosome is not None:
@@ -1068,12 +1070,12 @@ class GenRep(object):
             if c[1] < c[0]: coord_list[k] = (c[1],c[0]) # end < start
             elif c[1] == c[0]: coord_list.pop(k)        # end = start
         coord_list = sorted(coord_list)
+        if isinstance(chr_id,tuple):
+            chrname = "%s_%s.%s"%chr_id if chr_id[1] else str(chr_id[0])
+        else:
+            chrname = chr_name
+            chr_id = (chr_name,'',0)
         if path_to_ref and os.path.exists(path_to_ref):
-            if isinstance(chr_id,tuple):
-                chrname = "%s_%s.%s"%chr_id if chr_id[1] else str(chr_id[0])
-            else:
-                chrname = chr_name
-                chr_id = (chr_name,'',0)
             locus = ["%s:%i-%i"%(chrname,start+1,end) for start,end in coord_list]
             try:
                 if ex:
@@ -1083,7 +1085,7 @@ class GenRep(object):
                     with execution(None) as ex:
                         seq_all = sam_faidx(ex,path_to_ref,locus)
                 return seq_all
-            except:
+            except:  # raw text fasta without index
                 return _read_fasta(path_to_ref,coord_list)
         else:
             slices  = ','.join([','.join([str(y) for y in x]) for x in coord_list])
