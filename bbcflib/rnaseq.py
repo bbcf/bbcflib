@@ -143,16 +143,16 @@ def fetch_mappings(assembly):
 
     :param path_or_assembly_id: can be a numeric or nominal ID for GenRep
     (e.g. 11, 76 or 'hg19' for H.Sapiens), or a path to a file containing a
-    pickle object which is read to get the mapping.
+    json object which is read to get the mapping.
     """
     if test and os.path.exists('../mappings/'):
-        import pickle
+        import json
         map_path = '../mappings/'
-        gene_mapping = pickle.load(open(os.path.join(map_path,'gene_mapping.pickle')))
-        exon_mapping = pickle.load(open(os.path.join(map_path,'exon_mapping.pickle')))
-        transcript_mapping = pickle.load(open(os.path.join(map_path,'transcript_mapping.pickle')))
-        trans_in_gene = pickle.load(open(os.path.join(map_path,'trans_in_gene.pickle')))
-        exons_in_trans = pickle.load(open(os.path.join(map_path,'exons_in_trans.pickle')))
+        gene_mapping = json.load(open(os.path.join(map_path,'gene_mapping.json')))
+        exon_mapping = json.load(open(os.path.join(map_path,'exon_mapping.json')))
+        transcript_mapping = json.load(open(os.path.join(map_path,'transcript_mapping.json')))
+        trans_in_gene = json.load(open(os.path.join(map_path,'trans_in_gene.json')))
+        exons_in_trans = json.load(open(os.path.join(map_path,'exons_in_trans.json')))
     else:
         gene_mapping = assembly.get_gene_mapping()
         transcript_mapping = assembly.get_transcript_mapping()
