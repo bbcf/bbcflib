@@ -299,7 +299,7 @@ def save_results(ex, lines, conditions, group_ids, assembly, header, feature_typ
                 towrite.setdefault(c,[]).append((int(start[n]),int(end[n]),rpkm[group][n]))
             for chrom, feats in towrite.iteritems():
                 tr.write(cobble(sorted_stream(FeatureStream(feats, fields=['start','end','score']))),chrom=chrom,clip=True)
-            description = set_file_descr(feature_type.lower()+"_"+group+".sql", step="pileup", type="sql", 
+            description = set_file_descr(feature_type.lower()+"_"+group+".sql", step="pileup", type="sql",
                                          groupId=group_ids[group], gdv='1')
             ex.add(filename+'.sql', description=description)
             # bigWig track - UCSC
@@ -542,7 +542,7 @@ def rnaseq_workflow(ex, job, assembly=None,
     unmapped_fastq = {}
     if unmapped:
         logfile.write("* Align unmapped reads on transcriptome\n"); logfile.flush()
-        try: 
+        try:
             unmapped_fastq,additionals = align_unmapped(ex,job,assembly,group_names,
                                                         exon_mapping,transcript_mapping,exons_in_trans,via)
         except Exception, error:
@@ -551,7 +551,7 @@ def rnaseq_workflow(ex, job, assembly=None,
     # Find splice junctions
     if junctions:
         logfile.write("* Search for splice junctions\n"); logfile.flush()
-        try: 
+        try:
             find_junctions(ex,job,assembly,logfile=logfile,debugfile=debugfile,via=via)
         except Exception, error:
             debugfile.write(str(error)); debugfile.flush()
@@ -674,6 +674,7 @@ def clean_deseq_output(filename):
             for line in f:
                 line = line.split("\t")[1:11] # 1:: remove row ids
                 if not (line[2]=="0" and line[3]=="0"):
+                    line[1] = '%.2f'%float(line[1])
                     meanA = float(line[2]) or 0.5
                     meanB = float(line[3]) or 0.5
                     fold = meanB/meanA
@@ -788,7 +789,7 @@ def find_junctions(ex,job,assembly,soapsplice_index=None,path_to_soapsplice=None
         R2 = cat(zip(*unmapped_fastq[gid])[1])
         future = soapsplice.nonblocking(ex,R1,R2,soapsplice_index,
                                         path_to_soapsplice=path_to_soapsplice,
-                                        options=soapsplice_options, 
+                                        options=soapsplice_options,
                                         via=via, memory=8, threads=soapsplice_options['-p'])
         template = future.wait()
         if not template: return
@@ -858,11 +859,11 @@ def align_unmapped( ex, job, assembly, group_names,
                 try:
                     _bam = map_reads( ex, _fastq, {}, refseq_path, bowtie_2=bwt2,
                                       remove_pcr_duplicates=False, via=via )['bam']
-                except: 
+                except:
                     continue
                 if _bam:
                     sam = pysam.Samfile(_bam)
-                else: 
+                else:
                     continue
                 additional = {}
                 for read in sam:
@@ -875,7 +876,7 @@ def align_unmapped( ex, job, assembly, group_names,
                         for e in E:
                             e_start, e_end = exon_mapping[e][3:5]
                             e_len = e_end-e_start
-                            if r_start <= lag+e_len and lag <= r_end: 
+                            if r_start <= lag+e_len and lag <= r_end:
                                 additional[e] = additional.get(e,0) + 0.5
                             lag += e_len
                 additionals[cond] = additional
