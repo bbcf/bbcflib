@@ -23,6 +23,7 @@ class Test_Assembly(unittest.TestCase):
     def setUp(self):
         self.assembly = Assembly('ce6')
         self.root = self.assembly.genrep.root
+        self.intype = 0
         """
         Gene Y54E2A.11 (-1 to each Ensembl start by convention)
         4 transcripts, Y54E2A.11a.1, Y54E2A.11a.2, Y54E2A.11b.1, Y54E2A.11b.2
@@ -59,6 +60,62 @@ class Test_Assembly(unittest.TestCase):
         custom_seq = self.assembly.fasta_from_regions(regions=regions,out={},
                             path_to_ref=os.path.join(path,"chrI_ce6_30lines.fa"))
         self.assertEqual(custom_seq, expected)
+
+    def test_transcripts_fasta(self):
+        # cDNA fasta headers are of the form ">trans_id (...)"
+        def _intersect_transcripts(regions):
+            import json
+            from bbcflib.gfminer.common import select
+            exons_in_trans = self.assembly.get_exons_in_trans()
+            exon_mapping = self.assembly.get_exon_mapping()
+            #with open('exons_in_trans_ce6.json','wb') as f:
+            #    json.dump(exons_in_trans,f)
+            #with open('exon_mapping_ce6.json','wb') as f:
+            #    json.dump(exon_mapping,f)
+            with open('exons_in_trans_ce6.json') as f:
+                exons_in_trans = json.load(f)
+            with open('exon_mapping_ce6.json') as f:
+                exon_mapping = json.load(f)
+            transcript_regions = {}
+            for chrom,regs in regions.iteritems():
+                regs = sorted(regs)
+                tt = self.assembly.transcript_track(chromlist=[chrom])
+                tt = select(tt, fields=['start','end','name'])
+                trans = tt.next()
+                transcripts = []
+                for reg in regs:
+                    while reg[1] <= trans[0]:   # region is disjoint, before transcript
+                        continue
+                    while trans[1] <= reg[0]:   # transcript is disjoint, before region
+                        trans = tt.next()
+                        transcripts = []
+                    while trans[0] <= reg[1]:   # while there is still an intersection
+                        transcripts.append(trans)
+                        trans = tt.next()
+                    for tstart,tend,tname in transcripts:
+                        tid = tname.split('|')[0]
+                        exons = sorted([exon_mapping[eid][3:5] for eid in exons_in_trans[tid]])
+                        for exon in exons:
+                            st = max(exon[0],reg[0])
+                            en = min(exon[1],reg[1])
+                            if en > st:
+                                transcript_regions.setdefault(tid, []).append((st-tstart,en-tstart))
+            return transcript_regions
+
+        intype = self.assembly.intype
+        chromosomes = self.assembly.chromosomes
+        self.assembly.intype = 2
+        self.assembly.chromosomes = dict((t[3].split('|')[0],{'length':t[2]-t[1], 'name':t[3].split('|')[0]}) \
+                                          for t in self.assembly.transcript_track())
+        regions = {'chrI':[(4100,10250)]}
+        transcript_regions = _intersect_transcripts(regions)
+        print "Regions:",transcript_regions
+        print "Fasta_path:",self.assembly.fasta_path()
+        seqs = self.assembly.fasta_from_regions(regions=transcript_regions, path_to_ref=self.assembly.fasta_path(), out={})
+        self.assembly.intype = intype
+        self.assembly.chromosomes = chromosomes
+        print "Answer:",seqs
+        raise
 
     def test_get_features_from_gtf(self):
         expected = {'eif-3.B': [[14795327, 14795434, 1, 'chrII'], [14795331, 14795434, 1, 'chrII'],
