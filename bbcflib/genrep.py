@@ -278,7 +278,7 @@ class Assembly(object):
                 """%s/nr_assemblies/get_links/%s.json?%s""" %(self.genrep.url,self.nr_assembly_id,request)))
         return url.read()
 
-    def fasta_from_regions(self, regions, out=None, path_to_ref=None, chunk=50000, shuffled=False, ex=None):
+    def fasta_from_regions(self, regions, out=None, path_to_ref=None, chunk=50000, shuffled=False, ex=None, intype=0):
         """
         Get a fasta file with sequences corresponding to the features in the
         bed or sqlite file.
@@ -294,6 +294,8 @@ class Assembly(object):
             If *out* is a (possibly empty) dictionary, will return the updated dictionary.
         :param path_to_ref: (str or dict) path to a fasta file containing the whole reference sequence,
             or a dictionary {chr_name: path} as returned by Assembly.untar_genome_fasta.
+        :param chunk: (int) buffer size (length of the sequence kept in memory before writing).
+        :param intype: (int) if 2, only transcribed sequences are returned (slices of mature RNAs).
         :rtype: (str,int) or (dict,int)
         """
         if out is None: out = unique_filename_in()

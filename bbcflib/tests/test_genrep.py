@@ -75,20 +75,38 @@ class Test_Assembly(unittest.TestCase):
                                for key,group in itertools.groupby(cursor, lambda x: x[0]))
             print "Transcripts:", transcripts
             for tid,exon_coords in transcripts.iteritems():
-                #tstart = exon_coords[0][0]
+                tstart = exon_coords[0][0] # start of first exon
+                tend = exon_coords[-1][1]  # end of last exon
                 for exon in exon_coords:
                     st = max(exon[0],start)
                     en = min(exon[1],end)
                     if en > st:
                         #slices.setdefault(tid, []).append((st-tstart,en-tstart))
-                        slices.setdefault(tid, []).append((st,en))
+                        #slices.setdefault(tid, []).append((st,en))
+                        #slices['names'].append((tid,(start-tstart,end-tstart)))
+                        slices['names'].append('%s|%d-%d' % (tid,max(0,start-tstart),min(end-tstart,tend)))
+                        slices['coord'].append((st,en))
                         cur_chunk += en-st
             return slices,cur_chunk
 
         def _flush_transcript_slices(slices,chrid,chrn,out,path_to_ref):
             """Write the content of *slices* to *out*."""
-            slices.pop('names')
-            slices.pop('coord')
+            #slices.pop('names')
+            #slices.pop('coord')
+            nc = itertools.izip(slices['names'],slices['coord'])
+            gb = itertools.groupby(nc, lambda x: x[0])
+            for name,group in gb:
+                coord = tuple(x[1] for x in group)
+                seqs = self.genrep.get_sequence(chrid, coord, path_to_ref=path_to_ref, chr_name=chrn, ex=ex)
+                seq = ''.join(seqs)
+                if isinstance(out,file):
+                    for i,s in enumerate(seqs):
+                        if s:
+                            out.write(">%s|%s:%d-%d\n%s\n" % (names[i],chrn,coord[i][0],coord[i][1],s))
+            else:
+                out[chrn].extend(seqs)
+            return {'coord':[],'names':[]}
+
             for tid,coord in slices.iteritems():
                 coord.sort()
                 seqs = self.assembly.genrep.get_sequence(chrid, coord, path_to_ref=path_to_ref, chr_name=chrn, ex=ex)
