@@ -149,18 +149,18 @@ def check(source, out=sys.stdout,
     else:
         t = source
         filename = os.path.basename(t.path)
-    is_chr = 'chr' in t.fields
-    is_start = 'start' in t.fields
-    is_end = 'end' in t.fields
-    chr_idx = t.fields.index('chr') if is_chr else None
-    start_idx = t.fields.index('start') if is_start else None
-    end_idx = t.fields.index('end') if is_end else None
     visited_chr = []
     last_chr = None
     last_start = last_end = 0
     lastrow = ''
     n = 0
     s = t.read()
+    is_chr = 'chr' in s.fields
+    is_start = 'start' in s.fields
+    is_end = 'end' in s.fields
+    chr_idx = s.fields.index('chr') if is_chr else None
+    start_idx = s.fields.index('start') if is_start else None
+    end_idx = s.fields.index('end') if is_end else None
     while 1:
         n += 1
         try:
