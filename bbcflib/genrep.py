@@ -358,7 +358,6 @@ class Assembly(object):
                 _f = [f for f in ["start","end","name"] if f in t.fields]
                 cur_chunk = 0
                 for cid,chrom in self.chromosomes.iteritems():
-                    chrlen = chrom['length']
                     if isinstance(path_to_ref,dict):
                         pref = path_to_ref.get(chrom['name'])
                     else:
@@ -369,7 +368,7 @@ class Assembly(object):
                                                   repeat_number=1, sorted=False )
                     for row in features:
                         s = max(row[0],0)
-                        e = min(row[1],chrlen)
+                        e = min(row[1],chrom['length'])
                         name = re.sub('\s+','_',row[2]) if len(row)>2 else chrom['name']
                         slices,cur_chunk = _push_slices(slices,s,e,name,cur_chunk)
                         if cur_chunk > chunk: # buffer is full, write

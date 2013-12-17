@@ -61,57 +61,78 @@ class Test_Assembly(unittest.TestCase):
                             path_to_ref=os.path.join(path,"chrI_ce6_30lines.fa"))
         self.assertEqual(custom_seq, expected)
 
+    #@unittest.skip('')
     def test_transcripts_fasta(self):
         import sqlite3,itertools
-        # cDNA fasta headers are of the form ">trans_id (...)"
-        def _intersect_transcripts(regions):
-            transcript_regions = {}
-            dbpath = self.assembly.sqlite_path()
-            db = sqlite3.connect(dbpath)
-            cursor = db.cursor()
-            for chrom,regs in regions.iteritems():
-                regs = sorted(regs)
-                for reg in regs:
-                    request = """SELECT DISTINCT transcript_id,exon_id,start,end from '%s'
-                                 WHERE end>=%d AND start<%d AND type='exon';""" \
-                              % (chrom,reg[0],reg[1])
-                    cursor.execute(request)
-                    transcripts = dict((key,sorted((g[2],g[3]) for g in group)) \
-                                       for key,group in itertools.groupby(cursor, lambda x: x[0]))
-                    for tid,exon_coords in transcripts.iteritems():
-                        tstart = exon_coords[0][0]
-                        for exon in exon_coords:
-                            st = max(exon[0],reg[0])
-                            en = min(exon[1],reg[1])
-                            if en > st:
-                                transcript_regions.setdefault(tid, []).append((st-tstart,en-tstart))
-            return transcript_regions
+        ex = None
 
-        #import json
-        #exon_mapping = self.assembly.get_exon_mapping()
-        #exons_in_trans = self.assembly.get_exons_in_trans()
-        #with open('exons_in_trans_ce6.json','wb') as f:
-        #    json.dump(exons_in_trans,f)
-        #with open('exon_mapping_ce6.json','wb') as f:
-        #    json.dump(exon_mapping,f)
-        #with open('exons_in_trans_ce6.json') as f:
-        #    exons_in_trans = json.load(f)
-        #with open('exon_mapping_ce6.json') as f:
-        #    exon_mapping = json.load(f)
+        def _push_transcripts_slices(slices,start,end,cur_chunk,cursor,chrom):
+            request = """SELECT DISTINCT transcript_id,exon_id,start,end from '%s'
+                         WHERE end>=%d AND start<%d AND type='exon' ORDER BY transcript_id,start,end;""" \
+                      % (chrom,start,end)
+            cursor.execute(request)
+            transcripts = dict((key,tuple((g[2],g[3]) for g in group)) \
+                               for key,group in itertools.groupby(cursor, lambda x: x[0]))
+            print "Transcripts:", transcripts
+            for tid,exon_coords in transcripts.iteritems():
+                #tstart = exon_coords[0][0]
+                for exon in exon_coords:
+                    st = max(exon[0],start)
+                    en = min(exon[1],end)
+                    if en > st:
+                        #slices.setdefault(tid, []).append((st-tstart,en-tstart))
+                        slices.setdefault(tid, []).append((st,en))
+                        cur_chunk += en-st
+            return slices,cur_chunk
 
-        intype = self.assembly.intype
-        chromosomes = self.assembly.chromosomes
-        self.assembly.intype = 2
-        self.assembly.chromosomes = dict((t[3].split('|')[0],{'length':t[2]-t[1], 'name':t[3].split('|')[0]}) \
-                                          for t in self.assembly.transcript_track())
-        regions = {'chrI':[(4100,10250)]}
-        transcript_regions = _intersect_transcripts(regions)
-        print "Regions:",transcript_regions
-        print "Fasta_path:",self.assembly.fasta_path()
-        seqs = self.assembly.fasta_from_regions(regions=transcript_regions, path_to_ref=self.assembly.fasta_path(), out={})
-        self.assembly.intype = intype
-        self.assembly.chromosomes = chromosomes
-        print "Answer:",seqs
+        def _flush_transcript_slices(slices,chrid,chrn,out,path_to_ref):
+            """Write the content of *slices* to *out*."""
+            slices.pop('names')
+            slices.pop('coord')
+            for tid,coord in slices.iteritems():
+                coord.sort()
+                seqs = self.assembly.genrep.get_sequence(chrid, coord, path_to_ref=path_to_ref, chr_name=chrn, ex=ex)
+                print "seqs",tid,seqs
+                if isinstance(out,file):
+                    out.write(">%s|%s|%s:%d-%d\n%s\n" % (self.assembly.name,tid,chrn,coord[0][0],coord[-1][1],''.join(seqs)))
+                else:
+                    out[chrn].append(''.join(seqs))
+                print out
+            return {'coord':[],'names':[]}
+
+        #regions = {'chrI':[(4100,10250)]}
+        #regions = {'chrI':[(4100,4358)]}
+        regions = {'chrI':[(126947,137740)]}
+        #regions = {'chrI':[(128678,128908)]}
+
+        dbpath = self.assembly.sqlite_path()
+        db = sqlite3.connect(dbpath)
+        cursor = db.cursor()
+
+        path_to_ref = None
+        chunk = 50000
+        cur_chunk = 0
+        slices = {'coord':[],'names':[]}
+        size = 0
+        out = {}
+        for cid,chrom in self.assembly.chromosomes.iteritems():
+            if not(chrom['name'] in regions): continue
+            if isinstance(out,dict): out[chrom['name']] = []
+            if isinstance(path_to_ref,dict):
+                pref = path_to_ref.get(chrom['name'])
+            else:
+                pref = path_to_ref
+            for row in regions[chrom['name']]:
+                s = max(row[0],0)
+                e = min(row[1],chrom['length'])
+                slices,cur_chunk = _push_transcripts_slices(slices,s,e,cur_chunk,cursor,chrom['name'])
+                print "Regions:",slices
+                if cur_chunk > chunk:
+                    size += cur_chunk
+                    slices = _flush_transcript_slices(slices,cid,chrom['name'],out,pref)
+                    cur_chunk = 0
+            size += cur_chunk
+            slices = _flush_transcript_slices(slices,cid,chrom['name'],out,pref)
         raise
 
     def test_get_features_from_gtf(self):
