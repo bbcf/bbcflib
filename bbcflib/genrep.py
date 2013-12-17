@@ -316,14 +316,13 @@ class Assembly(object):
             """Write the content of *slices* to *out*."""
             names = slices['names']
             coord = slices['coord']
+            seqs = self.genrep.get_sequence(chrid, coord, path_to_ref=path_to_ref, chr_name=chrn, ex=ex)
             if isinstance(out,file):
-                for i,s in enumerate(self.genrep.get_sequence(chrid, coord, path_to_ref=path_to_ref,
-                                                              chr_name=chrn, ex=ex)):
+                for i,s in enumerate(seqs):
                     if s:
                         out.write(">%s|%s:%d-%d\n%s\n" % (names[i],chrn,coord[i][0],coord[i][1],s))
             else:
-                out[chrn].extend(self.genrep.get_sequence(chrid, coord, path_to_ref=path_to_ref,
-                                                          chr_name=chrn, ex=ex))
+                out[chrn].extend(seqs)
             return {'coord':[],'names':[]}
 
         slices = {'coord':[],'names':[]}
