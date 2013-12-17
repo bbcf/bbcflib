@@ -297,7 +297,8 @@ class Assembly(object):
         :param chunk: (int) buffer size (length of the sequence kept in memory before writing).
         :param intype: (int) if 2, only transcribed sequences are returned (slices of mature RNAs).
             In this case, the fasta headers have the form
-            ">assembly_id|transcript_id|internal_coordinates|genomic_coordinates". [0]
+            ">assembly_id|transcript_id|genomic_coordinates".
+            For each of the given *regions*, one sequence per intersecting cDNA sequence is reported. [0]
         :rtype: (str,int) or (dict,int)
         """
         if out is None: out = unique_filename_in()
@@ -330,6 +331,7 @@ class Assembly(object):
             return {'coord':[],'names':[]}
 
         def _push_transcript_slices(slices,start,end,name,cur_chunk,chrom,idx):
+            """Add a feature to *slices*, and increment the buffer size *cur_chunk* by the feature's size."""
             dbpath = self.sqlite_path()
             db = sqlite3.connect(dbpath)
             cursor = db.cursor()
@@ -360,7 +362,7 @@ class Assembly(object):
                 s = self.genrep.get_sequence(chrid, coord, path_to_ref=path_to_ref, chr_name=chrn, ex=ex)
                 s = ''.join(s)
                 if isinstance(out,file) and s:
-                    out.write(">%s|%s|%s:%d-%d\n%s\n" % (self.name,name[1],chrn,coord[0][0],coord[-1][1],s))
+                    out.write(">%s|%s:%d-%d\n%s\n" % (self.name,chrn,coord[0][0],coord[-1][1],s))
                 else:
                     out[chrn].append(s)
             return {'coord':[],'names':[]}
