@@ -178,7 +178,8 @@ def check(source, out=sys.stdout,
         start = row[start_idx] if is_start else 0
         end   = row[end_idx] if is_end else 0
         if check_positive and start >= end:
-            out.write("Check positive: %s: empty or reverse region at line %d.\n\n" % (filename,n))
+            row = chr+"\t"+str(start)+"\t"+str(end)
+            out.write("Check positive %s: empty or reverse region at line %d:\n%s\n" % (filename,n,row))
             return False
         if check_sorted:
             if chr != last_chr:
