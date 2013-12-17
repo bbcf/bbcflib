@@ -51,107 +51,20 @@ class Test_Assembly(unittest.TestCase):
 
     def test_fasta_from_regions(self):
         expected = ({'chrI':['G','C','AAGCCTAAGCCTAAGCCTAA','CTAAGCCTAAGCCTAAGCCT','TTTTTGAAAT']}, 52)
-        # GenRep request, list form
+            # GenRep request, list form
         regions = [('chrI',0,1),('chrI',1,2),('chrI',10,30),('chrI',20,40),('chrI',1010,1020)]
         url_seq = self.assembly.fasta_from_regions(regions=regions,out={})
         self.assertEqual(url_seq, expected)
-        # Custom fasta file, dict form
+            # Custom fasta file, dict form
         regions = {'chrI':[(0,1),(1,2),(10,30),(20,40),(1010,1020)]}
         custom_seq = self.assembly.fasta_from_regions(regions=regions,out={},
                             path_to_ref=os.path.join(path,"chrI_ce6_30lines.fa"))
         self.assertEqual(custom_seq, expected)
-
-    #@unittest.skip('')
-    def test_transcripts_fasta(self):
-        import sqlite3,itertools
-        ex = None
-
-        def _push_transcripts_slices(slices,start,end,cur_chunk,cursor,chrom):
-            request = """SELECT DISTINCT transcript_id,exon_id,start,end from '%s'
-                         WHERE end>=%d AND start<%d AND type='exon' ORDER BY transcript_id,start,end;""" \
-                      % (chrom,start,end)
-            cursor.execute(request)
-            transcripts = dict((key,tuple((g[2],g[3]) for g in group)) \
-                               for key,group in itertools.groupby(cursor, lambda x: x[0]))
-            print "Transcripts:", transcripts
-            for tid,exon_coords in transcripts.iteritems():
-                tstart = exon_coords[0][0] # start of first exon
-                tend = exon_coords[-1][1]  # end of last exon
-                for exon in exon_coords:
-                    st = max(exon[0],start)
-                    en = min(exon[1],end)
-                    if en > st:
-                        #slices.setdefault(tid, []).append((st-tstart,en-tstart))
-                        #slices.setdefault(tid, []).append((st,en))
-                        #slices['names'].append((tid,(start-tstart,end-tstart)))
-                        slices['names'].append('%s|%d-%d' % (tid,max(0,start-tstart),min(end-tstart,tend)))
-                        slices['coord'].append((st,en))
-                        cur_chunk += en-st
-            return slices,cur_chunk
-
-        def _flush_transcript_slices(slices,chrid,chrn,out,path_to_ref):
-            """Write the content of *slices* to *out*."""
-            #slices.pop('names')
-            #slices.pop('coord')
-            nc = itertools.izip(slices['names'],slices['coord'])
-            gb = itertools.groupby(nc, lambda x: x[0])
-            for name,group in gb:
-                coord = tuple(x[1] for x in group)
-                seqs = self.genrep.get_sequence(chrid, coord, path_to_ref=path_to_ref, chr_name=chrn, ex=ex)
-                seq = ''.join(seqs)
-                if isinstance(out,file):
-                    for i,s in enumerate(seqs):
-                        if s:
-                            out.write(">%s|%s:%d-%d\n%s\n" % (names[i],chrn,coord[i][0],coord[i][1],s))
-            else:
-                out[chrn].extend(seqs)
-            return {'coord':[],'names':[]}
-
-            for tid,coord in slices.iteritems():
-                coord.sort()
-                seqs = self.assembly.genrep.get_sequence(chrid, coord, path_to_ref=path_to_ref, chr_name=chrn, ex=ex)
-                print "seqs",tid,seqs
-                if isinstance(out,file):
-                    out.write(">%s|%s|%s:%d-%d\n%s\n" % (self.assembly.name,tid,chrn,coord[0][0],coord[-1][1],''.join(seqs)))
-                else:
-                    out[chrn].append(''.join(seqs))
-                print out
-            return {'coord':[],'names':[]}
-
-        #regions = {'chrI':[(4100,10250)]}
-        #regions = {'chrI':[(4100,4358)]}
-        regions = {'chrI':[(126947,137740)]}
-        #regions = {'chrI':[(128678,128908)]}
-
-        dbpath = self.assembly.sqlite_path()
-        db = sqlite3.connect(dbpath)
-        cursor = db.cursor()
-
-        path_to_ref = None
-        chunk = 50000
-        cur_chunk = 0
-        slices = {'coord':[],'names':[]}
-        size = 0
-        out = {}
-        for cid,chrom in self.assembly.chromosomes.iteritems():
-            if not(chrom['name'] in regions): continue
-            if isinstance(out,dict): out[chrom['name']] = []
-            if isinstance(path_to_ref,dict):
-                pref = path_to_ref.get(chrom['name'])
-            else:
-                pref = path_to_ref
-            for row in regions[chrom['name']]:
-                s = max(row[0],0)
-                e = min(row[1],chrom['length'])
-                slices,cur_chunk = _push_transcripts_slices(slices,s,e,cur_chunk,cursor,chrom['name'])
-                print "Regions:",slices
-                if cur_chunk > chunk:
-                    size += cur_chunk
-                    slices = _flush_transcript_slices(slices,cid,chrom['name'],out,pref)
-                    cur_chunk = 0
-            size += cur_chunk
-            slices = _flush_transcript_slices(slices,cid,chrom['name'],out,pref)
-        raise
+            # Fasta from cDNA (intype=2)
+        regions = {'chrI':[(126947,137740)]} # F53G12.5a.1, F53G12.5b, F53G12.4, F53G12.5a.2
+        seq = self.assembly.fasta_from_regions(regions=regions,out={}, intype=2)
+        self.assertEqual(seq[0]['chrI'][1][:40], "ATGCCAGTCGTGAGCGTTAGACCTTTTTCTATGAGAAATG") # F53G12.5b.1
+        self.assertEqual(seq[1], 5870)
 
     def test_get_features_from_gtf(self):
         expected = {'eif-3.B': [[14795327, 14795434, 1, 'chrII'], [14795331, 14795434, 1, 'chrII'],

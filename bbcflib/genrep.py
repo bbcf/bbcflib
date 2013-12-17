@@ -27,7 +27,7 @@ equally well be written::
 """
 
 # Built-in modules #
-import urllib2, json, os, sys, re, gzip, tarfile, bz2, sqlite3
+import urllib2, json, os, sys, re, gzip, tarfile, bz2, sqlite3, itertools
 from datetime import datetime
 from operator import itemgetter
 
@@ -306,7 +306,7 @@ class Assembly(object):
         if path_to_ref is None:
             path_to_ref = self.fasta_by_chrom
 
-        def _push_slices(slices,start,end,name,cur_chunk):
+        def _push_slices(slices,start,end,name,cur_chunk,chrom,idx):
             """Add a feature to *slices*, and increment the buffer size *cur_chunk* by the feature's size."""
             if end > start:
                 slices['coord'].append((start,end))
@@ -327,8 +327,49 @@ class Assembly(object):
                 out[chrn].extend(seqs)
             return {'coord':[],'names':[]}
 
+        def _push_transcript_slices(slices,start,end,name,cur_chunk,chrom,idx):
+            dbpath = self.sqlite_path()
+            db = sqlite3.connect(dbpath)
+            cursor = db.cursor()
+            request = """SELECT DISTINCT transcript_id,exon_id,start,end from '%s'
+                         WHERE end>=%d AND start<%d AND type='exon' ORDER BY transcript_id,start,end;""" \
+                      % (chrom,start,end)
+            cursor.execute(request)
+            transcripts = dict((key,tuple((g[2],g[3]) for g in group)) \
+                               for key,group in itertools.groupby(cursor, lambda x: x[0]))
+            print "Transcripts:", transcripts
+            for tid,exon_coords in transcripts.iteritems():
+                tstart = exon_coords[0][0] # start of first exon
+                tend = exon_coords[-1][1]  # end of last exon
+                for exon in exon_coords:
+                    st = max(exon[0],start)
+                    en = min(exon[1],end)
+                    if en > st:
+                        slices['names'].append((idx,'%s|%d-%d' % (tid,max(0,start-tstart),min(end-tstart,tend-tstart))))
+                        slices['coord'].append((st,en))
+                        cur_chunk += en-st
+            return slices,cur_chunk
+
+        def _flush_transcript_slices(slices,chrid,chrn,out,path_to_ref):
+            """Write the content of *slices* to *out*."""
+            nc = itertools.izip(slices['names'],slices['coord'])
+            gb = itertools.groupby(nc, lambda x: x[0])
+            for name,group in gb:
+                coord = tuple(x[1] for x in group)
+                s = self.genrep.get_sequence(chrid, coord, path_to_ref=path_to_ref, chr_name=chrn, ex=ex)
+                s = ''.join(s)
+                if isinstance(out,file) and s:
+                    out.write(">%s|%s|%s:%d-%d\n%s\n" % (self.name,name,chrn,coord[0],coord[1],s))
+                else:
+                    out[chrn].append(s)
+            return {'coord':[],'names':[]}
+
+        if intype == 2:
+            _push_slices = _push_transcript_slices
+            _flush_slices = _flush_transcript_slices
         slices = {'coord':[],'names':[]}
         size = 0
+        region_idx = 0
         if isinstance(regions,(list,tuple)): # convert to a dict
             reg_dict = {}
             for reg in regions:
@@ -339,46 +380,49 @@ class Assembly(object):
         if isinstance(regions,dict):
             cur_chunk = 0
             for cid,chrom in self.chromosomes.iteritems():
-                if not(chrom['name'] in regions): continue
-                if isinstance(out,dict): out[chrom['name']] = []
+                chrname = chrom['name']
+                if not(chrname in regions): continue
+                if isinstance(out,dict): out[chrname] = []
                 if isinstance(path_to_ref,dict):
-                    pref = path_to_ref.get(chrom['name'])
+                    pref = path_to_ref.get(chrname)
                 else:
                     pref = path_to_ref
-                for row in regions[chrom['name']]:
+                for row in regions[chrname]:
+                    region_idx += 1
                     s = max(row[0],0)
                     e = min(row[1],chrom['length'])
-                    slices,cur_chunk = _push_slices(slices,s,e,self.name,cur_chunk)
+                    slices,cur_chunk = _push_slices(slices,s,e,self.name,cur_chunk,chrname,region_idx)
                     if cur_chunk > chunk:
                         size += cur_chunk
-                        slices = _flush_slices(slices,cid,chrom['name'],out,pref)
+                        slices = _flush_slices(slices,cid,chrname,out,pref)
                         cur_chunk = 0
                 size += cur_chunk
-                slices = _flush_slices(slices,cid,chrom['name'],out,pref)
+                slices = _flush_slices(slices,cid,chrname,out,pref)
         else:
             with track(regions, chrmeta=self.chrmeta) as t:
                 _f = [f for f in ["start","end","name"] if f in t.fields]
                 cur_chunk = 0
                 for cid,chrom in self.chromosomes.iteritems():
+                    chrname = chrom['name']
                     if isinstance(path_to_ref,dict):
-                        pref = path_to_ref.get(chrom['name'])
+                        pref = path_to_ref.get(chrname)
                     else:
                         pref = path_to_ref
-                    features = t.read(selection=chrom['name'],fields=_f)
+                    features = t.read(selection=chrname,fields=_f)
                     if shuffled:
                         features = track_shuffle( features, chrlen=chrom['length'],
                                                   repeat_number=1, sorted=False )
                     for row in features:
                         s = max(row[0],0)
                         e = min(row[1],chrom['length'])
-                        name = re.sub('\s+','_',row[2]) if len(row)>2 else chrom['name']
+                        name = re.sub('\s+','_',row[2]) if len(row)>2 else chrname
                         slices,cur_chunk = _push_slices(slices,s,e,name,cur_chunk)
                         if cur_chunk > chunk: # buffer is full, write
                             size += cur_chunk
-                            slices = _flush_slices(slices,cid,chrom['name'],out,pref)
+                            slices = _flush_slices(slices,cid,chrname,out,pref)
                             cur_chunk = 0
                     size += cur_chunk
-                    slices = _flush_slices(slices,cid,chrom['name'],out,pref)
+                    slices = _flush_slices(slices,cid,chrname,out,pref)
         if _is_filename:
             out.close()
             out = out.name
