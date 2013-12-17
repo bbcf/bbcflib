@@ -296,6 +296,8 @@ class Assembly(object):
             or a dictionary {chr_name: path} as returned by Assembly.untar_genome_fasta.
         :param chunk: (int) buffer size (length of the sequence kept in memory before writing).
         :param intype: (int) if 2, only transcribed sequences are returned (slices of mature RNAs).
+            In this case, the fasta headers have the form
+            ">assembly_id|transcript_id|internal_coordinates|genomic_coordinates". [0]
         :rtype: (str,int) or (dict,int)
         """
         if out is None: out = unique_filename_in()
@@ -337,7 +339,6 @@ class Assembly(object):
             cursor.execute(request)
             transcripts = dict((key,tuple((g[2],g[3]) for g in group)) \
                                for key,group in itertools.groupby(cursor, lambda x: x[0]))
-            print "Transcripts:", transcripts
             for tid,exon_coords in transcripts.iteritems():
                 tstart = exon_coords[0][0] # start of first exon
                 tend = exon_coords[-1][1]  # end of last exon
@@ -359,7 +360,7 @@ class Assembly(object):
                 s = self.genrep.get_sequence(chrid, coord, path_to_ref=path_to_ref, chr_name=chrn, ex=ex)
                 s = ''.join(s)
                 if isinstance(out,file) and s:
-                    out.write(">%s|%s|%s:%d-%d\n%s\n" % (self.name,name,chrn,coord[0],coord[1],s))
+                    out.write(">%s|%s|%s:%d-%d\n%s\n" % (self.name,name[1],chrn,coord[0][0],coord[-1][1],s))
                 else:
                     out[chrn].append(s)
             return {'coord':[],'names':[]}
@@ -413,10 +414,11 @@ class Assembly(object):
                         features = track_shuffle( features, chrlen=chrom['length'],
                                                   repeat_number=1, sorted=False )
                     for row in features:
+                        region_idx += 1
                         s = max(row[0],0)
                         e = min(row[1],chrom['length'])
                         name = re.sub('\s+','_',row[2]) if len(row)>2 else chrname
-                        slices,cur_chunk = _push_slices(slices,s,e,name,cur_chunk)
+                        slices,cur_chunk = _push_slices(slices,s,e,name,cur_chunk,chrname,region_idx)
                         if cur_chunk > chunk: # buffer is full, write
                             size += cur_chunk
                             slices = _flush_slices(slices,cid,chrname,out,pref)

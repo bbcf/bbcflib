@@ -62,6 +62,7 @@ class Test_Assembly(unittest.TestCase):
         self.assertEqual(custom_seq, expected)
             # Fasta from cDNA (intype=2)
         regions = {'chrI':[(126947,137740)]} # F53G12.5a.1, F53G12.5b, F53G12.4, F53G12.5a.2
+        seq = self.assembly.fasta_from_regions(regions=regions,out="test.txt", intype=2)
         seq = self.assembly.fasta_from_regions(regions=regions,out={}, intype=2)
         self.assertEqual(seq[0]['chrI'][1][:40], "ATGCCAGTCGTGAGCGTTAGACCTTTTTCTATGAGAAATG") # F53G12.5b.1
         self.assertEqual(seq[1], 5870)
