@@ -77,8 +77,8 @@ def filter_snp(general,snp_info,sample_stats,mincov,minsnp,ploidy):
     return genotype
 
 @timer
-def all_snps(ex,chrom,vcfs,bams, outall,assembly,sample_names, mincov,minsnp,
-             logfile=sys.stdout,debugfile=sys.stderr):
+def all_snps(ex, chrom, vcfs, bams, outall, assembly, sample_names, mincov, minsnp,
+             logfile=sys.stdout, debugfile=sys.stderr):
     """For a given chromosome, returns a summary file containing all SNPs identified
     in at least one of the samples.
     Each row contains: chromosome id, SNP position, reference base, SNP base (with proportions)
@@ -118,7 +118,7 @@ def all_snps(ex,chrom,vcfs,bams, outall,assembly,sample_names, mincov,minsnp,
         # If there were still snp called at this position after filtering
         if any(current_snps[i] not in ("-","0") for i in current_snp_idx):
             for i in set(range(nsamples))-current_snp_idx:
-                for coverage in bam_tracks[sorder[i]].coverage((chrbam,pos-1,pos)):
+                for coverage in bam_tracks[sorder[i]].coverage((chrom,pos-1,pos)):
                     if coverage[-1] > 0:
                         current_snps[i] = '-'  # '/'.join([ref]*ploidy)
             if pos != lastpos: # indel can be located at the same position as an SNP
@@ -336,13 +336,15 @@ def snp_workflow(ex, job, assembly, minsnp=40., mincov=5, path_to_ref=None, via=
             vcfs[chrom][gid] = vcfs[chrom][gid][0]
         logfile.write("  ...Group %s done.\n" % sample_name); logfile.flush()
     # Targz the pileup files (vcf)
+    tarname = unique_filename_in()
+    tarfh = tarfile.open(tarname, "w:gz")
     for chrom,v in vcfs.iteritems():
-        tarname = unique_filename_in()
-        tarfh = tarfile.open(tarname, "w:gz")
         for gid,vcf in v.iteritems():
             tarfh.add(vcf, arcname="%s_%s.vcf" % (job.groups[gid]['name'],chrom))
-        tarfh.close()
-        ex.add( tarname, description=set_file_descr("vcfs_%s.tar.gz"%chrom,step="pileup",type="tar",view='admin') )
+    tarfh.close()
+    ex.add( tarname, description=set_file_descr("vcfs_%s.tar.gz"%chrom,
+                                                step="pileup",type="tar",
+                                                view='admin') )
 
     logfile.write("\n* Merge info from vcf files\n"); logfile.flush()
     outall = unique_filename_in()
