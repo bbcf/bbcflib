@@ -342,9 +342,7 @@ def snp_workflow(ex, job, assembly, minsnp=40., mincov=5, path_to_ref=None, via=
         for gid,vcf in v.iteritems():
             tarfh.add(vcf, arcname="%s_%s.vcf" % (job.groups[gid]['name'],chrom))
     tarfh.close()
-    ex.add( tarname, description=set_file_descr("vcfs_%s.tar.gz"%chrom,
-                                                step="pileup",type="tar",
-                                                view='admin') )
+    ex.add( tarname, description=set_file_descr("vcfs_files.tar.gz",step="pileup",type="tar",view='admin') )
 
     logfile.write("\n* Merge info from vcf files\n"); logfile.flush()
     outall = unique_filename_in()
