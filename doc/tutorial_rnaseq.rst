@@ -33,7 +33,7 @@ When the job finishes successfully, you will receive an e-mail with a link to th
 
 .. warning::
 
-    Differential expression analysis will not be very reliable if there are no replicates (i.e. only one run per group): in this case all groups will be pooled and the variation between them considered as background biological variability. Prefer considering fold changes over p-values if you have no of few replicates.
+    Differential expression analysis will not be very reliable if there are no replicates (i.e. only one run per group): in this case all groups will be pooled and the variation between them considered as background biological variability. Prefer considering fold changes over p-values if you have no or few replicates.
 
 
 Interactive MA-plot
@@ -48,7 +48,7 @@ From there you can also create an interactive MA-plot to look for differential t
 
 .. image:: images/RNAseq_create_maplot.png
 
-On the graph's page, click on the points you are interested in to display its name in the column on the right. Click on it again to remove it from the list. Click on the name to get information about the selected feature from Ensembl. Note that the graph may take a long time to load and react if there are a lot of features to draw.
+On the graph's page, click on a point you are interested in to display its name in the column on the right. Click on it again to remove it from the list. Click on the name to get information about the selected feature from Ensembl. Note that the graph may take a long time to load and react if there are a lot of features to draw.
 
 .. image:: images/RNAseq_maplot.png
 
