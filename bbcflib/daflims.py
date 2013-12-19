@@ -229,30 +229,33 @@ class DAFLIMS(object):
         def _concat_all(target,llist):
             with open(target, 'w') as output_file:
                 for link in llist:
-                    url = self._open_url(link)
-                    tar = None
-                    if re.sub('.gz[ip]*','',link).endswith(".tar"):
-                        tar = tarfile.open(fileobj=url, mode='r|gz')
-        # Since the tar file contains exactly one file, calling
-        # ``next()`` on the tar gives us the file we want.  We cannot
-        # use ``getnames()[0]`` or similar methods, since they scan
-        # all the way through the file, and we cannot rewind on HTTP
-        # responses.
-                        tar_filename = tar.next()
-        # extractfile returns a file-like object we can stream from.
-                        input_file = tar.extractfile(tar_filename)
-                    elif not(link.endswith(".gz")):
-                        input_file = url
-                    else:
-                        input_file = gzip.GzipFile(fileobj=StringIO.StringIO(url.read()))
-                    while True:
-                        chunk = input_file.read(4096)
-                        if chunk == '':
-                            break
+                    try:
+                        url = self._open_url(link)
+                        tar = None
+                        if re.sub('.gz[ip]*','',link).endswith(".tar"):
+                            tar = tarfile.open(fileobj=url, mode='r|gz')
+            # Since the tar file contains exactly one file, calling
+            # ``next()`` on the tar gives us the file we want.  We cannot
+            # use ``getnames()[0]`` or similar methods, since they scan
+            # all the way through the file, and we cannot rewind on HTTP
+            # responses.
+                            tar_filename = tar.next()
+            # extractfile returns a file-like object we can stream from.
+                            input_file = tar.extractfile(tar_filename)
+                        elif not(link.endswith(".gz")):
+                            input_file = url
                         else:
-                            output_file.write(chunk)
-                    input_file.close()
-                    if tar: tar.close()
+                            input_file = gzip.GzipFile(fileobj=StringIO.StringIO(url.read()))
+                        while True:
+                            chunk = input_file.read(4096)
+                            if chunk == '':
+                                break
+                            else:
+                                output_file.write(chunk)
+                        input_file.close()
+                        if tar: tar.close()
+                    except Exception as e:
+                        raise Exception("Problem with file %s: %s"%(link,e))
 
         if to == None:
             target = unique_filename_in()
