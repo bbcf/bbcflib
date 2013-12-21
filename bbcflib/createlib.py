@@ -37,27 +37,27 @@ def parse_fragFile(fragfile,chrom_dict={}):
     """
     Parse fragment file to create segment info bed file and fragment bed file
     """
-    segInfoBedFile=unique_filename_in()
-    fragmentBedFile=unique_filename_in()
-    o=open(segInfoBedFile,'w')
-    obed=open(fragmentBedFile,'w')
+    segInfoBedFile = unique_filename_in()
+    fragmentBedFile = unique_filename_in()
+    o = open(segInfoBedFile,'w')
+    obed = open(fragmentBedFile,'w')
     with open(fragfile,'r') as f:
         s = f.next()
         for s in f:
             if re.search('FragIsNotValid',s): continue
-            s=s.strip().split('\t')
-            chrom=chrom_dict.get(s[1],s[1])
-            fragmentInfo='|'.join(['',s[0],chrom+':'+str(int(s[2])+1)+'-'+s[3],
-                                   'indexOfSecondRestSiteOcc='+s[10],
-                                   'status='+s[-1],'length='+str(int(s[3])-int(s[2])),
-                                   '0','0','0','0'])
+            s = s.strip().split('\t')
+            chrom = chrom_dict.get(s[1],s[1])
+            fragmentInfo = '|'.join(['',s[0],chrom+':'+str(int(s[2])+1)+'-'+s[3],
+                                     'indexOfSecondRestSiteOcc='+s[10],
+                                     'status='+s[-1],'length='+str(int(s[3])-int(s[2])),
+                                     '0','0','0','0'])
             o.write('\t'.join([chrom,s[5],s[6],'type=startSegment'+fragmentInfo])+'\n')
             o.write('\t'.join([chrom,s[8],s[9],'type=endSegment'+fragmentInfo])+'\n')
             row = [chrom,s[2],s[3],'frag'+s[0]]
             obed.write('\t'.join(row)+'\n')
-            row[1:3]=[s[5],s[6]]
+            row[1:3] = [s[5],s[6]]
             obed.write('\t'.join(row)+'_startSeq\n')
-            row[1:3]=[s[8],s[9]]
+            row[1:3] = [s[8],s[9]]
             obed.write('\t'.join(row)+'_endSeq\n')
     o.close()
     obed.close()
@@ -155,12 +155,11 @@ def createLibrary(ex, assembly_or_fasta, params, url=GlobalHtsUrl, via='local'):
         print('primary='+params['primary']+" ; "+'secondary='+params['secondary'])
         return [None,None,None,None]
 
-    if isinstance(assembly_or_fasta,genrep.Assembly):
-        chrnames = assembly_or_fasta.chrnames
-        allfiles = assembly_or_fasta.fasta_by_chrom  #assembly_or_fasta.untar_genome_fasta()
-    else:
-        allfiles["lib"] = assembly_or_fasta
-        chrnames = ["lib"]
+    if not isinstance(assembly_or_fasta,genrep.Assembly):
+        assembly_or_fasta = genrep.Assembly( fasta=assembly_or_fasta )
+    chrnames = assembly_or_fasta.chrnames
+    chrom_map = dict((k,v['name']) for k,v in assembly_or_fasta.chromosomes.iteritems())
+    allfiles = assembly_or_fasta.fasta_by_chrom  #assembly_or_fasta.untar_genome_fasta()
 
     libfiles = dict((c, getRestEnzymeOccAndSeq.nonblocking( ex, f,
                                                             params['primary'], params['secondary'],
@@ -175,7 +174,7 @@ def createLibrary(ex, assembly_or_fasta, params, url=GlobalHtsUrl, via='local'):
         if not os.path.getsize(libfiles[chrom][1])>0:
             time.sleep(60)
             touch(ex,libfiles[chrom][1])
-        bedfiles[chrom] = parse_fragFile(libfiles[chrom][1])
+        bedfiles[chrom] = parse_fragFile(libfiles[chrom][1],chrom_map)
     rescov = coverageInRepeats(ex, bedfiles, params['species'], outdir=resfile, via=via)
     bedchrom = [os.path.join(resfile,chrom+".bed") for chrom in chrnames]
     cat(bedchrom,out=resfile+".bed")
