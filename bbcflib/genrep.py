@@ -504,7 +504,10 @@ class Assembly(object):
             intype = self.intype
         if hasattr(self,"fasta_origin"):
             if chromosome is not None:
-                return self._fasta_by_chrom[chromosome]
+                if chromosome in self._fasta_by_chrom:
+                    return self._fasta_by_chrom[chromosome]
+                if chromosome[0] in self._fasta_by_chrom:
+                    return self._fasta_by_chrom[chromosome[0]]
             return self.fasta_origin
         root = os.path.join(self.genrep.root,"nr_assemblies/fasta")
         path = os.path.join(root,self.md5+".tar.gz")
