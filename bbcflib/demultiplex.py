@@ -106,8 +106,8 @@ def parallel_exonerate(ex, subfiles, dbFile, grp_descr,
         futures2.append(exonerate.nonblocking(ex,faSubFiles[-1],dbFile,minScore=my_minscore,
                                               via=via,stdout=subResFile,memory=6))
         resExonerate.append(subResFile)
-    for n,f in enumerate(resExonerate):
-        futures2[n].wait()
+    for nf,f in enumerate(resExonerate):
+        futures2[nf].wait()
         (resSplitExonerate,alignments) = split_exonerate(f,minScore,l=l,n=n)
         all_unaligned.append(alignments["unaligned"])
         all_ambiguous.append(alignments["ambiguous"])
