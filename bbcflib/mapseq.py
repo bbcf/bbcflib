@@ -1418,6 +1418,8 @@ def get_bam_wig_files( ex, job, minilims=None, hts_url=None, suffix=['fwd','rev'
                 mapped_files[gid][rid]['poisson_threshold'] = poisson_threshold( 50*stats["actual_coverage"] )
             mapped_files[gid][rid].update(job.files.get(gid,{}).get(rid,{}))
     job.files = mapped_files
+    if ms_job.options.get('input_type_id',0) > 1: 
+        job.assembly.intype = ms_job.options['input_type_id']
     return job
 
 #-----------------------------------#
