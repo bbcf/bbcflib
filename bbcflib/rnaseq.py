@@ -494,6 +494,7 @@ def rnaseq_workflow(ex, job, assembly=None,
         if assembly.intype==2: # usual transcriptome
             tmap = assembly.get_transcript_mapping()
             ftype = "Transcripts"
+            header = ["TranscriptID"]
         else: # build custom transcriptome
             firstbam = job.files.itervalues().next().itervalues().next()['bam']
             firstbamtrack = track(firstbam,format='bam')
@@ -501,6 +502,7 @@ def rnaseq_workflow(ex, job, assembly=None,
             for c,meta in firstbamtrack.chrmeta.iteritems():
                 tmap[c] = ('','',0,meta['length'],meta['length'],0,'') #(gene_id,gene_name,start,end,length,strand,chr)
             ftype = "Custom"
+            header = ["CustomID"] 
         logfile.write("* Build pileups\n"); logfile.flush()
         pileups={}
         for gid,files in job.files.iteritems():
@@ -521,8 +523,8 @@ def rnaseq_workflow(ex, job, assembly=None,
                 tcounts[t] = c
         lengths = asarray([tmap[t][3]-tmap[t][2] for t in tcounts.iterkeys()])
         trans_data = norm_and_format(tcounts,lengths,tmap,(2,3,0,1,5,6))
-        hconds = ["counts."+c for c in conditions] + ["norm."+c for c in conditions] + ["rpkm."+c for c in conditions]
-        header = ["CustomID"] + hconds + ["Start","End","GeneID","GeneName","Strand","Chromosome"]
+        header += ["counts."+c for c in conditions] + ["norm."+c for c in conditions] + ["rpkm."+c for c in conditions]
+        header += ["Start","End","GeneID","GeneName","Strand","Chromosome"]
         trans_file = save_results(ex,trans_data,conditions,group_ids,assembly,
                                   header=header,feature_type=ftype,logfile=logfile)
         differential_analysis(ex, trans_data, header, rpath, logfile, debugfile, feature_type=ftype.lower(),via=via)
