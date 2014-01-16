@@ -232,7 +232,7 @@ def demultiplex_workflow(ex, job, gl, file_path="../", via='lsf',
         resExonerate = parallel_exonerate(ex, allSubFiles, primersFile,
                                           (gid, group['name']),
                                           minScore=int(params['s']),
-                                          n=params['n'], x=params['x'],
+                                          n=int(params['n']), x=int(params['x']),
                                           l=int(params['l']), via=via)
         logfile.write("Will get sequences to filter\n");logfile.flush()
         seqToFilter = getSeqToFilter(ex,primersFile)
