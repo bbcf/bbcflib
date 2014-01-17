@@ -318,7 +318,7 @@ try:
             else:
                 return FeatureStream(_coverage(pboth), fields=_f)
 
-        def PE_fragment_size(self, region):
+        def PE_fragment_size(self, region, midpoint=False):
             """
             Retrieves fragment sizes from paired-end data, and returns a bedgraph-style track::
 
@@ -327,6 +327,7 @@ try:
             :param region: tuple `(chr,start,end)`. `chr` has to be
                 present in the BAM file's header. `start` and `end` are 0-based
                 coordinates, counting from the beginning of feature `chr` and can be omitted.
+            :param midpoint: attribute length to fragment midpoint (as opposed to all positions within fragment) 
             :rtype: FeatureStream with fields ['chr','start','end','score'].
             """
             def _frag_cover(region):
@@ -335,7 +336,11 @@ try:
                 for read in self.fetch(*region[:3]):
                     if read.is_reverse or not read.is_proper_pair: continue
                     flen = read.isize
-                    for p in range(read.pos,read.pos+flen):
+                    if midpoint:
+                        posrange = (read.pos+flen/2,)
+                    else:
+                        posrange = range(read.pos,read.pos+flen)
+                    for p in posrange:
                         if p in _buff: _buff[p].append(flen)
                         else: _buff[p] = [flen]
                     for p in sorted(_buff.keys()):
@@ -343,9 +348,6 @@ try:
                         fraglen = _buff.pop(p)
                         score = sum(fraglen)/float(len(fraglen))
                         yield (p,score)
-#                    midpos = read.pos+flen/2
-#                    if midpos in _buff: _buff[midpos].append(flen)
-#                    else: _buff[midpos] = [flen]
                 for p in sorted(_buff.keys()):
                     fraglen = _buff[p]
                     score = sum(fraglen)/float(len(fraglen))
