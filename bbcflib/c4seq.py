@@ -289,7 +289,7 @@ def c4seq_workflow( ex, job, primers_dict, assembly,
                                                                groupId=gid,step=step,type="bed",view="admin" ))
         fname = "segToFrag_"+job.groups[gid]['name']
         ex.add( resfiles[3], description=set_file_descr( fname+"_all.sql",
-                                                         groupId=gid,step=step,type="sql",view="admin",
+                                                         groupId=gid,step=step,type="sql",
                                                          comment="all informative frags - null included" ))
         trsql = track(resfiles[3])
         bwig = unique_filename_in()+".bw"
