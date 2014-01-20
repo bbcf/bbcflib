@@ -38,7 +38,7 @@ def parse_vcf(vcf_line):
     if not vcf_line.strip(): return ''
     line = vcf_line.strip().split('\t')
     chrbam,pos,id,ref,alt,qual,filter,info,format = line[:9]
-    #   qual  : -10 log_10 P(call in ALT is wrong) - the higher, the best.
+    #   qual  : -10 log_10 P (call in ALT is wrong) - the higher, the better.
     #   filter: semicolon-sep list of filters that failed to call snp.
     #   info  : added by bcftools about SNP calling.
     #   format: genotype fields - for parsing the next columns.

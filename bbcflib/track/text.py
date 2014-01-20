@@ -433,7 +433,7 @@ class TextTrack(Track):
             info = args[0]
         else:
             info = kw.get('info')
-        if isinstance(info,str):
+        if isinstance(info,basestring):
             self.filehandle.write(info+'\n')
             self.header = len(info.split('\r\n'))
         else:
