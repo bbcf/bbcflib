@@ -672,7 +672,7 @@ def parallel_bowtie( ex, index, reads, unmapped=None, n_lines=16000000, bowtie_a
                           via=via, memory=mlim, threads=5)
                    for n,sf in enumerate(subfiles)]
     else:
-        futures = [btcall(ex, index, sf, args=bowtie_args+["-p","5"], 
+        futures = [btcall(ex, index, sf, args=bowtie_args+["-p","5"],
                           via=via, memory=mlim, threads=5) for sf in subfiles]
     samfiles = [f.wait() for f in futures]
     futures = []
@@ -813,7 +813,7 @@ def pprint_bamstats(sample_stats, textfile=None):
 
 def map_reads( ex, fastq_file, chromosomes, bowtie_index,
                bowtie_2=False, maxhits=5, antibody_enrichment=50,
-               keep_unmapped=True, remove_pcr_duplicates=True, bwt_args=None, 
+               keep_unmapped=True, remove_pcr_duplicates=True, bwt_args=None,
                via='lsf' ):
     """Runs ``bowtie`` in parallel over lsf for the `fastq_file` input.
     Returns the full bamfile, its filtered version (see 'remove_duplicate_reads')
@@ -891,7 +891,7 @@ def map_reads( ex, fastq_file, chromosomes, bowtie_index,
         gzipfile( ex, unmapped+"_1" )
         gzipfile( ex, unmapped+"_2" )
         return_dict['unmapped'] = unmapped
-    elif os.path.exists(unmapped):
+    elif unmapped and os.path.exists(unmapped):
         gzipfile( ex, unmapped )
         return_dict['unmapped'] = unmapped
     if remove_pcr_duplicates:
@@ -1266,7 +1266,7 @@ def mapseq_workflow(ex, job, assembly, map_args, gl, bowtie2=False, via="local",
     return 0
 
 
-def get_bam_wig_files( ex, job, minilims=None, hts_url=None, suffix=['fwd','rev'], 
+def get_bam_wig_files( ex, job, minilims=None, hts_url=None, suffix=['fwd','rev'],
                        script_path='', fetch_unmapped=False, via='lsf' ):
     """
     Will replace file references by actual file paths in the 'job' object.
