@@ -491,18 +491,21 @@ def rnaseq_workflow(ex, job, assembly=None,
 
     # If the reads were aligned on transcriptome (maybe custom), do that and skip the rest
     if hasattr(assembly,"fasta_origin") or assembly.intype == 2:
+        tmap = {}
         if assembly.intype==2: # usual transcriptome
-            tmap = assembly.get_transcript_mapping()
-            ftype = "Transcripts"
-            header = ["TranscriptID"]
-        else: # build custom transcriptome
+            try:
+                tmap = assembly.get_transcript_mapping()
+                ftype = "Transcripts"
+                header = ["TranscriptID"]
+            except:
+                pass
+        if hasattr(assembly,"fasta_origin"): # build custom transcriptome
             firstbam = job.files.itervalues().next().itervalues().next()['bam']
             firstbamtrack = track(firstbam,format='bam')
-            tmap={}
             for c,meta in firstbamtrack.chrmeta.iteritems():
                 tmap[c] = ('','',0,meta['length'],meta['length'],0,'') #(gene_id,gene_name,start,end,length,strand,chr)
             ftype = "Custom"
-            header = ["CustomID"] 
+            header = ["CustomID"]
         logfile.write("* Build pileups\n"); logfile.flush()
         pileups={}
         for gid,files in job.files.iteritems():
