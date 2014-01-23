@@ -886,14 +886,15 @@ def map_reads( ex, fastq_file, chromosomes, bowtie_index,
 ###    sorted_bam = add_and_index_bam( ex, bam, set_file_descr(name+"complete.bam",**bam_descr) )
     full_stats = bamstats( ex, sorted_bam )
     return_dict = {"fullbam": sorted_bam}
-    if is_paired_end and os.path.exists(unmapped+"_1"):
-        touch( ex, unmapped )
-        gzipfile( ex, unmapped+"_1" )
-        gzipfile( ex, unmapped+"_2" )
-        return_dict['unmapped'] = unmapped
-    elif unmapped and os.path.exists(unmapped):
-        gzipfile( ex, unmapped )
-        return_dict['unmapped'] = unmapped
+    if unmapped:
+        if is_paired_end and os.path.exists(unmapped+"_1"):
+            touch( ex, unmapped )
+            gzipfile( ex, unmapped+"_1" )
+            gzipfile( ex, unmapped+"_2" )
+            return_dict['unmapped'] = unmapped
+        elif os.path.exists(unmapped):
+            gzipfile( ex, unmapped )
+            return_dict['unmapped'] = unmapped
     if remove_pcr_duplicates:
         thresh = poisson_threshold( int(antibody_enrichment)*full_stats["actual_coverage"] )
         reduced_bam = remove_duplicate_reads( sorted_bam, chromosomes, maxhits, thresh, convert=True )
