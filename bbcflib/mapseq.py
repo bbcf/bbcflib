@@ -891,7 +891,7 @@ def map_reads( ex, fastq_file, chromosomes, bowtie_index,
         gzipfile( ex, unmapped+"_1" )
         gzipfile( ex, unmapped+"_2" )
         return_dict['unmapped'] = unmapped
-    elif os.path.exists(unmapped):
+    elif unmapped and os.path.exists(unmapped):
         gzipfile( ex, unmapped )
         return_dict['unmapped'] = unmapped
     if remove_pcr_duplicates:
