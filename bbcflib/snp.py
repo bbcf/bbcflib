@@ -45,8 +45,9 @@ def parse_vcf(vcf_line):
     general = (chrbam,int(pos),ref.upper(),alt,float(qual))
     for x in info.split(';'):
         if x != 'INDEL':
-            a,b = x.split('=')
-            snp_info[a] = b
+            if x:
+                a,b = x.split('=')
+                snp_info[a] = b
         else:
             snp_info['INDEL'] = True
     sample_stats = (format,line[9]) # for us, always one sample at a time
