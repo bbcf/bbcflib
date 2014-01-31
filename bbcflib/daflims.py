@@ -154,7 +154,10 @@ class DAFLIMS(object):
             if not(int(q[0]) in rtn): rtn[int(q[0])] = {}
             if len(q)<6 or q[5] in check_type[type]:
                 rtn[int(q[0])][(int(q[3]),int(q[4]))] = q[2]
-        return rtn[max(rtn.keys())]
+        for key in sorted(rtn.keys(),reverse=True):
+            if rtn[key].values()[1][:7] == 'http://':
+                return rtn[key]
+        return rtn[key]
 
     def _lanedesc(self, facility, machine, run, lane, libname=None):
         """Fetch the metadata of particular data set in the LIMS.
