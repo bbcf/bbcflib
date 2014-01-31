@@ -186,7 +186,7 @@ def heatmap(M,output=None,format='pdf',new=True,last=True,
       myBreaks = seq(ymin,ymax,length.out=15)
       myColors = rev(colorRampPalette(brewer.pal(10,"RdYlBu"))(length(myBreaks)-1))
 #      myCor = function(x) {as.dist(1-cor(t(x),use="pairwise.complete.ob"))}
-      par(cex.main=1)
+      par(cex.main=1,oma=c(0,5,0,15))
       heatmap.2(as.matrix(Mdata),
                 col=myColors, trace="none", breaks=myBreaks, #distfun=myCor,
                 na.rm=TRUE, density.info='none'%s)""" %plotopt)
