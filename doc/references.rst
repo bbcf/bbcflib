@@ -7,12 +7,7 @@ Main reference
 --------------
 .. BBCF (http://bbcf.epfl.ch/)
 
-A manuscript about the HTSstation is in preparation.
-
-For now, please refer to us with the URL below:
-
-http://htsstation.epfl.ch/
-
+David, FPA et al. HTSstation: A Web Application and Open-Access Libraries for High-Throughput Sequencing Data Analysis. `PLoS ONE 9, e85879 (2014) <http://www.plosone.org/article/info%3Adoi%2F10.1371%2Fjournal.pone.0085879>`_.
 
 Map-seq
 -------
