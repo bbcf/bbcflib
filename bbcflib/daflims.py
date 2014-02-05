@@ -155,7 +155,7 @@ class DAFLIMS(object):
             if len(q)<6 or q[5] in check_type[type]:
                 rtn[int(q[0])][(int(q[3]),int(q[4]))] = q[2]
         for key in sorted(rtn.keys(),reverse=True):
-            if rtn[key].values()[1][:7] == 'http://':
+            if rtn[key].values()[0][:7] == 'http://':
                 return rtn[key]
         return rtn[key]
 
