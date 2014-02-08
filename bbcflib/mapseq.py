@@ -1382,6 +1382,8 @@ def get_bam_wig_files( ex, job, minilims=None, hts_url=None, suffix=['fwd','rev'
                         read_exts[rid] = stats.get('read_length',50)
                 else:
                     ms_job = job
+                msintp = int(ms_job.options.get('input_type_id',0) or 0)
+                if msintp > 0: job.assembly.intype = msintp
                 if str(ms_job.options.get('compute_densities','False')).lower() in ['1','true','t']:
                     job.options['merge_strands'] = int(ms_job.options.get('merge_strands',-1))
                     if ((job.options['merge_strands']<0 and len(suffix)>1) or
@@ -1419,8 +1421,6 @@ def get_bam_wig_files( ex, job, minilims=None, hts_url=None, suffix=['fwd','rev'
                 mapped_files[gid][rid]['poisson_threshold'] = poisson_threshold( 50*stats["actual_coverage"] )
             mapped_files[gid][rid].update(job.files.get(gid,{}).get(rid,{}))
     job.files = mapped_files
-    msintp = int(ms_job.options.get('input_type_id',0) or 0)
-    if msintp > 0: job.assembly.intype = msintp
     return job
 
 #-----------------------------------#
