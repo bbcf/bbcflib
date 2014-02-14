@@ -36,10 +36,28 @@ test = False
 
 class Counter(object):
     def __init__(self):
-        self.n = 0
+        self.n = 0 # total number of reads
+        self.start = 0 # exon start
+        self.counts = [] # vector of counts per non-zero position
     def __call__(self, alignment):
         NH = [1.0/t[1] for t in alignment.tags if t[0]=='NH']+[1]
         self.n += NH[0]
+        try:
+            self.counts[alignment.pos-self.start] += NH[0]
+        except IndexError:
+            pass # read overflows but is bigger than the exon, we don't care
+    def remove_duplicates(self):
+        """Fetches all reads mapped to a transcript, checks if there are mapping positions
+        where the number of reads is more than N times the average for this gene.
+        If there are, shrink them to the same level as the others."""
+        Nsigma = 50 # arbitrary
+        argmax = self.counts.index(max(self.counts))
+        average = sum(self.counts[:argmax]+self.counts[argmax+1:]) / (len(self.counts)-1)
+        #variance = average # Poisson approx
+        #limit = round(average+Nsigma*(variance**0.5)+0.5) # avg + N x stdev
+        limit = Nsigma*average
+        self.counts = [c if c < limit else average for c in self.counts]
+
 
 def positive(x):
     """Set to zero all negative components of an array."""
@@ -186,30 +204,6 @@ def build_pileup(bamfile, assembly, gene_mapping, exon_mapping, trans_in_gene, e
     :type bamfile: string
     :type exons: list
     """
-    class Counter(object):
-        def __init__(self):
-            self.n = 0 # total number of reads
-            self.start = 0 # exon start
-            self.counts = [] # vector of counts per non-zero position
-        def __call__(self, alignment):
-            NH = [1.0/t[1] for t in alignment.tags if t[0]=='NH']+[1]
-            self.n += NH[0]
-            try:
-                self.counts[alignment.pos-self.start] += NH[0]
-            except IndexError:
-                pass # read overflows but is bigger than the exon, we don't care
-        def remove_duplicates(self):
-            """Fetches all reads mapped to a transcript, checks if there are mapping positions
-            where the number of reads is more than N times the average for this gene.
-            If there are, shrink them to the same level as the others."""
-            Nsigma = 50 # arbitrary
-            argmax = self.counts.index(max(self.counts))
-            average = sum(self.counts[:argmax]+self.counts[argmax+1:]) / (len(self.counts)-1)
-            #variance = average # Poisson approx
-            #limit = round(average+Nsigma*(variance**0.5)+0.5) # avg + N x stdev
-            limit = Nsigma*average
-            self.counts = [c if c < limit else average for c in self.counts]
-
     counts = {}
     try: sam = pysam.Samfile(bamfile, 'rb')
     except ValueError: sam = pysam.Samfile(bamfile,'r')
