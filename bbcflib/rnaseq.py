@@ -294,7 +294,7 @@ def save_results(ex, lines, conditions, group_ids, assembly, header, feature_typ
             for chrom, feats in towrite.iteritems():
                 tr.write(cobble(sorted_stream(FeatureStream(feats, fields=['start','end','score']))),chrom=chrom,clip=True)
             description = set_file_descr(feature_type.lower()+"_"+group+".sql", step="pileup", type="sql",
-                                         groupId=group_ids[group], gdv='1')
+                                         groupId=group_ids[group])
             ex.add(filename+'.sql', description=description)
             # bigWig track - UCSC
             try: # if the bigWig conversion program fails, the file is not created
