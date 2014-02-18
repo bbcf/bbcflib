@@ -12,15 +12,15 @@ For non-demultiplexed jobs, the original `Fastq <http://en.wikipedia.org/wiki/FA
 
 .. image:: images/mapseq_newjob.png
 
-Reads files are organized by `groups` (experimental conditions) and `runs` (replicates). 
+Reads files are organized by `groups` (experimental conditions) and `runs` (replicates).
 Each group must be given a name that will be used in output file names and reports to reference them.
-Make sure to use short names without spaces (prefer "_" character to separate words) and without any special characters in it (e.g,  %&?!;,) 
+Make sure to use short names without spaces (prefer "_" character to separate words) and without any special characters in it (e.g,  %&?!;,)
 
 Paired-end Reads
 ----------------
 
 If reads are provided via a reference to the LIMS or via an SRA link, paired-end mapping will be automatically configured.
-If they are provided as file uploads, they must be given as a comma-separated pair of fastq files: `sample_R1.fastq,sample_R2.fastq`. 
+If they are provided as file uploads, they must be given as a comma-separated pair of fastq files: `sample_R1.fastq,sample_R2.fastq`.
 
 Choose your reference
 ---------------------
@@ -45,8 +45,16 @@ Please give a name to your analysis that can be refered to later, in particular 
 Bowtie options
 --------------
 
-Default Bowtie options are::
-* --best --strata --chunkmbs 512 -Sam 20
+Default Bowtie2 options are::
+
+    ``--end-to-end --sensitive -k 20``
+
+Through a config file, one can force using Bowtie1 instead (see
+`config files <http://bbcf.epfl.ch/bbcflib/tutorial_config_files.html>`_).
+Default Bowtie1 options are::
+
+    ``--best --strata --chunkmbs 512 -Sam 20``
+
 Output is converted to `BAM <http://samtools.sourceforge.net/>`_ (file `sampleName_complete.bam`) then filtered to retain only the mapped reads with at most **5** hits in the reference. The number of hits for each reads is indicated in the BAM file with **NH** field (first read has 1 hit, second has 3)::
 
  >samtools view sampleName_filtered.bam
@@ -59,12 +67,12 @@ If the `Discard PCR duplicates` option is given, only at most **n** reads per st
 Mapping report
 --------------
 
-Each mapping run will generate a :download:`mapping report <mapping_report.pdf>` displaying some general statistics about the Bowtie mappings (number of mismatches compared to reference, number of multiple hits, forward/reverse strand balance). 
+Each mapping run will generate a :download:`mapping report <mapping_report.pdf>` displaying some general statistics about the Bowtie mappings (number of mismatches compared to reference, number of multiple hits, forward/reverse strand balance).
 
 Densities output
 ----------------
 
-For reads mapped to the genome, a read density file can be generated. This will provide genomic position-specific reads counts normalized by total number of reads (in units of 10 millions), where each multiple mapping read is counted as **1/total count**. 
+For reads mapped to the genome, a read density file can be generated. This will provide genomic position-specific reads counts normalized by total number of reads (in units of 10 millions), where each multiple mapping read is counted as **1/total count**.
 Reads are extended to a specified length (by the default the read length of the sequencing run). If `merge strands` is specified as **NA**, two strand-specific densities are produced, if a number **S** is given as `merge strands` value, then a single density is calculated as the average of the two strands after shifting each by **S** bases in downstream direction. *n*S**  should therefore correspond to half the difference between average sequencing fragment length et read extension.
 
 These densities are available in the results page as `sqlite <http://bbcf.epfl.ch/twiki/bin/view/BBCF/SqLite>`_ and `bigwig <http://genome.ucsc.edu/goldenPath/help/bigWig.html>`_ formats. If `Create GDV project` is specified, the files will be uploaded in a new project on `GDV <http://svitsrv25.epfl.ch/gdv/>`_.
