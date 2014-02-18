@@ -233,4 +233,20 @@ In the ChIP-seq module, the following options are valid, with the following defa
     run_meme=False# run Meme motif search on peaks
     macs_args=["--bw","200"]# list of MACS command-line arguments
 
+RNA-seq parameters
+'''''''''''''''''''
 
+In the RNA-seq module, the following options are valid, with the following defaults::
+
+    [Options]
+    unmapped=True         # remap on transcriptome the reads that did not map to the genome initially
+    find_junctions=False  # use SOAPsplice to find splicing junctions
+
+SNP parameters
+'''''''''''''''''''
+
+In the RNA-seq module, the following options are valid, with the following defaults::
+
+    [Options]
+    minsnp=5
+    mincov=40

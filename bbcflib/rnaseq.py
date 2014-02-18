@@ -85,7 +85,7 @@ def lsqnonneg(C, d, x0=None, tol=None, itmax_factor=3):
     :type itmax_factor: int
     :rtype: *x*: numpy array, *resnorm*: float, *res*: numpy array
 
-    Reference: Lawson, C.L. and R.J. Hanson, Solving Least-Squares Problems, Prentice-Hall, Chapter 23, p. 161, 1974.
+    Reference: C.L. Lawson and R.J. Hanson, Solving Least-Squares Problems, Prentice-Hall, Chapter 23, p. 161, 1974.
     `<http://diffusion-mri.googlecode.com/svn/trunk/Python/lsqnonneg.py>`_
     """
     eps = 2.22e-16 # from Matlab
