@@ -18,7 +18,7 @@ from operator import itemgetter
 # Internal modules #
 from bbcflib.common import set_file_descr, unique_filename_in, cat, timer
 from bbcflib.genrep import Assembly
-from bbcflib.mapseq import add_and_index_bam, sam_to_bam, map_reads
+from bbcflib.mapseq import add_and_index_bam, sam_to_bam, map_reads, plot_stats
 from bbcflib.gfminer.common import cobble, sorted_stream, map_chromosomes, duplicate, apply
 from bbcflib.track import track, FeatureStream, convert
 from bein import program
@@ -231,11 +231,10 @@ def build_pileup(bamfile, assembly, gene_mapping, exon_mapping, trans_in_gene, e
                 start = e[1]-ostart; end = e[2]-ostart
             if not ref: continue
             try:
-                #The callback is executed for each alignment in a region
                 c.n = 0
                 c.counts = [0]*(2*(end-start)+1) # 2x because of reads overflow (not strict ref interval)
                 c.start = start
-                sam.fetch(ref,start,end, callback=c)
+                sam.fetch(ref,start,end, callback=c)  # calls Counter.__call__ for each alignment
                 c.remove_duplicates()
             except ValueError,ve: # unknown reference
                 debugfile.write(str(ve)); debugfile.flush()
@@ -542,8 +541,9 @@ def rnaseq_workflow(ex, job, assembly=None,
     if unmapped:
         logfile.write("* Align unmapped reads on transcriptome\n"); logfile.flush()
         try:
-            unmapped_fastq,additionals = align_unmapped(ex,job,assembly,group_names,
-                                                        exon_mapping,transcript_mapping,exons_in_trans,via)
+            unmapped_fastq,additionals = align_unmapped(ex,job,assembly,group_names,rpath,
+                                                        exon_mapping,transcript_mapping,exons_in_trans,via,
+                                                        logfile=logfile, debugfile=debugfile)
         except Exception, error:
             debugfile.write(str(error)); debugfile.flush()
 
@@ -832,8 +832,9 @@ def convert_junc_file(filename, assembly):
 #-------------------------- UNMAPPED READS ----------------------------#
 
 @timer
-def align_unmapped( ex, job, assembly, group_names,
-                    exon_mapping, transcript_mapping, exons_in_trans, via ):
+def align_unmapped(ex, job, assembly, group_names, rpath,
+                   exon_mapping, transcript_mapping, exons_in_trans, via='lsf',
+                   logfile=sys.stdout, debugfile=sys.stderr):
     """
     Map reads that did not map to the exons to a collection of annotated transcripts,
     in order to add counts to pairs of exons involved in splicing junctions.
@@ -859,9 +860,17 @@ def align_unmapped( ex, job, assembly, group_names,
                     _bam = map_reads( ex, _fastq, {}, refseq_path, bowtie_2=bwt2,
                                       remove_pcr_duplicates=False, via=via )['bam']
                 except:
+                    debugfile.write("Sample %s: map_reads (on transcriptome) failed.\n" % cond)
                     continue
                 if _bam:
-                    sam = pysam.Samfile(_bam)
+                    bamfile = _bam['bam']
+                    stats = _bam['stats']
+                    #description = set_file_descr(cond+"_transcriptome_mapping.bam",step="pileup",type="bam")
+                    #ex.add(bamfile, description=description)
+                    pdfstats = plot_stats(ex,stats, script_path=rpath)
+                    description = set_file_descr(cond+"_transcriptome_mapping_report.pdf",step="pileup",type="pdf")
+                    ex.add(pdfstats, description=description)
+                    sam = pysam.Samfile(bamfile)
                 else:
                     continue
                 additional = {}
@@ -871,12 +880,14 @@ def align_unmapped( ex, job, assembly, group_names,
                         lag = 0
                         r_start = read.pos
                         r_end = r_start + read.rlen
+                        NH = [1.0/t[1] for t in read.tags if t[0]=='NH']+[1]
                         E = exons_in_trans[t_id]
                         for e in E:
                             e_start, e_end = exon_mapping[e][3:5]
                             e_len = e_end-e_start
-                            if r_start <= lag+e_len and lag <= r_end:
-                                additional[e] = additional.get(e,0) + 0.5
+                            if r_start <= lag <= r_end <= lag+e_len \
+                            or lag <= r_start <= lag+e_len <= r_end:
+                                additional[e] = additional.get(e,0) + 0.5*NH[0]
                             lag += e_len
                 additionals[cond] = additional
                 unmapped_fastq[cond] = _fastq
