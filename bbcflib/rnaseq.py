@@ -877,11 +877,12 @@ def align_unmapped(ex, job, assembly, group_names, rpath,
                 for read in sam:
                     t_id = sam.getrname(read.tid).split('|')[0]
                     if transcript_mapping.get(t_id) and exons_in_trans.get(t_id):
+                        E = exons_in_trans[t_id]
+                        if len(E) < 2: continue  # need 2 exons to make a junction
                         lag = 0
                         r_start = read.pos
                         r_end = r_start + read.rlen
                         NH = [1.0/t[1] for t in read.tags if t[0]=='NH']+[1]
-                        E = exons_in_trans[t_id]
                         for e in E:
                             e_start, e_end = exon_mapping[e][3:5]
                             e_len = e_end-e_start
