@@ -58,7 +58,6 @@ class Counter(object):
         limit = Nsigma*average
         self.counts = [c if c < limit else average for c in self.counts]
 
-
 def positive(x):
     """Set to zero all negative components of an array."""
     for i in range(len(x)):
@@ -88,7 +87,6 @@ def lsqnonneg(C, d, x0=None, tol=None, itmax_factor=3):
     Reference: C.L. Lawson and R.J. Hanson, Solving Least-Squares Problems, Prentice-Hall, Chapter 23, p. 161, 1974.
     `<http://diffusion-mri.googlecode.com/svn/trunk/Python/lsqnonneg.py>`_
     """
-    eps = 2.22e-16 # from Matlab
     def norm1(x):
         return abs(x).sum().max()
 
@@ -97,46 +95,47 @@ def lsqnonneg(C, d, x0=None, tol=None, itmax_factor=3):
         if dim >= len(s): return 1
         else: return s[dim]
 
+    eps = sys.float_info.epsilon
     if tol is None: tol = 10*eps*norm1(C)*(max(C.shape)+1)
     C = asarray(C)
     (m,n) = C.shape
-    P = numpy.zeros(n)            # set P of indices, empty for now
-    Z = ZZ = numpy.arange(1, n+1) # set Z of indices, will be transferred to P
-    if x0 is None or any(x0 < 0): x=P
-    else: x=x0
+    P = numpy.zeros(n)                       # set P of indices where ultimately x_j > 0 & w_j = 0
+    Z = ZZ = numpy.arange(1, n+1)            # set Z of indices where ultimately x_j = 0 & w_j <= 0
+    if x0 is None or any(x0 < 0): x = P
+    else: x = x0
     resid = d - numpy.dot(C, x)
-    w = numpy.dot(C.T, resid) # gradient of (1/2)*||d-Cx||^2
-    outeriter=0; it=0
-    itmax=itmax_factor*n
-    # outer loop to put variables into set to hold positive coefficients
+    w = numpy.dot(C.T, resid)                # n-vector C'(d-Cx), "dual" of x, gradient of (1/2)*||d-Cx||^2
+    outeriter = it = 0
+    itmax = itmax_factor*n
+    # Outer loop "A" to hold positive coefficients
     while numpy.any(Z) and numpy.any(w[ZZ-1] > tol): # if Z is empty or w_j<0 for all j, terminate.
         outeriter += 1
-        t = w[ZZ-1].argmax() # find an index t s.t. w_t = max(w)
+        t = w[ZZ-1].argmax()                 # find index t s.t. w_t = max(w), w_t in Z. So w_t > 0.
         t = ZZ[t]
-        P[t-1]=t # move the index t from set Z to set P
-        Z[t-1]=0 # Z becomes [0] if n=1
-        PP = numpy.where(P != 0)[0]+1 # index of first non-zero element of P, +1 (-1 later)
-        ZZ = numpy.where(Z != 0)[0]+1 # index of first non-zero element of Z, +1 (-1 later)
+        P[t-1]=t                             # move the index t from set Z to set P
+        Z[t-1]=0                             # Z becomes [0] if n=1
+        PP = numpy.where(P != 0)[0]+1        # non-zero elements of P for indexing, +1 (-1 later)
+        ZZ = numpy.where(Z != 0)[0]+1        # non-zero elements of Z for indexing, +1 (-1 later)
         CP = numpy.zeros(C.shape)
-        CP[:, PP-1] = C[:, PP-1] # CP[:,j] is C[:,j] if j in P, or 0 if j in Z
+        CP[:, PP-1] = C[:, PP-1]             # CP[:,j] is C[:,j] if j in P, or 0 if j in Z
         CP[:, ZZ-1] = numpy.zeros((m, msize(ZZ, 1)))
-        z=numpy.dot(numpy.linalg.pinv(CP), d) # solution of least-squares min||d-CPx||
-        if isinstance(ZZ,numpy.ndarray) and len(ZZ) == 0: # if Z = [0], ZZ = [] and makes it fail
+        z=numpy.dot(numpy.linalg.pinv(CP), d)                 # n-vector solution of least-squares min||d-CPx||
+        if isinstance(ZZ,numpy.ndarray) and len(ZZ) == 0:     # if Z = [0], ZZ = [] and makes it fail
             return (positive(z), sum(resid*resid), resid)
         else:
-            z[ZZ-1] = numpy.zeros((msize(ZZ,1), msize(ZZ,0)))
-        # inner loop to remove elements from the positive set which no longer belong
+            z[ZZ-1] = numpy.zeros((msize(ZZ,1), msize(ZZ,0))) # define z_j := 0 for j in Z
+        # Inner loop "B" to remove negative elements from z if necessary
         while numpy.any(z[PP-1] <= tol): # if z_j>0 for all j, set x=z and return to outer loop
             it += 1
             if it > itmax:
                 max_error = z[PP-1].max()
                 raise Exception('Exiting: Iteration count (=%d) exceeded\n \
                       Try raising the tolerance tol. (max_error=%d)' % (it, max_error))
-            QQ = numpy.where((z <= tol) & (P != 0))[0] # find an index q in P s.t. x_q/(x_q-z_q) is min with negative z_q.
-            alpha = min(x[QQ]/(x[QQ] - z[QQ]))
-            x = x + alpha*(z-x)
-            ij = numpy.where((abs(x) < tol) & (P <> 0))[0]+1 # move from P to Z all indices j for which x_j=0
-            Z[ij-1] = ij
+            QQ = numpy.where((z <= tol) & (P != 0))[0]        # indices j in P s.t. z_j < 0
+            alpha = min(x[QQ]/(x[QQ] - z[QQ]))                # step chosen as large as possible s.t. x remains >= 0
+            x = x + alpha*(z-x)                               # move x by this step
+            ij = numpy.where((abs(x) < tol) & (P <> 0))[0]+1  # indices j in P for which x_j = 0
+            Z[ij-1] = ij                                      # Add to Z, remove from P
             P[ij-1] = numpy.zeros(max(ij.shape))
             PP = numpy.where(P != 0)[0]+1
             ZZ = numpy.where(Z != 0)[0]+1
@@ -306,7 +305,7 @@ def save_results(ex, lines, conditions, group_ids, assembly, header, feature_typ
     return os.path.abspath(output_tab)
 
 @timer
-def genes_expression(exon_ids, ecounts_matrix, gene_mapping, exon_mapping, ncond):
+def genes_expression(exon_ids, ecounts_matrix, exon_mapping, ncond):
     """Get gene counts/rpkm from exon counts (sum).
 
     Returns a dictionary of the form ``{gene_id: scores}``.
@@ -343,7 +342,6 @@ def transcripts_expression(exon_ids, ecounts_matrix, exon_mapping, transcript_ma
     genes = set(genes)
     unknown = 0
     pinv = numpy.linalg.pinv
-    norm = numpy.linalg.norm
     for g in genes:
         if trans_in_gene.get(g): # if the gene is (still) in the Ensembl database
             # Get all transcripts in the gene
@@ -383,8 +381,7 @@ def transcripts_expression(exon_ids, ecounts_matrix, exon_mapping, transcript_ma
             for c in range(ncond):
                 Ec = ec[c]
                 Ec = numpy.hstack((Ec,asarray(sum(Ec))))
-                tol = 10*2.22e-16*norm(N,1)*(max(N.shape)+1)
-                try: Tc, resnormc, resc = lsqnonneg(N,Ec,tol=100*tol)
+                try: Tc, resnormc, resc = lsqnonneg(N,Ec,itmax_factor=100)
                 except: Tc = positive(numpy.dot(pinv(N),Ec))
                 tc.append(Tc)
             # Store results in a dict *trans_counts*
@@ -521,7 +518,7 @@ def rnaseq_workflow(ex, job, assembly=None,
         trans_data = norm_and_format(tcounts,lengths,tmap,(2,3,0,1,5,6))
         header += ["counts."+c for c in conditions] + ["norm."+c for c in conditions] + ["rpkm."+c for c in conditions]
         header += ["Start","End","GeneID","GeneName","Strand","Chromosome"]
-        trans_file = save_results(ex,trans_data,conditions,group_ids,assembly,
+        save_results(ex,trans_data,conditions,group_ids,assembly,
                                   header=header,feature_type=ftype,logfile=logfile)
         differential_analysis(ex, trans_data, header, rpath, logfile, debugfile, feature_type=ftype.lower(),via=via)
         return 0
@@ -565,9 +562,9 @@ def rnaseq_workflow(ex, job, assembly=None,
             cond = group_names[gid]+'.'+str(k)
             exon_pileup = build_pileup(f['bam'],assembly,gene_mapping,exon_mapping,trans_in_gene,exons_in_trans,debugfile)
             if unmapped and cond in unmapped_fastq and cond in additionals:
-                for a,x in additionals[cond].iteritems():
-                    if exon_pileup.get(a):
-                        exon_pileup[a] += x
+                for e,x in additionals[cond].iteritems():
+                    if exon_pileup.get(e):
+                        exon_pileup[e] += x
                 additionals.pop(cond)
             exon_pileups[cond] = exon_pileup.values()
             logfile.write("  ....Pileup %s done\n" % cond); logfile.flush()
@@ -582,7 +579,6 @@ def rnaseq_workflow(ex, job, assembly=None,
     del exon_pileups
 
     hconds = ["counts."+c for c in conditions] + ["norm."+c for c in conditions] + ["rpkm."+c for c in conditions]
-    exons_file = None; genes_file = None; trans_file = None
 
     # Print counts for exons
     if "exons" in pileup_level:
@@ -590,7 +586,7 @@ def rnaseq_workflow(ex, job, assembly=None,
         header = ["ExonID"] + hconds + ["Start","End","GeneID","GeneName","Strand","Chromosome"]
         lengths = asarray([exon_mapping[e][4]-exon_mapping[e][3] for e in exon_ids])
         exons_data = norm_and_format(ecounts_matrix,lengths,exon_mapping,(3,4,1,2,5,6),ids=exon_ids)
-        exons_file = save_results(ex, exons_data, conditions, group_ids, assembly, header=header, feature_type="EXONS")
+        save_results(ex, exons_data, conditions, group_ids, assembly, header=header, feature_type="EXONS")
         differential_analysis(ex, exons_data, header, rpath, logfile, debugfile, feature_type='exons',via=via)
         del exons_data
 
@@ -598,10 +594,10 @@ def rnaseq_workflow(ex, job, assembly=None,
     if "genes" in pileup_level:
         logfile.write("* Get scores of genes\n"); logfile.flush()
         header = ["GeneID"] + hconds + ["Start","End","GeneName","Strand","Chromosome"]
-        gcounts = genes_expression(exon_ids, ecounts_matrix, gene_mapping, exon_mapping, ncond)
+        gcounts = genes_expression(exon_ids, ecounts_matrix, exon_mapping, ncond)
         lengths = asarray([gene_mapping[g][3] for g in gcounts.iterkeys()])
         genes_data = norm_and_format(gcounts,lengths,gene_mapping,(1,2,0,4,5))
-        genes_file = save_results(ex, genes_data, conditions, group_ids, assembly, header=header, feature_type="GENES")
+        save_results(ex, genes_data, conditions, group_ids, assembly, header=header, feature_type="GENES")
         differential_analysis(ex, genes_data, header, rpath, logfile, debugfile, feature_type='genes',via=via)
         del genes_data
 
@@ -613,7 +609,7 @@ def rnaseq_workflow(ex, job, assembly=None,
                    transcript_mapping, trans_in_gene, exons_in_trans, ncond, debugfile)
         lengths = asarray([transcript_mapping[t][4] for t in tcounts.iterkeys()])
         trans_data = norm_and_format(tcounts,lengths,transcript_mapping,(2,3,0,1,5,6))
-        trans_file = save_results(ex, trans_data, conditions, group_ids, assembly, header=header, feature_type="TRANSCRIPTS")
+        save_results(ex, trans_data, conditions, group_ids, assembly, header=header, feature_type="TRANSCRIPTS")
         differential_analysis(ex, trans_data, header, rpath, logfile, debugfile, feature_type='transcripts',via=via)
         del trans_data
     return 0
