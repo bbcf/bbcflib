@@ -854,7 +854,7 @@ def align_unmapped(ex, job, assembly, group_names, rpath,
             if _fastq and os.path.exists(refseq_path+".1.ebwt"):
                 try:
                     _bam = map_reads( ex, _fastq, {}, refseq_path, bowtie_2=bwt2,
-                                      remove_pcr_duplicates=False, via=via )['bam']
+                                      remove_pcr_duplicates=False, via=via )
                 except:
                     debugfile.write("Sample %s: map_reads (on transcriptome) failed.\n" % cond)
                     continue
