@@ -702,12 +702,11 @@ class DE_Analysis(RNAseq):
             return {'arguments': ["R","--slave","-f",script_path,"--args",data_file]+opts,
                     'return_value': output_file}
 
-        if self.rpath and os.path.exists(self.rpath):
-            res_file, ncond = self.clean_before_deseq(data, header)
-            if ncond < 2:
-                self.write_log("  Skipped differential analysis: less than two groups.")
-            else:
-                self.write_log("  Differential analysis")
+        res_file, ncond = self.clean_before_deseq(data, header)
+        if ncond < 2:
+            self.write_log("  Skipped differential analysis: less than two groups.")
+        else:
+            self.write_log("  Differential analysis")
             options = ['-s','tab']
             script_path = os.path.join(self.rpath,'negbin.test.R')
             if not os.path.exists(script_path):
