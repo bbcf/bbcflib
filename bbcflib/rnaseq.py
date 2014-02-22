@@ -134,7 +134,7 @@ def lsqnonneg(C, d, x0=None, tol=None, itmax_factor=3):
 
 class RNAseq(object):
     """Abstract, inherited by different parts of the workflow."""
-    def __init__(self,ex,job,assembly,conditions,pileup_level,via,rpath,junctions,unmapped,debugfile,logfile):
+    def __init__(self,ex,job,assembly,conditions,pileup_level,via,rpath,junctions,unmapped,mappings,debugfile,logfile):
         self.ex = ex                     # bein.Execution object
         self.job = job                   # frontend.Job object
         self.assembly = assembly         # genrep.Assembly object
@@ -146,12 +146,39 @@ class RNAseq(object):
         self.unmapped = unmapped         # True/False, want to remap or not
         self.debugfile = debugfile       # debug file name
         self.logfile = logfile           # log file name
+        self.M = mappings                # Mappings object
 
     def write_log(self,s):
         self.logfile.write(s+'\n'); self.logfile.flush()
 
     def write_debug(self,s):
         self.debugfile.write(s+'\n'); self.debugfile.flush()
+
+
+class Mappings():
+    def __init__(self, assembly):
+        self.assembly = assembly
+        """
+        * [0] gene_mapping is a dict ``{gene_id: (gene name,start,end,length,chromosome)}``
+        * [1] transcript_mapping is a dictionary ``{transcript_id: (gene_id,gene_name,start,end,length,chromosome)}``
+        * [2] exon_mapping is a dictionary ``{exon_id: ([transcript_ids],gene_id,gene_name,start,end,chromosome)}``
+        * [3] trans_in_gene is a dict ``{gene_id: [IDs of the transcripts it contains]}``
+        * [4] exons_in_trans is a dict ``{transcript_id: [IDs of the exons it contains]}``
+        """
+        if test and os.path.exists('../mappings/'):
+            import json
+            map_path = '../mappings/'
+            self.gene_mapping = json.load(open(os.path.join(map_path,'gene_mapping.json')))
+            self.exon_mapping = json.load(open(os.path.join(map_path,'exon_mapping.json')))
+            self.transcript_mapping = json.load(open(os.path.join(map_path,'transcript_mapping.json')))
+            self.trans_in_gene = json.load(open(os.path.join(map_path,'trans_in_gene.json')))
+            self.exons_in_trans = json.load(open(os.path.join(map_path,'exons_in_trans.json')))
+        else:
+            self.gene_mapping = self.assembly.get_gene_mapping()
+            self.transcript_mapping = self.assembly.get_transcript_mapping()
+            self.exon_mapping = self.assembly.get_exon_mapping()
+            self.exons_in_trans = self.assembly.get_exons_in_trans()
+            self.trans_in_gene = self.assembly.get_trans_in_gene()
 
 
 class Counter(object):
@@ -223,7 +250,12 @@ def rnaseq_workflow(ex, job, assembly=None, pileup_level=["exons","genes","trans
             cond = group_names[gid]+'.'+str(k)
             conditions.append(cond)
 
-    WF = Pileups(ex,job,assembly,conditions,pileup_level,via,debugfile,logfile)
+    logfile.write("* Load mappings\n"); logfile.flush()
+    M = Mappings(assembly)
+    if len(M.exon_mapping) == 0 or len(M.gene_mapping) == 0:
+        raise ValueError("No genes found for this genome. Abort.")
+
+    WF = Pileups(ex,job,assembly,conditions,pileup_level,via,M,debugfile,logfile)
     DE = DE_Analysis(ex,job,assembly,conditions,via,rpath,debugfile,logfile)
 
     # If the reads were aligned on transcriptome (maybe custom), do that and skip the rest
@@ -266,26 +298,16 @@ def rnaseq_workflow(ex, job, assembly=None, pileup_level=["exons","genes","trans
         header += ["counts."+c for c in conditions] + ["norm."+c for c in conditions] + ["rpkm."+c for c in conditions]
         header += ["Start","End","GeneID","GeneName","Strand","Chromosome"]
         WF.save_results(trans_data,group_ids,header=header,feature_type=ftype)
-        DE.differential_analysis(ex, trans_data, header, feature_type=ftype.lower())
+        DE.differential_analysis(trans_data, header, feature_type=ftype.lower())
         return 0
-
-    logfile.write("* Load mappings\n"); logfile.flush()
-    #    [0] gene_mapping is a dict ``{gene_id: (gene_name,start,end,length,strand,chromosome)}``
-    #    [1] transcript_mapping is a dict ``{transcript_id: (gene_id,gene_name,start,end,length,strand,chromosome)}``
-    #    [2] exon_mapping is a dict ``{exon_id: ([transcript_ids],gene_id,gene_name,start,end,strand,chromosome)}``
-    #    [3] trans_in_gene is a dict ``{gene_id: [IDs of the transcripts it contains]}``
-    #    [4] exons_in_trans is a dict ``{transcript_id: [IDs of the exons it contains]}``
-    (gene_mapping, transcript_mapping, exon_mapping, trans_in_gene, exons_in_trans) = WF.fetch_mappings()
-    if len(exon_mapping) == 0 or len(gene_mapping) == 0:
-        raise ValueError("No genes found for this genome. Abort.")
 
     # Map remaining reads to transcriptome
     unmapped_fastq = {}
     if unmapped:
-        UN = Unmapped(ex,job,assembly,conditions,via,rpath,unmapped,debugfile,logfile)
+        UN = Unmapped(ex,job,assembly,conditions,via,rpath,unmapped,M,debugfile,logfile)
         logfile.write("* Align unmapped reads on transcriptome\n"); logfile.flush()
         try:
-            unmapped_fastq,additionals = UN.align_unmapped(group_names,exon_mapping,transcript_mapping,exons_in_trans)
+            unmapped_fastq,additionals = UN.align_unmapped(group_names)
         except Exception, error:
             debugfile.write(str(error)+'\n'); debugfile.flush()
 
@@ -302,7 +324,7 @@ def rnaseq_workflow(ex, job, assembly=None, pileup_level=["exons","genes","trans
     logfile.write("* Build pileups\n"); logfile.flush()
     exon_pileups = {}
     for cond in conditions:
-        exon_pileup = WF.build_pileup(f['bam'],gene_mapping,exon_mapping,trans_in_gene,exons_in_trans)
+        exon_pileup = WF.build_pileup(f['bam'])
         if unmapped and cond in unmapped_fastq and cond in additionals:
             for e,x in additionals[cond].iteritems():
                 if exon_pileup.get(e):
@@ -326,8 +348,8 @@ def rnaseq_workflow(ex, job, assembly=None, pileup_level=["exons","genes","trans
     if "exons" in pileup_level:
         logfile.write("* Get scores of exons\n"); logfile.flush()
         header = ["ExonID"] + hconds + ["Start","End","GeneID","GeneName","Strand","Chromosome"]
-        lengths = asarray([exon_mapping[e][4]-exon_mapping[e][3] for e in exon_ids])
-        exons_data = WF.norm_and_format(ecounts_matrix,lengths,exon_mapping,(3,4,1,2,5,6),ids=exon_ids)
+        lengths = asarray([M.exon_mapping[e][4]-M.exon_mapping[e][3] for e in exon_ids])
+        exons_data = WF.norm_and_format(ecounts_matrix,lengths,M.exon_mapping,(3,4,1,2,5,6),ids=exon_ids)
         WF.save_results(exons_data, group_ids, header=header, feature_type="EXONS")
         DE.differential_analysis(exons_data, header, feature_type='exons')
         del exons_data
@@ -336,9 +358,9 @@ def rnaseq_workflow(ex, job, assembly=None, pileup_level=["exons","genes","trans
     if "genes" in pileup_level:
         logfile.write("* Get scores of genes\n"); logfile.flush()
         header = ["GeneID"] + hconds + ["Start","End","GeneName","Strand","Chromosome"]
-        gcounts = WF.genes_expression(exon_ids, ecounts_matrix, exon_mapping)
-        lengths = asarray([gene_mapping[g][3] for g in gcounts.iterkeys()])
-        genes_data = WF.norm_and_format(gcounts,lengths,gene_mapping,(1,2,0,4,5))
+        gcounts = WF.genes_expression(exon_ids, ecounts_matrix)
+        lengths = asarray([M.gene_mapping[g][3] for g in gcounts.iterkeys()])
+        genes_data = WF.norm_and_format(gcounts,lengths,M.gene_mapping,(1,2,0,4,5))
         WF.save_results(genes_data, group_ids, header=header, feature_type="GENES")
         DE.differential_analysis(genes_data, header, feature_type='genes')
         del genes_data
@@ -347,10 +369,9 @@ def rnaseq_workflow(ex, job, assembly=None, pileup_level=["exons","genes","trans
     if "transcripts" in pileup_level:
         logfile.write("* Get scores of transcripts\n"); logfile.flush()
         header = ["TranscriptID"] + hconds + ["Start","End","GeneID","GeneName","Strand","Chromosome"]
-        tcounts = WF.transcripts_expression(exon_ids, ecounts_matrix, exon_mapping,
-                   transcript_mapping, trans_in_gene, exons_in_trans)
-        lengths = asarray([transcript_mapping[t][4] for t in tcounts.iterkeys()])
-        trans_data = WF.norm_and_format(tcounts,lengths,transcript_mapping,(2,3,0,1,5,6))
+        tcounts = WF.transcripts_expression(exon_ids, ecounts_matrix)
+        lengths = asarray([M.transcript_mapping[t][4] for t in tcounts.iterkeys()])
+        trans_data = WF.norm_and_format(tcounts,lengths,M.transcript_mapping,(2,3,0,1,5,6))
         WF.save_results(trans_data, group_ids, header=header, feature_type="TRANSCRIPTS")
         DE.differential_analysis(trans_data, header, feature_type='transcripts')
         del trans_data
@@ -361,35 +382,8 @@ def rnaseq_workflow(ex, job, assembly=None, pileup_level=["exons","genes","trans
 
 
 class Pileups(RNAseq):
-    def __init__(self,ex,job,assembly,conditions,pileup_level,via,debugfile,logfile):
-        RNAseq.__init__(self,ex,job,assembly,conditions,pileup_level,via,0,0,0,debugfile,logfile)
-
-    def fetch_mappings(self):
-        """Returns a tuple
-        ``(gene_mapping, transcript_mapping, exon_mapping, trans_in_gene, exons_in_trans)``
-
-        * [0] gene_mapping is a dict ``{gene_id: (gene name,start,end,length,chromosome)}``
-        * [1] transcript_mapping is a dictionary ``{transcript_id: (gene_id,gene_name,start,end,length,chromosome)}``
-        * [2] exon_mapping is a dictionary ``{exon_id: ([transcript_ids],gene_id,gene_name,start,end,chromosome)}``
-        * [3] trans_in_gene is a dict ``{gene_id: [IDs of the transcripts it contains]}``
-        * [4] exons_in_trans is a dict ``{transcript_id: [IDs of the exons it contains]}``
-        """
-        if test and os.path.exists('../mappings/'):
-            import json
-            map_path = '../mappings/'
-            gene_mapping = json.load(open(os.path.join(map_path,'gene_mapping.json')))
-            exon_mapping = json.load(open(os.path.join(map_path,'exon_mapping.json')))
-            transcript_mapping = json.load(open(os.path.join(map_path,'transcript_mapping.json')))
-            trans_in_gene = json.load(open(os.path.join(map_path,'trans_in_gene.json')))
-            exons_in_trans = json.load(open(os.path.join(map_path,'exons_in_trans.json')))
-        else:
-            gene_mapping = self.assembly.get_gene_mapping()
-            transcript_mapping = self.assembly.get_transcript_mapping()
-            exon_mapping = self.assembly.get_exon_mapping()
-            exons_in_trans = self.assembly.get_exons_in_trans()
-            trans_in_gene = self.assembly.get_trans_in_gene()
-        mapping = (gene_mapping, transcript_mapping, exon_mapping, trans_in_gene, exons_in_trans)
-        return mapping
+    def __init__(self,ex,job,assembly,conditions,pileup_level,via,mappings,debugfile,logfile):
+        RNAseq.__init__(self,ex,job,assembly,conditions,pileup_level,via,0,0,0,mappings,debugfile,logfile)
 
     @timer
     def build_custom_pileup(self, bamfile, transcript_mapping):
@@ -407,7 +401,7 @@ class Pileups(RNAseq):
         return counts
 
     @timer
-    def build_pileup(self, bamfile, gene_mapping, exon_mapping, trans_in_gene, exons_in_trans):
+    def build_pileup(self, bamfile):
         """From a BAM file, returns a dictionary of the form {feature_id: number of reads that mapped to it}.
 
         :param bamfile: name of a BAM file.
@@ -422,11 +416,11 @@ class Pileups(RNAseq):
             ref_index[ref.split('|')[0]] = ref
         mapped_on = 'genome' if all([ref in chromosomes for ref in sam.references[:100]]) else 'exons'
         c = Counter()
-        for g in gene_mapping.iterkeys():
+        for g in self.M.gene_mapping.iterkeys():
             eg = set()
-            for t in trans_in_gene[g]:
-                eg.update(exons_in_trans[t])
-            eg = sorted([(e,)+exon_mapping[e][3:] for e in eg], key=itemgetter(1,2))
+            for t in self.M.trans_in_gene[g]:
+                eg.update(self.M.exons_in_trans[t])
+            eg = sorted([(e,)+self.M.exon_mapping[e][3:] for e in eg], key=itemgetter(1,2))
             eg = cobble(FeatureStream(eg,fields=['name','start','end','strand','chr']))
             for e in eg:
                 ex = e[0].split('|')  # list of cobbled exons spanning the same interval
@@ -435,7 +429,7 @@ class Pileups(RNAseq):
                 if mapped_on == 'genome':
                     ref = e[-1]; start = e[1]; end = e[2]
                 else: # mapped on 'exons'
-                    ostart,oend = exon_mapping[origin][3:5]
+                    ostart,oend = self.M.exon_mapping[origin][3:5]
                     ref = ref_index.get(origin)
                     start = e[1]-ostart; end = e[2]-ostart
                 if not ref: continue
@@ -513,52 +507,43 @@ class Pileups(RNAseq):
         return os.path.abspath(output_tab)
 
     @timer
-    def genes_expression(self, exon_ids, ecounts_matrix, exon_mapping):
+    def genes_expression(self, exon_ids, ecounts_matrix):
         """Get gene counts/rpkm from exon counts (sum).
-
         Returns a dictionary of the form ``{gene_id: scores}``.
-
-        :param gene_mapping: dictionary ``{gene_id: (gene name,start,end,length,strand,chromosome)}``
-        :param exon_mapping: dictionary ``{exon_id: ([transcript_id's],gene_id,gene_name,start,end,strand,chromosome)}``
         """
         ncond = len(self.conditions)
         gene_counts={}
         for e,counts in itertools.izip(exon_ids,ecounts_matrix):
-            g = exon_mapping[e][1]
+            g = self.M.exon_mapping[e][1]
             gene_counts[g] = gene_counts.get(g,zeros(ncond)) + counts
         return gene_counts
 
     @timer
-    def transcripts_expression(self, exon_ids, ecounts_matrix,
-                               exon_mapping, transcript_mapping, trans_in_gene, exons_in_trans):
+    def transcripts_expression(self, exon_ids, ecounts_matrix):
         """Get transcript rpkms from exon rpkms using NNLS.
-
         Returns a dictionary of the form ``{transcript_id: score}``.
-
-        :param exon_mapping: dict ``{exon_id: ([transcript_ids],gene_id,gene_name,start,end,strand,chromosome)}``
-        :param transcript_mapping: dict ``{transcript_id: (gene_id,gene_name,start,end,length,strand,chromosome)}``
-        :param trans_in_gene: dict ``{gene_id: [transcript_ids it contains]}``
-        :param exons_in_trans: dict ``{transcript_id: [exon_ids it contains]}``
         """
+        emap = self.M.exon_mapping
+        tmap = self.M.transcript_mapping
         ncond = len(self.conditions)
         trans_counts={}
         exons_counts={}; genes=[];
         for e,counts in itertools.izip(exon_ids,ecounts_matrix):
             exons_counts[e] = counts
-            genes.append(exon_mapping[e][1])
+            genes.append(emap[e][1])
         del exon_ids, ecounts_matrix
         genes = set(genes)
         unknown = 0
         pinv = numpy.linalg.pinv
         for g in genes:
-            if trans_in_gene.get(g): # if the gene is (still) in the Ensembl database
+            if self.M.trans_in_gene.get(g): # if the gene is (still) in the Ensembl database
                 # Get all transcripts in the gene
-                tg = trans_in_gene[g]
+                tg = self.M.trans_in_gene[g]
                 # Get all exons in the gene
                 eg = set()
                 for t in tg:
-                    if exons_in_trans.get(t):
-                        eg = eg.union(set(exons_in_trans[t]))
+                    if self.M.exons_in_trans.get(t):
+                        eg = eg.union(set(self.M.exons_in_trans[t]))
                         trans_counts[t] = zeros(ncond)
                 # Create the correspondance matrix
                 M = zeros((len(eg),len(tg)))
@@ -566,10 +551,10 @@ class Pileups(RNAseq):
                 ec = zeros((ncond,len(eg)))
                 for i,e in enumerate(eg):
                     for j,t in enumerate(tg):
-                        if exons_in_trans.get(t) and e in exons_in_trans[t]:
+                        if self.M.exons_in_trans.get(t) and e in self.M.exons_in_trans[t]:
                             M[i,j] = 1.
-                            if exon_mapping.get(e) and transcript_mapping.get(t):
-                                L[i,j] = float((exon_mapping[e][4]-exon_mapping[e][3])) / transcript_mapping[t][4]
+                            if emap.get(e) and tmap.get(t):
+                                L[i,j] = float((emap[e][4]-emap[e][3])) / tmap[t][4]
                             else:
                                 L[i,j] = 1./len(eg)
                     # Retrieve exon scores
@@ -603,7 +588,7 @@ class Pileups(RNAseq):
                   % (unknown, len(genes), 100*float(unknown)/float(len(genes))) )
         return trans_counts
 
-    def norm_and_format(self,counts,lengths,map,map_idx,ids=None):
+    def norm_and_format(self,counts,lengths,tmap,map_idx,ids=None):
         """Normalize, compute RPKM values and format array lines as they will be printed."""
 
         def estimate_size_factors(counts):
@@ -633,9 +618,9 @@ class Pileups(RNAseq):
             counts_matrix = counts
         norm_matrix, sf = estimate_size_factors(counts_matrix)
         rpkm_matrix = 1000.*norm_matrix/(lengths[:,numpy.newaxis])
-        map_nitems = len(map.iteritems().next())
+        map_nitems = len(tmap.iteritems().next())
         data = [(t,) + tuple(counts_matrix[k]) + tuple(norm_matrix[k]) + tuple(rpkm_matrix[k])
-                     + itemgetter(*map_idx)(map.get(t,("NA",)*map_nitems))
+                     + itemgetter(*map_idx)(tmap.get(t,("NA",)*map_nitems))
                 for k,t in enumerate(ids)]
         data = sorted(data, key=itemgetter(-1,-map_nitems,-map_nitems+1,-2)) # sort wrt. chr,start,end,strand
         return data
@@ -646,7 +631,7 @@ class Pileups(RNAseq):
 
 class DE_Analysis(RNAseq):
     def __init__(self,ex,job,assembly,conditions,via,rpath,debugfile,logfile):
-        RNAseq.__init__(self,ex,job,assembly,conditions,0,via,rpath,0,0,debugfile,logfile)
+        RNAseq.__init__(self,ex,job,assembly,conditions,0,via,rpath,0,0,0,debugfile,logfile)
 
     def clean_before_deseq(self, data, header, keep=0.6):
         """Delete all lines of *filename* where counts are 0 in every run.
@@ -748,7 +733,7 @@ class DE_Analysis(RNAseq):
 
 class Junctions(RNAseq):
     def __init__(self,ex,job,assembly,via,junctions,debugfile,logfile):
-        RNAseq.__init__(self,ex,job,assembly,0,0,via,0,junctions,0,debugfile,logfile)
+        RNAseq.__init__(self,ex,job,assembly,0,0,via,0,junctions,0,0,debugfile,logfile)
 
     @timer
     def find_junctions(self, soapsplice_index=None, path_to_soapsplice=None, soapsplice_options={}):
@@ -866,11 +851,11 @@ class Junctions(RNAseq):
 
 
 class Unmapped(RNAseq):
-    def __init__(self,ex,job,assembly,conditions,via,rpath,unmapped,debugfile,logfile):
-        RNAseq.__init__(self,ex,job,assembly,conditions,0,via,rpath,0,unmapped,debugfile,logfile)
+    def __init__(self,ex,job,assembly,conditions,via,rpath,unmapped,mappings,debugfile,logfile):
+        RNAseq.__init__(self,ex,job,assembly,conditions,0,via,rpath,0,unmapped,mappings,debugfile,logfile)
 
     @timer
-    def align_unmapped(self, group_names, exon_mapping, transcript_mapping, exons_in_trans):
+    def align_unmapped(self, group_names):
         """
         Map reads that did not map to the exons to a collection of annotated transcripts,
         in order to add counts to pairs of exons involved in splicing junctions.
@@ -913,15 +898,15 @@ class Unmapped(RNAseq):
                     additional = {}
                     for read in sam:
                         t_id = sam.getrname(read.tid).split('|')[0]
-                        if transcript_mapping.get(t_id) and exons_in_trans.get(t_id):
-                            E = exons_in_trans[t_id]
+                        if self.M.transcript_mapping.get(t_id) and self.M.exons_in_trans.get(t_id):
+                            E = self.M.exons_in_trans[t_id]
                             if len(E) < 2: continue  # need 2 exons to make a junction
                             lag = 0
                             r_start = read.pos
                             r_end = r_start + read.rlen
                             NH = [1.0/t[1] for t in read.tags if t[0]=='NH']+[1]
                             for e in E:
-                                e_start, e_end = exon_mapping[e][3:5]
+                                e_start, e_end = self.M.exon_mapping[e][3:5]
                                 e_len = e_end-e_start
                                 if r_start <= lag <= r_end <= lag+e_len \
                                 or lag <= r_start <= lag+e_len <= r_end:
