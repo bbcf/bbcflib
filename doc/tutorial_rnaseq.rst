@@ -32,10 +32,15 @@ Results
 When the job finishes successfully, you will receive an e-mail with a link to the page where you can download the results. Results consist in tab-delimited files containing counts and rpkm for genes, exons and transcripts, and a differential expression analysis for each pair of groups in the experiment.
 
 Counts tables, named "<type>_expression.tab", contain columns named "<prefix>.<sample>.<run_id>", where <prefix> is "counts." for raw counts, "norm." for inter-sample normalized counts (using DESeq's "size factors"), or "rpkm." for transcript-size normalized counts.
+Genomic features with zero counts in all conditions will not be reported.
 
 .. note::
 
     The latter is not the RPKM as it was initially defined. Instead of dividing by the library size, we use median-scaling (DESeq's "size factors"), then divide by the transcript size.
+
+.. note::
+
+    First reads are counted on exons and the exons table & stats are produced. Then junction reads are added and genes/transcripts expression calculated. Hence possible differences between gene count and the sum of its exons'.
 
 Differential analysis is performed on raw counts (by DESeq) and results are summarized in the files named "<type>_differential_<comparison>.txt". Columns "pval" and "padj" are respectively gene-level and adjusted p-values.
 

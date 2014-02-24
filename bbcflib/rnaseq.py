@@ -165,14 +165,14 @@ class Mappings():
         * trans_in_gene is a dict ``{gene_id: [IDs of the transcripts it contains]}``
         * exons_in_trans is a dict ``{transcript_id: [IDs of the exons it contains]}``
         """
-        if test and os.path.exists('../mappings/'):
-            import json
-            map_path = '/archive/epfl/bbcf/jdelafon/test_rnaseq/mappings/'
-            self.gene_mapping = json.load(open(os.path.join(map_path,'gene_mapping.json')))
-            self.exon_mapping = json.load(open(os.path.join(map_path,'exon_mapping.json')))
-            self.transcript_mapping = json.load(open(os.path.join(map_path,'transcript_mapping.json')))
-            self.trans_in_gene = json.load(open(os.path.join(map_path,'trans_in_gene.json')))
-            self.exons_in_trans = json.load(open(os.path.join(map_path,'exons_in_trans.json')))
+        map_path = '/archive/epfl/bbcf/jdelafon/test_rnaseq/mappings/mm9/'
+        if test and os.path.exists(map_path):
+            import pickle
+            self.gene_mapping = pickle.load(open(os.path.join(map_path,'gene_mapping.pickle')))
+            self.exon_mapping = pickle.load(open(os.path.join(map_path,'exon_mapping.pickle')))
+            self.transcript_mapping = pickle.load(open(os.path.join(map_path,'transcript_mapping.pickle')))
+            self.trans_in_gene = pickle.load(open(os.path.join(map_path,'trans_in_gene.pickle')))
+            self.exons_in_trans = pickle.load(open(os.path.join(map_path,'exons_in_trans.pickle')))
         else:
             self.gene_mapping = self.assembly.get_gene_mapping()
             self.transcript_mapping = self.assembly.get_transcript_mapping()
@@ -328,7 +328,6 @@ def rnaseq_workflow(ex, job, assembly=None, pileup_level=["exons","genes","trans
         logfile.write("* Align unmapped reads on transcriptome\n"); logfile.flush()
         try:
             unmapped_fastq,additionals = UN.align_unmapped(group_names)
-            # additionals: ``{cond: {exon:additional_counts}}``
         except Exception, error:
             debugfile.write(str(error)+'\n'); debugfile.flush()
 
@@ -338,6 +337,8 @@ def rnaseq_workflow(ex, job, assembly=None, pileup_level=["exons","genes","trans
             for e,x in additionals[cond].iteritems():
                 if exon_pileups.get(e):
                     exon_pileups[e][i] += x
+                else:
+                    exon_pileups.setdefault(e,zeros(ncond))[i] = x
     del additionals
 
     # Get scores of genes from exons
@@ -887,7 +888,7 @@ class Unmapped(RNAseq):
                         description = set_file_descr(cond+"_transcriptome_mapping_report.pdf",step="pileup",type="pdf")
                         self.ex.add(pdfstats, description=description)
                     except Exception, error:
-                        self.write_debug("Sample %s: bamstats failed: \n%s." % (cond,str(error)))
+                        self.write_debug("Sample %s: bamstats failed: \n%s" % (cond,str(error)))
                     sam = pysam.Samfile(bamfile)
                     additional = {}
                     for read in sam:
