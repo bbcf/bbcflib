@@ -167,7 +167,7 @@ class Mappings():
         """
         if test and os.path.exists('../mappings/'):
             import json
-            map_path = '../mappings/'
+            map_path = '/archive/epfl/bbcf/jdelafon/test_rnaseq/mappings/'
             self.gene_mapping = json.load(open(os.path.join(map_path,'gene_mapping.json')))
             self.exon_mapping = json.load(open(os.path.join(map_path,'exon_mapping.json')))
             self.transcript_mapping = json.load(open(os.path.join(map_path,'transcript_mapping.json')))
@@ -309,16 +309,6 @@ def rnaseq_workflow(ex, job, assembly=None, pileup_level=["exons","genes","trans
             exon_pileups.setdefault(e,zeros(ncond))[i] = count
     del exon_pileup
 
-    # Map remaining reads to transcriptome
-    unmapped_fastq = {}
-    if unmapped:
-        UN = Unmapped(ex,job,assembly,conditions,via,rpath,unmapped,M,debugfile,logfile)
-        logfile.write("* Align unmapped reads on transcriptome\n"); logfile.flush()
-        try:
-            unmapped_fastq,additionals = UN.align_unmapped(group_names)
-        except Exception, error:
-            debugfile.write(str(error)+'\n'); debugfile.flush()
-
     hconds = ["counts."+c for c in conditions] + ["norm."+c for c in conditions] + ["rpkm."+c for c in conditions]
 
     # Print counts for exons
@@ -330,6 +320,25 @@ def rnaseq_workflow(ex, job, assembly=None, pileup_level=["exons","genes","trans
         WF.save_results(exons_data, group_ids, header=header, feature_type="EXONS")
         DE.differential_analysis(exons_data, header, feature_type='exons')
         del exons_data
+
+    # Map remaining reads to transcriptome
+    unmapped_fastq = {}
+    if unmapped:
+        UN = Unmapped(ex,job,assembly,conditions,via,rpath,unmapped,M,debugfile,logfile)
+        logfile.write("* Align unmapped reads on transcriptome\n"); logfile.flush()
+        try:
+            unmapped_fastq,additionals = UN.align_unmapped(group_names)
+            # additionals: ``{cond: {exon:additional_counts}}``
+        except Exception, error:
+            debugfile.write(str(error)+'\n'); debugfile.flush()
+
+    # Add junction reads to exon pileups
+    for i,cond in enumerate(conditions):
+        if unmapped and (cond in unmapped_fastq) and (cond in additionals):
+            for e,x in additionals[cond].iteritems():
+                if exon_pileups.get(e):
+                    exon_pileups[e][i] += x
+    del additionals
 
     # Get scores of genes from exons
     if "genes" in pileup_level:
