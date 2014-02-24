@@ -242,13 +242,16 @@ def rnaseq_workflow(ex, job, assembly=None, pileup_level=["exons","genes","trans
         group_ids[gname] = gid
     if isinstance(pileup_level,str): pileup_level=[pileup_level]
 
-    """ Define conditions as 'group_name.run_id' """
+    # Define conditions as 'group_name.run_id' and store bamfiles
+    bamfiles = {}
     for gid,files in job.files.iteritems():
         k = 0
         for rid,f in files.iteritems():
             k+=1
             cond = group_names[gid]+'.'+str(k)
             conditions.append(cond)
+            bamfiles[cond] = f['bam']
+    ncond = len(conditions)
 
     logfile.write("* Load mappings\n"); logfile.flush()
     M = Mappings(assembly)
@@ -269,7 +272,7 @@ def rnaseq_workflow(ex, job, assembly=None, pileup_level=["exons","genes","trans
             except:
                 pass
         if hasattr(assembly,"fasta_origin"): # build custom transcriptome
-            firstbam = job.files.itervalues().next().itervalues().next()['bam']
+            firstbam = bamfiles[0]
             firstbamtrack = track(firstbam,format='bam')
             for c,meta in firstbamtrack.chrmeta.iteritems():
                 tmap[c] = ('','',0,meta['length'],meta['length'],0,'') #(gene_id,gene_name,start,end,length,strand,chr)
@@ -277,18 +280,14 @@ def rnaseq_workflow(ex, job, assembly=None, pileup_level=["exons","genes","trans
             header = ["CustomID"]
         logfile.write("* Build pileups\n"); logfile.flush()
         pileups={}
-        for gid,files in job.files.iteritems():
-            k = 0
-            for rid,f in files.iteritems():
-                k+=1
-                cond = group_names[gid]+'.'+str(k)
-                pileup = WF.build_custom_pileup(f['bam'],tmap)
+        for cond in conditions:
+                pileup = WF.build_custom_pileup(bamfiles[cond],tmap)
                 pileups[cond] = pileup.values()
                 logfile.write("  ....Pileup %s done\n" % cond); logfile.flush()
         ids = pileup.keys()
         counts = asarray([pileups[cond] for cond in conditions], dtype=numpy.float_).T
         del pileup, pileups
-        tcounts={}
+        tcounts = {}
         for k,t in enumerate(ids):
             c = counts[k]
             if sum(c) != 0 and t in tmap:
@@ -301,6 +300,15 @@ def rnaseq_workflow(ex, job, assembly=None, pileup_level=["exons","genes","trans
         DE.differential_analysis(trans_data, header, feature_type=ftype.lower())
         return 0
 
+    # Build exon pileups from bam files
+    logfile.write("* Build pileups\n"); logfile.flush()
+    exon_pileups = {}
+    for i,cond in enumerate(conditions):
+        exon_pileup = WF.build_pileup(bamfiles[cond])
+        for e,count in exon_pileup.iteritems():
+            exon_pileups.setdefault(e,zeros(ncond))[i] = count
+    del exon_pileup
+
     # Map remaining reads to transcriptome
     unmapped_fastq = {}
     if unmapped:
@@ -311,45 +319,14 @@ def rnaseq_workflow(ex, job, assembly=None, pileup_level=["exons","genes","trans
         except Exception, error:
             debugfile.write(str(error)+'\n'); debugfile.flush()
 
-    # Find splice junctions
-    if junctions:
-        JN = Junctions(ex,job,assembly,via,junctions,debugfile,logfile)
-        logfile.write("* Search for splice junctions\n"); logfile.flush()
-        try:
-            JN.find_junctions()
-        except Exception, error:
-            debugfile.write(str(error)+'\n'); debugfile.flush()
-
-    # Build exon pileups from bam files
-    logfile.write("* Build pileups\n"); logfile.flush()
-    exon_pileups = {}
-    for cond in conditions:
-        exon_pileup = WF.build_pileup(f['bam'])
-        if unmapped and cond in unmapped_fastq and cond in additionals:
-            for e,x in additionals[cond].iteritems():
-                if exon_pileup.get(e):
-                    exon_pileup[e] += x
-            additionals.pop(cond)
-        exon_pileups[cond] = exon_pileup.values()
-        logfile.write("  ....Pileup %s done\n" % cond); logfile.flush()
-    exon_ids = asarray(exon_pileup.keys()) # same for all conds
-    del exon_pileup
-
-    # Arrange exon counts in a matrix
-    ecounts_matrix = asarray([exon_pileups[cond] for cond in conditions], dtype=numpy.float_).T
-    nonzero_exons = nonzero(numpy.sum(ecounts_matrix,1))  # indices of non-zero lines
-    ecounts_matrix = ecounts_matrix[nonzero_exons]
-    exon_ids = exon_ids[nonzero_exons]
-    del exon_pileups
-
     hconds = ["counts."+c for c in conditions] + ["norm."+c for c in conditions] + ["rpkm."+c for c in conditions]
 
     # Print counts for exons
     if "exons" in pileup_level:
         logfile.write("* Get scores of exons\n"); logfile.flush()
         header = ["ExonID"] + hconds + ["Start","End","GeneID","GeneName","Strand","Chromosome"]
-        lengths = asarray([M.exon_mapping[e][4]-M.exon_mapping[e][3] for e in exon_ids])
-        exons_data = WF.norm_and_format(ecounts_matrix,lengths,M.exon_mapping,(3,4,1,2,5,6),ids=exon_ids)
+        lengths = asarray([M.exon_mapping[e][4]-M.exon_mapping[e][3] for e in exon_pileups])
+        exons_data = WF.norm_and_format(exon_pileups,lengths,M.exon_mapping,(3,4,1,2,5,6))
         WF.save_results(exons_data, group_ids, header=header, feature_type="EXONS")
         DE.differential_analysis(exons_data, header, feature_type='exons')
         del exons_data
@@ -358,7 +335,7 @@ def rnaseq_workflow(ex, job, assembly=None, pileup_level=["exons","genes","trans
     if "genes" in pileup_level:
         logfile.write("* Get scores of genes\n"); logfile.flush()
         header = ["GeneID"] + hconds + ["Start","End","GeneName","Strand","Chromosome"]
-        gcounts = WF.genes_expression(exon_ids, ecounts_matrix)
+        gcounts = WF.genes_expression(exon_pileups)
         lengths = asarray([M.gene_mapping[g][3] for g in gcounts.iterkeys()])
         genes_data = WF.norm_and_format(gcounts,lengths,M.gene_mapping,(1,2,0,4,5))
         WF.save_results(genes_data, group_ids, header=header, feature_type="GENES")
@@ -369,12 +346,22 @@ def rnaseq_workflow(ex, job, assembly=None, pileup_level=["exons","genes","trans
     if "transcripts" in pileup_level:
         logfile.write("* Get scores of transcripts\n"); logfile.flush()
         header = ["TranscriptID"] + hconds + ["Start","End","GeneID","GeneName","Strand","Chromosome"]
-        tcounts = WF.transcripts_expression(exon_ids, ecounts_matrix)
+        tcounts = WF.transcripts_expression(exon_pileups)
         lengths = asarray([M.transcript_mapping[t][4] for t in tcounts.iterkeys()])
         trans_data = WF.norm_and_format(tcounts,lengths,M.transcript_mapping,(2,3,0,1,5,6))
         WF.save_results(trans_data, group_ids, header=header, feature_type="TRANSCRIPTS")
         DE.differential_analysis(trans_data, header, feature_type='transcripts')
         del trans_data
+
+    # Find splice junctions
+    if junctions:
+        JN = Junctions(ex,job,assembly,via,junctions,debugfile,logfile)
+        logfile.write("* Search for splice junctions\n"); logfile.flush()
+        try:
+            JN.find_junctions()
+        except Exception, error:
+            debugfile.write(str(error)+'\n'); debugfile.flush()
+
     return 0
 
 
@@ -442,7 +429,8 @@ class Pileups(RNAseq):
                 except ValueError,ve: # unknown reference
                     self.debugfile.write(str(ve)); self.debugfile.flush()
                 for exon in ex:
-                    counts[exon] = counts.get(exon,0) + c.n/float(len(ex))
+                    if c.n > 0:  # remove this if want to keep all references in output
+                        counts[exon] = counts.get(exon,0) + c.n/float(len(ex))
         sam.close()
         return counts
 
@@ -507,19 +495,18 @@ class Pileups(RNAseq):
         return os.path.abspath(output_tab)
 
     @timer
-    def genes_expression(self, exon_ids, ecounts_matrix):
+    def genes_expression(self, exon_pileups):
         """Get gene counts/rpkm from exon counts (sum).
         Returns a dictionary of the form ``{gene_id: scores}``.
         """
-        ncond = len(self.conditions)
-        gene_counts={}
-        for e,counts in itertools.izip(exon_ids,ecounts_matrix):
+        gene_counts = {}
+        for e,counts in exon_pileups.iteritems():
             g = self.M.exon_mapping[e][1]
-            gene_counts[g] = gene_counts.get(g,zeros(ncond)) + counts
+            gene_counts[g] = gene_counts.get(g,zeros(len(self.conditions))) + counts
         return gene_counts
 
     @timer
-    def transcripts_expression(self, exon_ids, ecounts_matrix):
+    def transcripts_expression(self, exon_pileups):
         """Get transcript rpkms from exon rpkms using NNLS.
         Returns a dictionary of the form ``{transcript_id: score}``.
         """
@@ -528,10 +515,9 @@ class Pileups(RNAseq):
         ncond = len(self.conditions)
         trans_counts={}
         exons_counts={}; genes=[];
-        for e,counts in itertools.izip(exon_ids,ecounts_matrix):
+        for e,counts in exon_pileups.iteritems():
             exons_counts[e] = counts
             genes.append(emap[e][1])
-        del exon_ids, ecounts_matrix
         genes = set(genes)
         unknown = 0
         pinv = numpy.linalg.pinv
@@ -907,8 +893,8 @@ class Unmapped(RNAseq):
                             for e in E:
                                 e_start, e_end = self.M.exon_mapping[e][3:5]
                                 e_len = e_end-e_start
-                                if r_start <= lag <= r_end <= lag+e_len \
-                                or lag <= r_start <= lag+e_len <= r_end:
+                                if r_start < lag <= r_end <= lag+e_len \
+                                or lag <= r_start <= lag+e_len < r_end:
                                     additional[e] = additional.get(e,0) + 0.5*NH[0]
                                 lag += e_len
                     additionals[cond] = additional
