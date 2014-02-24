@@ -281,9 +281,9 @@ def rnaseq_workflow(ex, job, assembly=None, pileup_level=["exons","genes","trans
         logfile.write("* Build pileups\n"); logfile.flush()
         pileups={}
         for cond in conditions:
-                pileup = WF.build_custom_pileup(bamfiles[cond],tmap)
-                pileups[cond] = pileup.values()
-                logfile.write("  ....Pileup %s done\n" % cond); logfile.flush()
+            pileup = WF.build_custom_pileup(bamfiles[cond],tmap)
+            pileups[cond] = pileup.values()
+            logfile.write("  ....Pileup %s done\n" % cond); logfile.flush()
         ids = pileup.keys()
         counts = asarray([pileups[cond] for cond in conditions], dtype=numpy.float_).T
         del pileup, pileups
