@@ -335,7 +335,7 @@ def rnaseq_workflow(ex, job, assembly=None, pileup_level=["exons","genes","trans
     for i,cond in enumerate(conditions):
         if unmapped and (cond in unmapped_fastq) and (cond in additionals):
             for e,x in additionals[cond].iteritems():
-                if exon_pileups.get(e):
+                if e in exon_pileups:
                     exon_pileups[e][i] += x
                 else:
                     exon_pileups.setdefault(e,zeros(ncond))[i] = x
@@ -532,13 +532,13 @@ class Pileups(RNAseq):
         unknown = 0
         pinv = numpy.linalg.pinv
         for g in genes:
-            if self.M.trans_in_gene.get(g): # if the gene is (still) in the Ensembl database
+            if g in self.M.trans_in_gene: # if the gene is (still) in the Ensembl database
                 # Get all transcripts in the gene
                 tg = self.M.trans_in_gene[g]
                 # Get all exons in the gene
                 eg = set()
                 for t in tg:
-                    if self.M.exons_in_trans.get(t):
+                    if t in self.M.exons_in_trans:
                         eg = eg.union(set(self.M.exons_in_trans[t]))
                         trans_counts[t] = zeros(ncond)
                 # Create the correspondance matrix
@@ -547,14 +547,14 @@ class Pileups(RNAseq):
                 ec = zeros((ncond,len(eg)))
                 for i,e in enumerate(eg):
                     for j,t in enumerate(tg):
-                        if self.M.exons_in_trans.get(t) and e in self.M.exons_in_trans[t]:
+                        if t in self.M.exons_in_trans and e in self.M.exons_in_trans[t]:
                             M[i,j] = 1.
-                            if emap.get(e) and tmap.get(t):
+                            if e in emap and t in tmap:
                                 L[i,j] = float((emap[e][4]-emap[e][3])) / tmap[t][4]
                             else:
                                 L[i,j] = 1./len(eg)
                     # Retrieve exon scores
-                    if exons_counts.get(e) is not None:
+                    if e in exons_counts:
                         for c in range(ncond):
                             ec[c][i] += exons_counts[e][c]
                 # If only one transcript, special case for more precision
@@ -893,7 +893,7 @@ class Unmapped(RNAseq):
                     additional = {}
                     for read in sam:
                         t_id = sam.getrname(read.tid).split('|')[0]
-                        if self.M.transcript_mapping.get(t_id) and self.M.exons_in_trans.get(t_id):
+                        if t_id in self.M.transcript_mapping and t_id in self.M.exons_in_trans:
                             E = self.M.exons_in_trans[t_id]
                             if len(E) < 2: continue  # need 2 exons to make a junction
                             lag = 0

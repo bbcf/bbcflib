@@ -40,7 +40,7 @@ Genomic features with zero counts in all conditions will not be reported.
 
 .. note::
 
-    First reads are counted on exons and the exons table & stats are produced. Then junction reads are added and genes/transcripts expression calculated. Hence possible differences between gene count and the sum of its exons'.
+    First reads are counted in exons and the exons table & stats are produced. Then junction reads are added and genes/transcripts expression calculated. Hence possible differences between gene count and the sum of its exons', for instance.
 
 Differential analysis is performed on raw counts (by DESeq) and results are summarized in the files named "<type>_differential_<comparison>.txt". Columns "pval" and "padj" are respectively gene-level and adjusted p-values.
 
