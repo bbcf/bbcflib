@@ -257,8 +257,6 @@ def rnaseq_workflow(ex, job, assembly=None, pileup_level=["exons","genes","trans
 
     logfile.write("* Load mappings\n"); logfile.flush()
     M = Mappings(assembly)
-    if len(M.exon_mapping) == 0 or len(M.gene_mapping) == 0:
-        raise ValueError("No genes found for this genome. Abort.")
 
     WF = Pileups(ex,job,assembly,conditions,pileup_level,via,M,debugfile,logfile)
     DE = DE_Analysis(ex,job,assembly,conditions,via,rpath,debugfile,logfile)
@@ -303,6 +301,8 @@ def rnaseq_workflow(ex, job, assembly=None, pileup_level=["exons","genes","trans
         return 0
 
     M.fetch_mappings()
+    if len(M.exon_mapping) == 0 or len(M.gene_mapping) == 0:
+        raise ValueError("No genes found for this genome. Abort.")
 
     # Build exon pileups from bam files
     logfile.write("* Build pileups\n"); logfile.flush()
