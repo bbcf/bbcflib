@@ -158,6 +158,8 @@ class RNAseq(object):
 class Mappings():
     def __init__(self, assembly):
         self.assembly = assembly
+
+    def fetch_mappings(self):
         """
         * gene_mapping is a dict ``{gene_id: (gene_name,start,end,length,chrom)}``
         * transcript_mapping is a dictionary ``{transcript_id: (gene_id,gene_name,start,end,length,chrom)}``
@@ -253,11 +255,10 @@ def rnaseq_workflow(ex, job, assembly=None, pileup_level=["exons","genes","trans
             bamfiles[cond] = f['bam']
     ncond = len(conditions)
 
-    if (not hasattr(assembly,"fasta_origin")) and (assembly.intype != 2):
-        logfile.write("* Load mappings\n"); logfile.flush()
-        M = Mappings(assembly)
-        if len(M.exon_mapping) == 0 or len(M.gene_mapping) == 0:
-            raise ValueError("No genes found for this genome. Abort.")
+    logfile.write("* Load mappings\n"); logfile.flush()
+    M = Mappings(assembly)
+    if len(M.exon_mapping) == 0 or len(M.gene_mapping) == 0:
+        raise ValueError("No genes found for this genome. Abort.")
 
     WF = Pileups(ex,job,assembly,conditions,pileup_level,via,M,debugfile,logfile)
     DE = DE_Analysis(ex,job,assembly,conditions,via,rpath,debugfile,logfile)
@@ -300,6 +301,8 @@ def rnaseq_workflow(ex, job, assembly=None, pileup_level=["exons","genes","trans
         WF.save_results(trans_data,group_ids,header=header,feature_type=ftype)
         DE.differential_analysis(trans_data, header, feature_type=ftype.lower())
         return 0
+
+    M.fetch_mappings()
 
     # Build exon pileups from bam files
     logfile.write("* Build pileups\n"); logfile.flush()
