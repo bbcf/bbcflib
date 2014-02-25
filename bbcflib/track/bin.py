@@ -334,7 +334,8 @@ try:
                 self.open()
                 _buff = {}
                 for read in self.fetch(*region[:3]):
-                    if read.is_reverse or not read.is_proper_pair: continue
+                    if read.is_reverse or not read.is_proper_pair or read.isize<0:
+                        continue
                     flen = read.isize
                     if midpoint:
                         posrange = (read.pos+flen/2,)
