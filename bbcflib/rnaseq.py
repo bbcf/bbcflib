@@ -272,7 +272,7 @@ def rnaseq_workflow(ex, job, assembly=None, pileup_level=["exons","genes","trans
             except:
                 pass
         if hasattr(assembly,"fasta_origin"): # build custom transcriptome
-            firstbam = bamfiles[0]
+            firstbam = bamfiles.items()[0][1]
             firstbamtrack = track(firstbam,format='bam')
             for c,meta in firstbamtrack.chrmeta.iteritems():
                 tmap[c] = ('','',0,meta['length'],meta['length'],0,'') #(gene_id,gene_name,start,end,length,strand,chr)
