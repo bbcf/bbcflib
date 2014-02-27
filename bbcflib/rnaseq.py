@@ -161,6 +161,7 @@ class Mappings():
     def __init__(self, assembly):
         self.assembly = assembly
 
+    @timer
     def fetch_mappings(self):
         """
         * gene_mapping is a dict ``{gene_id: (gene_name,start,end,length,chrom)}``
@@ -233,7 +234,7 @@ def rnaseq_workflow(ex, job, assembly=None, pileup_level=["exons","genes","trans
     if test:
         via = 'local'
         logfile = sys.stdout
-        debugfile = sys.stderr
+        debugfile = sys.stdout
         repo_rpath = '/home/jdelafon/repos/bbcfutils/R/'
         if os.path.exists(repo_rpath): rpath = repo_rpath
 
@@ -432,34 +433,34 @@ class Pileups(RNAseq):
             ref_index[ref.split('|')[0]] = ref
         mapped_on = 'genome' if all([ref in chromosomes for ref in sam.references[:100]]) else 'exons'
         c = Counter()
-        for g in self.M.gene_mapping.iterkeys():
-            eg = set()
-            for t in self.M.trans_in_gene[g]:
-                eg.update(self.M.exons_in_trans[t])
-            eg = sorted([(e,)+self.M.exon_mapping[e][3:] for e in eg], key=itemgetter(1,2))
-            eg = cobble(FeatureStream(eg,fields=['name','start','end','strand','chr']))
-            for e in eg:
-                ex = e[0].split('|')  # list of cobbled exons spanning the same interval
-                origin = ex[-1]       # last representant of this exons set (arbitrary)
-                if e[2]-e[1] <= 1: continue
+        for chrom in chromosomes:
+            etrack = self.assembly.exon_track(chromlist=[chrom])
+            for (chrom,start,end,names,strand,phase) in cobble(etrack,aggregate={'name':lambda n:'$'.join(n)}):
+                if strand == 0: continue  # skip overlapping exons of different strands to avoid typeI errors
+                exon_ids = [e.split('|')[0] for e in names.split('$')]  # all spanning this interval - maybe more
                 if mapped_on == 'genome':
-                    ref = e[-1]; start = e[1]; end = e[2]
-                else: # mapped on 'exons'
-                    ostart,oend = self.M.exon_mapping[origin][3:5]
-                    ref = ref_index.get(origin)
-                    start = e[1]-ostart; end = e[2]-ostart
-                if not ref: continue
+                    ref = chrom
+                else: # mapped on 'exons': need to subtract exon start coordinate.
+                    # All have the same sequence in this interval. Take any of them,
+                    # just choose the shift from its start accordingly.
+                    oneofthem = exon_ids[0]
+                    ostart = self.M.exon_mapping[oneofthem][3]
+                    shift = start-ostart  # dist from start of this exon to our region start
+                    ref = ref_index.get(oneofthem)
+                    start = shift; end = shift+(end-start)
+                if not ref: continue  # exon in bam header but not in exon_track
                 try:
                     c.n = 0
-                    c.counts = [0]*(2*(end-start)+1)  # 2x because of reads overflow (not strict ref interval)
+                    c.counts = [0]*(end-start+1)  # do not allow read overflow
                     c.start = start
-                    sam.fetch(ref,start,end, callback=c)  # calls Counter.__call__ for each alignment
-                    c.remove_duplicates()
-                except ValueError,ve: # unknown reference
-                    self.debugfile.write(str(ve)); self.debugfile.flush()
-                for exon in ex:
+                    sam.fetch(ref,start,end, callback=c)  # calls Counter.__call__ for each alignment: updates c.n
+                    #c.remove_duplicates()
+                except ValueError,ve:  # unknown reference
+                    self.write_debug("Unknown reference: %s",str(ve))
+                nexons = float(len(exon_ids))
+                for exon in exon_ids:
                     if c.n > 0:  # remove this if want to keep all references in output
-                        counts[exon] = counts.get(exon,0) + c.n/float(len(ex))
+                        counts[exon] = counts.get(exon,0) + c.n/nexons
         sam.close()
         return counts
 
