@@ -16,7 +16,7 @@ import os, sys, pysam, math, itertools
 from operator import itemgetter
 
 # Internal modules #
-from bbcflib.common import set_file_descr, unique_filename_in, cat, timer
+from bbcflib.common import set_file_descr, unique_filename_in, cat, timer, program_exists
 from bbcflib.genrep import Assembly
 from bbcflib.mapseq import add_and_index_bam, sam_to_bam, map_reads, plot_stats
 from bbcflib.gfminer.common import cobble, sorted_stream, map_chromosomes, duplicate, apply
@@ -134,7 +134,8 @@ def lsqnonneg(C, d, x0=None, tol=None, itmax_factor=3):
 
 class RNAseq(object):
     """Abstract, inherited by different parts of the workflow."""
-    def __init__(self,ex,job,assembly,conditions,pileup_level,via,rpath,junctions,unmapped,mappings,debugfile,logfile):
+    def __init__(self,ex,via,job,assembly,conditions,debugfile,logfile,
+                 pileup_level,rpath,juliapath,junctions,unmapped,mappings):
         self.ex = ex                     # bein.Execution object
         self.job = job                   # frontend.Job object
         self.assembly = assembly         # genrep.Assembly object
@@ -142,6 +143,7 @@ class RNAseq(object):
         self.pileup_level = pileup_level # ["genes","exons","transcripts"], or another combination
         self.via = via                   # "local"/"lsf"
         self.rpath = rpath               # Path to R scripts
+        self.juliapath = juliapath       # Path to Julia scripts
         self.junctions = junctions       # True/False, want to find or not
         self.unmapped = unmapped         # True/False, want to remap or not
         self.debugfile = debugfile       # debug file name
@@ -226,6 +228,8 @@ def rnaseq_workflow(ex, job, assembly=None, pileup_level=["exons","genes","trans
     :param unmapped: (bool) whether to remap to the transcriptome reads that did not map the genome. [False]
     :param via: (str) send job via 'local' or 'lsf'. ["lsf"]
     """
+    juliapath='/home/jdelafon/repos/bbcfutils/Julia/'
+
     if test:
         via = 'local'
         logfile = sys.stdout
@@ -255,11 +259,11 @@ def rnaseq_workflow(ex, job, assembly=None, pileup_level=["exons","genes","trans
             bamfiles[cond] = f['bam']
     ncond = len(conditions)
 
-    logfile.write("* Load mappings\n"); logfile.flush()
     M = Mappings(assembly)
-
-    WF = Pileups(ex,job,assembly,conditions,pileup_level,via,M,debugfile,logfile)
-    DE = DE_Analysis(ex,job,assembly,conditions,via,rpath,debugfile,logfile)
+    WF = Pileups(ex,via,job,assembly,conditions,debugfile,logfile,
+                 pileup_level,rpath,juliapath,junctions,unmapped,M)
+    DE = DE_Analysis(ex,via,job,assembly,conditions,debugfile,logfile,
+                 pileup_level,rpath,juliapath,junctions,unmapped,M)
 
     # If the reads were aligned on transcriptome (maybe custom), do that and skip the rest
     if hasattr(assembly,"fasta_origin") or assembly.intype == 2:
@@ -300,6 +304,7 @@ def rnaseq_workflow(ex, job, assembly=None, pileup_level=["exons","genes","trans
         DE.differential_analysis(trans_data, header, feature_type=ftype.lower())
         return 0
 
+    logfile.write("* Load mappings\n"); logfile.flush()
     M.fetch_mappings()
     if len(M.exon_mapping) == 0 or len(M.gene_mapping) == 0:
         raise ValueError("No genes found for this genome. Abort.")
@@ -328,12 +333,13 @@ def rnaseq_workflow(ex, job, assembly=None, pileup_level=["exons","genes","trans
     # Map remaining reads to transcriptome
     unmapped_fastq = {}
     if unmapped:
-        UN = Unmapped(ex,job,assembly,conditions,via,rpath,unmapped,M,debugfile,logfile)
+        UN = Unmapped(ex,via,job,assembly,conditions,debugfile,logfile,
+                      pileup_level,rpath,juliapath,junctions,unmapped,M)
         logfile.write("* Align unmapped reads on transcriptome\n"); logfile.flush()
         try:
             unmapped_fastq,additionals = UN.align_unmapped(group_names)
         except Exception, error:
-            debugfile.write(str(error)+'\n'); debugfile.flush()
+            debugfile.write("Remapping failed: %s\n"%str(error)); debugfile.flush()
 
     # Add junction reads to exon pileups
     for i,cond in enumerate(conditions):
@@ -352,9 +358,17 @@ def rnaseq_workflow(ex, job, assembly=None, pileup_level=["exons","genes","trans
         gcounts = WF.genes_expression(exon_pileups)
         lengths = asarray([M.gene_mapping[g][3] for g in gcounts.iterkeys()])
         genes_data = WF.norm_and_format(gcounts,lengths,M.gene_mapping,(1,2,0,4,5))
-        WF.save_results(genes_data, group_ids, header=header, feature_type="GENES")
+        genes_file = WF.save_results(genes_data, group_ids, header=header, feature_type="GENES")
         DE.differential_analysis(genes_data, header, feature_type='genes')
         del genes_data
+
+        # PCA of groups ~ gene expression
+        PCA = Pca(ex,via,job,assembly,conditions,debugfile,logfile,
+                  pileup_level,rpath,juliapath,junctions,unmapped,M)
+        try:
+            PCA.pca_rnaseq(genes_file)
+        except Exception, error:
+            debugfile.write("PCA failed: %s\n"%str(error)); debugfile.flush()
 
     # Get scores of transcripts from exons, using non-negative least-squares
     if "transcripts" in pileup_level:
@@ -369,12 +383,13 @@ def rnaseq_workflow(ex, job, assembly=None, pileup_level=["exons","genes","trans
 
     # Find splice junctions
     if junctions:
-        JN = Junctions(ex,job,assembly,via,junctions,debugfile,logfile)
+        JN = Junctions(ex,via,job,assembly,conditions,debugfile,logfile,
+                       pileup_level,rpath,juliapath,junctions,unmapped,M)
         logfile.write("* Search for splice junctions\n"); logfile.flush()
         try:
             JN.find_junctions()
         except Exception, error:
-            debugfile.write(str(error)+'\n'); debugfile.flush()
+            debugfile.write("Junctions search failed: %s\n"%str(error)); debugfile.flush()
 
     return 0
 
@@ -383,8 +398,10 @@ def rnaseq_workflow(ex, job, assembly=None, pileup_level=["exons","genes","trans
 
 
 class Pileups(RNAseq):
-    def __init__(self,ex,job,assembly,conditions,pileup_level,via,mappings,debugfile,logfile):
-        RNAseq.__init__(self,ex,job,assembly,conditions,pileup_level,via,0,0,0,mappings,debugfile,logfile)
+    def __init__(self,ex,via,job,assembly,conditions,debugfile,logfile,
+                 pileup_level,rpath,juliapath,junctions,unmapped,mappings):
+        RNAseq.__init__(self,ex,via,job,assembly,conditions,debugfile,logfile,
+                 pileup_level,rpath,juliapath,junctions,unmapped,mappings)
 
     @timer
     def build_custom_pileup(self, bamfile, transcript_mapping):
@@ -630,8 +647,10 @@ class Pileups(RNAseq):
 
 
 class DE_Analysis(RNAseq):
-    def __init__(self,ex,job,assembly,conditions,via,rpath,debugfile,logfile):
-        RNAseq.__init__(self,ex,job,assembly,conditions,0,via,rpath,0,0,0,debugfile,logfile)
+    def __init__(self,ex,via,job,assembly,conditions,debugfile,logfile,
+                 pileup_level,rpath,juliapath,junctions,unmapped,mappings):
+        RNAseq.__init__(self,ex,via,job,assembly,conditions,debugfile,logfile,
+                 pileup_level,rpath,juliapath,junctions,unmapped,mappings)
 
     def clean_before_deseq(self, data, header, keep=0.6):
         """Delete all lines of *filename* where counts are 0 in every run.
@@ -731,8 +750,10 @@ class DE_Analysis(RNAseq):
 
 
 class Junctions(RNAseq):
-    def __init__(self,ex,job,assembly,via,junctions,debugfile,logfile):
-        RNAseq.__init__(self,ex,job,assembly,0,0,via,0,junctions,0,0,debugfile,logfile)
+    def __init__(self,ex,via,job,assembly,conditions,debugfile,logfile,
+                 pileup_level,rpath,juliapath,junctions,unmapped,mappings):
+        RNAseq.__init__(self,ex,via,job,assembly,conditions,debugfile,logfile,
+                 pileup_level,rpath,juliapath,junctions,unmapped,mappings)
 
     @timer
     def find_junctions(self, soapsplice_index=None, path_to_soapsplice=None, soapsplice_options={}):
@@ -781,6 +802,7 @@ class Junctions(RNAseq):
             for k,v in options.iteritems(): opts.extend([str(k),str(v)])
             return {"arguments": args+opts, "return_value": output}
 
+        assert program_exists('soapsplice')
         self.assembly.set_index_path(intype=3)
         soapsplice_index = soapsplice_index or self.assembly.index_path
         soapsplice_options.update(self.job.options.get('soapsplice_options',{}))
@@ -811,9 +833,9 @@ class Junctions(RNAseq):
             junc_file = template+'.junc'
             bed = self.convert_junc_file(junc_file,self.assembly)
             bed_descr = set_file_descr('junctions_%s.bed' % group['name'],
-                                       groupId=gid,type='bed',step='1',ucsc=1)
+                                       groupId=gid,type='bed',step='junctions',ucsc=1)
             bam_descr = set_file_descr('junctions_%s.bam' % group['name'],
-                                       groupId=gid,type='bam',step='1')
+                                       groupId=gid,type='bam',step='junctions')
             sam = template+'.sam'
             try:
                 bam = sam_to_bam(self.ex,sam,reheader=self.assembly.name)
@@ -850,8 +872,10 @@ class Junctions(RNAseq):
 
 
 class Unmapped(RNAseq):
-    def __init__(self,ex,job,assembly,conditions,via,rpath,unmapped,mappings,debugfile,logfile):
-        RNAseq.__init__(self,ex,job,assembly,conditions,0,via,rpath,0,unmapped,mappings,debugfile,logfile)
+    def __init__(self,ex,via,job,assembly,conditions,debugfile,logfile,
+                 pileup_level,rpath,juliapath,junctions,unmapped,mappings):
+        RNAseq.__init__(self,ex,via,job,assembly,conditions,debugfile,logfile,
+                 pileup_level,rpath,juliapath,junctions,unmapped,mappings)
 
     @timer
     def align_unmapped(self, group_names):
@@ -915,6 +939,34 @@ class Unmapped(RNAseq):
                     unmapped_fastq[cond] = _fastq
                     sam.close()
         return unmapped_fastq,additionals
+
+
+#---------------------------------- PCA ----------------------------------#
+
+
+class Pca(RNAseq):
+    def __init__(self,ex,via,job,assembly,conditions,debugfile,logfile,
+                 pileup_level,rpath,juliapath,junctions,unmapped,mappings):
+        RNAseq.__init__(self,ex,via,job,assembly,conditions,debugfile,logfile,
+                 pileup_level,rpath,juliapath,junctions,unmapped,mappings)
+
+    def pca_rnaseq(self,counts_table_file):
+        @program
+        def pcajl(counts_table_file):
+            assert program_exists('julia')
+            outprefix = unique_filename_in()
+            args = ['julia', os.path.join(self.juliapath,'pca_rnaseq.jl'), counts_table_file, outprefix]
+            return {"arguments": args, "return_value": outprefix}
+
+        outprefix = pcajl(self.ex, counts_table_file)
+        pca_descr_png = set_file_descr('pca_groups.png', type='png', step='pca')
+        pca_descr_js = set_file_descr('pca_groups.js', type='txt', step='pca', view='admin')
+        pcaeigv_descr_png = set_file_descr('pca_groups_sdev.png', type='png', step='pca')
+        pcaeigv_descr_js = set_file_descr('pca_groups_sdev.js', type='txt', step='pca', view='admin')
+        self.ex.add(outprefix+'.png', description=pca_descr_png)
+        self.ex.add(outprefix+'.js', description=pca_descr_js)
+        self.ex.add(outprefix+'_sdev.png', description=pcaeigv_descr_png)
+        self.ex.add(outprefix+'_sdev.js', description=pcaeigv_descr_js)
 
 
 #------------------------------------------------------#
