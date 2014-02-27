@@ -398,10 +398,8 @@ def rnaseq_workflow(ex, job, assembly=None, pileup_level=["exons","genes","trans
 
 
 class Pileups(RNAseq):
-    def __init__(self,ex,via,job,assembly,conditions,debugfile,logfile,
-                 pileup_level,rpath,juliapath,junctions,unmapped,mappings):
-        RNAseq.__init__(self,ex,via,job,assembly,conditions,debugfile,logfile,
-                 pileup_level,rpath,juliapath,junctions,unmapped,mappings)
+    def __init__(self,*args):
+        RNAseq.__init__(self,*args)
 
     @timer
     def build_custom_pileup(self, bamfile, transcript_mapping):
@@ -647,10 +645,8 @@ class Pileups(RNAseq):
 
 
 class DE_Analysis(RNAseq):
-    def __init__(self,ex,via,job,assembly,conditions,debugfile,logfile,
-                 pileup_level,rpath,juliapath,junctions,unmapped,mappings):
-        RNAseq.__init__(self,ex,via,job,assembly,conditions,debugfile,logfile,
-                 pileup_level,rpath,juliapath,junctions,unmapped,mappings)
+    def __init__(self,*args):
+        RNAseq.__init__(self,*args)
 
     def clean_before_deseq(self, data, header, keep=0.6):
         """Delete all lines of *filename* where counts are 0 in every run.
@@ -750,10 +746,8 @@ class DE_Analysis(RNAseq):
 
 
 class Junctions(RNAseq):
-    def __init__(self,ex,via,job,assembly,conditions,debugfile,logfile,
-                 pileup_level,rpath,juliapath,junctions,unmapped,mappings):
-        RNAseq.__init__(self,ex,via,job,assembly,conditions,debugfile,logfile,
-                 pileup_level,rpath,juliapath,junctions,unmapped,mappings)
+    def __init__(self,*args):
+        RNAseq.__init__(self,*args)
 
     @timer
     def find_junctions(self, soapsplice_index=None, path_to_soapsplice=None, soapsplice_options={}):
@@ -872,10 +866,8 @@ class Junctions(RNAseq):
 
 
 class Unmapped(RNAseq):
-    def __init__(self,ex,via,job,assembly,conditions,debugfile,logfile,
-                 pileup_level,rpath,juliapath,junctions,unmapped,mappings):
-        RNAseq.__init__(self,ex,via,job,assembly,conditions,debugfile,logfile,
-                 pileup_level,rpath,juliapath,junctions,unmapped,mappings)
+    def __init__(self,*args):
+        RNAseq.__init__(self,*args)
 
     @timer
     def align_unmapped(self, group_names):
@@ -945,10 +937,8 @@ class Unmapped(RNAseq):
 
 
 class Pca(RNAseq):
-    def __init__(self,ex,via,job,assembly,conditions,debugfile,logfile,
-                 pileup_level,rpath,juliapath,junctions,unmapped,mappings):
-        RNAseq.__init__(self,ex,via,job,assembly,conditions,debugfile,logfile,
-                 pileup_level,rpath,juliapath,junctions,unmapped,mappings)
+    def __init__(self,*args):
+        RNAseq.__init__(self,*args)
 
     def pca_rnaseq(self,counts_table_file):
         @program
