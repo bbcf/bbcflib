@@ -189,9 +189,10 @@ class Mappings():
 
 class Counter(object):
     def __init__(self, stranded=False):
-        self.n = 0 # total number of reads
+        self.n = 0 # read count
         self.start = 0 # exon start
         self.counts = [] # vector of counts per non-zero position
+        self.strand = 0 # exon strand
         if stranded: self.count_fct = self.count_stranded
         else: self.count_fct = self.count
 
@@ -466,6 +467,7 @@ class Pileups(RNAseq):
                     c.n = 0
                     c.counts = [0]*(end-start+1)  # do not allow read overflow
                     c.start = start
+                    c.strand = strand
                     sam.fetch(ref,start,end, callback=c)  # calls Counter.__call__ for each alignment: updates c.n
                     #c.remove_duplicates()
                 except ValueError,ve:  # unknown reference
