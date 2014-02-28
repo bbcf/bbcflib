@@ -135,7 +135,7 @@ def lsqnonneg(C, d, x0=None, tol=None, itmax_factor=3):
 class RNAseq(object):
     """Abstract, inherited by different parts of the workflow."""
     def __init__(self,ex,via,job,assembly,conditions,debugfile,logfile,
-                 pileup_level,rpath,juliapath,junctions,unmapped,mappings):
+                 pileup_level,rpath,juliapath,junctions,unmapped,mappings,stranded):
         self.ex = ex                     # bein.Execution object
         self.job = job                   # frontend.Job object
         self.assembly = assembly         # genrep.Assembly object
@@ -149,6 +149,7 @@ class RNAseq(object):
         self.debugfile = debugfile       # debug file name
         self.logfile = logfile           # log file name
         self.M = mappings                # Mappings object
+        self.stranded = stranded         # True/False, strand-specific or not
 
     def write_log(self,s):
         self.logfile.write(s+'\n'); self.logfile.flush()
@@ -187,17 +188,29 @@ class Mappings():
 
 
 class Counter(object):
-    def __init__(self):
+    def __init__(self, stranded=False):
         self.n = 0 # total number of reads
         self.start = 0 # exon start
         self.counts = [] # vector of counts per non-zero position
+        if stranded: self.count_fct = self.count_stranded
+        else: self.count_fct = self.count
+
     def __call__(self, alignment):
+        self.count_fct(alignment)
+
+    def count(self, alignment):
         NH = [1.0/t[1] for t in alignment.tags if t[0]=='NH']+[1]
         self.n += NH[0]
         try:
             self.counts[alignment.pos-self.start] += NH[0]
         except IndexError:
             pass # read overflows but is bigger than the exon, we don't care
+
+    def count_stranded(self, alignment):
+        if self.strand == "+" and alignment.is_reverse == False \
+        or self.strand == "-" and alignment.is_reverse == True:
+            self.count(alignment)
+
     def remove_duplicates(self):
         """Fetches all reads mapped to a transcript, checks if there are mapping positions
         where the number of reads is more than N times the average for this gene.
@@ -216,7 +229,8 @@ class Counter(object):
 
 @timer
 def rnaseq_workflow(ex, job, assembly=None, pileup_level=["exons","genes","transcripts"], via="lsf",
-                    rpath=None, junctions=None, unmapped=None, logfile=sys.stdout, debugfile=sys.stderr):
+                    rpath=None, junctions=False, unmapped=False, stranded=False,
+                    logfile=sys.stdout, debugfile=sys.stderr):
     """Main function of the workflow.
 
     :rtype: None
@@ -261,10 +275,13 @@ def rnaseq_workflow(ex, job, assembly=None, pileup_level=["exons","genes","trans
     ncond = len(conditions)
 
     M = Mappings(assembly)
-    WF = Pileups(ex,via,job,assembly,conditions,debugfile,logfile,
-                 pileup_level,rpath,juliapath,junctions,unmapped,M)
-    DE = DE_Analysis(ex,via,job,assembly,conditions,debugfile,logfile,
-                 pileup_level,rpath,juliapath,junctions,unmapped,M)
+    rnaseq_args = (ex,via,job,assembly,conditions,debugfile,logfile,
+                   pileup_level,rpath,juliapath,junctions,unmapped,M,stranded)
+    PU = Pileups(*rnaseq_args)
+    DE = DE_Analysis(*rnaseq_args)
+    UN = Unmapped(*rnaseq_args)
+    PCA = Pca(*rnaseq_args)
+    JN = Junctions(*rnaseq_args)
 
     # If the reads were aligned on transcriptome (maybe custom), do that and skip the rest
     if hasattr(assembly,"fasta_origin") or assembly.intype == 2:
@@ -284,9 +301,9 @@ def rnaseq_workflow(ex, job, assembly=None, pileup_level=["exons","genes","trans
             ftype = "Custom"
             header = ["CustomID"]
         logfile.write("* Build pileups\n"); logfile.flush()
-        pileups={}
+        pileups = {}
         for cond in conditions:
-            pileup = WF.build_custom_pileup(bamfiles[cond],tmap)
+            pileup = PU.build_custom_pileup(bamfiles[cond],tmap)
             pileups[cond] = pileup.values()
             logfile.write("  ....Pileup %s done\n" % cond); logfile.flush()
         ids = pileup.keys()
@@ -298,10 +315,10 @@ def rnaseq_workflow(ex, job, assembly=None, pileup_level=["exons","genes","trans
             if sum(c) != 0 and t in tmap:
                 tcounts[t] = c
         lengths = asarray([tmap[t][3]-tmap[t][2] for t in tcounts.iterkeys()])
-        trans_data = WF.norm_and_format(tcounts,lengths,tmap,(2,3,0,1,5,6))
+        trans_data = PU.norm_and_format(tcounts,lengths,tmap,(2,3,0,1,5,6))
         header += ["counts."+c for c in conditions] + ["norm."+c for c in conditions] + ["rpkm."+c for c in conditions]
         header += ["Start","End","GeneID","GeneName","Strand","Chromosome"]
-        WF.save_results(trans_data,group_ids,header=header,feature_type=ftype)
+        PU.save_results(trans_data,group_ids,header=header,feature_type=ftype)
         DE.differential_analysis(trans_data, header, feature_type=ftype.lower())
         return 0
 
@@ -310,11 +327,12 @@ def rnaseq_workflow(ex, job, assembly=None, pileup_level=["exons","genes","trans
     if len(M.exon_mapping) == 0 or len(M.gene_mapping) == 0:
         raise ValueError("No genes found for this genome. Abort.")
 
+
     # Build exon pileups from bam files
     logfile.write("* Build pileups\n"); logfile.flush()
     exon_pileups = {}
     for i,cond in enumerate(conditions):
-        exon_pileup = WF.build_pileup(bamfiles[cond])
+        exon_pileup = PU.build_pileup(bamfiles[cond])
         for e,count in exon_pileup.iteritems():
             exon_pileups.setdefault(e,zeros(ncond))[i] = count
     del exon_pileup
@@ -326,16 +344,14 @@ def rnaseq_workflow(ex, job, assembly=None, pileup_level=["exons","genes","trans
         logfile.write("* Get scores of exons\n"); logfile.flush()
         header = ["ExonID"] + hconds + ["Start","End","GeneID","GeneName","Strand","Chromosome"]
         lengths = asarray([M.exon_mapping[e][4]-M.exon_mapping[e][3] for e in exon_pileups])
-        exons_data = WF.norm_and_format(exon_pileups,lengths,M.exon_mapping,(3,4,1,2,5,6))
-        WF.save_results(exons_data, group_ids, header=header, feature_type="EXONS")
+        exons_data = PU.norm_and_format(exon_pileups,lengths,M.exon_mapping,(3,4,1,2,5,6))
+        PU.save_results(exons_data, group_ids, header=header, feature_type="EXONS")
         DE.differential_analysis(exons_data, header, feature_type='exons')
         del exons_data
 
     # Map remaining reads to transcriptome
     unmapped_fastq = {}
     if unmapped:
-        UN = Unmapped(ex,via,job,assembly,conditions,debugfile,logfile,
-                      pileup_level,rpath,juliapath,junctions,unmapped,M)
         logfile.write("* Align unmapped reads on transcriptome\n"); logfile.flush()
         try:
             unmapped_fastq,additionals = UN.align_unmapped(group_names)
@@ -356,17 +372,15 @@ def rnaseq_workflow(ex, job, assembly=None, pileup_level=["exons","genes","trans
     if "genes" in pileup_level:
         logfile.write("* Get scores of genes\n"); logfile.flush()
         header = ["GeneID"] + hconds + ["Start","End","GeneName","Strand","Chromosome"]
-        gcounts = WF.genes_expression(exon_pileups)
+        gcounts = PU.genes_expression(exon_pileups)
         lengths = asarray([M.gene_mapping[g][3] for g in gcounts.iterkeys()])
-        genes_data = WF.norm_and_format(gcounts,lengths,M.gene_mapping,(1,2,0,4,5))
-        genes_file = WF.save_results(genes_data, group_ids, header=header, feature_type="GENES")
+        genes_data = PU.norm_and_format(gcounts,lengths,M.gene_mapping,(1,2,0,4,5))
+        genes_file = PU.save_results(genes_data, group_ids, header=header, feature_type="GENES")
         DE.differential_analysis(genes_data, header, feature_type='genes')
         del genes_data
 
         # PCA of groups ~ gene expression
         if ncond >= 2:
-            PCA = Pca(ex,via,job,assembly,conditions,debugfile,logfile,
-                      pileup_level,rpath,juliapath,junctions,unmapped,M)
             try:
                 PCA.pca_rnaseq(genes_file)
             except Exception, error:
@@ -376,17 +390,15 @@ def rnaseq_workflow(ex, job, assembly=None, pileup_level=["exons","genes","trans
     if "transcripts" in pileup_level:
         logfile.write("* Get scores of transcripts\n"); logfile.flush()
         header = ["TranscriptID"] + hconds + ["Start","End","GeneID","GeneName","Strand","Chromosome"]
-        tcounts = WF.transcripts_expression(exon_pileups)
+        tcounts = PU.transcripts_expression(exon_pileups)
         lengths = asarray([M.transcript_mapping[t][4] for t in tcounts.iterkeys()])
-        trans_data = WF.norm_and_format(tcounts,lengths,M.transcript_mapping,(2,3,0,1,5,6))
-        WF.save_results(trans_data, group_ids, header=header, feature_type="TRANSCRIPTS")
+        trans_data = PU.norm_and_format(tcounts,lengths,M.transcript_mapping,(2,3,0,1,5,6))
+        PU.save_results(trans_data, group_ids, header=header, feature_type="TRANSCRIPTS")
         DE.differential_analysis(trans_data, header, feature_type='transcripts')
         del trans_data
 
     # Find splice junctions
     if junctions:
-        JN = Junctions(ex,via,job,assembly,conditions,debugfile,logfile,
-                       pileup_level,rpath,juliapath,junctions,unmapped,M)
         logfile.write("* Search for splice junctions\n"); logfile.flush()
         try:
             JN.find_junctions()
@@ -433,7 +445,7 @@ class Pileups(RNAseq):
         for ref in sam.references:
             ref_index[ref.split('|')[0]] = ref
         mapped_on = 'genome' if all([ref in chromosomes for ref in sam.references[:100]]) else 'exons'
-        c = Counter()
+        c = Counter(stranded=self.stranded)
         for chrom in chromosomes:
             etrack = self.assembly.exon_track(chromlist=[chrom])
             for (chrom,start,end,names,strand,phase) in cobble(etrack,aggregate={'name':lambda n:'$'.join(n)}):
