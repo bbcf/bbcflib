@@ -364,12 +364,13 @@ def rnaseq_workflow(ex, job, assembly=None, pileup_level=["exons","genes","trans
         del genes_data
 
         # PCA of groups ~ gene expression
-        PCA = Pca(ex,via,job,assembly,conditions,debugfile,logfile,
-                  pileup_level,rpath,juliapath,junctions,unmapped,M)
-        try:
-            PCA.pca_rnaseq(genes_file)
-        except Exception, error:
-            debugfile.write("PCA failed: %s\n"%str(error)); debugfile.flush()
+        if ncond >= 2:
+            PCA = Pca(ex,via,job,assembly,conditions,debugfile,logfile,
+                      pileup_level,rpath,juliapath,junctions,unmapped,M)
+            try:
+                PCA.pca_rnaseq(genes_file)
+            except Exception, error:
+                debugfile.write("PCA failed: %s\n"%str(error)); debugfile.flush()
 
     # Get scores of transcripts from exons, using non-negative least-squares
     if "transcripts" in pileup_level:
