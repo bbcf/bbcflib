@@ -367,7 +367,7 @@ def rnaseq_workflow(ex, job, assembly=None, pileup_level=["exons","genes","trans
                     exon_pileups[e][i] += x
                 else:
                     exon_pileups.setdefault(e,zeros(ncond))[i] = x
-    del additionals
+    if unmapped: del additionals
 
     # Get scores of genes from exons
     if "genes" in pileup_level:
