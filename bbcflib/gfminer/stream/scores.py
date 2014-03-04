@@ -276,7 +276,7 @@ def window_smoothing( trackList, window_size, step_size=1, stop_val=sys.maxint,
             F.append(x)
             score += x[2]
             if len(F) < window_size: continue
-            yield (F[nmid][0],F[nmid][1],round(score*denom,6))+F[nmid][3:]
+            yield (F[nmid][0],F[nmid][1],round(score*denom+1e-7,6))+F[nmid][3:]
             for shift in xrange(step_size):
                 score -= F.pop(0)[2]
 
