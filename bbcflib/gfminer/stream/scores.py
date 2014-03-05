@@ -357,7 +357,7 @@ def window_smoothing( trackList, window_size, step_size=1, stop_val=sys.maxint,
 
     denom = 1.0/window_size
     win_start = -window_size
-    _f = ['start','end','score','chr']
+    _f = ['start','end','score']
     if featurewise:
         call = _stepping_mean
     else:
