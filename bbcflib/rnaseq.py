@@ -964,7 +964,8 @@ class Pca(RNAseq):
             args = ['julia', os.path.join(self.juliapath,'pca_rnaseq.jl'), counts_table_file, outprefix]
             return {"arguments": args, "return_value": outprefix}
 
-        outprefix = pcajl.nonblocking(self.ex, counts_table_file, via=self.via).wait()
+        #outprefix = pcajl.nonblocking(self.ex, counts_table_file, via=self.via).wait()
+        outprefix = pcajl(self.ex, counts_table_file)
         pca_descr_png = set_file_descr('pca_groups.png', type='png', step='pca')
         pca_descr_js = set_file_descr('pca_groups.js', type='txt', step='pca', view='admin')
         pcaeigv_descr_png = set_file_descr('pca_groups_sdev.png', type='png', step='pca')
