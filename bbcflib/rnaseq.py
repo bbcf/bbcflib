@@ -448,7 +448,7 @@ class Pileups(RNAseq):
         mapped_on = 'genome' if all([ref in chromosomes for ref in sam.references[:100]]) else 'exons'
         c = Counter(stranded=self.stranded)
         for chrom in chromosomes:
-            etrack = self.assembly.exon_track(chromlist=[chrom])
+            etrack = self.assembly.exon_track(chromlist=[chrom], biotype=None)
             for (chrom,start,end,names,strand,phase) in cobble(etrack,aggregate={'name':lambda n:'$'.join(n)}):
                 if strand == 0: continue  # skip overlapping exons of different strands to avoid typeI errors
                 exon_ids = [e.split('|')[0] for e in names.split('$')]  # all spanning this interval - maybe more
