@@ -332,7 +332,7 @@ class Assembly(object):
 
         def _push_transcript_slices(slices,start,end,name,cur_chunk,chrom,idx):
             """Add a feature to *slices*, and increment the buffer size *cur_chunk* by the feature's size."""
-            dbpath = self.sqlite_path()
+            dbpath = self.sqlite_path
             db = sqlite3.connect(dbpath)
             cursor = db.cursor()
             request = """SELECT DISTINCT transcript_id,exon_id,start,end from '%s'
@@ -644,6 +644,7 @@ class Assembly(object):
         """Return the url of the sqlite file containing gene annotations."""
         return '%s/data/nr_assemblies/annot_tracks/%s.sql' %(self.genrep.url, self.md5)
 
+    @property
     def sqlite_path(self):
         """Return the path to the sqlite file containing genes annotations."""
         if hasattr(self,"annot_path"): return self.annot_path
@@ -687,7 +688,7 @@ class Assembly(object):
         else: chromosomes = [None]
         if not(method in ["dico","boundaries"]): return data
         # Sqlite3 request to /db/
-        dbpath = self.sqlite_path()
+        dbpath = self.sqlite_path
         if dbpath is None:
             raise ValueError("Annotations not available for this assembly.")
         if os.path.exists(dbpath) and not h.get('at_pos'):
@@ -857,7 +858,7 @@ class Assembly(object):
             If None, all biotypes are selected.
         :rtype: track.FeatureStream
         """
-        if self.sqlite_path() is None:
+        if self.sqlite_path is None:
             raise ValueError("Annotations not available for this assembly.")
         if chromlist is None: chromlist = self.chrnames
         elif isinstance(chromlist,basestring): chromlist = [chromlist]
@@ -900,7 +901,7 @@ class Assembly(object):
                             sort_list.append((start,end,name)+tuple(v[0][nmax:]))
                 else:
                     wh = webh
-                    if not os.path.exists(self.sqlite_path()):
+                    if not os.path.exists(self.sqlite_path):
                         raise ValueError("Unavailable local database: try with `biotype=None`.")
                     resp = self.get_features_from_gtf(wh,chrom)
                     for k,v in resp.iteritems():
