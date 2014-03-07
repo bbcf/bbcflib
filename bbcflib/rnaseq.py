@@ -205,7 +205,7 @@ class Counter(object):
         try:
             self.counts[alignment.pos-self.start] += NH[0]
         except IndexError:
-            pass # read overflows but is bigger than the exon, we don't care
+            pass # read overflows
 
     def count_stranded(self, alignment):
         if self.strand == "+" and alignment.is_reverse == False \

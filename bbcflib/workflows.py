@@ -132,8 +132,8 @@ class Workflow(object):
 ##### Add logs to the LIMS in admin mode
             self.logfile.flush()
             self.debugfile.flush()
-            log_desc = set_file_descr('logfile.txt', step='log', type='txt', view=0)
-            debug_desc = set_file_descr('debug.txt', step='log', type='txt', view=0)
+            log_desc = set_file_descr('logfile.txt', step='log', type='txt', view="admin")
+            debug_desc = set_file_descr('debug.txt', step='log', type='txt', view="admin")
             ex.add(os.path.join(logfile_name), description=log_desc)
             ex.add(os.path.join(debugfile_name), description=debug_desc)
 ##### Create GDV project
