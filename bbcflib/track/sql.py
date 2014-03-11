@@ -103,7 +103,7 @@ class SqlTrack(Track):
                     self.cursor.execute(sql_command)
                 else:
                     for col,val in v.iteritems():
-                        if str(v[col]) != str(table_chr[k][col]):
+                        if str(v[col]) != str(table_chr[k].get(col,'')):
                             sql_command = "UPDATE 'chrNames' SET %s='%s' WHERE name='%s'"%(col,val,k)
                             self.cursor.execute(sql_command)
         except sqlite3.OperationalError as err:
