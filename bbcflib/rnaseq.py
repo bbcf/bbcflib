@@ -32,7 +32,6 @@ numpy.seterr(invalid='print')
 numpy.seterr(divide='ignore')
 
 test = False
-#run_htsstation.py rnaseq -c config/gapkowt.txt -p genes --basepath ./
 
 
 #--------------------------------- MATHS ---------------------------------#
@@ -165,11 +164,11 @@ class Mappings():
     @timer
     def fetch_mappings(self):
         """
-        * gene_mapping is a dict ``{gene_id: (gene_name,start,end,length,chrom)}``
-        * transcript_mapping is a dictionary ``{transcript_id: (gene_id,gene_name,start,end,length,chrom)}``
-        * exon_mapping is a dictionary ``{exon_id: ([transcript_ids],gene_id,gene_name,start,end,chrom)}``
+        * gene_mapping is a dict ``{gene_id: genrep.Gene}``
+        * transcript_mapping is a dictionary ``{transcript_id: genrep.Transcript}``
+        * exon_mapping is a dictionary ``{exon_id: genrep.Exon}``
         """
-        map_path = '/archive/epfl/bbcf/jdelafon/mappings/'#/mm9/'
+        map_path = '/archive/epfl/bbcf/jdelafon/mappings/mm9/'
         if test and os.path.exists(map_path):
             import pickle
             self.gene_mapping = pickle.load(open(os.path.join(map_path,'gene_mapping.pickle')))
@@ -232,7 +231,6 @@ def rnaseq_workflow(ex, job, assembly=None, pileup_level=["exons","genes","trans
     :param ex: the bein's execution Id.
     :param job: a Frontend.Job object (or a dictionary of the same form).
     :param assembly: a genrep.Assembly object
-    :param bam_files: a dictionary such as returned by mapseq.get_bam_wig_files.
     :param rpath: (str) path to the R executable.
     :param junctions: (bool) whether to search for splice junctions using SOAPsplice. [False]
     :param unmapped: (bool) whether to remap to the transcriptome reads that did not map the genome. [False]
@@ -427,11 +425,7 @@ class Pileups(RNAseq):
 
     @timer
     def build_pileup(self, bamfile):
-        """From a BAM file, returns a dictionary of the form {feature_id: number of reads that mapped to it}.
-
-        :param bamfile: name of a BAM file.
-        :param exons: list of features of the type (exon_id,gene_id,gene_name,start,end,strand,chr).
-        """
+        """From a BAM file, returns a dictionary of the form {feature_id: number of reads that mapped to it}."""
         counts = {}
         try: sam = pysam.Samfile(bamfile, 'rb')
         except ValueError: sam = pysam.Samfile(bamfile,'r')
