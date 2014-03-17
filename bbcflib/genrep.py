@@ -739,6 +739,9 @@ class Assembly(object):
                 request += "&".join(['']+["%s=%s" %(k,v) for k,v in h.iteritems()])
                 if chrom: request += "&chr_name="+chrom
                 data.update(json.load(urllib2.urlopen(request)))
+                for k,v in data.iteritems():
+                    for i,x in enumerate(v):
+                        data[k][i] = tuple(x)+(chrom,)
         return data
 
     def get_gene_mapping(self):
