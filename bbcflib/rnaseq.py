@@ -7,7 +7,7 @@ Methods of the bbcflib's RNA-seq worflow. The main function is ``rnaseq_workflow
 
 From a BAM file produced by an alignement on the genome or the exonome, gets counts of reads
 on the exons, add them to get counts on genes, and uses least-squares to infer
-counts on transcripts, avoiding to map on either genome or transcriptome.
+counts on transcripts, avoiding to map on the transcriptome.
 Note that the resulting counts on transcripts are approximate.
 """
 

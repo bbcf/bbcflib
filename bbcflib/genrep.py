@@ -1129,7 +1129,6 @@ class GenRep(object):
             slices  = ','.join([','.join([str(y) for y in x]) for x in coord_list])
             url     = """%s/chromosomes/%i/get_sequence_part?slices=%s""" % (self.url, chr_id[0], slices)
             request = urllib2.Request(url)
-            print url
             return urllib2.urlopen(request).read().split(',')
 
     def get_genrep_objects(self, url_tag, info_tag, filters = None, params = None):
