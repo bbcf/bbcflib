@@ -17,7 +17,7 @@ from operator import itemgetter
 
 # Internal modules #
 from bbcflib.common import set_file_descr, unique_filename_in, cat, timer, program_exists
-from bbcflib.genrep import Assembly
+from bbcflib.genrep import Assembly, Transcript
 from bbcflib.mapseq import add_and_index_bam, sam_to_bam, map_reads, plot_stats
 from bbcflib.gfminer.common import cobble, sorted_stream, map_chromosomes, duplicate, apply
 from bbcflib.track import track, FeatureStream, convert
@@ -168,23 +168,17 @@ class Mappings():
         * gene_mapping is a dict ``{gene_id: (gene_name,start,end,length,chrom)}``
         * transcript_mapping is a dictionary ``{transcript_id: (gene_id,gene_name,start,end,length,chrom)}``
         * exon_mapping is a dictionary ``{exon_id: ([transcript_ids],gene_id,gene_name,start,end,chrom)}``
-        * trans_in_gene is a dict ``{gene_id: [IDs of the transcripts it contains]}``
-        * exons_in_trans is a dict ``{transcript_id: [IDs of the exons it contains]}``
         """
-        map_path = '/archive/epfl/bbcf/jdelafon/test_rnaseq/mappings/mm9/'
+        map_path = '/archive/epfl/bbcf/jdelafon/mappings/'#/mm9/'
         if test and os.path.exists(map_path):
             import pickle
             self.gene_mapping = pickle.load(open(os.path.join(map_path,'gene_mapping.pickle')))
             self.exon_mapping = pickle.load(open(os.path.join(map_path,'exon_mapping.pickle')))
             self.transcript_mapping = pickle.load(open(os.path.join(map_path,'transcript_mapping.pickle')))
-            self.trans_in_gene = pickle.load(open(os.path.join(map_path,'trans_in_gene.pickle')))
-            self.exons_in_trans = pickle.load(open(os.path.join(map_path,'exons_in_trans.pickle')))
         else:
             self.gene_mapping = self.assembly.get_gene_mapping()
             self.transcript_mapping = self.assembly.get_transcript_mapping()
             self.exon_mapping = self.assembly.get_exon_mapping()
-            self.exons_in_trans = self.assembly.get_exons_in_trans()
-            self.trans_in_gene = self.assembly.get_trans_in_gene()
 
 
 class Counter(object):
@@ -298,7 +292,7 @@ def rnaseq_workflow(ex, job, assembly=None, pileup_level=["exons","genes","trans
             firstbam = bamfiles.items()[0][1]
             firstbamtrack = track(firstbam,format='bam')
             for c,meta in firstbamtrack.chrmeta.iteritems():
-                tmap[c] = ('','',0,meta['length'],meta['length'],0,'') #(gene_id,gene_name,start,end,length,strand,chr)
+                tmap[c] = Transcript(end=meta['length'], length=meta['length'])
             ftype = "Custom"
             header = ["CustomID"]
         logfile.write("* Build pileups\n"); logfile.flush()
@@ -315,8 +309,8 @@ def rnaseq_workflow(ex, job, assembly=None, pileup_level=["exons","genes","trans
             c = counts[k]
             if sum(c) != 0 and t in tmap:
                 tcounts[t] = c
-        lengths = asarray([tmap[t][3]-tmap[t][2] for t in tcounts.iterkeys()])
-        trans_data = PU.norm_and_format(tcounts,lengths,tmap,(2,3,0,1,5,6))
+        lengths = asarray([tmap[t].end-tmap[t].start for t in tcounts.iterkeys()])
+        trans_data = PU.norm_and_format(tcounts,lengths,tmap)
         header += ["counts."+c for c in conditions] + ["norm."+c for c in conditions] + ["rpkm."+c for c in conditions]
         header += ["Start","End","GeneID","GeneName","Strand","Chromosome"]
         PU.save_results(trans_data,group_ids,header=header,feature_type=ftype)
@@ -344,8 +338,8 @@ def rnaseq_workflow(ex, job, assembly=None, pileup_level=["exons","genes","trans
     if "exons" in pileup_level:
         logfile.write("* Get scores of exons\n"); logfile.flush()
         header = ["ExonID"] + hconds + ["Start","End","GeneID","GeneName","Strand","Chromosome"]
-        lengths = asarray([M.exon_mapping[e][4]-M.exon_mapping[e][3] for e in exon_pileups])
-        exons_data = PU.norm_and_format(exon_pileups,lengths,M.exon_mapping,(3,4,1,2,5,6))
+        lengths = asarray([M.exon_mapping[e].end-M.exon_mapping[e].start for e in exon_pileups])
+        exons_data = PU.norm_and_format(exon_pileups,lengths,M.exon_mapping)
         PU.save_results(exons_data, group_ids, header=header, feature_type="EXONS")
         DE.differential_analysis(exons_data, header, feature_type='exons')
         del exons_data
@@ -374,8 +368,8 @@ def rnaseq_workflow(ex, job, assembly=None, pileup_level=["exons","genes","trans
         logfile.write("* Get scores of genes\n"); logfile.flush()
         header = ["GeneID"] + hconds + ["Start","End","GeneName","Strand","Chromosome"]
         gcounts = PU.genes_expression(exon_pileups)
-        lengths = asarray([M.gene_mapping[g][3] for g in gcounts.iterkeys()])
-        genes_data = PU.norm_and_format(gcounts,lengths,M.gene_mapping,(1,2,0,4,5))
+        lengths = asarray([M.gene_mapping[g].length for g in gcounts.iterkeys()])
+        genes_data = PU.norm_and_format(gcounts,lengths,M.gene_mapping)
         genes_file = PU.save_results(genes_data, group_ids, header=header, feature_type="GENES")
         DE.differential_analysis(genes_data, header, feature_type='genes')
         del genes_data
@@ -392,8 +386,8 @@ def rnaseq_workflow(ex, job, assembly=None, pileup_level=["exons","genes","trans
         logfile.write("* Get scores of transcripts\n"); logfile.flush()
         header = ["TranscriptID"] + hconds + ["Start","End","GeneID","GeneName","Strand","Chromosome"]
         tcounts = PU.transcripts_expression(exon_pileups)
-        lengths = asarray([M.transcript_mapping[t][4] for t in tcounts.iterkeys()])
-        trans_data = PU.norm_and_format(tcounts,lengths,M.transcript_mapping,(2,3,0,1,5,6))
+        lengths = asarray([M.transcript_mapping[t].length for t in tcounts.iterkeys()])
+        trans_data = PU.norm_and_format(tcounts,lengths,M.transcript_mapping)
         PU.save_results(trans_data, group_ids, header=header, feature_type="TRANSCRIPTS")
         DE.differential_analysis(trans_data, header, feature_type='transcripts')
         del trans_data
@@ -424,7 +418,7 @@ class Pileups(RNAseq):
         c = Counter()
         for n,ref in enumerate(sam.references):
             start = 0
-            end = transcript_mapping.get(ref.split('|')[0],(sam.lengths[n],)*6)[4]
+            end = transcript_mapping.get(ref.split('|')[0], Transcript(end=0) ).end
             sam.fetch(ref, start, end, callback=c)
             counts[ref] = int(.5+c.n)
             c.n = 0
@@ -458,7 +452,7 @@ class Pileups(RNAseq):
                     # All have the same sequence in this interval. Take any of them,
                     # just choose the shift from its start accordingly.
                     oneofthem = exon_ids[0]
-                    ostart = self.M.exon_mapping[oneofthem][3]
+                    ostart = self.M.exon_mapping[oneofthem].start
                     shift = start-ostart  # dist from start of this exon to our region start
                     ref = ref_index.get(oneofthem)
                     start = shift; end = shift+(end-start)
@@ -546,7 +540,7 @@ class Pileups(RNAseq):
         """
         gene_counts = {}
         for e,counts in exon_pileups.iteritems():
-            g = self.M.exon_mapping[e][1]
+            g = self.M.exon_mapping[e].gene_id
             gene_counts[g] = gene_counts.get(g,zeros(len(self.conditions))) + counts
         return gene_counts
 
@@ -557,24 +551,25 @@ class Pileups(RNAseq):
         """
         emap = self.M.exon_mapping
         tmap = self.M.transcript_mapping
+        gmap = self.M.gene_mapping
         ncond = len(self.conditions)
         trans_counts={}
         exons_counts={}; genes=[];
         for e,counts in exon_pileups.iteritems():
             exons_counts[e] = counts
-            genes.append(emap[e][1])
+            genes.append(emap[e].gene_id)
         genes = set(genes)
         unknown = 0
         pinv = numpy.linalg.pinv
         for g in genes:
-            if g in self.M.trans_in_gene: # if the gene is (still) in the Ensembl database
+            if g in gmap: # if the gene is (still) in the Ensembl database
                 # Get all transcripts in the gene
-                tg = self.M.trans_in_gene[g]
+                tg = gmap[g].transcripts
                 # Get all exons in the gene
                 eg = set()
                 for t in tg:
-                    if t in self.M.exons_in_trans:
-                        eg = eg.union(set(self.M.exons_in_trans[t]))
+                    if t in tmap:
+                        eg = eg.union(set(tmap[t].exons))
                         trans_counts[t] = zeros(ncond)
                 # Create the correspondance matrix
                 M = zeros((len(eg),len(tg)))
@@ -582,10 +577,10 @@ class Pileups(RNAseq):
                 ec = zeros((ncond,len(eg)))
                 for i,e in enumerate(eg):
                     for j,t in enumerate(tg):
-                        if t in self.M.exons_in_trans and e in self.M.exons_in_trans[t]:
+                        if t in tmap and e in tmap[t].exons:
                             M[i,j] = 1.
                             if e in emap and t in tmap:
-                                L[i,j] = float((emap[e][4]-emap[e][3])) / tmap[t][4]
+                                L[i,j] = float((emap[e].end-emap[e].start)) / tmap[t].length
                             else:
                                 L[i,j] = 1./len(eg)
                     # Retrieve exon scores
@@ -619,7 +614,7 @@ class Pileups(RNAseq):
                   % (unknown, len(genes), 100*float(unknown)/float(len(genes))) )
         return trans_counts
 
-    def norm_and_format(self,counts,lengths,tmap,map_idx,ids=None):
+    def norm_and_format(self,counts,lengths,tmap,ids=None):
         """Normalize, compute RPKM values and format array lines as they will be printed."""
 
         def estimate_size_factors(counts):
@@ -647,13 +642,16 @@ class Pileups(RNAseq):
             ids = counts.iterkeys()
         else:
             counts_matrix = counts
+
+        def feature_info(x):
+            info = tmap.get(x, Transcript())
+            return (info.start,info.end,info.gene_id,info.gene_name,info.strand,info.chrom)
+
         norm_matrix, sf = estimate_size_factors(counts_matrix)
         rpkm_matrix = 1000.*norm_matrix/(lengths[:,numpy.newaxis])
-        map_nitems = len(tmap.iteritems().next())
         data = [(t,) + tuple(counts_matrix[k]) + tuple(norm_matrix[k]) + tuple(rpkm_matrix[k])
-                     + itemgetter(*map_idx)(tmap.get(t,("NA",)*map_nitems))
-                for k,t in enumerate(ids)]
-        data = sorted(data, key=itemgetter(-1,-map_nitems,-map_nitems+1,-2)) # sort wrt. chr,start,end,strand
+                     + feature_info(t)  for k,t in enumerate(ids)]
+        data = sorted(data, key=itemgetter(-1,0,1,-2)) # sort wrt. chr,start,end,strand
         return data
 
 
@@ -929,15 +927,16 @@ class Unmapped(RNAseq):
                     additional = {}
                     for read in sam:
                         t_id = sam.getrname(read.tid).split('|')[0]
-                        if t_id in self.M.transcript_mapping and t_id in self.M.exons_in_trans:
-                            E = self.M.exons_in_trans[t_id]
+                        if t_id in self.M.transcript_mapping:
+                            E = self.M.trasncript_mapping[t_id].exons
                             if len(E) < 2: continue  # need 2 exons to make a junction
                             lag = 0
                             r_start = read.pos
                             r_end = r_start + read.rlen
                             NH = [1.0/t[1] for t in read.tags if t[0]=='NH']+[1]
                             for e in E:
-                                e_start, e_end = self.M.exon_mapping[e][3:5]
+                                e_start = self.M.exon_mapping[e].start
+                                e_end = self.M.exon_mapping[e].end
                                 e_len = e_end-e_start
                                 if r_start < lag <= r_end <= lag+e_len \
                                 or lag <= r_start <= lag+e_len < r_end:

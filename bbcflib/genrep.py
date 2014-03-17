@@ -31,7 +31,6 @@ print "############ LOCAL ###########"
 # Built-in modules #
 import urllib2, json, os, sys, re, gzip, tarfile, bz2, sqlite3, itertools
 from datetime import datetime
-from operator import itemgetter
 
 # Internal modules #
 from bbcflib.common import normalize_url, unique_filename_in, fasta_length, fasta_composition, sam_faidx
@@ -666,7 +665,7 @@ class Assembly(object):
         parameters are given as a dictionary *h*. All [values] correspond to a line in the SQL.
 
         :param chr: (str, or list of str) chromosomes on which to perform the request. By default,
-        every chromosome is searched.
+            every chromosome is searched.
         :param method: "dico" or "boundaries": ?
 
         Available keys for *h*, and possible values:
@@ -744,23 +743,27 @@ class Assembly(object):
 
     def get_gene_mapping(self):
         """
-        Return a dictionary ``{gene_id: (gene_name,start,end,length,strand,chromosome)}``
+        Return a dictionary ``{gene_id: Gene instance}``
         Note that the gene's length is not the sum of the lengths of its exons.
         """
         gene_mapping = {}
-        h = {"keys":"gene_id", "values":"gene_name,start,end,strand", "conditions":"type:exon", "uniq":"1"}
-        for chr in self.chrnames:
-            resp = self.get_features_from_gtf(h,chr)
+        h = {"keys":"gene_id", "values":"gene_name,start,end,strand,exon_id,transcript_id",
+             "conditions":"type:exon", "uniq":"1"}
+        for chrom in self.chrnames:
+            resp = self.get_features_from_gtf(h,chrom)
             for k,v in resp.iteritems():
                 start = min([x[1] for x in v])
                 end = max([x[2] for x in v])
                 name = str(v[0][0])
                 strand = int(v[0][3])
-                gene_mapping[str(k)] = (name,start,end,-1,strand,chr)
+                eid = [str(x[4]) for x in v]
+                tid = list(set([str(x[5]) for x in v]))
+                gene_mapping[str(k)] = Gene(exons=eid, transcripts=tid,
+                    id=k, chrom=chrom, start=start, end=end, name=name, strand=strand)
             # Find gene lengths
             length = fend = 0
             for g,exons in resp.iteritems():
-                exons.sort(key=itemgetter(1,2)) # sort w.r.t. start, then end
+                exons.sort(key=lambda x:(x[1],x[2])) # sort w.r.t. start, then end
                 for x in exons:
                     start = x[1]; end = x[2]
                     if start >= fend:
@@ -770,19 +773,18 @@ class Assembly(object):
                     else:
                         length += end-fend  # overlapping exon
                         fend = end
-                gmap = list(gene_mapping[str(g)])
-                gmap[3] = length
+                gene_mapping[g].length = length
                 length = 0
-                gene_mapping.update({str(g):tuple(gmap)})
                 fend = 0
         return gene_mapping
 
     def get_transcript_mapping(self):
-        """Return a dictionary ``{transcript_id: (gene_id,gene_name,start,end,length,strand,chromosome)}``"""
+        """Return a dictionary ``{transcript_id: Transcript instance}``"""
         transcript_mapping = {}
-        h = {"keys":"transcript_id", "values":"gene_id,gene_name,start,end,strand", "conditions":"type:exon", "uniq":"1"}
-        for chr in self.chrnames:
-            resp = self.get_features_from_gtf(h,chr)
+        h = {"keys":"transcript_id", "values":"gene_id,gene_name,start,end,strand,exon_id",
+             "conditions":"type:exon", "uniq":"1"}
+        for chrom in self.chrnames:
+            resp = self.get_features_from_gtf(h,chrom)
             for k,v in resp.iteritems():
                 start = min([x[2] for x in v])
                 end = max([x[3] for x in v])
@@ -790,16 +792,18 @@ class Assembly(object):
                 gid = str(v[0][0])
                 gname = str(v[0][1])
                 strand = int(v[0][4])
-                transcript_mapping[str(k)] = (gid,gname,start,end,length,strand,chr)
+                eid = [str(x[5]) for x in v]
+                transcript_mapping[str(k)] = Transcript(gene_id=gid, gene_name=gname, exons=eid,
+                    id=k, chrom=chrom, start=start, end=end, strand=strand, length=length)
         return transcript_mapping
 
     def get_exon_mapping(self):
-        """Return a dictionary ``{exon_id: ([transcript_id's],gene_id,gene_name,start,end,strand,chromosome)}``"""
+        """Return a dictionary ``{exon_id: Exon instance}``"""
         exon_mapping = {}
         h = {"keys":"exon_id", "values":"transcript_id,gene_id,gene_name,start,end,strand",
              "conditions":"type:exon", "uniq":"1"}
-        for chr in self.chrnames:
-            resp = self.get_features_from_gtf(h,chr)
+        for chrom in self.chrnames:
+            resp = self.get_features_from_gtf(h,chrom)
             for k,v in resp.iteritems():
                 start = int(v[0][3])
                 end = int(v[0][4])
@@ -807,35 +811,9 @@ class Assembly(object):
                 gid = str(v[0][1])
                 gname = str(v[0][2])
                 strand = int(v[0][5])
-                exon_mapping[str(k)] = (tid,gid,gname,start,end,strand,chr)
+                exon_mapping[str(k)] = Exon(gene_id=gid, gene_name=gname, transcripts=tid,
+                    id=k, chrom=chrom, start=start, end=end, strand=strand, length=end-start)
         return exon_mapping
-
-    def get_exons_in_gene(self):
-        """Return a dictionary ``{gene_id: list of exon_id's it contains}``"""
-        exons_in_gene = {}
-        h = {"keys":"gene_id", "values":"exon_id", "conditions":"type:exon", "uniq":"1"}
-        data = self.get_features_from_gtf(h)
-        for k,v in data.iteritems():
-            exons_in_gene[str(k)] = [str(x[0]) for x in v]
-        return exons_in_gene
-
-    def get_exons_in_trans(self):
-        """Return a dictionary ``{transcript_id: list of exon_id's it contains}``"""
-        exons_in_trans = {}
-        h = {"keys":"transcript_id", "values":"exon_id", "conditions":"type:exon", "uniq":"1"}
-        data = self.get_features_from_gtf(h)
-        for k,v in data.iteritems():
-            exons_in_trans[str(k)] = [str(x[0]) for x in v]
-        return exons_in_trans
-
-    def get_trans_in_gene(self):
-        """Return a dictionary ``{gene_id: list of transcript_id's it contains}``"""
-        trans_in_gene = {}
-        h = {"keys":"gene_id", "values":"transcript_id", "conditions":"type:exon", "uniq":"1"}
-        data = self.get_features_from_gtf(h)
-        for k,v in data.iteritems():
-            trans_in_gene[str(k)] = [str(x[0]) for x in v]
-        return trans_in_gene
 
     def gene_coordinates(self,id_list):
         """Creates a BED-style stream from a list of gene ids."""
@@ -937,9 +915,7 @@ class Assembly(object):
 
     @property
     def fasta_by_chrom(self):
-        """
-        Returns a dictionary of single chromosome fasta files.
-        """
+        """Returns a dictionary of single chromosome fasta files."""
         return getattr(self,"_fasta_by_chrom",
                        dict((v['name'],self.fasta_path(chromosome=k))
                             for k,v in self.chromosomes.iteritems()))
@@ -1201,6 +1177,41 @@ class GenrepObject(object):
 
     def __repr__(self):
         return str(self.__dict__)
+
+class GenomicObject(object):
+    def __init__(self, id='',chrom='',start=0,end=0,name='',score=0.0,strand=0,length=0,seq=''):
+        self.id = id
+        self.chrom = chrom
+        self.start = start
+        self.end = end
+        self.name = name
+        self.score = score
+        self.strand = strand
+        self.length = length
+        self.seq = seq  # sequence
+
+class Gene(GenomicObject):
+    def __init__(self, exons=[],transcripts=[], **args):
+        GenomicObject.__init__(self, **args)
+        self.gene_id = self.id           # to make the structure similar to Exon and Transcript
+        self.gene_name = self.name       # same
+        self.exons = exons               # list of exons contained
+        self.transcripts = transcripts   # list of transcripts contained
+
+class Exon(GenomicObject):
+    def __init__(self, gene_id='',gene_name='',transcripts=[], **args):
+        GenomicObject.__init__(self, **args)
+        self.gene_id = gene_id
+        self.gene_name = gene_name
+        self.transcripts = transcripts   # list of transcripts it is contained in
+
+class Transcript(GenomicObject):
+    def __init__(self, gene_id='',gene_name='',exons=[], **args):
+        GenomicObject.__init__(self, **args)
+        self.gene_id = gene_id
+        self.gene_name = gene_name
+        self.exons = exons               # list of exons it contains
+
 
 ################################################################################
 
