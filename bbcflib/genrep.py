@@ -26,6 +26,8 @@ equally well be written::
 
 """
 
+print "############ LOCAL ###########"
+
 # Built-in modules #
 import urllib2, json, os, sys, re, gzip, tarfile, bz2, sqlite3, itertools
 from datetime import datetime
@@ -601,13 +603,18 @@ class Assembly(object):
             return int(x)
 
         def _fix_exon_id(stream,count):
+            exon_map = {}
+            kix = [stream.fields.index(s) for s in ['chr','start','end','strand']]
             for x in stream:
                 type = x[2]
                 exon_id = x[12]
                 if type == "exon" and not exon_id:
-                    exon_id = "gr_exid_%i"%count
-                    count += 1
-                    x = x[:12]+(exon_id,)+x[13:]
+                    exkey = tuple(x[i] for i in kix)
+                    if exkey not in exon_map:
+                        exon_id = "gr_exid_%i"%count
+                        count += 1
+                        exon_map[exkey] = exon_id
+                    x = x[:12]+(exon_map[exkey],)+x[13:]
                 yield x
 
         _intypes = {'exon_number': _exon_number}
@@ -720,11 +727,11 @@ class Assembly(object):
                 for x in cursor:
                     if 'names' in h:
                         key = ';'.join([str(_) for _ in x[2:]]+[chrom])
-                        values = list(x[:2])
+                        values = x[:2]
                     else:
                         nkeys = len(h['keys'].split(','))
                         key = ';'.join([str(_) for _ in x[:nkeys]])
-                        values = list(x[nkeys:]+(chrom,))
+                        values = x[nkeys:]+(chrom,)
                     data.setdefault(key,[]).append(values)
         # Genrep url request
         else:

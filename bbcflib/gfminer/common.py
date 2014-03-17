@@ -128,7 +128,7 @@ def apply(stream,fields,functions):
     Applies custom transformations to the respective fields.
 
     :param stream: FeatureStream object.
-    :param fields: (list of str) list of fields to keep in the output.
+    :param fields: (list of str) list of fields to transform in the output.
     :param functions: list of functions to apply to the respective *fields*.
     :rtype: FeatureStream, or list of FeatureStream objects
     """
