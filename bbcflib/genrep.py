@@ -38,7 +38,7 @@ from bbcflib.track import track, ensembl_to_ucsc, FeatureStream
 from bbcflib.gfminer.common import shuffled as track_shuffle, split_field, map_chromosomes
 
 # Constants #
-default_url = 'http://bbcf-serv01.epfl.ch/genrep/'
+default_url = 'http://bbcftools.epfl.ch/genrep/'
 default_root = '/db/genrep'
 
 ################################################################################
@@ -1129,6 +1129,7 @@ class GenRep(object):
             slices  = ','.join([','.join([str(y) for y in x]) for x in coord_list])
             url     = """%s/chromosomes/%i/get_sequence_part?slices=%s""" % (self.url, chr_id[0], slices)
             request = urllib2.Request(url)
+            print url
             return urllib2.urlopen(request).read().split(',')
 
     def get_genrep_objects(self, url_tag, info_tag, filters = None, params = None):

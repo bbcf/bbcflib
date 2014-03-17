@@ -89,21 +89,18 @@ class Test_Assembly(unittest.TestCase):
     # Annot tracks #
     ################
 
-    @unittest.skip('slow')
     @with_without_genrep
     def test_gene_track(self):
         expected = ('chrI',4118,10232,'Y74C9A.3|Y74C9A.3',-1)
         track = self.assembly.gene_track()
         self.assertEqual(track.next(),expected)
 
-    @unittest.skip('slow')
     @with_without_genrep
     def test_exon_track(self):
-        expected = ('chrI',4118,4358,'Y74C9A.3.1.5|Y74C9A.3|Y74C9A.3',-1,-1)
+        expected = ('chrI',4118,4358,'Y74C9A.3.1.5|Y74C9A.3|Y74C9A.3',-1,'.')
         track = self.assembly.exon_track()
         self.assertEqual(track.next(),expected)
 
-    @unittest.skip('slow')
     @with_without_genrep
     def test_transcript_track(self):
         expected = ('chrI',4118,10232,'Y74C9A.3.1|Y74C9A.3',-1)
@@ -120,7 +117,7 @@ class Test_Assembly(unittest.TestCase):
         expected = ('eif-3.B',14795327,14798367,2803,1,'chrII')
         gmap = self.assembly.get_gene_mapping()
         g = gmap['Y54E2A.11']
-        self.assertTupleEqual((g.name,g.start,g.end,g.strand,g.length,g.chrom), expected)
+        self.assertTupleEqual((g.name,g.start,g.end,g.length,g.strand,g.chrom), expected)
 
     @unittest.skip('slow')
     @with_without_genrep
@@ -142,7 +139,7 @@ class Test_Assembly(unittest.TestCase):
 class Test_GenRep(unittest.TestCase):
     def setUp(self):
         self.assembly = Assembly('ce6')
-        self.assembly.genrep = GenRep('http://bbcftools.vital-it.ch/genrep/','/db/genrep')
+        self.assembly.genrep = GenRep(url='http://bbcftools.epfl.ch/genrep/', root='/db/genrep')
         self.assembly.intype = '0'
         self.chromosomes = {(3066, u'NC_003279', 6): {'length': 15072421, 'name': u'chrI'},
                             (3067, u'NC_003280', 7): {'length': 15279323, 'name': u'chrII'},
@@ -157,9 +154,10 @@ class Test_GenRep(unittest.TestCase):
         self.assertEqual(self.assembly.id,14)
 
     def test_config_correctly_loaded(self):
-        self.assertEqual(self.assembly.genrep.url, 'http://bbcftools.vital-it.ch/genrep')
+        self.assertEqual(self.assembly.genrep.url, 'http://bbcftools.epfl.ch/genrep')
         self.assertEqual(self.assembly.genrep.root, '/db/genrep')
 
+    #@unittest.skip('connection problem')
     def test_get_sequence(self):
         expected = ['G','C','AAGCCTAAGCCTAAGCCTAA','TTTTTGAAAT']
         coord_list = [(0,1),(1,2),(10,30),(1010,1020)]
