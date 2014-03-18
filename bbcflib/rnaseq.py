@@ -168,7 +168,7 @@ class Mappings():
         * transcript_mapping is a dictionary ``{transcript_id: genrep.Transcript}``
         * exon_mapping is a dictionary ``{exon_id: genrep.Exon}``
         """
-        map_path = '/archive/epfl/bbcf/jdelafon/mappings/mm9/'
+        map_path = '/archive/epfl/bbcf/jdelafon/mappings/test_mm9/'
         if test and os.path.exists(map_path):
             import pickle
             self.gene_mapping = pickle.load(open(os.path.join(map_path,'gene_mapping.pickle')))
@@ -325,12 +325,22 @@ def rnaseq_workflow(ex, job, assembly=None, pileup_level=["exons","genes","trans
     logfile.write("* Build pileups\n"); logfile.flush()
     exon_pileups = {}
     for i,cond in enumerate(conditions):
-        exon_pileup = PU.build_pileup(bamfiles[cond])
-        for e,count in exon_pileup.iteritems():
-            exon_pileups.setdefault(e,zeros(ncond))[i] = count
+        exon_pileup, exon_pileup_rev = PU.build_pileup(bamfiles[cond])
+        if stranded:
+            for e,count in exon_pileup_rev.iteritems():
+                exon_pileups.setdefault(e,zeros(2*ncond))[i] = count
+                exon_pileups[e][ncond+i] = exon_pileup_rev[e]
+        else:
+            for e,count in exon_pileup.iteritems():
+                exon_pileups.setdefault(e,zeros(ncond))[i] = count
     del exon_pileup
 
-    hconds = ["counts."+c for c in conditions] + ["norm."+c for c in conditions] + ["rpkm."+c for c in conditions]
+    if stranded:
+        hconds = ["counts."+c for c in conditions] + ["counts_rev."+c for c in conditions] \
+               + ["norm."+c for c in conditions] + ["norm_rev."+c for c in conditions] \
+               + ["rpkm."+c for c in conditions] + ["rpkm_rev."+c for c in conditions]
+    else:
+        hconds = ["counts."+c for c in conditions] + ["norm."+c for c in conditions] + ["rpkm."+c for c in conditions]
 
     # Print counts for exons
     if "exons" in pileup_level:
@@ -427,6 +437,7 @@ class Pileups(RNAseq):
     def build_pileup(self, bamfile):
         """From a BAM file, returns a dictionary of the form {feature_id: number of reads that mapped to it}."""
         counts = {}
+        counts_rev = {}
         try: sam = pysam.Samfile(bamfile, 'rb')
         except ValueError: sam = pysam.Samfile(bamfile,'r')
         chromosomes = self.assembly.chrmeta.keys()
@@ -472,11 +483,11 @@ class Pileups(RNAseq):
             counts = _count(etrack)
             if self.stranded:
                 etrack_rev = self.assembly.exon_track(chromlist=[chrom], biotype=None)
-                etrack_rev = apply(etrack_rev, ['strand','name'], [lambda x:-x, lambda x:x.split('|')[0]+'_rev'])
+                etrack_rev = apply(etrack_rev, 'strand', lambda x:-x)  # reverse strand info
                 etrack_rev = cobble(etrack_rev, aggregate={'name':lambda n:'$'.join(n)})
-                counts.update(_count(etrack_rev))
+                counts_rev = _count(etrack_rev)
         sam.close()
-        return counts
+        return counts, counts_rev
 
     @timer
     def save_results(self, lines, group_ids, header, feature_type='features'):
@@ -677,10 +688,11 @@ class DE_Analysis(RNAseq):
         elif norm == 'norm': w = 1
         elif norm == 'rpkm': w = 2
         filename_clean = unique_filename_in()
-        ncond = sum([h.split('.').count("counts") for h in header]) # a regexp would be better
+        ncond = sum([h.split('.').count("counts") for h in header]) \
+              + sum([h.split('.').count("counts_rev") for h in header])
         if ncond >1:
             rownames = asarray(['%s|%s|%s|%s' % (x[0],x[-3],x[-2],x[-1]) for x in data])
-            M = asarray([x[1+w*ncond:1+(w+1)*ncond] for x in data]) # *norm* columns
+            M = asarray([x[1+w*ncond:1+(w+1)*ncond] for x in data])
             colnames = header[0:1]+header[1:1+ncond] # 'counts' column names, always
             # Remove 40% lowest counts
             sums = numpy.sum(M,1)
