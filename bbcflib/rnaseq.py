@@ -185,7 +185,6 @@ class Counter(object):
         self.n = 0 # read count
         self.start = 0 # exon start
         self.counts = [] # vector of counts per non-zero position
-        self.wrongstrand = 0 # counts how many oriented reads align on a gene of the wrong strand
         self.strand = 0 # exon strand
         if stranded: self.count_fct = self.count_stranded
         else: self.count_fct = self.count
@@ -205,8 +204,6 @@ class Counter(object):
         if self.strand == "+" and alignment.is_reverse == False \
         or self.strand == "-" and alignment.is_reverse == True:
             self.count(alignment)
-        else:
-            self.wrongstrand += 1
 
     def remove_duplicates(self):
         """Fetches all reads mapped to a transcript, checks if there are mapping positions
@@ -471,8 +468,13 @@ class Pileups(RNAseq):
 
         for chrom in chromosomes:
             etrack = self.assembly.exon_track(chromlist=[chrom], biotype=None)
-            etrack = cobble(etrack,aggregate={'name':lambda n:'$'.join(n)})
+            etrack = cobble(etrack, aggregate={'name':lambda n:'$'.join(n)})
             counts = _count(etrack)
+            if self.stranded:
+                etrack_rev = self.assembly.exon_track(chromlist=[chrom], biotype=None)
+                etrack_rev = apply(etrack_rev, ['strand','name'], [lambda x:-x, lambda x:x.split('|')[0]+'_rev'])
+                etrack_rev = cobble(etrack_rev, aggregate={'name':lambda n:'$'.join(n)})
+                counts.update(_count(etrack_rev))
         sam.close()
         return counts
 
