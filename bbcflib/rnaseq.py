@@ -31,7 +31,7 @@ numpy.set_printoptions(precision=3,suppress=True)
 numpy.seterr(invalid='print')
 numpy.seterr(divide='ignore')
 
-test = False
+test = True
 
 
 #--------------------------------- MATHS ---------------------------------#
@@ -185,6 +185,7 @@ class Counter(object):
         self.n = 0 # read count
         self.start = 0 # exon start
         self.counts = [] # vector of counts per non-zero position
+        self.wrongstrand = 0 # counts how many oriented reads align on a gene of the wrong strand
         self.strand = 0 # exon strand
         if stranded: self.count_fct = self.count_stranded
         else: self.count_fct = self.count
@@ -204,6 +205,8 @@ class Counter(object):
         if self.strand == "+" and alignment.is_reverse == False \
         or self.strand == "-" and alignment.is_reverse == True:
             self.count(alignment)
+        else:
+            self.wrongstrand += 1
 
     def remove_duplicates(self):
         """Fetches all reads mapped to a transcript, checks if there are mapping positions
@@ -435,9 +438,9 @@ class Pileups(RNAseq):
             ref_index[ref.split('|')[0]] = ref
         mapped_on = 'genome' if all([ref in chromosomes for ref in sam.references[:100]]) else 'exons'
         c = Counter(stranded=self.stranded)
-        for chrom in chromosomes:
-            etrack = self.assembly.exon_track(chromlist=[chrom], biotype=None)
-            for (chrom,start,end,names,strand,phase) in cobble(etrack,aggregate={'name':lambda n:'$'.join(n)}):
+
+        def _count(etrack):
+            for (chrom,start,end,names,strand,phase) in etrack:
                 if strand == 0: continue  # skip overlapping exons of different strands to avoid typeI errors
                 exon_ids = [e.split('|')[0] for e in names.split('$')]  # all spanning this interval - maybe more
                 if mapped_on == 'genome':
@@ -464,6 +467,12 @@ class Pileups(RNAseq):
                 for exon in exon_ids:
                     if c.n > 0:  # remove this if want to keep all references in output
                         counts[exon] = counts.get(exon,0) + c.n/nexons
+            return counts
+
+        for chrom in chromosomes:
+            etrack = self.assembly.exon_track(chromlist=[chrom], biotype=None)
+            etrack = cobble(etrack,aggregate={'name':lambda n:'$'.join(n)})
+            counts = _count(etrack)
         sam.close()
         return counts
 
