@@ -269,7 +269,6 @@ def rnaseq_workflow(ex, job, assembly=None, pileup_level=["exons","genes","trans
         if assembly.intype==2: # usual transcriptome
             try:
                 tmap = assembly.get_transcript_mapping()
-                ftype = "Transcripts"
                 header = ["Transcript"]
             except:
                 pass
@@ -278,7 +277,6 @@ def rnaseq_workflow(ex, job, assembly=None, pileup_level=["exons","genes","trans
             firstbamtrack = track(firstbam,format='bam')
             for c,meta in firstbamtrack.chrmeta.iteritems():
                 tmap[c] = Transcript(end=meta['length'], length=meta['length'])
-            ftype = "Custom"
             header = ["Custom"]
         logfile.write("* Build pileups\n"); logfile.flush()
         pileups = {}
@@ -299,7 +297,7 @@ def rnaseq_workflow(ex, job, assembly=None, pileup_level=["exons","genes","trans
         header += ["counts."+c for c in conditions] + ["norm."+c for c in conditions] + ["rpkm."+c for c in conditions]
         header += ["Start","End","GeneEnsembl","GeneSymbol","Strand","Chromosome"]
         PU.save_results(trans_data,group_ids,header)
-        DE.differential_analysis(trans_data, header, feature_type=ftype.lower())
+        DE.differential_analysis(trans_data, header)
         return 0
 
     logfile.write("* Load mappings\n"); logfile.flush()
@@ -337,7 +335,7 @@ def rnaseq_workflow(ex, job, assembly=None, pileup_level=["exons","genes","trans
         lengths = asarray([M.exon_mapping[e].end-M.exon_mapping[e].start for e in exon_pileups])
         exons_data = PU.norm_and_format(exon_pileups,lengths,M.exon_mapping)
         PU.save_results(exons_data, group_ids, header)
-        DE.differential_analysis(exons_data, header, feature_type='exons')
+        DE.differential_analysis(exons_data, header)
         del exons_data
 
     # Get scores of genes from exons
@@ -348,7 +346,7 @@ def rnaseq_workflow(ex, job, assembly=None, pileup_level=["exons","genes","trans
         lengths = asarray([M.gene_mapping[g].length for g in gcounts.iterkeys()])
         genes_data = PU.norm_and_format(gcounts,lengths,M.gene_mapping)
         genes_file = PU.save_results(genes_data, group_ids, header)
-        DE.differential_analysis(genes_data, header, feature_type='genes')
+        DE.differential_analysis(genes_data, header)
         del genes_data
 
         # PCA of groups ~ gene expression
@@ -366,7 +364,7 @@ def rnaseq_workflow(ex, job, assembly=None, pileup_level=["exons","genes","trans
         lengths = asarray([M.transcript_mapping[t].length for t in tcounts.iterkeys()])
         trans_data = PU.norm_and_format(tcounts,lengths,M.transcript_mapping)
         PU.save_results(trans_data, group_ids, header)
-        DE.differential_analysis(trans_data, header, feature_type='transcripts')
+        DE.differential_analysis(trans_data, header)
         del trans_data
 
     # Find splice junctions
@@ -695,7 +693,7 @@ class DE_Analysis(RNAseq):
         return filename_clean
 
     @timer
-    def differential_analysis(self, data, header, feature_type):
+    def differential_analysis(self, data, header):
         """For each file in *data*, launch an analysis of differential expression on the count
         values, and saves the output in the MiniLIMS."""
 
@@ -707,6 +705,7 @@ class DE_Analysis(RNAseq):
             return {'arguments': ["R","--slave","-f",script_path,"--args",data_file]+opts,
                     'return_value': output_file}
 
+        feature_type = header[0].lower()
         res_file, ncond = self.clean_before_deseq(data, header)
         if ncond < 2:
             self.write_log("  Skipped differential analysis: less than two groups.")
