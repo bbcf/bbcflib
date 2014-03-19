@@ -201,8 +201,8 @@ class Counter(object):
             pass # read overflows
 
     def count_stranded(self, alignment):
-        if self.strand == "+" and alignment.is_reverse == False \
-        or self.strand == "-" and alignment.is_reverse == True:
+        if self.strand == 1 and alignment.is_reverse == False \
+        or self.strand == -1 and alignment.is_reverse == True:
             self.count(alignment)
 
     def remove_duplicates(self):
