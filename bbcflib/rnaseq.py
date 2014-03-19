@@ -555,9 +555,10 @@ class Pileups(RNAseq):
         Returns a dictionary of the form ``{gene_id: scores}``.
         """
         gene_counts = {}
+        ncond = 2*len(self.conditions) if self.stranded else len(self.conditions)
         for e,counts in exon_pileups.iteritems():
             g = self.M.exon_mapping[e].gene_id
-            gene_counts[g] = gene_counts.get(g,zeros(len(self.conditions))) + counts
+            gene_counts[g] = gene_counts.get(g,zeros(ncond)) + counts
         return gene_counts
 
     @timer
@@ -653,6 +654,7 @@ class Pileups(RNAseq):
             res = counts / size_factors
             return res, size_factors
 
+        print counts
         if isinstance(counts,dict):
             counts_matrix = asarray(counts.values())
             ids = counts.iterkeys()
