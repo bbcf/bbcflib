@@ -26,7 +26,7 @@ equally well be written::
 
 """
 
-print "############ LOCAL ###########"
+#print "############ LOCAL ###########"
 
 # Built-in modules #
 import urllib2, json, os, sys, re, gzip, tarfile, bz2, sqlite3, itertools
