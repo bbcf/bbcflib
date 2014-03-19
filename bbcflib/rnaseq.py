@@ -489,7 +489,7 @@ class Pileups(RNAseq):
                 rpkm[group] = asarray(rpkm.get(group,zeros(len(start)))) + asarray(cols[i+2*n+1]) / nruns
                 output_sql[group] = output_sql.get(group,unique_filename_in())
             for group,filename in output_sql.iteritems():
-                # SQL track - GDV
+                # SQL track
                 tr = track(filename+'.sql', fields=['chr','start','end','score'], chrmeta=self.assembly.chrmeta)
                 towrite = {}
                 for n,c in enumerate(chromosomes):
@@ -530,8 +530,7 @@ class Pileups(RNAseq):
         emap = self.M.exon_mapping
         tmap = self.M.transcript_mapping
         gmap = self.M.gene_mapping
-        trans_counts={}
-        exons_counts={}; genes=[];
+        trans_counts={}; exons_counts={}; genes=[];
         for e,counts in exon_pileups.iteritems():
             exons_counts[e] = counts
             genes.append(emap[e].gene_id)
@@ -645,8 +644,7 @@ class DE_Analysis(RNAseq):
         :param keep: fraction of highest counts to keep. [0.6]
         """
         filename_clean = unique_filename_in()
-        ncond = sum([h.find('counts.')+1 for h in header]) \
-              #+ sum([h.find('counts_rev.')+1 for h in header])
+        ncond = sum([h.find('counts.')+1 for h in header])
         if ncond >1:
             rownames = asarray(['%s|%s|%s|%s' % (x[0],x[-3],x[-2],x[-1]) for x in data])
             M = asarray([x[1:1+ncond] for x in data])
@@ -866,8 +864,8 @@ class Pca(RNAseq):
             args = ['julia', os.path.join(self.juliapath,'pca_rnaseq.jl'), counts_table_file, outprefix]
             return {"arguments": args, "return_value": outprefix}
 
-        #outprefix = pcajl.nonblocking(self.ex, counts_table_file, via=self.via).wait()
-        outprefix = pcajl(self.ex, counts_table_file)
+        outprefix = pcajl.nonblocking(self.ex, counts_table_file, via=self.via).wait()
+        #outprefix = pcajl(self.ex, counts_table_file)
         pca_descr_png = set_file_descr('pca_groups.png', type='png', step='pca')
         pca_descr_js = set_file_descr('pca_groups.js', type='txt', step='pca', view='admin')
         pcaeigv_descr_png = set_file_descr('pca_groups_sdev.png', type='png', step='pca')
