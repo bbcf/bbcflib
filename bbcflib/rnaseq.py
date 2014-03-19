@@ -18,7 +18,7 @@ from operator import itemgetter
 # Internal modules #
 from bbcflib.common import set_file_descr, unique_filename_in, cat, timer, program_exists
 from bbcflib.genrep import Assembly, Transcript
-from bbcflib.mapseq import add_and_index_bam, sam_to_bam, map_reads, plot_stats
+from bbcflib.mapseq import add_and_index_bam, sam_to_bam
 from bbcflib.gfminer.common import cobble, sorted_stream, map_chromosomes, duplicate, apply
 from bbcflib.track import track, FeatureStream, convert
 from bein import program
@@ -314,7 +314,7 @@ def rnaseq_workflow(ex, job, assembly=None, pileup_level=["exons","genes","trans
     for i,cond in enumerate(conditions):
         exon_pileup, exon_pileup_rev = PU.build_pileup(bamfiles[cond])
         if stranded:
-            for e,count in exon_pileup_rev.iteritems():
+            for e,count in exon_pileup.iteritems():
                 exon_pileups.setdefault(e,zeros(2*ncond))[i] = count
                 exon_pileups[e][ncond+i] = exon_pileup_rev[e]
         else:
