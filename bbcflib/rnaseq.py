@@ -149,6 +149,8 @@ class RNAseq(object):
         self.logfile = logfile           # log file name
         self.M = mappings                # Mappings object
         self.stranded = stranded         # True/False, strand-specific or not
+        self.ncond = 2*len(self.conditions) if self.stranded else len(self.conditions)
+            # number of columns in the output, = number of runs if not stranded, twice otherwise
 
     def write_log(self,s):
         self.logfile.write(s+'\n'); self.logfile.flush()
@@ -168,7 +170,7 @@ class Mappings():
         * transcript_mapping is a dictionary ``{transcript_id: genrep.Transcript}``
         * exon_mapping is a dictionary ``{exon_id: genrep.Exon}``
         """
-        map_path = '/archive/epfl/bbcf/jdelafon/mappings/test_mm9/'
+        map_path = '/archive/epfl/bbcf/jdelafon/mappings/test_%s/' % self.assembly.name
         if test and os.path.exists(map_path):
             import pickle
             self.gene_mapping = pickle.load(open(os.path.join(map_path,'gene_mapping.pickle')))
@@ -499,16 +501,16 @@ class Pileups(RNAseq):
         :param feature_type: (str) the kind of feature of which you measure the expression.
         """
         # Tab-delimited output with all information
-        ncond = len(self.conditions)
         output_tab = unique_filename_in()
+        n = self.ncond
         with open(output_tab,'wb') as f:
             f.write('\t'.join(header)+'\n')
             for l in lines:
                 tid = str(l[0])
-                counts = ["%d"%x for x in l[1:ncond+1]]
-                norm = ["%.2f"%x for x in l[ncond+1:2*ncond+1]]
-                rpkm = ["%.2f"%x for x in  l[2*ncond+1:3*ncond+1]]
-                rest = [str(x) for x in l[3*ncond+1:]]
+                counts = ["%d"%x for x in l[1:n+1]]
+                norm = ["%.2f"%x for x in l[n+1:2*n+1]]
+                rpkm = ["%.2f"%x for x in  l[2*n+1:3*n+1]]
+                rest = [str(x) for x in l[3*n+1:]]
                 f.write('\t'.join([tid]+counts+norm+rpkm+rest)+'\n')
         description = set_file_descr(feature_type.lower()+"_expression.tab", step="pileup", type="txt")
         self.ex.add(output_tab, description=description)
@@ -516,15 +518,15 @@ class Pileups(RNAseq):
         if feature_type in ['GENES','EXONS']:
             cols = zip(*lines)
             groups = [c.split('.')[0] for c in self.conditions]
-            start = cols[3*ncond+1]
-            end = cols[3*ncond+2]
+            start = cols[3*n+1]
+            end = cols[3*n+2]
             chromosomes = cols[-1]
             rpkm = {}; output_sql = {}
-            for i in range(ncond):
-                group = self.conditions[i].split('.')[0]
+            for i,cond in enumerate(self.conditions):
+                group = cond.split('.')[0]
                 nruns = groups.count(group)
                 # Average all replicates in the group
-                rpkm[group] = asarray(rpkm.get(group,zeros(len(start)))) + asarray(cols[i+2*ncond+1]) / nruns
+                rpkm[group] = asarray(rpkm.get(group,zeros(len(start)))) + asarray(cols[i+2*n+1]) / nruns
                 output_sql[group] = output_sql.get(group,unique_filename_in())
             for group,filename in output_sql.iteritems():
                 # SQL track - GDV
@@ -555,10 +557,9 @@ class Pileups(RNAseq):
         Returns a dictionary of the form ``{gene_id: scores}``.
         """
         gene_counts = {}
-        ncond = 2*len(self.conditions) if self.stranded else len(self.conditions)
         for e,counts in exon_pileups.iteritems():
             g = self.M.exon_mapping[e].gene_id
-            gene_counts[g] = gene_counts.get(g,zeros(ncond)) + counts
+            gene_counts[g] = gene_counts.get(g,zeros(self.ncond)) + counts
         return gene_counts
 
     @timer
@@ -569,7 +570,6 @@ class Pileups(RNAseq):
         emap = self.M.exon_mapping
         tmap = self.M.transcript_mapping
         gmap = self.M.gene_mapping
-        ncond = len(self.conditions)
         trans_counts={}
         exons_counts={}; genes=[];
         for e,counts in exon_pileups.iteritems():
@@ -587,11 +587,11 @@ class Pileups(RNAseq):
                 for t in tg:
                     if t in tmap:
                         eg = eg.union(set(tmap[t].exons))
-                        trans_counts[t] = zeros(ncond)
+                        trans_counts[t] = zeros(self.ncond)
                 # Create the correspondance matrix
                 M = zeros((len(eg),len(tg)))
                 L = zeros((len(eg),len(tg)))
-                ec = zeros((ncond,len(eg)))
+                ec = zeros((self.ncond,len(eg)))
                 for i,e in enumerate(eg):
                     for j,t in enumerate(tg):
                         if t in tmap and e in tmap[t].exons:
@@ -602,11 +602,11 @@ class Pileups(RNAseq):
                                 L[i,j] = 1./len(eg)
                     # Retrieve exon scores
                     if e in exons_counts:
-                        for c in range(ncond):
+                        for c in range(self.ncond):
                             ec[c][i] += exons_counts[e][c]
                 # If only one transcript, special case for more precision
                 if len(tg) == 1:
-                    for c in range(ncond):
+                    for c in range(self.ncond):
                         trans_counts[t][c] = sum(ec[c])
                     continue
                 # Compute transcript scores
@@ -614,7 +614,7 @@ class Pileups(RNAseq):
                 M = numpy.vstack((M,numpy.ones(M.shape[1]))) # add constraint |E| = |T|
                 L = numpy.vstack((L,numpy.ones(M.shape[1])))
                 N = M*L
-                for c in range(ncond):
+                for c in range(self.ncond):
                     Ec = ec[c]
                     Ec = numpy.hstack((Ec,asarray(sum(Ec))))
                     try: Tc, resnormc, resc = lsqnonneg(N,Ec,itmax_factor=100)
@@ -622,7 +622,7 @@ class Pileups(RNAseq):
                     tc.append(Tc)
                 # Store results in a dict *trans_counts*
                 for k,t in enumerate(tg):
-                    for c in range(ncond):
+                    for c in range(self.ncond):
                         trans_counts[t][c] = tc[c][k]
             else:
                 unknown += 1
@@ -654,7 +654,6 @@ class Pileups(RNAseq):
             res = counts / size_factors
             return res, size_factors
 
-        print counts
         if isinstance(counts,dict):
             counts_matrix = asarray(counts.values())
             ids = counts.iterkeys()
