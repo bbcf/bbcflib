@@ -134,7 +134,7 @@ def lsqnonneg(C, d, x0=None, tol=None, itmax_factor=3):
 class RNAseq(object):
     """Abstract, inherited by different parts of the workflow."""
     def __init__(self,ex,via,job,assembly,conditions,debugfile,logfile,
-                 pileup_level,rpath,juliapath,junctions,unmapped,mappings,stranded):
+                 pileup_level,rpath,juliapath,junctions,mappings,stranded):
         self.ex = ex                     # bein.Execution object
         self.job = job                   # frontend.Job object
         self.assembly = assembly         # genrep.Assembly object
@@ -144,7 +144,6 @@ class RNAseq(object):
         self.rpath = rpath               # Path to R scripts
         self.juliapath = juliapath       # Path to Julia scripts
         self.junctions = junctions       # True/False, want to find or not
-        self.unmapped = unmapped         # True/False, want to remap or not
         self.debugfile = debugfile       # debug file name
         self.logfile = logfile           # log file name
         self.M = mappings                # Mappings object
@@ -185,11 +184,12 @@ class Mappings():
 class Counter(object):
     def __init__(self, stranded=False):
         self.n = 0 # read count
-        self.start = 0 # exon start
-        self.counts = [] # vector of counts per non-zero position
+        self.n_ws = 0 # read count, wrong strand
         self.strand = 0 # exon strand
-        if stranded: self.count_fct = self.count_stranded
-        else: self.count_fct = self.count
+        if stranded:
+            self.count_fct = self.count_stranded
+        else:
+            self.count_fct = self.count
 
     def __call__(self, alignment):
         self.count_fct(alignment)
@@ -197,27 +197,14 @@ class Counter(object):
     def count(self, alignment):
         NH = [1.0/t[1] for t in alignment.tags if t[0]=='NH']+[1]
         self.n += NH[0]
-        try:
-            self.counts[alignment.pos-self.start] += NH[0]
-        except IndexError:
-            pass # read overflows
 
     def count_stranded(self, alignment):
+        NH = [1.0/t[1] for t in alignment.tags if t[0]=='NH']+[1]
         if self.strand == 1 and alignment.is_reverse == False \
         or self.strand == -1 and alignment.is_reverse == True:
-            self.count(alignment)
-
-    def remove_duplicates(self):
-        """Fetches all reads mapped to a transcript, checks if there are mapping positions
-        where the number of reads is more than N times the average for this gene.
-        If there are, shrink them to the same level as the others."""
-        Nsigma = 50 # arbitrary
-        argmax = self.counts.index(max(self.counts))
-        average = sum(self.counts[:argmax]+self.counts[argmax+1:]) / (len(self.counts)-1)
-        #variance = average # Poisson approx
-        #limit = round(average+Nsigma*(variance**0.5)+0.5) # avg + N x stdev
-        limit = Nsigma*average
-        self.counts = [c if c < limit else average for c in self.counts]
+            self.n += NH[0]
+        else:
+            self.n_ws += NH[0]
 
 
 #----------------------------- MAIN CALL -----------------------------#
@@ -225,7 +212,7 @@ class Counter(object):
 
 @timer
 def rnaseq_workflow(ex, job, assembly=None, pileup_level=["exons","genes","transcripts"], via="lsf",
-                    rpath=None, junctions=False, unmapped=False, stranded=False,
+                    rpath=None, junctions=False, stranded=False,
                     logfile=sys.stdout, debugfile=sys.stderr):
     """Main function of the workflow.
 
@@ -235,7 +222,6 @@ def rnaseq_workflow(ex, job, assembly=None, pileup_level=["exons","genes","trans
     :param assembly: a genrep.Assembly object
     :param rpath: (str) path to the R executable.
     :param junctions: (bool) whether to search for splice junctions using SOAPsplice. [False]
-    :param unmapped: (bool) whether to remap to the transcriptome reads that did not map the genome. [False]
     :param via: (str) send job via 'local' or 'lsf'. ["lsf"]
     """
     juliapath='/home/jdelafon/repos/bbcfutils/Julia/'
@@ -271,10 +257,9 @@ def rnaseq_workflow(ex, job, assembly=None, pileup_level=["exons","genes","trans
 
     M = Mappings(assembly)
     rnaseq_args = (ex,via,job,assembly,conditions,debugfile,logfile,
-                   pileup_level,rpath,juliapath,junctions,unmapped,M,stranded)
+                   pileup_level,rpath,juliapath,junctions,M,stranded)
     PU = Pileups(*rnaseq_args)
     DE = DE_Analysis(*rnaseq_args)
-    UN = Unmapped(*rnaseq_args)
     PCA = Pca(*rnaseq_args)
     JN = Junctions(*rnaseq_args)
 
@@ -353,25 +338,6 @@ def rnaseq_workflow(ex, job, assembly=None, pileup_level=["exons","genes","trans
         PU.save_results(exons_data, group_ids, header=header, feature_type="EXONS")
         DE.differential_analysis(exons_data, header, feature_type='exons')
         del exons_data
-
-    # Map remaining reads to transcriptome
-    unmapped_fastq = {}
-    if unmapped:
-        logfile.write("* Align unmapped reads on transcriptome\n"); logfile.flush()
-        try:
-            unmapped_fastq,additionals = UN.align_unmapped(group_names)
-        except Exception, error:
-            debugfile.write("Remapping failed: %s\n"%str(error)); debugfile.flush()
-
-    # Add junction reads to exon pileups
-    for i,cond in enumerate(conditions):
-        if unmapped and (cond in unmapped_fastq) and (cond in additionals):
-            for e,x in additionals[cond].iteritems():
-                if e in exon_pileups:
-                    exon_pileups[e][i] += x
-                else:
-                    exon_pileups.setdefault(e,zeros(ncond))[i] = x
-    if unmapped: del additionals
 
     # Get scores of genes from exons
     if "genes" in pileup_level:
@@ -466,28 +432,23 @@ class Pileups(RNAseq):
                 if not ref: continue  # exon in bam header but not in exon_track
                 try:
                     c.n = 0
-                    c.counts = [0]*(end-start+1)  # do not allow read overflow
-                    c.start = start
+                    c.n_ws = 0
                     c.strand = strand
                     sam.fetch(ref,start,end, callback=c)  # calls Counter.__call__ for each alignment: updates c.n
-                    #c.remove_duplicates()
                 except ValueError,ve:  # unknown reference
                     self.write_debug("Unknown reference: %s",str(ve))
                 nexons = float(len(exon_ids))
                 for exon in exon_ids:
                     if c.n > 0:  # remove this if want to keep all references in output
                         counts[exon] = counts.get(exon,0) + c.n/nexons
-            return counts
+                    if c.n_ws > 0:
+                        counts_rev[exon] = counts_rev.get(exon,0) + c.n_ws/nexons
+            return counts, counts_rev
 
         for chrom in chromosomes:
             etrack = self.assembly.exon_track(chromlist=[chrom], biotype=None)
             etrack = cobble(etrack, aggregate={'name':lambda n:'$'.join(n)})
-            counts = _count(etrack)
-            if self.stranded:
-                etrack_rev = self.assembly.exon_track(chromlist=[chrom], biotype=None)
-                etrack_rev = apply(etrack_rev, 'strand', lambda x:-x)  # reverse strand info
-                etrack_rev = cobble(etrack_rev, aggregate={'name':lambda n:'$'.join(n)})
-                counts_rev = _count(etrack_rev)
+            counts,counts_rev = _count(etrack)
         sam.close()
         return counts, counts_rev
 
@@ -892,78 +853,6 @@ class Junctions(RNAseq):
         out = track(bed, fields=s3.fields, chrmeta=self.assembly.chrmeta)
         out.write(s3)
         return bed
-
-
-#-------------------------- RE-MAPPING ON TRANSCRIPTOME ----------------------------#
-
-
-class Unmapped(RNAseq):
-    def __init__(self,*args):
-        RNAseq.__init__(self,*args)
-
-    @timer
-    def align_unmapped(self, group_names):
-        """
-        Map reads that did not map to the exons to a collection of annotated transcripts,
-        in order to add counts to pairs of exons involved in splicing junctions.
-
-        Return a dictionary ``unmapped_fastq`` of the form ``{sample_name:bam_file}``,
-        and a second ``additionals`` of the form ``{sample_name:{exon:additional_counts}}``.
-
-        :param group_names: dict of the form ``{group_id: group_name}``.
-        """
-        self.assembly.set_index_path(intype=2)
-        additionals = {}
-        unmapped_fastq = {}
-        refseq_path = self.assembly.index_path
-        bwt2 = self.job.options.get("bowtie2",True)
-        for gid, group in self.job.groups.iteritems():
-            k = 0
-            for rid, run in group['runs'].iteritems():
-                k += 1
-                cond = group_names[gid]+'.'+str(k)
-                _fastq = self.job.files[gid][rid].get('unmapped_fastq')
-                if _fastq and os.path.exists(refseq_path+".1.ebwt"):
-                    try:
-                        _bam = map_reads( self.ex, _fastq, {}, refseq_path, bowtie_2=bwt2,
-                                          remove_pcr_duplicates=False, via=self.via )
-                    except Exception, error:
-                        self.write_debug("Sample %s: map_reads (on transcriptome) failed: \n%s." % (cond,str(error)))
-                        continue
-                    if not _bam: continue
-                    bamfile = _bam['bam']
-                    stats = _bam['stats']  # result of mapseq.bamstats
-                    #description = set_file_descr(cond+"_transcriptome_mapping.bam",step="pileup",type="bam")
-                    #ex.add(bamfile, description=description)
-                    try:
-                        pdfstats = plot_stats(self.ex, stats, script_path=self.rpath)
-                        description = set_file_descr(cond+"_transcriptome_mapping_report.pdf",step="pileup",type="pdf")
-                        self.ex.add(pdfstats, description=description)
-                    except Exception, error:
-                        self.write_debug("Sample %s: bamstats failed: \n%s" % (cond,str(error)))
-                    sam = pysam.Samfile(bamfile)
-                    additional = {}
-                    for read in sam:
-                        t_id = sam.getrname(read.tid).split('|')[0]
-                        if t_id in self.M.transcript_mapping:
-                            E = self.M.trasncript_mapping[t_id].exons
-                            if len(E) < 2: continue  # need 2 exons to make a junction
-                            lag = 0
-                            r_start = read.pos
-                            r_end = r_start + read.rlen
-                            NH = [1.0/t[1] for t in read.tags if t[0]=='NH']+[1]
-                            for e in E:
-                                e_start = self.M.exon_mapping[e].start
-                                e_end = self.M.exon_mapping[e].end
-                                e_len = e_end-e_start
-                                if r_start < lag <= r_end <= lag+e_len \
-                                or lag <= r_start <= lag+e_len < r_end:
-                                    additional[e] = additional.get(e,0) + 0.5*NH[0]
-                                lag += e_len
-                    additionals[cond] = additional
-                    unmapped_fastq[cond] = _fastq
-                    sam.close()
-        return unmapped_fastq,additionals
 
 
 #---------------------------------- PCA ----------------------------------#
