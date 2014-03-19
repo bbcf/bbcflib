@@ -31,7 +31,7 @@ numpy.set_printoptions(precision=3,suppress=True)
 numpy.seterr(invalid='print')
 numpy.seterr(divide='ignore')
 
-test = True
+test = False
 
 
 #--------------------------------- MATHS ---------------------------------#
