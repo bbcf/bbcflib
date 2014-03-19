@@ -270,7 +270,7 @@ def rnaseq_workflow(ex, job, assembly=None, pileup_level=["exons","genes","trans
             try:
                 tmap = assembly.get_transcript_mapping()
                 ftype = "Transcripts"
-                header = ["TranscriptID"]
+                header = ["Transcript"]
             except:
                 pass
         if hasattr(assembly,"fasta_origin"): # build custom transcriptome
@@ -279,7 +279,7 @@ def rnaseq_workflow(ex, job, assembly=None, pileup_level=["exons","genes","trans
             for c,meta in firstbamtrack.chrmeta.iteritems():
                 tmap[c] = Transcript(end=meta['length'], length=meta['length'])
             ftype = "Custom"
-            header = ["CustomID"]
+            header = ["Custom"]
         logfile.write("* Build pileups\n"); logfile.flush()
         pileups = {}
         for cond in conditions:
@@ -297,8 +297,8 @@ def rnaseq_workflow(ex, job, assembly=None, pileup_level=["exons","genes","trans
         lengths = asarray([tmap[t].end-tmap[t].start for t in tcounts.iterkeys()])
         trans_data = PU.norm_and_format(tcounts,lengths,tmap)
         header += ["counts."+c for c in conditions] + ["norm."+c for c in conditions] + ["rpkm."+c for c in conditions]
-        header += ["Start","End","GeneID","GeneName","Strand","Chromosome"]
-        PU.save_results(trans_data,group_ids,header=header,feature_type=ftype)
+        header += ["Start","End","GeneEnsembl","GeneSymbol","Strand","Chromosome"]
+        PU.save_results(trans_data,group_ids,header)
         DE.differential_analysis(trans_data, header, feature_type=ftype.lower())
         return 0
 
@@ -328,25 +328,26 @@ def rnaseq_workflow(ex, job, assembly=None, pileup_level=["exons","genes","trans
                + ["rpkm."+c for c in conditions] + ["rpkm_rev."+c for c in conditions]
     else:
         hconds = ["counts."+c for c in conditions] + ["norm."+c for c in conditions] + ["rpkm."+c for c in conditions]
+    hinfo = ["Start","End","GeneEnsembl","GeneSymbol","Strand","Chromosome"]
 
     # Print counts for exons
     if "exons" in pileup_level:
         logfile.write("* Get scores of exons\n"); logfile.flush()
-        header = ["ExonID"] + hconds + ["Start","End","GeneID","GeneName","Strand","Chromosome"]
+        header = ["Exon"] + hconds + hinfo
         lengths = asarray([M.exon_mapping[e].end-M.exon_mapping[e].start for e in exon_pileups])
         exons_data = PU.norm_and_format(exon_pileups,lengths,M.exon_mapping)
-        PU.save_results(exons_data, group_ids, header=header, feature_type="EXONS")
+        PU.save_results(exons_data, group_ids, header)
         DE.differential_analysis(exons_data, header, feature_type='exons')
         del exons_data
 
     # Get scores of genes from exons
     if "genes" in pileup_level:
         logfile.write("* Get scores of genes\n"); logfile.flush()
-        header = ["GeneID"] + hconds + ["Start","End","GeneName","Strand","Chromosome"]
+        header = ["Gene"] + hconds + hinfo
         gcounts = PU.genes_expression(exon_pileups)
         lengths = asarray([M.gene_mapping[g].length for g in gcounts.iterkeys()])
         genes_data = PU.norm_and_format(gcounts,lengths,M.gene_mapping)
-        genes_file = PU.save_results(genes_data, group_ids, header=header, feature_type="GENES")
+        genes_file = PU.save_results(genes_data, group_ids, header)
         DE.differential_analysis(genes_data, header, feature_type='genes')
         del genes_data
 
@@ -360,11 +361,11 @@ def rnaseq_workflow(ex, job, assembly=None, pileup_level=["exons","genes","trans
     # Get scores of transcripts from exons, using non-negative least-squares
     if "transcripts" in pileup_level:
         logfile.write("* Get scores of transcripts\n"); logfile.flush()
-        header = ["TranscriptID"] + hconds + ["Start","End","GeneID","GeneName","Strand","Chromosome"]
+        header = ["Transcript"] + hconds + hinfo
         tcounts = PU.transcripts_expression(exon_pileups)
         lengths = asarray([M.transcript_mapping[t].length for t in tcounts.iterkeys()])
         trans_data = PU.norm_and_format(tcounts,lengths,M.transcript_mapping)
-        PU.save_results(trans_data, group_ids, header=header, feature_type="TRANSCRIPTS")
+        PU.save_results(trans_data, group_ids, header)
         DE.differential_analysis(trans_data, header, feature_type='transcripts')
         del trans_data
 
@@ -453,15 +454,15 @@ class Pileups(RNAseq):
         return counts, counts_rev
 
     @timer
-    def save_results(self, lines, group_ids, header, feature_type='features'):
+    def save_results(self, lines, group_ids, header):
         """Save results in a tab-delimited file, one line per feature, one column per run.
 
         :param lines: list of iterables, each element being a line to write in the output.
         :param group_ids: dictionary ``{group name: group_id}``.
         :param header: list of strings, the column headers of the output file.
-        :param feature_type: (str) the kind of feature of which you measure the expression.
         """
         # Tab-delimited output with all information
+        feature_type = header[0].lower()
         output_tab = unique_filename_in()
         n = self.ncond
         with open(output_tab,'wb') as f:
@@ -473,10 +474,10 @@ class Pileups(RNAseq):
                 rpkm = ["%.2f"%x for x in  l[2*n+1:3*n+1]]
                 rest = [str(x) for x in l[3*n+1:]]
                 f.write('\t'.join([tid]+counts+norm+rpkm+rest)+'\n')
-        description = set_file_descr(feature_type.lower()+"_expression.tab", step="pileup", type="txt")
+        description = set_file_descr(feature_type+"_expression.tab", step="pileup", type="txt")
         self.ex.add(output_tab, description=description)
         # Create one track for each group
-        if feature_type in ['GENES','EXONS']:
+        if feature_type in ['genes','exons']:
             cols = zip(*lines)
             groups = [c.split('.')[0] for c in self.conditions]
             start = cols[3*n+1]
@@ -499,13 +500,13 @@ class Pileups(RNAseq):
                 for chrom, feats in towrite.iteritems():
                     tr.write(cobble(sorted_stream(FeatureStream(feats, fields=['start','end','score']))),
                              chrom=chrom,clip=True)
-                description = set_file_descr(feature_type.lower()+"_"+group+".sql", step="pileup", type="sql",
+                description = set_file_descr(feature_type+"_"+group+".sql", step="pileup", type="sql",
                                              groupId=group_ids[group])
                 self.ex.add(filename+'.sql', description=description)
                 # bigWig track - UCSC
                 try: # if the bigWig conversion program fails, the file is not created
                     convert(filename+'.sql',filename+'.bw')
-                    description = set_file_descr(feature_type.lower()+"_"+group+".bw",
+                    description = set_file_descr(feature_type+"_"+group+".bw",
                                                  step="pileup", type="bw", groupId=group_ids[group], ucsc='1')
                     self.ex.add(filename+'.bw', description=description)
                 except IOError: pass
@@ -645,16 +646,12 @@ class DE_Analysis(RNAseq):
 
         :param keep: fraction of highest counts to keep. [0.6]
         """
-        norm = 'counts'  # the cols we want to send to DESeq
-        if norm == 'counts': w = 0
-        elif norm == 'norm': w = 1
-        elif norm == 'rpkm': w = 2
         filename_clean = unique_filename_in()
-        ncond = sum([h.split('.').count("counts") for h in header]) \
-              + sum([h.split('.').count("counts_rev") for h in header])
+        ncond = sum([h.find('counts.')+1 for h in header]) \
+              #+ sum([h.find('counts_rev.')+1 for h in header])
         if ncond >1:
             rownames = asarray(['%s|%s|%s|%s' % (x[0],x[-3],x[-2],x[-1]) for x in data])
-            M = asarray([x[1+w*ncond:1+(w+1)*ncond] for x in data])
+            M = asarray([x[1:1+ncond] for x in data])
             colnames = header[0:1]+header[1:1+ncond] # 'counts' column names, always
             # Remove 40% lowest counts
             sums = numpy.sum(M,1)
