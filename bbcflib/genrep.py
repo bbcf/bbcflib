@@ -26,8 +26,6 @@ equally well be written::
 
 """
 
-#print "############ LOCAL ###########"
-
 # Built-in modules #
 import urllib2, json, os, sys, re, gzip, tarfile, bz2, sqlite3, itertools
 from datetime import datetime

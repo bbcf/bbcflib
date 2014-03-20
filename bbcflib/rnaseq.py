@@ -314,7 +314,7 @@ def rnaseq_workflow(ex, job, assembly=None, pileup_level=["exons","genes","trans
         if stranded:
             for e,count in exon_pileup.iteritems():
                 exon_pileups.setdefault(e,zeros(2*ncond))[i] = count
-                exon_pileups[e][ncond+i] = exon_pileup_rev[e]
+                exon_pileups[e][ncond+i] = exon_pileup_rev.get(e,0)
         else:
             for e,count in exon_pileup.iteritems():
                 exon_pileups.setdefault(e,zeros(ncond))[i] = count
