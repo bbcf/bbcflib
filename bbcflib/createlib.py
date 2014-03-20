@@ -156,7 +156,7 @@ def createLibrary(ex, assembly_or_fasta, params, url=GlobalHtsUrl, via='local'):
         return [None,None,None,None]
 
     if not isinstance(assembly_or_fasta,genrep.Assembly):
-        assembly_or_fasta = genrep.Assembly( fasta=assembly_or_fasta )
+        assembly_or_fasta = genrep.Assembly( ex=ex, fasta=assembly_or_fasta )
     chrnames = assembly_or_fasta.chrnames
     chrom_map = dict((v['ac'],k) for k,v in assembly_or_fasta.chrmeta.iteritems())
     allfiles = assembly_or_fasta.fasta_by_chrom  #assembly_or_fasta.untar_genome_fasta()
