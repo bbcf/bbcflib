@@ -13,7 +13,7 @@ import rpy2.robjects as robjects
 import rpy2.robjects.numpy2ri as numpy2ri
 from bbcflib.common import unique_filename_in
 from itertools import combinations
-from numpy import array, ndarray
+from numpy import array, ndarray, append
 
 def list2r(L):
     """Transform a Python list into a string in R format: [1,2,'C'] -> "c(1,2,'C')" ."""
@@ -156,24 +156,23 @@ def boxplot(values,labels,output=None,format='pdf',new=True,last=True,**kwargs):
 def density_boxplot(values,name=None,output=None,format='pdf',new=True,last=True,**kwargs):
     """Creates a density and a box-and-whiskers representation of *values*."""
     if not isinstance(values,ndarray): values = array(values)
+    if len(values) < 2: append(values,[0,0])
+    if name is None:
+        name = ''
+        topmar = 1
+    else:
+        name = str(name)
+        topmar = 4
     plotopt,output = _begin(output=output,format=format,new=new,**kwargs)
     robjects.r.assign('values',numpy2ri.numpy2ri(values))
-    robjects.r("layout(matrix(c(1,2),nrow=2),heights=c(3,1))")
-    robjects.r("lims=range(values)")
-    if name is None:
-        robjects.r("""
-par(lwd=2,cex=1.1,mar=c(0,4,1,1),las=1)
-plot(density(values),lwd=2,ylab='',main='',xlim=lims,xaxt='n')
-""")
-    else:
-        robjects.r("""
-par(lwd=2,cex=1.1,mar=c(0,4,4,1),las=1)
-plot(density(values),lwd=2,ylab='',main='%s',xlim=lims,xaxt='n')
-"""%str(name))
     robjects.r("""
+lims=range(values)*c(.95,1.05)
+layout(matrix(c(1,2),nrow=2),heights=c(3,1))
+par(mar=c(0,4,%i,1))
+plot(density(values),ylab='',main='%s',xlim=lims,xaxt='n')
 par(mar=c(4,4,0,1))
-boxplot(values,horizontal=T,yaxt='n',ylab='',lty=1,pch=20,ylim=lims,main='')
-""")
+boxplot(values,horizontal=T,yaxt='n',ylab='',lty=1,ylim=lims,main='')
+"""%(topmar,name))
     _end("",last,**kwargs)
     return output
 
