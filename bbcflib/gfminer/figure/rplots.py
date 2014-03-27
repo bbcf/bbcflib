@@ -158,7 +158,7 @@ def density_boxplot(values,name=None,output=None,format='pdf',new=True,last=True
     if not isinstance(values,ndarray): values = array(values)
     plotopt,output = _begin(output=output,format=format,new=new,**kwargs)
     robjects.r.assign('values',numpy2ri.numpy2ri(values))
-        robjects.r("layout(matrix(c(1,2),nrow=2),heights=c(3,1))")
+    robjects.r("layout(matrix(c(1,2),nrow=2),heights=c(3,1))")
     if name is None:
         robjects.r("""
 par(lwd=2,cex=1.1,mar=c(0,4,1,1),las=1)
