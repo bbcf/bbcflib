@@ -156,7 +156,7 @@ def boxplot(values,labels,output=None,format='pdf',new=True,last=True,**kwargs):
 def density_boxplot(values,name=None,output=None,format='pdf',new=True,last=True,**kwargs):
     """Creates a density and a box-and-whiskers representation of *values*."""
     if not isinstance(values,ndarray): values = array(values)
-    if len(values) < 2: append(values,[0,0])
+    if len(values) < 2: values = append(values,[0,0])
     if name is None:
         name = ''
         topmar = 1
