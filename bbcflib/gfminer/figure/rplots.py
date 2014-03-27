@@ -13,7 +13,7 @@ import rpy2.robjects as robjects
 import rpy2.robjects.numpy2ri as numpy2ri
 from bbcflib.common import unique_filename_in
 from itertools import combinations
-from numpy import array
+from numpy import array, ndarray
 
 def list2r(L):
     """Transform a Python list into a string in R format: [1,2,'C'] -> "c(1,2,'C')" ."""
@@ -142,8 +142,8 @@ def lineplot(X,Y,output=None,format='pdf',new=True,last=True,ratio=1.375,**kwarg
 ############################################################
 def boxplot(values,labels,output=None,format='pdf',new=True,last=True,**kwargs):
     """Creates a box-and-whiskers plot of *values* split by *labels*."""
-    if not isinstance(values,array): values = array(values)
-    if not isinstance(labels,array): labels = array(labels)
+    if not isinstance(values,ndarray): values = array(values)
+    if not isinstance(labels,ndarray): labels = array(labels)
     plotopt,output = _begin(output=output,format=format,new=new,**kwargs)
     robjects.r.assign('values',numpy2ri.numpy2ri(values))
     robjects.r.assign('labels',numpy2ri.numpy2ri(labels))
