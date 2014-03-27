@@ -142,6 +142,8 @@ def lineplot(X,Y,output=None,format='pdf',new=True,last=True,ratio=1.375,**kwarg
 ############################################################
 def boxplot(values,labels,output=None,format='pdf',new=True,last=True,**kwargs):
     """Creates a box-and-whiskers plot of *values* split by *labels*."""
+    if not isinstance(values,array): values = array(values)
+    if not isinstance(labels,array): labels = array(labels)
     plotopt,output = _begin(output=output,format=format,new=new,**kwargs)
     robjects.r.assign('values',numpy2ri.numpy2ri(values))
     robjects.r.assign('labels',numpy2ri.numpy2ri(labels))
