@@ -159,19 +159,20 @@ def density_boxplot(values,name=None,output=None,format='pdf',new=True,last=True
     plotopt,output = _begin(output=output,format=format,new=new,**kwargs)
     robjects.r.assign('values',numpy2ri.numpy2ri(values))
     robjects.r("layout(matrix(c(1,2),nrow=2),heights=c(3,1))")
+    robjects.r("lims=range(values)")
     if name is None:
         robjects.r("""
 par(lwd=2,cex=1.1,mar=c(0,4,1,1),las=1)
-plot(density(values),lwd=2,ylab='',main='',xlim=range(vect),xaxt='n')
+plot(density(values),lwd=2,ylab='',main='',xlim=lims,xaxt='n')
 """)
     else:
         robjects.r("""
 par(lwd=2,cex=1.1,mar=c(0,4,4,1),las=1)
-plot(density(values),lwd=2,ylab='',main='%s',xlim=range(vect),xaxt='n')
+plot(density(values),lwd=2,ylab='',main='%s',xlim=lims,xaxt='n')
 """%str(name))
     robjects.r("""
 par(mar=c(4,4,0,1))
-boxplot(values,horizontal=T,yaxt='n',ylab='',lty=1,pch=20,ylim=range(vect),main='')
+boxplot(values,horizontal=T,yaxt='n',ylab='',lty=1,pch=20,ylim=lims,main='')
 """)
     _end("",last,**kwargs)
     return output
