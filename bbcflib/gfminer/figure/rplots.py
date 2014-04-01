@@ -171,7 +171,7 @@ layout(matrix(c(1,2),nrow=2),heights=c(3,1))
 par(mar=c(0,4,%i,1))
 plot(density(values),ylab='',main='%s',xlim=lims,xaxt='n')
 par(mar=c(4,4,0,1))
-boxplot(values,horizontal=T,yaxt='n',ylab='',lty=1,ylim=lims,main='')
+boxplot(values,horizontal=T,yaxt='n',ylab='',lty=1,ylim=lims,main='',pch='')
 """%(topmar,name))
     _end("",last,**kwargs)
     return output
