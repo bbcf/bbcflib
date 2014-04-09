@@ -238,7 +238,7 @@ def get_fastq_files( ex, job, set_seed_length=True ):
                     urllib.urlretrieve( run, target )
                     if run_pe:
                         urllib.urlretrieve( run_pe, target_pe )
-                elif run.startswith(("smb://")): 
+                elif run.startswith("smb://"):
                     base,ext = os.path.splitext(run)
                     if ext in [".gz",".gzip"]:
                         ext = os.path.splitext(base)[1]+ext 
