@@ -349,7 +349,8 @@ def chipseq_workflow( ex, job_or_dict, assembly, script_path='', logfile=sys.std
     if peak_deconvolution:
         processed['deconv'] = {}
         merged_wig = {}
-        make_wigs = (merge_strands >= 0 or not('wig' in m) or len(m['wig'])<2)
+        make_wigs = (merge_strands >= 0 or not('wig' in m) or len(m['wig'])<2 or options['read_extension']>100)
+        if options['read_extension'] > 100: options['read_extension'] = -1
         if int(options.get('read_extension',-1)) < 1:
             if make_wigs:
                 options['read_extension'] = 50
