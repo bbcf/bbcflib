@@ -349,15 +349,19 @@ def chipseq_workflow( ex, job_or_dict, assembly, script_path='', logfile=sys.std
     if peak_deconvolution:
         processed['deconv'] = {}
         merged_wig = {}
+        make_wigs = (merge_strands >= 0 or not('wig' in m) or len(m['wig'])<2)
         if int(options.get('read_extension',-1)) < 1:
-            options['read_extension'] = read_length[0]
+            if make_wigs:
+                options['read_extension'] = 50
+            else:
+                options['read_extension'] = read_length[0]
         for gid,mapped in mapseq_files.iteritems():
             if groups[gid]['control']:
                 continue
             group_name = groups[gid]['name']
             wig = []
             for m in mapped.values():
-                if merge_strands >= 0 or not('wig' in m) or len(m['wig'])<2:
+                if make_wigs:
                     output = mapseq.parallel_density_sql( ex, m["bam"], assembly.chrmeta,
                                                           nreads=m["stats"]["total"],
                                                           merge=-1, read_extension=options['read_extension'],
