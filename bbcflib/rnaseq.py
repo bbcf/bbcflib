@@ -295,7 +295,7 @@ def rnaseq_workflow(ex, job, assembly=None, pileup_level=["exons","genes","trans
         lengths = asarray([tmap[t].end-tmap[t].start for t in tcounts.iterkeys()])
         trans_data = PU.norm_and_format(tcounts,lengths,tmap)
         header += ["counts."+c for c in conditions] + ["norm."+c for c in conditions] + ["rpkm."+c for c in conditions]
-        header += ["Start","End","GeneEnsembl","GeneSymbol","Strand","Chromosome"]
+        header += ["Start","End","GeneID","GeneName","Strand","Chromosome"]
         PU.save_results(trans_data,group_ids,header)
         DE.differential_analysis(trans_data, header)
         return 0
@@ -326,12 +326,12 @@ def rnaseq_workflow(ex, job, assembly=None, pileup_level=["exons","genes","trans
                + ["rpkm."+c for c in conditions] + ["rpkm_rev."+c for c in conditions]
     else:
         hconds = ["counts."+c for c in conditions] + ["norm."+c for c in conditions] + ["rpkm."+c for c in conditions]
-    hinfo = ["Start","End","GeneEnsembl","GeneSymbol","Strand","Chromosome"]
+    hinfo = ["Start","End","GeneID","GeneName","Strand","Chromosome"]
 
     # Print counts for exons
     if "exons" in pileup_level:
         logfile.write("* Get scores of exons\n"); logfile.flush()
-        header = ["Exon"] + hconds + hinfo
+        header = ["ExonID"] + hconds + hinfo
         lengths = asarray([M.exon_mapping[e].end-M.exon_mapping[e].start for e in exon_pileups])
         exons_data = PU.norm_and_format(exon_pileups,lengths,M.exon_mapping)
         PU.save_results(exons_data, group_ids, header)
@@ -341,7 +341,7 @@ def rnaseq_workflow(ex, job, assembly=None, pileup_level=["exons","genes","trans
     # Get scores of genes from exons
     if "genes" in pileup_level:
         logfile.write("* Get scores of genes\n"); logfile.flush()
-        header = ["Gene"] + hconds + hinfo
+        header = ["GeneID"] + hconds + hinfo
         gcounts = PU.genes_expression(exon_pileups)
         lengths = asarray([M.gene_mapping[g].length for g in gcounts.iterkeys()])
         genes_data = PU.norm_and_format(gcounts,lengths,M.gene_mapping)
@@ -359,7 +359,7 @@ def rnaseq_workflow(ex, job, assembly=None, pileup_level=["exons","genes","trans
     # Get scores of transcripts from exons, using non-negative least-squares
     if "transcripts" in pileup_level:
         logfile.write("* Get scores of transcripts\n"); logfile.flush()
-        header = ["Transcript"] + hconds + hinfo
+        header = ["TranscriptID"] + hconds + hinfo
         tcounts = PU.transcripts_expression(exon_pileups)
         lengths = asarray([M.transcript_mapping[t].length for t in tcounts.iterkeys()])
         trans_data = PU.norm_and_format(tcounts,lengths,M.transcript_mapping)
