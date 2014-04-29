@@ -158,10 +158,9 @@ def Vplot(X,Y,output=None,format='pdf',new=True,last=True,**kwargs):
     plotopt,output = _begin(output=output,format=format,new=new,**kwargs)
     robjects.r.assign('xdata',numpy2ri.numpy2ri(X))
     robjects.r.assign('ydata',numpy2ri.numpy2ri(Y))
-    robjects.r('''
-        ydata[ydata == "NA"] = NA
-        smoothScatter(xdata,ydata,colramp=colorRampPalette(c("white","blue","red"))%s)
-        ''' %plotopt)
+    robjects.r("""
+library(graphics)
+smoothScatter(xdata,ydata,colramp=colorRampPalette(c("white","blue","red"))%s)""" %plotopt)
     _end("",last,**kwargs)
     return output
 
