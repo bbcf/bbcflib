@@ -32,7 +32,7 @@ def _begin(output,format,new,ratio=1.375,**kwargs):
             robjects.r('png("%s",height=800*%f,width=800,type="cairo")' %(output,ratio))
         else:
             raise ValueError("Format not supported: %s" %format)
-        pars = "lwd=2,cex=1.1,cex.main=1.5,cex.lab=1.3,cex.axis=1.1,mar=c(3,3,1,1),las=1,pch=20"
+        pars = "lwd=2,cex=1.1,cex.main=1.5,cex.lab=1.3,cex.axis=1.1,mar=c(4,4,1,1),las=1,pch=20"
         if len(kwargs.get('mfrow',[])) == 2:
             pars += ",mfrow=c(%i,%i)" %tuple(kwargs['mfrow'])
         robjects.r('par(%s)' %pars)
@@ -148,6 +148,20 @@ def boxplot(values,labels,output=None,format='pdf',new=True,last=True,**kwargs):
     robjects.r.assign('values',numpy2ri.numpy2ri(values))
     robjects.r.assign('labels',numpy2ri.numpy2ri(labels))
     robjects.r("boxplot(values ~ labels,lty=1,varwidth=T)")
+    _end("",last,**kwargs)
+    return output
+
+############################################################
+############################################################
+def Vplot(X,Y,output=None,format='pdf',new=True,last=True,**kwargs):
+    """Creates a dotplot of Y values versus X values."""
+    plotopt,output = _begin(output=output,format=format,new=new,**kwargs)
+    robjects.r.assign('xdata',numpy2ri.numpy2ri(X))
+    robjects.r.assign('ydata',numpy2ri.numpy2ri(Y))
+    robjects.r('''
+        ydata[ydata == "NA"] = NA
+        smoothScatter(xdata,ydata,colramp=colorRampPalette(c("white","blue","red"))%s)
+        ''' %plotopt)
     _end("",last,**kwargs)
     return output
 
