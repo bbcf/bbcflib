@@ -461,9 +461,9 @@ class Pileups(RNAseq):
         """
         # Tab-delimited output with all information
         if header[0].lower() != 'custom':
-            feature_type = header[0].lower()
+            feature_type = header[0].lower() # Custom -> custom
         else:
-            feature_type = header[0].lower()+'s'
+            feature_type = header[0].lower()[:-2]+'s' # GeneID -> genes
         output_tab = unique_filename_in()
         n = self.ncond
         with open(output_tab,'wb') as f:
