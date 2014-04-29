@@ -460,7 +460,7 @@ class Pileups(RNAseq):
         :param header: list of strings, the column headers of the output file.
         """
         # Tab-delimited output with all information
-        if header[0].lower() != 'custom':
+        if header[0].lower() == 'custom':
             feature_type = header[0].lower() # Custom -> custom
         else:
             feature_type = header[0].lower()[:-2]+'s' # GeneID -> genes
