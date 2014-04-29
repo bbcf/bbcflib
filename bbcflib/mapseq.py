@@ -238,6 +238,15 @@ def get_fastq_files( ex, job, set_seed_length=True ):
                     urllib.urlretrieve( run, target )
                     if run_pe:
                         urllib.urlretrieve( run_pe, target_pe )
+                elif run.startswith("smb://"):
+                    base,ext = os.path.splitext(run)
+                    if ext in [".gz",".gzip"]:
+                        ext = os.path.splitext(base)[1]+ext 
+                    if run_pe:
+                        target = os.path.abspath("../%i_1%s" %(rid,ext))
+                        target_pe = os.path.abspath("../%i_2%s" %(rid,ext))
+                    else:
+                        target = os.path.abspath("../%i%s" %(rid,ext))
                 else:
                     if run.startswith("arch://"): run = os.path.join(arch_basepath,run[7:])
                     if run_pe and run_pe.startswith("arch://"): run_pe = os.path.join(arch_basepath,run_pe[7:])
