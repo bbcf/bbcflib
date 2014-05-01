@@ -706,7 +706,10 @@ class DE_Analysis(RNAseq):
             return {'arguments': ["R","--slave","-f",script_path,"--args",data_file]+opts,
                     'return_value': output_file}
 
-        feature_type = header[0].lower()
+        if header[0].lower() == 'custom':
+            feature_type = header[0].lower() # Custom -> custom
+        else:
+            feature_type = header[0].lower()[:-2]+'s' # GeneID -> genes
         res_file, ncond = self.clean_before_deseq(data, header)
         if ncond < 2:
             self.write_log("  Skipped differential analysis: less than two groups.")
