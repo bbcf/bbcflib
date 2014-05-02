@@ -40,8 +40,6 @@ def _begin(output,format,new,ratio=1.375,**kwargs):
     if 'log' in kwargs: opts += ',log="%s"' %kwargs['log']
     if 'xlim' in kwargs: opts += ',xlim=c(%f,%f)' %tuple(kwargs['xlim'])
     if 'ylim' in kwargs: opts += ',ylim=c(%f,%f)' %tuple(kwargs['ylim'])
-    if 'nbin' in kwargs: opts += ',nbin=c(%i,%i)' %tuple(kwargs['nbin'])
-    if 'bandwidth' in kwargs: opts += ',bandwidth=c(%f,%f)' %tuple(kwargs['bandwidth'])
     opts += ',main="%s"' %kwargs.get('main','')
     opts += ',xlab="%s"' %kwargs.get('xlab','')
     opts += ',ylab="%s"' %kwargs.get('ylab','')
@@ -158,6 +156,8 @@ def boxplot(values,labels,output=None,format='pdf',new=True,last=True,**kwargs):
 def Vplot(X,Y,output=None,format='pdf',new=True,last=True,**kwargs):
     """Creates a dotplot of Y values versus X values."""
     plotopt,output = _begin(output=output,format=format,new=new,**kwargs)
+    if 'nbin' in kwargs: plotopt += ',nbin=c(%i,%i)' %tuple(kwargs['nbin'])
+    if 'bandwidth' in kwargs: plotopt += ',bandwidth=c(%f,%f)' %tuple(kwargs['bandwidth'])
     robjects.r.assign('xdata',numpy2ri.numpy2ri(X))
     robjects.r.assign('ydata',numpy2ri.numpy2ri(Y))
     robjects.r("""
