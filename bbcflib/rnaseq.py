@@ -634,6 +634,19 @@ class Pileups(RNAseq):
         return data
 
 
+#--------------------------------- COUNTING ----------------------------------#
+
+
+@program
+def HTSeq(bam, gtf, stranded='no', featuretype='exon', idattr='gene_id'):
+    """Binds HTSeq. Redirects to stdout, so use as
+    `HTSeq(ex, bam,gtf, stdout=<outname>)`
+    Make sure that bam chromosome names correspond to gtf chromosome names..."""
+    return {'arguments': ["htseq-count","-q","-f","bam",
+                          "-s",stranded,"-t",featuretype,"-i",idattr, bam, gtf],
+            'return_value': None}
+
+
 #-------------------------- DIFFERENTIAL ANALYSIS ----------------------------#
 
 

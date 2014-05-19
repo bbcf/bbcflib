@@ -131,11 +131,13 @@ def ensembl_to_ucsc(stream):
                           for item in stream),fields=stream.fields)
 
 def check(source, out=sys.stdout,
-          check_sorted=True, check_noduplicates=True, check_positive=True, check_nooverlaps=False, **kwargs):
+          check_chromosomes=True, check_sorted=True, check_noduplicates=True,
+          check_positive=True, check_nooverlaps=False, **kwargs):
     """Read a track-like file *source* once to check that it is correctly formatted
     (according to ``*source*.format``), plus other optional filters.
 
     :param source: (str) name of the file.
+    :param check_chromosomes: verify that the chromosomes are grouped. [True]
     :param check_sorted: verify that the file is sorted: chromosomes are grouped,
         and regions of each chromosome are sorted w.r.t. 'start' and 'end' in ascending order. [True]
     :param check_noduplicates: verify that no line is repeated exactly (except empty lines). [True]
@@ -143,6 +145,7 @@ def check(source, out=sys.stdout,
     :param check_nooverlaps: verify that intervals never overlap (requires *check_sorted*). [False]
     :param **kwargs: ``track`` keyword arguments.
     """
+    if check_sorted is True: check_chromosomes = True
     if isinstance(source, basestring):
         t = track(source, chrmeta=kwargs.get('chrmeta'), **kwargs)
         filename = source
@@ -181,7 +184,7 @@ def check(source, out=sys.stdout,
             row = chr+"\t"+str(start)+"\t"+str(end)
             out.write("Check positive %s: empty or reverse region at line %d:\n%s\n" % (filename,n,row))
             return False
-        if check_sorted:
+        if check_chromosomes:
             if chr != last_chr:
                 if chr in visited_chr:
                     out.write("Check sorted: %s: error at line %d: \
@@ -189,17 +192,18 @@ def check(source, out=sys.stdout,
                     return False
                 visited_chr.append(chr)
                 last_start = last_end = 0
-            elif start < last_start:
-                out.write("Check sorted: %s: error at line %d: \
-                           \n\tStart position %d < %d.\n\n" % (filename,n,start,last_start))
-                return False
-            elif start == last_start and end < last_end:
-                out.write("Check sorted: %s: error at line %d: \
-                           \n\tEnd position %d < %d.\n\n" % (filename,n,end,last_end))
-                return False
-            elif check_nooverlaps and start <= last_end:
-                out.write("Check no overlaps: %s: overlap at line %d.\n\n" % (filename,n))
-                return False
+            if check_sorted:
+                if start < last_start:
+                    out.write("Check sorted: %s: error at line %d: \
+                               \n\tStart position %d < %d.\n\n" % (filename,n,start,last_start))
+                    return False
+                elif start == last_start and end < last_end:
+                    out.write("Check sorted: %s: error at line %d: \
+                               \n\tEnd position %d < %d.\n\n" % (filename,n,end,last_end))
+                    return False
+                elif check_nooverlaps and start <= last_end:
+                    out.write("Check no overlaps: %s: overlap at line %d.\n\n" % (filename,n))
+                    return False
         last_chr = chr
         last_start = start
         last_end = end
