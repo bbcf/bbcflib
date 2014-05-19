@@ -514,7 +514,7 @@ def cobble(stream,aggregate={},stranded=False,scored=False):
     aggreg = dict(aggreg_functions)
     aggreg.update(aggregate)
 
-    def _intersect(A,B,fields,L):
+    def _intersect(A,B,fields):
         """Return *z*, the part that must replace A in *toyield*, and
         *rest*, that must reenter the loop instead of B."""
         rest = None
@@ -568,7 +568,7 @@ def cobble(stream,aggregate={},stranded=False,scored=False):
                 for y in toyield:
                     if stranded and x[istrand] != y[istrand]:
                         continue
-                    replace, rest = _intersect(y,x,stream.fields,L)
+                    replace, rest = _intersect(y,x,stream.fields)
                     if replace:
                         intersected = True
                         iy = toyield.index(y)
