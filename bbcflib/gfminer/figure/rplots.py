@@ -231,11 +231,16 @@ def heatmap(M,output=None,format='pdf',new=True,last=True,
         robjects.r("ymax=%f" %float(kwargs['ymax']))
     else:
         robjects.r("ymax=ceiling(max(Mdata,na.rm=T))")
+    if kwargs.get('nb_colors') is not None:
+        robjects.r("ncol=%i" %kwargs['nb_colors'])
+    else:
+        robjects.r("ncol=10")
+
     robjects.r("""
       library(gplots)
       library(RColorBrewer)
       myBreaks = seq(ymin,ymax,length.out=15)
-      myColors = rev(colorRampPalette(brewer.pal(10,"RdYlBu"))(length(myBreaks)-1))
+      myColors = rev(colorRampPalette(brewer.pal(ncol,"RdYlBu"))(length(myBreaks)-1))
 #      myCor = function(x) {as.dist(1-cor(t(x),use="pairwise.complete.ob"))}
       par(cex.main=1,oma=c(0,5,0,15))
       heatmap.2(as.matrix(Mdata),
