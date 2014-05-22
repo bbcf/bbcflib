@@ -65,8 +65,8 @@ class RNAseq(object):
 
 
 @timer
-def rnaseq_workflow(ex, job, assembly=None, pileup_level=["exons","genes","transcripts"], via="lsf",
-                    rpath=None, junctions=False, stranded=False,
+def rnaseq_workflow(ex, job, assembly=None, pileup_level=["genes","transcripts"], via="lsf",
+                    rpath=None, juliapath=None, junctions=False, stranded=False,
                     logfile=sys.stdout, debugfile=sys.stderr):
     """Main function of the workflow.
 
@@ -78,20 +78,23 @@ def rnaseq_workflow(ex, job, assembly=None, pileup_level=["exons","genes","trans
     :param junctions: (bool) whether to search for splice junctions using SOAPsplice. [False]
     :param via: (str) send job via 'local' or 'lsf'. ["lsf"]
     """
-    juliapath='/home/jdelafon/repos/bbcfutils/Julia/'
+    # While environment not properly set on V_IT
+    if juliapath is None:
+        juliapath='/home/jdelafon/repos/bbcfutils/Julia/'
 
     if test:
         via = 'local'
         logfile = sys.stdout
         debugfile = sys.stdout
         repo_rpath = '/home/jdelafon/repos/bbcfutils/R/'
+        juliapath='/home/jdelafon/repos/bbcfutils/Julia/'
         if os.path.exists(repo_rpath): rpath = repo_rpath
 
     group_names={}; group_ids={}; conditions=[]
     if assembly is None:
         assembly = Assembly(assembly=job.assembly_id)
     groups = job.groups
-    if len(groups)==0: sys.exit("No groups/runs were given.")
+    assert len(groups) > 0, "No groups/runs were given."
     for gid,group in groups.iteritems():
         gname = str(group['name'])
         group_names[gid] = gname
@@ -109,7 +112,7 @@ def rnaseq_workflow(ex, job, assembly=None, pileup_level=["exons","genes","trans
             bamfiles.append(f['bam'])
     ncond = len(conditions)
 
-    # Get the assembly's GTF from GenRep
+    # Get the assembly's GTF from GenRep - or from config file
     gtf = job.files.itervalues().next().itervalues().next().get('gtf')
     if gtf is None:
         genrep_root = assembly.genrep.root
@@ -256,7 +259,7 @@ class DE_Analysis(RNAseq):
             rownames = rownames[filter]
             # Create the input tab file
             with open(filename_clean,"wb") as g:
-                header = '\t'.join(colnames)+'\n' # ID & *norm* columns
+                header = '\t'.join(colnames)+'\n'
                 g.write(header)
                 for i,scores in enumerate(M):
                     if any(scores):
