@@ -13,7 +13,7 @@ import rpy2.robjects as robjects
 import rpy2.robjects.numpy2ri as numpy2ri
 from bbcflib.common import unique_filename_in
 from itertools import combinations
-from numpy import array, ndarray, append
+from numpy import asarray, array, ndarray, append
 
 def list2r(L):
     """Transform a Python list into a string in R format: [1,2,'C'] -> "c(1,2,'C')" ."""
@@ -142,8 +142,8 @@ def lineplot(X,Y,output=None,format='pdf',new=True,last=True,ratio=1.375,**kwarg
 ############################################################
 def boxplot(values,labels,output=None,format='pdf',new=True,last=True,**kwargs):
     """Creates a box-and-whiskers plot of *values* split by *labels*."""
-    if not isinstance(values,ndarray): values = array(values)
-    if not isinstance(labels,ndarray): labels = array(labels)
+    if not isinstance(values,ndarray): values = asarray(values)
+    if not isinstance(labels,ndarray): labels = asarray(labels)
     plotopt,output = _begin(output=output,format=format,new=new,**kwargs)
     robjects.r.assign('values',numpy2ri.numpy2ri(values))
     robjects.r.assign('labels',numpy2ri.numpy2ri(labels))
@@ -161,8 +161,8 @@ def Vplot(X,Y,output=None,format='pdf',new=True,last=True,**kwargs):
     robjects.r.assign('xdata',numpy2ri.numpy2ri(X))
     robjects.r.assign('ydata',numpy2ri.numpy2ri(Y))
     robjects.r("""
-        library(graphics)
-        smoothScatter(xdata,ydata,colramp=colorRampPalette(c("white","blue","red"))%s)""" %plotopt)
+library(graphics)
+smoothScatter(xdata,ydata,colramp=colorRampPalette(c("white","blue","red"))%s)""" %plotopt)
 #    robjects.r("""
 #       library(RColorBrewer)
 #       colramp = colorRampPalette(c("lightgrey","blue","red"),interpolate="spline")
@@ -179,7 +179,7 @@ def Vplot(X,Y,output=None,format='pdf',new=True,last=True,**kwargs):
 ############################################################
 def density_boxplot(values,name=None,output=None,format='pdf',new=True,last=True,**kwargs):
     """Creates a density and a box-and-whiskers representation of *values*."""
-    if not isinstance(values,ndarray): values = array(values)
+    if not isinstance(values,ndarray): values = asarray(values)
     if len(values) < 2: values = append(values,[0,0])
     if name is None:
         name = ''
@@ -231,23 +231,25 @@ def heatmap(M,output=None,format='pdf',new=True,last=True,
         robjects.r("ymax=%f" %float(kwargs['ymax']))
     else:
         robjects.r("ymax=ceiling(max(Mdata,na.rm=T))")
-    if kwargs.get('nb_colors') is not None:
-        robjects.r("ncol=%i" %kwargs['nb_colors'])
-    else:
-        robjects.r("ncol=10")
+    try:
+        ncol = int(kwargs.get('nb_colors'))
+    except (ValueError, TypeError):
+        ncol = 10
+    ncol = max(10,ncol)
 
     robjects.r("""
       library(gplots)
       library(RColorBrewer)
       myBreaks = seq(ymin,ymax,length.out=15)
-      myColors = rev(colorRampPalette(brewer.pal(ncol,"RdYlBu"))(length(myBreaks)-1))
-#      myCor = function(x) {as.dist(1-cor(t(x),use="pairwise.complete.ob"))}
+      myColors = rev(colorRampPalette(brewer.pal(%i,"RdYlBu"))(length(myBreaks)-1))
+#      myCor = function(x) {as.dist(1-cor(t(x),use="pairwise.complete.obs"))}
       par(cex.main=1,oma=c(0,5,0,15))
-      heatmap.2(as.matrix(Mdata),
-                col=myColors, trace="none", breaks=myBreaks, #distfun=myCor,
-                na.rm=TRUE, density.info='none'%s)""" %plotopt)
+      h = heatmap.2(as.matrix(Mdata),
+                    col=myColors, trace="none", breaks=myBreaks, #distfun=myCor,
+                    na.rm=TRUE, density.info='none'%s)""" %(ncol,plotopt))
+    roword = array(robjects.r("h").rx2("rowInd"))
     _end("",last,**kwargs)
-    return output
+    return (output,roword)
 
 ############################################################
 ############################################################
@@ -407,7 +409,7 @@ def genomeGraph(chrlist,SP=[],SM=[],F=[],options={},output=None,format='pdf',new
         robjects.r("spmbins[[%i]]=list(%s)" %(n+1,",".join("'"+c[0]+"'=list()" \
                                                                for c in chrlist)))
         for chrom in _sd.keys():
-            robjects.r.assign('rowtemp',numpy2ri.numpy2ri(array(_sd[chrom])))
+            robjects.r.assign('rowtemp',numpy2ri.numpy2ri(asarray(_sd[chrom])))
             robjects.r("spmbins[[%i]][['%s']]=rowtemp" %(n+1,chrom))
     n0 = n+2
 #### - signals
@@ -420,7 +422,7 @@ def genomeGraph(chrlist,SP=[],SM=[],F=[],options={},output=None,format='pdf',new
         robjects.r("spmbins[[%i]]=list(%s)" %(n0+n,",".join("'"+c[0]+"'=list()" \
                                                                for c in chrlist)))
         for chrom in _sd.keys():
-            robjects.r.assign('rowtemp',numpy2ri.numpy2ri(array(_sd[chrom])))
+            robjects.r.assign('rowtemp',numpy2ri.numpy2ri(asarray(_sd[chrom])))
             robjects.r("spmbins[[%i]][['%s']]=rowtemp" %(n0+n,chrom))
 #### features
     for n,_f in enumerate(F):
