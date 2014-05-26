@@ -232,6 +232,19 @@ try:
 
         #-------------------------------------------------------------------------#
     @program
+    def gunzipfile(files,args=None):
+        """Runs gzip on files."""
+        if not(isinstance(files,list)):
+            files=[files]
+        gzcall = ['gunzip']
+        if args:
+            gzcall += args
+        gzcall += files
+        unzipped = [f[:-3] for f in files if f.endswith('.gz')]
+        return {"arguments": gzcall, "return_value": unzipped}
+
+        #-------------------------------------------------------------------------#
+    @program
     def join_pdf(files):
         """Uses 'ghostscript' to join several pdf files into one.
         """
