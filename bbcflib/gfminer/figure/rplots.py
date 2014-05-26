@@ -215,16 +215,18 @@ def heatmap(M,output=None,format='pdf',new=True,last=True,
     if columns is not None:
         robjects.r.assign('labCol',numpy2ri.numpy2ri(columns))
         plotopt += ",labCol=labCol"
-    if orderCols and orderRows:
-        plotopt += ",dendrogram='both',lhei=c(2,10,1,2),lwid=c(1,3),mar=c(2,2),lmat=matrix(c(0,2,0,0,3,1,0,4),ncol=2)"
-        if return_rowInd:
-            robjects.r("""
+
+    if return_rowInd:
+        orderRows = True
+        robjects.r("""
 hrow = as.dendrogram(hclust(dist(Mdata)))
 odhrow = rev(order.dendrogram(hrow))
 labRow = rep('',nrow(Mdata))
 labRow[seq(200,nrow(Mdata),200)] = seq(200,nrow(Mdata),200)
 labRow[odhrow] = labRow""")
-            plotopt += ",Rowv=hrow"
+        plotopt += ",Rowv=hrow"
+    if orderCols and orderRows:
+        plotopt += ",dendrogram='both',lhei=c(2,10,1,2),lwid=c(1,3),mar=c(2,2),lmat=matrix(c(0,2,0,0,3,1,0,4),ncol=2)"
     elif orderCols:
         plotopt += ",Rowv=F,dendrogram='column',lhei=c(2,10,1,2),lwid=c(1),mar=c(2,2),lmat=matrix(c(3,1,2,4),ncol=1)"
     elif orderRows:
