@@ -204,19 +204,27 @@ boxplot(values,horizontal=T,yaxt='n',ylab='',lty=1,ylim=lims,main='',pch='')
 ############################################################
 def heatmap(M,output=None,format='pdf',new=True,last=True,
             rows=None,columns=None,orderRows=True,orderCols=True,
-            **kwargs):
+            return_rowInd=False,**kwargs):
     """Creates a heatmap of the matrix *M* using *rows* as row labels and *columns* as column labels.
     If either *orderRows* or *orderCols* is True, will cluster accordingly and display a dendrogram."""
     plotopt,output = _begin(output=output,format=format,new=new,**kwargs)
     robjects.r.assign('Mdata',numpy2ri.numpy2ri(M))
-    if not(rows is None):
+    if rows is not None:
         robjects.r.assign('labRow',numpy2ri.numpy2ri(rows))
         plotopt += ",labRow=labRow"
-    if not(columns is None):
+    if columns is not None:
         robjects.r.assign('labCol',numpy2ri.numpy2ri(columns))
         plotopt += ",labCol=labCol"
     if orderCols and orderRows:
         plotopt += ",dendrogram='both',lhei=c(2,10,1,2),lwid=c(1,3),mar=c(2,2),lmat=matrix(c(0,2,0,0,3,1,0,4),ncol=2)"
+        if return_rowInd:
+            robjects.r("""
+hrow = as.dendrogram(hclust(dist(Mdata)))
+odhrow = rev(order.dendrogram(hrow))
+labRow = rep('',nrow(Mdata))
+labRow[seq(200,nrow(Mdata),200)] = seq(200,nrow(Mdata),200)
+labRow[odhrow] = labRow""")
+            plotopt += ",Rowv=hrow"
     elif orderCols:
         plotopt += ",Rowv=F,dendrogram='column',lhei=c(2,10,1,2),lwid=c(1),mar=c(2,2),lmat=matrix(c(3,1,2,4),ncol=1)"
     elif orderRows:
@@ -238,18 +246,20 @@ def heatmap(M,output=None,format='pdf',new=True,last=True,
     ncol = max(10,ncol)
 
     robjects.r("""
-      library(gplots)
-      library(RColorBrewer)
-      myBreaks = seq(ymin,ymax,length.out=15)
-      myColors = rev(colorRampPalette(brewer.pal(%i,"RdYlBu"))(length(myBreaks)-1))
+library(gplots)
+library(RColorBrewer)
+myBreaks = seq(ymin,ymax,length.out=15)
+myColors = rev(colorRampPalette(brewer.pal(%i,"RdYlBu"))(length(myBreaks)-1))
 #      myCor = function(x) {as.dist(1-cor(t(x),use="pairwise.complete.obs"))}
-      par(cex.main=1,oma=c(0,5,0,15))
-      h = heatmap.2(as.matrix(Mdata),
-                    col=myColors, trace="none", breaks=myBreaks, #distfun=myCor,
-                    na.rm=TRUE, density.info='none'%s)""" %(ncol,plotopt))
-    roword = array(robjects.r("h").rx2("rowInd"))
+par(cex.main=1,oma=c(0,5,0,15))
+heatmap.2(as.matrix(Mdata),
+          col=myColors, trace="none", breaks=myBreaks, #distfun=myCor,
+          na.rm=TRUE, density.info='none'%s)""" %(ncol,plotopt))
     _end("",last,**kwargs)
-    return (output,roword)
+    if return_rowInd:
+        return (output,array(robjects.r("odhrow")))
+    else:
+        return output
 
 ############################################################
 ############################################################
