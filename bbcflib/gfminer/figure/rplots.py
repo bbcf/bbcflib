@@ -215,14 +215,14 @@ def heatmap(M,output=None,format='pdf',new=True,last=True,
     if columns is not None:
         robjects.r.assign('labCol',numpy2ri.numpy2ri(columns))
         plotopt += ",labCol=labCol"
-
     if return_rowInd:
         orderRows = True
         robjects.r("""
 hrow = as.dendrogram(hclust(dist(Mdata)))
 odhrow = rev(order.dendrogram(hrow))
 labRow = rep('',nrow(Mdata))
-labRow[seq(200,nrow(Mdata),200)] = seq(200,nrow(Mdata),200)
+nb_IDs = ceiling(nrow(Mdata)/30)
+labRow[seq(1,nrow(Mdata),nb_IDs)] = seq(1,nrow(Mdata),nb_IDs)
 labRow[odhrow] = labRow""")
         plotopt += ",Rowv=hrow"
     if orderCols and orderRows:
@@ -245,8 +245,7 @@ labRow[odhrow] = labRow""")
         ncol = int(kwargs.get('nb_colors'))
     except (ValueError, TypeError):
         ncol = 10
-    ncol = max(10,ncol)
-
+    ncol = max(3,ncol)
     robjects.r("""
 library(gplots)
 library(RColorBrewer)
