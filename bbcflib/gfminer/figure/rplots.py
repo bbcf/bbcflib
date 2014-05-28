@@ -204,7 +204,7 @@ boxplot(values,horizontal=T,yaxt='n',ylab='',lty=1,ylim=lims,main='',pch='')
 ############################################################
 def heatmap(M,output=None,format='pdf',new=True,last=True,
             rows=None,columns=None,orderRows=True,orderCols=True,
-            return_rowInd=False,**kwargs):
+            return_rowInd=False,cor=False,**kwargs):
     """Creates a heatmap of the matrix *M* using *rows* as row labels and *columns* as column labels.
     If either *orderRows* or *orderCols* is True, will cluster accordingly and display a dendrogram."""
     plotopt,output = _begin(output=output,format=format,new=new,**kwargs)
@@ -215,10 +215,13 @@ def heatmap(M,output=None,format='pdf',new=True,last=True,
     if columns is not None:
         robjects.r.assign('labCol',numpy2ri.numpy2ri(columns))
         plotopt += ",labCol=labCol"
+    if cor:
+        robjects.r("myCor = function(x) {as.dist(1-cor(t(x),use='pairwise.complete.obs'))}")
+        plotopt += ", distfun=myCor"
     if return_rowInd:
         orderRows = True
         robjects.r("""
-hrow = as.dendrogram(hclust(dist(Mdata)))
+if (exists("myCor")){hrow = as.dendrogram(hclust(myCor(Mdata)))} else {hrow = as.dendrogram(hclust(dist(Mdata)))}
 odhrow = rev(order.dendrogram(hrow))
 labRow = rep('',nrow(Mdata))
 nb_IDs = ceiling(nrow(Mdata)/30)
@@ -251,10 +254,9 @@ library(gplots)
 library(RColorBrewer)
 myBreaks = seq(ymin,ymax,length.out=15)
 myColors = rev(colorRampPalette(brewer.pal(%i,"RdYlBu"))(length(myBreaks)-1))
-#      myCor = function(x) {as.dist(1-cor(t(x),use="pairwise.complete.obs"))}
 par(cex.main=1,oma=c(0,5,0,15))
 heatmap.2(as.matrix(Mdata),
-          col=myColors, trace="none", breaks=myBreaks, #distfun=myCor,
+          col=myColors, trace="none", breaks=myBreaks,
           na.rm=TRUE, density.info='none'%s)""" %(ncol,plotopt))
     _end("",last,**kwargs)
     if return_rowInd:
