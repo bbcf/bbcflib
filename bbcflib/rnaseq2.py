@@ -65,7 +65,7 @@ class RNAseq(object):
 
 
 @timer
-def rnaseq_workflow(ex, job, assembly=None, pileup_level=["genes","transcripts"], via="lsf",
+def rnaseq2_workflow(ex, job, assembly=None, pileup_level=["genes","transcripts"], via="lsf",
                     rpath=None, juliapath=None, junctions=False, stranded=False,
                     logfile=sys.stdout, debugfile=sys.stderr):
     """Main function of the workflow.
@@ -78,6 +78,7 @@ def rnaseq_workflow(ex, job, assembly=None, pileup_level=["genes","transcripts"]
     :param junctions: (bool) whether to search for splice junctions using SOAPsplice. [False]
     :param via: (str) send job via 'local' or 'lsf'. ["lsf"]
     """
+    print ">> RNASEQ-2 <<"
     # While environment not properly set on V_IT
     if juliapath is None:
         juliapath='/home/jdelafon/repos/bbcfutils/Julia/'
@@ -126,56 +127,16 @@ def rnaseq_workflow(ex, job, assembly=None, pileup_level=["genes","transcripts"]
         gtf = os.path.join(ex.working_directory, os.path.basename(gtf))
         gtf = gunzipfile(ex, gtf)[0]
 
-    # Count reads on genes, transcripts with "rnacounter"
-    tablenames = [None]*ncond
-    futures = [None]*ncond
-    for i,c in enumerate(conditions):
-        tablenames[i] = unique_filename_in()
-        futures[i] = rnacounter.nonblocking(ex, bamfiles[i], gtf, stdout=tablenames[i], via=via,
-                           options={"-t":"genes,transcripts",})
-
-    # Read rnacounter pileups
-    if stranded:
-        hconds = ["counts."+c for c in conditions] + ["counts_rev."+c for c in conditions] \
-               + ["rpkm."+c for c in conditions] + ["rpkm_rev."+c for c in conditions]
-    else:
-        hconds = ["counts."+c for c in conditions] + ["rpkm."+c for c in conditions]
-    hinfo = ["Chromosome","Start","End","Strand","GeneName"]
-    header = ["ID"] + hconds + hinfo
-
-    # Put samples together, split genes and transcripts
-    tracks = [None]*ncond
-    for i,c in enumerate(conditions):
-        futures[i].wait()
-        tracks[i] = track(tablenames[i], format="txt", fields=["ID","Count","RPKM"]+hinfo+['type']).read()
-    genes_filename = unique_filename_in()
-    trans_filename = unique_filename_in()
-    genes_file = open(genes_filename,"wb")
-    trans_file = open(trans_filename,"wb")
-    genes_file.write('\t'.join(header)+'\n')
-    trans_file.write('\t'.join(header)+'\n')
-    while 1:
-        info = tuple(t.next() for t in tracks)
-        if not info: break
-        fid = info[0][0]
-        rest = info[0][3:-1]
-        ftype = info[0][-1]
-        counts = tuple(x[1] for x in info)
-        rpkm = tuple(x[2] for x in info)
-        towrite = '\t'.join((fid,)+counts+rpkm+rest)+'\n'
-        if ftype == 'gene':
-            genes_file.write(towrite)
-        elif ftype=='transcript':
-            trans_file.write(towrite)
-    genes_file.close()
-    trans_file.close()
-
     # Build controllers
     rnaseq_args = (ex,via,job,assembly,conditions,debugfile,logfile,
                    pileup_level,rpath,juliapath,junctions,stranded)
+    CNT = Counter(*rnaseq_args)
     DE = DE_Analysis(*rnaseq_args)
     PCA = Pca(*rnaseq_args)
     JN = Junctions(*rnaseq_args)
+
+    # Count reads on genes, transcripts with "rnacounter"
+    genes_filename,trans_filename,header = CNT.count_reads(bamfiles, gtf, conditions)
 
     # DE and PCA
     if "genes" in pileup_level:
@@ -195,7 +156,6 @@ def rnaseq_workflow(ex, job, assembly=None, pileup_level=["genes","transcripts"]
         description = set_file_descr("transcripts_expression.tab", step="pileup", type="txt")
         ex.add(trans_filename, description=description)
 
-
     # Find splice junctions
     if junctions:
         logfile.write("* Search for splice junctions\n"); logfile.flush()
@@ -211,15 +171,6 @@ def rnaseq_workflow(ex, job, assembly=None, pileup_level=["genes","transcripts"]
 
 
 @program
-def HTSeq(bam, gtf, stranded='no', featuretype='exon', idattr='gene_id'):
-    """Binds HTSeq. Redirects to stdout, so use as
-    `HTSeq(ex, bam,gtf, stdout=<outname>)`
-    Make sure that bam chromosome names correspond to gtf chromosome names..."""
-    return {'arguments': ["htseq-count","-q","-f","bam",
-                          "-s",stranded,"-t",featuretype,"-i",idattr, bam, gtf],
-            'return_value': None}
-
-@program
 def rnacounter(bam,gtf, options={}):
     """Counts reads from *bam* in every feature of *gtf* and infers
     genes and transcripts expression."""
@@ -228,6 +179,61 @@ def rnacounter(bam,gtf, options={}):
         opts += [str(k), str(v)]
     args = ["rnacounter"]+opts+[os.path.abspath(bam), os.path.abspath(gtf)]
     return {"arguments": args, "return_value": None}
+
+
+class Counter(RNAseq):
+    def __init__(self,*args):
+        RNAseq.__init__(self,*args)
+
+    @timer
+    def count_reads(self, bamfiles, gtf, conditions):
+        self.logfile.write("* Counting reads\n"); self.logfile.flush()
+
+        # Count reads on genes, transcripts with "rnacounter"
+        ncond = len(conditions)
+        tablenames = [None]*ncond
+        futures = [None]*ncond
+        for i,c in enumerate(conditions):
+            tablenames[i] = unique_filename_in()
+            futures[i] = rnacounter.nonblocking(self.ex, bamfiles[i], gtf, stdout=tablenames[i], via=self.via,
+                               options={"-t":"genes,transcripts",})
+
+        # Construct file headers
+        if self.stranded:
+            hconds = ["counts."+c for c in conditions] + ["counts_rev."+c for c in conditions] \
+                   + ["rpkm."+c for c in conditions] + ["rpkm_rev."+c for c in conditions]
+        else:
+            hconds = ["counts."+c for c in conditions] + ["rpkm."+c for c in conditions]
+        hinfo = ["Chromosome","Start","End","Strand","GeneName"]
+        header = ["ID"] + hconds + hinfo
+
+        # Put samples together, split genes and transcripts
+        tracks = [None]*ncond
+        for i,c in enumerate(conditions):
+            futures[i].wait()
+            tracks[i] = track(tablenames[i], format="txt", fields=["ID","Count","RPKM"]+hinfo+['type']).read()
+        genes_filename = unique_filename_in()
+        trans_filename = unique_filename_in()
+        genes_file = open(genes_filename,"wb")
+        trans_file = open(trans_filename,"wb")
+        genes_file.write('\t'.join(header)+'\n')
+        trans_file.write('\t'.join(header)+'\n')
+        while 1:
+            info = tuple(t.next() for t in tracks)
+            if not info: break
+            fid = info[0][0]
+            rest = info[0][3:-1]
+            ftype = info[0][-1]
+            counts = tuple(x[1] for x in info)
+            rpkm = tuple(x[2] for x in info)
+            towrite = '\t'.join((fid,)+counts+rpkm+rest)+'\n'
+            if ftype == 'gene':
+                genes_file.write(towrite)
+            elif ftype=='transcript':
+                trans_file.write(towrite)
+        genes_file.close()
+        trans_file.close()
+        return genes_filename, trans_filename, header
 
 
 #-------------------------- DIFFERENTIAL ANALYSIS ----------------------------#
@@ -303,6 +309,7 @@ class DE_Analysis(RNAseq):
             """Run *rpath*/negbin.test.R on *data_file*."""
             output_file = unique_filename_in()
             opts = ["-o",output_file]+options
+            #print ' '.join(["R","--slave","-f",script_path,"--args",data_file]+opts)
             return {'arguments': ["R","--slave","-f",script_path,"--args",data_file]+opts,
                     'return_value': output_file}
 
@@ -314,7 +321,7 @@ class DE_Analysis(RNAseq):
         if ncond < 2:
             self.write_log("  Skipped differential analysis: less than two groups.")
         else:
-            self.write_log("  Differential analysis")
+            self.write_log("* Differential analysis")
             options = ['-s','tab']
             script_path = os.path.join(self.rpath,'negbin.test.R')
             if not os.path.exists(script_path):
@@ -324,8 +331,8 @@ class DE_Analysis(RNAseq):
             except Exception as exc:
                 self.write_log("  Skipped differential analysis: %s" % exc)
                 return
-            if not deseqfile:
-                self.write_log("  ....Empty file.\n")
+            if not deseqfile or not os.path.exists(deseqfile):
+                self.write_log("  ....Empty file.")
                 return
             output_files = [f for f in os.listdir(self.ex.working_directory) if deseqfile in f]
             for o in output_files:
@@ -488,4 +495,3 @@ class Pca(RNAseq):
 # http://bbcf.epfl.ch/                                 #
 # webmaster.bbcf@epfl.ch                               #
 #------------------------------------------------------#
-
