@@ -227,6 +227,24 @@ def run_deconv(ex, sql, peaks, chromosomes, read_extension, script_path, via = '
         outfiles['pdf'] = deconv_out.values()[0][0]
     return outfiles
 
+
+def parse_MACS_xls(xlsfile):
+    header = None
+    peak_list = []
+    def _row(x):
+        return (x[0],)+tuple(int(y) for y in x[1:6])+tuple(float(y) for y in x[6:])
+    with open(xlsfile) as _ann:
+        for row in _ann:
+            if row[0] == "#": continue
+            if header:
+                peak_list.append(_row(row.strip().split()))
+            elif row.count("\t"):
+                header = row.strip().split()
+    return (header,peak_list)
+
+
+
+
 ################################################################################
 # Workflow #
 
@@ -334,7 +352,7 @@ def chipseq_workflow( ex, job_or_dict, assembly, script_path='', logfile=sys.std
             ctrl = (name,names['controls'][0])
             macsbed = track(processed['macs'][ctrl]+"_summits.bed",
                             chrmeta=chrlist, fields=_fields).read(selection=_select)
-        else:
+        else: ## problem with MACS_peak_nb
             macsbed = concatenate([track(processed['macs'][(name,x)]+"_summits.bed",
                                          chrmeta=chrlist, fields=_fields).read(selection=_select)
                                    for x in names['controls']])
@@ -374,6 +392,15 @@ def chipseq_workflow( ex, job_or_dict, assembly, script_path='', logfile=sys.std
                                               for s in suffixes)
             else:
                 merged_wig[group_name] = wig[0]
+
+        ##############################
+        def _filter_deconv( stream, pval ):
+            ferr = re.compile(r';FERR=([\d\.]+)$')
+            return FeatureStream( ((x[0],)+((x[2]+x[1])/2-150,(x[2]+x[1])/2+150)+x[3:] 
+                                   for x in stream 
+                                   if "FERR=" in x[3] and float(ferr.search(x[3]).groups()[0]) <= pval), 
+                                  fields=stream.fields )
+        ##############################
         for name in names['tests']:
             logfile.write(name[1]+" deconvolution.\n");logfile.flush()
             if len(names['controls']) < 2:
@@ -384,14 +411,6 @@ def chipseq_workflow( ex, job_or_dict, assembly, script_path='', logfile=sys.std
                                                    for x in names['controls']], via=via )
             deconv = run_deconv( ex, merged_wig[name[1]], macsbed, assembly.chrmeta,
                                  options['read_extension'], script_path, via=via )
-            ##############################
-            def _filter_deconv( stream, pval ):
-                ferr = re.compile(r';FERR=([\d\.]+)$')
-                return FeatureStream( ((x[0],)+((x[2]+x[1])/2-150,(x[2]+x[1])/2+150)+x[3:] 
-                                       for x in stream 
-                                       if "FERR=" in x[3] and float(ferr.search(x[3]).groups()[0]) <= pval), 
-                                     fields=stream.fields )
-            ##############################
             peak_list[name] = unique_filename_in()+".bed"
             trbed = track(deconv['peaks']).read()
             with track(peak_list[name], chrmeta=chrlist, fields=trbed.fields) as bedfile:
@@ -412,16 +431,26 @@ def chipseq_workflow( ex, job_or_dict, assembly, script_path='', logfile=sys.std
                    description=set_file_descr(name[1]+'_deconv.pdf', type='pdf',
                                               step='deconvolution', groupId=name[0]))
             processed['deconv'][name] = deconv
+
+    ##############################
+    def _join_macs( stream, xlsl, _f ):
+        def _macs_nb(_n):
+            return int(_n.split(";")[0][13:]) if _n[:3] == "ID=" else int(_n[10:])
+        return FeatureStream( (_p+xlsl[_macs_nb(_p[3])-1][1:] for _p in stream), fields=_f )
+    ##############################
     for name, plist in peak_list.iteritems():
         ptrack = track(plist,chrmeta=chrlist,fields=["chr","start","end","name","score"])
         peakfile = unique_filename_in()
         touch(ex,peakfile)
+## won't work if nb(controls) > 1
+        xlsh, xlsl = parse_MACS_xls(processed['macs'][(name,names['controls'][0])]+"_peaks.xls")
+        _fields = stream.fields+["MACS_%s"%h for h in xlsh[1:5]]+xlsh[5:]
         peakout = track(peakfile, format='txt', chrmeta=chrlist,
                         fields=['chr','start','end','name','score','gene','location_type','distance'])
-        peakout.make_header("#"+"\t".join(['chromosome','start','end','info','peak_height','gene(s)','location_type','distance']))
+        peakout.make_header("#"+"\t".join(['chromosome','start','end','info','peak_height','gene(s)','location_type','distance']+_fields[8:]))
         for chrom in assembly.chrnames:
-            peakout.write(getNearestFeature(ptrack.read(selection=chrom),assembly.gene_track(chrom)),
-                          mode='append')
+            peakout.write(_join_macs(getNearestFeature(ptrack.read(selection=chrom),assembly.gene_track(chrom)),
+                                     xlsl, _fields), mode='append')
         peakout.close()
         gzipfile(ex,peakfile)
         ex.add(peakfile+".gz",
