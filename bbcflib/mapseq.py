@@ -1065,9 +1065,9 @@ def bam_to_density( bamfile, output, chromosome_accession=None, chromosome_name=
 
     Use 'convert'=False if the bam already uses chromosome names instead of ids.
     """
-    if args is None:
-        args = []
     b2w_args = ["-w", str(nreads), "-s", bamfile, "-o", output]
+    if isinstance(args,(list,tuple)):
+        b2w_args += list(args)
     if convert and chromosome_accession is not None and chromosome_name is not None:
         b2w_args += ["-a",chromosome_accession,"-n",chromosome_name]
     elif chromosome_name is not None:
@@ -1090,7 +1090,6 @@ def bam_to_density( bamfile, output, chromosome_accession=None, chromosome_name=
         if merge<0:
             b2w_args += ["-6"]
         files = output
-    b2w_args += args
     return {"arguments": ["bam2wig"]+b2w_args, "return_value": files}
 
 def parallel_density_wig( ex, bamfile, chromosomes,
