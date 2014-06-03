@@ -326,6 +326,7 @@ def chipseq_workflow( ex, job_or_dict, assembly, script_path='', logfile=sys.std
     logfile.write("Done MACS.\n");logfile.flush()
     peak_list = {}
     chrlist = assembly.chrmeta
+## select only peaks with p-val <= 1e-0.6 = .25 => score = -10log10(p) >= 6
     _select = {'score':(6,sys.maxint)}
     _fields = ['chr','start','end','name','score']
     for i,name in enumerate(names['tests']):
@@ -417,6 +418,7 @@ def chipseq_workflow( ex, job_or_dict, assembly, script_path='', logfile=sys.std
         touch(ex,peakfile)
         peakout = track(peakfile, format='txt', chrmeta=chrlist,
                         fields=['chr','start','end','name','score','gene','location_type','distance'])
+        peakout.make_header("#"+"\t".join(['chromosome','start','end','info','peak_height','gene(s)','location_type','distance']))
         for chrom in assembly.chrnames:
             peakout.write(getNearestFeature(ptrack.read(selection=chrom),assembly.gene_track(chrom)),
                           mode='append')
