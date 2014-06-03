@@ -1094,15 +1094,14 @@ def bam_to_density( bamfile, output, chromosome_accession=None, chromosome_name=
     return {"arguments": ["bam2wig"]+b2w_args, "return_value": files}
 
 def parallel_density_wig( ex, bamfile, chromosomes,
-                          nreads=1, merge=-1, read_extension=-1, se=False, convert=True,
+                          nreads=1, merge=-1, read_extension=-1, 
+                          se=False, convert=True,
                           description="", alias=None,
                           b2w_args=None, via='lsf' ):
     """Runs 'bam_to_density' in parallel
     for every chromosome in the 'chromosomes' list with 'sql' set to False.
     Returns a single text wig file.
     """
-    if b2w_args is None:
-        b2w_args = []
     mlim = max(int(nreads*1.5e-7),6)
     futures = [bam_to_density.nonblocking( ex, bamfile, unique_filename_in(),
                                            v.get('ac'), k,
@@ -1120,7 +1119,8 @@ def parallel_density_wig( ex, bamfile, chromosomes,
     return output
 
 def parallel_density_sql( ex, bamfile, chromosomes,
-                          nreads=1, merge=-1, read_extension=-1, se=False, convert=True,
+                          nreads=1, merge=-1, read_extension=-1, 
+                          se=False, convert=True,
                           b2w_args=None, via='lsf' ):
     """Runs 'bam_to_density' for every chromosome in the 'chromosomes' list.
 
@@ -1128,8 +1128,6 @@ def parallel_density_sql( ex, bamfile, chromosomes,
     if 'merge'>=0 (shift and merge strands into one track)
     or 'merge'<0 (keep seperate tracks for each strand) and returns their basename.
     """
-    if b2w_args is None:
-        b2w_args = []
     futures = {}
     mlim = max(int(nreads*1.5e-7),6)
     for k,v in chromosomes.iteritems():
@@ -1199,6 +1197,7 @@ def densities_groups( ex, job_or_dict, file_dict, chromosomes, via='lsf' ):
     if merge_strands >= 0: suffixes = ["merged"]
     ucsc_bigwig = options.get('ucsc_bigwig',False)
     b2w_args = options.get('b2w_args',[])
+    se = options.get('as_single_end','0').lower() in ['1','true','t']
     processed = {}
     for gid,group in groups.iteritems():
         if 'name' in group:
@@ -1223,8 +1222,9 @@ def densities_groups( ex, job_or_dict, file_dict, chromosomes, via='lsf' ):
         for m in mapped.values():
             output = parallel_density_sql( ex, m["bam"], chromosomes,
                                            nreads=m["stats"]["total"],
-                                           merge=merge_strands, read_extension=options['read_extension'],
-                                           se=False, convert=False,
+                                           merge=merge_strands, 
+                                           read_extension=options['read_extension'],
+                                           se=se, convert=False,
                                            b2w_args=b2w_args, via=via )
             wig.append(output)
             ex.add( output, description=set_file_descr(m['libname']+'.sql',**pars0) )
