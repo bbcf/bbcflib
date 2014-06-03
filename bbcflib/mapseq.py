@@ -241,7 +241,7 @@ def get_fastq_files( ex, job, set_seed_length=True ):
                 elif run.startswith("smb://"):
                     base,ext = os.path.splitext(run)
                     if ext in [".gz",".gzip"]:
-                        ext = os.path.splitext(base)[1]+ext 
+                        ext = os.path.splitext(base)[1]+ext
                     if run_pe:
                         target = os.path.abspath("../%i_1%s" %(rid,ext))
                         target_pe = os.path.abspath("../%i_2%s" %(rid,ext))
@@ -1076,6 +1076,8 @@ def bam_to_density( bamfile, output, chromosome_accession=None, chromosome_name=
         b2w_args += ["-a",chromosome_accession]
     if merge>=0 and not('-p' in b2w_args):
         b2w_args += ["-p",str(merge)]
+        if se and not('--single_end' in b2w_args):
+            b2w_args += ["--single_end"]
     if read_extension>0 and not('-q' in b2w_args):
         b2w_args += ["-q",str(read_extension)]
     if sql:
