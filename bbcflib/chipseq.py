@@ -42,7 +42,7 @@ from bbcflib import frontend, mapseq
 from bbcflib.common import unique_filename_in, set_file_descr, join_pdf, merge_sql, intersect_many_bed, gzipfile
 from bbcflib.track import track, FeatureStream, convert
 from bbcflib.gfminer.stream import concatenate, neighborhood, getNearestFeature
-from bbcflib.gfminer.common import fusion
+from bbcflib.gfminer.common import fusion, apply
 
 # Other modules #
 from bein import program
@@ -227,6 +227,25 @@ def run_deconv(ex, sql, peaks, chromosomes, read_extension, script_path, via = '
         outfiles['pdf'] = deconv_out.values()[0][0]
     return outfiles
 
+
+def parse_MACS_xls(xlsfiles):
+    peak_list = [[] for _ in xlsfiles]
+    def _row(x):
+        return (x[0],)+tuple(int(y) for y in x[1:6])+tuple(float(y) for y in x[6:])
+    for nf, xlsf in enumerate(xlsfiles):
+        header = None
+        with open(xlsf) as _xf:
+            for row in _xf:
+                if row[0] == "#": continue
+                if header:
+                    peak_list[nf].append(_row(row.strip().split()))
+                elif row.count("\t"):
+                    header = row.strip().split()
+    return (header,peak_list)
+
+
+
+
 ################################################################################
 # Workflow #
 
@@ -326,6 +345,7 @@ def chipseq_workflow( ex, job_or_dict, assembly, script_path='', logfile=sys.std
     logfile.write("Done MACS.\n");logfile.flush()
     peak_list = {}
     chrlist = assembly.chrmeta
+## select only peaks with p-val <= 1e-0.6 = .25 => score = -10log10(p) >= 6
     _select = {'score':(6,sys.maxint)}
     _fields = ['chr','start','end','name','score']
     for i,name in enumerate(names['tests']):
@@ -334,9 +354,10 @@ def chipseq_workflow( ex, job_or_dict, assembly, script_path='', logfile=sys.std
             macsbed = track(processed['macs'][ctrl]+"_summits.bed",
                             chrmeta=chrlist, fields=_fields).read(selection=_select)
         else:
-            macsbed = concatenate([track(processed['macs'][(name,x)]+"_summits.bed",
-                                         chrmeta=chrlist, fields=_fields).read(selection=_select)
-                                   for x in names['controls']])
+            macsbed = concatenate([apply(track(processed['macs'][(name,x)]+"_summits.bed",
+                                         chrmeta=chrlist, fields=_fields).read(selection=_select),
+                                         'name', lambda __n,_n=xn: "%s:%i" %(__n,_n))
+                                   for xn,x in enumerate(names['controls'])])
         ##############################
         macs_neighb = neighborhood( macsbed, before_start=150, after_end=150 )
         peak_list[name] = unique_filename_in()+".sql"
@@ -373,6 +394,15 @@ def chipseq_workflow( ex, job_or_dict, assembly, script_path='', logfile=sys.std
                                               for s in suffixes)
             else:
                 merged_wig[group_name] = wig[0]
+
+        ##############################
+        def _filter_deconv( stream, pval ):
+            ferr = re.compile(r';FERR=([\d\.]+)$')
+            return FeatureStream( ((x[0],)+((x[2]+x[1])/2-150,(x[2]+x[1])/2+150)+x[3:] 
+                                   for x in stream 
+                                   if "FERR=" in x[3] and float(ferr.search(x[3]).groups()[0]) <= pval), 
+                                  fields=stream.fields )
+        ##############################
         for name in names['tests']:
             logfile.write(name[1]+" deconvolution.\n");logfile.flush()
             if len(names['controls']) < 2:
@@ -383,14 +413,6 @@ def chipseq_workflow( ex, job_or_dict, assembly, script_path='', logfile=sys.std
                                                    for x in names['controls']], via=via )
             deconv = run_deconv( ex, merged_wig[name[1]], macsbed, assembly.chrmeta,
                                  options['read_extension'], script_path, via=via )
-            ##############################
-            def _filter_deconv( stream, pval ):
-                ferr = re.compile(r';FERR=([\d\.]+)$')
-                return FeatureStream( ((x[0],)+((x[2]+x[1])/2-150,(x[2]+x[1])/2+150)+x[3:] 
-                                       for x in stream 
-                                       if "FERR=" in x[3] and float(ferr.search(x[3]).groups()[0]) <= pval), 
-                                     fields=stream.fields )
-            ##############################
             peak_list[name] = unique_filename_in()+".bed"
             trbed = track(deconv['peaks']).read()
             with track(peak_list[name], chrmeta=chrlist, fields=trbed.fields) as bedfile:
@@ -411,15 +433,39 @@ def chipseq_workflow( ex, job_or_dict, assembly, script_path='', logfile=sys.std
                    description=set_file_descr(name[1]+'_deconv.pdf', type='pdf',
                                               step='deconvolution', groupId=name[0]))
             processed['deconv'][name] = deconv
+
+    ##############################
+    def _join_macs( stream, xlsl, _f ):
+        def _macs_nb(_n):
+            if len(xlsl) == 1:
+                return xlsl[0][(int(_n.split(";")[0][13:]) if _n[:3] == "ID=" else int(_n[10:]))-1]
+            else:
+                nb = _n.split(";")[0][13:] if _n[:3] == "ID=" else _n[10:]
+                nb = nb.split(":")
+                return xlsl[int(nb[1])][int(nb[0])-1]
+        return FeatureStream( (_p+xlsl_macs_nb(_p[3])[1:] for _p in stream), fields=_f )
+    ##############################
     for name, plist in peak_list.iteritems():
         ptrack = track(plist,chrmeta=chrlist,fields=["chr","start","end","name","score"])
         peakfile = unique_filename_in()
         touch(ex,peakfile)
         peakout = track(peakfile, format='txt', chrmeta=chrlist,
                         fields=['chr','start','end','name','score','gene','location_type','distance'])
+        _fields = peakout.fields+["MACS_%s"%h for h in xlsh[1:5]]+xlsh[5:]
+        try:
+###### if assembly doesn't have annotations, we skip the "getNearestFeature" but still go through "_join_macs"
+            assembly.gene_track()
+            peakout.make_header("#"+"\t".join(['chromosome','start','end','info','peak_height','gene(s)','location_type','distance']+_fields[8:]))
+        except ValueError:
+            peakout.make_header("#"+"\t".join(['chromosome','start','end','info','peak_height']+_fields[8:]))
+        xlsh, xlsl = parse_MACS_xls([processed['macs'][(name,_c)]+"_peaks.xls" for _c in names['controls']])
         for chrom in assembly.chrnames:
-            peakout.write(getNearestFeature(ptrack.read(selection=chrom),assembly.gene_track(chrom)),
-                          mode='append')
+            try:
+                _feat = assembly.gene_track(chrom)
+                peakout.write(_join_macs(getNearestFeature(ptrack.read(selection=chrom),_feat),
+                                         xlsl, _fields), mode='append')
+            except ValueError:
+                peakout.write(_join_macs(ptrack.read(selection=chrom),xlsl, _fields[:5]+_fields[8:]), mode='append')
         peakout.close()
         gzipfile(ex,peakfile)
         ex.add(peakfile+".gz",

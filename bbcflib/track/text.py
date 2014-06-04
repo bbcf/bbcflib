@@ -542,10 +542,6 @@ class SgaTrack(TextTrack):
         ['chr','name','end','strand','score']         (when written)
 
     Scores are rounded to the upper integer when written (but are supposed to be integer originally).
-
-    The SGA format is NOT made to store every nonzero-score position of the genome in a file,
-    but is used only in Philippe Bucher's lab as a useless bed-like format to locate peak centers,
-    saving one column of space at the expense of compatibility.
     """
     def __init__(self,path,**kwargs):
         kwargs['format'] = 'sga'
