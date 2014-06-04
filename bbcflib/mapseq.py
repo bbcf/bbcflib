@@ -1050,7 +1050,7 @@ def bam_to_density( bamfile, output, chromosome_accession=None, chromosome_name=
     :param output: basename of output file
     :param chromosome_accession: globally unique chromosome identifier
     :param chromosome_name: specific chromosome in species context
-    :param nreads: If 0: normalise by total tag count per megabase, if >0: uses 1e-7*nreads as factor, by default: no normalization
+    :param nreads: If 0: normalise by total tag count*1e-7, if >0: uses 1e-7*nreads as factor, by default: no normalization
     :param merge: only if -p is not specified, specify it with this value
     :param read_extension: bam2wig argument 'Tags (pseudo-)size'
     :param se: Consider paired ends as single ends when generating the density
