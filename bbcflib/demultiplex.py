@@ -203,7 +203,8 @@ def load_paramsFile(paramsfile):
                 params['l']=v
     return params
 
-def prepareReport(ex,name,tot_counts, tot_ambiguous = 0, tot_discarded = 0, counts_primers,counts_primers_filtered):
+def prepareReport(ex, name, tot_counts, counts_primers, counts_primers_filtered,
+                  tot_ambiguous=0, tot_discarded=0):
     """
     Example::
         Primer  Total_number_of_reads   nFiltered       nValidReads
@@ -313,8 +314,9 @@ def demultiplex_workflow(ex, job, gl, file_path="../", via='lsf',
                                                       type="tar"))
 
         # Prepare report per group of runs
-        report_ok,reportFile = prepareReport(ex,group['name'],tot_counts, tot_ambiguous, tot_discarded,
-                                             counts_primers,counts_primers_filtered)
+        report_ok,reportFile = prepareReport(ex,group['name'],
+                                             tot_counts, counts_primers,counts_primers_filtered,
+                                             tot_ambiguous, tot_discarded)
         ex.add(reportFile,description = set_file_descr(
                 group['name']+"_report_demultiplexing.txt",
                 groupId=gid,step="final",type="txt",view="admin"))
