@@ -465,7 +465,7 @@ def chipseq_workflow( ex, job_or_dict, assembly, script_path='', logfile=sys.std
                 peakout.write(_join_macs(getNearestFeature(ptrack.read(selection=chrom),_feat),
                                          xlsl, _fields), mode='append')
             except ValueError:
-                peakout.write(_join_macs(ptrack.read(selection=chrom),xlsl, _fields[:5]+_fileds[8:]), mode='append')
+                peakout.write(_join_macs(ptrack.read(selection=chrom),xlsl, _fields[:5]+_fields[8:]), mode='append')
         peakout.close()
         gzipfile(ex,peakfile)
         ex.add(peakfile+".gz",
