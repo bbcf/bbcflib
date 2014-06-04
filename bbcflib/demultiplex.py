@@ -159,18 +159,18 @@ def parallel_exonerate(ex, subfiles, dbFile, grp_descr,
         gzipfile(ex,cat(all_discarded[1:],out=all_discarded[0]))
         ex.add(all_discarded[0]+".gz",
                description=set_file_descr(grp_name+"_discarded.fastq.gz",
-                                      groupId=gid,step="exonerate",type="fastq",
-                                      view="admin", comment="remaining sequence shorted than "+str(l)"bps" ) )
+                                          groupId=gid, step="exonerate", type="fastq",
+                                          view="admin", comment="< %i bps" %l ) )
     gzipfile(ex,faSubFiles[0])
     ex.add(faSubFiles[0]+".gz",
            description=set_file_descr(grp_name+"_input_part.fa.gz",
-                                      groupId=gid,step="init",type="fa",
-                                      view="admin",comment="part") )
+                                      groupId=gid, step="init", type="fa",
+                                      view="admin", comment="part") )
     gzipfile(ex,resExonerate[0])
     ex.add(resExonerate[0]+".gz",
            description=set_file_descr(grp_name+"_exonerate_part.txt.gz",
-                                      groupId=gid,step="exonerate",type="txt",
-                                      view="admin",comment="part") )
+                                      groupId=gid, step="exonerate", type="txt",
+                                      view="admin", comment="part") )
 
     resFiles = dict((k,'') for d in res for k in d.keys())
     for k in resFiles.keys():
