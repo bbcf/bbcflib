@@ -451,12 +451,21 @@ def chipseq_workflow( ex, job_or_dict, assembly, script_path='', logfile=sys.std
         touch(ex,peakfile)
         peakout = track(peakfile, format='txt', chrmeta=chrlist,
                         fields=['chr','start','end','name','score','gene','location_type','distance'])
-        peakout.make_header("#"+"\t".join(['chromosome','start','end','info','peak_height','gene(s)','location_type','distance']+_fields[8:]))
-        xlsh, xlsl = parse_MACS_xls([processed['macs'][(name,_c)]+"_peaks.xls" for _c in names['controls']])
         _fields = peakout.fields+["MACS_%s"%h for h in xlsh[1:5]]+xlsh[5:]
+        try:
+###### if assembly doesn't have annotations, we skip the "getNearestFeature" but still go through "_join_macs"
+            assembly.gene_track()
+            peakout.make_header("#"+"\t".join(['chromosome','start','end','info','peak_height','gene(s)','location_type','distance']+_fields[8:]))
+        except ValueError:
+            peakout.make_header("#"+"\t".join(['chromosome','start','end','info','peak_height']+_fields[8:]))
+        xlsh, xlsl = parse_MACS_xls([processed['macs'][(name,_c)]+"_peaks.xls" for _c in names['controls']])
         for chrom in assembly.chrnames:
-            peakout.write(_join_macs(getNearestFeature(ptrack.read(selection=chrom),assembly.gene_track(chrom)),
-                                     xlsl, _fields), mode='append')
+            try:
+                _feat = assembly.gene_track(chrom)
+                peakout.write(_join_macs(getNearestFeature(ptrack.read(selection=chrom),_feat),
+                                         xlsl, _fields), mode='append')
+            except ValueError:
+                peakout.write(_join_macs(ptrack.read(selection=chrom),xlsl, _fields[:5]+_fileds[8:]), mode='append')
         peakout.close()
         gzipfile(ex,peakfile)
         ex.add(peakfile+".gz",
