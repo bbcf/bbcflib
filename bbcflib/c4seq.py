@@ -224,7 +224,7 @@ def c4seq_workflow( ex, job, primers_dict, assembly,
                                                        group['name'], file1, file2, script_path,
                                                        via=via ),
                         smoothFragFile.nonblocking( ex, resfile, nFragsPerWin, group['name'],
-                                                    file3, regToExclude[gid], script_path, via=via ))
+                                                    file3, regToExclude[gid], script_path, via=via , memory=4 ))
         processed['4cseq']['profileCorrection'][gid] = [file1,file2,resfile]
         processed['4cseq']['smoothFrag'][gid] = [file3]
     futures2 = {}
