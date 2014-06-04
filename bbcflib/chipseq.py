@@ -42,7 +42,7 @@ from bbcflib import frontend, mapseq
 from bbcflib.common import unique_filename_in, set_file_descr, join_pdf, merge_sql, intersect_many_bed, gzipfile
 from bbcflib.track import track, FeatureStream, convert
 from bbcflib.gfminer.stream import concatenate, neighborhood, getNearestFeature
-from bbcflib.gfminer.common import fusion
+from bbcflib.gfminer.common import fusion, apply
 
 # Other modules #
 from bein import program
@@ -228,18 +228,19 @@ def run_deconv(ex, sql, peaks, chromosomes, read_extension, script_path, via = '
     return outfiles
 
 
-def parse_MACS_xls(xlsfile):
-    header = None
-    peak_list = []
+def parse_MACS_xls(xlsfiles):
+    peak_list = [[] for _ in xlsfiles]
     def _row(x):
         return (x[0],)+tuple(int(y) for y in x[1:6])+tuple(float(y) for y in x[6:])
-    with open(xlsfile) as _ann:
-        for row in _ann:
-            if row[0] == "#": continue
-            if header:
-                peak_list.append(_row(row.strip().split()))
-            elif row.count("\t"):
-                header = row.strip().split()
+    for nf, xlsf in enumerate(xlsfiles):
+        header = None
+        with open(xlsf) as _xf:
+            for row in _xf:
+                if row[0] == "#": continue
+                if header:
+                    peak_list[nf].append(_row(row.strip().split()))
+                elif row.count("\t"):
+                    header = row.strip().split()
     return (header,peak_list)
 
 
@@ -352,10 +353,11 @@ def chipseq_workflow( ex, job_or_dict, assembly, script_path='', logfile=sys.std
             ctrl = (name,names['controls'][0])
             macsbed = track(processed['macs'][ctrl]+"_summits.bed",
                             chrmeta=chrlist, fields=_fields).read(selection=_select)
-        else: ## problem with MACS_peak_nb
-            macsbed = concatenate([track(processed['macs'][(name,x)]+"_summits.bed",
-                                         chrmeta=chrlist, fields=_fields).read(selection=_select)
-                                   for x in names['controls']])
+        else:
+            macsbed = concatenate([apply(track(processed['macs'][(name,x)]+"_summits.bed",
+                                         chrmeta=chrlist, fields=_fields).read(selection=_select),
+                                         'name', lambda __n,_n=xn: "%s:%i" %(__n,_n))
+                                   for xn,x in enumerate(names['controls'])])
         ##############################
         macs_neighb = neighborhood( macsbed, before_start=150, after_end=150 )
         peak_list[name] = unique_filename_in()+".sql"
@@ -435,19 +437,23 @@ def chipseq_workflow( ex, job_or_dict, assembly, script_path='', logfile=sys.std
     ##############################
     def _join_macs( stream, xlsl, _f ):
         def _macs_nb(_n):
-            return int(_n.split(";")[0][13:]) if _n[:3] == "ID=" else int(_n[10:])
-        return FeatureStream( (_p+xlsl[_macs_nb(_p[3])-1][1:] for _p in stream), fields=_f )
+            if len(xlsl) == 1:
+                return xlsl[0][(int(_n.split(";")[0][13:]) if _n[:3] == "ID=" else int(_n[10:]))-1]
+            else:
+                nb = _n.split(";")[0][13:] if _n[:3] == "ID=" else _n[10:]
+                nb = nb.split(":")
+                return xlsl[int(nb[1])][int(nb[0])-1]
+        return FeatureStream( (_p+xlsl_macs_nb(_p[3])[1:] for _p in stream), fields=_f )
     ##############################
     for name, plist in peak_list.iteritems():
         ptrack = track(plist,chrmeta=chrlist,fields=["chr","start","end","name","score"])
         peakfile = unique_filename_in()
         touch(ex,peakfile)
-## won't work if nb(controls) > 1
-        xlsh, xlsl = parse_MACS_xls(processed['macs'][(name,names['controls'][0])]+"_peaks.xls")
-        _fields = stream.fields+["MACS_%s"%h for h in xlsh[1:5]]+xlsh[5:]
         peakout = track(peakfile, format='txt', chrmeta=chrlist,
                         fields=['chr','start','end','name','score','gene','location_type','distance'])
         peakout.make_header("#"+"\t".join(['chromosome','start','end','info','peak_height','gene(s)','location_type','distance']+_fields[8:]))
+        xlsh, xlsl = parse_MACS_xls([processed['macs'][(name,_c)]+"_peaks.xls" for _c in names['controls']])
+        _fields = peakout.fields+["MACS_%s"%h for h in xlsh[1:5]]+xlsh[5:]
         for chrom in assembly.chrnames:
             peakout.write(_join_macs(getNearestFeature(ptrack.read(selection=chrom),assembly.gene_track(chrom)),
                                      xlsl, _fields), mode='append')
