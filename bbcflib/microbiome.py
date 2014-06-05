@@ -3,7 +3,7 @@
 Module: bbcflib.microbiome
 ==========================
 """
-
+@program
 def bam_to_annot_counts ( bamfiles, annotations_file, pref_name='' ):
     '''
     Scan each bam file of a list and calculate the corrected counts for each annotation key
@@ -58,6 +58,7 @@ def bam_to_annot_counts ( bamfiles, annotations_file, pref_name='' ):
     return resfile
 
 #####################################
+@program
 def getCountsPerLevel( infile, level=None ):
     print("get counts per "+level)
     i = 0
@@ -122,6 +123,7 @@ def getCountsPerLevel( infile, level=None ):
 
 
 ##########################################
+@program
 def combine_counts(counts, idsColsKey, idsColsCounts, idColsInfos = None, resfile = "combined_counts.txt"):
     all_counts = {}
     infos = {}
@@ -228,18 +230,18 @@ def microbiome_workflow( ex, job, assembly,
     for gid, future in futures.iteritems():
         res = future.wait()
         processed['cnts'][gid] = res # group_name + "_counts_annot.txt"
-        processed['cnts_level'][gid] = [getCountsPerLevel.nonblocking(res,level) for level in levels]
+        processed['cnts_level'][gid] = [getCountsPerLevel.nonblocking(ex, res,level) for level in levels]
 
     # 2.a combine counts for all groups (=> 1 combined file)
     files = [[processed['cnts'][gid],group['name']] for gid, group in job.groups.iteritems()]
-    combine_counts(files, idsColsKey = 0, idsColsCounts = [1,2], idColsInfos = None, resfile="combined_counts.txt") # "combined_counts.txt"
+    combine_counts(ex,files, idsColsKey = 0, idsColsCounts = [1,2], idColsInfos = None, resfile="combined_counts.txt") # "combined_counts.txt"
 
     # 2.b combine counts per level for all groups (=> 1 combined file per Level)
     for n,level in enumerate(levels):
         files = [processed['cnts_level'][gid][n].wait() for gid in processed['cnts_level'].keys()]
         #files = [processed['cnts_level'][gid][n].wait() for gid in processed['cnts_level'].keys()]
         #files = [file for i, file in enumerate(all_levelsfiles) if re.search(level, file)]
-        combine_counts(files, idsColsKey = infosCols.get(level)[0], idsColsCounts = infosCols.get(level)[1], idColsInfos = None, resfile="combined_counts_"+level+".txt") # "combined_counts_"+level+".txt"
+        combine_counts(ex,files, idsColsKey = infosCols.get(level)[0], idsColsCounts = infosCols.get(level)[1], idColsInfos = None, resfile="combined_counts_"+level+".txt") # "combined_counts_"+level+".txt"
 
 ### add results files to lims
     step='counts'
