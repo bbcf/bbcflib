@@ -184,6 +184,7 @@ def combine_counts(counts, idsColsKey, idsColsCounts, idColsInfos = None, resfil
     return(resfile)
 
 ###############################################################
+@program
 def microbiome_workflow( ex, job, assembly,
                     microbiome_url=None, script_path='', logfile=sys.stdout, via='lsf' ):
     '''
