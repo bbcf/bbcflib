@@ -367,34 +367,33 @@ def chipseq_workflow( ex, job_or_dict, assembly, script_path='', logfile=sys.std
         macs_final.write(fusion(macs_neighb),clip=True)
         macs_final.close()
         ##############################
-    if peak_deconvolution:
-        processed['deconv'] = {}
-        merged_wig = {}
-        options['read_extension'] = int(options.get('read_extension') or read_length[0])
-        if options['read_extension'] < 1: options['read_extension'] = read_length[0]
-        make_wigs = (merge_strands >= 0 or not('wig' in m) or len(m['wig'])<2 or options['read_extension']>100)
-        if options['read_extension'] > 100: options['read_extension'] = 50
-        for gid,mapped in mapseq_files.iteritems():
-            if groups[gid]['control']:
-                continue
-            group_name = groups[gid]['name']
-            wig = []
-            for m in mapped.values():
-                if make_wigs:
-                    output = mapseq.parallel_density_sql( ex, m["bam"], assembly.chrmeta,
-                                                          nreads=m["stats"]["total"],
-                                                          merge=-1, read_extension=options['read_extension'],
-                                                          convert=False,
-                                                          b2w_args=b2w_args, via=via )
-                    wig.append(dict((s,output+s+'.sql') for s in suffixes))
-                else:
-                    wig.append(m['wig'])
-            if len(wig) > 1:
-                merged_wig[group_name] = dict((s,merge_sql(ex, [x[s] for x in wig], via=via))
-                                              for s in suffixes)
-            else:
-                merged_wig[group_name] = wig[0]
 
+    merged_wig = {}
+    options['read_extension'] = int(options.get('read_extension') or read_length[0])
+    if options['read_extension'] < 1: options['read_extension'] = read_length[0]
+    make_wigs = (merge_strands >= 0 or not('wig' in m) or len(m['wig'])<2 or options['read_extension']>100)
+    if options['read_extension'] > 100: options['read_extension'] = 50
+    for gid,mapped in mapseq_files.iteritems():
+#            if groups[gid]['control']: continue
+        group_name = groups[gid]['name']
+        wig = []
+        for m in mapped.values():
+            if make_wigs:
+                output = mapseq.parallel_density_sql( ex, m["bam"], assembly.chrmeta,
+                                                      nreads=m["stats"]["total"],
+                                                      merge=-1, read_extension=options['read_extension'],
+                                                      convert=False,
+                                                      b2w_args=b2w_args, via=via )
+                wig.append(dict((s,output+s+'.sql') for s in suffixes))
+            else:
+                wig.append(m['wig'])
+        if len(wig) > 1:
+            merged_wig[group_name] = dict((s,merge_sql(ex, [x[s] for x in wig], via=via))
+                                          for s in suffixes)
+        else:
+            merged_wig[group_name] = wig[0]
+
+    if peak_deconvolution:
         ##############################
         def _filter_deconv( stream, pval ):
             ferr = re.compile(r';FERR=([\d\.]+)$')
@@ -403,6 +402,7 @@ def chipseq_workflow( ex, job_or_dict, assembly, script_path='', logfile=sys.std
                                    if "FERR=" in x[3] and float(ferr.search(x[3]).groups()[0]) <= pval), 
                                   fields=stream.fields )
         ##############################
+        processed['deconv'] = {}
         for name in names['tests']:
             logfile.write(name[1]+" deconvolution.\n");logfile.flush()
             if len(names['controls']) < 2:
@@ -436,41 +436,63 @@ def chipseq_workflow( ex, job_or_dict, assembly, script_path='', logfile=sys.std
 
     ##############################
     def _join_macs( stream, xlsl, _f ):
-        def _macs_nb(_n):
+        def _macs_row(_n):
             if len(xlsl) == 1:
-                return xlsl[0][(int(_n.split(";")[0][13:]) if _n[:3] == "ID=" else int(_n[10:]))-1]
+                return xlsl[0][(int(_n.split(";")[0][13:]) if _n[:3] == "ID=" else int(_n[10:]))-1][1:]
             else:
                 nb = _n.split(";")[0][13:] if _n[:3] == "ID=" else _n[10:]
                 nb = nb.split(":")
-                return xlsl[int(nb[1])][int(nb[0])-1]
-        return FeatureStream( (_p+xlsl_macs_nb(_p[3])[1:] for _p in stream), fields=_f )
+                return xlsl[int(nb[1])][int(nb[0])-1][1:]
+        return FeatureStream( (_p+_macs_row(_p[3]) for _p in stream), fields=_f )
     ##############################
+    peakfile_list = []
     for name, plist in peak_list.iteritems():
         ptrack = track(plist,chrmeta=chrlist,fields=["chr","start","end","name","score"])
         peakfile = unique_filename_in()
-        touch(ex,peakfile)
-        peakout = track(peakfile, format='txt', chrmeta=chrlist,
-                        fields=['chr','start','end','name','score','gene','location_type','distance'])
-        _fields = peakout.fields+["MACS_%s"%h for h in xlsh[1:5]]+xlsh[5:]
+        xlsh, xlsl = parse_MACS_xls([processed['macs'][(name,_c)]+"_peaks.xls" for _c in names['controls']])
         try:
 ###### if assembly doesn't have annotations, we skip the "getNearestFeature" but still go through "_join_macs"
             assembly.gene_track()
+            _fields = ['chr','start','end','name','score','gene','location_type','distance']\
+                +["MACS_%s"%h for h in xlsh[1:5]]+xlsh[5:]
+            peakout = track(peakfile, format='txt', chrmeta=chrlist, fields=_fields)
             peakout.make_header("#"+"\t".join(['chromosome','start','end','info','peak_height','gene(s)','location_type','distance']+_fields[8:]))
         except ValueError:
+            _fields = ['chr','start','end','name','score']+["MACS_%s"%h for h in xlsh[1:5]]+xlsh[5:]
+            peakout = track(peakfile, format='txt', chrmeta=chrlist, fields=_fields)
             peakout.make_header("#"+"\t".join(['chromosome','start','end','info','peak_height']+_fields[8:]))
-        xlsh, xlsl = parse_MACS_xls([processed['macs'][(name,_c)]+"_peaks.xls" for _c in names['controls']])
         for chrom in assembly.chrnames:
             try:
                 _feat = assembly.gene_track(chrom)
                 peakout.write(_join_macs(getNearestFeature(ptrack.read(selection=chrom),_feat),
                                          xlsl, _fields), mode='append')
             except ValueError:
-                peakout.write(_join_macs(ptrack.read(selection=chrom),xlsl, _fields[:5]+_fields[8:]), mode='append')
+                peakout.write(_join_macs(ptrack.read(selection=chrom),xlsl, _fields), mode='append')
         peakout.close()
         gzipfile(ex,peakfile)
+        peakfile_list.append(track(peakfile,fields=_fields))
         ex.add(peakfile+".gz",
                description=set_file_descr(name[1]+'_annotated_peaks.txt.gz',type='text',
                                           step='annotation',groupId=name[0]))
+    stracks = [track(wig) for wigdict in merged_wig.values() for wig in wigdict.values()]
+    tablefile = unique_filename_in()
+    with open(tablefile,"w") as _tf:
+        _tf.write("\t".join(['chr','start','end','name']+[s.name for s in stracks])+"\n")
+#### need to do something about peak origin (split names, write to separate columns?)
+    for chrom in assembly.chrnames:
+        peak_list = [pt.read(chrom,fields=['chr','start','end','name']) for pt in peakfile]
+        features = fusion(concatenate(peak_list, fields=['chr','start','end','name'], 
+                                      remove_duplicates=True, group_by=['chr','start','end']))
+        sread = [sig.read(chrom) for sig in stracks]
+        quantifs = score_by_feature(sread, features, method='sum')
+        with open(tablefile,"a") as _tf:
+            for t in quantifs:
+                _tf.write("\t".join(str(tt) for tt in t)+"\n")
+    gzipfile(ex,tablefile)
+    ex.add(tablefile+".gz",
+           description=set_file_descr('Combined_peak_quantifications.txt.gz',type='text',
+                                      step='summary'))
+
     if run_meme:
         from bbcflib.motif import parallel_meme
         logfile.write("Starting MEME.\n");logfile.flush()

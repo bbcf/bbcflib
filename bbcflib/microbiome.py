@@ -1,5 +1,10 @@
-@program
-def bam_to_annot_counts ( bamfiles, pref_name = '', annotations_file ):
+"""
+==========================
+Module: bbcflib.microbiome
+==========================
+"""
+
+def bam_to_annot_counts ( bamfiles, annotations_file, pref_name='' ):
     '''
     Scan each bam file of a list and calculate the corrected counts for each annotation key
     present in the "annotations_file".
@@ -53,8 +58,7 @@ def bam_to_annot_counts ( bamfiles, pref_name = '', annotations_file ):
     return resfile
 
 #####################################
-@program
-def getCountsPerLevel ( infile, level=None):
+def getCountsPerLevel( infile, level=None ):
     print("get counts per "+level)
     i = 0
     counts = {}
@@ -118,7 +122,6 @@ def getCountsPerLevel ( infile, level=None):
 
 
 ##########################################
-@program
 def combine_counts(counts, idsColsKey, idsColsCounts, idColsInfos = None, resfile = "combined_counts.txt"):
     all_counts = {}
     infos = {}
@@ -186,7 +189,7 @@ def combine_counts(counts, idsColsKey, idsColsCounts, idColsInfos = None, resfil
 ###############################################################
 @program
 def microbiome_workflow( ex, job, assembly,
-                    microbiome_url=None, script_path='', logfile=sys.stdout, via='lsf' ):
+                         microbiome_url=None, script_path='', logfile=sys.stdout, via='lsf' ):
     '''
     Main
     * 0. retrieve bam files from mapseq job
@@ -219,7 +222,7 @@ def microbiome_workflow( ex, job, assembly,
     futures = {}
     for gid, group in job.groups.iteritems():
         group_name = group['name']
-        futures[gid] = bam_to_annot_counts.nonblocking(ex, mapseq_files[gid], group_name, annotations , via=via)
+        futures[gid] = bam_to_annot_counts.nonblocking(ex, mapseq_files[gid], annotations, group_name, via=via)
 
     # 1.b get counts per Level (Kingdom, Phylum, Class, Order, Family, Genus and Species) (=> 1 file per level / per group)
     for gid, future in futures.iteritems():

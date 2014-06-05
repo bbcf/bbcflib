@@ -159,18 +159,18 @@ def parallel_exonerate(ex, subfiles, dbFile, grp_descr,
         gzipfile(ex,cat(all_discarded[1:],out=all_discarded[0]))
         ex.add(all_discarded[0]+".gz",
                description=set_file_descr(grp_name+"_discarded.fastq.gz",
-                                      groupId=gid,step="exonerate",type="fastq",
-                                      view="admin", comment="remaining sequence shorted than "+str(l)"bps" ) )
+                                          groupId=gid, step="exonerate", type="fastq",
+                                          view="admin", comment="< %i bps" %l ) )
     gzipfile(ex,faSubFiles[0])
     ex.add(faSubFiles[0]+".gz",
            description=set_file_descr(grp_name+"_input_part.fa.gz",
-                                      groupId=gid,step="init",type="fa",
-                                      view="admin",comment="part") )
+                                      groupId=gid, step="init", type="fa",
+                                      view="admin", comment="part") )
     gzipfile(ex,resExonerate[0])
     ex.add(resExonerate[0]+".gz",
            description=set_file_descr(grp_name+"_exonerate_part.txt.gz",
-                                      groupId=gid,step="exonerate",type="txt",
-                                      view="admin",comment="part") )
+                                      groupId=gid, step="exonerate", type="txt",
+                                      view="admin", comment="part") )
 
     resFiles = dict((k,'') for d in res for k in d.keys())
     for k in resFiles.keys():
@@ -203,7 +203,8 @@ def load_paramsFile(paramsfile):
                 params['l']=v
     return params
 
-def prepareReport(ex,name,tot_counts, tot_ambiguous = 0, tot_discarded = 0, counts_primers,counts_primers_filtered):
+def prepareReport(ex, name, tot_counts, counts_primers, counts_primers_filtered,
+                  tot_ambiguous=0, tot_discarded=0):
     """
     Example::
         Primer  Total_number_of_reads   nFiltered       nValidReads
@@ -272,12 +273,12 @@ def demultiplex_workflow(ex, job, gl, file_path="../", via='lsf',
             else:
                 allSubFiles.append(run)
         gzipfile(ex,run)
-        ex.add(run+".gz",description=set_file_descr(group['name']+"_full_fastq.gz",groupId=gid,step='exonerate',view='debug',type="fastq")
+        ex.add(run+".gz",description=set_file_descr(group['name']+"_full_fastq.gz",groupId=gid,step='exonerate',view='debug',type="fastq"))
         (resExonerate, tot_ambiguous, tot_discarded) = parallel_exonerate(ex, allSubFiles, primersFile,
-                                          (gid, group['name']),
-                                          minScore=int(params['s']),
-                                          n=int(params['n']), x=int(params['x']),
-                                          l=int(params['l']), via=via)
+                                                                          (gid, group['name']),
+                                                                          minScore=int(params['s']),
+                                                                          n=int(params['n']), x=int(params['x']),
+                                                                          l=int(params['l']), via=via)
         logfile.write("Will get sequences to filter\n");logfile.flush()
         seqToFilter = getSeqToFilter(ex,primersFile)
 
@@ -313,8 +314,9 @@ def demultiplex_workflow(ex, job, gl, file_path="../", via='lsf',
                                                       type="tar"))
 
         # Prepare report per group of runs
-        report_ok,reportFile = prepareReport(ex,group['name'],tot_counts, tot_ambiguous, tot_discarded,
-                                             counts_primers,counts_primers_filtered)
+        report_ok,reportFile = prepareReport(ex,group['name'],
+                                             tot_counts, counts_primers,counts_primers_filtered,
+                                             tot_ambiguous, tot_discarded)
         ex.add(reportFile,description = set_file_descr(
                 group['name']+"_report_demultiplexing.txt",
                 groupId=gid,step="final",type="txt",view="admin"))
