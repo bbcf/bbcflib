@@ -41,7 +41,7 @@ import re, os, gzip, sys, time
 from bbcflib import frontend, mapseq
 from bbcflib.common import unique_filename_in, set_file_descr, join_pdf, merge_sql, intersect_many_bed, gzipfile
 from bbcflib.track import track, FeatureStream, convert
-from bbcflib.gfminer.stream import concatenate, neighborhood, getNearestFeature
+from bbcflib.gfminer.stream import concatenate, neighborhood, getNearestFeature, score_by_feature
 from bbcflib.gfminer.common import fusion, apply
 
 # Other modules #
@@ -54,10 +54,7 @@ from bein.util import touch
 @program
 def macs( read_length, genome_size, bamfile, ctrlbam=None, args=None ):
     """Binding for the ``macs`` peak caller.
-
-    takes one (optionally two) bam file(s) and
-    the 'read_length' and 'genome_size' parameters passed to ``macs``.
-
+    Takes one (optionally two) bam file(s) and the 'read_length' and 'genome_size' parameters passed to ``macs``.
     Returns the file prefix ('-n' option of ``macs``)
     """
     macs_args = ["macs14","-t",bamfile,"-f","BAM","-g",str(genome_size)]
@@ -371,14 +368,14 @@ def chipseq_workflow( ex, job_or_dict, assembly, script_path='', logfile=sys.std
     merged_wig = {}
     options['read_extension'] = int(options.get('read_extension') or read_length[0])
     if options['read_extension'] < 1: options['read_extension'] = read_length[0]
-    make_wigs = (merge_strands >= 0 or not('wig' in m) or len(m['wig'])<2 or options['read_extension']>100)
+    make_wigs = merge_strands >= 0 or options['read_extension']>100
     if options['read_extension'] > 100: options['read_extension'] = 50
     for gid,mapped in mapseq_files.iteritems():
 #            if groups[gid]['control']: continue
         group_name = groups[gid]['name']
         wig = []
         for m in mapped.values():
-            if make_wigs:
+            if make_wigs or not('wig' in m) or len(m['wig'])<2:
                 output = mapseq.parallel_density_sql( ex, m["bam"], assembly.chrmeta,
                                                       nreads=m["stats"]["total"],
                                                       merge=-1, read_extension=options['read_extension'],
@@ -470,17 +467,18 @@ def chipseq_workflow( ex, job_or_dict, assembly, script_path='', logfile=sys.std
                 peakout.write(_join_macs(ptrack.read(selection=chrom),xlsl, _fields), mode='append')
         peakout.close()
         gzipfile(ex,peakfile)
-        peakfile_list.append(track(peakfile,fields=_fields))
+        peakfile_list.append(track(peakfile+".gz", format='txt', fields=_fields))
         ex.add(peakfile+".gz",
                description=set_file_descr(name[1]+'_annotated_peaks.txt.gz',type='text',
                                           step='annotation',groupId=name[0]))
-    stracks = [track(wig) for wigdict in merged_wig.values() for wig in wigdict.values()]
+    stracks = [track(wig,info={'name':name+"_"+st}) 
+               for name,wigdict in merged_wig.iteritems() for st,wig in wigdict.iteritems()]
     tablefile = unique_filename_in()
     with open(tablefile,"w") as _tf:
         _tf.write("\t".join(['chr','start','end','name']+[s.name for s in stracks])+"\n")
 #### need to do something about peak origin (split names, write to separate columns?)
     for chrom in assembly.chrnames:
-        peak_list = [pt.read(chrom,fields=['chr','start','end','name']) for pt in peakfile]
+        peak_list = [pt.read(chrom,fields=['chr','start','end','name']) for pt in peakfile_list]
         features = fusion(concatenate(peak_list, fields=['chr','start','end','name'], 
                                       remove_duplicates=True, group_by=['chr','start','end']))
         sread = [sig.read(chrom) for sig in stracks]
