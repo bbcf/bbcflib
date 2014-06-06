@@ -475,17 +475,31 @@ def chipseq_workflow( ex, job_or_dict, assembly, script_path='', logfile=sys.std
                for name,wigdict in merged_wig.iteritems() for st,wig in wigdict.iteritems()]
     tablefile = unique_filename_in()
     with open(tablefile,"w") as _tf:
-        _tf.write("\t".join(['chr','start','end','name']+[s.name for s in stracks])+"\n")
+        _pnames = ["MACS_%s_vs_%s" %(_s[1],_c[1]) if _c[1] else "MACS_%s" %_s[1]
+                   for _s in names['tests'] for _c in names['controls']]
+        _tf.write("\t".join(['chr','start','end',]+_pnames+[s.name for s in stracks])+"\n")
 #### need to do something about peak origin (split names, write to separate columns?)
     for chrom in assembly.chrnames:
-        peak_list = [pt.read(chrom,fields=['chr','start','end','name']) for pt in peakfile_list]
-        features = fusion(concatenate(peak_list, fields=['chr','start','end','name'], 
+        pk_lst = [apply(pt.read(chrom,fields=['chr','start','end','name']),
+                        'name', lambda __n,_n=npt: "%s:%i" %(__n,_n))
+                  for npt,pt in enumerate(peakfile_list)]
+        features = fusion(concatenate(pk_lst, fields=['chr','start','end','name'], 
                                       remove_duplicates=True, group_by=['chr','start','end']))
         sread = [sig.read(chrom) for sig in stracks]
         quantifs = score_by_feature(sread, features, method='sum')
+        nidx = quantifs.fields.index('name')
+        _ns = len(tests)
+        _nc = len(controls)
         with open(tablefile,"a") as _tf:
             for t in quantifs:
-                _tf.write("\t".join(str(tt) for tt in t)+"\n")
+                pcols = ['']*_ns*_nc
+                for _n in row[ni].split("|"):
+                    _n2 = _n.split(":")
+                    if _nc > 1:
+                        pcols[int(_n2[2])*_nc+int(_n2[1])] = _n2[0]
+                    else:
+                        pcols[int(_n2[1])] = _n2[0]
+                _tf.write("\t".join(str(tt) for tt in t[:nidx]+tuple(pcols)+t[nidx+1:])+"\n")
     gzipfile(ex,tablefile)
     ex.add(tablefile+".gz",
            description=set_file_descr('Combined_peak_quantifications.txt.gz',type='text',
