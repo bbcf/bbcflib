@@ -224,7 +224,7 @@ def c4seq_workflow( ex, job, primers_dict, assembly,
                                                        group['name'], file1, file2, script_path,
                                                        via=via ),
                         smoothFragFile.nonblocking( ex, resfile, nFragsPerWin, group['name'],
-                                                    file3, regToExclude[gid], script_path, via=via , memory=4 ))
+                                                    file3, regToExclude[gid], script_path, via=via, memory=4 ))
         processed['4cseq']['profileCorrection'][gid] = [file1,file2,resfile]
         processed['4cseq']['smoothFrag'][gid] = [file3]
     futures2 = {}
@@ -238,7 +238,7 @@ def c4seq_workflow( ex, job, primers_dict, assembly,
         touch(ex,file4)
         processed['4cseq']['smoothFrag'][gid].append(file4)
         futures2[gid] = (smoothFragFile.nonblocking( ex, profileCorrectedFile, nFragsPerWin, grName+"_fromProfileCorrected",
-                                                     file4, regToExclude[gid], script_path, via=via ), memory=4 )
+                                                     file4, regToExclude[gid], script_path, via=via, memory=4 ), )
         if run_domainogram[gid]:
             regCoord = regToExclude[gid] or primers_dict[grName]['baitcoord']
             if before_profile_correction[gid]:
