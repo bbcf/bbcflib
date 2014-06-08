@@ -491,7 +491,7 @@ def chipseq_workflow( ex, job_or_dict, assembly, script_path='', logfile=sys.std
         _ns = len(tests)
         _nc = len(controls)
         with open(tablefile,"a") as _tf:
-            for t in quantifs:
+            for row in quantifs:
                 pcols = ['']*_ns*_nc
                 for _n in row[ni].split("|"):
                     _n2 = _n.split(":")
@@ -499,7 +499,8 @@ def chipseq_workflow( ex, job_or_dict, assembly, script_path='', logfile=sys.std
                         pcols[int(_n2[2])*_nc+int(_n2[1])] = _n2[0]
                     else:
                         pcols[int(_n2[1])] = _n2[0]
-                _tf.write("\t".join(str(tt) for tt in t[:nidx]+tuple(pcols)+t[nidx+1:])+"\n")
+                _tf.write("\t".join(str(tt) for tt in 
+                                    row[:nidx]+tuple(pcols)+row[nidx+1:])+"\n")
     gzipfile(ex,tablefile)
     ex.add(tablefile+".gz",
            description=set_file_descr('Combined_peak_quantifications.txt.gz',type='text',
