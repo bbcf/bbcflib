@@ -477,7 +477,7 @@ def chipseq_workflow( ex, job_or_dict, assembly, script_path='', logfile=sys.std
     with open(tablefile,"w") as _tf:
         _pnames = ["MACS_%s_vs_%s" %(_s[1],_c[1]) if _c[1] else "MACS_%s" %_s[1]
                    for _s in names['tests'] for _c in names['controls']]
-        _tf.write("\t".join(['chr','start','end',]+_pnames+[s.name for s in stracks])+"\n")
+        _tf.write("\t".join(['#chromosome','start','end',]+_pnames+[s.name for s in stracks])+"\n")
 #### need to do something about peak origin (split names, write to separate columns?)
     for chrom in assembly.chrnames:
         pk_lst = [apply(pt.read(chrom,fields=['chr','start','end','name']),
@@ -493,7 +493,7 @@ def chipseq_workflow( ex, job_or_dict, assembly, script_path='', logfile=sys.std
         with open(tablefile,"a") as _tf:
             for row in quantifs:
                 pcols = ['']*_ns*_nc
-                for _n in row[ni].split("|"):
+                for _n in row[nidx].split("|"):
                     _n2 = _n.split(":")
                     if _nc > 1:
                         pcols[int(_n2[2])*_nc+int(_n2[1])] = _n2[0]
