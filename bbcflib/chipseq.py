@@ -45,7 +45,7 @@ from bbcflib.gfminer.stream import concatenate, neighborhood, getNearestFeature,
 from bbcflib.gfminer.common import fusion, apply
 
 # Other modules #
-from bein import program
+from bein import program, ProgramFailed
 from bein.util import touch
 
 ################################################################################
@@ -421,11 +421,14 @@ def chipseq_workflow( ex, job_or_dict, assembly, script_path='', logfile=sys.std
                    description=set_file_descr(name[1]+'_deconv.sql', type='sql',
                                               step='deconvolution',  groupId=name[0]))
             bigwig = unique_filename_in()
-            convert(deconv['profile'],(bigwig,"bigWig"))
-            ex.add(bigwig,
-                   description=set_file_descr(name[1]+'_deconv.bw', type='bigWig',
-                                              ucsc='1', step='deconvolution',
-                                              groupId=name[0]))
+            try:
+                convert(deconv['profile'],(bigwig,"bigWig"))
+                ex.add(bigwig,
+                       description=set_file_descr(name[1]+'_deconv.bw', type='bigWig',
+                                                  ucsc='1', step='deconvolution',
+                                                  groupId=name[0]))
+            except ProgramFailed as e:
+                logfile.write(e);logfile.flush()
             ex.add(deconv['pdf'],
                    description=set_file_descr(name[1]+'_deconv.pdf', type='pdf',
                                               step='deconvolution', groupId=name[0]))
