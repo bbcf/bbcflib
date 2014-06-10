@@ -140,9 +140,6 @@ def microbiome_workflow( ex, job, assembly, logfile=sys.stdout, via='lsf' ):
     * 3. generate barplots (=> 1 plot per group + per level + per combined files)
     '''
 ### params
-    #annotations_file = "GG_13_5_otu_annotations.txt"
-    #/db/genrep/nr_assemblies/annot_txt/cf6689ddbf5ce2ee47dffcf44c0fc00d2869d5e4.txt
-    annotations_file = "/db/genrep/nr_assemblies/annot_txt/"+ assembly.md5 +".txt"
     levels = ['Kingdom','Phylum','Class','Order','Family', 'Genus', 'Species']
     infosCols = {'Kingdom':[0,[1,2]],
                  'Phylum':[[0,1],[2,3]],
@@ -159,7 +156,7 @@ def microbiome_workflow( ex, job, assembly, logfile=sys.stdout, via='lsf' ):
     futures = {}
     for gid, group in job.groups.iteritems():
         group_name = group['name']
-        futures[gid] = run_microbiome.nonblocking(ex, ["bam_to_annot_counts", mapseq_files[gid], annotations, group_name], 
+        futures[gid] = run_microbiome.nonblocking(ex, ["bam_to_annot_counts", mapseq_files[gid], assembly.annotations_path, group_name], 
                                                   via=via)
 
     # 1.b get counts per Level (Kingdom, Phylum, Class, Order, Family, Genus and Species) (=> 1 file per level / per group)

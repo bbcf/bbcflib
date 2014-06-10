@@ -656,6 +656,16 @@ class Assembly(object):
         root = os.path.join(self.genrep.root,"nr_assemblies/annot_tracks")
         return os.path.join(root,self.md5+".sql")
 
+    @property
+    def annotations_path(self):
+        """Return the path an annotation file if available (e.g. microbiome)."""
+        if hasattr(self,"annot_path"): return self.annot_path
+        if hasattr(self,"md5"):
+            root = os.path.join(self.genrep.root,"nr_assemblies/annot_txt")
+            f = os.path.join(root,self.md5+".txt")
+            if os.path.exists(f): return f
+        return None
+
     def get_features_from_gtf(self,h,chr=None,method="dico"):
         """
         Return a dictionary *data* of the form
