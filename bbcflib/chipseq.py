@@ -428,7 +428,7 @@ def chipseq_workflow( ex, job_or_dict, assembly, script_path='', logfile=sys.std
                                                   ucsc='1', step='deconvolution',
                                                   groupId=name[0]))
             except OSError as e:
-                logfile.write(e);logfile.flush()
+                logfile.write(str(e));logfile.flush()
             ex.add(deconv['pdf'],
                    description=set_file_descr(name[1]+'_deconv.pdf', type='pdf',
                                               step='deconvolution', groupId=name[0]))
