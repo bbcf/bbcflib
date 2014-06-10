@@ -401,7 +401,7 @@ def snp_workflow(ex, job, assembly, minsnp=40., mincov=5, path_to_ref=None, via=
 #### here generate the bam pileup, I'm not sure it still works as expected?
             stream = FeatureStream(_generate(bamfile, fasta, chrom), fields=out.fields)
             out.write(stream, chrom=chrom, mode="append")
-        description = set_file_descr(job.groups[gid]['name']"_infos.txt",step="tracks",type="txt")
+        description = set_file_descr(job.groups[gid]['name']+"_infos.txt",step="tracks",type="txt")
         ex.add(outname,description=description)
     return 0
 
