@@ -10,7 +10,7 @@ from bein import program
 @program
 def run_microbiome( options=[], output=None ):
     if output is None: output = unique_filename_in()
-    options = [",".join([str(x) for x in o]) if isinstance(o,(list,tuple)) else str(0)
+    options = [",".join([str(x) for x in o]) if isinstance(o,(list,tuple)) else str(o)
                for o in options]
     return {'arguments': ["run_microbiome.py"]+options+[output], 'return_value': output }
 
