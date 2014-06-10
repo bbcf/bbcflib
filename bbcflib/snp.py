@@ -260,7 +260,6 @@ def exon_snps(chrom,outexons,allsnps,assembly,sample_names,genomeRef={},
 
 def create_tracks(ex, outall, sample_names, assembly):
     """Write BED tracks showing SNPs found in each sample."""
-    ###### TODO: tracks for coverage + quality + heterozyg.
     infields = ['chromosome','position','reference']+sample_names+['gene','location_type','distance']
     intrack = track(outall, format='text', fields=infields, chrmeta=assembly.chrmeta,
                     intypes={'position':int})
@@ -287,26 +286,10 @@ def create_tracks(ex, outall, sample_names, assembly):
         description = set_file_descr(name+"_SNPs.bed.gz",type='bed',step='tracks',gdv='1',ucsc='1')
         ex.add(tr[1], description=description)
 
-    def heterozygosity(ref, counts):
-        ctot = sum(counts)
-        if ctot == 0 or ref == 4: return 0
-        i = 0.5*(2*ctot+sum(c*log(c, 2) for c in counts if c > 0)-ctot*log(ctot,2))*(ctot-counts[ref])/(ctot*ctot)
-        return "%.3f" %i
-
-    def _generate(pileups, fastafile, chrom):
-        for pileupcolumn in pileups:
-            position = pileupcolumn.pos
-            coverage = pileupcolumn.n
-            ref_symbol = fastafile.fetch(chrom, position, position+1)
-            ref = {'A': 0, 'C': 1, 'G': 2, 'T': 3}.get(ref_symbol, 4)
-            symbols = [0,0,0,0,0]
-            quality = 0
-            for nread, pileupread in enumerate(pileupcolumn.pileups):
-                symbols[{'A': 0, 'C': 1, 'G': 2, 'T': 3}.get(pileupread.alignment.seq[pileupread.qpos], 4)] += 1
-                quality += ord(pileupread.alignment.qual[pileupread.qpos])-33
-            quality = float(quality)/(nread+1)
-            info = heterozygosity(ref, symbols[0:4])
-            yield (position, position+1, coverage)+tuple(symbols[0:4])+(ref, info, quality)
+def heterozygosity(ref, counts, ctot):
+    if ctot == 0 or ref == 4: return "0"
+    i = 0.5*(2*ctot+sum(c*log(c, 2) for c in counts if c > 0)-ctot*log(ctot,2))*(ctot-counts[ref])/(ctot*ctot)
+    return "%.3f" %i
 
 @timer
 def snp_workflow(ex, job, assembly, minsnp=40., mincov=5, path_to_ref=None, via='local',
@@ -321,8 +304,7 @@ def snp_workflow(ex, job, assembly, minsnp=40., mincov=5, path_to_ref=None, via=
 
     logfile.write("\n* Generate vcfs for each chrom/group\n"); logfile.flush()
     vcfs = dict((chrom,{}) for chrom in ref_genome.keys()) # {chr: {}}
-    bams = dict((chrom,{}) for chrom in ref_genome.keys()) # {chr: {}}
-    bam = {}
+    bams = {} 
     # Launch the jobs
     for gid in sorted(job.files.keys()):
         sample_name = job.groups[gid]['name']
@@ -337,17 +319,18 @@ def snp_workflow(ex, job, assembly, minsnp=40., mincov=5, path_to_ref=None, via=
         head = pysam.Samfile( headerfile, "wh", header=header )
         head.close()
         if len(runs) > 1:
-            bam = merge_bam(ex,runs)
-            index_bam(ex,bam)
+            _b = merge_bam(ex,runs)
+            index_bam(ex,_b)
+            bams[gid] = _b
         else:
-            bam = runs[0]
+            bams[gid] = runs[0]
         # Samtools mpileup + bcftools + vcfutils.pl
         for chrom,ref in ref_genome.iteritems():
             vcf = unique_filename_in()
             vcfs[chrom][gid] = (vcf,
                                 pileup.nonblocking(ex, bam, ref, header=headerfile,
                                                    via=via, stdout=vcf))
-            bams[chrom][gid] = bam
+        bams[gid] = bam
         logfile.write("  ...Group %s running.\n" % sample_name); logfile.flush()
     # Wait for vcfs to finish and store them in *vcfs[chrom][gid]*
     for gid in sorted(job.files.keys()):
@@ -378,7 +361,7 @@ def snp_workflow(ex, job, assembly, minsnp=40., mincov=5, path_to_ref=None, via=
         logfile.write("  > Chromosome '%s'\n" % chrom); logfile.flush()
     # Put together info from all vcf files
         logfile.write("  - All SNPs\n"); logfile.flush()
-        allsnps = all_snps(ex,chrom,vcfs[chrom],bams[chrom],outall,assembly,
+        allsnps = all_snps(ex,chrom,vcfs[chrom],bams,outall,assembly,
                            sample_names,mincov,float(minsnp),logfile,debugfile)
     # Annotate SNPs and check synonymy
         logfile.write("  - Exonic SNPs\n"); logfile.flush()
@@ -390,7 +373,36 @@ def snp_workflow(ex, job, assembly, minsnp=40., mincov=5, path_to_ref=None, via=
     # Create UCSC bed tracks
     logfile.write("\n* Create tracks\n"); logfile.flush()
     create_tracks(ex,outall,sample_names,assembly)
-    return 0
+    # Create quantitative tracks
+    logfile.write("\n* Create heteroz. and quality tracks\n"); logfile.flush()
 
+    def _generate(pileups, fastafile, chrom):
+        atoi = {'A': 0, 'C': 1, 'G': 2, 'T': 3}
+        for pileupcolumn in pileups:
+            position = pileupcolumn.pos
+##### Why is coverage not equal to nread ?
+            coverage = pileupcolumn.n
+            ref_symbol = fastafile.fetch(chrom, position, position+1)
+            ref = atoi.get(ref_symbol, 4)
+            symbols = [0,0,0,0,0]
+            quality = 0
+            for nread, pileupread in enumerate(pileupcolumn.pileups):
+                symbols[atoi.get(pileupread.alignment.seq[pileupread.qpos], 4)] += 1
+                quality += ord(pileupread.alignment.qual[pileupread.qpos])-33
+            quality = float(quality)/(nread+1)
+            info = heterozygosity(ref, symbols[0:4], nread+1)
+            yield (chrom, position, position+1, coverage, info, quality)
+
+    for gid,bamfile in bams.iteritems():
+        outname = unique_filename_in()+".txt"
+        out = track(outname,fields=["chr","start","end","coverage","heterozygosity","quality"])
+        out.make_header("\t".join(out.fields),mode="write")
+        for chrom, fasta in ref_genome.iteritems():
+#### here generate the bam pileup, I'm not sure it still works as expected?
+            stream = FeatureStream(_generate(bamfile, fasta, chrom), fields=out.fields)
+            out.write(stream, chrom=chrom, mode="append")
+        description = set_file_descr(job.groups[gid]['name']"_infos.txt",step="tracks",type="txt")
+        ex.add(outname,description=description)
+    return 0
 
 
