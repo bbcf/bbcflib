@@ -3,195 +3,129 @@
 Module: bbcflib.microbiome
 ==========================
 """
+
+from bein import program
+
 @program
-def bam_to_annot_counts ( bamfiles, annotations_file, pref_name='' ):
+def run_microbiome( options=[], output=None ):
+    if output is None: output = unique_filename_in()
+    options = [",".join([str(x) for x in o]) if isinstance(o,(list,tuple)) else str(0)
+               for o in options]
+    return {'arguments': ["run_microbiome.py"]+options+[output], 'return_value': output }
+
+
+def bam_to_annot_counts( bamfiles, annotations_file, pref_name='', output=None ):
     '''
     Scan each bam file of a list and calculate the corrected counts for each annotation key
     present in the "annotations_file".
     '''
-
-    # read annotations
+    if output is None: output = unique_filename_in()
     map = {}
-    i=0
-    with open(annotations_file,'r') as f:
+    counts = {}
+    with open(annotations_file) as f:
+        header = f.next().strip('\n').split()
         for line in f:
             s = line.strip('\n').split()
-            if(i==0):
-                header=line
-                i = 1
-                continue
-            map[s[0]] = s
-    f.close()
+            k = s.pop(0)
+            map[k] = s
+            counts[k] = 0
 
-    # get norm counts
-    counts = {}
-    # initialize to 0
-    for k in map.keys():
-        counts[k]=0
-
-    # read each bam and update counts
-    tot=0
+    tot = 0
     for bamfile in bamfiles:
-        infile = pysam.Samfile( bamfile, "rb" )
+        infile = pysam.Samfile( bamfile )
         for read in infile:
             nh = dict(read.tags).get('NH',1)
             if isinstance(nh,str): nh=1
-            if nh < 1:
-                continue
+            if nh < 1: continue
+            inh = 1.0/nh
             rname = infile.getrname(read.rname)
-            counts[rname] += 1.0/nh
-            tot += 1.0/nh
+            if rname in counts:
+                counts[rname] += inh
+## still increment if nor in counts?
+            tot += inh
         infile.close()
 
-    resfile = unique_filename_in()
-    out = open(resfile,'w')
-    out.write(header.split('\t')[0]+'\tcounts_'+pref_name+'\t%counts_'+pref_name+'\t'+'\t'.join(header.split()[1:len(header.split())])+'\n')
-    for k,v in map.iteritems():
-        if tot > 0.0:
-            pc = 100*(counts[k]/tot)
-        else:
-            pc = 0.0
-        out.write(k+'\t'+str(round(float(counts[k]),2))+'\t'+str(round(float(pc),3))+'\t'+'\t'.join(map[k][1:len(map[k])])+'\n')
+    with open(output,'w') as out:
+        out.write('\t'.join([header[0],'counts_'+pref_name,'%counts_'+pref_name]+header[1:])+'\n')
+        for k,v in map.iteritems():
+            pc = 100*counts[k]/tot
+            out.write('\t'.join([k,"%.2f"%counts[k],"%.3f"%pc]+map[k])+'\n')
 
-    out.close()
-
-    return resfile
+    return output
 
 #####################################
-@program
-def getCountsPerLevel( infile, level=None ):
-    print("get counts per "+level)
-    i = 0
+def getCountsPerLevel( infile, level=None, output=None ):
+    if output is None: output = unique_filename_in()
     counts = {}
     map = {}
     tot = 0
     idColCounts = 1
     name = ''
-    with open(infile,'r') as f:
+    with open(infile) as f:
+        header = f.next().strip('\n').split('\t')
+        try:
+            level_idx = header.index(level)
+        except:
+            raise ValueError("No column corresponds to "+level+" in file "+infile)
+
+        level_top = header.index('Kingdom')
+        colrange = range(level_idx,level_top,2*int(level_top>level_idx)-1)
+        header_out = [header[n] for n in colrange]
+        name = s[idColCounts]
         for line in f:
             s = line.strip('\n').split('\t')
-            if(i==0):
-                header=s
-                try:
-                    level_idx = header.index(level)
-                except:
-                    print("no column corresponds to "+level+" in file "+infile)
-                    break #no column corresponds to the level required - nothing to do
-                i = 1
-                level_top = header.index('Kingdom')
-                name = s[idColCounts]
-                continue
-            if len(s) < len(header): s=s+['']*(len(header)-len(s)) #make sure there is enough items
+            if len(s) < len(header): s.extend(['']*(len(header)-len(s)))
             tot += float(s[idColCounts])
-            counts[s[level_idx]] = counts.get(s[level_idx],0.0) + float(s[idColCounts])
-#            if s[level_idx] in counts.keys():
-#                counts[s[level_idx]] += float(s[idColCounts]) # !! s[2] might change
-#            else:
-#                counts[s[level_idx]] = float(s[idColCounts]) # !! idem
-            if level_top < level_idx:
-                map[s[level_idx]] = (s[level_top:level_idx])[::-1]
-                header_out = (header[level_top:level_idx])[::-1]
-            elif level_idx == level_top:
-                map[s[level_idx]] = s[level_idx]
-                header_out = header[level_idx]
-            else:
-                map[s[level_idx]] = s[level_idx:level_top]
-                header_out = header[level_idx:level_top]
-    f.close()
+            counts[s[level_idx]] = counts.get(s[level_idx],0.0)+float(s[idColCounts])
+            map[s[level_idx]] = [s[n] for n in colrange]
 
-    outfile = os.path.split(infile)[1].split('.')[0]+"_"+level+".txt"
-    out = open(outfile,'w')
-
-    if level_idx == level_top :
-        out.write(level+"\tcounts_"+name+"\t%counts_"+name+"\n")
-    else:
-        out.write(level+'\t'+'\t'.join(header_out)+"\tcounts_"+name+"\t%counts_"+name+"\n")
-    for k,v in map.iteritems():
-        if tot > 0.0:
-            pc = 100*(counts[k]/tot)
-        else:
-            pc = 0.0
-        curk = k
-        if len(k)==0: curk='Unnanotated'
-        if level_idx == level_top :
-            out.write(curk+'\t'+str(round(float(counts[k]),0))+'\t'+str(round(float(pc),3))+'\n')
-        else:
-            out.write(curk+'\t'+'\t'.join(v)+'\t'+str(round(float(counts[k]),0))+'\t'+str(round(float(pc),3))+'\n')
-    out.close()
+    with open(outfile,'w') as out:
+        header = [level]+header_out+["counts_"+name,"%counts_"+name]
+        out.write("\t".join(header)+"\n")
+        for k,v in map.iteritems():
+            pc = 100*counts[k]/tot
+            curk = k or 'Unnanotated'
+            out.write("\t".join([curk]+v+["%.2f"%counts[k],"%.3f"%pc])+"\n")
 
     return outfile
 
 
 ##########################################
-@program
-def combine_counts(counts, idsColsKey, idsColsCounts, idColsInfos = None, resfile = "combined_counts.txt"):
+def combine_counts(counts, idsColsKey, idsColsCounts, output="combined_counts.txt"):
+    if output in [None,'']: output = unique_filename_in()
     all_counts = {}
     infos = {}
-    idColsInfos = None
-    h_key = ''
-    h_counts = ''
-    h_infos = ''
+    if not isinstance(idsColsKey,(list,tuple)): idsColsKey = [idsColsKey]
+    if not isinstance(idsColsCounts,(list,tuple)): idsColsCounts = [idsColsCounts]
 
-    if not isinstance(idsColsKey,list) or len(idsColsKey) < 2 :  # 0 or [0]
-        idsColsKey = [ idsColsKey, (idsColsKey+1) ]
-    else: # [0,1,2,3]
-        idsColsKey = [ idsColsKey[0], (idsColsKey[-1]+1) ] # first and last item
-
-    if not isinstance(idsColsCounts,list) or len(idsColsCounts) < 2 : # [0,1,2,3]
-        idsColsCounts = [ idsColsCounts, (idsColsCounts+1) ]
-    else:
-        idsColsCounts = [ idsColsCounts[0], (idsColsCounts[-1]+1) ] # first and last item
-
-    i = 0
-    l = 0
-    for filename in counts:
-        j = 0
-        with open(filename,'r') as f:
-            print(filename)
+    for i,filename in enumerate(counts):
+        with open(filename) as f:
+            s = f.next().strip('\n').replace("[","").replace("]","").split()
+            if i == 0: #1st file: initialization of counts and infos
+                h_infos = '\t'.join([ss for n,ss in enumerate(s) if n not in idsColsKey+idsColsCounts])
+                h_counts = '\t'.join([s[n] for n in idsColsCounts])
+                h_key='\t'.join([s[n] for n in idsColsKey])
+            else:
+                h_counts += '\t'.join(['']+[s[n] for n in idsColsCounts])
             for line in f:
-                line = line.strip('\n').replace("[","").replace("]","")
-                s = line.split()
+                s = line.strip('\n').replace("[","").replace("]","").split()
+                curKey = '\t'.join([s[n] for n in idsColsKey])
                 if i == 0: #1st file: initialization of counts and infos
-                    if j == 0: # 1st line of 1st file - init idColsInfos and headers
-                        l = len(s)
-                        idColsInfos=range(l)
-                        [idColsInfos.remove(x) for x in range(idsColsKey[0],idsColsKey[1])+range(idsColsCounts[0],idsColsCounts[1])]
-                        if len(idColsInfos) > 0 :
-                            #h_infos = '\t'.join(s[idColsInfos[0]:idColsInfos[-1]])
-                            h_infos = '\t'.join(s[idColsInfos[0]:(idColsInfos[-1]+1)])
-                        h_counts = '\t'.join(s[idsColsCounts[0]:idsColsCounts[1]]) #the +1 is already taken into account during the ini    tialisation of idColsCounts
-                        h_key='\t'.join(s[idsColsKey[0]:idsColsKey[1]])
-                        j = 1
-                    else: # init all_counts for each line
-                        curKey = '\t'.join(s[idsColsKey[0]:idsColsKey[1]])
-                        all_counts[curKey] = ['']*len(counts)
-                        all_counts[curKey][i]='\t'.join(s[idsColsCounts[0]:idsColsCounts[1]])
-                        if len(idColsInfos) > 0 :
-                            curInfo = s[idColsInfos[0]:(idColsInfos[-1]+1)]
-                            if(len(curInfo) < len(idColsInfos)): curInfo = curInfo + ['']*(l-len(curInfo))
-                            infos['\t'.join(s[idsColsKey[0]:idsColsKey[1]])] = '\t'.join(curInfo)
-                elif j == 0:
-                    h_counts = h_counts + '\t' + '\t'.join(s[idsColsCounts[0]:idsColsCounts[1]])
-                    j = 1
-                else:
-                    curKey = '\t'.join(s[idsColsKey[0]:idsColsKey[1]])
-                    all_counts[curKey][i]='\t'.join(s[idsColsCounts[0]:idsColsCounts[1]])
-            f.close()
-            i = i + 1
+                    all_counts[curKey] = ['']*len(counts)
+                    curInfo = [ss for n,ss in enumerate(s) if n not in idsColsKey+idsColsCounts]
+                    if (len(curInfo) < len(idColsInfos)): curInfo.extend(['']*(len(idColsInfos)-len(curInfo)))
+                    infos[curKey] = '\t'.join(curInfo)
+                all_counts[curKey][i] = '\t'.join([s[n] for n in idsColsCounts])
 
-    if resfile in [None,'']: resfile = unique_filename_in()
-    out = open(resfile,'w')
-    out.write(h_key+'\t'+h_counts+'\t'+h_infos+'\n')
-    for k,v in all_counts.iteritems():
-        out.write(k+'\t'+'\t'.join(str(s) for s in all_counts[k])+'\t'+infos.get(k,'')+'\n')
-    out.close()
+    with open(output,'w') as out:
+        out.write(h_key+'\t'+h_counts+'\t'+h_infos+'\n')
+        for k,v in all_counts.iteritems():
+            out.write(k+'\t'+'\t'.join(str(s) for s in all_counts[k])+'\t'+infos.get(k,'')+'\n')
 
-    return(resfile)
+    return(output)
 
 ###############################################################
-@program
-def microbiome_workflow( ex, job, assembly,
-                         microbiome_url=None, script_path='', logfile=sys.stdout, via='lsf' ):
+def microbiome_workflow( ex, job, assembly, logfile=sys.stdout, via='lsf' ):
     '''
     Main
     * 0. retrieve bam files from mapseq job
@@ -210,10 +144,10 @@ def microbiome_workflow( ex, job, assembly,
     annotations_file = "/db/genrep/nr_assemblies/annot_txt/"+ assembly.md5 +".txt"
     levels = ['Kingdom','Phylum','Class','Order','Family', 'Genus', 'Species']
     infosCols = {'Kingdom':[0,[1,2]],
-                'Phylum':[[0,1],[2,3]],
-                'Class':[[0,1,2],[3,4]],
-                'Order':[[0,1,2,3],[4,5]],
-                'Family':[[0,1,2,3,4],[5,6]]}
+                 'Phylum':[[0,1],[2,3]],
+                 'Class':[[0,1,2],[3,4]],
+                 'Order':[[0,1,2,3],[4,5]],
+                 'Family':[[0,1,2,3,4],[5,6]]}
 ### outputs
     processed = {'cnts': {}, 'cnts_level': {}, 'plots': {}}
 
@@ -224,24 +158,25 @@ def microbiome_workflow( ex, job, assembly,
     futures = {}
     for gid, group in job.groups.iteritems():
         group_name = group['name']
-        futures[gid] = bam_to_annot_counts.nonblocking(ex, mapseq_files[gid], annotations, group_name, via=via)
+        futures[gid] = run_microbiome.nonblocking(ex, ["bam_to_annot_counts", mapseq_files[gid], annotations, group_name], 
+                                                  via=via)
 
     # 1.b get counts per Level (Kingdom, Phylum, Class, Order, Family, Genus and Species) (=> 1 file per level / per group)
     for gid, future in futures.iteritems():
         res = future.wait()
         processed['cnts'][gid] = res # group_name + "_counts_annot.txt"
-        processed['cnts_level'][gid] = [getCountsPerLevel.nonblocking(ex, res,level) for level in levels]
+        processed['cnts_level'][gid] = [run_microbiome.nonblocking(ex, ["getCountsPerLevel", res, level], via=via) 
+                                        for level in levels]
 
     # 2.a combine counts for all groups (=> 1 combined file)
     files = [[processed['cnts'][gid],group['name']] for gid, group in job.groups.iteritems()]
-    combine_counts(ex,files, idsColsKey = 0, idsColsCounts = [1,2], idColsInfos = None, resfile="combined_counts.txt") # "combined_counts.txt"
+    combined_out = [run_microbiome.nonblocking(ex, ["combine_counts", files, 0, [1,2], None], via=via)]
 
     # 2.b combine counts per level for all groups (=> 1 combined file per Level)
     for n,level in enumerate(levels):
         files = [processed['cnts_level'][gid][n].wait() for gid in processed['cnts_level'].keys()]
-        #files = [processed['cnts_level'][gid][n].wait() for gid in processed['cnts_level'].keys()]
-        #files = [file for i, file in enumerate(all_levelsfiles) if re.search(level, file)]
-        combine_counts(ex,files, idsColsKey = infosCols.get(level)[0], idsColsCounts = infosCols.get(level)[1], idColsInfos = None, resfile="combined_counts_"+level+".txt") # "combined_counts_"+level+".txt"
+        combined_out.append(run_microbiome.nonblocking(ex, ["combine_counts", files]+infosCols.get(level,[0,[1,2]])+[None],
+                                                       via=via))
 
 ### add results files to lims
     step='counts'
@@ -254,13 +189,12 @@ def microbiome_workflow( ex, job, assembly,
             fname = job.groups[gid]['name']+"_counts_annot_"+ levels[i] +".txt"
             ex.add( resfiles[i], description=set_file_descr( fname, groupId=gid, step=step, type="txt" ) )
 
-    step='combined'
-    ex.add("combined_counts.txt", description=set_file_descr( "combined_counts.txt", step=step, type="txt") )
-    for level in enumerate(levels):
-        ex.add("combined_counts"+ level +".txt", description=set_file_descr( "combined_counts"+ level +".txt", step=step, type="txt") )
-
-
-    return processed
+    step = 'combined'
+    ex.add(combined_out[0].wait(), description=set_file_descr( "combined_counts.txt", step=step, type="txt") )
+    for nl,level in enumerate(levels):
+        ex.add(combined_out[nl+1].wait(), 
+               description=set_file_descr( "combined_counts"+level+".txt", step=step, type="txt") )
+    return 0
 
 #-----------------------------------#
 # This code was written by the BBCF #
