@@ -4,6 +4,7 @@ Module: bbcflib.microbiome
 ==========================
 """
 
+import sys
 from bein import program
 
 @program
