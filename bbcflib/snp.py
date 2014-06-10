@@ -286,7 +286,8 @@ def create_tracks(ex, outall, sample_names, assembly):
         description = set_file_descr(name+"_SNPs.bed.gz",type='bed',step='tracks',gdv='1',ucsc='1')
         ex.add(tr[1], description=description)
 
-def heterozygosity(ref, counts, ctot):
+def heterozygosity(ref, counts):
+    ctot = sum(counts)
     if ctot == 0 or ref == 4: return "0"
     i = 0.5*(2*ctot+sum(c*log(c, 2) for c in counts if c > 0)-ctot*log(ctot,2))*(ctot-counts[ref])/(ctot*ctot)
     return "%.3f" %i
@@ -304,7 +305,7 @@ def snp_workflow(ex, job, assembly, minsnp=40., mincov=5, path_to_ref=None, via=
 
     logfile.write("\n* Generate vcfs for each chrom/group\n"); logfile.flush()
     vcfs = dict((chrom,{}) for chrom in ref_genome.keys()) # {chr: {}}
-    bams = {} 
+    bams = {}
     # Launch the jobs
     for gid in sorted(job.files.keys()):
         sample_name = job.groups[gid]['name']
@@ -380,17 +381,16 @@ def snp_workflow(ex, job, assembly, minsnp=40., mincov=5, path_to_ref=None, via=
         atoi = {'A': 0, 'C': 1, 'G': 2, 'T': 3}
         for pileupcolumn in pileups:
             position = pileupcolumn.pos
-##### Why is coverage not equal to nread ?
             coverage = pileupcolumn.n
             ref_symbol = fastafile.fetch(chrom, position, position+1)
             ref = atoi.get(ref_symbol, 4)
             symbols = [0,0,0,0,0]
             quality = 0
-            for nread, pileupread in enumerate(pileupcolumn.pileups):
+            for pileupread in pileupcolumn.pileups:
                 symbols[atoi.get(pileupread.alignment.seq[pileupread.qpos], 4)] += 1
                 quality += ord(pileupread.alignment.qual[pileupread.qpos])-33
-            quality = float(quality)/(nread+1)
-            info = heterozygosity(ref, symbols[0:4], nread+1)
+            quality = float(quality)/coverage
+            info = heterozygosity(ref, symbols[0:4])
             yield (chrom, position, position+1, coverage, info, quality)
 
     for gid,bamfile in bams.iteritems():
@@ -399,7 +399,7 @@ def snp_workflow(ex, job, assembly, minsnp=40., mincov=5, path_to_ref=None, via=
         out.make_header("\t".join(out.fields),mode="write")
         for chrom, fasta in ref_genome.iteritems():
 #### here generate the bam pileup, I'm not sure it still works as expected?
-            stream = FeatureStream(_generate(bamfile, fasta, chrom), fields=out.fields)
+            stream = FeatureStream(_generate(bamfile.pileup(chrom, 0, cinfo["length"]), fasta, chrom), fields=out.fields)
             out.write(stream, chrom=chrom, mode="append")
         description = set_file_descr(job.groups[gid]['name']+"_infos.txt",step="tracks",type="txt")
         ex.add(outname,description=description)
