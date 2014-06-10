@@ -287,6 +287,26 @@ def create_tracks(ex, outall, sample_names, assembly):
         description = set_file_descr(name+"_SNPs.bed.gz",type='bed',step='tracks',gdv='1',ucsc='1')
         ex.add(tr[1], description=description)
 
+    def heterozygosity(ref, counts):
+        ctot = sum(counts)
+        if ctot == 0 or ref == 4: return 0
+        i = 0.5*(2*ctot+sum(c*log(c, 2) for c in counts if c > 0)-ctot*log(ctot,2))*(ctot-counts[ref])/(ctot*ctot)
+        return "%.3f" %i
+
+    def _generate(pileups, fastafile, chrom):
+        for pileupcolumn in pileups:
+            position = pileupcolumn.pos
+            coverage = pileupcolumn.n
+            ref_symbol = fastafile.fetch(chrom, position, position+1)
+            ref = {'A': 0, 'C': 1, 'G': 2, 'T': 3}.get(ref_symbol, 4)
+            symbols = [0,0,0,0,0]
+            quality = 0
+            for nread, pileupread in enumerate(pileupcolumn.pileups):
+                symbols[{'A': 0, 'C': 1, 'G': 2, 'T': 3}.get(pileupread.alignment.seq[pileupread.qpos], 4)] += 1
+                quality += ord(pileupread.alignment.qual[pileupread.qpos])-33
+            quality = float(quality)/(nread+1)
+            info = heterozygosity(ref, symbols[0:4])
+            yield (position, position+1, coverage)+tuple(symbols[0:4])+(ref, info, quality)
 
 @timer
 def snp_workflow(ex, job, assembly, minsnp=40., mincov=5, path_to_ref=None, via='local',
