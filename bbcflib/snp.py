@@ -329,9 +329,8 @@ def snp_workflow(ex, job, assembly, minsnp=40., mincov=5, path_to_ref=None, via=
         for chrom,ref in ref_genome.iteritems():
             vcf = unique_filename_in()
             vcfs[chrom][gid] = (vcf,
-                                pileup.nonblocking(ex, bam, ref, header=headerfile,
+                                pileup.nonblocking(ex, bams[gid], ref, header=headerfile,
                                                    via=via, stdout=vcf))
-        bams[gid] = bam
         logfile.write("  ...Group %s running.\n" % sample_name); logfile.flush()
     # Wait for vcfs to finish and store them in *vcfs[chrom][gid]*
     for gid in sorted(job.files.keys()):
