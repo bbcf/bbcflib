@@ -43,7 +43,7 @@ def bam_to_annot_counts( bamfiles, annotations_file, pref_name='', output=None )
             rname = infile.getrname(read.rname)
             if rname in counts:
                 counts[rname] += inh
-## still increment if nor in counts?
+## still increment if not in counts?
             tot += inh
         infile.close()
 
@@ -73,7 +73,7 @@ def getCountsPerLevel( infile, level=None, output=None ):
         level_top = header.index('Kingdom')
         colrange = range(level_idx,level_top,2*int(level_top>level_idx)-1)
         header_out = [header[n] for n in colrange]
-        name = s[idColCounts]
+        name = header[idColCounts]
         for line in f:
             s = line.strip('\n').split('\t')
             if len(s) < len(header): s.extend(['']*(len(header)-len(s)))
@@ -81,7 +81,7 @@ def getCountsPerLevel( infile, level=None, output=None ):
             counts[s[level_idx]] = counts.get(s[level_idx],0.0)+float(s[idColCounts])
             map[s[level_idx]] = [s[n] for n in colrange]
 
-    with open(outfile,'w') as out:
+    with open(output,'w') as out:
         header = [level]+header_out+["counts_"+name,"%counts_"+name]
         out.write("\t".join(header)+"\n")
         for k,v in map.iteritems():
@@ -89,14 +89,15 @@ def getCountsPerLevel( infile, level=None, output=None ):
             curk = k or 'Unnanotated'
             out.write("\t".join([curk]+v+["%.2f"%counts[k],"%.3f"%pc])+"\n")
 
-    return outfile
+    return output
 
 
 ##########################################
-def combine_counts(counts, idsColsKey, idsColsCounts, output="combined_counts.txt"):
+def combine_counts( counts, idsColsKey, idsColsCounts, output="combined_counts.txt" ):
     if output in [None,'']: output = unique_filename_in()
     all_counts = {}
     infos = {}
+    leninfos = 0
     if not isinstance(idsColsKey,(list,tuple)): idsColsKey = [idsColsKey]
     if not isinstance(idsColsCounts,(list,tuple)): idsColsCounts = [idsColsCounts]
 
@@ -104,7 +105,9 @@ def combine_counts(counts, idsColsKey, idsColsCounts, output="combined_counts.tx
         with open(filename) as f:
             s = f.next().strip('\n').replace("[","").replace("]","").split()
             if i == 0: #1st file: initialization of counts and infos
-                h_infos = '\t'.join([ss for n,ss in enumerate(s) if n not in idsColsKey+idsColsCounts])
+                _colinfos = [ss for n,ss in enumerate(s) if n not in idsColsKey+idsColsCounts]
+                leninfos = len(_colinfos)
+                h_infos = '\t'.join(_colinfos)
                 h_counts = '\t'.join([s[n] for n in idsColsCounts])
                 h_key='\t'.join([s[n] for n in idsColsKey])
             else:
@@ -115,7 +118,7 @@ def combine_counts(counts, idsColsKey, idsColsCounts, output="combined_counts.tx
                 if i == 0: #1st file: initialization of counts and infos
                     all_counts[curKey] = ['']*len(counts)
                     curInfo = [ss for n,ss in enumerate(s) if n not in idsColsKey+idsColsCounts]
-                    if (len(curInfo) < len(idColsInfos)): curInfo.extend(['']*(len(idColsInfos)-len(curInfo)))
+                    if (len(curInfo) < leninfos: curInfo.extend(['']*(leninfos-len(curInfo)))
                     infos[curKey] = '\t'.join(curInfo)
                 all_counts[curKey][i] = '\t'.join([s[n] for n in idsColsCounts])
 
@@ -173,7 +176,7 @@ def microbiome_workflow( ex, job, assembly, logfile=sys.stdout, via='lsf' ):
                                         for level in levels]
 
     # 2.a combine counts for all groups (=> 1 combined file)
-    files = [[processed['cnts'][gid],group['name']] for gid, group in job.groups.iteritems()]
+    files = processed['cnts'].values()
     combined_out = [run_microbiome.nonblocking(ex, ["combine_counts", files, 0, [1,2], None], via=via)]
 
     # 2.b combine counts per level for all groups (=> 1 combined file per Level)
