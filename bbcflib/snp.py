@@ -18,7 +18,7 @@ from bbcflib.gfminer.common import concat_fields
 from bbcflib.gfminer import stream as gm_stream
 from bein import program
 
-import pysam
+from pysam import Fastafile, Samfile
 
 _DEBUG_ = False
 
@@ -311,13 +311,13 @@ def snp_workflow(ex, job, assembly, minsnp=40., mincov=5, path_to_ref=None, via=
         sample_name = job.groups[gid]['name']
         # Merge all bams belonging to the same group
         runs = [r['bam'] for r in job.files[gid].itervalues()]
-        bam = pysam.Samfile(runs[0])
+        bam = Samfile(runs[0])
         header = bam.header
         headerfile = unique_filename_in()
         for h in header["SQ"]:
             if h["SN"] in assembly.chrmeta:
                 h["SN"] = assembly.chrmeta[h["SN"]]["ac"]
-        head = pysam.Samfile( headerfile, "wh", header=header )
+        head = Samfile( headerfile, "wh", header=header )
         head.close()
         if len(runs) > 1:
             _b = merge_bam(ex,runs)
@@ -393,12 +393,13 @@ def snp_workflow(ex, job, assembly, minsnp=40., mincov=5, path_to_ref=None, via=
             yield (chrom, position, position+1, coverage, info, quality)
 
     for gid,bamfile in bams.iteritems():
+        bamtr = track(bamfile,format="bam")
         outname = unique_filename_in()+".txt"
         out = track(outname,fields=["chr","start","end","coverage","heterozygosity","quality"])
         out.make_header("\t".join(out.fields),mode="write")
         for chrom, cinfo in assembly.chrmeta.iteritems():
-            stream = FeatureStream(_process_pileup(bamfile.pileup(chrom, 0, cinfo["length"]), 
-                                                   ref_genome[chrom], chrom), 
+            stream = FeatureStream(_process_pileup(bamtr.pileup(chrom, 0, cinfo["length"]), 
+                                                   Fastafile(ref_genome[chrom]), chrom), 
                                    fields=out.fields)
             out.write(stream, chrom=chrom, mode="append")
         gzipfile(outname)
