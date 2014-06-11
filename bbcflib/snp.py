@@ -11,7 +11,7 @@ import sys, tarfile
 from itertools import product
 
 # Internal modules #
-from bbcflib.common import unique_filename_in, set_file_descr, sam_faidx, timer, iupac, translate, revcomp, unique
+from bbcflib.common import unique_filename_in, set_file_descr, sam_faidx, timer, iupac, translate, revcomp, unique, gzipfile
 from bbcflib.mapseq import merge_bam, index_bam
 from bbcflib.track import FeatureStream, track
 from bbcflib.gfminer.common import concat_fields
@@ -377,7 +377,7 @@ def snp_workflow(ex, job, assembly, minsnp=40., mincov=5, path_to_ref=None, via=
     # Create quantitative tracks
     logfile.write("\n* Create heteroz. and quality tracks\n"); logfile.flush()
 
-    def _generate(pileups, fastafile, chrom):
+    def _process_pileup(pileups, fastafile, chrom):
         atoi = {'A': 0, 'C': 1, 'G': 2, 'T': 3}
         for pileupcolumn in pileups:
             position = pileupcolumn.pos
@@ -397,12 +397,14 @@ def snp_workflow(ex, job, assembly, minsnp=40., mincov=5, path_to_ref=None, via=
         outname = unique_filename_in()+".txt"
         out = track(outname,fields=["chr","start","end","coverage","heterozygosity","quality"])
         out.make_header("\t".join(out.fields),mode="write")
-        for chrom, fasta in ref_genome.iteritems():
-#### here generate the bam pileup, I'm not sure it still works as expected?
-            stream = FeatureStream(_generate(bamfile.pileup(chrom, 0, cinfo["length"]), fasta, chrom), fields=out.fields)
+        for chrom, cinfo in assembly.chrmeta.iteritems():
+            stream = FeatureStream(_process_pileup(bamfile.pileup(chrom, 0, cinfo["length"]), 
+                                                   ref_genome[chrom], chrom), 
+                                   fields=out.fields)
             out.write(stream, chrom=chrom, mode="append")
-        description = set_file_descr(job.groups[gid]['name']+"_infos.txt",step="tracks",type="txt")
-        ex.add(outname,description=description)
+        gzipfile(outname)
+        description = set_file_descr(job.groups[gid]['name']+"_infos.txt.gz",groupId=gid,step="tracks",type="txt")
+        ex.add(outname+".gz",description=description)
     return 0
 
 
