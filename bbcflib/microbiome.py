@@ -103,7 +103,7 @@ def combine_counts( counts, idsColsKey, idsColsCounts, output="combined_counts.t
 
     for i,filename in enumerate(counts):
         with open(filename) as f:
-            s = f.next().strip('\n').replace("[","").replace("]","").split()
+            s = f.next().strip('\n').replace("[","").replace("]","").split("\t")
             if i == 0: #1st file: initialization of counts and infos
                 _colinfos = [ss for n,ss in enumerate(s) if n not in idsColsKey+idsColsCounts]
                 leninfos = len(_colinfos)
@@ -113,7 +113,7 @@ def combine_counts( counts, idsColsKey, idsColsCounts, output="combined_counts.t
             else:
                 h_counts += '\t'.join(['']+[s[n] for n in idsColsCounts])
             for line in f:
-                s = line.strip('\n').replace("[","").replace("]","").split()
+                s = line.strip('\n').replace("[","").replace("]","").split("\t")
                 curKey = '\t'.join([s[n] for n in idsColsKey])
                 if i == 0: #1st file: initialization of counts and infos
                     all_counts[curKey] = ['']*len(counts)
