@@ -4,9 +4,8 @@ Module: bbcflib.microbiome
 ==========================
 """
 
-import sys
+import sys, pysam
 from bbcflib.common import set_file_descr, unique_filename_in
-from bbcflib.mapseq import merge_bam
 from bein import program
 
 @program
@@ -158,11 +157,8 @@ def microbiome_workflow( ex, job, assembly, logfile=sys.stdout, via='lsf' ):
     futures = {}
     for gid, group in job.groups.iteritems():
         group_name = group['name']
-        if len(mapseq_files[gid])>1:
-            bamfile = merge_bam(ex, [m['bam'] for m in mapseq_files[gid].values()])
-        else:
-            bamfile = mapseq_files[gid].values()[0]['bam']
-        futures[gid] = run_microbiome.nonblocking(ex, ["bam_to_annot_counts", , 
+        bamfiles = [m['bam'] for m in mapseq_files[gid].values()]
+        futures[gid] = run_microbiome.nonblocking(ex, ["bam_to_annot_counts", bamfiles,
                                                        assembly.annotations_path, group_name], 
                                                   via=via)
 
@@ -189,7 +185,7 @@ def microbiome_workflow( ex, job, assembly, logfile=sys.stdout, via='lsf' ):
         fname = job.groups[gid]['name']+"_counts_annot.txt"
         ex.add( resfile, description=set_file_descr( fname, groupId=gid, step=step, type="txt" ) )
 
-    for gid, resfiles in processed['cnts_levels'].iteritems():
+    for gid, resfiles in processed['cnts_level'].iteritems():
         for i in range(len(levels)): # 1 file per level
             fname = job.groups[gid]['name']+"_counts_annot_"+ levels[i] +".txt"
             ex.add( resfiles[i], description=set_file_descr( fname, groupId=gid, step=step, type="txt" ) )

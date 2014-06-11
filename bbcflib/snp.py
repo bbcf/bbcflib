@@ -402,7 +402,7 @@ def snp_workflow(ex, job, assembly, minsnp=40., mincov=5, path_to_ref=None, via=
                                                    Fastafile(ref_genome[chrom]), chrom), 
                                    fields=out.fields)
             out.write(stream, chrom=chrom, mode="append")
-        gzipfile(outname)
+        gzipfile(ex,outname)
         description = set_file_descr(job.groups[gid]['name']+"_infos.txt.gz",groupId=gid,step="tracks",type="txt")
         ex.add(outname+".gz",description=description)
     return 0
