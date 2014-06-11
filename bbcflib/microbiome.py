@@ -163,9 +163,12 @@ def microbiome_workflow( ex, job, assembly, logfile=sys.stdout, via='lsf' ):
                                                   via=via)
 
     # 1.b get counts per Level (Kingdom, Phylum, Class, Order, Family, Genus and Species) (=> 1 file per level / per group)
+    step = 'counts'
     for gid, future in futures.iteritems():
         res = future.wait()
         processed['cnts'][gid] = res # group_name + "_counts_annot.txt"
+        fname = job.groups[gid]['name']+"_counts_annot.txt"
+        ex.add( res, description=set_file_descr( fname, groupId=gid, step=step, type="txt" ) )
         processed['cnts_level'][gid] = [run_microbiome.nonblocking(ex, ["getCountsPerLevel", res, level], via=via) 
                                         for level in levels]
 
@@ -175,20 +178,13 @@ def microbiome_workflow( ex, job, assembly, logfile=sys.stdout, via='lsf' ):
 
     # 2.b combine counts per level for all groups (=> 1 combined file per Level)
     for n,level in enumerate(levels):
-        files = [processed['cnts_level'][gid][n].wait() for gid in processed['cnts_level'].keys()]
-        combined_out.append(run_microbiome.nonblocking(ex, ["combine_counts", files]+infosCols.get(level,[0,[1,2]])+[None],
+        files = dict([(gid,f[n].wait()) for gid,f in processed['cnts_level'].iteritems()])
+        combined_out.append(run_microbiome.nonblocking(ex, ["combine_counts", files.values()]+infosCols.get(level,[0,[1,2]])+[None],
                                                        via=via))
+        for gid,f in files.iteritems():
+            fname = job.groups[gid]['name']+"_counts_annot_"+level+".txt"
+            ex.add( f, description=set_file_descr( fname, groupId=gid, step=step, type="txt" ) )
 
-### add results files to lims
-    step='counts'
-    for gid, resfile in processed['cnts'].iteritems():
-        fname = job.groups[gid]['name']+"_counts_annot.txt"
-        ex.add( resfile, description=set_file_descr( fname, groupId=gid, step=step, type="txt" ) )
-
-    for gid, resfiles in processed['cnts_level'].iteritems():
-        for i in range(len(levels)): # 1 file per level
-            fname = job.groups[gid]['name']+"_counts_annot_"+ levels[i] +".txt"
-            ex.add( resfiles[i], description=set_file_descr( fname, groupId=gid, step=step, type="txt" ) )
 
     step = 'combined'
     ex.add(combined_out[0].wait(), description=set_file_descr( "combined_counts.txt", step=step, type="txt") )
