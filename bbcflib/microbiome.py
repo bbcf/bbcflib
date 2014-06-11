@@ -5,6 +5,8 @@ Module: bbcflib.microbiome
 """
 
 import sys
+from bbcflib.common import set_file_descr, unique_filename_in
+from bbcflib.mapseq import merge_bam
 from bein import program
 
 @program
@@ -156,7 +158,12 @@ def microbiome_workflow( ex, job, assembly, logfile=sys.stdout, via='lsf' ):
     futures = {}
     for gid, group in job.groups.iteritems():
         group_name = group['name']
-        futures[gid] = run_microbiome.nonblocking(ex, ["bam_to_annot_counts", mapseq_files[gid], assembly.annotations_path, group_name], 
+        if len(mapseq_files[gid])>1:
+            bamfile = merge_bam(ex, [m['bam'] for m in mapseq_files[gid].values()])
+        else:
+            bamfile = mapseq_files[gid].values()[0]['bam']
+        futures[gid] = run_microbiome.nonblocking(ex, ["bam_to_annot_counts", , 
+                                                       assembly.annotations_path, group_name], 
                                                   via=via)
 
     # 1.b get counts per Level (Kingdom, Phylum, Class, Order, Family, Genus and Species) (=> 1 file per level / per group)
