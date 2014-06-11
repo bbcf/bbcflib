@@ -390,7 +390,7 @@ def snp_workflow(ex, job, assembly, minsnp=40., mincov=5, path_to_ref=None, via=
                 quality += ord(pileupread.alignment.qual[pileupread.qpos])-33
             quality = float(quality)/coverage
             info = heterozygosity(ref, symbols[0:4])
-            yield (chrom, position, position+1, coverage, info, quality)
+            yield (position, position+1, coverage, info, quality)
 
     for gid,bamfile in bams.iteritems():
         bamtr = track(bamfile,format="bam")
@@ -399,8 +399,8 @@ def snp_workflow(ex, job, assembly, minsnp=40., mincov=5, path_to_ref=None, via=
         out.make_header("\t".join(out.fields),mode="write")
         for chrom, cinfo in assembly.chrmeta.iteritems():
             stream = FeatureStream(_process_pileup(bamtr.pileup(chrom, 0, cinfo["length"]), 
-                                                   Fastafile(ref_genome[chrom]), chrom), 
-                                   fields=out.fields)
+                                                   Fastafile(ref_genome[chrom]), cinfo['ac']), 
+                                   fields=out.fields[1:])
             out.write(stream, chrom=chrom, mode="append")
         gzipfile(ex,outname)
         description = set_file_descr(job.groups[gid]['name']+"_infos.txt.gz",groupId=gid,step="tracks",type="txt")
