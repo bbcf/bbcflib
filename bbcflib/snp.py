@@ -9,6 +9,7 @@ with respect to a set of coding genes on the same genome.
 # Built-in modules #
 import sys, tarfile
 from itertools import product
+import math
 
 # Internal modules #
 from bbcflib.common import unique_filename_in, set_file_descr, sam_faidx, timer, iupac, translate, revcomp, unique, gzipfile
@@ -289,7 +290,7 @@ def create_tracks(ex, outall, sample_names, assembly):
 def heterozygosity(ref, counts):
     ctot = sum(counts)
     if ctot == 0 or ref == 4: return "0"
-    i = 0.5*(2*ctot+sum(c*log(c, 2) for c in counts if c > 0)-ctot*log(ctot,2))*(ctot-counts[ref])/(ctot*ctot)
+    i = 0.5*(2*ctot+sum(c*math.log(c, 2) for c in counts if c > 0)-ctot*math.log(ctot,2))*(ctot-counts[ref])/(ctot*ctot)
     return "%.3f" %i
 
 @timer
