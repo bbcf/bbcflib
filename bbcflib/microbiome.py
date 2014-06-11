@@ -118,7 +118,7 @@ def combine_counts( counts, idsColsKey, idsColsCounts, output="combined_counts.t
                 if i == 0: #1st file: initialization of counts and infos
                     all_counts[curKey] = ['']*len(counts)
                     curInfo = [ss for n,ss in enumerate(s) if n not in idsColsKey+idsColsCounts]
-                    if (len(curInfo) < leninfos: curInfo.extend(['']*(leninfos-len(curInfo)))
+                    if len(curInfo) < leninfos: curInfo.extend(['']*(leninfos-len(curInfo)))
                     infos[curKey] = '\t'.join(curInfo)
                 all_counts[curKey][i] = '\t'.join([s[n] for n in idsColsCounts])
 
@@ -177,12 +177,12 @@ def microbiome_workflow( ex, job, assembly, logfile=sys.stdout, via='lsf' ):
 
     # 2.a combine counts for all groups (=> 1 combined file)
     files = processed['cnts'].values()
-    combined_out = [run_microbiome.nonblocking(ex, ["combine_counts", files, 0, [1,2], None], via=via)]
+    combined_out = [run_microbiome.nonblocking(ex, ["combine_counts", files, 0, [1,2]], via=via)]
 
     # 2.b combine counts per level for all groups (=> 1 combined file per Level)
     for n,level in enumerate(levels):
         files = dict([(gid,f[n].wait()) for gid,f in processed['cnts_level'].iteritems()])
-        combined_out.append(run_microbiome.nonblocking(ex, ["combine_counts", files.values()]+infosCols.get(level,[0,[1,2]])+[None],
+        combined_out.append(run_microbiome.nonblocking(ex, ["combine_counts", files.values()]+infosCols.get(level,[0,[1,2]]),
                                                        via=via))
         for gid,f in files.iteritems():
             fname = job.groups[gid]['name']+"_counts_annot_"+level+".txt"
