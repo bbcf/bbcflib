@@ -289,9 +289,9 @@ def create_tracks(ex, outall, sample_names, assembly):
 
 def heterozygosity(ref, counts):
     ctot = sum(counts)
-    if ctot == 0 or ref == 4: return "0"
+    if ctot == 0 or ref == 4: return 0
     i = 0.5*(2*ctot+sum(c*math.log(c, 2) for c in counts if c > 0)-ctot*math.log(ctot,2))*(ctot-counts[ref])/(ctot*ctot)
-    return "%.3f" %i
+    return round(i,3) #"%.3f" %i
 
 @timer
 def snp_workflow(ex, job, assembly, minsnp=40., mincov=5, path_to_ref=None, via='local',
@@ -377,12 +377,15 @@ def snp_workflow(ex, job, assembly, minsnp=40., mincov=5, path_to_ref=None, via=
     # Create quantitative tracks
     logfile.write("\n* Create heteroz. and quality tracks\n"); logfile.flush()
 
-    def _process_pileup(pileups, fastafile, chrom):
+    def _process_pileup(pileups, seq, startpos, endpos):
         atoi = {'A': 0, 'C': 1, 'G': 2, 'T': 3}
+        vectors = ([],[],[])
         for pileupcolumn in pileups:
             position = pileupcolumn.pos
+            if position < startpos: continue
+            if position >= endpos: break
             coverage = pileupcolumn.n
-            ref_symbol = fastafile.fetch(chrom, position, position+1)
+            ref_symbol = seq[position-startpos]
             ref = atoi.get(ref_symbol, 4)
             symbols = [0,0,0,0,0]
             quality = 0
@@ -391,21 +394,38 @@ def snp_workflow(ex, job, assembly, minsnp=40., mincov=5, path_to_ref=None, via=
                 quality += ord(pileupread.alignment.qual[pileupread.qpos])-33
             quality = float(quality)/coverage
             info = heterozygosity(ref, symbols[0:4])
-            yield (position, position+1, coverage, info, quality)
+            if coverage > 0: vectors[0].append((position, position+1, coverage))
+            if info > 0: vectors[1].append((position, position+1, info))
+            if quality > 0: vectors[2].append((position, position+1, quality))
+#            yield (position, position+1, coverage, info, quality)
+        return vectors
 
     for gid,bamfile in bams.iteritems():
         bamtr = track(bamfile,format="bam")
-        outname = unique_filename_in()+".txt"
-        out = track(outname,fields=["chr","start","end","coverage","heterozygosity","quality"])
-        out.make_header("\t".join(out.fields),mode="write")
+        covname = unique_filename_in()+".bw"
+        out_cov = track(covname, chrmeta=assembly.chrmeta)
+        hetname = unique_filename_in()+".bw"
+        out_het = track(hetname, chrmeta=assembly.chrmeta)
+        qualname = unique_filename_in()+".bw"
+        out_qual = track(qualname, chrmeta=assembly.chrmeta)
         for chrom, cinfo in assembly.chrmeta.iteritems():
-            stream = FeatureStream(_process_pileup(bamtr.pileup(chrom, 0, cinfo["length"]), 
-                                                   Fastafile(ref_genome[chrom]), cinfo['ac']), 
-                                   fields=out.fields[1:])
-            out.write(stream, chrom=chrom, mode="append")
-        gzipfile(ex,outname)
-        description = set_file_descr(job.groups[gid]['name']+"_infos.txt.gz",groupId=gid,step="tracks",type="txt")
-        ex.add(outname+".gz",description=description)
+            #process fasta and bam by 10Mb chunks
+            fasta = Fastafile(ref_genome[chrom])
+            for chunk in range(0,cinfo["length"],10**7):
+                fastaseq = fasta.fetch(cinfo['ac'], chunk, chunk+10**7)
+                vecs = _process_pileup(bamtr.pileup(chrom, chunk, chunk+10**7), fastaseq, chunk, chunk+10**7)
+                out_cov.write(vecs[0], fields=['start','end','score'], chrom=chrom)
+                out_het.write(vecs[1], fields=['start','end','score'], chrom=chrom)
+                out_qual.write(vecs[2], fields=['start','end','score'], chrom=chrom)
+        out_cov.close()
+        out_het.close()
+        out_qual.close()
+        description = set_file_descr(job.groups[gid]['name']+"_coverage.bw",groupId=gid,step="tracks",type="bigWig")
+        ex.add(covname,description=description)
+        description = set_file_descr(job.groups[gid]['name']+"_heterozygosity.bw",groupId=gid,step="tracks",type="bigWig")
+        ex.add(hetname,description=description)
+        description = set_file_descr(job.groups[gid]['name']+"_quality.bw",groupId=gid,step="tracks",type="bigWig")
+        ex.add(qualname,description=description)
     return 0
 
 
