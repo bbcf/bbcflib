@@ -70,7 +70,7 @@ class Frontend(object):
             a['lane'] = a.pop('lane_nber')
             a['run'] = a.pop('run_nber')
             a['facility'] = a.pop('facility_name')
-            a['machine']=a.pop('machine_name')
+            a['machine'] = a.pop('machine_name')
             return self._fix_dict(a)
         return [_f(r['run']) for r in json.load(urllib2.urlopen(self.query_url('runs', key)))]
 
@@ -97,6 +97,24 @@ class Frontend(object):
         return j
 
 ################################################################################
+class Group(object):
+    def __init__(self, id, name='', description=''):
+        self.id = id
+        self.name = name
+        self.description = description
+        self.runs = {}
+        self.library_file_type_id = ''
+        self.library_file_url = ''
+        self.library_id = ''
+        self.library_param_file = ''
+
+class Run(object):
+    def __init__(self, id, group_id, description='', files={}):
+        self.id = id
+        self.group_id = group_id
+        self.files = {}
+        self.description = description
+
 class Job(object):
     """An object specifying a workflow job.
 
@@ -151,7 +169,7 @@ class Job(object):
                 raise ValueError("Group "+str(group)+" already has a run with ID "+str(id))
             else:
                 runs[id] = kwargs
-        except KeyError, k:
+        except KeyError:
             raise KeyError("No such group with ID "+str(group))
 
 
