@@ -11,6 +11,7 @@ on the exons, and uses least-squares to infer counts on genes and transcripts.
 
 # Built-in modules #
 import os, sys, math, itertools, shutil
+import json, urllib2
 
 # Internal modules #
 from bbcflib.common import set_file_descr, unique_filename_in, cat, timer, program_exists
@@ -121,7 +122,6 @@ def rnaseq2_workflow(ex, job, assembly=None, pileup_level=["genes","transcripts"
     gtf = job.files.itervalues().next().itervalues().next().get('gtf')
     if gtf is None:
         genrep_root = assembly.genrep.root
-        # inspired by bbcflib.genrep.gtf_to_sql
         gtf = os.path.join(genrep_root,"nr_assemblies/gtf/%s_%i.gtf.gz"%(assembly.md5,0))
         for n in range(1,100):
             gtf_n = os.path.join(genrep_root,"nr_assemblies/gtf/%s_%i.gtf.gz"%(assembly.md5,n))
@@ -130,19 +130,25 @@ def rnaseq2_workflow(ex, job, assembly=None, pileup_level=["genes","transcripts"
         shutil.copy(gtf,ex.working_directory)
         gtf = os.path.join(ex.working_directory, os.path.basename(gtf))
         gtf = gunzipfile(ex, gtf)[0]
+
+        # Resolve chromosome names between assembly (BAM) and GTF
+        chromosomes = ','.join(assembly.chrmeta.keys())
+        url = os.path.join(assembly.genrep.url,
+                  "chromosomes/get_mapping.json?identifier=%s" % chromosomes \
+                + "&assembly_name=%s&source_name=Ensembl" % assembly.name)
+        request = urllib2.Request(url)
+        chrom_json = json.load(urllib2.urlopen(request))
+        chrom_mapping = dict((v['chr_name'][0],k) for k,v in chrom_json.iteritems())
+        gtf_renamed = os.path.splitext(gtf)[0]+'_renamed.gtf'
+        with open(gtf) as f:
+            with open(gtf_renamed,"wb") as g:
+                for line in f:
+                    L = line.split('\t')
+                    chrom = chrom_mapping.get(L[0])
+                    if chrom is None: continue  # chrom name not found in GenRep
+                    g.write('\t'.join([chrom]+L[1:])+'\n')
+        gtf = gtf_renamed
     assert os.path.exists(gtf), "GTF not found: %s" %gtf
-
-
-    ### Resolve chromosome names between assembly (BAM) and GTF
-    #import json, urllib2
-    #chr_translate = {}
-    #for chrom in assembly.chrmeta:
-    #    url = "bbcftools.epfl.ch/genrep/chromosomes.json?identifier=%s&nr_assembly_id=%d" % (chrom,assembly.id)
-    #    print url
-    #    request = urllib2.Request(url)
-    #    for g in json.load(urllib2.urlopen(request)):
-    #        pass
-
 
     # Build controllers
     rnaseq_args = (ex,via,job,assembly,conditions,debugfile,logfile,
@@ -187,13 +193,11 @@ def rnaseq2_workflow(ex, job, assembly=None, pileup_level=["genes","transcripts"
 
 
 @program
-def rnacounter(bam,gtf, options={}):
+def rnacounter(bam,gtf, options=[]):
     """Counts reads from *bam* in every feature of *gtf* and infers
     genes and transcripts expression."""
-    opts = []
-    for k,v in options.iteritems():
-        opts += [str(k), str(v)]
-    args = ["rnacounter"]+opts+[os.path.abspath(bam), os.path.abspath(gtf)]
+    opts = [] + options
+    args = ["rnacounter"] + opts + [os.path.abspath(bam), os.path.abspath(gtf)]
     return {"arguments": args, "return_value": None}
 
 
@@ -209,10 +213,12 @@ class Counter(RNAseq):
         ncond = len(self.conditions)
         tablenames = [None]*ncond
         futures = [None]*ncond
+        counter_options = ["-t","genes,transcripts", "--method","raw", "--multiple"]
+        if self.stranded: counter_options += ["--stranded"]
         for i,c in enumerate(self.conditions):
             tablenames[i] = unique_filename_in()
             futures[i] = rnacounter.nonblocking(self.ex, bamfiles[i], gtf, stdout=tablenames[i], via=self.via,
-                               options={"-t":"genes,transcripts",})
+                               options=counter_options)
 
         # Construct file headers
         if self.stranded:
@@ -267,27 +273,26 @@ class DE_Analysis(RNAseq):
         filename_clean = unique_filename_in()
         ncond = len(self.conditions)
         if ncond >1:
-            f = open(filename)
-            header = f.readline().split('\t')
-            data = [x.strip().split('\t') for x in f]
-            rownames = asarray(['%s|%s|%s' % (x[0],x[-1],x[-2]) for x in data])  # id,gene_name,strand
-            M = asarray([x[1:1+ncond] for x in data], dtype=numpy.float_)
-            colnames = header[0:1]+header[1:1+ncond] # 'counts' column names, always
-            # Remove 40% lowest counts
-            sums = numpy.sum(M,1)
-            filter = asarray([x[1] for x in sorted(zip(sums,range(len(sums))))])
-            filter = filter[:len(filter)/keep]
-            M = M[filter]
-            rownames = rownames[filter]
-            # Create the input tab file
-            with open(filename_clean,"wb") as g:
-                header = '\t'.join(colnames)+'\n'
-                g.write(header)
-                for i,scores in enumerate(M):
-                    if any(scores):
-                        line = rownames[i] + '\t' + '\t'.join([str(x) for x in scores]) + '\n'
-                        g.write(line)
-            f.close()
+            with open(filename) as f:
+                header = f.readline().split('\t')
+                data = [x.strip().split('\t') for x in f]
+                rownames = asarray(['%s|%s|%s' % (x[0],x[-1],x[-2]) for x in data])  # id,gene_name,strand
+                M = asarray([x[1:1+ncond] for x in data], dtype=numpy.float_)
+                colnames = header[0:1]+header[1:1+ncond] # 'counts' column names, always
+                # Remove 40% lowest counts
+                sums = numpy.sum(M,1)
+                filter = asarray([x[1] for x in sorted(zip(sums,range(len(sums))))])
+                filter = filter[:len(filter)/keep]
+                M = M[filter]
+                rownames = rownames[filter]
+                # Create the input tab file
+                with open(filename_clean,"wb") as g:
+                    header = '\t'.join(colnames)+'\n'
+                    g.write(header)
+                    for i,scores in enumerate(M):
+                        if any(scores):
+                            line = rownames[i] + '\t' + '\t'.join([str(x) for x in scores]) + '\n'
+                            g.write(line)
         return filename_clean, ncond
 
     def clean_deseq_output(self, filename):
