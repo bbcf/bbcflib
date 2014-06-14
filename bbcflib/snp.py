@@ -420,12 +420,13 @@ def snp_workflow(ex, job, assembly, minsnp=40., mincov=5, path_to_ref=None, via=
         out_cov.close()
         out_het.close()
         out_qual.close()
-        description = set_file_descr(job.groups[gid]['name']+"_coverage.bw",groupId=gid,step="tracks",type="bigWig")
+        description = set_file_descr(job.groups[gid]['name']+"_coverage.bw",groupId=gid,step="tracks",type="bigWig",ucsc='1')
         ex.add(covname,description=description)
-        description = set_file_descr(job.groups[gid]['name']+"_heterozygosity.bw",groupId=gid,step="tracks",type="bigWig")
+        description = set_file_descr(job.groups[gid]['name']+"_heterozygosity.bw",groupId=gid,step="tracks",type="bigWig",ucsc='1')
         ex.add(hetname,description=description)
-        description = set_file_descr(job.groups[gid]['name']+"_quality.bw",groupId=gid,step="tracks",type="bigWig")
+        description = set_file_descr(job.groups[gid]['name']+"_quality.bw",groupId=gid,step="tracks",type="bigWig",ucsc='1')
         ex.add(qualname,description=description)
+
     return 0
 
 
