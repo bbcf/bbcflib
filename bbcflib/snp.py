@@ -352,7 +352,7 @@ def snp_workflow(ex, job, assembly, minsnp=40., mincov=5, path_to_ref=None, via=
     with open(outexons,"w") as fout:
         fout.write('#'+'\t'.join(['chromosome','position','reference']+sample_names+['exon','strand','ref_aa'] \
                                   + ['new_aa_'+s for s in sample_names])+'\n')
-    msa_table = dict((s,'') for s in sample_names)
+    msa_table = dict((s,'') for s in [assembly.name]+sample_names)
     for chrom,v in vcfs.iteritems():
         logfile.write("  > Chromosome '%s'\n" % chrom); logfile.flush()
     # Put together info from all vcf files
