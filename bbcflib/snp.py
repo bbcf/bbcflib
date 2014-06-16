@@ -373,7 +373,7 @@ def snp_workflow(ex, job, assembly, minsnp=40., mincov=5, path_to_ref=None, via=
     with open(msafile,"w") as msa:
         msa.write(" %i %i\n"%(len(msa_table),len(msa_table.values()[0])))
         for name,seq in msa_table.iteritems():
-            msa.write("%s\t%s\n" %(k,v))
+            msa.write("%s\t%s\n" %(name,seq))
     msa_table = {}
     description = set_file_descr("SNPalignment.txt",step="SNPs",type="txt")
     ex.add(msafile,description=description)
