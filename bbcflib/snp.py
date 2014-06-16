@@ -144,7 +144,7 @@ def all_snps(ex, chrom, vcfs, bams, outall, assembly, sample_names, mincov, mins
         for snp in annotated_stream:
             # snp: ('chrV',154529, 154530,'T','A (50% of 10)','A (80% of 10)',
             #       'YER002W|NOP16_YER001W|MNN1','Upstream_Included','2271_1011')
-            fout.write('\t'.join(str(x) for x in (snp[0],)+snp[2:])+'\n')  # just remove end coord
+            fout.write('\t'.join(str(x) for x in (snp[0],)+snp[2:])+'\n')  # remove start coord (0-based)
     return allsnps
 
 
@@ -298,18 +298,13 @@ def snp_workflow(ex, job, assembly, minsnp=40., mincov=5, path_to_ref=None, via=
                  logfile=sys.stdout, debugfile=sys.stderr):
     """Main function of the workflow"""
     ref_genome = assembly.fasta_by_chrom
-
-    sample_names = []
-    for gid in sorted(job.files.keys()):
-        sample_name = job.groups[gid]['name']
-        sample_names.append(sample_name)
+    sample_names = [job.groups[gid]['name'] for gid in sorted(job.files.keys())]
 
     logfile.write("\n* Generate vcfs for each chrom/group\n"); logfile.flush()
     vcfs = dict((chrom,{}) for chrom in ref_genome.keys()) # {chr: {}}
     bams = {}
     # Launch the jobs
     for gid in sorted(job.files.keys()):
-        sample_name = job.groups[gid]['name']
         # Merge all bams belonging to the same group
         runs = [r['bam'] for r in job.files[gid].itervalues()]
         bam = Samfile(runs[0])
@@ -332,14 +327,13 @@ def snp_workflow(ex, job, assembly, minsnp=40., mincov=5, path_to_ref=None, via=
             vcfs[chrom][gid] = (vcf,
                                 pileup.nonblocking(ex, bams[gid], ref, header=headerfile,
                                                    via=via, stdout=vcf))
-        logfile.write("  ...Group %s running.\n" % sample_name); logfile.flush()
+        logfile.write("  ...Group %s running.\n" %job.groups[gid]['name']); logfile.flush()
     # Wait for vcfs to finish and store them in *vcfs[chrom][gid]*
     for gid in sorted(job.files.keys()):
-        sample_name = job.groups[gid]['name']
         for chrom,ref in ref_genome.iteritems():
             vcfs[chrom][gid][1].wait()
             vcfs[chrom][gid] = vcfs[chrom][gid][0]
-        logfile.write("  ...Group %s done.\n" % sample_name); logfile.flush()
+        logfile.write("  ...Group %s done.\n" %job.groups[gid]['name']); logfile.flush()
     # Targz the pileup files (vcf)
     tarname = unique_filename_in()
     tarfh = tarfile.open(tarname, "w:gz")
@@ -358,6 +352,7 @@ def snp_workflow(ex, job, assembly, minsnp=40., mincov=5, path_to_ref=None, via=
     with open(outexons,"w") as fout:
         fout.write('#'+'\t'.join(['chromosome','position','reference']+sample_names+['exon','strand','ref_aa'] \
                                   + ['new_aa_'+s for s in sample_names])+'\n')
+    msa_table = dict((s,'') for s in sample_names)
     for chrom,v in vcfs.iteritems():
         logfile.write("  > Chromosome '%s'\n" % chrom); logfile.flush()
     # Put together info from all vcf files
@@ -367,10 +362,20 @@ def snp_workflow(ex, job, assembly, minsnp=40., mincov=5, path_to_ref=None, via=
     # Annotate SNPs and check synonymy
         logfile.write("  - Exonic SNPs\n"); logfile.flush()
         exon_snps(chrom,outexons,allsnps,assembly,sample_names,ref_genome,logfile,debugfile)
+        for n,k in enumerate([assembly.name]+sample_names):
+            msa_table[k] += allsnps[3+n]
     description = set_file_descr("allSNP.txt",step="SNPs",type="txt")
     ex.add(outall,description=description)
     description = set_file_descr("exonsSNP.txt",step="SNPs",type="txt")
     ex.add(outexons,description=description)
+    msafile = unique_filename_in()
+    with open(msafile,"w") as msa:
+        msa.write(" %i %i\n"%(len(msa_table),len(msa_table.values()[0])))
+        for name,seq in msa_table.iteritems():
+            msa.write("%s\t%s\n" %(k,v))
+    msa_table = {}
+    description = set_file_descr("SNPalignment.txt",step="SNPs",type="txt")
+    ex.add(msafile,description=description)
     # Create UCSC bed tracks
     logfile.write("\n* Create tracks\n"); logfile.flush()
     create_tracks(ex,outall,sample_names,assembly)
@@ -400,32 +405,35 @@ def snp_workflow(ex, job, assembly, minsnp=40., mincov=5, path_to_ref=None, via=
 #            yield (position, position+1, coverage, info, quality)
         return vectors
 
-    for gid,bamfile in bams.iteritems():
-        bamtr = track(bamfile,format="bam")
-        covname = unique_filename_in()+".bw"
-        out_cov = track(covname, chrmeta=assembly.chrmeta)
-        hetname = unique_filename_in()+".bw"
-        out_het = track(hetname, chrmeta=assembly.chrmeta)
-        qualname = unique_filename_in()+".bw"
-        out_qual = track(qualname, chrmeta=assembly.chrmeta)
-        for chrom, cinfo in assembly.chrmeta.iteritems():
-            #process fasta and bam by 10Mb chunks
-            fasta = Fastafile(ref_genome[chrom])
-            for chunk in range(0,cinfo["length"],10**7):
-                fastaseq = fasta.fetch(cinfo['ac'], chunk, chunk+10**7)
-                vecs = _process_pileup(bamtr.pileup(chrom, chunk, chunk+10**7), fastaseq, chunk, chunk+10**7)
-                out_cov.write(vecs[0], fields=['start','end','score'], chrom=chrom)
-                out_het.write(vecs[1], fields=['start','end','score'], chrom=chrom)
-                out_qual.write(vecs[2], fields=['start','end','score'], chrom=chrom)
-        out_cov.close()
-        out_het.close()
-        out_qual.close()
-        description = set_file_descr(job.groups[gid]['name']+"_coverage.bw",groupId=gid,step="tracks",type="bigWig",ucsc='1')
-        ex.add(covname,description=description)
-        description = set_file_descr(job.groups[gid]['name']+"_heterozygosity.bw",groupId=gid,step="tracks",type="bigWig",ucsc='1')
-        ex.add(hetname,description=description)
-        description = set_file_descr(job.groups[gid]['name']+"_quality.bw",groupId=gid,step="tracks",type="bigWig",ucsc='1')
-        ex.add(qualname,description=description)
+    if job.options.get('make_bigwigs',False):
+        _descr = {'groupId':0,'step':"tracks",'type':"bigWig",'ucsc':'1'}
+        for gid,bamfile in bams.iteritems():
+            _descr['groupId'] = gid
+            bamtr = track(bamfile,format="bam")
+            covname = unique_filename_in()+".bw"
+            out_cov = track(covname, chrmeta=assembly.chrmeta)
+            hetname = unique_filename_in()+".bw"
+            out_het = track(hetname, chrmeta=assembly.chrmeta)
+            qualname = unique_filename_in()+".bw"
+            out_qual = track(qualname, chrmeta=assembly.chrmeta)
+            for chrom, cinfo in assembly.chrmeta.iteritems():
+                fasta = Fastafile(ref_genome[chrom])
+                #process fasta and bam by 10Mb chunks
+                for chunk in range(0,cinfo["length"],10**7):
+                    fastaseq = fasta.fetch(cinfo['ac'], chunk, chunk+10**7)
+                    vecs = _process_pileup(bamtr.pileup(chrom, chunk, chunk+10**7), fastaseq, chunk, chunk+10**7)
+                    out_cov.write(vecs[0], fields=['start','end','score'], chrom=chrom)
+                    out_het.write(vecs[1], fields=['start','end','score'], chrom=chrom)
+                    out_qual.write(vecs[2], fields=['start','end','score'], chrom=chrom)
+            out_cov.close()
+            out_het.close()
+            out_qual.close()
+            description = set_file_descr(job.groups[gid]['name']+"_coverage.bw",**_descr)
+            ex.add(covname,description=description)
+            description = set_file_descr(job.groups[gid]['name']+"_heterozygosity.bw",**_descr)
+            ex.add(hetname,description=description)
+            description = set_file_descr(job.groups[gid]['name']+"_quality.bw",**_descr)
+            ex.add(qualname,description=description)
 
     return 0
 
