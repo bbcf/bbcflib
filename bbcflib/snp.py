@@ -364,7 +364,7 @@ def snp_workflow(ex, job, assembly, minsnp=40., mincov=5, path_to_ref=None, via=
         exon_snps(chrom,outexons,allsnps,assembly,sample_names,ref_genome,logfile,debugfile)
         for snprow in allsnps:
             for n,k in enumerate([assembly.name]+sample_names):
-                msa_table[k] += snprow[3+n]
+                msa_table[k] += snprow[3+n][0]
     description = set_file_descr("allSNP.txt",step="SNPs",type="txt")
     ex.add(outall,description=description)
     description = set_file_descr("exonsSNP.txt",step="SNPs",type="txt")
