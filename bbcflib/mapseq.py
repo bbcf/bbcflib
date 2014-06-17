@@ -804,7 +804,7 @@ def add_pdf_stats( ex, processed, group_names, script_path,
                 all_stats[name] = mapped['stats']
             _pdf = unique_filename_in()
             bam = mapped['bam']
-            futures[(k,name)] = plot_coverage.nonblocking(ex,bam,_pdf,name,via=via)
+            futures[(gid,name)] = plot_coverage.nonblocking(ex,bam,_pdf,name,via=via)
     pdf = plot_stats(ex, all_stats, script_path=script_path)
     ex.add(pdf,description)
     for grid,fut in futures.iteritems():
