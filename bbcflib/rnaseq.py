@@ -5,27 +5,26 @@ Module: bbcflib.rnaseq
 
 Methods of the bbcflib's RNA-seq worflow. The main function is ``rnaseq_workflow()``.
 
-From a BAM file produced by an alignement on the genome or the exonome, gets counts of reads
-on the exons, add them to get counts on genes, and uses least-squares to infer
-counts on transcripts, avoiding to map on the transcriptome.
-Note that the resulting counts on transcripts are approximate.
+From a BAM file produced by an alignement on the genome, gets counts of reads
+on the exons, and uses least-squares to infer counts on genes and transcripts.
 """
 
 # Built-in modules #
-import os, sys, pysam, math, itertools
-from operator import itemgetter
+import os, sys, math, itertools, shutil
+import json, urllib2
 
 # Internal modules #
 from bbcflib.common import set_file_descr, unique_filename_in, cat, timer, program_exists
-from bbcflib.genrep import Assembly, Transcript
+from bbcflib.common import gunzipfile
+from bbcflib.genrep import Assembly
 from bbcflib.mapseq import add_and_index_bam, sam_to_bam
-from bbcflib.gfminer.common import cobble, sorted_stream, map_chromosomes, duplicate, apply
-from bbcflib.track import track, FeatureStream, convert
+from bbcflib.gfminer.common import map_chromosomes, duplicate, apply
+from bbcflib.track import track
 from bein import program
 
 # Other modules #
 import numpy
-from numpy import zeros, asarray, nonzero
+from numpy import asarray
 
 numpy.set_printoptions(precision=3,suppress=True)
 numpy.seterr(invalid='print')
@@ -34,107 +33,13 @@ numpy.seterr(divide='ignore')
 test = False
 
 
-#--------------------------------- MATHS ---------------------------------#
-
-
-def positive(x):
-    """Set to zero all negative components of an array."""
-    for i in range(len(x)):
-        if x[i] < 0 : x[i] = 0
-    return x
-
-def lsqnonneg(C, d, x0=None, tol=None, itmax_factor=3):
-    """Linear least squares with nonnegativity constraints (NNLS), based on MATLAB's lsqnonneg function.
-
-    ``(x,resnorm,res) = lsqnonneg(C,d)`` returns
-
-    * the vector *x* that minimizes norm(d-Cx) subject to x >= 0
-    * the norm of residuals *resnorm* = norm(d-Cx)^2
-    * the residuals *res* = d-Cx
-
-    :param x0: Initial point for x.
-    :param tol: Tolerance to determine what is considered as close enough to zero.
-    :param itmax_factor: Maximum number of iterations.
-
-    :type C: nxm numpy array
-    :type d: nx1 numpy array
-    :type x0: mx1 numpy array
-    :type tol: float
-    :type itmax_factor: int
-    :rtype: *x*: numpy array, *resnorm*: float, *res*: numpy array
-
-    Reference: C.L. Lawson and R.J. Hanson, Solving Least-Squares Problems, Prentice-Hall, Chapter 23, p. 161, 1974.
-    `<http://diffusion-mri.googlecode.com/svn/trunk/Python/lsqnonneg.py>`_
-    """
-    def norm1(x):
-        return abs(x).sum().max()
-
-    def msize(x, dim):
-        s = x.shape
-        if dim >= len(s): return 1
-        else: return s[dim]
-
-    eps = sys.float_info.epsilon
-    if tol is None: tol = 10*eps*norm1(C)*(max(C.shape)+1)
-    C = asarray(C)
-    (m,n) = C.shape
-    P = numpy.zeros(n)                       # set P of indices where ultimately x_j > 0 & w_j = 0
-    Z = ZZ = numpy.arange(1, n+1)            # set Z of indices where ultimately x_j = 0 & w_j <= 0
-    if x0 is None or any(x0 < 0): x = P
-    else: x = x0
-    resid = d - numpy.dot(C, x)
-    w = numpy.dot(C.T, resid)                # n-vector C'(d-Cx), "dual" of x, gradient of (1/2)*||d-Cx||^2
-    outeriter = it = 0
-    itmax = itmax_factor*n
-    # Outer loop "A" to hold positive coefficients
-    while numpy.any(Z) and numpy.any(w[ZZ-1] > tol): # if Z is empty or w_j<0 for all j, terminate.
-        outeriter += 1
-        t = w[ZZ-1].argmax()                 # find index t s.t. w_t = max(w), w_t in Z. So w_t > 0.
-        t = ZZ[t]
-        P[t-1]=t                             # move the index t from set Z to set P
-        Z[t-1]=0                             # Z becomes [0] if n=1
-        PP = numpy.where(P != 0)[0]+1        # non-zero elements of P for indexing, +1 (-1 later)
-        ZZ = numpy.where(Z != 0)[0]+1        # non-zero elements of Z for indexing, +1 (-1 later)
-        CP = numpy.zeros(C.shape)
-        CP[:, PP-1] = C[:, PP-1]             # CP[:,j] is C[:,j] if j in P, or 0 if j in Z
-        CP[:, ZZ-1] = numpy.zeros((m, msize(ZZ, 1)))
-        z=numpy.dot(numpy.linalg.pinv(CP), d)                 # n-vector solution of least-squares min||d-CPx||
-        if isinstance(ZZ,numpy.ndarray) and len(ZZ) == 0:     # if Z = [0], ZZ = [] and makes it fail
-            return (positive(z), sum(resid*resid), resid)
-        else:
-            z[ZZ-1] = numpy.zeros((msize(ZZ,1), msize(ZZ,0))) # define z_j := 0 for j in Z
-        # Inner loop "B" to remove negative elements from z if necessary
-        while numpy.any(z[PP-1] <= tol): # if z_j>0 for all j, set x=z and return to outer loop
-            it += 1
-            if it > itmax:
-                max_error = z[PP-1].max()
-                raise Exception('Exiting: Iteration count (=%d) exceeded\n \
-                      Try raising the tolerance tol. (max_error=%d)' % (it, max_error))
-            QQ = numpy.where((z <= tol) & (P != 0))[0]        # indices j in P s.t. z_j < 0
-            alpha = min(x[QQ]/(x[QQ] - z[QQ]))                # step chosen as large as possible s.t. x remains >= 0
-            x = x + alpha*(z-x)                               # move x by this step
-            ij = numpy.where((abs(x) < tol) & (P <> 0))[0]+1  # indices j in P for which x_j = 0
-            Z[ij-1] = ij                                      # Add to Z, remove from P
-            P[ij-1] = numpy.zeros(max(ij.shape))
-            PP = numpy.where(P != 0)[0]+1
-            ZZ = numpy.where(Z != 0)[0]+1
-            CP[:, PP-1] = C[:, PP-1]
-            CP[:, ZZ-1] = numpy.zeros((m, msize(ZZ, 1)))
-            z=numpy.dot(numpy.linalg.pinv(CP), d)
-            z[ZZ-1] = numpy.zeros((msize(ZZ,1), msize(ZZ,0)))
-        x = z
-        resid = d - numpy.dot(C, x)
-        w = numpy.dot(C.T, resid)
-    return (x, sum(resid*resid), resid)
-
-
 #----------------------------- GLOBAL CLASSES -----------------------------#
 
 
 class RNAseq(object):
     """Abstract, inherited by different parts of the workflow."""
     def __init__(self,ex,via,job,assembly,conditions,debugfile,logfile,
-                 pileup_level,rpath,juliapath,junctions,mappings,stranded):
+                 pileup_level,rpath,juliapath,junctions,stranded):
         self.ex = ex                     # bein.Execution object
         self.job = job                   # frontend.Job object
         self.assembly = assembly         # genrep.Assembly object
@@ -146,7 +51,6 @@ class RNAseq(object):
         self.junctions = junctions       # True/False, want to find or not
         self.debugfile = debugfile       # debug file name
         self.logfile = logfile           # log file name
-        self.M = mappings                # Mappings object
         self.stranded = stranded         # True/False, strand-specific or not
         self.ncond = 2*len(self.conditions) if self.stranded else len(self.conditions)
             # number of columns in the output, = number of runs if not stranded, twice otherwise
@@ -158,60 +62,11 @@ class RNAseq(object):
         self.debugfile.write(s+'\n'); self.debugfile.flush()
 
 
-class Mappings():
-    def __init__(self, assembly):
-        self.assembly = assembly
-
-    @timer
-    def fetch_mappings(self):
-        """
-        * gene_mapping is a dict ``{gene_id: genrep.Gene}``
-        * transcript_mapping is a dictionary ``{transcript_id: genrep.Transcript}``
-        * exon_mapping is a dictionary ``{exon_id: genrep.Exon}``
-        """
-        map_path = '/archive/epfl/bbcf/jdelafon/mappings/test_%s/' % self.assembly.name
-        if test and os.path.exists(map_path):
-            import pickle
-            self.gene_mapping = pickle.load(open(os.path.join(map_path,'gene_mapping.pickle')))
-            self.exon_mapping = pickle.load(open(os.path.join(map_path,'exon_mapping.pickle')))
-            self.transcript_mapping = pickle.load(open(os.path.join(map_path,'transcript_mapping.pickle')))
-        else:
-            self.gene_mapping = self.assembly.get_gene_mapping()
-            self.transcript_mapping = self.assembly.get_transcript_mapping()
-            self.exon_mapping = self.assembly.get_exon_mapping()
-
-
-class Counter(object):
-    def __init__(self, stranded=False):
-        self.n = 0 # read count
-        self.n_ws = 0 # read count, wrong strand
-        self.strand = 0 # exon strand
-        if stranded:
-            self.count_fct = self.count_stranded
-        else:
-            self.count_fct = self.count
-
-    def __call__(self, alignment):
-        self.count_fct(alignment)
-
-    def count(self, alignment):
-        NH = [1.0/t[1] for t in alignment.tags if t[0]=='NH']+[1]
-        self.n += NH[0]
-
-    def count_stranded(self, alignment):
-        NH = [1.0/t[1] for t in alignment.tags if t[0]=='NH']+[1]
-        if self.strand == 1 and alignment.is_reverse == False \
-        or self.strand == -1 and alignment.is_reverse == True:
-            self.n += NH[0]
-        else:
-            self.n_ws += NH[0]
-
-
 #----------------------------- MAIN CALL -----------------------------#
 
 
 @timer
-def rnaseq_workflow(ex, job, assembly=None, pileup_level=["exons","genes","transcripts"], via="lsf",
+def rnaseq2_workflow(ex, job, assembly=None, pileup_level=["genes","transcripts"], via="lsf",
                     rpath=None, juliapath=None, junctions=False, stranded=False,
                     logfile=sys.stdout, debugfile=sys.stderr):
     """Main function of the workflow.
@@ -224,6 +79,9 @@ def rnaseq_workflow(ex, job, assembly=None, pileup_level=["exons","genes","trans
     :param junctions: (bool) whether to search for splice junctions using SOAPsplice. [False]
     :param via: (str) send job via 'local' or 'lsf'. ["lsf"]
     """
+
+    print ">> RNASEQ-2 <<"
+
     # While environment not properly set on V_IT
     if juliapath is None:
         juliapath='/home/jdelafon/repos/bbcfutils/Julia/'
@@ -233,142 +91,108 @@ def rnaseq_workflow(ex, job, assembly=None, pileup_level=["exons","genes","trans
         logfile = sys.stdout
         debugfile = sys.stdout
         repo_rpath = '/home/jdelafon/repos/bbcfutils/R/'
-        juliapath='/home/jdelafon/repos/bbcfutils/Julia/'
+        juliapath = '/home/jdelafon/repos/bbcfutils/Julia/'
         if os.path.exists(repo_rpath): rpath = repo_rpath
 
-    group_names={}; group_ids={}; conditions=[]
     if assembly is None:
         assembly = Assembly(assembly=job.assembly_id)
+
+    group_names={}; group_ids={}; conditions=[]
     groups = job.groups
     assert len(groups) > 0, "No groups/runs were given."
     for gid,group in groups.iteritems():
         gname = str(group['name'])
         group_names[gid] = gname
         group_ids[gname] = gid
-    if isinstance(pileup_level,str): pileup_level=[pileup_level]
+    if isinstance(pileup_level,basestring): pileup_level=[pileup_level]
 
-    # Define conditions as 'group_name.run_id' and store bamfiles
-    bamfiles = {}
+    # Define conditions as 'group_name.run_id' and store bamfiles in the same order
+    bamfiles = []
     for gid,files in job.files.iteritems():
         k = 0
         for rid,f in files.iteritems():
             k+=1
             cond = group_names[gid]+'.'+str(k)
             conditions.append(cond)
-            bamfiles[cond] = f['bam']
+            bamfiles.append(f['bam'])
     ncond = len(conditions)
 
-    M = Mappings(assembly)
+    # Get the assembly's GTF
+    # ...from fasta origin
+    logfile.write("* Prepare GTF\n"); logfile.flush()
+    if hasattr(assembly,"fasta_origin"):
+        logfile.write("* ... from fasta origin\n"); logfile.flush()
+        firstbam = bamfiles[0]
+        firstbamtrack = track(firstbam,format='bam')
+        gtf = unique_filename_in()+'.gtf'
+        with open(gtf,"wb") as g:
+            for c,meta in firstbamtrack.chrmeta.iteritems():
+                g.write('\t'.join([c,'','exon','0',str(meta['length']),'.','.','.',
+                        'exon_id %s; transcript_id %s; gene_id %s; gene_name %s' % (c,)*4])+'\n')
+        firstbamtrack.close()
+    # ... or from config file
+    else:
+        gtf = job.files.itervalues().next().itervalues().next().get('gtf')  # from config file
+        if gtf: logfile.write("* ... from config file: %s\n" % gtf); logfile.flush()
+    # ... or from GenRep
+    if gtf is None:
+        genrep_root = assembly.genrep.root
+        gtf = os.path.join(genrep_root,"nr_assemblies/gtf/%s_%i.gtf.gz"%(assembly.md5,0))
+        logfile.write("* ... from GenRep: %s\n" % gtf); logfile.flush()
+        for n in range(1,100):
+            gtf_n = os.path.join(genrep_root,"nr_assemblies/gtf/%s_%i.gtf.gz"%(assembly.md5,n))
+            if not os.path.exists(gtf_n): break
+            gtf = gtf_n
+        shutil.copy(gtf,ex.working_directory)
+        gtf = os.path.join(ex.working_directory, os.path.basename(gtf))
+        gtf = gunzipfile(ex, gtf)[0]
+
+        # Resolve chromosome names between assembly (BAM) and GTF
+        chromosomes = ','.join(assembly.chrmeta.keys())
+        url = os.path.join(assembly.genrep.url,
+                  "chromosomes/get_mapping.json?identifier=%s" % chromosomes \
+                + "&assembly_name=%s&source_name=Ensembl" % assembly.name)
+        request = urllib2.Request(url)
+        chrom_json = json.load(urllib2.urlopen(request))
+        chrom_mapping = dict((v['chr_name'][0],k) for k,v in chrom_json.iteritems())
+        gtf_renamed = os.path.splitext(gtf)[0]+'_renamed.gtf'
+        with open(gtf) as f:
+            with open(gtf_renamed,"wb") as g:
+                for line in f:
+                    L = line.strip().split('\t')
+                    chrom = chrom_mapping.get(L[0])
+                    if chrom is None: continue  # chrom name not found in GenRep
+                    g.write('\t'.join([chrom]+L[1:])+'\n')
+        gtf = gtf_renamed
+    assert os.path.exists(gtf), "GTF not found: %s" %gtf
+
+    # Build controllers
     rnaseq_args = (ex,via,job,assembly,conditions,debugfile,logfile,
-                   pileup_level,rpath,juliapath,junctions,M,stranded)
-    PU = Pileups(*rnaseq_args)
+                   pileup_level,rpath,juliapath,junctions,stranded)
+    CNT = Counter(*rnaseq_args)
     DE = DE_Analysis(*rnaseq_args)
     PCA = Pca(*rnaseq_args)
     JN = Junctions(*rnaseq_args)
 
-    # If the reads were aligned on transcriptome (maybe custom), do that and skip the rest
-    if hasattr(assembly,"fasta_origin") or assembly.intype == 2:
-        tmap = {}
-        if assembly.intype==2: # usual transcriptome
-            try:
-                tmap = assembly.get_transcript_mapping()
-                header = ["Transcript"]
-            except:
-                pass
-        if hasattr(assembly,"fasta_origin"): # build custom transcriptome
-            firstbam = bamfiles.items()[0][1]
-            firstbamtrack = track(firstbam,format='bam')
-            for c,meta in firstbamtrack.chrmeta.iteritems():
-                tmap[c] = Transcript(end=meta['length'], length=meta['length'])
-            header = ["Custom"]
-        logfile.write("* Build pileups\n"); logfile.flush()
-        pileups = {}
-        for cond in conditions:
-            pileup = PU.build_custom_pileup(bamfiles[cond],tmap)
-            pileups[cond] = pileup.values()
-            logfile.write("  ....Pileup %s done\n" % cond); logfile.flush()
-        ids = pileup.keys()
-        counts = asarray([pileups[cond] for cond in conditions], dtype=numpy.float_).T
-        del pileup, pileups
-        tcounts = {}
-        for k,t in enumerate(ids):
-            c = counts[k]
-            if sum(c) != 0 and t in tmap:
-                tcounts[t] = c
-        lengths = asarray([tmap[t].end-tmap[t].start for t in tcounts.iterkeys()])
-        trans_data = PU.norm_and_format(tcounts,lengths,tmap)
-        header += ["counts."+c for c in conditions] + ["norm."+c for c in conditions] + ["rpkm."+c for c in conditions]
-        header += ["Start","End","GeneID","GeneName","Strand","Chromosome"]
-        PU.save_results(trans_data,group_ids,header)
-        DE.differential_analysis(trans_data, header)
-        return 0
+    # Count reads on genes, transcripts with "rnacounter"
+    genes_filename,trans_filename = CNT.count_reads(bamfiles, gtf)
 
-    logfile.write("* Load mappings\n"); logfile.flush()
-    M.fetch_mappings()
-    if len(M.exon_mapping) == 0 or len(M.gene_mapping) == 0:
-        raise ValueError("No genes found for this genome. Abort.")
-
-
-    # Build exon pileups from bam files
-    logfile.write("* Build pileups\n"); logfile.flush()
-    exon_pileups = {}
-    for i,cond in enumerate(conditions):
-        exon_pileup, exon_pileup_rev = PU.build_pileup(bamfiles[cond])
-        if stranded:
-            for e,count in exon_pileup.iteritems():
-                exon_pileups.setdefault(e,zeros(2*ncond))[i] = count
-                exon_pileups[e][ncond+i] = exon_pileup_rev.get(e,0)
-        else:
-            for e,count in exon_pileup.iteritems():
-                exon_pileups.setdefault(e,zeros(ncond))[i] = count
-    del exon_pileup
-
-    if stranded:
-        hconds = ["counts."+c for c in conditions] + ["counts_rev."+c for c in conditions] \
-               + ["norm."+c for c in conditions] + ["norm_rev."+c for c in conditions] \
-               + ["rpkm."+c for c in conditions] + ["rpkm_rev."+c for c in conditions]
-    else:
-        hconds = ["counts."+c for c in conditions] + ["norm."+c for c in conditions] + ["rpkm."+c for c in conditions]
-    hinfo = ["Start","End","GeneID","GeneName","Strand","Chromosome"]
-
-    # Print counts for exons
-    if "exons" in pileup_level:
-        logfile.write("* Get scores of exons\n"); logfile.flush()
-        header = ["ExonID"] + hconds + hinfo
-        lengths = asarray([M.exon_mapping[e].end-M.exon_mapping[e].start for e in exon_pileups])
-        exons_data = PU.norm_and_format(exon_pileups,lengths,M.exon_mapping)
-        PU.save_results(exons_data, group_ids, header)
-        DE.differential_analysis(exons_data, header)
-        del exons_data
-
-    # Get scores of genes from exons
+    # DE and PCA
     if "genes" in pileup_level:
-        logfile.write("* Get scores of genes\n"); logfile.flush()
-        header = ["GeneID"] + hconds + hinfo
-        gcounts = PU.genes_expression(exon_pileups)
-        lengths = asarray([M.gene_mapping[g].length for g in gcounts.iterkeys()])
-        genes_data = PU.norm_and_format(gcounts,lengths,M.gene_mapping)
-        genes_file = PU.save_results(genes_data, group_ids, header)
-        DE.differential_analysis(genes_data, header)
-        del genes_data
-
+        DE.differential_analysis(genes_filename, "genes")
         # PCA of groups ~ gene expression
-        if ncond >= 2:
+        if ncond > 2:
             try:
-                PCA.pca_rnaseq(genes_file)
+                PCA.pca_rnaseq(genes_filename)
             except Exception, error:
                 debugfile.write("PCA failed: %s\n"%str(error)); debugfile.flush()
+        description = set_file_descr("genes_expression.tab", step="pileup", type="txt")
+        ex.add(genes_filename, description=description)
 
-    # Get scores of transcripts from exons, using non-negative least-squares
     if "transcripts" in pileup_level:
-        logfile.write("* Get scores of transcripts\n"); logfile.flush()
-        header = ["TranscriptID"] + hconds + hinfo
-        tcounts = PU.transcripts_expression(exon_pileups)
-        lengths = asarray([M.transcript_mapping[t].length for t in tcounts.iterkeys()])
-        trans_data = PU.norm_and_format(tcounts,lengths,M.transcript_mapping)
-        PU.save_results(trans_data, group_ids, header)
-        DE.differential_analysis(trans_data, header)
-        del trans_data
+        DE.differential_analysis(trans_filename, "transcripts")
+        description = set_file_descr("transcripts_expression.tab", step="pileup", type="txt")
+        ex.add(trans_filename, description=description)
 
     # Find splice junctions
     if junctions:
@@ -381,273 +205,73 @@ def rnaseq_workflow(ex, job, assembly=None, pileup_level=["exons","genes","trans
     return 0
 
 
-#----------------------------- READ COUNTING -----------------------------#
-
-
-class Pileups(RNAseq):
-    def __init__(self,*args):
-        RNAseq.__init__(self,*args)
-
-    @timer
-    def build_custom_pileup(self, bamfile, transcript_mapping):
-        counts = {}
-        try: sam = pysam.Samfile(bamfile, 'rb')
-        except ValueError: sam = pysam.Samfile(bamfile,'r')
-        c = Counter()
-        for n,ref in enumerate(sam.references):
-            start = 0
-            end = transcript_mapping.get(ref.split('|')[0], Transcript(end=0) ).end
-            sam.fetch(ref, start, end, callback=c)
-            counts[ref] = int(.5+c.n)
-            c.n = 0
-        sam.close()
-        return counts
-
-    @timer
-    def build_pileup(self, bamfile):
-        """From a BAM file, returns a dictionary of the form {feature_id: number of reads that mapped to it}."""
-        counts = {}
-        counts_rev = {}
-        try: sam = pysam.Samfile(bamfile, 'rb')
-        except ValueError: sam = pysam.Samfile(bamfile,'r')
-        chromosomes = self.assembly.chrmeta.keys()
-        ref_index = {}
-        for ref in sam.references:
-            ref_index[ref.split('|')[0]] = ref
-        mapped_on = 'genome' if all([ref in chromosomes for ref in sam.references[:100]]) else 'exons'
-        c = Counter(stranded=self.stranded)
-
-        def _count(etrack):
-            for (chrom,start,end,names,strand,phase) in etrack:
-                if strand == 0: continue  # skip overlapping exons of different strands to avoid typeI errors
-                exon_ids = [e.split('|')[0] for e in names.split('$')]  # all spanning this interval - maybe more
-                if mapped_on == 'genome':
-                    ref = chrom
-                else: # mapped on 'exons': need to subtract exon start coordinate.
-                    # All have the same sequence in this interval. Take any of them,
-                    # just choose the shift from its start accordingly.
-                    oneofthem = exon_ids[0]
-                    ostart = self.M.exon_mapping[oneofthem].start
-                    shift = start-ostart  # dist from start of this exon to our region start
-                    ref = ref_index.get(oneofthem)
-                    start = shift; end = shift+(end-start)
-                if not ref: continue  # exon in bam header but not in exon_track
-                try:
-                    c.n = 0
-                    c.n_ws = 0
-                    c.strand = strand
-                    sam.fetch(ref,start,end, callback=c)  # calls Counter.__call__ for each alignment: updates c.n
-                except ValueError,ve:  # unknown reference
-                    self.write_debug("Unknown reference: %s",str(ve))
-                nexons = float(len(exon_ids))
-                for exon in exon_ids:
-                    if c.n > 0:  # remove this if want to keep all references in output
-                        counts[exon] = counts.get(exon,0) + c.n/nexons
-                    if c.n_ws > 0:
-                        counts_rev[exon] = counts_rev.get(exon,0) + c.n_ws/nexons
-            return counts, counts_rev
-
-        for chrom in chromosomes:
-            etrack = self.assembly.exon_track(chromlist=[chrom], biotype=None)
-            etrack = cobble(etrack, aggregate={'name':lambda n:'$'.join(n)})
-            counts,counts_rev = _count(etrack)
-        sam.close()
-        return counts, counts_rev
-
-    @timer
-    def save_results(self, lines, group_ids, header):
-        """Save results in a tab-delimited file, one line per feature, one column per run.
-
-        :param lines: list of iterables, each element being a line to write in the output.
-        :param group_ids: dictionary ``{group name: group_id}``.
-        :param header: list of strings, the column headers of the output file.
-        """
-        # Tab-delimited output with all information
-        if header[0].lower() == 'custom':
-            feature_type = header[0].lower() # Custom -> custom
-        else:
-            feature_type = header[0].lower()[:-2]+'s' # GeneID -> genes
-        output_tab = unique_filename_in()
-        n = self.ncond
-        with open(output_tab,'wb') as f:
-            f.write('\t'.join(header)+'\n')
-            for l in lines:
-                tid = str(l[0])
-                counts = ["%d"%x for x in l[1:n+1]]
-                norm = ["%.2f"%x for x in l[n+1:2*n+1]]
-                rpkm = ["%.2f"%x for x in  l[2*n+1:3*n+1]]
-                rest = [str(x) for x in l[3*n+1:]]
-                f.write('\t'.join([tid]+counts+norm+rpkm+rest)+'\n')
-        description = set_file_descr(feature_type+"_expression.tab", step="pileup", type="txt")
-        self.ex.add(output_tab, description=description)
-        # Create one track for each group
-        if feature_type in ['genes','exons']:
-            cols = zip(*lines)
-            groups = [c.split('.')[0] for c in self.conditions]
-            start = cols[3*n+1]
-            end = cols[3*n+2]
-            chromosomes = cols[-1]
-            rpkm = {}; output_sql = {}
-            for i,cond in enumerate(self.conditions):
-                group = cond.split('.')[0]
-                nruns = groups.count(group)
-                # Average all replicates in the group
-                rpkm[group] = asarray(rpkm.get(group,zeros(len(start)))) + asarray(cols[i+2*n+1]) / nruns
-                output_sql[group] = output_sql.get(group,unique_filename_in())
-            for group,filename in output_sql.iteritems():
-                # SQL track
-                tr = track(filename+'.sql', fields=['chr','start','end','score'], chrmeta=self.assembly.chrmeta)
-                towrite = {}
-                for n,c in enumerate(chromosomes):
-                    if c not in tr.chrmeta: continue
-                    towrite.setdefault(c,[]).append((int(start[n]),int(end[n]),rpkm[group][n]))
-                for chrom, feats in towrite.iteritems():
-                    tr.write(cobble(sorted_stream(FeatureStream(feats, fields=['start','end','score']))),
-                             chrom=chrom,clip=True)
-                description = set_file_descr(feature_type+"_"+group+".sql", step="pileup", type="sql",
-                                             groupId=group_ids[group])
-                self.ex.add(filename+'.sql', description=description)
-                # bigWig track - UCSC
-                try: # if the bigWig conversion program fails, the file is not created
-                    convert(filename+'.sql',filename+'.bw')
-                    description = set_file_descr(feature_type+"_"+group+".bw",
-                                                 step="pileup", type="bw", groupId=group_ids[group], ucsc='1')
-                    self.ex.add(filename+'.bw', description=description)
-                except IOError: pass
-        self.write_log("  %s: Done successfully." % feature_type)
-        return os.path.abspath(output_tab)
-
-    @timer
-    def genes_expression(self, exon_pileups):
-        """Get gene counts/rpkm from exon counts (sum).
-        Returns a dictionary of the form ``{gene_id: scores}``.
-        """
-        gene_counts = {}
-        for e,counts in exon_pileups.iteritems():
-            g = self.M.exon_mapping[e].gene_id
-            gene_counts[g] = gene_counts.get(g,zeros(self.ncond)) + counts
-        return gene_counts
-
-    @timer
-    def transcripts_expression(self, exon_pileups):
-        """Get transcript rpkms from exon rpkms using NNLS.
-        Returns a dictionary of the form ``{transcript_id: score}``.
-        """
-        emap = self.M.exon_mapping
-        tmap = self.M.transcript_mapping
-        gmap = self.M.gene_mapping
-        trans_counts={}; exons_counts={}; genes=[];
-        for e,counts in exon_pileups.iteritems():
-            exons_counts[e] = counts
-            genes.append(emap[e].gene_id)
-        genes = set(genes)
-        unknown = 0
-        pinv = numpy.linalg.pinv
-        for g in genes:
-            if g in gmap: # if the gene is (still) in the Ensembl database
-                # Get all transcripts in the gene
-                tg = gmap[g].transcripts
-                # Get all exons in the gene
-                eg = set()
-                for t in tg:
-                    if t in tmap:
-                        eg = eg.union(set(tmap[t].exons))
-                        trans_counts[t] = zeros(self.ncond)
-                # Create the correspondance matrix
-                M = zeros((len(eg),len(tg)))
-                L = zeros((len(eg),len(tg)))
-                ec = zeros((self.ncond,len(eg)))
-                for i,e in enumerate(eg):
-                    for j,t in enumerate(tg):
-                        if t in tmap and e in tmap[t].exons:
-                            M[i,j] = 1.
-                            if e in emap and t in tmap:
-                                L[i,j] = float((emap[e].end-emap[e].start)) / tmap[t].length
-                            else:
-                                L[i,j] = 1./len(eg)
-                    # Retrieve exon scores
-                    if e in exons_counts:
-                        for c in range(self.ncond):
-                            ec[c][i] += exons_counts[e][c]
-                # If only one transcript, special case for more precision
-                if len(tg) == 1:
-                    for c in range(self.ncond):
-                        trans_counts[t][c] = sum(ec[c])
-                    continue
-                # Compute transcript scores
-                tc = []
-                M = numpy.vstack((M,numpy.ones(M.shape[1]))) # add constraint |E| = |T|
-                L = numpy.vstack((L,numpy.ones(M.shape[1])))
-                N = M*L
-                for c in range(self.ncond):
-                    Ec = ec[c]
-                    Ec = numpy.hstack((Ec,asarray(sum(Ec))))
-                    try: Tc, resnormc, resc = lsqnonneg(N,Ec,itmax_factor=100)
-                    except: Tc = positive(numpy.dot(pinv(N),Ec))
-                    tc.append(Tc)
-                # Store results in a dict *trans_counts*
-                for k,t in enumerate(tg):
-                    for c in range(self.ncond):
-                        trans_counts[t][c] = tc[c][k]
-            else:
-                unknown += 1
-        if unknown != 0:
-            self.write_debug("\tUnknown transcripts for %d of %d genes (%.2f %%)" \
-                  % (unknown, len(genes), 100*float(unknown)/float(len(genes))) )
-        return trans_counts
-
-    def norm_and_format(self,counts,lengths,tmap,ids=None):
-        """Normalize, compute RPKM values and format array lines as they will be printed."""
-
-        def estimate_size_factors(counts):
-            """
-            The total number of reads may be different between conditions or replicates.
-            This treatment makes different count sets being comparable. If rows are features
-            and columns are different conditions/replicates, each column is divided by the
-            geometric mean of the rows.
-            The median of these ratios is used as the size factor for this column. Size
-            factors may be used for further variance sabilization.
-
-            :param counts: an array of counts, each line representing a transcript, each
-                           column a different sample.
-            """
-            counts = numpy.asarray(counts)
-            cnts = counts[nonzero(numpy.prod(counts,1))]  # none of the counts is zero
-            logcnt = numpy.log(cnts)
-            loggeomeans = numpy.mean(logcnt, 1)
-            size_factors = numpy.exp(numpy.median(logcnt.T - loggeomeans, 1))
-            res = counts / size_factors
-            return res, size_factors
-
-        if isinstance(counts,dict):
-            counts_matrix = asarray(counts.values())
-            ids = counts.iterkeys()
-        else:
-            counts_matrix = counts
-
-        def feature_info(x):
-            info = tmap.get(x, Transcript())
-            return (info.start,info.end,info.gene_id,info.gene_name,info.strand,info.chrom)
-
-        norm_matrix, sf = estimate_size_factors(counts_matrix)
-        rpkm_matrix = 1000.*norm_matrix/(lengths[:,numpy.newaxis])
-        data = [(t,) + tuple(counts_matrix[k]) + tuple(norm_matrix[k]) + tuple(rpkm_matrix[k])
-                     + feature_info(t)  for k,t in enumerate(ids)]
-        data = sorted(data, key=itemgetter(-1,0,1,-2)) # sort wrt. chr,start,end,strand
-        return data
-
-
 #--------------------------------- COUNTING ----------------------------------#
 
 
 @program
-def HTSeq(bam, gtf, stranded='no', featuretype='exon', idattr='gene_id'):
-    """Binds HTSeq. Redirects to stdout, so use as
-    `HTSeq(ex, bam,gtf, stdout=<outname>)`
-    Make sure that bam chromosome names correspond to gtf chromosome names..."""
-    return {'arguments': ["htseq-count","-q","-f","bam",
-                          "-s",stranded,"-t",featuretype,"-i",idattr, bam, gtf],
-            'return_value': None}
+def rnacounter(bam,gtf, options=[]):
+    """Counts reads from *bam* in every feature of *gtf* and infers
+    genes and transcripts expression."""
+    opts = [] + options
+    args = ["rnacounter"] + opts + [os.path.abspath(bam), os.path.abspath(gtf)]
+    return {"arguments": args, "return_value": None}
+
+
+class Counter(RNAseq):
+    def __init__(self,*args):
+        RNAseq.__init__(self,*args)
+
+    @timer
+    def count_reads(self, bamfiles, gtf):
+        self.write_log("* Counting reads")
+
+        # Count reads on genes, transcripts with "rnacounter"
+        ncond = len(self.conditions)
+        tablenames = [None]*ncond
+        futures = [None]*ncond
+        counter_options = ["--type","genes,transcripts", "--method","raw,nnls", "--multiple"]
+        if self.stranded: counter_options += ["--stranded"]
+        for i,c in enumerate(self.conditions):
+            tablenames[i] = unique_filename_in()
+            futures[i] = rnacounter.nonblocking(self.ex, bamfiles[i], gtf, stdout=tablenames[i], via=self.via,
+                               options=counter_options)
+
+        # Construct file headers
+        if self.stranded:
+            hconds = ["counts."+c for c in self.conditions] + ["counts_rev."+c for c in self.conditions] \
+                   + ["rpkm."+c for c in self.conditions] + ["rpkm_rev."+c for c in self.conditions]
+        else:
+            hconds = ["counts."+c for c in self.conditions] + ["rpkm."+c for c in self.conditions]
+        hinfo = ["Chromosome","Start","End","Strand","GeneName"]
+        header = ["ID"] + hconds + hinfo
+
+        # Put samples together, split genes and transcripts
+        tracks = [None]*ncond
+        for i,c in enumerate(self.conditions):
+            futures[i].wait()
+            tracks[i] = track(tablenames[i], format="txt", fields=["ID","Count","RPKM"]+hinfo+['type']).read()
+        genes_filename = unique_filename_in()
+        trans_filename = unique_filename_in()
+        genes_file = open(genes_filename,"wb")
+        trans_file = open(trans_filename,"wb")
+        genes_file.write('\t'.join(header)+'\n')
+        trans_file.write('\t'.join(header)+'\n')
+        while 1:
+            info = tuple(t.next() for t in tracks)
+            if not info: break
+            fid = info[0][0]
+            rest = info[0][3:-1]
+            ftype = info[0][-1]
+            counts = tuple(x[1] for x in info)
+            rpkm = tuple(x[2] for x in info)
+            towrite = '\t'.join((fid,)+counts+rpkm+rest)+'\n'
+            if ftype == 'gene':
+                genes_file.write(towrite)
+            elif ftype=='transcript':
+                trans_file.write(towrite)
+        genes_file.close()
+        trans_file.close()
+        return genes_filename, trans_filename
 
 
 #-------------------------- DIFFERENTIAL ANALYSIS ----------------------------#
@@ -657,32 +281,36 @@ class DE_Analysis(RNAseq):
     def __init__(self,*args):
         RNAseq.__init__(self,*args)
 
-    def clean_before_deseq(self, data, header, keep=0.6):
+    def clean_before_deseq(self, filename, keep=0.6):
         """Delete all lines of *filename* where counts are 0 in every run.
 
         :param keep: fraction of highest counts to keep. [0.6]
         """
         filename_clean = unique_filename_in()
-        ncond = sum([h.find('counts.')+1 for h in header])
+        ncond = len(self.conditions)
         if ncond >1:
-            rownames = asarray(['%s|%s|%s|%s' % (x[0],x[-3],x[-2],x[-1]) for x in data])
-            M = asarray([x[1:1+ncond] for x in data])
-            colnames = header[0:1]+header[1:1+ncond] # 'counts' column names, always
-            # Remove 40% lowest counts
-            sums = numpy.sum(M,1)
-            filter = asarray([x[1] for x in sorted(zip(sums,range(len(sums))))])
-            filter = filter[:len(filter)/keep]
-            M = M[filter]
-            rownames = rownames[filter]
-            # Create the input tab file
-            with open(filename_clean,"wb") as g:
-                header = '\t'.join(colnames)+'\n' # ID & *norm* columns
-                g.write(header)
-                for i,scores in enumerate(M):
-                    if any(scores):
-                        line = rownames[i] + '\t' + '\t'.join([str(x) for x in scores]) + '\n'
-                        g.write(line)
-        return filename_clean, ncond
+            with open(filename) as f:
+                header = f.readline().split('\t')
+                data = [x.strip().split('\t') for x in f]
+                if not data: return
+                rownames = asarray(['%s|%s|%s' % (x[0],x[-1],x[-2]) for x in data])  # id,gene_name,strand
+                M = asarray([x[1:1+ncond] for x in data], dtype=numpy.float_)
+                colnames = header[0:1]+header[1:1+ncond] # 'counts' column names, always
+                # Remove 40% lowest counts
+                sums = numpy.sum(M,1)
+                filter = asarray([x[1] for x in sorted(zip(sums,range(len(sums))))])
+                filter = filter[:len(filter)/keep]
+                M = M[filter]
+                rownames = rownames[filter]
+                # Create the input tab file
+                with open(filename_clean,"wb") as g:
+                    header = '\t'.join(colnames)+'\n'
+                    g.write(header)
+                    for i,scores in enumerate(M):
+                        if any(scores):
+                            line = rownames[i] + '\t' + '\t'.join([str(x) for x in scores]) + '\n'
+                            g.write(line)
+        return filename_clean
 
     def clean_deseq_output(self, filename):
         """Delete all lines of *filename* with NA's everywhere, add 0.5 to zero scores
@@ -710,42 +338,42 @@ class DE_Analysis(RNAseq):
         return filename_clean
 
     @timer
-    def differential_analysis(self, data, header):
-        """For each file in *data*, launch an analysis of differential expression on the count
+    def differential_analysis(self, filename, feature_type):
+        """Launch an analysis of differential expression on the count
         values, and saves the output in the MiniLIMS."""
 
         @program
-        def run_glm(data_file, script_path, options=[]):
+        def run_deseq(data_file, script_path, options=[]):
             """Run *rpath*/negbin.test.R on *data_file*."""
             output_file = unique_filename_in()
             opts = ["-o",output_file]+options
-            return {'arguments': ["R","--slave","-f",script_path,"--args",data_file]+opts,
-                    'return_value': output_file}
+            arguments = ["R","--slave","-f",script_path,"--args",data_file]+opts
+            return {'arguments': arguments, 'return_value': output_file}
 
-        if header[0].lower() == 'custom':
-            feature_type = header[0].lower() # Custom -> custom
-        else:
-            feature_type = header[0].lower()[:-2]+'s' # GeneID -> genes
-        res_file, ncond = self.clean_before_deseq(data, header)
-        if ncond < 2:
+        ncond = len(self.conditions)
+        res_file = self.clean_before_deseq(filename)
+        if res_file is None:
+            self.write_log("  Skipped differential analysis: empty counts file for %s." % feature_type)
+        elif ncond < 2:
             self.write_log("  Skipped differential analysis: less than two groups.")
         else:
-            self.write_log("  Differential analysis")
+            self.write_log("* Differential analysis")
             options = ['-s','tab']
             script_path = os.path.join(self.rpath,'negbin.test.R')
             if not os.path.exists(script_path):
                 self.write_debug("DE: R path not found: '%s'" % self.rpath)
             try:
-                glmfile = run_glm.nonblocking(self.ex, res_file, script_path, options, via=self.via).wait()
+                deseqfile = run_deseq.nonblocking(self.ex, res_file, script_path, options, via=self.via).wait()
             except Exception as exc:
                 self.write_log("  Skipped differential analysis: %s" % exc)
                 return
-            if not glmfile:
-                self.write_log("  ....Empty file.\n")
+            output_files = [f for f in os.listdir(self.ex.working_directory) if deseqfile in f]
+            if (not deseqfile) or len(output_files)==0:
+                self.write_log("  ....Empty file.")
                 return
-            output_files = [f for f in os.listdir(self.ex.working_directory) if glmfile in f]
             for o in output_files:
-                desc = set_file_descr(feature_type+"_differential"+o.split(glmfile)[1]+".txt", step='stats', type='txt')
+                oname = feature_type+"_differential"+o.split(deseqfile)[1]+".txt"
+                desc = set_file_descr(oname, step='stats', type='txt')
                 o = self.clean_deseq_output(o)
                 self.ex.add(o, description=desc)
             self.write_log("  ....done.")
@@ -887,7 +515,6 @@ class Pca(RNAseq):
             return {"arguments": args, "return_value": outprefix}
 
         outprefix = pcajl.nonblocking(self.ex, counts_table_file, via=self.via).wait()
-        #outprefix = pcajl(self.ex, counts_table_file)
         pca_descr_png = set_file_descr('pca_groups.png', type='png', step='pca')
         pca_descr_js = set_file_descr('pca_groups.js', type='txt', step='pca', view='admin')
         pcaeigv_descr_png = set_file_descr('pca_groups_sdev.png', type='png', step='pca')
