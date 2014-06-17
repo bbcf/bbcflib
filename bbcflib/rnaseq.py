@@ -66,7 +66,7 @@ class RNAseq(object):
 
 
 @timer
-def rnaseq2_workflow(ex, job, assembly=None, pileup_level=["genes","transcripts"], via="lsf",
+def rnaseq_workflow(ex, job, assembly=None, pileup_level=["genes","transcripts"], via="lsf",
                     rpath=None, juliapath=None, junctions=False, stranded=False,
                     logfile=sys.stdout, debugfile=sys.stderr):
     """Main function of the workflow.
@@ -79,8 +79,6 @@ def rnaseq2_workflow(ex, job, assembly=None, pileup_level=["genes","transcripts"
     :param junctions: (bool) whether to search for splice junctions using SOAPsplice. [False]
     :param via: (str) send job via 'local' or 'lsf'. ["lsf"]
     """
-
-    print ">> RNASEQ-2 <<"
 
     # While environment not properly set on V_IT
     if juliapath is None:
