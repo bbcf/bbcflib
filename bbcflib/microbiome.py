@@ -37,7 +37,7 @@ def bam_to_annot_counts( bamfiles, annotations_file, pref_name='', output=None )
         infile = pysam.Samfile( bamfile )
         for read in infile:
             nh = dict(read.tags).get('NH',1)
-            if isinstance(nh,str): nh=1
+            if isinstance(nh,basestring): nh=1
             if nh < 1: continue
             inh = 1.0/nh
             rname = infile.getrname(read.rname)

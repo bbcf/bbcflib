@@ -751,6 +751,14 @@ def bamstats(bamfile):
     return {"arguments": ["bamstat",bamfile], "return_value": coverage_stats}
 
 @program
+def plot_coverage(bamfile,pdffile,genomesize,title):
+    """Creates a read coverage histogram of the data in pdf form.
+    """
+    if pdffile is None: pdffile = unique_filename_in()
+    return {'arguments': ["bamQC.sh",bamfile,pdffile,genomesize,title],
+            'return_value': pdffile}
+
+@program
 def plot_stats(sample_stats,script_path=""):
     """Wrapper to the ``pdfstats.R`` script which generates
     a pdf report of the mapping statistics.
@@ -770,7 +778,7 @@ def plot_stats(sample_stats,script_path=""):
             'return_value': pdf_file}
 
 def add_pdf_stats( ex, processed, group_names, script_path,
-                   description="mapping_report.pdf" ):
+                   description="mapping_report.pdf", via='local' ):
     """Runs the 'plot_stats' function and adds its pdf output to the execution's repository.
 
     Arguments are the output of 'map_groups' ('processed'),
@@ -781,6 +789,7 @@ def add_pdf_stats( ex, processed, group_names, script_path,
     Returns the name of the pdf file.
     """
     all_stats = {}
+    futures = {}
     for gid in group_names.keys():
         for i,mapped in enumerate(processed[gid].values()):
             name = group_names[gid] or str(gid)
@@ -793,8 +802,16 @@ def add_pdf_stats( ex, processed, group_names, script_path,
                 all_stats[name+":filter"] = mapped['stats']
             else:
                 all_stats[name] = mapped['stats']
+            _pdf = unique_filename_in()
+            bam = mapped['bam']
+            gsize = sum((x['length'] for x in track.track(bam,format='bam').chrmeta.values()))
+            futures[(k,name)] = plot_coverage.nonblocking(ex,bam,pdf,gsize,name,via=via)
     pdf = plot_stats(ex, all_stats, script_path=script_path)
     ex.add(pdf,description)
+    for grid,fut in futures.iteritems():
+        _pdf = fut.wait()
+        _desc = re.sub(r'.*\.pdf',grid[1]+"_coverage_plot.pdf",description)
+        ex.add(_pdf,description=_desc)
     return pdf
 
 def pprint_bamstats(sample_stats, textfile=None):
@@ -1264,7 +1281,8 @@ def mapseq_workflow(ex, job, assembly, map_args, gl, bowtie2=False, via="local",
         pdf = add_pdf_stats( ex, mapped_files, {k:v['name']},
                              gl.get('script_path',''),
                              description=set_file_descr(v['name']+"_mapping_report.pdf",
-                                                        groupId=k,step='stats',type='pdf') )
+                                                        groupId=k,step='stats',type='pdf'), 
+                             via=via )
     if job.options['compute_densities']:
         chrmeta = {}
         if isinstance(assembly,genrep.Assembly): chrmeta = assembly.chrmeta
