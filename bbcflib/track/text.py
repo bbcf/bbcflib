@@ -736,11 +736,11 @@ class GffTrack(TextTrack):
         kwargs['format'] = 'gff'
         kwargs['fields'] = ['chr','source','name','start','end','score','strand','frame','attributes']
         TextTrack.__init__(self,path,**kwargs)
-        def _gff_score(x=0.0):
-            if str(x) == '.': return '.'
+        def _gff_score(x):
+            if x == '.': return 0.0
             else: return float(x)
-        def _gff_frame(x=0.0):
-            if str(x) == '.': return '.'
+        def _gff_frame(x):
+            if x == '.': return '.'
             else: return int(x)
         self.intypes.update({'score': _gff_score, 'frame': _gff_frame})
         self.outtypes.pop('score')
