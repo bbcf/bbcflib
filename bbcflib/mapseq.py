@@ -751,11 +751,11 @@ def bamstats(bamfile):
     return {"arguments": ["bamstat",bamfile], "return_value": coverage_stats}
 
 @program
-def plot_coverage(bamfile,pdffile,genomesize,title):
+def plot_coverage(bamfile,pdffile,title):
     """Creates a read coverage histogram of the data in pdf form.
     """
     if pdffile is None: pdffile = unique_filename_in()
-    return {'arguments': ["bamQC.sh",bamfile,pdffile,genomesize,title],
+    return {'arguments': ["bamQC.sh",bamfile,pdffile,title],
             'return_value': pdffile}
 
 @program
@@ -804,8 +804,7 @@ def add_pdf_stats( ex, processed, group_names, script_path,
                 all_stats[name] = mapped['stats']
             _pdf = unique_filename_in()
             bam = mapped['bam']
-            gsize = sum((x['length'] for x in track.track(bam,format='bam').chrmeta.values()))
-            futures[(k,name)] = plot_coverage.nonblocking(ex,bam,pdf,gsize,name,via=via)
+            futures[(k,name)] = plot_coverage.nonblocking(ex,bam,_pdf,name,via=via)
     pdf = plot_stats(ex, all_stats, script_path=script_path)
     ex.add(pdf,description)
     for grid,fut in futures.iteritems():
