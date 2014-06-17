@@ -117,12 +117,28 @@ def rnaseq2_workflow(ex, job, assembly=None, pileup_level=["genes","transcripts"
             bamfiles.append(f['bam'])
     ncond = len(conditions)
 
-    # Get the assembly's GTF from GenRep - or from config file
+    # Get the assembly's GTF
+    # ...from fasta origin
     logfile.write("* Prepare GTF\n"); logfile.flush()
-    gtf = job.files.itervalues().next().itervalues().next().get('gtf')
+    if hasattr(assembly,"fasta_origin"):
+        logfile.write("* ... from fasta origin\n"); logfile.flush()
+        firstbam = bamfiles[0]
+        firstbamtrack = track(firstbam,format='bam')
+        gtf = unique_filename_in()+'.gtf'
+        with open(gtf,"wb") as g:
+            for c,meta in firstbamtrack.chrmeta.iteritems():
+                g.write('\t'.join([c,'','exon','0',str(meta['length']),'.','.','.',
+                        'exon_id %s; transcript_id %s; gene_id %s; gene_name %s' % (c,)*4])+'\n')
+        firstbamtrack.close()
+    # ... or from config file
+    else:
+        gtf = job.files.itervalues().next().itervalues().next().get('gtf')  # from config file
+        if gtf: logfile.write("* ... from config file: %s\n" % gtf); logfile.flush()
+    # ... or from GenRep
     if gtf is None:
         genrep_root = assembly.genrep.root
         gtf = os.path.join(genrep_root,"nr_assemblies/gtf/%s_%i.gtf.gz"%(assembly.md5,0))
+        logfile.write("* ... from GenRep: %s\n" % gtf); logfile.flush()
         for n in range(1,100):
             gtf_n = os.path.join(genrep_root,"nr_assemblies/gtf/%s_%i.gtf.gz"%(assembly.md5,n))
             if not os.path.exists(gtf_n): break
@@ -143,7 +159,7 @@ def rnaseq2_workflow(ex, job, assembly=None, pileup_level=["genes","transcripts"
         with open(gtf) as f:
             with open(gtf_renamed,"wb") as g:
                 for line in f:
-                    L = line.split('\t')
+                    L = line.strip().split('\t')
                     chrom = chrom_mapping.get(L[0])
                     if chrom is None: continue  # chrom name not found in GenRep
                     g.write('\t'.join([chrom]+L[1:])+'\n')
@@ -213,7 +229,7 @@ class Counter(RNAseq):
         ncond = len(self.conditions)
         tablenames = [None]*ncond
         futures = [None]*ncond
-        counter_options = ["-t","genes,transcripts", "--method","raw", "--multiple"]
+        counter_options = ["--type","genes,transcripts", "--method","raw,nnls", "--multiple"]
         if self.stranded: counter_options += ["--stranded"]
         for i,c in enumerate(self.conditions):
             tablenames[i] = unique_filename_in()
@@ -276,6 +292,7 @@ class DE_Analysis(RNAseq):
             with open(filename) as f:
                 header = f.readline().split('\t')
                 data = [x.strip().split('\t') for x in f]
+                if not data: return
                 rownames = asarray(['%s|%s|%s' % (x[0],x[-1],x[-2]) for x in data])  # id,gene_name,strand
                 M = asarray([x[1:1+ncond] for x in data], dtype=numpy.float_)
                 colnames = header[0:1]+header[1:1+ncond] # 'counts' column names, always
@@ -293,7 +310,7 @@ class DE_Analysis(RNAseq):
                         if any(scores):
                             line = rownames[i] + '\t' + '\t'.join([str(x) for x in scores]) + '\n'
                             g.write(line)
-        return filename_clean, ncond
+        return filename_clean
 
     def clean_deseq_output(self, filename):
         """Delete all lines of *filename* with NA's everywhere, add 0.5 to zero scores
@@ -321,8 +338,8 @@ class DE_Analysis(RNAseq):
         return filename_clean
 
     @timer
-    def differential_analysis(self, data, feature_type):
-        """For each file in *data*, launch an analysis of differential expression on the count
+    def differential_analysis(self, filename, feature_type):
+        """Launch an analysis of differential expression on the count
         values, and saves the output in the MiniLIMS."""
 
         @program
@@ -330,12 +347,14 @@ class DE_Analysis(RNAseq):
             """Run *rpath*/negbin.test.R on *data_file*."""
             output_file = unique_filename_in()
             opts = ["-o",output_file]+options
-            #print ' '.join(["R","--slave","-f",script_path,"--args",data_file]+opts)
-            return {'arguments': ["R","--slave","-f",script_path,"--args",data_file]+opts,
-                    'return_value': output_file}
+            arguments = ["R","--slave","-f",script_path,"--args",data_file]+opts
+            return {'arguments': arguments, 'return_value': output_file}
 
-        res_file, ncond = self.clean_before_deseq(data)
-        if ncond < 2:
+        ncond = len(self.conditions)
+        res_file = self.clean_before_deseq(filename)
+        if res_file is None:
+            self.write_log("  Skipped differential analysis: empty counts file for %s." % feature_type)
+        elif ncond < 2:
             self.write_log("  Skipped differential analysis: less than two groups.")
         else:
             self.write_log("* Differential analysis")
