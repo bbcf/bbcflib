@@ -1022,15 +1022,14 @@ def map_groups( ex, job_or_dict, assembly, map_args=None,
                 name += group['run_names'].get(rid,str(rid))
             m = map_reads( ex, run, chromosomes, index_path, bowtie_2=bowtie2,
                            remove_pcr_duplicates=pcr_dupl, **map_args )
-            descr = {'step':'bowtie', 'groupId':gid}
             bam_descr = {'type': 'bam', 'ucsc': '1'}
             py_descr = {'type':'py','view':'admin','comment':'pickle file'}
             fq_descr = {'type': 'fastq'}
             fqn_descr = {'type': 'none','view':'admin'}
-            bam_descr.update(descr)
-            py_descr.update(descr)
-            fq_descr.update(descr)
-            fqn_descr.update(descr)
+            bam_descr.update({'step':'bowtie', 'groupId':gid})
+            py_descr.update({'step':'bowtie', 'groupId':gid})
+            fq_descr.update({'step':'bowtie', 'groupId':gid})
+            fqn_descr.update({'step':'bowtie', 'groupId':gid})
             if 'fullstats' in m:
                 add_pickle( ex, m['fullstats'], set_file_descr(name+"_full_bamstat",**py_descr) )
             if 'stats' in m:
@@ -1054,7 +1053,7 @@ def map_groups( ex, job_or_dict, assembly, map_args=None,
             file_names[gid][rid] = str(name)
             m.update({'libname': str(name)})
             processed[gid][rid] = m
-    add_pickle( ex, file_names, set_file_descr('file_names',step='bowtie',type='py',view='admin',comment='pickle file') )
+    add_pickle( ex, file_names, set_file_descr('file_names',step='stats',type='py',view='admin',comment='pickle file') )
     return processed
 
 @program
@@ -1110,7 +1109,7 @@ def bam_to_density( bamfile, output, chromosome_accession=None, chromosome_name=
     return {"arguments": ["bam2wig"]+b2w_args, "return_value": files}
 
 def parallel_density_wig( ex, bamfile, chromosomes,
-                          nreads=1, merge=-1, read_extension=-1, 
+                          nreads=1, merge=-1, read_extension=-1,
                           se=False, convert=True,
                           description="", alias=None,
                           b2w_args=None, via='lsf' ):
@@ -1135,7 +1134,7 @@ def parallel_density_wig( ex, bamfile, chromosomes,
     return output
 
 def parallel_density_sql( ex, bamfile, chromosomes,
-                          nreads=1, merge=-1, read_extension=-1, 
+                          nreads=1, merge=-1, read_extension=-1,
                           se=False, convert=True,
                           b2w_args=None, via='lsf' ):
     """Runs 'bam_to_density' for every chromosome in the 'chromosomes' list.
@@ -1238,7 +1237,7 @@ def densities_groups( ex, job_or_dict, file_dict, chromosomes, via='lsf' ):
         for m in mapped.values():
             output = parallel_density_sql( ex, m["bam"], chromosomes,
                                            nreads=m["stats"]["total"],
-                                           merge=merge_strands, 
+                                           merge=merge_strands,
                                            read_extension=options['read_extension'],
                                            se=se, convert=False,
                                            b2w_args=b2w_args, via=via )
@@ -1280,7 +1279,7 @@ def mapseq_workflow(ex, job, assembly, map_args, gl, bowtie2=False, via="local",
         pdf = add_pdf_stats( ex, mapped_files, {k:v['name']},
                              gl.get('script_path',''),
                              description=set_file_descr(v['name']+"_mapping_report.pdf",
-                                                        groupId=k,step='stats',type='pdf'), 
+                                                        groupId=k,step='stats',type='pdf'),
                              via=via )
     if job.options['compute_densities']:
         chrmeta = {}
