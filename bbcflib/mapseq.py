@@ -1027,10 +1027,10 @@ def map_groups( ex, job_or_dict, assembly, map_args=None,
             py_descr = {'type':'py','view':'admin','comment':'pickle file'}
             fq_descr = {'type': 'fastq'}
             fqn_descr = {'type': 'none','view':'admin'}
-            bam_descr.update({'step':'mapping', 'groupId':gid})
-            py_descr.update({'step':'mapping', 'groupId':gid})
-            fq_descr.update({'step':'unmapped', 'groupId':gid})
-            fqn_descr.update({'step':'unmapped', 'groupId':gid})
+            bam_descr.update({'step':'bowtie', 'groupId':gid})
+            py_descr.update({'step':'bowtie', 'groupId':gid})
+            fq_descr.update({'step':'bowtie', 'groupId':gid})
+            fqn_descr.update({'step':'bowtie', 'groupId':gid})
             if 'fullstats' in m:
                 add_pickle( ex, m['fullstats'], set_file_descr(name+"_full_bamstat",**py_descr) )
             if 'stats' in m:
@@ -1054,7 +1054,7 @@ def map_groups( ex, job_or_dict, assembly, map_args=None,
             file_names[gid][rid] = str(name)
             m.update({'libname': str(name)})
             processed[gid][rid] = m
-    add_pickle( ex, file_names, set_file_descr('file_names',step='mapping',type='py',view='admin',comment='pickle file') )
+    add_pickle( ex, file_names, set_file_descr('file_names',step='stats',type='py',view='admin',comment='pickle file') )
     return processed
 
 @program
@@ -1280,7 +1280,7 @@ def mapseq_workflow(ex, job, assembly, map_args, gl, bowtie2=False, via="local",
         pdf = add_pdf_stats( ex, mapped_files, {k:v['name']},
                              gl.get('script_path',''),
                              description=set_file_descr(v['name']+"_mapping_report.pdf",
-                                                        groupId=k,step='stats',type='pdf'), 
+                                                        groupId=k,step='stats',type='pdf'),
                              via=via )
     if job.options['compute_densities']:
         chrmeta = {}
