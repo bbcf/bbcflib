@@ -119,7 +119,7 @@ def rnaseq_workflow(ex, job, assembly=None, pileup_level=["genes","transcripts"]
     # ...from fasta origin
     logfile.write("* Prepare GTF\n"); logfile.flush()
     if hasattr(assembly,"fasta_origin"):
-        logfile.write("* ... from fasta origin\n"); logfile.flush()
+        logfile.write("  ... from fasta origin\n"); logfile.flush()
         firstbam = bamfiles[0]
         firstbamtrack = track(firstbam,format='bam')
         gtf = unique_filename_in()+'.gtf'
@@ -131,12 +131,12 @@ def rnaseq_workflow(ex, job, assembly=None, pileup_level=["genes","transcripts"]
     # ... or from config file
     else:
         gtf = job.files.itervalues().next().itervalues().next().get('gtf')  # from config file
-        if gtf: logfile.write("* ... from config file: %s\n" % gtf); logfile.flush()
+        if gtf: logfile.write("  ... from config file: %s\n" % gtf); logfile.flush()
     # ... or from GenRep
     if gtf is None:
         genrep_root = assembly.genrep.root
         gtf = os.path.join(genrep_root,"nr_assemblies/gtf/%s_%i.gtf.gz"%(assembly.md5,0))
-        logfile.write("* ... from GenRep: %s\n" % gtf); logfile.flush()
+        logfile.write("  ... from GenRep: %s\n" % gtf); logfile.flush()
         for n in range(1,100):
             gtf_n = os.path.join(genrep_root,"nr_assemblies/gtf/%s_%i.gtf.gz"%(assembly.md5,n))
             if not os.path.exists(gtf_n): break
