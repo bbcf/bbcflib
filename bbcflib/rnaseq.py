@@ -184,12 +184,12 @@ def rnaseq_workflow(ex, job, assembly=None, pileup_level=["genes","transcripts"]
                 PCA.pca_rnaseq(genes_filename)
             except Exception, error:
                 debugfile.write("PCA failed: %s\n"%str(error)); debugfile.flush()
-        description = set_file_descr("genes_expression.tab", step="pileup", type="txt")
+        description = set_file_descr("genes_expression.txt", step="pileup", type="txt")
         ex.add(genes_filename, description=description)
 
     if "transcripts" in pileup_level:
         DE.differential_analysis(trans_filename, "transcripts")
-        description = set_file_descr("transcripts_expression.tab", step="pileup", type="txt")
+        description = set_file_descr("transcripts_expression.txt", step="pileup", type="txt")
         ex.add(trans_filename, description=description)
 
     # Find splice junctions
