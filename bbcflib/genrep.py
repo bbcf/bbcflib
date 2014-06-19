@@ -509,7 +509,7 @@ class Assembly(object):
                     return self._fasta_by_chrom[chromosome[0]]
             return self.fasta_origin
         root = os.path.join(self.genrep.root,"nr_assemblies/fasta")
-        path = os.path.join(root,self.md5+".tar.gz")
+        path = os.path.join(root,self.md5+".fa.gz")
         if intype == 1:
             root = os.path.join(self.genrep.root,"nr_assemblies/exons_fasta")
             path = os.path.join(root,self.md5+".fa.gz")
