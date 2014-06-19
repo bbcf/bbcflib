@@ -1,6 +1,6 @@
 """
 ======================
-Module: bbcflib.mapseq
+Module: bbcflib.maplot
 ======================
 
 Creates an `MA-plot` to compare transcription levels of a set of genes
