@@ -11,6 +11,8 @@ will be plotted in a different color, and be annotated if requested.
 The class AnnoteFinder is used to create interactive - clickable - plots.
 """
 
+__version__ = '1.0.3'
+
 import sys, os, json, math, csv, random, string
 import numpy
 from scipy import stats
@@ -44,6 +46,7 @@ def _name_or_index(cols, dialect, header):
     """Given an array *cols*, detect if elements are indices of *header* or elements of *header*.
     Returns a dictionary of Python indices of the form {1:[2,3],2:[4,5]} if group 1 is made of
     runs (columns) 2 and 3, and group 2 of runs 4 and 5."""
+    header = header.strip()
     if cols[0] is None: return None
     cols = eval(str(cols))
     if isinstance(cols, dict):
