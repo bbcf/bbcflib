@@ -65,7 +65,7 @@ def macs( read_length, genome_size, bamfile, ctrlbam=None, args=None ):
     else:
         outname = unique_filename_in()
         macs_args += ["-n",outname]
-    if not("-s" in macs_args): macs_args += ["-s",str(read_length)]
+    if read_length>0 and "-s" not in macs_args: macs_args += ["-s",str(read_length)]
     if not("--verbose" in macs_args): macs_args += ["--verbose","1"]
     if not("--keep-dup" in macs_args): macs_args += ["--keep-dup","all"]
     return {"arguments": macs_args, "return_value": outname}
