@@ -3,7 +3,7 @@
 Module: bbcflib.dnaseseq
 ========================
 """
-import os
+import os, sys
 from bbcflib.common import set_file_descr, unique_filename_in, intersect_many_bed
 from bbcflib.chipseq import add_macs_results
 from bbcflib.track import track, convert
