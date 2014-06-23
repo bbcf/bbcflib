@@ -66,18 +66,18 @@ def dnaseseq_workflow( ex, job, assembly, logfile=sys.stdout, via='lsf' ):
         wellout = _fut.wait()
         touch( ex, wellout )
         ex.add(wellout,
-               description=set_file_descr(name[1]+'_wellington_files', 'type'='none','view'='admin',
+               description=set_file_descr(name[1]+'_wellington_files', type='none', view='admin',
                                           step='footprints', groupId=name[0]))
         ex.add(wellout+".WellingtonFootprints.FDR.0.01.bed",
                description=set_file_descr(name[1]+'.WellingtonFootprints.FDR.0.01.bed', 
-                                          'type'='bed', step='footprints', groupId=name[0]),
+                                          type='bed', step='footprints', groupId=name[0]),
                associate_to_filename=wellout, template='%s.WellingtonFootprints.FDR.0.01.bed')
         twig = track(wellout+".WellingtonFootprints.wig", chrmeta=assembly.chrmeta)
-        tbw = track(wellout+".WellingtonFootprints.bigWig",  chrmeta=assembly.chrmeta)
+        tbw = track(wellout+".WellingtonFootprints.bigWig", chrmeta=assembly.chrmeta)
         convert(twig,tbw)
         ex.add(wellout+".WellingtonFootprints.bigWig",
                description=set_file_descr(name[1]+'.WellingtonFootprints.bigWig', 
-                                          'type'='bigWig', step='footprints', groupId=name[0]),
+                                          type='bigWig', step='footprints', groupId=name[0]),
                associate_to_filename=wellout, template='%s.WellingtonFootprints.bigWig')
         
     return 0
