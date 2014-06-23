@@ -25,7 +25,7 @@ def dnaseseq_workflow( ex, job, assembly, logfile=sys.stdout, via='lsf' ):
     """
     Main function
     """
-    macs_args = options.get('macs_args',[])
+    macs_args = job.options.get('macs_args',[])
     tests = []
     controls = []
     names = {'tests': [], 'controls': []}
