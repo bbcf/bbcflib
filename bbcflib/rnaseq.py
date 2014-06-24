@@ -118,8 +118,8 @@ def rnaseq_workflow(ex, job, assembly=None, pileup_level=["genes","transcripts"]
     # Get the assembly's GTF
     # ...from fasta origin
     logfile.write("* Prepare GTF\n"); logfile.flush()
-    if hasattr(assembly,"fasta_origin"):
-        logfile.write("  ... from fasta origin\n"); logfile.flush()
+    if hasattr(assembly,"fasta_origin") or assembly.intype==2:
+        logfile.write("  ... from transcriptome or fasta origin\n"); logfile.flush()
         firstbam = bamfiles[0]
         firstbamtrack = track(firstbam,format='bam')
         gtf = unique_filename_in()+'.gtf'
