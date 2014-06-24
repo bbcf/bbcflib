@@ -22,40 +22,44 @@ def wellignton( bed, bam, output=None, options=[] ):
 
 
 ###############################################################
-def dnaseseq_workflow( ex, job, assembly, logfile=sys.stdout, via='lsf' ):
+def dnaseseq_workflow( ex, job, assembly, bedfile=None, logfile=sys.stdout, via='lsf' ):
     """
     Main function
     """
-    macs_args = job.options.get('macs_args',[])
-    tests = []
-    controls = []
-    names = {'tests': [], 'controls': []}
-    for gid,mapped in job.files.iteritems():
-        group_name = job.groups[gid]['name']
-        if not(isinstance(mapped,dict)):
-            raise TypeError("Mapseq_files values must be dictionaries with keys *run_ids* or 'bam'.")
-        if 'bam' in mapped: mapped = {'_': mapped}
-        if len(mapped)>1:
-            bamfile = merge_bam(ex, [m['bam'] for m in mapped.values()])
-        else:
-            bamfile = mapped.values()[0]['bam']
-        if job.groups[gid]['control']:
-            controls.append(bamfile)
-            names['controls'].append((gid,group_name))
-        else:
-            tests.append(bamfile)
-            names['tests'].append((gid,group_name))
-    if len(controls)<1:
-        controls = [None]
-        names['controls'] = [(0,None)]
-    genome_size = sum([x['length'] for x in assembly.chrmeta.values()])
-    macsout = add_macs_results( ex, 0, genome_size,
-                                tests, ctrlbam=controls, name=names,
-                                poisson_threshold={},
-                                macs_args=macs_args, via=via )
+    if bedfile is None:
+        macs_args = job.options.get('macs_args',[])
+        tests = []
+        controls = []
+        names = {'tests': [], 'controls': []}
+        for gid,mapped in job.files.iteritems():
+            group_name = job.groups[gid]['name']
+            if not(isinstance(mapped,dict)):
+                raise TypeError("Mapseq_files values must be dictionaries with keys *run_ids* or 'bam'.")
+            if 'bam' in mapped: mapped = {'_': mapped}
+            if len(mapped)>1:
+                bamfile = merge_bam(ex, [m['bam'] for m in mapped.values()])
+            else:
+                bamfile = mapped.values()[0]['bam']
+            if job.groups[gid]['control']:
+                controls.append(bamfile)
+                names['controls'].append((gid,group_name))
+            else:
+                tests.append(bamfile)
+                names['tests'].append((gid,group_name))
+        if len(controls)<1:
+            controls = [None]
+            names['controls'] = [(0,None)]
+        genome_size = sum([x['length'] for x in assembly.chrmeta.values()])
+        logfile.write("Running MACS.\n");logfile.flush()
+        macsout = add_macs_results( ex, 0, genome_size,
+                                    tests, ctrlbam=controls, name=names,
+                                    poisson_threshold={},
+                                    macs_args=macs_args, via=via )
+        logfile.write("Done MACS.\n");logfile.flush()
     futures = {}
+    logfile.write("Running Wellington:\n");logfile.flush()
     for nbam,bam in enumerate(tests):
-        name = names['test'][nbam]
+        name = names['tests'][nbam]
         if len(names['controls']) < 2:
             macsbed = macsout[(name,names['controls'][0])]+"_peaks.bed"
         else:
@@ -64,6 +68,7 @@ def dnaseseq_workflow( ex, job, assembly, logfile=sys.stdout, via='lsf' ):
         futures[name] = wellington.nonblocking(ex, macsbed, bam, via=via)
 
     for name, _fut in futures.iteritems():
+        logfile.write(name[1]+", ");logfile.flush()
         wellout = _fut.wait()
         touch( ex, wellout )
         ex.add(wellout,
@@ -81,6 +86,7 @@ def dnaseseq_workflow( ex, job, assembly, logfile=sys.stdout, via='lsf' ):
                                           type='bigWig', ucsc='1', step='footprints', groupId=name[0]),
                associate_to_filename=wellout, template='%s.WellingtonFootprints.bigWig')
         
+    logfile.write("\nDone.\n ");logfile.flush()
     return 0
 
 #-----------------------------------#
