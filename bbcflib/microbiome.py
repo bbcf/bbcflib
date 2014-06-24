@@ -25,9 +25,9 @@ def bam_to_annot_counts( bamfiles, annotations_file, pref_name='', output=None )
     map = {}
     counts = {}
     with open(annotations_file) as f:
-        header = f.next().strip('\n').split()
+        header = f.next().strip('\n').split("\t")
         for line in f:
-            s = line.strip('\n').split()
+            s = line.strip('\n').split("\t")
             k = s.pop(0)
             map[k] = s
             counts[k] = 0
