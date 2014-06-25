@@ -30,7 +30,7 @@ numpy.set_printoptions(precision=3,suppress=True)
 numpy.seterr(invalid='print')
 numpy.seterr(divide='ignore')
 
-test = False
+_TEST_ = 0
 
 
 #----------------------------- GLOBAL CLASSES -----------------------------#
@@ -66,7 +66,7 @@ class RNAseq(object):
 
 
 @timer
-def rnaseq_workflow(ex, job, assembly=None, pileup_level=["genes","transcripts"], via="lsf",
+def rnaseq_workflow(ex, job, pileup_level=["genes","transcripts"], via="lsf",
                     rpath=None, juliapath=None, junctions=False, stranded=False,
                     logfile=sys.stdout, debugfile=sys.stderr):
     """Main function of the workflow.
@@ -79,24 +79,9 @@ def rnaseq_workflow(ex, job, assembly=None, pileup_level=["genes","transcripts"]
     :param junctions: (bool) whether to search for splice junctions using SOAPsplice. [False]
     :param via: (str) send job via 'local' or 'lsf'. ["lsf"]
     """
-
-    # While environment not properly set on V_IT
-    if juliapath is None:
-        juliapath='/home/jdelafon/repos/bbcfutils/Julia/'
-
-    if test:
-        via = 'local'
-        logfile = sys.stdout
-        debugfile = sys.stdout
-        repo_rpath = '/home/jdelafon/repos/bbcfutils/R/'
-        juliapath = '/home/jdelafon/repos/bbcfutils/Julia/'
-        if os.path.exists(repo_rpath): rpath = repo_rpath
-
-    if assembly is None:
-        assembly = Assembly(assembly=job.assembly_id)
-
     group_names={}; group_ids={}; conditions=[]
     groups = job.groups
+    assembly = job.assembly
     assert len(groups) > 0, "No groups/runs were given."
     for gid,group in groups.iteritems():
         gname = str(group['name'])
@@ -125,8 +110,9 @@ def rnaseq_workflow(ex, job, assembly=None, pileup_level=["genes","transcripts"]
         gtf = unique_filename_in()+'.gtf'
         with open(gtf,"wb") as g:
             for c,meta in firstbamtrack.chrmeta.iteritems():
-                g.write('\t'.join([c,'','exon','0',str(meta['length']),'.','.','.',
-                        'exon_id %s; transcript_id %s; gene_id %s; gene_name %s' % (c,)*4])+'\n')
+                gtfline = '\t'.join([c,'','exon','1',str(meta['length']),'.','.','.',
+                        'exon_id "%s"; transcript_id "%s"; gene_id "%s"; gene_name "%s"' % (c,c,c,c)])+'\n'
+                g.write(gtfline)
         firstbamtrack.close()
     # ... or from config file
     else:
@@ -227,8 +213,14 @@ class Counter(RNAseq):
         ncond = len(self.conditions)
         tablenames = [None]*ncond
         futures = [None]*ncond
-        counter_options = ["--type","genes,transcripts", "--method","raw,nnls", "--multiple"]
-        if self.stranded: counter_options += ["--stranded"]
+        if hasattr(self.assembly,"fasta_origin") or self.assembly.intype==2:
+            counter_options = ["--type","transcripts", "--method","raw", "--multiple"]
+        else:
+            counter_options = ["--type","genes,transcripts", "--method","raw,nnls", "--multiple"]
+        if _TEST_:
+            counter_options += ["-n","1"]  # skip the total read counting step
+        if self.stranded:
+            counter_options += ["--stranded"]
         for i,c in enumerate(self.conditions):
             tablenames[i] = unique_filename_in()
             futures[i] = rnacounter.nonblocking(self.ex, bamfiles[i], gtf, stdout=tablenames[i], via=self.via,
