@@ -4,7 +4,7 @@ Module: bbcflib.dnaseseq
 ========================
 """
 import os, sys
-from bbcflib.common import set_file_descr, unique_filename_in, intersect_many_bed
+from bbcflib.common import set_file_descr, unique_filename_in, intersect_many_bed, cat
 from bbcflib.chipseq import add_macs_results
 from bbcflib.mapseq import merge_bam
 from bbcflib.track import track, convert
@@ -58,6 +58,7 @@ def dnaseseq_workflow( ex, job, assembly, logfile=sys.stdout, via='lsf' ):
     logfile.write("Done MACS.\n");logfile.flush()
     futures = {}
     logfile.write("Running Wellington:\n");logfile.flush()
+    wellout = {}
     for nbam,bam in enumerate(tests):
         name = names['tests'][nbam]
         if len(names['controls']) < 2:
@@ -65,26 +66,39 @@ def dnaseseq_workflow( ex, job, assembly, logfile=sys.stdout, via='lsf' ):
         else:
             _beds = [macsout[(name,x)]+"_peaks.bed" for x in names['controls']]
             macsbed = intersect_many_bed( ex, _beds, via=via )
-        futures[name] = wellington.nonblocking(ex, macsbed, bam, via=via)
+        tbed = track(macsbed)
+        for chrom in assembly.chrnames:
+            _chrombed = unique_filename_in()
+            with track(_chrombed,format="bed",fields=tbed.fields) as _tt:
+                _tt.write(tbed.read(chrom))
+            futures[(chrom,name)] = wellington.nonblocking(ex, _chrombed, bam, via=via, memory=4)
+            wellout[name] = {}
 
-    for name, _fut in futures.iteritems():
-        logfile.write(name[1]+", ");logfile.flush()
-        wellout = _fut.wait()
-        touch( ex, wellout )
-        ex.add(wellout,
+    for chro_name, _fut in futures.iteritems():
+        chrom, name = chro_name
+        logfile.write(name[1]+" "+chrom+", ");logfile.flush()
+        wellout[name].append(_fut.wait())
+
+    for name, wlist in wellout.iteritems():
+        wellall = unique_filename_in()
+        touch( ex, wellall )
+        ex.add(wellall,
                description=set_file_descr(name[1]+'_wellington_files', type='none', view='admin',
                                           step='footprints', groupId=name[0]))
-        ex.add(wellout+".WellingtonFootprints.FDR.0.01.bed",
+        cat([x+".WellingtonFootprints.FDR.0.01.bed" for x in wlist],
+            wellall+".WellingtonFootprints.FDR.0.01.bed")
+        ex.add(wellall+".WellingtonFootprints.FDR.0.01.bed",
                description=set_file_descr(name[1]+'.WellingtonFootprints.FDR.0.01.bed', 
                                           type='bed', ucsc='1', step='footprints', groupId=name[0]),
-               associate_to_filename=wellout, template='%s.WellingtonFootprints.FDR.0.01.bed')
-        twig = track(wellout+".WellingtonFootprints.wig", chrmeta=assembly.chrmeta)
-        tbw = track(wellout+".WellingtonFootprints.bigWig", chrmeta=assembly.chrmeta)
+               associate_to_filename=wellall, template='%s.WellingtonFootprints.FDR.0.01.bed')
+        cat([x+".WellingtonFootprints.wig" for x in wlist],wellall+".WellingtonFootprints.wig")
+        twig = track(wellall+".WellingtonFootprints.wig", chrmeta=assembly.chrmeta)
+        tbw = track(wellall+".WellingtonFootprints.bigWig", chrmeta=assembly.chrmeta)
         convert(twig,tbw)
-        ex.add(wellout+".WellingtonFootprints.bigWig",
+        ex.add(wellall+".WellingtonFootprints.bigWig",
                description=set_file_descr(name[1]+'.WellingtonFootprints.bigWig', 
                                           type='bigWig', ucsc='1', step='footprints', groupId=name[0]),
-               associate_to_filename=wellout, template='%s.WellingtonFootprints.bigWig')
+               associate_to_filename=wellall, template='%s.WellingtonFootprints.bigWig')
         
     logfile.write("\nDone.\n ");logfile.flush()
     return 0
