@@ -72,7 +72,7 @@ def dnaseseq_workflow( ex, job, assembly, logfile=sys.stdout, via='lsf' ):
             with track(_chrombed,format="bed",fields=tbed.fields) as _tt:
                 _tt.write(tbed.read(chrom))
             futures[(chrom,name)] = wellington.nonblocking(ex, _chrombed, bam, via=via, memory=4)
-            wellout[name] = {}
+            wellout[name] = []
 
     for chro_name, _fut in futures.iteritems():
         chrom, name = chro_name
