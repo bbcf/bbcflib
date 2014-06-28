@@ -60,8 +60,8 @@ def dnaseseq_workflow( ex, job, assembly, logfile=sys.stdout, via='lsf' ):
     logfile.write("Running Wellington:\n");logfile.flush()
     wellout = {}
     for nbam,bam in enumerate(tests):
-        wellout[name] = []
         name = names['tests'][nbam]
+        wellout[name] = []
         if len(names['controls']) < 2:
             macsbed = macsout[(name,names['controls'][0])]+"_peaks.bed"
         else:
