@@ -17,8 +17,8 @@ def wellington( bed, bam, output=None, options=[] ):
     outdir = unique_filename_in()
     os.mkdir(outdir)
     args = ["wellington_footprints.py","-o",output]
-    options += [bed,bam,outdir]
-    return {'arguments': args+options, 'return_value': os.path.join(outdir,output) }
+    return {'arguments': args+options+[bed,bam,outdir], 
+            'return_value': os.path.join(outdir,output) }
 
 
 ###############################################################
@@ -60,6 +60,7 @@ def dnaseseq_workflow( ex, job, assembly, logfile=sys.stdout, via='lsf' ):
     logfile.write("Running Wellington:\n");logfile.flush()
     wellout = {}
     for nbam,bam in enumerate(tests):
+        wellout[name] = []
         name = names['tests'][nbam]
         if len(names['controls']) < 2:
             macsbed = macsout[(name,names['controls'][0])]+"_peaks.bed"
@@ -72,7 +73,6 @@ def dnaseseq_workflow( ex, job, assembly, logfile=sys.stdout, via='lsf' ):
             with track(_chrombed,format="bed",fields=tbed.fields) as _tt:
                 _tt.write(tbed.read(chrom))
             futures[(chrom,name)] = wellington.nonblocking(ex, _chrombed, bam, via=via, memory=4)
-            wellout[name] = []
 
     for chro_name, _fut in futures.iteritems():
         chrom, name = chro_name
