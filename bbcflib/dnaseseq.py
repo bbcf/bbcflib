@@ -6,7 +6,7 @@ Module: bbcflib.dnaseseq
 import os, sys
 from bbcflib.common import set_file_descr, unique_filename_in, intersect_many_bed, cat
 from bbcflib.chipseq import add_macs_results
-from bbcflib.mapseq import merge_bam
+from bbcflib.mapseq import merge_bam, index_bam
 from bbcflib.track import track, convert
 from bein import program
 from bein.util import touch
@@ -38,6 +38,7 @@ def dnaseseq_workflow( ex, job, assembly, logfile=sys.stdout, via='lsf' ):
         if 'bam' in mapped: mapped = {'_': mapped}
         if len(mapped)>1:
             bamfile = merge_bam(ex, [m['bam'] for m in mapped.values()])
+            index = index_bam(ex, bamfile)
         else:
             bamfile = mapped.values()[0]['bam']
         if job.groups[gid]['control']:
