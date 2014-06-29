@@ -808,10 +808,13 @@ def add_pdf_stats( ex, processed, group_names, script_path,
     pdf = plot_stats(ex, all_stats, script_path=script_path)
     ex.add(pdf,description)
     for grid,fut in futures.iteritems():
-        _pdf = fut.wait()
-        if os.path.exists(_pdf):
-            _desc = re.sub(r'.*\.pdf',grid[1]+"_coverage_plot.pdf",description)
-            ex.add(_pdf,description=_desc)
+        try:
+            _pdf = fut.wait()
+            if os.path.exists(_pdf):
+                _desc = re.sub(r'.*\.pdf',grid[1]+"_coverage_plot.pdf",description)
+                ex.add(_pdf,description=_desc)
+        except:
+            pass
     return pdf
 
 def pprint_bamstats(sample_stats, textfile=None):
