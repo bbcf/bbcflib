@@ -755,7 +755,7 @@ def plot_coverage(bamfile,pdffile,title):
     """Creates a read coverage histogram of the data in pdf form.
     """
     if pdffile is None: pdffile = unique_filename_in()
-    return {'arguments': ["bamQC.sh",bamfile,pdffile,title],
+    return {'arguments': ["bamQC.sh",bamfile,pdffile,"'"+title+"'"],
             'return_value': pdffile}
 
 @program
