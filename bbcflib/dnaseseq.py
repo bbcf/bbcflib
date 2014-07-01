@@ -52,6 +52,7 @@ def dnaseseq_workflow( ex, job, assembly, logfile=sys.stdout, via='lsf' ):
         names['controls'] = [(0,None)]
     genome_size = sum([x['length'] for x in assembly.chrmeta.values()])
     logfile.write("Running MACS.\n");logfile.flush()
+####### USE PEAKSPLITTER ?
     macsout = add_macs_results( ex, 0, genome_size,
                                 tests, ctrlbam=controls, name=names,
                                 poisson_threshold={},
@@ -64,17 +65,18 @@ def dnaseseq_workflow( ex, job, assembly, logfile=sys.stdout, via='lsf' ):
         name = names['tests'][nbam]
         wellout[name] = []
         if len(names['controls']) < 2:
-            macsbed = macsout[(name,names['controls'][0])]+"_peaks.bed"
+            macsbed = macsout[(name,names['controls'][0])]+"_summits.bed"
         else:
-            _beds = [macsout[(name,x)]+"_peaks.bed" for x in names['controls']]
+            _beds = [macsout[(name,x)]+"_summits.bed" for x in names['controls']]
             macsbed = intersect_many_bed( ex, _beds, via=via )
         tbed = track(macsbed)
         for chrom in assembly.chrnames:
             _chrombed = unique_filename_in()
             with track(_chrombed,format="bed",fields=tbed.fields) as _tt:
-                _tt.write(tbed.read(chrom))
+                _neighb = neighborhood( tbed.read(chrom), before_start=300, after_end=300 )
+                _tt.write(fusion(_neighb),clip=True)
             if os.path.getsize(_chrombed) > 0:
-                futures[(chrom,name)] = wellington.nonblocking(ex, _chrombed, bam, via=via, memory=4)
+                futures[(chrom,name)] = wellington.nonblocking(ex, _chrombed, bam, via=via, memory=8)
 
     for chro_name, _fut in futures.iteritems():
         chrom, name = chro_name
