@@ -5,7 +5,8 @@ Module: bbcflib.dnaseseq
 """
 import os, sys
 from bbcflib.gfminer.stream import neighborhood
-from bbcflib.common import set_file_descr, unique_filename_in, intersect_many_bed, cat, fusion
+from bbcflib.gfminer.common import fusion
+from bbcflib.common import set_file_descr, unique_filename_in, intersect_many_bed, cat
 from bbcflib.chipseq import add_macs_results
 from bbcflib.mapseq import merge_bam, index_bam
 from bbcflib.track import track, convert
