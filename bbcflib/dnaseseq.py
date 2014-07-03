@@ -97,10 +97,9 @@ def dnaseseq_workflow( ex, job, assembly, logfile=sys.stdout, via='lsf' ):
                description=set_file_descr(name[1]+'.WellingtonFootprints.FDR.0.01.bed', 
                                           type='bed', ucsc='1', step='footprints', groupId=name[0]),
                associate_to_filename=wellall, template='%s.WellingtonFootprints.FDR.0.01.bed')
-        cat([x+".WellingtonFootprints.wig" for x in wlist],wellall+".WellingtonFootprints.wig")
-        twig = track(wellall+".WellingtonFootprints.wig", chrmeta=assembly.chrmeta)
-        tbw = track(wellall+".WellingtonFootprints.bigWig", chrmeta=assembly.chrmeta)
-        convert(twig,tbw)
+        cat([x+".WellingtonFootprints.wig" for x in wlist], wellall+".WellingtonFootprints.wig")
+        convert(wellall+".WellingtonFootprints.wig", wellall+".WellingtonFootprints.bigWig", 
+                chrmeta=assembly.chrmeta)
         ex.add(wellall+".WellingtonFootprints.bigWig",
                description=set_file_descr(name[1]+'.WellingtonFootprints.bigWig', 
                                           type='bigWig', ucsc='1', step='footprints', groupId=name[0]),
