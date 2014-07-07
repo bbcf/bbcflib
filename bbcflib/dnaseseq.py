@@ -3,7 +3,7 @@
 Module: bbcflib.dnaseseq
 ========================
 """
-import os, sys
+import os, sys, gzip
 from bbcflib.gfminer.stream import neighborhood
 from bbcflib.gfminer.common import fusion
 from bbcflib.common import set_file_descr, unique_filename_in, intersect_many_bed, cat
@@ -91,19 +91,23 @@ def dnaseseq_workflow( ex, job, assembly, logfile=sys.stdout, via='lsf' ):
         ex.add(wellall,
                description=set_file_descr(name[1]+'_wellington_files', type='none', view='admin',
                                           step='footprints', groupId=name[0]))
-        cat([x+".WellingtonFootprints.FDR.0.01.bed" for x in wlist],
-            wellall+".WellingtonFootprints.FDR.0.01.bed")
-        ex.add(wellall+".WellingtonFootprints.FDR.0.01.bed",
-               description=set_file_descr(name[1]+'.WellingtonFootprints.FDR.0.01.bed', 
+        bedzip = gzip.open(wellall+"_WellingtonFootprintsFDR01.bed.gz",'wb')
+        bedzip.write("track name='"+name[1]+"_WellingtonFootprints_FDR_0.01'\n")
+        for x in wlist:
+            with open(x+"_WellingtonFootprintsFDR01.bed") as _bed:
+                [bedzip.write(l) for l in _bed]
+        bedzip.close()
+        ex.add(wellall+"_WellingtonFootprintsFDR01.bed.gz",
+               description=set_file_descr(name[1]+'_WellingtonFootprintsFDR01.bed.gz', 
                                           type='bed', ucsc='1', step='footprints', groupId=name[0]),
-               associate_to_filename=wellall, template='%s.WellingtonFootprints.FDR.0.01.bed')
-        cat([x+".WellingtonFootprints.wig" for x in wlist], wellall+".WellingtonFootprints.wig")
-        convert(wellall+".WellingtonFootprints.wig", wellall+".WellingtonFootprints.bigWig", 
+               associate_to_filename=wellall, template='%s_WellingtonFootprintsFDR01.bed.gz')
+        cat([x+"_WellingtonFootprints.wig" for x in wlist], wellall+"_WellingtonFootprints.wig")
+        convert(wellall+"_WellingtonFootprints.wig", wellall+"_WellingtonFootprints.bw", 
                 chrmeta=assembly.chrmeta)
-        ex.add(wellall+".WellingtonFootprints.bigWig",
-               description=set_file_descr(name[1]+'.WellingtonFootprints.bigWig', 
+        ex.add(wellall+"_WellingtonFootprints.bw",
+               description=set_file_descr(name[1]+'_WellingtonFootprints.bw', 
                                           type='bigWig', ucsc='1', step='footprints', groupId=name[0]),
-               associate_to_filename=wellall, template='%s.WellingtonFootprints.bigWig')
+               associate_to_filename=wellall, template='%s_WellingtonFootprints.bw')
         
     logfile.write("\nDone.\n ");logfile.flush()
     return 0
