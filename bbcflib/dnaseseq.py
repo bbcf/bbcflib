@@ -94,14 +94,14 @@ def dnaseseq_workflow( ex, job, assembly, logfile=sys.stdout, via='lsf' ):
         bedzip = gzip.open(wellall+"_WellingtonFootprintsFDR01.bed.gz",'wb')
         bedzip.write("track name='"+name[1]+"_WellingtonFootprints_FDR_0.01'\n")
         for x in wlist:
-            with open(x+"_WellingtonFootprintsFDR01.bed") as _bed:
+            with open(x+".WellingtonFootprints.FDR.0.01.bed") as _bed:
                 [bedzip.write(l) for l in _bed]
         bedzip.close()
         ex.add(wellall+"_WellingtonFootprintsFDR01.bed.gz",
                description=set_file_descr(name[1]+'_WellingtonFootprintsFDR01.bed.gz', 
                                           type='bed', ucsc='1', step='footprints', groupId=name[0]),
                associate_to_filename=wellall, template='%s_WellingtonFootprintsFDR01.bed.gz')
-        cat([x+"_WellingtonFootprints.wig" for x in wlist], wellall+"_WellingtonFootprints.wig")
+        cat([x+".WellingtonFootprints.wig" for x in wlist], wellall+"_WellingtonFootprints.wig")
         convert(wellall+"_WellingtonFootprints.wig", wellall+"_WellingtonFootprints.bw", 
                 chrmeta=assembly.chrmeta)
         ex.add(wellall+"_WellingtonFootprints.bw",
