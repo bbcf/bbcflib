@@ -63,7 +63,8 @@ class RNAseq(object):
 
 
 @timer
-def rnaseq_workflow(ex, job, pileup_level=["genes","transcripts"], via="lsf", junctions=False, stranded=False,
+def rnaseq_workflow(ex, job, pileup_level=["genes","transcripts"], 
+                    via="lsf", junctions=False, stranded=False,
                     logfile=sys.stdout, debugfile=sys.stderr):
     """Main function of the workflow.
 

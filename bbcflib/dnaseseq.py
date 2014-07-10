@@ -31,7 +31,7 @@ def dnaseseq_workflow( ex, job, assembly, logfile=sys.stdout, via='lsf' ):
     """
     Main function
     """
-    macs_args = job.options.get('macs_args',[])
+    macs_args = job.options.get('macs_args',["--keep-dup","10"])
     tests = []
     controls = []
     names = {'tests': [], 'controls': []}
@@ -95,6 +95,7 @@ def dnaseseq_workflow( ex, job, assembly, logfile=sys.stdout, via='lsf' ):
         chrom, name = chro_name
         logfile.write(name[1]+" "+chrom+", ");logfile.flush()
         wellout[name].append(_fut.wait())
+    logfile.write("\n");logfile.flush()
 
     bedlist = {}
     for name, wlist in wellout.iteritems():
@@ -139,10 +140,12 @@ def dnaseseq_workflow( ex, job, assembly, logfile=sys.stdout, via='lsf' ):
                description=set_file_descr(name[1]+'_WellingtonFootprints.bw', 
                                           type='bigWig', ucsc='1', step='footprints', groupId=name[0]),
                associate_to_filename=wellall, template='%s_WellingtonFootprints.bw')
-
+######################### Motif scanning
     if job.options.get('scan_motifs',False):
+        logfile.write("Scanning motifs\n");logfile.flush()
         motifbeds = {}
         for gid,bedfile in bedlist.iteritems():
+            logfile.write("\n"+gid+": ");logfile.flush()
             group = jobs.groups[gid]
             motifs = {}
             for mot in group.get('motif',[]):
@@ -155,6 +158,7 @@ def dnaseseq_workflow( ex, job, assembly, logfile=sys.stdout, via='lsf' ):
                 else:
                     _gnid, mname = mot.split(' ')
                     motifs[mname] = _gnrp.get_motif_PWM(int(_gnid), mname, output=unique_filename_in())
+                logfile.write(mname+", ");logfile.flush()
             descr = set_file_descr(group['name']+'motifs.bed.gz',
                                    type='bed', ucsc='1', step='motifs', groupId=gid)
             motifbeds[gid] = save_motif_profile( ex, motifs, assembly, bedfile,
