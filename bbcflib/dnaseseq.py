@@ -47,9 +47,9 @@ def dnaseseq_workflow( ex, job, assembly, logfile=sys.stdout, via='lsf' ):
             controls.append(bamfile)
             names['controls'].append((gid,group_name))
         else:
-            if os.path.exists(jobs.groups[gid].get('bedfile')):
+            if os.path.exists(jobs.groups[gid].get('bedfile','null')):
                 bedfile = jobs.groups[gid]['bedfile']
-            elif os.path.exists(os.path.join(supdir,jobs.groups[gid].get('bedfile'))):
+            elif os.path.exists(os.path.join(supdir,jobs.groups[gid].get('bedfile','null'))):
                 bedfile = os.path.join(supdir,jobs.groups[gid]['bedfile'])
             else:
                 bedfile = None
