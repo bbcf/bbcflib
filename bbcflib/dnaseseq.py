@@ -32,10 +32,10 @@ def dnaseseq_workflow( ex, job, assembly, logfile=sys.stdout, via='lsf' ):
     tests = []
     controls = []
     names = {'tests': [], 'controls': []}
-#    bedfiles = {}
+    supdir = os.path.split(ex.remote_working_directory)[0]
     for gid,mapped in job.files.iteritems():
         group_name = job.groups[gid]['name']
-        if not(isinstance(mapped,dict)):
+        if not isinstance(mapped,dict):
             raise TypeError("Mapseq_files values must be dictionaries with keys *run_ids* or 'bam'.")
         if 'bam' in mapped: mapped = {'_': mapped}
         if len(mapped)>1:
@@ -47,38 +47,46 @@ def dnaseseq_workflow( ex, job, assembly, logfile=sys.stdout, via='lsf' ):
             controls.append(bamfile)
             names['controls'].append((gid,group_name))
         else:
-            tests.append(bamfile)
+            if os.path.exists(jobs.groups[gid].get('bedfile')):
+                bedfile = jobs.groups[gid]['bedfile']
+            elif os.path.exists(os.path.join(supdir,jobs.groups[gid].get('bedfile'))):
+                bedfile = os.path.join(supdir,jobs.groups[gid]['bedfile'])
+            else:
+                bedfile = None
+            tests.append((bedfile,bamfile))
             names['tests'].append((gid,group_name))
     if len(controls)<1:
         controls = [None]
         names['controls'] = [(0,None)]
-    genome_size = sum([x['length'] for x in assembly.chrmeta.values()])
-    logfile.write("Running MACS.\n");logfile.flush()
-####### USE PEAKSPLITTER ?
-    macsout = add_macs_results( ex, 0, genome_size,
-                                tests, ctrlbam=controls, name=names,
-                                poisson_threshold={},
-                                macs_args=macs_args, via=via )
-    logfile.write("Done MACS.\n");logfile.flush()
+    if any([not t[0] for t in tests]):
+        genome_size = sum([x['length'] for x in assembly.chrmeta.values()])
+        logfile.write("Running MACS.\n");logfile.flush()
+        macsout = add_macs_results( ex, 0, genome_size, [t[1] for t in tests if not t[0]], 
+                                    ctrlbam=controls,
+                                    name=[n for k,n in enumerate(names) if not tests[k][0]],
+                                    poisson_threshold={},
+                                    macs_args=macs_args, via=via )
+        logfile.write("Done MACS.\n");logfile.flush()
     futures = {}
     logfile.write("Running Wellington:\n");logfile.flush()
     wellout = {}
-    for nbam,bam in enumerate(tests):
+    for nbam,bed_bam in enumerate(tests):
         name = names['tests'][nbam]
         wellout[name] = []
-        if len(names['controls']) < 2:
-            macsbed = macsout[(name,names['controls'][0])]+"_summits.bed"
-        else:
-            _beds = [macsout[(name,x)]+"_summits.bed" for x in names['controls']]
-            macsbed = intersect_many_bed( ex, _beds, via=via )
-        tbed = track(macsbed)
+        if not bed_bam[0]:
+            if len(names['controls']) < 2:
+                bed_bam[0] = macsout[(name,names['controls'][0])]+"_summits.bed"
+            else:
+                _beds = [macsout[(name,x)]+"_summits.bed" for x in names['controls']]
+                bed_bam[0] = intersect_many_bed( ex, _beds, via=via )
+        tbed = track(bed_bam[0])
         for chrom in assembly.chrnames:
             _chrombed = unique_filename_in()
             with track(_chrombed,format="bed",fields=tbed.fields) as _tt:
                 _neighb = neighborhood( tbed.read(chrom), before_start=300, after_end=300 )
                 _tt.write(fusion(_neighb),clip=True)
             if os.path.getsize(_chrombed) > 0:
-                futures[(chrom,name)] = wellington.nonblocking(ex, _chrombed, bam, via=via, memory=8)
+                futures[(chrom,name)] = wellington.nonblocking(ex, _chrombed, bed_bam[1], via=via, memory=8)
 
     for chro_name, _fut in futures.iteritems():
         chrom, name = chro_name
