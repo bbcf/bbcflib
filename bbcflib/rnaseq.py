@@ -16,7 +16,6 @@ import json, urllib2
 # Internal modules #
 from bbcflib.common import set_file_descr, unique_filename_in, cat, timer, program_exists
 from bbcflib.common import gunzipfile
-from bbcflib.genrep import Assembly
 from bbcflib.mapseq import add_and_index_bam, sam_to_bam
 from bbcflib.gfminer.common import map_chromosomes, duplicate, apply
 from bbcflib.track import track
@@ -39,15 +38,13 @@ _TEST_ = 0
 class RNAseq(object):
     """Abstract, inherited by different parts of the workflow."""
     def __init__(self,ex,via,job,assembly,conditions,debugfile,logfile,
-                 pileup_level,rpath,juliapath,junctions,stranded):
+                 pileup_level,junctions,stranded):
         self.ex = ex                     # bein.Execution object
         self.job = job                   # frontend.Job object
         self.assembly = assembly         # genrep.Assembly object
         self.conditions = conditions     # list of <group_name>.<run_id>
         self.pileup_level = pileup_level # ["genes","exons","transcripts"], or another combination
         self.via = via                   # "local"/"lsf"
-        self.rpath = rpath               # Path to R scripts
-        self.juliapath = juliapath       # Path to Julia scripts
         self.junctions = junctions       # True/False, want to find or not
         self.debugfile = debugfile       # debug file name
         self.logfile = logfile           # log file name
@@ -66,8 +63,7 @@ class RNAseq(object):
 
 
 @timer
-def rnaseq_workflow(ex, job, pileup_level=["genes","transcripts"], via="lsf",
-                    rpath=None, juliapath=None, junctions=False, stranded=False,
+def rnaseq_workflow(ex, job, pileup_level=["genes","transcripts"], via="lsf", junctions=False, stranded=False,
                     logfile=sys.stdout, debugfile=sys.stderr):
     """Main function of the workflow.
 
@@ -75,7 +71,6 @@ def rnaseq_workflow(ex, job, pileup_level=["genes","transcripts"], via="lsf",
     :param ex: the bein's execution Id.
     :param job: a Frontend.Job object (or a dictionary of the same form).
     :param assembly: a genrep.Assembly object
-    :param rpath: (str) path to the R executable.
     :param junctions: (bool) whether to search for splice junctions using SOAPsplice. [False]
     :param via: (str) send job via 'local' or 'lsf'. ["lsf"]
     """
@@ -149,10 +144,11 @@ def rnaseq_workflow(ex, job, pileup_level=["genes","transcripts"], via="lsf",
                     g.write('\t'.join([chrom]+L[1:])+'\n')
         gtf = gtf_renamed
     assert os.path.exists(gtf), "GTF not found: %s" %gtf
+    #shutil.copy(gtf,"../")
 
     # Build controllers
     rnaseq_args = (ex,via,job,assembly,conditions,debugfile,logfile,
-                   pileup_level,rpath,juliapath,junctions,stranded)
+                   pileup_level,junctions,stranded)
     CNT = Counter(*rnaseq_args)
     DE = DE_Analysis(*rnaseq_args)
     PCA = Pca(*rnaseq_args)
@@ -333,11 +329,12 @@ class DE_Analysis(RNAseq):
         values, and saves the output in the MiniLIMS."""
 
         @program
-        def run_deseq(data_file, script_path, options=[]):
-            """Run *rpath*/negbin.test.R on *data_file*."""
+        def run_deseq(data_file, options=[]):
+            """Run negbin.test.R on *data_file*."""
+            assert program_exists('negbin.test.R')
             output_file = unique_filename_in()
             opts = ["-o",output_file]+options
-            arguments = ["R","--slave","-f",script_path,"--args",data_file]+opts
+            arguments = ["negbin.test.R", data_file]+opts
             return {'arguments': arguments, 'return_value': output_file}
 
         ncond = len(self.conditions)
@@ -349,11 +346,8 @@ class DE_Analysis(RNAseq):
         else:
             self.write_log("* Differential analysis")
             options = ['-s','tab']
-            script_path = os.path.join(self.rpath,'negbin.test.R')
-            if not os.path.exists(script_path):
-                self.write_debug("DE: R path not found: '%s'" % self.rpath)
             try:
-                deseqfile = run_deseq.nonblocking(self.ex, res_file, script_path, options, via=self.via).wait()
+                deseqfile = run_deseq.nonblocking(self.ex, res_file, options, via=self.via).wait()
             except Exception as exc:
                 self.write_log("  Skipped differential analysis: %s" % exc)
                 return
@@ -499,11 +493,11 @@ class Pca(RNAseq):
     def pca_rnaseq(self,counts_table_file):
         @program
         def pcajl(counts_table_file):
-            assert program_exists('julia')
             outprefix = unique_filename_in()
-            args = ['julia', os.path.join(self.juliapath,'pca_rnaseq.jl'), counts_table_file, outprefix]
+            args = ['pca_rnaseq.jl', counts_table_file, outprefix]
             return {"arguments": args, "return_value": outprefix}
 
+        assert program_exists('pca_rnaseq.jl')
         outprefix = pcajl.nonblocking(self.ex, counts_table_file, via=self.via).wait()
         pca_descr_png = set_file_descr('pca_groups.png', type='png', step='pca')
         pca_descr_js = set_file_descr('pca_groups.js', type='txt', step='pca', view='admin')
