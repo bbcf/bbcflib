@@ -10,8 +10,11 @@ from bbcflib.common import set_file_descr, unique_filename_in, intersect_many_be
 from bbcflib.chipseq import add_macs_results
 from bbcflib.mapseq import merge_bam, index_bam
 from bbcflib.track import track, convert
+from bbcflib.genrep import GenRep
 from bein import program
 from bein.util import touch
+
+_gnrp = GenRep()
 
 @program
 def wellington( bed, bam, output=None, options=[] ):
@@ -93,6 +96,7 @@ def dnaseseq_workflow( ex, job, assembly, logfile=sys.stdout, via='lsf' ):
         logfile.write(name[1]+" "+chrom+", ");logfile.flush()
         wellout[name].append(_fut.wait())
 
+    bedlist = {}
     for name, wlist in wellout.iteritems():
         wellall = unique_filename_in()
 #### Dummy file
@@ -101,7 +105,8 @@ def dnaseseq_workflow( ex, job, assembly, logfile=sys.stdout, via='lsf' ):
                description=set_file_descr(name[1]+'_wellington_files', type='none', view='admin',
                                           step='footprints', groupId=name[0]))
 #### BED at FDR 1%
-        bedzip = gzip.open(wellall+"_WellingtonFootprintsFDR01.bed.gz",'wb')
+        bedlist[name[0]] = wellall+"_WellingtonFootprintsFDR01.bed.gz"
+        bedzip = gzip.open(bedlist[name[0]],'wb')
         bedzip.write("track name='"+name[1]+"_WellingtonFootprints_FDR_0.01'\n")
         for x in wlist:
             with open(os.path.join(*x)+".WellingtonFootprints.FDR.0.01.bed") as _bed:
@@ -134,7 +139,27 @@ def dnaseseq_workflow( ex, job, assembly, logfile=sys.stdout, via='lsf' ):
                description=set_file_descr(name[1]+'_WellingtonFootprints.bw', 
                                           type='bigWig', ucsc='1', step='footprints', groupId=name[0]),
                associate_to_filename=wellall, template='%s_WellingtonFootprints.bw')
-        
+
+    if job.options.get('scan_motifs',False):
+        motifbeds = {}
+        for gid,bedfile in bedlist.iteritems():
+            group = jobs.groups[gid]
+            motifs = {}
+            for mot in group.get('motif',[]):
+                if os.path.exists(mot):
+                    mname = os.path.basename(os.path.splitext(mot)[0])
+                    motifs[mname] = mot
+                elif os.path.exists(os.path.join(supdir,mot)):
+                    mname = os.path.basename(os.path.splitext(mot)[0])
+                    motifs[mname] = os.path.join(supdir,mot)
+                else:
+                    _gnid, mname = mot.split(' ')
+                    motifs[mname] = _gnrp.get_motif_PWM(int(_gnid), mname, output=unique_filename_in())
+            descr = set_file_descr(group['name']+'motifs.bed.gz',
+                                   type='bed', ucsc='1', step='motifs', groupId=gid)
+            motifbeds[gid] = save_motif_profile( ex, motifs, assembly, bedfile,
+                                                 output=unique_filename_in(),
+                                                 description=descr, via=via )
     logfile.write("\nDone.\n ");logfile.flush()
     return 0
 

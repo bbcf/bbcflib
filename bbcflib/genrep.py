@@ -473,7 +473,7 @@ class Assembly(object):
              >Assembly: sacCer2
              1   0.309798640038793   0.308714120881750   0.190593944221299   0.190893294858157
         """
-        bases = ["A","C","G","T"]
+        bases = "ACGT"
         if hasattr(self,"stats_dict"):
             stat = self.stats_dict
         else:
@@ -1029,7 +1029,7 @@ class GenRep(object):
         if output is None: return motif
         with open(output,"w") as pwmfile:
             t = dict((alpha,n) for n,alpha in enumerate(motif['alphabet']))
-            pwm = "\n".join([" ".join(["1"]+[str(x[t[y]]) for y in ['A','C','G','T']]) for x in motif['motif']])
+            pwm = "\n".join([" ".join(["1"]+[str(x[t[y]]) for y in 'ACGT']) for x in motif['motif']])
             pwmfile.write(pwm)
         return output
 
