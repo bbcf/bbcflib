@@ -214,9 +214,9 @@ class Counter(RNAseq):
         tablenames = [None]*ncond
         futures = [None]*ncond
         if hasattr(self.assembly,"fasta_origin") or self.assembly.intype==2:
-            counter_options = ["--type","transcripts", "--method","raw", "--multiple"]
+            counter_options = ["--type","transcripts", "--method","raw", "--nh"]
         else:
-            counter_options = ["--type","genes,transcripts", "--method","raw,nnls", "--multiple"]
+            counter_options = ["--type","genes,transcripts", "--method","raw,nnls", "--nh"]
         if _TEST_:
             counter_options += ["-n","1"]  # skip the total read counting step
         if self.stranded:
