@@ -19,8 +19,8 @@ def wellington( bed, bam, output=None, options=[] ):
     outdir = unique_filename_in()
     os.mkdir(outdir)
     args = ["wellington_footprints.py","-o",output]
-    return {'arguments': args+options+[bed,bam,outdir], 
-            'return_value': os.path.join(outdir,output) }
+    return {'arguments': args+options+[bed,bam,outdir],
+            'return_value': (outdir,output)}
 
 
 ###############################################################
@@ -87,21 +87,39 @@ def dnaseseq_workflow( ex, job, assembly, logfile=sys.stdout, via='lsf' ):
 
     for name, wlist in wellout.iteritems():
         wellall = unique_filename_in()
+#### Dummy file
         touch( ex, wellall )
         ex.add(wellall,
                description=set_file_descr(name[1]+'_wellington_files', type='none', view='admin',
                                           step='footprints', groupId=name[0]))
+#### BED at FDR 1%
         bedzip = gzip.open(wellall+"_WellingtonFootprintsFDR01.bed.gz",'wb')
         bedzip.write("track name='"+name[1]+"_WellingtonFootprints_FDR_0.01'\n")
         for x in wlist:
-            with open(x+".WellingtonFootprints.FDR.0.01.bed") as _bed:
+            with open(os.path.join(*x)+".WellingtonFootprints.FDR.0.01.bed") as _bed:
                 [bedzip.write(l) for l in _bed]
         bedzip.close()
         ex.add(wellall+"_WellingtonFootprintsFDR01.bed.gz",
                description=set_file_descr(name[1]+'_WellingtonFootprintsFDR01.bed.gz', 
                                           type='bed', ucsc='1', step='footprints', groupId=name[0]),
                associate_to_filename=wellall, template='%s_WellingtonFootprintsFDR01.bed.gz')
-        cat([x+".WellingtonFootprints.wig" for x in wlist], wellall+"_WellingtonFootprints.wig")
+#### BED at p-values [...]
+        bedzip = gzip.open(wellall+"_WellingtonFootprintsPvalCutoffs.bed.gz",'wb')
+        for bfile in os.listdir(os.path.join(wlist[0][0],"p_value_cutoffs")):
+            cut = os.path.splitext(bfile[:-4])[1][1:] #between . ([1:]) and .bed ([:-4])
+            bedzip.write("track name='"+name[1]+"_WellingtonFootprints_Pval_%s'\n" %cut)
+            for wdir,wpref in wlist:
+                _bedpath = os.path.join(wdir,"p_value_cutoffs",wpref+".WellingtonFootprints."+cut+".bed")
+                with open(_bedpath) as _bed:
+                    [bedzip.write(l) for l in _bed]
+        bedzip.close()
+        ex.add(wellall+"_WellingtonFootprintsPvalCutoffs.bed.gz",
+               description=set_file_descr(name[1]+'_WellingtonFootprintsPvalCutoffs.bed.gz', 
+                                          type='bed', ucsc='1', step='footprints', groupId=name[0]),
+               associate_to_filename=wellall, template='%s_WellingtonFootprintsPvalCutoffs.bed.gz')
+#### WIG
+        cat([os.path.join(*x)+".WellingtonFootprints.wig" for x in wlist], 
+            wellall+"_WellingtonFootprints.wig")
         convert(wellall+"_WellingtonFootprints.wig", wellall+"_WellingtonFootprints.bw", 
                 chrmeta=assembly.chrmeta)
         ex.add(wellall+"_WellingtonFootprints.bw",
