@@ -81,10 +81,10 @@ def dnaseseq_workflow( ex, job, assembly, logfile=sys.stdout, via='lsf' ):
         wellout[name] = []
         if not bed_bam[0]:
             if len(names['controls']) < 2:
-                bed_bam[0] = macsout[(name,names['controls'][0])]+"_summits.bed"
+                bed_bam = (macsout[(name,names['controls'][0])]+"_summits.bed", bed_bam[1])
             else:
                 _beds = [macsout[(name,x)]+"_summits.bed" for x in names['controls']]
-                bed_bam[0] = intersect_many_bed( ex, _beds, via=via )
+                bed_bam = (intersect_many_bed( ex, _beds, via=via ), bed_bam[1])
         tbed = track(bed_bam[0])
         for chrom in assembly.chrnames:
             _chrombed = unique_filename_in()
