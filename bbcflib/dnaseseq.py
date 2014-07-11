@@ -61,12 +61,15 @@ def dnaseseq_workflow( ex, job, assembly, logfile=sys.stdout, via='lsf' ):
     if len(controls)<1:
         controls = [None]
         names['controls'] = [(0,None)]
-    if any([not t[0] for t in tests]):
+    missing_beds = [k for k,t in enuemrate(tests) if not t[0]]
+    if missing_beds:
         genome_size = sum([x['length'] for x in assembly.chrmeta.values()])
         logfile.write("Running MACS.\n");logfile.flush()
-        macsout = add_macs_results( ex, 0, genome_size, [t[1] for t in tests if not t[0]], 
-                                    ctrlbam=controls,
-                                    name=[n for k,n in enumerate(names) if not tests[k][0]],
+        _tts = [tests[k][1] for k in missing_beds]
+        _nms = {'tests': [names['tests'][k] for k in missing_beds],
+                'controls': names['controls']}
+        macsout = add_macs_results( ex, 0, genome_size, _tts, 
+                                    ctrlbam=controls, name=_nms,
                                     poisson_threshold={},
                                     macs_args=macs_args, via=via )
         logfile.write("Done MACS.\n");logfile.flush()
