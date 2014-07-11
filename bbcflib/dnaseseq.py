@@ -148,7 +148,7 @@ def dnaseseq_workflow( ex, job, assembly, logfile=sys.stdout, via='lsf' ):
         logfile.write("Scanning motifs\n");logfile.flush()
         motifbeds = {}
         for gid,bedfile in bedlist.iteritems():
-            logfile.write("\n"+gid+": ");logfile.flush()
+            logfile.write("\n%i: "%gid);logfile.flush()
             group = job.groups[gid]
             motifs = {}
             for mot in group.get('motif',[]):
