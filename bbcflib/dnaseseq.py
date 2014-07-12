@@ -11,6 +11,7 @@ from bbcflib.chipseq import add_macs_results
 from bbcflib.mapseq import merge_bam, index_bam
 from bbcflib.track import track, convert
 from bbcflib.genrep import GenRep
+from bbcflib.motif import save_motif_profile
 from bein import program
 from bein.util import touch
 
