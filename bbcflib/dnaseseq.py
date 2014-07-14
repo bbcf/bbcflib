@@ -163,11 +163,12 @@ def dnaseseq_workflow( ex, job, assembly, logfile=sys.stdout, via='lsf' ):
                     _gnid, mname = mot.split(' ')
                     motifs[mname] = _gnrp.get_motif_PWM(int(_gnid), mname, output=unique_filename_in())
                 logfile.write(mname+", ");logfile.flush()
-            descr = set_file_descr(group['name']+'motifs.bed.gz',
-                                   type='bed', ucsc='1', step='motifs', groupId=gid)
+            _descr = set_file_descr(group['name']+'motifs.bed.gz',
+                                    type='bed', ucsc='1', step='motifs', groupId=gid)
+            _out = unique_filename_in()
             motifbeds[gid] = save_motif_profile( ex, motifs, assembly, bedfile,
-                                                 output=unique_filename_in(),
-                                                 description=descr, via=via )
+                                                 keep_max_only=True, output=_out,
+                                                 description=_descr, via=via )
     logfile.write("\nDone.\n ");logfile.flush()
     return 0
 
