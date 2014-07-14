@@ -30,7 +30,7 @@ numpy.set_printoptions(precision=3,suppress=True)
 numpy.seterr(invalid='print')
 numpy.seterr(divide='ignore')
 
-_TEST_ = 1
+_TEST_ = 0
 
 
 #----------------------------- GLOBAL CLASSES -----------------------------#
@@ -64,7 +64,7 @@ class RNAseq(object):
 
 
 @timer
-def rnaseq_workflow(ex, job, pileup_level=["genes","transcripts"], 
+def rnaseq_workflow(ex, job, pileup_level=["genes","transcripts"],
                     via="lsf", junctions=False, stranded=False,
                     logfile=sys.stdout, debugfile=sys.stderr):
     """Main function of the workflow.
@@ -352,7 +352,7 @@ class DE_Analysis(RNAseq):
             return {'arguments': arguments, 'return_value': output_file}
 
         if not program_exists('negbin.test.R'):
-            self.write_debug("Skipped unctions search: negbin.test.R not found.")
+            self.write_debug("Skipped DE analysis: negbin.test.R not found.")
             return
         ncond = len(self.conditions)
         res_file = self.clean_before_deseq(filename)
