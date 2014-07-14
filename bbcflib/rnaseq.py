@@ -12,6 +12,7 @@ on the exons, and uses least-squares to infer counts on genes and transcripts.
 # Built-in modules #
 import os, sys, math, itertools, shutil
 import json, urllib2
+from operator import itemgetter
 
 # Internal modules #
 from bbcflib.common import set_file_descr, unique_filename_in, cat, timer, program_exists
@@ -116,35 +117,20 @@ def rnaseq_workflow(ex, job, pileup_level=["genes","transcripts"],
         if gtf: logfile.write("  ... from config file: %s\n" % gtf); logfile.flush()
     # ... or from GenRep
     if gtf is None:
-        genrep_root = assembly.genrep.root
-        gtf = os.path.join(genrep_root,"nr_assemblies/gtf/%s_%i.gtf.gz"%(assembly.md5,0))
-        logfile.write("  ... from GenRep: %s\n" % gtf); logfile.flush()
-        for n in range(1,100):
-            gtf_n = os.path.join(genrep_root,"nr_assemblies/gtf/%s_%i.gtf.gz"%(assembly.md5,n))
-            if not os.path.exists(gtf_n): break
-            gtf = gtf_n
-        shutil.copy(gtf,ex.working_directory)
-        gtf = os.path.join(ex.working_directory, os.path.basename(gtf))
-        gtf = gunzipfile(ex, gtf)[0]
-
-        # Resolve chromosome names between assembly (BAM) and GTF
-        chromosomes = ','.join(assembly.chrmeta.keys())
-        url = os.path.join(assembly.genrep.url,
-                  "chromosomes/get_mapping.json?identifier=%s" % chromosomes \
-                + "&assembly_name=%s&source_name=Ensembl" % assembly.name)
-        request = urllib2.Request(url)
-        chrom_json = json.load(urllib2.urlopen(request))
-        chrom_mapping = dict((v['chr_name'][0],k) for k,v in chrom_json.iteritems())
-        gtf_renamed = os.path.splitext(gtf)[0]+'_renamed.gtf'
-        with open(gtf) as f:
-            with open(gtf_renamed,"wb") as g:
-                for line in f:
-                    L = line.strip().split('\t')
-                    chrom = chrom_mapping.get(L[0])
-                    if chrom is None: continue  # chrom name not found in GenRep
-                    g.write('\t'.join([chrom]+L[1:])+'\n')
-        gtf = gtf_renamed
-    assert os.path.exists(gtf), "GTF not found: %s" %gtf
+        emap = assembly.get_exon_mapping()
+        gtf = unique_filename_in()
+        gtflines = []
+        smap = {1:'+', -1:'-'}
+        with open(gtf,"wb") as g:
+            for eid,e in emap.iteritems():
+                for t in e.transcripts:
+                    gtflines.append([e.chrom,'Ensembl','exon',e.start,e.end,'.',smap.get(e.strand,'.'),'.',
+                                   'exon_id "%s"; transcript_id "%s"; gene_id "%s"; gene_name "%s"' \
+                                   % (e.id,t,e.gene_id,e.gene_name)])
+            del emap
+            gtflines.sort(key=itemgetter(0,3,4))  # chrom,start,end
+            for gtfline in gtflines:
+                g.write('\t'.join([str(x) for x in gtfline])+'\n')
     #shutil.copy(gtf,"../")
 
     # Build controllers
@@ -225,11 +211,7 @@ class Counter(RNAseq):
             futures[i] = rnacounter.nonblocking(self.ex, bamfiles[i], gtf, stdout=tablenames[i], via=self.via,
                                options=counter_options)
         # Construct file headers
-        if self.stranded:
-            hconds = ["counts."+c for c in self.conditions] + ["counts_rev."+c for c in self.conditions] \
-                   + ["rpkm."+c for c in self.conditions] + ["rpkm_rev."+c for c in self.conditions]
-        else:
-            hconds = ["counts."+c for c in self.conditions] + ["rpkm."+c for c in self.conditions]
+        hconds = ["counts."+c for c in self.conditions] + ["rpkm."+c for c in self.conditions]
         hinfo = ["Chromosome","Start","End","Strand","GeneName"]
         header = ["ID"] + hconds + hinfo
 
@@ -240,7 +222,9 @@ class Counter(RNAseq):
                 futures[i].wait()
             except Exception, err:
                 self.write_debug("Counting failed: %s." % str(err))
-            tracks[i] = track(tablenames[i], format="txt", fields=["ID","Count","RPKM"]+hinfo+['type']).read()
+            fields = ["ID","Count","RPKM"]+hinfo+['type']
+            if self.stranded: fields += ['sense']
+            tracks[i] = track(tablenames[i], format="txt", fields=fields).read()
         genes_filename = unique_filename_in()
         trans_filename = unique_filename_in()
         genes_file = open(genes_filename,"wb")
