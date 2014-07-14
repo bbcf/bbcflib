@@ -29,7 +29,7 @@ numpy.set_printoptions(precision=3,suppress=True)
 numpy.seterr(invalid='print')
 numpy.seterr(divide='ignore')
 
-_TEST_ = 0
+_TEST_ = 1
 
 
 #----------------------------- GLOBAL CLASSES -----------------------------#
@@ -156,32 +156,34 @@ def rnaseq_workflow(ex, job, pileup_level=["genes","transcripts"],
     JN = Junctions(*rnaseq_args)
 
     # Count reads on genes, transcripts with "rnacounter"
-    genes_filename,trans_filename = CNT.count_reads(bamfiles, gtf)
+    count_files = CNT.count_reads(bamfiles, gtf)
 
     # DE and PCA
     if "genes" in pileup_level:
-        DE.differential_analysis(genes_filename, "genes")
         # PCA of groups ~ gene expression
         if ncond > 2:
-            try:
-                PCA.pca_rnaseq(genes_filename)
-            except Exception, error:
-                debugfile.write("PCA failed: %s\n"%str(error)); debugfile.flush()
+            PCA.pca_rnaseq(count_files['genes'])
         description = set_file_descr("genes_expression.txt", step="pileup", type="txt")
-        ex.add(genes_filename, description=description)
+        ex.add(count_files['genes'], description=description)
+        DE.differential_analysis(count_files['genes'], "genes")
+        if stranded:
+            description = set_file_descr("genes_antisense_expression.txt", step="pileup", type="txt")
+            ex.add(count_files['genes_anti'], description=description)
+            DE.differential_analysis(count_files['genes_anti'], "genes_antisense")
 
     if "transcripts" in pileup_level:
-        DE.differential_analysis(trans_filename, "transcripts")
         description = set_file_descr("transcripts_expression.txt", step="pileup", type="txt")
-        ex.add(trans_filename, description=description)
+        ex.add(count_files['transcripts'], description=description)
+        DE.differential_analysis(count_files['transcripts'], "transcripts")
+        if stranded:
+            description = set_file_descr("transcripts_antisense_expression.txt", step="pileup", type="txt")
+            ex.add(count_files['transcripts_anti'], description=description)
+            DE.differential_analysis(count_files['transcripts_anti'], "transcripts_antisense")
 
     # Find splice junctions
     if junctions:
         logfile.write("* Search for splice junctions\n"); logfile.flush()
-        try:
-            JN.find_junctions()
-        except Exception, error:
-            debugfile.write("Junctions search failed: %s\n"%str(error)); debugfile.flush()
+        JN.find_junctions()
 
     return 0
 
@@ -222,7 +224,6 @@ class Counter(RNAseq):
             tablenames[i] = unique_filename_in()
             futures[i] = rnacounter.nonblocking(self.ex, bamfiles[i], gtf, stdout=tablenames[i], via=self.via,
                                options=counter_options)
-
         # Construct file headers
         if self.stranded:
             hconds = ["counts."+c for c in self.conditions] + ["counts_rev."+c for c in self.conditions] \
@@ -235,7 +236,10 @@ class Counter(RNAseq):
         # Put samples together, split genes and transcripts
         tracks = [None]*ncond
         for i,c in enumerate(self.conditions):
-            futures[i].wait()
+            try:
+                futures[i].wait()
+            except Exception, err:
+                self.write_debug("Counting failed: %s." % str(err))
             tracks[i] = track(tablenames[i], format="txt", fields=["ID","Count","RPKM"]+hinfo+['type']).read()
         genes_filename = unique_filename_in()
         trans_filename = unique_filename_in()
@@ -243,22 +247,48 @@ class Counter(RNAseq):
         trans_file = open(trans_filename,"wb")
         genes_file.write('\t'.join(header)+'\n')
         trans_file.write('\t'.join(header)+'\n')
+        if self.stranded:
+            genes_anti_filename = unique_filename_in()
+            trans_anti_filename = unique_filename_in()
+            genes_anti_file = open(genes_anti_filename,"wb")
+            trans_anti_file = open(trans_anti_filename,"wb")
+            genes_anti_file.write('\t'.join(header)+'\n')
+            trans_anti_file.write('\t'.join(header)+'\n')
         while 1:
             info = tuple(t.next() for t in tracks)
             if not info: break
             fid = info[0][0]
-            rest = info[0][3:-1]
-            ftype = info[0][-1]
+            rest = info[0][3:-1 -self.stranded]
+            ftype = info[0][-1 -self.stranded]
             counts = tuple(x[1] for x in info)
             rpkm = tuple(x[2] for x in info)
             towrite = '\t'.join((fid,)+counts+rpkm+rest)+'\n'
             if ftype == 'gene':
-                genes_file.write(towrite)
+                if self.stranded:
+                    strand = info[0][-1]
+                    if strand == 'sense':
+                        genes_file.write(towrite)
+                    else:
+                        genes_anti_file.write(towrite)
+                else:
+                    genes_file.write(towrite)
             elif ftype=='transcript':
-                trans_file.write(towrite)
+                if self.stranded:
+                    strand = info[0][-1]
+                    if strand == 'sense':
+                        trans_file.write(towrite)
+                    else:
+                        trans_anti_file.write(towrite)
+                else:
+                    trans_file.write(towrite)
         genes_file.close()
         trans_file.close()
-        return genes_filename, trans_filename
+        if self.stranded:
+            count_files = {'genes':genes_filename, 'transcripts':trans_filename,
+                           'genes_anti':genes_anti_filename, 'transcripts_anti':trans_anti_filename}
+        else:
+            count_files = {'genes':genes_filename, 'transcripts':trans_filename}
+        return count_files
 
 
 #-------------------------- DIFFERENTIAL ANALYSIS ----------------------------#
@@ -332,12 +362,14 @@ class DE_Analysis(RNAseq):
         @program
         def run_deseq(data_file, options=[]):
             """Run negbin.test.R on *data_file*."""
-            assert program_exists('negbin.test.R')
             output_file = unique_filename_in()
             opts = ["-o",output_file]+options
             arguments = ["negbin.test.R", data_file]+opts
             return {'arguments': arguments, 'return_value': output_file}
 
+        if not program_exists('negbin.test.R'):
+            self.write_debug("Skipped unctions search: negbin.test.R not found.")
+            return
         ncond = len(self.conditions)
         res_file = self.clean_before_deseq(filename)
         if res_file is None:
@@ -349,12 +381,12 @@ class DE_Analysis(RNAseq):
             options = ['-s','tab']
             try:
                 deseqfile = run_deseq.nonblocking(self.ex, res_file, options, via=self.via).wait()
-            except Exception as exc:
-                self.write_log("  Skipped differential analysis: %s" % exc)
+            except Exception, err:
+                self.write_debug("  DE analysis failed: %s." % str(err))
                 return
             output_files = [f for f in os.listdir(self.ex.working_directory) if deseqfile in f]
-            if (not deseqfile) or len(output_files)==0:
-                self.write_log("  ....Empty file.")
+            if (deseqfile is None) or isinstance(deseqfile,Exception) or len(output_files)==0:
+                self.write_debug("  Skipped differential analysis: %s." % str(deseqfile))
                 return
             for o in output_files:
                 oname = feature_type+"_differential"+o.split(deseqfile)[1]+".txt"
@@ -418,7 +450,9 @@ class Junctions(RNAseq):
             for k,v in options.iteritems(): opts.extend([str(k),str(v)])
             return {"arguments": args+opts, "return_value": output}
 
-        assert program_exists('soapsplice')
+        if not program_exists('soapsplice'):
+            self.write_debug("Skipped junctions search: soapsplice not found.")
+            return
         self.assembly.set_index_path(intype=3)
         soapsplice_index = soapsplice_index or self.assembly.index_path
         soapsplice_options.update(self.job.options.get('soapsplice_options',{}))
@@ -444,8 +478,11 @@ class Junctions(RNAseq):
                                             path_to_soapsplice=path_to_soapsplice,
                                             options=soapsplice_options,
                                             via=self.via, memory=8, threads=soapsplice_options['-p'])
-            template = future.wait()
-            if not template: return
+            try:
+                template = future.wait()
+            except Exception, err:
+                self.write_debug("SOAPsplice failed: %s." % str(err))
+                return
             junc_file = template+'.junc'
             bed = self.convert_junc_file(junc_file,self.assembly)
             bed_descr = set_file_descr('junctions_%s.bed' % group['name'],
@@ -498,8 +535,14 @@ class Pca(RNAseq):
             args = ['pca_rnaseq.jl', counts_table_file, outprefix]
             return {"arguments": args, "return_value": outprefix}
 
-        assert program_exists('pca_rnaseq.jl')
-        outprefix = pcajl.nonblocking(self.ex, counts_table_file, via=self.via).wait()
+        if not program_exists('pca_rnaseq.jl'):
+            self.write_debug("Skipped PCA: pca_rnaseq.jl not found.")
+            return
+        try:
+            outprefix = pcajl.nonblocking(self.ex, counts_table_file, via=self.via).wait()
+        except Exception, err:
+            self.write_debug("PCA failed: %s." % str(err))
+            return
         pca_descr_png = set_file_descr('pca_groups.png', type='png', step='pca')
         pca_descr_js = set_file_descr('pca_groups.js', type='txt', step='pca', view='admin')
         pcaeigv_descr_png = set_file_descr('pca_groups_sdev.png', type='png', step='pca')
