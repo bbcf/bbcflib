@@ -417,8 +417,8 @@ def segment_features(trackList,nbins=10,upstream=None,downstream=None):
 
     :param trackList: FeatureStream, or list of FeatureStream objects.
     :param nbins: (int) number of bins. [10]
-    :param upstream: (tuple (int,float)) upstream flank.
-    :param downstream: (tuple (int,float)) downstream flank.
+    :param upstream: (tuple (float,int)) upstream flank.
+    :param downstream: (tuple (float,int)) downstream flank.
     :rtype: FeatureStream, or list of FeatureStream objects
     """
     def _split_feat(_t):
