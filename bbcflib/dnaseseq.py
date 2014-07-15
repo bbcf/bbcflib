@@ -144,9 +144,10 @@ def motif_scan( ex, bedlist, assembly, groups, via, logfile ):
         _descr = set_file_descr(group['name']+'_motifs.bed',
                                 type='bed', ucsc='1', step='motifs', groupId=gid)
         _out = unique_filename_in()
+        _hd = "track name='%s_motifs'" %group['name']
         motifbeds[gid] = save_motif_profile( ex, motifs, assembly, bedfile,
                                              keep_max_only=True, output=_out,
-                                             description=_descr, via=via )
+                                             header=_hd, description=_descr, via=via )
     return motifbeds
 
 def plot_footprint_profile( ex, bedlist, siglist, chrnames, groups, logfile ):

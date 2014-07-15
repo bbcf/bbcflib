@@ -151,8 +151,9 @@ def motif_scan( fasta, motif, background, threshold=0 ):
     call = ["S1K", motif, background, str(threshold), fasta]
     return {"arguments": call, "return_value": None}
 
-def save_motif_profile( ex, motifs, assembly, regions=None, fasta=None, background=None, keep_max_only=False,
-                        threshold=0, output=None, description=None, via='lsf' ):
+def save_motif_profile( ex, motifs, assembly, regions=None, fasta=None, background=None, 
+                        keep_max_only=False, threshold=0, 
+                        output=None, header=None, description=None, via='lsf' ):
     """
     Scans a set of motifs on a set of regions and saves the results as a track file.
     The 'motifs' argument is a single PWM file or a dictionary with keys motif names and values PWM files
@@ -180,9 +181,9 @@ def save_motif_profile( ex, motifs, assembly, regions=None, fasta=None, backgrou
         background = assembly.statistics(unique_filename_in(),frequency=True,
                                          matrix_format=True)
     for name, pwm in motifs.iteritems():
-        output = unique_filename_in()
-        futures[name] = ( output, motif_scan.nonblocking( ex, fasta, pwm, background,
-                                                          threshold, stdout=output, via=via ) )
+        _out = unique_filename_in()
+        futures[name] = ( _out, motif_scan.nonblocking( ex, fasta, pwm, background,
+                                                        threshold, stdout=_out, via=via ) )
 ##############
     def _parse_s1k(_f,_n):
         if keep_max_only:
@@ -212,8 +213,8 @@ def save_motif_profile( ex, motifs, assembly, regions=None, fasta=None, backgrou
             for x in maxscore.values():
                 yield x
 ##############
-    track_result = track( bedout, format='bed', info={'datatype':'qualitative'},
-                          fields=['chr','start','end','name','score','strand'] )
+    track_result = track( bedout, format='bed', fields=['strand'] )
+    if header: track_result.make_header(header)
     for name, future in futures.iteritems():
         future[1].wait()
         track_result.write( FeatureStream(_parse_s1k(future[0], name), fields=track_result.fields) )
