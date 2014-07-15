@@ -271,10 +271,10 @@ def dnaseseq_workflow( ex, job, assembly, logfile=sys.stdout, via='lsf' ):
             touch( ex, plotall )
             ex.add(plotall,
                    description=set_file_descr(gname+'_footprints_plots', type='none', view='admin',
-                                              step='footprints', groupId=gid))
+                                              step='motifs', groupId=gid))
             ex.add(flist['pdf'],
                    description=set_file_descr(gname+'_footprints_plots.pdf', 
-                                              type='pdf', step='footprints', groupId=gid),
+                                              type='pdf', step='motifs', groupId=gid),
                    associate_to_filename=plotall, template='%s.pdf')
             tarname = unique_filename_in()
             tarfh = tarfile.open(tarname, "w:gz")
@@ -283,7 +283,7 @@ def dnaseseq_workflow( ex, job, assembly, logfile=sys.stdout, via='lsf' ):
             tarfh.close()
             ex.add( tarname,
                    description=set_file_descr(gname+'_footprints_plots.tar.gz',
-                                              type='tar', step='footprints', groupId=gid),
+                                              type='tar', step='motifs', groupId=gid),
                    associate_to_filename=plotall, template='%s.tar.gz')
     logfile.write("\nDone.\n ");logfile.flush()
     return 0
