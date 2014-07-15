@@ -1123,13 +1123,16 @@ class GenRep(object):
             chr_id = (chr_name,'',0)
         if path_to_ref and os.path.exists(path_to_ref):
             locus = ["%s:%i-%i"%(chrname,start+1,end) for start,end in coord_list]
+            seq_all = []
             try:
                 if ex:
-                    seq_all = sam_faidx(ex,path_to_ref,locus)
+                    for _ln in range(0, len(locus), 100):
+                        seq_all += sam_faidx(ex,path_to_ref,locus[_ln:_ln+100])
                 else:
                     from bein import execution
                     with execution(None) as ex:
-                        seq_all = sam_faidx(ex,path_to_ref,locus)
+                    for _ln in range(0, len(locus), 100):
+                        seq_all += sam_faidx(ex,path_to_ref,locus[_ln:_ln+100])
                 return seq_all
             except:  # raw text fasta without index
                 return _read_fasta(path_to_ref,coord_list)
