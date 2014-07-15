@@ -162,7 +162,7 @@ def save_motif_profile( ex, motifs, assembly, regions=None, fasta=None, backgrou
     where the sum of the 'p's is 1 and the first column allows to skip a position with a '0'.
     """
     if regions is not None:
-        fasta, size = assembly.fasta_from_regions( regions )
+        fasta, size = assembly.fasta_from_regions( regions, ex=ex )
     if fasta is None:
         raise ValueError("Provide either a fasta file or a valid list of regions")
 #    if assembly:
@@ -227,8 +227,8 @@ def FDR_threshold( ex, motif, background, assembly, regions, alpha=.1, nb_sample
     Computes a score threshold for 'motif' on 'regions' based on a false discovery rate < alpha and returns the
     threshold or a dictionary with keys thresholds and values simulated FDRs when alpha < 0.
     """
-    fasta, size = assembly.fasta_from_regions( regions )
-    shuf_fasta, shuf_size = assembly.fasta_from_regions( regions, shuffled=True )
+    fasta, size = assembly.fasta_from_regions( regions, ex=ex )
+    shuf_fasta, shuf_size = assembly.fasta_from_regions( regions, shuffled=True, ex=ex )
     output = unique_filename_in()
 #### Threshold at -100 to get all scores!
     future = motif_scan.nonblocking( ex, fasta, motif, background, -100, stdout=output, via=via )
