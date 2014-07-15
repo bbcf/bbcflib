@@ -177,7 +177,7 @@ def plot_footprint_profile( ex, bedlist, siglist, chrnames, groups, logfile ):
         files[gid]['pdf'] = unique_filename_in()
         new = True
         last = len(data)
-        for motif, dat in data:
+        for motif, dat in data.iteritems():
             last -= 1
             mname, nbins = motif
             dat /= float(numregs[motif])
@@ -185,7 +185,7 @@ def plot_footprint_profile( ex, bedlist, siglist, chrnames, groups, logfile ):
             X[0] = "-%i"%_plot_flank[1]
             X[-1] = "%i"%_plot_flank[1]
             for k in range(nbins): X[k+_plot_flank[1]] = str(k+1)
-####### Why not do a heatmap (sort by intensity), could be nice as well
+####### Could do a heatmap (sort by intensity)...
             lineplot(X, [dat[:, n] for n in range(dat.shape[-1])],
                      output=files[gid]['pdf'], new=new, last=(last>0), 
                      legend=snames, main=mname)
