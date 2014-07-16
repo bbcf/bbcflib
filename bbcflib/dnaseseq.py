@@ -53,7 +53,7 @@ def wellington( bed, bam, output=None, options=[] ):
     args = ["wellington_footprints.py","-o",output]
     return {'arguments': args+options+[bed,bam,outdir], 'return_value': (outdir,output)}
 
-def save_wellington( ex, wellout ):
+def save_wellington( ex, wellout, chrmeta ):
     bedlist = {}
     for name, wlist in wellout.iteritems():
         wellall = unique_filename_in()
@@ -63,19 +63,19 @@ def save_wellington( ex, wellout ):
                description=set_file_descr(name[1]+'_wellington_files', type='none', view='admin',
                                           step='footprints', groupId=name[0]))
 #### BED at FDR 1%
-        bedlist[name[0]] = wellall+"_WellingtonFootprintsFDR01.bed.gz"
+        bedlist[name[0]] = wellall+"FDR01.bed.gz"
         bedzip = gzip.open(bedlist[name[0]],'wb')
         bedzip.write("track name='"+name[1]+"_WellingtonFootprints_FDR_0.01'\n")
         for x in wlist:
             with open(os.path.join(*x)+".WellingtonFootprints.FDR.0.01.bed") as _bed:
                 [bedzip.write(l) for l in _bed]
         bedzip.close()
-        ex.add(wellall+"_WellingtonFootprintsFDR01.bed.gz",
+        ex.add(wellall+"FDR01.bed.gz",
                description=set_file_descr(name[1]+'_WellingtonFootprintsFDR01.bed.gz', 
                                           type='bed', ucsc='1', step='footprints', groupId=name[0]),
                associate_to_filename=wellall, template='%s_WellingtonFootprintsFDR01.bed.gz')
 #### BED at p-values [...]
-        bedzip = gzip.open(wellall+"_WellingtonFootprintsPvalCutoffs.bed.gz",'wb')
+        bedzip = gzip.open(wellall+"PvalCutoffs.bed.gz",'wb')
         for bfile in os.listdir(os.path.join(wlist[0][0],"p_value_cutoffs")):
             cut = os.path.splitext(bfile[:-4])[1][1:] #between . ([1:]) and .bed ([:-4])
             bedzip.write("track name='"+name[1]+"_WellingtonFootprints_Pval_%s'\n" %cut)
@@ -84,23 +84,21 @@ def save_wellington( ex, wellout ):
                 with open(_bedpath) as _bed:
                     [bedzip.write(l) for l in _bed]
         bedzip.close()
-        ex.add(wellall+"_WellingtonFootprintsPvalCutoffs.bed.gz",
+        ex.add(wellall+"PvalCutoffs.bed.gz",
                description=set_file_descr(name[1]+'_WellingtonFootprintsPvalCutoffs.bed.gz', 
                                           type='bed', ucsc='1', step='footprints', groupId=name[0]),
                associate_to_filename=wellall, template='%s_WellingtonFootprintsPvalCutoffs.bed.gz')
 #### WIG
-        cat([os.path.join(*x)+".WellingtonFootprints.wig" for x in wlist], 
-            wellall+"_WellingtonFootprints.wig")
-        convert(wellall+"_WellingtonFootprints.wig", wellall+"_WellingtonFootprints.bw", 
-                chrmeta=assembly.chrmeta)
-        ex.add(wellall+"_WellingtonFootprints.bw",
+        cat([os.path.join(*x)+".WellingtonFootprints.wig" for x in wlist], wellall+".wig")
+        convert(wellall+".wig", wellall+".bw", chrmeta=chrmeta)
+        ex.add(wellall+".bw",
                description=set_file_descr(name[1]+'_WellingtonFootprints.bw', 
                                           type='bigWig', ucsc='1', step='footprints', groupId=name[0]),
                associate_to_filename=wellall, template='%s_WellingtonFootprints.bw')
     return bedlist
 
 
-def run_wellington( ex, tests, names, chrnames, via, logfile ):
+def run_wellington( ex, tests, names, assembly, via, logfile ):
     futures = {}
     logfile.write("Running Wellington:\n");logfile.flush()
     wellout = {}
@@ -108,7 +106,7 @@ def run_wellington( ex, tests, names, chrnames, via, logfile ):
         name = names['tests'][nbam]
         wellout[name] = []
         tbed = track(bed_bam[0])
-        for chrom in chrnames:
+        for chrom in assembly.chrnames:
             _chrombed = unique_filename_in()
             with track(_chrombed,format="bed",fields=tbed.fields) as _tt:
                 _neighb = neighborhood( tbed.read(chrom), before_start=_well_flank, after_end=_well_flank )
@@ -120,7 +118,7 @@ def run_wellington( ex, tests, names, chrnames, via, logfile ):
         logfile.write(name[1]+" "+chrom+", ");logfile.flush()
         wellout[name].append(_fut.wait())
     logfile.write("\n");logfile.flush()
-    bedlist = save_wellington(ex, wellout)
+    bedlist = save_wellington(ex, wellout, assembly.chrmeta)
     return bedlist
 
 def motif_scan( ex, bedlist, assembly, groups, via, logfile ):
@@ -236,7 +234,7 @@ def dnaseseq_workflow( ex, job, assembly, logfile=sys.stdout, via='lsf' ):
         names['controls'] = [(0,None)]
     tests = macs_bedfiles( ex, assembly.chrmeta, tests, controls, names, 
                            job.options.get('macs_args',["--keep-dup","10"]), via, logfile )
-    bedlist = run_wellington(ex, tests, names, assembly.chrnames, via, logfile)
+    bedlist = run_wellington(ex, tests, names, assembly, via, logfile)
 
 ######################### Motif scanning / plotting
     if any([gr.get('motif') or None for gr in jobs.groups]):
