@@ -100,7 +100,7 @@ def save_wellington( ex, wellout ):
     return bedlist
 
 
-def run_wellington( ex, tests, chrnames, via, logfile ):
+def run_wellington( ex, tests, names, chrnames, via, logfile ):
     futures = {}
     logfile.write("Running Wellington:\n");logfile.flush()
     wellout = {}
@@ -212,7 +212,7 @@ def dnaseseq_workflow( ex, job, assembly, logfile=sys.stdout, via='lsf' ):
     for gid,mapped in job.files.iteritems():
         group_name = job.groups[gid]['name']
         if not isinstance(mapped,dict):
-            raise TypeError("Mapseq_files values must be dictionaries with keys *run_ids* or 'bam'.")
+            raise TypeError("Files values must be dictionaries with keys *run_ids* or 'bam'.")
         if 'bam' in mapped: mapped = {'_': mapped}
         if len(mapped)>1:
             bamfile = merge_bam(ex, [m['bam'] for m in mapped.values()])
@@ -236,7 +236,7 @@ def dnaseseq_workflow( ex, job, assembly, logfile=sys.stdout, via='lsf' ):
         names['controls'] = [(0,None)]
     tests = macs_bedfiles( ex, assembly.chrmeta, tests, controls, names, 
                            job.options.get('macs_args',["--keep-dup","10"]), via, logfile )
-    bedlist = run_wellington(ex, tests, assembly.chrnames, via, logfile)
+    bedlist = run_wellington(ex, tests, names, assembly.chrnames, via, logfile)
 
 ######################### Motif scanning / plotting
     if any([gr.get('motif') or None for gr in jobs.groups]):
@@ -265,27 +265,27 @@ def dnaseseq_workflow( ex, job, assembly, logfile=sys.stdout, via='lsf' ):
                     siglist[_g].extend(wig[0].values())
             else:
                 siglist[gid].extend(wig[0].values())
-        plot_files = plot_footprint_profile( ex, motifbeds, siglist, assembly.chrnames, jobs.groups, logfile )
+        plot_files = plot_footprint_profile( ex, motifbeds, siglist, 
+                                             assembly.chrnames, jobs.groups, logfile )
         for gid, flist in plot_files.iteritems():
             gname = job.groups[gid]['name']
             plotall = unique_filename_in()
             touch( ex, plotall )
-            ex.add(plotall,
-                   description=set_file_descr(gname+'_footprints_plots', type='none', view='admin',
-                                              step='motifs', groupId=gid))
-            ex.add(flist['pdf'],
-                   description=set_file_descr(gname+'_footprints_plots.pdf', 
-                                              type='pdf', step='motifs', groupId=gid),
+            ex.add(plotall, description=set_file_descr(gname+'_footprints_plots', 
+                                                       type='none', view='admin',
+                                                       step='motifs', groupId=gid))
+            ex.add(flist['pdf'], description=set_file_descr(gname+'_footprints_plots.pdf', 
+                                                            type='pdf', step='motifs', 
+                                                            groupId=gid),
                    associate_to_filename=plotall, template='%s.pdf')
             tarname = unique_filename_in()
             tarfh = tarfile.open(tarname, "w:gz")
             for mname,matf in flist['mat']:
                 tarfh.add(matf, arcname="%s_%s.txt" % (gname,mname))
             tarfh.close()
-            ex.add( tarname,
-                   description=set_file_descr(gname+'_footprints_plots.tar.gz',
-                                              type='tar', step='motifs', groupId=gid),
-                   associate_to_filename=plotall, template='%s.tar.gz')
+            ex.add( tarname, description=set_file_descr(gname+'_footprints_plots.tar.gz',
+                                                        type='tar', step='motifs', groupId=gid),
+                    associate_to_filename=plotall, template='%s.tar.gz')
     logfile.write("\nDone.\n ");logfile.flush()
     return 0
 
