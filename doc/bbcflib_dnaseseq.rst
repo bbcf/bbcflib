@@ -3,3 +3,4 @@
     :member-order: bysource
     :show-inheritance:
 
+    .. autofunction:: wellington

@@ -107,7 +107,7 @@ def fastq_dump(filename, options=None):
 
 @program
 def fastqc(fastqfile,outdir=None,options=None):
-    """Binds ``fastqc`` (http://www.bioinformatics.bbsrc.ac.uk/) which generates a QC report of short reads present in the fastq file.
+    """Binds ``fastqc`` (`<http://www.bioinformatics.bbsrc.ac.uk/>`_) which generates a QC report of short reads present in the fastq file.
     """
     outfile = re.sub(".fastq","",os.path.basename(fastqfile))+'_fastqc.zip'
     if not(isinstance(options,list)): options = []
@@ -510,7 +510,7 @@ def remove_duplicate_reads( bamfile, chromosomes,
 @program
 def bwa_sw(reads_path, reference_path, sam_path, z=7, version=''):
     """Calls the BWA-SW aligner.
-    http://bio-bwa.sourceforge.net/
+    `<http://bio-bwa.sourceforge.net/>`_
 
     :param reads_path: The path to the short reads.
     :type reads_path: str
@@ -562,6 +562,7 @@ def add_bowtie_index(execution, files, description="",
 @program
 def bowtie(index, reads, args="-Sra"):
     """Run bowtie with *args* to map *reads* against *index*.
+    See `<http://bowtie-bio.sourceforge.net/index.shtml>`_.
 
     Returns the filename of bowtie's output file.  *args* gives the
     command line arguments to bowtie, and may be either a string or a
@@ -595,6 +596,7 @@ def bowtie(index, reads, args="-Sra"):
 def bowtie2(index, reads, args=''):
     """Run `bowtie2` with *args* to map *reads* against *index*.
     Returns the name of bowtie's output file.
+    See `<http://bowtie-bio.sourceforge.net/bowtie2/index.shtml>`_.
 
     :param index: (str) path to the bowtie2 index.
     :param reads: (list or tuple) if unpaired, a list of paths to each of the fastq files;

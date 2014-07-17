@@ -53,7 +53,7 @@ from bein.util import touch
 
 @program
 def macs( read_length, genome_size, bamfile, ctrlbam=None, args=None ):
-    """Binding for the ``macs`` peak caller.
+    """Binding for the ``macs`` peak caller `<http://liulab.dfci.harvard.edu/MACS/>`_.
     Takes one (optionally two) bam file(s) and the 'read_length' and 'genome_size' parameters passed to ``macs``.
     Returns the file prefix ('-n' option of ``macs``)
     """

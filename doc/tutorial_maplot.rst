@@ -1,5 +1,5 @@
-Tutorial
-========
+M-A plots
+=========
 
 Here is a short tutorial showing how to use `maplot.py <https://github.com/delafont/maplot>`_.
 

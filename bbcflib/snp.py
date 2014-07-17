@@ -34,7 +34,7 @@ def pileup(bam,fasta,seq_depth=1000,header=None):
     return {'arguments': ["sam_mpileup.sh"]+args, 'return_value': None}
 
 def parse_vcf(vcf_line):
-    """cf. ``http://samtools.sourceforge.net/mpileup.shtml``"""
+    """cf. `<http://samtools.sourceforge.net/mpileup.shtml>`_"""
     snp_info = {}
     if not vcf_line.strip(): return ''
     line = vcf_line.strip().split('\t')

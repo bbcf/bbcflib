@@ -47,6 +47,9 @@ def macs_bedfiles( ex, chrmeta, tests, controls, names, macs_args, via, logfile 
 
 @program
 def wellington( bed, bam, output=None, options=[] ):
+    """
+    Binds the ``wellington_footprints.py`` program: `<http://pythonhosted.org/pyDNase/scripts.html#wellington-footprints-py>`_. 
+    """
     if output is None: output = unique_filename_in()
     outdir = unique_filename_in()
     os.mkdir(outdir)
@@ -209,8 +212,8 @@ def dnaseseq_workflow( ex, job, assembly, logfile=sys.stdout, via='lsf' ):
       * BAM files from replicates within the same group are merged
       * MACS is called to identify enriched regions (only peak summit +- 300 will be used), this can be by-passed by provinding a bed file to any group
       * Wellington is called to identify footprints within these enriched regions
-      * if a list of motifs is provided (by group), footprints are scanned and motif occurences (log-likelihood ratio > 0) are recorded in a bed file
-      * average DNAse profiles around motifs are plotted
+      * If a list of motifs is provided (by group), footprints are scanned and motif occurences (log-likelihood ratio > 0) are recorded in a bed file
+      * Average DNAse profiles around motifs are plotted
 
     """
     tests = []
