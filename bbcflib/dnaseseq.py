@@ -18,7 +18,7 @@ from bein.util import touch
 from numpy import vstack, zeros
 
 _gnrp = GenRep()
-_well_flank = 300
+_macs_flank = 300
 _plot_flank = (50,50)
 
 def macs_bedfiles( ex, chrmeta, tests, controls, names, macs_args, via, logfile ):
@@ -38,10 +38,10 @@ def macs_bedfiles( ex, chrmeta, tests, controls, names, macs_args, via, logfile 
         name = names['tests'][nbam]
         if not bed_bam[0]:
             if len(names['controls']) < 2:
-                bed_bam = (macsout[(name,names['controls'][0])]+"_summits.bed", bed_bam[1])
+                bed_bam = (macsout[(name,names['controls'][0])]+"_summits.bed", bed_bam[1],_macs_flank)
             else:
                 _beds = [macsout[(name,x)]+"_summits.bed" for x in names['controls']]
-                bed_bam = (intersect_many_bed( ex, _beds, via=via ), bed_bam[1])
+                bed_bam = (intersect_many_bed( ex, _beds, via=via ), bed_bam[1],_macs_flank)
         tests[nbam] = bed_bam
     return tests
 
@@ -109,7 +109,10 @@ def run_wellington( ex, tests, names, assembly, via, logfile ):
         for chrom in assembly.chrnames:
             _chrombed = unique_filename_in()
             with track(_chrombed,format="bed",fields=tbed.fields) as _tt:
-                _neighb = neighborhood( tbed.read(chrom), before_start=_well_flank, after_end=_well_flank )
+                if len(bed_bam) > 2:
+                    _neighb = neighborhood( tbed.read(chrom), before_start=_bed_bam[2], after_end=_bed_bam[2] )
+                else:
+                    _neighb = tbed.read(chrom)
                 _tt.write(fusion(_neighb),clip=True)
             if os.path.getsize(_chrombed) > 0:
                 futures[(chrom,name)] = wellington.nonblocking(ex, _chrombed, bed_bam[1], via=via, memory=8)
@@ -201,7 +204,14 @@ def plot_footprint_profile( ex, bedlist, siglist, chrnames, groups, logfile ):
 ###############################################################
 def dnaseseq_workflow( ex, job, assembly, logfile=sys.stdout, via='lsf' ):
     """
-    Main function
+    This workflow performs the following steps:
+
+      * BAM files from replicates within the same group are merged
+      * MACS is called to identify enriched regions (only peak summit +- 300 will be used), this can be by-passed by provinding a bed file to any group
+      * Wellington is called to identify footprints within these enriched regions
+      * if a list of motifs is provided (by group), footprints are scanned and motif occurences (log-likelihood ratio > 0) are recorded in a bed file
+      * average DNAse profiles around motifs are plotted
+
     """
     tests = []
     controls = []
