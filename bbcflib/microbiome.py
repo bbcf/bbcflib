@@ -132,16 +132,18 @@ def combine_counts( counts, idsColsKey, idsColsCounts, output="combined_counts.t
 ###############################################################
 def microbiome_workflow( ex, job, assembly, logfile=sys.stdout, via='lsf' ):
     '''
-    Main
-    * 0. retrieve bam files from mapseq job
-    *   0.a. merge bam files (=> 1 bam file per group)
-    * 1. for each group:
-    *   1.a get counts per group (=> 1 file per group)
-    *   1.b get counts per Level (Kingdom, Phylum, Class, Order, Family, Genus and Species) (=> 1 file per level / per group)
-    * 2. combine counts
-    *   2.a combine counts for all groups (=> 1 combined file)
-    *   2.b combine counts per level for all groups (=> 1 combined file per Level)
-    * 3. generate barplots (=> 1 plot per group + per level + per combined files)
+    Main:
+
+      * 0. retrieve bam files from mapseq job
+      *   0.a. merge bam files (=> 1 bam file per group)
+      * 1. for each group:
+      *   1.a get counts per group (=> 1 file per group)
+      *   1.b get counts per Level (Kingdom, Phylum, Class, Order, Family, Genus and Species) (=> 1 file per level / per group)
+      * 2. combine counts
+      *   2.a combine counts for all groups (=> 1 combined file)
+      *   2.b combine counts per level for all groups (=> 1 combined file per Level)
+      * 3. generate barplots (=> 1 plot per group + per level + per combined files)
+
     '''
 ### params
     levels = ['Kingdom','Phylum','Class','Order','Family', 'Genus', 'Species']

@@ -48,6 +48,8 @@ Library guide
    bbcflib_rnaseq
    bbcflib_c4seq
    bbcflib_snp
+   bbcflib_microbiome
+   bbcflib_dnaseseq
    bbcflib_gdv
    bbcflib_track
    bbcflib_gfminer
