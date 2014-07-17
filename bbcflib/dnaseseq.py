@@ -235,16 +235,15 @@ def dnaseseq_workflow( ex, job, assembly, logfile=sys.stdout, via='lsf' ):
     tests = macs_bedfiles( ex, assembly.chrmeta, tests, controls, names, 
                            job.options.get('macs_args',["--keep-dup","10"]), via, logfile )
     bedlist = run_wellington(ex, tests, names, assembly, via, logfile)
-
 ######################### Motif scanning / plotting
-    if any([gr.get('motif') or None for gr in jobs.groups]):
+    if any([gr.get('motif') != 'null' and gr.get('motif') for gr in job.groups]):
         motifbeds = motif_scan( ex, bedlist, job.groups, via, logfile )
         siglist = dict((gid,[]) for gid,_ in names['tests'])
         for gid,mapped in job.files.iteritems():
             wig = []
             suffixes = ["fwd","rev"]
             merge_strands = int(job.options.get('merge_strands',-1))
-            read_extension = int(options.get('read_extension') or 50)
+            read_extension = int(options.get('read_extension') or -1)
             make_wigs = merge_strands >= 0 or read_extension != 1
             for m in mapped.values():
                 if make_wigs or not('wig' in m) or len(m['wig'])<2:
@@ -264,7 +263,7 @@ def dnaseseq_workflow( ex, job, assembly, logfile=sys.stdout, via='lsf' ):
             else:
                 siglist[gid].extend(wig[0].values())
         plot_files = plot_footprint_profile( ex, motifbeds, siglist, 
-                                             assembly.chrnames, jobs.groups, logfile )
+                                             assembly.chrnames, job.groups, logfile )
         for gid, flist in plot_files.iteritems():
             gname = job.groups[gid]['name']
             plotall = unique_filename_in()
