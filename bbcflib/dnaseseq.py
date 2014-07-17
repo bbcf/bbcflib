@@ -256,7 +256,7 @@ def dnaseseq_workflow( ex, job, assembly, logfile=sys.stdout, via='lsf' ):
             wig = []
             suffixes = ["fwd","rev"]
             merge_strands = int(job.options.get('merge_strands',-1))
-            read_extension = int(options.get('read_extension') or -1)
+            read_extension = int(job.options.get('read_extension') or -1)
             make_wigs = merge_strands >= 0 or read_extension != 1
             for m in mapped.values():
                 if make_wigs or not('wig' in m) or len(m['wig'])<2:
