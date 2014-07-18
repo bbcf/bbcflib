@@ -113,7 +113,7 @@ def run_wellington( ex, tests, names, assembly, via, logfile ):
             _chrombed = unique_filename_in()
             with track(_chrombed,format="bed",fields=tbed.fields) as _tt:
                 if len(bed_bam) > 2:
-                    _neighb = neighborhood( tbed.read(chrom), before_start=_bed_bam[2], after_end=_bed_bam[2] )
+                    _neighb = neighborhood( tbed.read(chrom), before_start=bed_bam[2], after_end=bed_bam[2] )
                 else:
                     _neighb = tbed.read(chrom)
                 _tt.write(fusion(_neighb),clip=True)
