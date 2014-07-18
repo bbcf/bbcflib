@@ -249,7 +249,8 @@ def dnaseseq_workflow( ex, job, assembly, logfile=sys.stdout, via='lsf' ):
                            job.options.get('macs_args',["--keep-dup","10"]), via, logfile )
     bedlist = run_wellington(ex, tests, names, assembly, via, logfile)
 ######################### Motif scanning / plotting
-    if any([gr.get('motif') != 'null' and gr.get('motif') for gr in job.groups]):
+    if any([gr.get('motif') != 'null' and gr.get('motif') 
+            for gr in job.groups.values()]):
         motifbeds = motif_scan( ex, bedlist, job.groups, via, logfile )
         siglist = dict((gid,[]) for gid,_ in names['tests'])
         for gid,mapped in job.files.iteritems():
