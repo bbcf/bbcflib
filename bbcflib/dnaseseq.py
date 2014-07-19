@@ -130,6 +130,7 @@ def run_wellington( ex, tests, names, assembly, via, logfile ):
 def motif_scan( ex, bedlist, assembly, groups, via, logfile ):
     logfile.write("Scanning motifs\n");logfile.flush()
     motifbeds = {}
+    supdir = os.path.split(ex.remote_working_directory)[0]
     for gid,bedfile in bedlist.iteritems():
         logfile.write("\n%i: "%gid);logfile.flush()
         group = groups[gid]
@@ -252,7 +253,7 @@ def dnaseseq_workflow( ex, job, assembly, logfile=sys.stdout, via='lsf' ):
     if any([gr.get('motif') != 'null' and gr.get('motif') 
             for gr in job.groups.values()]):
         motifbeds = motif_scan( ex, bedlist, assembly, job.groups, via, logfile )
-        siglist = dict((gid,[]) for gid,_ in names['tests'])
+        siglist = dict((gid[0],[]) for gid in names['tests'])
         for gid,mapped in job.files.iteritems():
             wig = []
             suffixes = ["fwd","rev"]
