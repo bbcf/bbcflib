@@ -251,7 +251,7 @@ def dnaseseq_workflow( ex, job, assembly, logfile=sys.stdout, via='lsf' ):
 ######################### Motif scanning / plotting
     if any([gr.get('motif') != 'null' and gr.get('motif') 
             for gr in job.groups.values()]):
-        motifbeds = motif_scan( ex, bedlist, job.groups, via, logfile )
+        motifbeds = motif_scan( ex, bedlist, assembly, job.groups, via, logfile )
         siglist = dict((gid,[]) for gid,_ in names['tests'])
         for gid,mapped in job.files.iteritems():
             wig = []
