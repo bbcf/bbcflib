@@ -7,7 +7,7 @@ import os, sys, gzip, tarfile
 from bbcflib.gfminer.stream import neighborhood, segment_features, score_by_feature
 from bbcflib.gfminer.common import fusion, sorted_stream
 from bbcflib.gfminer.figure import lineplot
-from bbcflib.common import set_file_descr, unique_filename_in, intersect_many_bed, cat
+from bbcflib.common import set_file_descr, unique_filename_in, intersect_many_bed, cat, merge_sql
 from bbcflib.chipseq import add_macs_results
 from bbcflib.mapseq import merge_bam, index_bam
 from bbcflib.track import track, convert, FeatureStream
