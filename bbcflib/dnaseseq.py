@@ -161,7 +161,7 @@ def plot_footprint_profile( ex, bedlist, siglist, chrnames, groups, logfile ):
     for gid, motifbed in bedlist.iteritems():
         signals = [track(sig) for sig in siglist[gid]]
         snames = [sig.name for sig in signals]
-        tmotif = track(motifbed)
+        tmotif = track(motifbed,format='bed')
         data = {}
         numregs = {}
         for chrom in chrnames:
