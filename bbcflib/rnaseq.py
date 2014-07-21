@@ -222,6 +222,10 @@ class Counter(RNAseq):
                 futures[i].wait()
             except Exception, err:
                 self.write_debug("Counting failed: %s." % str(err))
+                raise err
+            if futures[i] is None:
+                self.write_debug("Counting failed.")
+                raise ValueError("Counting failed.")
             fields = ["ID","Count","RPKM"]+hinfo+['type']
             if self.stranded: fields += ['sense']
             tracks[i] = track(tablenames[i], format="txt", fields=fields).read()
@@ -366,11 +370,14 @@ class DE_Analysis(RNAseq):
             try:
                 deseqfile = run_deseq.nonblocking(self.ex, res_file, options, via=self.via).wait()
             except Exception, err:
-                self.write_debug("  DE analysis failed: %s." % str(err))
+                self.write_debug("DE analysis failed: %s." % str(err))
+                return
+            if deseqfile is None:
+                self.write_debug("DE analysis failed.")
                 return
             output_files = [f for f in os.listdir(self.ex.working_directory) if deseqfile in f]
             if (deseqfile is None) or isinstance(deseqfile,Exception) or len(output_files)==0:
-                self.write_debug("  Skipped differential analysis: %s." % str(deseqfile))
+                self.write_debug("Skipped differential analysis: %s." % str(deseqfile))
                 return
             for o in output_files:
                 oname = feature_type+"_differential"+o.split(deseqfile)[1]+".txt"
@@ -467,6 +474,9 @@ class Junctions(RNAseq):
             except Exception, err:
                 self.write_debug("SOAPsplice failed: %s." % str(err))
                 return
+            if template is None:
+                self.write_debug("SOAPsplice failed.")
+                return
             junc_file = template+'.junc'
             bed = self.convert_junc_file(junc_file,self.assembly)
             bed_descr = set_file_descr('junctions_%s.bed' % group['name'],
@@ -526,6 +536,9 @@ class Pca(RNAseq):
             outprefix = pcajl.nonblocking(self.ex, counts_table_file, via=self.via).wait()
         except Exception, err:
             self.write_debug("PCA failed: %s." % str(err))
+            return
+        if outprefix is None:
+            self.write_debug("PCA failed.")
             return
         pca_descr_png = set_file_descr('pca_groups.png', type='png', step='pca')
         pca_descr_js = set_file_descr('pca_groups.js', type='txt', step='pca', view='admin')
