@@ -362,8 +362,10 @@ class DE_Analysis(RNAseq):
         res_file = self.clean_before_deseq(filename)
         if res_file is None:
             self.write_log("  Skipped differential analysis: empty counts file for %s." % feature_type)
-        elif ncond < 2:
+            return
+        if ncond < 2:
             self.write_log("  Skipped differential analysis: less than two groups.")
+            return
         else:
             self.write_log("* Differential analysis")
             options = ['-s','tab']
