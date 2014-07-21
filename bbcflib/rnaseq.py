@@ -11,12 +11,10 @@ on the exons, and uses least-squares to infer counts on genes and transcripts.
 
 # Built-in modules #
 import os, sys, math, itertools, shutil
-import json, urllib2
 from operator import itemgetter
 
 # Internal modules #
 from bbcflib.common import set_file_descr, unique_filename_in, cat, timer, program_exists
-from bbcflib.common import gunzipfile
 from bbcflib.mapseq import add_and_index_bam, sam_to_bam
 from bbcflib.gfminer.common import map_chromosomes, duplicate, apply
 from bbcflib.track import track
@@ -50,7 +48,6 @@ class RNAseq(object):
         self.debugfile = debugfile       # debug file name
         self.logfile = logfile           # log file name
         self.stranded = stranded         # True/False, strand-specific or not
-        self.ncond = 2*len(self.conditions) if self.stranded else len(self.conditions)
             # number of columns in the output, = number of runs if not stranded, twice otherwise
 
     def write_log(self,s):
@@ -63,7 +60,7 @@ class RNAseq(object):
 #--------------------------- GTF CREATION ----------------------------#
 
 
-def gtf_from_bam(bam):
+def gtf_from_bam_header(bam):
     bamtrack = track(bam,format='bam')
     gtf = unique_filename_in()+'.gtf'
     with open(gtf,"wb") as g:
@@ -108,14 +105,13 @@ def rnaseq_workflow(ex, job, pileup_level=["genes","transcripts"],
     :param junctions: (bool) whether to search for splice junctions using SOAPsplice. [False]
     :param via: (str) send job via 'local' or 'lsf'. ["lsf"]
     """
-    group_names={}; group_ids={}; conditions=[]
+    group_names={}; conditions=[]
     groups = job.groups
     assembly = job.assembly
     assert len(groups) > 0, "No groups/runs were given."
     for gid,group in groups.iteritems():
         gname = str(group['name'])
         group_names[gid] = gname
-        group_ids[gname] = gid
     if isinstance(pileup_level,basestring): pileup_level=[pileup_level]
 
     # Define conditions as 'group_name.run_id' and store bamfiles in the same order
@@ -134,7 +130,7 @@ def rnaseq_workflow(ex, job, pileup_level=["genes","transcripts"],
     logfile.write("* Prepare GTF\n"); logfile.flush()
     if hasattr(assembly,"fasta_origin") or assembly.intype==2:
         logfile.write("  ... from transcriptome or fasta origin\n"); logfile.flush()
-        gtf = gtf_from_bam(bamfiles[0])
+        gtf = gtf_from_bam_header(bamfiles[0])
     # ... or from config file
     else:
         gtf = job.files.itervalues().next().itervalues().next().get('gtf')
