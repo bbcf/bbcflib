@@ -205,12 +205,13 @@ class Counter(RNAseq):
         ncond = len(self.conditions)
         tablenames = [None]*ncond
         futures = [None]*ncond
+        counter_options = ["--nh","--noheader"]
         if hasattr(self.assembly,"fasta_origin") or self.assembly.intype==2:
-            counter_options = ["--type","transcripts", "--method","raw", "--nh"]
+            counter_options += ["--type","transcripts", "--method","raw"]
         else:
-            counter_options = ["--type","genes,transcripts", "--method","raw,nnls", "--nh"]
+            counter_options += ["--type","genes,transcripts", "--method","raw,nnls"]
         if _TEST_:
-            counter_options += ["-n","1"]  # skip the total read counting step
+            counter_options += ["-n","1"]  # skip the total reads counting step
         if self.stranded:
             counter_options += ["--stranded"]
         for i,c in enumerate(self.conditions):
