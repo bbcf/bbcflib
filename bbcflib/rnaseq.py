@@ -60,6 +60,38 @@ class RNAseq(object):
         self.debugfile.write(s+'\n'); self.debugfile.flush()
 
 
+#--------------------------- GTF CREATION ----------------------------#
+
+
+def gtf_from_bam(bam):
+    bamtrack = track(bam,format='bam')
+    gtf = unique_filename_in()+'.gtf'
+    with open(gtf,"wb") as g:
+        for c,meta in bamtrack.chrmeta.iteritems():
+            gtfline = '\t'.join([c,'','exon','1',str(meta['length']),'.','.','.',
+                    'exon_id "%s"; transcript_id "%s"; gene_id "%s"; gene_name "%s"' % (c,c,c,c)])+'\n'
+            g.write(gtfline)
+    bamtrack.close()
+    return gtf
+
+def gtf_from_genrep(assembly):
+    emap = assembly.get_exon_mapping()
+    gtf = unique_filename_in()
+    gtflines = []
+    smap = {1:'+', -1:'-'}
+    with open(gtf,"wb") as g:
+        for eid,e in emap.iteritems():
+            for t in e.transcripts:
+                gtflines.append([e.chrom,'Ensembl','exon',e.start,e.end,'.',smap.get(e.strand,'.'),'.',
+                               'exon_id "%s"; transcript_id "%s"; gene_id "%s"; gene_name "%s"' \
+                               % (e.id,t,e.gene_id,e.gene_name)])
+        del emap
+        gtflines.sort(key=itemgetter(0,3,4))  # chrom,start,end
+        for gtfline in gtflines:
+            g.write('\t'.join([str(x) for x in gtfline])+'\n')
+    return gtf
+
+
 #----------------------------- MAIN CALL -----------------------------#
 
 
@@ -102,35 +134,14 @@ def rnaseq_workflow(ex, job, pileup_level=["genes","transcripts"],
     logfile.write("* Prepare GTF\n"); logfile.flush()
     if hasattr(assembly,"fasta_origin") or assembly.intype==2:
         logfile.write("  ... from transcriptome or fasta origin\n"); logfile.flush()
-        firstbam = bamfiles[0]
-        firstbamtrack = track(firstbam,format='bam')
-        gtf = unique_filename_in()+'.gtf'
-        with open(gtf,"wb") as g:
-            for c,meta in firstbamtrack.chrmeta.iteritems():
-                gtfline = '\t'.join([c,'','exon','1',str(meta['length']),'.','.','.',
-                        'exon_id "%s"; transcript_id "%s"; gene_id "%s"; gene_name "%s"' % (c,c,c,c)])+'\n'
-                g.write(gtfline)
-        firstbamtrack.close()
+        gtf = gtf_from_bam(bamfiles[0])
     # ... or from config file
     else:
-        gtf = job.files.itervalues().next().itervalues().next().get('gtf')  # from config file
+        gtf = job.files.itervalues().next().itervalues().next().get('gtf')
         if gtf: logfile.write("  ... from config file: %s\n" % gtf); logfile.flush()
     # ... or from GenRep
     if gtf is None:
-        emap = assembly.get_exon_mapping()
-        gtf = unique_filename_in()
-        gtflines = []
-        smap = {1:'+', -1:'-'}
-        with open(gtf,"wb") as g:
-            for eid,e in emap.iteritems():
-                for t in e.transcripts:
-                    gtflines.append([e.chrom,'Ensembl','exon',e.start,e.end,'.',smap.get(e.strand,'.'),'.',
-                                   'exon_id "%s"; transcript_id "%s"; gene_id "%s"; gene_name "%s"' \
-                                   % (e.id,t,e.gene_id,e.gene_name)])
-            del emap
-            gtflines.sort(key=itemgetter(0,3,4))  # chrom,start,end
-            for gtfline in gtflines:
-                g.write('\t'.join([str(x) for x in gtfline])+'\n')
+        gtf = gtf_from_genrep(assembly)
     #shutil.copy(gtf,"../")
 
     # Build controllers
