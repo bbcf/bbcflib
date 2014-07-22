@@ -155,12 +155,12 @@ def motif_scan( ex, bedlist, assembly, groups, via, logfile ):
                                              header=_hd, description=_descr, via=via )
     return motifbeds
 
-def plot_footprint_profile( ex, bedlist, siglist, chrnames, groups, logfile ):
+def plot_footprint_profile( ex, bedlist, signals, chrnames, groups, logfile ):
     files = dict((gid,{'pdf':"",'mat':[]}) for gid in bedlist.keys())
     logfile.write("Plotting footprints:\n");logfile.flush()
     for gid, motifbed in bedlist.iteritems():
-        signals = [track(sig) for sig in siglist[gid]]
-        snames = [sig.name for sig in signals]
+#        signals = [track(sig) for sig in siglist[gid]]
+        snames = [sig.name for sig in signals[gid]]
         tmotif = track(motifbed,format='bed')
         data = {}
         numregs = {}
@@ -173,12 +173,12 @@ def plot_footprint_profile( ex, bedlist, siglist, chrnames, groups, logfile ):
                 else: fread[key] = [r[1:3]]
             for motif, regs in fread.iteritems():
                 if motif not in data:
-                    data[motif] = zeros(shape=(motif[1]+2*_plot_flank[1],len(signals)))
+                    data[motif] = zeros(shape=(motif[1]+2*_plot_flank[1], len(signals[gid])))
                     numregs[motif] = 0
                 numregs[motif] += len(regs)
                 tFeat = sorted_stream(segment_features(FeatureStream(regs,fields=['start','end']),
                                                        nbins=motif[1],upstream=_plot_flank,downstream=_plot_flank))
-                for t in score_by_feature([s.read(chrom) for s in signals], tFeat): 
+                for t in score_by_feature([s.read(chrom) for s in signals[gid]], tFeat): 
                     data[motif][t[2]] += t[3:]
         files[gid]['pdf'] = unique_filename_in()
         new = True
@@ -187,12 +187,10 @@ def plot_footprint_profile( ex, bedlist, siglist, chrnames, groups, logfile ):
             last -= 1
             mname, nbins = motif
             dat /= float(numregs[motif])
-            X = ['']*dat.shape[0]
-            X[0] = "-%i"%_plot_flank[1]
-            X[-1] = "%i"%_plot_flank[1]
+            X = range(-_plot_flank[1],_plot_flank[1]+nbins)
             for k in range(nbins): X[k+_plot_flank[1]] = str(k+1)
 ####### Could do a heatmap (sort by intensity)...
-            lineplot(X, [dat[:, n] for n in range(dat.shape[-1])],
+            lineplot(X, [dat[:, n] for n in range(dat.shape[-1])], mfrow=[4,3],
                      output=files[gid]['pdf'], new=new, last=(last==0), 
                      legend=snames, main=mname)
             new = False
@@ -271,14 +269,19 @@ def dnaseseq_workflow( ex, job, assembly, logfile=sys.stdout, via='lsf' ):
                 else:
                     wig.append(m['wig'])
             if len(wig) > 1:
-                wig[0] = dict((s,merge_sql(ex, [x[s] for x in wig], via=via)) for s in suffixes)
+                wig[0] = dict((s,merge_sql(ex, [x[s] for x in wig], via=via)) 
+                              for s in suffixes)
+            _trn = job.groups[gid]['name']+"_%s"
             if job.groups[gid]['control']:
-                for _g in siglist.keys():
-                    siglist[_g].extend(wig[0].values())
+                for s,w in wig[0].iteritems():
+                    for _g in siglist.keys():
+                        siglist[_g].append(track(w,info={'name': _trn%s}))
             else:
-                siglist[gid].extend(wig[0].values())
+                siglist[gid].extend([track(w,info={'name': _trn%s})
+                                     for s,w in wig[0].iteritems()])
         plot_files = plot_footprint_profile( ex, motifbeds, siglist, 
-                                             assembly.chrnames, job.groups, logfile )
+                                             assembly.chrnames, 
+                                             job.groups, logfile )
         for gid, flist in plot_files.iteritems():
             gname = job.groups[gid]['name']
             plotall = unique_filename_in()
