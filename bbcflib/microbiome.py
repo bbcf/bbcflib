@@ -40,7 +40,7 @@ def bam_to_annot_counts( bamfiles, annotations_file, pref_name='', output=None )
             if isinstance(nh,basestring): nh = 1
             if nh < 1: continue
             inh = 1.0/nh
-            rname = infile.getrname(read.rname)
+            rname = infile.getrname(read.rname).split("|")[0]
             if rname in counts:
                 counts[rname] += inh
 ## still increment if not in counts?

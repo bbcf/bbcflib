@@ -65,10 +65,7 @@ def gtf_from_bam_header(bam):
     gtf = unique_filename_in()+'.gtf'
     with open(gtf,"wb") as g:
         for c,meta in bamtrack.chrmeta.iteritems():
-            if "|" in c:
-                c,n = c.split("|")
-            else:
-                n = c
+            n = c.split("|")[1] if "|" in c else c
             gtfline = '\t'.join([c,'','exon','1',str(meta['length']),'.','.','.',
                     'exon_id "%s"; transcript_id "%s"; gene_id "%s"; gene_name "%s"' % (c,c,c,n)])+'\n'
             g.write(gtfline)
