@@ -73,6 +73,7 @@ class TextTrack(Track):
     def _check_sep(self):
         """Checks if default separator works, otherwise tries ' ' and '\t'."""
         if self.separator is None: return None
+        if self.filehandle and not 'r' in self.filehandle.mode: return None
         self.open('read')
         self._skip_header()
         for row in self.filehandle:
@@ -125,9 +126,10 @@ class TextTrack(Track):
         Update an existing *info* dict, if provided.
         """
         if info: return info
-        if not(os.path.exists(self.path)): return {}
+        if not os.path.exists(self.path): return {}
         self.open()
         _info = {}
+        if 'r' not in self.filehandle.mode: return _info
         for row in self.filehandle:
             if row[:7]=="browser" or row[0] in ['#','@']: continue
             if row[:5]=="track":
@@ -209,6 +211,7 @@ class TextTrack(Track):
 
         :param mode: (str) one of 'read', 'write', 'append' or 'overwrite'
         """
+        if self.filehandle and not self.filehandle.closed: return
         isgzip = False
         if self.path.endswith(".gz") or self.path.endswith(".gzip"):
             isgzip = True
@@ -499,7 +502,8 @@ class BedTrack(TextTrack):
         _nf = max([n for n,f in enumerate(_allf) if f in _parf])+1
         kwargs['fields'] = _allf[:_nf]
         TextTrack.__init__(self,path,**kwargs)
-        if not(os.path.exists(self.path)): return
+        if not os.path.exists(self.path): return
+        if self.filehandle and not 'r' in self.filehandle.mode: return
         self.open()
         rowlen = None
         for row in self.filehandle:

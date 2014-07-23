@@ -40,7 +40,7 @@ def track( path, format=None, **kwargs):
     :param **kwargs: (dict) parameters of the Track subclass' constructor.
         Typically `assembly` or `chrmeta`.
     """
-    assert isinstance(path, basestring), "Expected string or unicode, found %s." % type(path)
+    assert isinstance(path, (file,basestring)), "Expected string or file, found %s." % type(path)
     if format is None:
         path2, format = os.path.splitext(path)
         format = format.lstrip('.')
@@ -48,14 +48,14 @@ def track( path, format=None, **kwargs):
             format = os.path.splitext(path2)[1].lstrip('.')
         if format == '':
             if os.path.exists(path):
-                with open(path, 'r') as file:
-                    rstart = file.read(15)
+                with open(path, 'r') as _f:
+                    rstart = _f.read(15)
                     if rstart == "SQLite format 3": format='sql'
                     else:
                         while rstart.startswith("#"):
-                            rstart = file.readline()
-                            rstart = file.read(1)
-                        rstart += file.readline()
+                            rstart = _f.readline()
+                            rstart = _f.read(1)
+                        rstart += _f.readline()
                         head = re.search(r'track\s+type=(\S+)',rstart)
                         if head: format = head.groups()[0]
             else:
@@ -391,8 +391,12 @@ class Track(object):
 
     """
     def __init__(self, path, **kwargs):
-        self.path = path
-        self.filehandle = None
+        if isinstance(path,file):
+            self.path = path.name
+            self.filehandle = path
+        else:
+            self.path = path
+            self.filehandle = None
         self.format = kwargs.get("format")
         self.fields = kwargs.get("fields",[])
 #        self.types = {}

@@ -26,11 +26,10 @@ equally well be written::
 
 """
 
-# Built-in modules #
 import urllib2, json, os, sys, re, gzip, tarfile, bz2, sqlite3, itertools
 from datetime import datetime
+import warnings
 
-# Internal modules #
 from bbcflib.common import normalize_url, unique_filename_in, fasta_length, fasta_composition, sam_faidx
 from bbcflib.track import track, ensembl_to_ucsc, FeatureStream
 from bbcflib.gfminer.common import shuffled as track_shuffle, split_field, map_chromosomes
@@ -190,13 +189,24 @@ class Assembly(object):
             self.fasta_origin = fasta
             chromosomes = {}
             add_chrom = self.untar_genome_fasta()
-            fasta_files = list(set(add_chrom.values()))
-            for f in fasta_files: chromosomes.update(fasta_length.nonblocking(ex,f,via=via).wait())
-            fasta_by_chrom.update( add_chrom )
-            fasta_files = list(set(fasta_by_chrom.values()))
-            [g.wait() for g in [sam_faidx.nonblocking(ex,f,via=via) for f in fasta_files]]
-            if len(fasta_files) > 0:
-                self.index_path = bowtie_build.nonblocking(ex,fasta_files,bowtie2=bowtie2,via=via,memory=8).wait()
+            if ex is None:
+                from bein import execution
+                fasta_files = [os.path.abspath(f) for f in list(set(add_chrom.values()))]
+                with execution(None) as ex2:
+                    for f in fasta_files:
+                        chromosomes.update(fasta_length.nonblocking(ex2,f,via=via).wait())
+                    fasta_by_chrom.update(add_chrom)
+                    fasta_files = list(set(fasta_by_chrom.values()))
+                    [g.wait() for g in [sam_faidx.nonblocking(ex2,f,via=via) for f in fasta_files]]
+            else:
+                fasta_files = list(set(add_chrom.values()))
+                for f in fasta_files: 
+                    chromosomes.update(fasta_length.nonblocking(ex,f,via=via).wait())
+                fasta_by_chrom.update( add_chrom )
+                fasta_files = list(set(fasta_by_chrom.values()))
+                [g.wait() for g in [sam_faidx.nonblocking(ex,f,via=via) for f in fasta_files]]
+                if len(fasta_files) > 0:
+                    self.index_path = bowtie_build.nonblocking(ex,fasta_files,bowtie2=bowtie2,via=via,memory=8).wait()
             self.stats_dict = {}
             for f in fasta_files:
                 stats = fasta_composition(ex,f)
@@ -310,10 +320,12 @@ class Assembly(object):
 
         def _push_slices(slices,start,end,name,cur_chunk,chrom,idx):
             """Add a feature to *slices*, and increment the buffer size *cur_chunk* by the feature's size."""
-            if end > start:
+            if end > start and end-start < chunk:
                 slices['coord'].append((start,end))
                 slices['names'].append(name)
                 cur_chunk += end-start
+            else:
+                warnings.warn("sequence skipped: %s, %i-%i.\n" %(name,start,end))
             return slices,cur_chunk
 
         def _flush_slices(slices,chrid,chrn,out,path_to_ref):
