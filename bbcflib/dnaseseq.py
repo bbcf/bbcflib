@@ -190,7 +190,7 @@ def plot_footprint_profile( ex, bedlist, signals, chrnames, groups, logfile ):
             X = range(-_plot_flank[1],_plot_flank[1]+nbins)
             for k in range(nbins): X[k+_plot_flank[1]] = str(k+1)
 ####### Could do a heatmap (sort by intensity)...
-            lineplot(X, [dat[:, n] for n in range(dat.shape[-1])], mfrow=[4,3],
+            lineplot(X, [dat[:, n] for n in range(dat.shape[-1])], mfrow=[4,2],
                      output=files[gid]['pdf'], new=new, last=(last==0), 
                      legend=snames, main=mname)
             new = False

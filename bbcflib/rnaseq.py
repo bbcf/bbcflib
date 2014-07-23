@@ -65,8 +65,12 @@ def gtf_from_bam_header(bam):
     gtf = unique_filename_in()+'.gtf'
     with open(gtf,"wb") as g:
         for c,meta in bamtrack.chrmeta.iteritems():
+            if "|" in c:
+                c,n = c.split("|")
+            else:
+                n = c
             gtfline = '\t'.join([c,'','exon','1',str(meta['length']),'.','.','.',
-                    'exon_id "%s"; transcript_id "%s"; gene_id "%s"; gene_name "%s"' % (c,c,c,c)])+'\n'
+                    'exon_id "%s"; transcript_id "%s"; gene_id "%s"; gene_name "%s"' % (c,c,c,n)])+'\n'
             g.write(gtfline)
     bamtrack.close()
     return gtf
@@ -99,7 +103,7 @@ def rnaseq_workflow(ex, job, pileup_level=["genes","transcripts"],
     """Main function of the workflow.
 
     :rtype: None
-    :param ex: the bein's execution Id.
+    :param ex: a bein execution.
     :param job: a Frontend.Job object (or a dictionary of the same form).
     :param assembly: a genrep.Assembly object
     :param junctions: (bool) whether to search for splice junctions using SOAPsplice. [False]
