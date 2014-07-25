@@ -73,7 +73,8 @@ class TextTrack(Track):
     def _check_sep(self):
         """Checks if default separator works, otherwise tries ' ' and '\t'."""
         if self.separator is None: return None
-        if self.filehandle and not 'r' in self.filehandle.mode: return None
+        if type(self.filehandle) == file and not 'r' in self.filehandle.mode: 
+            return None
         self.open('read')
         self._skip_header()
         for row in self.filehandle:
@@ -129,7 +130,8 @@ class TextTrack(Track):
         if not os.path.exists(self.path): return {}
         self.open()
         _info = {}
-        if 'r' not in self.filehandle.mode: return _info
+        if type(self.filehandle) == file and 'r' not in self.filehandle.mode: 
+            return _info
         for row in self.filehandle:
             if row[:7]=="browser" or row[0] in ['#','@']: continue
             if row[:5]=="track":
@@ -503,7 +505,8 @@ class BedTrack(TextTrack):
         kwargs['fields'] = _allf[:_nf]
         TextTrack.__init__(self,path,**kwargs)
         if not os.path.exists(self.path): return
-        if self.filehandle and not 'r' in self.filehandle.mode: return
+        if type(self.filehandle) == file and not 'r' in self.filehandle.mode: 
+            return
         self.open()
         rowlen = None
         for row in self.filehandle:
