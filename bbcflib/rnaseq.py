@@ -72,7 +72,7 @@ def gtf_from_bam_header(bam):
     bamtrack.close()
     return gtf
 
-def gtf_from_genrep(assembly):
+def genome_gtf_from_genrep(assembly):
     emap = assembly.get_exon_mapping()
     gtf = unique_filename_in()
     gtflines = []
@@ -84,6 +84,22 @@ def gtf_from_genrep(assembly):
                                'exon_id "%s"; transcript_id "%s"; gene_id "%s"; gene_name "%s"' \
                                % (e.id,t,e.gene_id,e.gene_name)])
         del emap
+        gtflines.sort(key=itemgetter(0,3,4))  # chrom,start,end
+        for gtfline in gtflines:
+            g.write('\t'.join([str(x) for x in gtfline])+'\n')
+    return gtf
+
+def transcriptome_gtf_from_genrep(assembly):
+    tmap = assembly.get_transcript_mapping()
+    gtf = unique_filename_in()
+    gtflines = []
+    smap = {1:'+', -1:'-'}
+    with open(gtf,"wb") as g:
+        for tid,t in tmap.iteritems():
+            gtflines.append([t.chrom,'Ensembl','exon',t.start,t.end,'.',smap.get(t.strand,'.'),'.',
+                           'exon_id "%s"; transcript_id "%s"; gene_id "%s"; gene_name "%s"' \
+                           % (t.id,t.id,t.gene_id,t.gene_name)])
+        del tmap
         gtflines.sort(key=itemgetter(0,3,4))  # chrom,start,end
         for gtfline in gtflines:
             g.write('\t'.join([str(x) for x in gtfline])+'\n')
@@ -129,16 +145,20 @@ def rnaseq_workflow(ex, job, pileup_level=["genes","transcripts"],
     # Get the assembly's GTF
     # ...from fasta origin
     logfile.write("* Prepare GTF\n"); logfile.flush()
-    if hasattr(assembly,"fasta_origin") or assembly.intype==2:
-        logfile.write("  ... from transcriptome or fasta origin\n"); logfile.flush()
+    if hasattr(assembly,"fasta_origin"):
+        logfile.write("  ... from fasta origin\n"); logfile.flush()
         gtf = gtf_from_bam_header(bamfiles[0])
+    # ... or from (wrong) mapping on the transcriptome
+    elif assembly.intype==2:
+        logfile.write("  ... from mapping on the transcriptome\n"); logfile.flush()
+        gtf = transcriptome_gtf_from_genrep(assembly)
     # ... or from config file
     else:
         gtf = job.files.itervalues().next().itervalues().next().get('gtf')
         if gtf: logfile.write("  ... from config file: %s\n" % gtf); logfile.flush()
     # ... or from GenRep
     if gtf is None:
-        gtf = gtf_from_genrep(assembly)
+        gtf = genome_gtf_from_genrep(assembly)
     #shutil.copy(gtf,"../")
 
     # Build controllers
