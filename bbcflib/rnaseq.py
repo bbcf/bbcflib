@@ -61,6 +61,7 @@ class RNAseq(object):
 
 
 def gtf_from_bam_header(bam):
+    """In case of alignment on a custom sequence."""
     bamtrack = track(bam,format='bam')
     gtf = unique_filename_in()+'.gtf'
     with open(gtf,"wb") as g:
@@ -72,24 +73,8 @@ def gtf_from_bam_header(bam):
     bamtrack.close()
     return gtf
 
-def genome_gtf_from_genrep(assembly):
-    emap = assembly.get_exon_mapping()
-    gtf = unique_filename_in()
-    gtflines = []
-    smap = {1:'+', -1:'-'}
-    with open(gtf,"wb") as g:
-        for eid,e in emap.iteritems():
-            for t in e.transcripts:
-                gtflines.append([e.chrom,'Ensembl','exon',e.start,e.end,'.',smap.get(e.strand,'.'),'.',
-                               'exon_id "%s"; transcript_id "%s"; gene_id "%s"; gene_name "%s"' \
-                               % (e.id,t,e.gene_id,e.gene_name)])
-        del emap
-        gtflines.sort(key=itemgetter(0,3,4))  # chrom,start,end
-        for gtfline in gtflines:
-            g.write('\t'.join([str(x) for x in gtfline])+'\n')
-    return gtf
-
 def transcriptome_gtf_from_genrep(assembly):
+    """In case of mapping on the transcriptome - it if still ever happens."""
     tmap = assembly.get_transcript_mapping()
     gtf = unique_filename_in()
     gtflines = []
@@ -158,7 +143,7 @@ def rnaseq_workflow(ex, job, pileup_level=["genes","transcripts"],
         if gtf: logfile.write("  ... from config file: %s\n" % gtf); logfile.flush()
     # ... or from GenRep
     if gtf is None:
-        gtf = genome_gtf_from_genrep(assembly)
+        gtf = assembly.create_exome_gtf()
     #shutil.copy(gtf,"../")
 
     # Build controllers

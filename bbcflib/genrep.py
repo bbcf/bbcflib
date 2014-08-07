@@ -200,7 +200,7 @@ class Assembly(object):
                     [g.wait() for g in [sam_faidx.nonblocking(ex2,f,via=via) for f in fasta_files]]
             else:
                 fasta_files = list(set(add_chrom.values()))
-                for f in fasta_files: 
+                for f in fasta_files:
                     chromosomes.update(fasta_length.nonblocking(ex,f,via=via).wait())
                 fasta_by_chrom.update( add_chrom )
                 fasta_files = list(set(fasta_by_chrom.values()))
@@ -598,7 +598,34 @@ class Assembly(object):
             input_file.close()
         return genomeRef
 
+    def create_exome_gtf(self):
+        """Creates a GTF file representing the exonic structure of the genome
+        (similar to the Ensembl one except only "exon" types are present
+        - not "CDS", "start codon", etc.). This file is required to run programs
+        such as rnacounter or HTSeq.
+        It is based on GenRep's data, so that SQL and GTF data
+        are always consistent, which is not the case if one downloads the GTF
+        directly from Ensembl.
+        Returns the name of the newly created file."""
+        emap = self.get_exon_mapping()
+        gtf = unique_filename_in()+'_'+self.name+'.gtf'
+        gtflines = []
+        smap = {1:'+', -1:'-', 0:'.'}
+        with open(gtf,"wb") as g:
+            for eid,e in emap.iteritems():
+                for t in e.transcripts:
+                    gtflines.append([e.chrom,'Ensembl','exon',e.start,e.end,'.',smap.get(e.strand,'.'),'.',
+                                   'exon_id "%s"; transcript_id "%s"; gene_id "%s"; gene_name "%s"' \
+                                   % (e.id,t,e.gene_id,e.gene_name)])
+            del emap
+            gtflines.sort(key=lambda x:(x[0],x[3],x[4]))  # chrom,start,end
+            for gtfline in gtflines:
+                g.write('\t'.join([str(x) for x in gtfline])+'\n')
+        return gtf
+
     def gtf_to_sql(self,gtf_path,sql_path=None):
+        """Generate an SQL database based on a GTF file from Ensembl,
+        with some additional treatment (feature start, missing exon IDs, etc.)"""
         def _split_attributes(stream,field='attributes'):
             fi = stream.fields.index(field)
             for x in stream:
