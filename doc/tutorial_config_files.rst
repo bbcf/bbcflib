@@ -1,7 +1,7 @@
 Using scripts and configuration files
 =====================================
 
-Each of our pipieline can be run on the command-line using the scripts provided in our `repository <https://github.com/bbcf/bbcfutils/tree/master/Python>`_. Theses scripts use configuration files to set the various pipeline options.
+Each of our pipelines can be run on the command-line using the scripts provided in our `repository <https://github.com/bbcf/bbcfutils/tree/master/Python>`_. Theses scripts use configuration files to set the various pipeline options.
 
 Here is a typical workflow that uses both ``mapseq`` and ``chipseq``. The configuration file will contain the following sections: first a ``Global variables`` section that defines the local environment for the pipelines::
 
