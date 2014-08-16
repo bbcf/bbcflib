@@ -1,10 +1,13 @@
 Using rnacounter to count reads in genomic intervals
 ====================================================
 
-Count reads on genes and transcripts from a genome-level BAM file and a
+`rnacounter` estimates abundances of genes and their different transcripts
+from read densities. Exons and introns can also be quantified.
+It requires a genome-level BAM file and a
 GTF/GFF file describing the exon structure, such as those provided by Ensembl or GenRep.
 The GTF is assumed to be sorted at least w.r.t. chromosome name,
 and the chromosome identifiers in the GTF must be the same as the BAM references.
+The method used is described in [<ref>].
 
 Most basic usage::
 
@@ -14,7 +17,7 @@ The command above will create a tab-delimited text file of gene counts, their RP
 and annotation information sur as the genomic location.
 Many options are then available, listed below.
 
-Use `rnacounter join` to merge several output files produced using *the same GTF*,
+Use `rnacounter join` to merge several output files produced using **the same GTF**,
 to create a single table with counts from all samples::
 
    rnacounter join tab1.txt tab2.txt ... > tab_all.txt
@@ -54,13 +57,13 @@ Options:
     Since in a transcript of length L there are only L-F+1 different positions where
     one can cut a fragment of length F, one should correct for this bias before RPKM
     calculation (then usually called FPKM). Typical fragment lengths are around 350;
-    default value is 0 (no correction).
+    default value is 1 (no correction).
 
 * `--nh`::
 
     A flag "NH" can be added to BAM files to indicate the number of times the read
     could be mapped to different locations in the genome. Adding this option
-    will take this number into account by adding 1/NH instead of 1 to the read count.
+    will take this number into account by adding 1/NH instead of 1 to an exon read count.
 
 * `--noheader`::
 
@@ -74,7 +77,7 @@ Options:
     will not be reported in the ouput. By default everything is reported
     - even with zero counts.
 
-* `gtf_type`::
+* `--gtf_type`::
 
     Usually one uses standard (Ensembl etc.) GTF files to count reads in
     exons/genes/transcripts. The only lines of interest are then the ones with
@@ -82,7 +85,7 @@ Options:
     or provided your own, differently formatted GTF, with this option you can specify
     the 3rd column value of the lines to consider.
 
-* `-f, --format`::
+* `--format`::
 
     One can also give an annotation file in BED format, in which case each line
     is considered as an independant, disjoint interval with no splicing structure.
@@ -91,12 +94,12 @@ Options:
 * `-t, --type`::
 
     The type of feature you want to count reads in. Can be "genes" (default),
-    "transcripts", "exons" (or "introns" - soon).
+    "transcripts", "exons" or "introns".
     One can give multiple comma-separated values, in which case all
     the different features will be mixed in the output but can easily be split
     using the last column tag, as for instance with `... | grep 'exon'`.
-    Then `--method` must be specified and have the same number of values as `type`,
-    also as a comma-separated list.
+    Then if `--method` is specified it must have the same number of values as `type`,
+    also as a comma-separated list, or a single one that is applied to all types.
 
 * `-c, --chromosomes`::
 
@@ -113,12 +116,7 @@ Options:
 
     Feature counts are inferred from the counts on (slices of) exons
     with the chosen `--method`: "raw" (default, HTSeq-like) or
-    "nnls" (non-negative least squares).
-
-    Because annotated exons often overlap a lot, in "raw" mode, "exon" counts are actually
-    that of their disjoint slices, and their name in the output table is formatted as
-    "exon1|exon2" if a slice is spanned by exon1 and exon2. In "nnls" mode, exon counts
-    are inferred from disjoint slices as for genes.
+    "nnls" (non-negative least squares, see [<ref>]).
 
 
 Miscellaneous notes:
@@ -126,8 +124,19 @@ Miscellaneous notes:
 
 * Overlapping regions:
   In "raw" counting mode, regions spanned by two or more genes, together with the
-  alignements inside these regions, are not considered at all - as in HTSeq's
-  "union" mode.
+  alignements inside these regions, are ignored - as in HTSeq's "union" mode.
+
+* Exons and introns:
+  Because annotated exons often overlap a lot, in "raw" mode, "exon" counts are actually
+  that of their disjoint slices, and their name in the output table is formatted as
+  "exon1|exon2" if a slice is spanned by exon1 and exon2. In "nnls" mode, exon counts
+  are inferred from disjoint slices as for genes.
+
+  Intronic regions also annotated as exons in some alternative transcripts are
+  ignored whatever the chosen method is. Because they don't have official IDs,
+  introns slices are given names following this pattern:
+  "T-i7" means that is is the 7th intron of transcript T,
+  "T1-i1|T2-i3|..." means it is part of several transcripts.
 
 * Non-integer counts:
   The fact that some reads cross exon boundaries as well as considering the NH flag
@@ -149,7 +158,7 @@ Miscellaneous notes:
 Examples:
 ---------
 
-* Get only isoforms counts::
+* Probably the best way to get isoforms counts::
 
     rnacounter -t transcripts -m nnls --nh -f 350 sample.bam mouse.gtf > transcript_counts.txt
 

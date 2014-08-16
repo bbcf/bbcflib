@@ -23,6 +23,7 @@ Tutorials
    tutorial_gfminer
    tutorial_maplot
    tutorial_config_files
+   tutorial_rnacounter
 
 Methods description
 '''''''''''''''''''
@@ -56,5 +57,5 @@ Library guide
    bbcflib_gfminer
    bbcflib_maplot
 
-See also the `developer documentation <http://bbcf.github.com/bbcflib/>`_ and 
+See also the `developer documentation <http://bbcf.github.com/bbcflib/>`_ and
 the :download:`poster <Poster_HTSstation_small.pdf>`.
