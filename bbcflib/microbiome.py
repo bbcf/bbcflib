@@ -151,7 +151,9 @@ def microbiome_workflow( ex, job, assembly, logfile=sys.stdout, via='lsf' ):
                  'Phylum':[[0,1],[2,3]],
                  'Class':[[0,1,2],[3,4]],
                  'Order':[[0,1,2,3],[4,5]],
-                 'Family':[[0,1,2,3,4],[5,6]]}
+                 'Family':[[0,1,2,3,4],[5,6]],
+                 'Genus':[[0,1,2,3,4,5],[6,7]],
+                 'Species':[[0,1,2,3,4,5,6],[7,8]]}
 ### outputs
     processed = {'cnts': {}, 'cnts_level': {}, 'plots': {}}
 
