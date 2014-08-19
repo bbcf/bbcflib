@@ -33,11 +33,15 @@ Finally, click on the `Create` button and confirm to launch the job.
 Results
 -------
 
-When the job finishes successfully, you will receive an e-mail with a link to the page where you can download the results. A first tab-delimited file contains the position, type and quality of all SNPs found in each group. For SNPs occuring inside of an exon, another tab-delimited file indicates the exon an gene ID, as well as the original and modified codons. Bed tracks are provided to be loaded in the UCSC genome browser to visualize the SNP positions. Note that you can load them in UCSC or GDV by clicking directly on the `View in UCSC | View in GDV` links at the bottom of the results page.
+When the job finishes successfully, you will receive an e-mail with a link to the page where you can download the results. A first tab-delimited file contains the position, type and quality of all SNPs found in each group.
 
 .. image:: images/SNP_output_all.png
 
+For SNPs occuring inside of an exon, another tab-delimited file indicates the exon an gene ID, as well as the original and modified codons.
+
 .. image:: images/SNP_output_exons.png
+
+Bed tracks are provided to be loaded in the UCSC genome browser to visualize the SNP positions. Note that you can load them in UCSC or GDV by clicking directly on the `View in UCSC | View in GDV` links at the bottom of the results page.
 
 
 Criteria
