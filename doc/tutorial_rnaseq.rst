@@ -40,13 +40,13 @@ Genomic features with zero counts in all conditions will not be reported.
 
     Because it takes into account multiply mapping reads and because of the method used, "counts" may not be always integer-valued, although they still represent a fraction of the library mapping to the region.
 
-Differential analysis is performed on raw counts (by DESeq) and results are summarized in the files named "<type>_differential_<comparison>.txt". Columns "pval" and "padj" are respectively gene-level and adjusted p-values.
+Differential analysis is performed on raw counts (by DESeq) and results are summarized in the files named "<type>_differential_<comparison>.txt". Columns "pval" and "padj" are respectively gene-level- and adjusted p-values (correction for multiple testing).
 
 .. image:: images/RNAseq_output_diff.png
 
 .. warning::
 
-    Differential expression analysis will not be very reliable if there are no replicates (i.e. only one run per group): in this case all groups will be pooled and the variation between them considered as background biological variability. Prefer considering fold changes over p-values if you have no or few replicates.
+    Differential expression analysis will not be very reliable if there are no replicates (i.e. only one run per group): in this case all groups will be pooled and the variation between them considered as background biological variability. Prefer fold changes over p-values if you have no or very few replicates.
 
 
 PCA

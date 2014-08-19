@@ -5,6 +5,7 @@ Here is a short tutorial showing how to search for SNPs from the interface http:
 
 This module will compare the sequence of aligned reads to a reference genomic sequence to find all
 single-nucleotide variants (Single Nucleotide Polymorphism, SNP) and the codon variations they induce.
+It wraps the standard *mpileup* + *bcftools* pipeline.
 
 
 New Job
@@ -43,6 +44,14 @@ For SNPs occuring inside of an exon, another tab-delimited file indicates the ex
 
 Bed tracks are provided to be loaded in the UCSC genome browser to visualize the SNP positions. Note that you can load them in UCSC or GDV by clicking directly on the `View in UCSC | View in GDV` links at the bottom of the results page.
 
+SNPs are annotated as follows:
+
+* If the variant is not present in one of the samples, the column for this sample will contain "-".
+* If there is no coverage at this position in one of the samples, the column for this sample will contain "0".
+* If there is a single variant, for instance a C supported by 60% of 30 reads, it will show "C (60% of 30)".
+* At the moment *bcftools* does not support multiple variants calling.
+* For the moment, indels are not reported.
+
 
 Criteria
 --------
@@ -50,10 +59,6 @@ Criteria
 The following rules are applied to decide whether to annotate an SNP:
 
 * There must be at least 5 reads supporting the SNP.
-* If there are less than 10, an asterix will be added in front of the variant base in the output file.
 * If all reads support the SNP, the variant base is indicated.
-* If the variant is supported by only a fraction of the reads, this fraction must be at least 40%/20% of the total number of reads, respectively for procaryotes and eucaryotes. Moreover, there must be at least 5 reads supporting the SNP on each strand. In this case, it is annotated as <variant><x%>/<reference><total-x%>.
-* If there are two diferrent variants, the fraction of reads supporting each of them must be at least 20%/10% of the total, respectively for procaryotes and eucaryotes. Moreover, there must be at least 3 reads supporting each variant on each strand. In this case, it is annotated as <variant1><x%>/<variant2><y%>.
-* If the variant is not present in one of the samples, the result file will show the reference base instead.
-* If there is no coverage at this position in one of the samples, it will be annotated as "0".
+* If the variant is supported by only a fraction of the reads, this fraction must be at least 40%/20% of the total number of reads, respectively for procaryotes and eucaryotes. Moreover, there must be at least 5 reads supporting the SNP on each strand.
 
