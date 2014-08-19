@@ -7,7 +7,7 @@ Here is a short tutorial showing how to launch a RNA-seq analysis from HTSstatio
 New Job
 -------
 
-An RNA-seq analysis works from reads aligned on a reference genome or exonome, given as BAM file(s) through the BAM URL field (there is one BAM file per run). Each BAM file represents a sample ("run"); several samples that were produced in the same conditions (replicates) form a "group".
+An RNA-seq analysis works from reads aligned on a reference genome, given as BAM file(s) through the BAM URL field (there is one BAM file per run). Each BAM file represents a sample ("run"); several samples that were produced in the same conditions (replicates) form a "group".
 
 The BAM URLs can be given directly as an `http://` or `ftp://` address accessible from outside. You can add manually as many groups and as many runs per group you want by using the links `Add group of runs` and `Add run in this group`. Each sample will then be labeled *group_name.run_index* in the output files. Make sure to use short group names, without spaces (prefer the "_" character to separate words) and without any special character in it (e.g. "%&?!"). Groups are considered to represent different experimental conditions, while runs typically represent techical replicates. This is important for statistical analysis - see below.
 
@@ -29,24 +29,32 @@ Finally, click on the `Create` button and confirm to launch the job.
 Results
 -------
 
-When the job finishes successfully, you will receive an e-mail with a link to the page where you can download the results. Results consist in tab-delimited files containing counts and rpkm for genes, exons and transcripts, and a differential expression analysis for each pair of groups in the experiment.
+When the job finishes successfully, you will receive an e-mail with a link to the page where you can download the results. Results consist in tab-delimited files containing counts and rpkm for genes and transcripts, and a differential expression analysis for each pair of groups in the experiment.
 
-Counts tables, named "<type>_expression.tab", contain columns named "<prefix>.<sample>.<run_id>", where <prefix> is "counts." for raw counts, "norm." for inter-sample normalized counts (using DESeq's "size factors"), or "rpkm." for transcript-size normalized counts.
+Counts tables, named "<type>_expression.tab", contain columns named "<prefix>.<sample>.<run_id>", where <prefix> is "counts." for raw counts, or "rpkm." for transcript-size normalized counts.
 Genomic features with zero counts in all conditions will not be reported.
 
-.. note::
-
-    The latter is not the RPKM as it was initially defined. Instead of dividing by the library size, we use median-scaling (DESeq's "size factors"), then divide by the transcript size.
+.. image:: images/RNAseq_output_counts.png
 
 .. note::
 
-    First reads are counted in exons and the exons table & stats are produced. Then junction reads are added and genes/transcripts expression calculated. Hence possible differences between gene count and the sum of its exons', for instance.
+    Because it takes into account multiply mapping reads and because of the method used, "counts" may not be always integer-valued, although they still represent a fraction of the library mapping to the region.
 
 Differential analysis is performed on raw counts (by DESeq) and results are summarized in the files named "<type>_differential_<comparison>.txt". Columns "pval" and "padj" are respectively gene-level and adjusted p-values.
+
+.. image:: images/RNAseq_output_diff.png
 
 .. warning::
 
     Differential expression analysis will not be very reliable if there are no replicates (i.e. only one run per group): in this case all groups will be pooled and the variation between them considered as background biological variability. Prefer considering fold changes over p-values if you have no or few replicates.
+
+
+PCA
+---
+
+A useful diagnostic tool is PCA, allowing to see for instance if replicates cluster well together, or if groups with a different treatment can be distinguished in the experiment. The module provides a standard "biplot" showing the 2-dimensional projection of groups relative to their global gene expression (in log RPKM), and a diagnostic of the PCA itself: a bar plot of the loadings - the two first bars together must account for a large part of the total.
+
+.. image:: images/RNAseq_pca_combined.png
 
 
 Interactive MA-plot
