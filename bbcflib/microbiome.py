@@ -167,7 +167,7 @@ def microbiome_workflow( ex, job, assembly, logfile=sys.stdout, via='lsf' ):
         bamfiles = [m['bam'] for m in mapseq_files[gid].values()]
         futures[gid] = run_microbiome.nonblocking(ex, ["bam_to_annot_counts", bamfiles,
                                                        assembly.annotations_path, group_name], 
-                                                  via=via)
+                                                  via=via, memory=8)
 
     # 1.b get counts per Level (Kingdom, Phylum, Class, Order, Family, Genus and Species) (=> 1 file per level / per group)
     step = 'counts'
@@ -176,18 +176,18 @@ def microbiome_workflow( ex, job, assembly, logfile=sys.stdout, via='lsf' ):
         processed['cnts'][gid] = res # group_name + "_counts_annot.txt"
         fname = job.groups[gid]['name']+"_counts_annot.txt"
         ex.add( res, description=set_file_descr( fname, groupId=gid, step=step, type="txt" ) )
-        processed['cnts_level'][gid] = [run_microbiome.nonblocking(ex, ["getCountsPerLevel", res, level], via=via) 
+        processed['cnts_level'][gid] = [run_microbiome.nonblocking(ex, ["getCountsPerLevel", res, level], via=via, memory=8) 
                                         for level in levels]
 
     # 2.a combine counts for all groups (=> 1 combined file)
     files = processed['cnts'].values()
-    combined_out = [run_microbiome.nonblocking(ex, ["combine_counts", files, 0, [1,2]], via=via)]
+    combined_out = [run_microbiome.nonblocking(ex, ["combine_counts", files, 0, [1,2]], via=via, memory=8)]
 
     # 2.b combine counts per level for all groups (=> 1 combined file per Level)
     for n,level in enumerate(levels):
         files = dict([(gid,f[n].wait()) for gid,f in processed['cnts_level'].iteritems()])
         combined_out.append(run_microbiome.nonblocking(ex, ["combine_counts", files.values()]+infosCols.get(level,[0,[1,2]]),
-                                                       via=via))
+                                                       via=via, memory=8))
         for gid,f in files.iteritems():
             fname = job.groups[gid]['name']+"_counts_annot_"+level+".txt"
             ex.add( f, description=set_file_descr( fname, groupId=gid, step=step, type="txt" ) )
