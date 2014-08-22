@@ -677,9 +677,11 @@ class WigTrack(TextTrack):
                 fields = line.split()
                 if len(fields) > 3:
                     if len(fields) > 5:
-                        yield tuple([fields[0],int(fields[1]),int(fields[2]),fields[5],float(fields[3])])
+                        rowdata = [fields[0],int(fields[1])+1,int(fields[2]),fields[5],float(fields[3])]
+                        yield tuple(self._check_type(rowdata[index_list[n]],f) for n,f in enumerate(fields))
                     else:
-                        yield tuple([fields[0],int(fields[1]),int(fields[2]),"+",float(fields[3])])
+                        rowdata = [fields[0],int(fields[1])+1,int(fields[2]),"+",float(fields[3])]
+                        yield tuple(self._check_type(rowdata[index_list[n]],f) for n,f in enumerate(fields))
             elif self.mode == MODE_VARIABLE:
                 fields = line.split()
                 try:
@@ -687,15 +689,14 @@ class WigTrack(TextTrack):
                     val = float(fields[1])
                 except ValueError:
                     continue
-                yield tuple([self.current_chrom, pos, pos + self.current_span, "+", val])
+                rowdata = [self.current_chrom, pos+1, pos + self.current_span+1, "+", val]
+                yield tuple(self._check_type(rowdata[index_list[n]],f) for n,f in enumerate(fields))
             elif self.mode == MODE_FIXED:
                 fields = line.split()
                 try: val = float(fields[0])
                 except ValueError: continue
-                #self._check_type(rowdata[index_list[n]],f)
-                #                for n,f in enumerate(fields)
-                yield tuple([self.current_chrom, self.current_pos,
-                            self.current_pos + self.current_span, "+", val])
+                rowdata = [self.current_chrom,self.current_pos+1,self.current_pos+self.current_span+1,"+",val]
+                yield tuple(self._check_type(rowdata[index_list[n]],f) for n,f in enumerate(fields))
                 self.current_pos += self.current_step
             else:
                 raise "Unexpected input line: %s" % line.strip()
