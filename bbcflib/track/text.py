@@ -563,7 +563,6 @@ class SgaTrack(TextTrack):
             return "%i" % (x+0.5,) # round to upper int
         kwargs['outtypes'] = {'strand': _sga_strand, 'score': _format_score}
         TextTrack.__init__(self,path,**kwargs)
-        self.close()
 
     def _read(self, fields, index_list, selection, skip):
         self.open('read')
@@ -618,9 +617,9 @@ class SgaTrack(TextTrack):
 def parse_wig_header(line):
     return dict([field.split('=') for field in line.split()[1:]])
 
-MODE_BED = 1
-MODE_VARIABLE = 2
-MODE_FIXED = 3
+WIG_MODE_BED = 1
+WIG_MODE_VARIABLE = 2
+WIG_MODE_FIXED = 3
 
 class WigTrack(TextTrack):
     """
@@ -639,7 +638,7 @@ class WigTrack(TextTrack):
         self.current_pos = -1
         self.current_step = -1
         self.current_span = -1
-        self.mode = MODE_BED
+        self.mode = WIG_MODE_BED
         self.close()
 
     def _read(self, fields, index_list, selection, skip):
@@ -660,7 +659,7 @@ class WigTrack(TextTrack):
                         self.current_span = int(header['span'])
                     else:
                         self.current_span = 1
-                    self.mode = MODE_VARIABLE
+                    self.mode = WIG_MODE_VARIABLE
                     continue
                 elif line[:9] == "fixedStep":
                     header = parse_header(line)
@@ -671,9 +670,9 @@ class WigTrack(TextTrack):
                         self.current_span = int(header['span'])
                     else:
                         self.current_span = 1
-                    self.mode = MODE_FIXED
+                    self.mode = WIG_MODE_FIXED
                     continue
-            elif self.mode == MODE_BED:
+            elif self.mode == WIG_MODE_BED:
                 fields = line.split()
                 if len(fields) > 3:
                     if len(fields) > 5:
@@ -682,7 +681,7 @@ class WigTrack(TextTrack):
                     else:
                         rowdata = [fields[0],int(fields[1])+1,int(fields[2]),"+",float(fields[3])]
                         yield tuple(self._check_type(rowdata[index_list[n]],f) for n,f in enumerate(fields))
-            elif self.mode == MODE_VARIABLE:
+            elif self.mode == WIG_MODE_VARIABLE:
                 fields = line.split()
                 try:
                     pos = int(fields[0]) - 1
@@ -691,7 +690,7 @@ class WigTrack(TextTrack):
                     continue
                 rowdata = [self.current_chrom, pos+1, pos + self.current_span+1, "+", val]
                 yield tuple(self._check_type(rowdata[index_list[n]],f) for n,f in enumerate(fields))
-            elif self.mode == MODE_FIXED:
+            elif self.mode == WIG_MODE_FIXED:
                 fields = line.split()
                 try: val = float(fields[0])
                 except ValueError: continue
