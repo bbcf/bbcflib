@@ -77,7 +77,8 @@ class TextTrack(Track):
             return None
         self.open('read')
         self._skip_header()
-        for row in self.filehandle:
+        while 1:
+            row = self.filehandle.readline()
             if row.count(self.separator) > 1: break
             if row.count(" ") > 1:
                 self.separator = " "
@@ -85,6 +86,7 @@ class TextTrack(Track):
             if row.count("\t") > 1:
                 self.separator = "\t"
                 break
+        self.filehandle.seek(0)
         return self.separator
 
     def _get_fields(self,fields):
@@ -132,7 +134,9 @@ class TextTrack(Track):
         _info = {}
         if type(self.filehandle) == file and 'r' not in self.filehandle.mode:
             return _info
-        for row in self.filehandle:
+        while 1:
+            row = self.filehandle.readline()
+            if not row: break
             if row[:7]=="browser" or row[0] in ['#','@']: continue
             if row[:5]=="track":
                 tok = row[5:].strip().split("=")
@@ -195,11 +199,13 @@ class TextTrack(Track):
         chr = splitrow[self.fields.index('chr')]
         if self.index.get(chr): self.index[chr][1] = end
         else:                   self.index[chr] = [start,end]
+
     def _init_skip(self,selection):
         chr_selected = [s.get('chr')[0] for s in selection if s.get('chr')]
         chr_toskip = sorted([self.index.get(c) for c in self.index if c not in chr_selected])
         chr_toskip = iter(chr_toskip+[[sys.maxint,sys.maxint]])
         return chr_toskip
+
     def _skip(self,start,next_toskip,chr_toskip):
         if start >= next_toskip[0] and start <= next_toskip[1]:
             self.filehandle.seek(next_toskip[1])
@@ -305,7 +311,6 @@ class TextTrack(Track):
                             for n,f in enumerate(fields))
         except (ValueError,IndexError) as ve:
             raise ValueError("Bad line in file %s:\n %s%s\n" % (self.path,row,ve))
-        self.close()
 
     def read(self, selection=None, fields=None, skip=False, **kw):
         """
@@ -509,12 +514,13 @@ class BedTrack(TextTrack):
             return
         self.open()
         rowlen = None
-        for row in self.filehandle:
+        while 1:
+            row = self.filehandle.readline()
             if not(row.strip()) or row[0]=='#': continue
             if row[:5]=='track' or row[:7]=='browser': continue
             rowlen = len(row.split(self.separator))
             break
-        self.close()
+        self.filehandle.seek(0)
         if rowlen is None: return
         [self.intypes.pop(f) for f in self.fields[rowlen:] if f in self.intypes]
         [self.outtypes.pop(f) for f in self.fields[rowlen:] if f in self.outtypes]
@@ -563,7 +569,6 @@ class SgaTrack(TextTrack):
             return "%i" % (x+0.5,) # round to upper int
         kwargs['outtypes'] = {'strand': _sga_strand, 'score': _format_score}
         TextTrack.__init__(self,path,**kwargs)
-        self.close()
 
     def _read(self, fields, index_list, selection, skip):
         self.open('read')
@@ -611,17 +616,6 @@ class SgaTrack(TextTrack):
 
 ################################### Wig ############################################
 
-# Source:
-# https://bitbucket.org/james_taylor/bx-python/src/babadb4d4bf2d71e50a6f3569c10691ec9f3bc81/lib/bx/arrays/wiggle.pyx?at=default
-# Big thanks to him.
-
-def parse_wig_header(line):
-    return dict([field.split('=') for field in line.split()[1:]])
-
-MODE_BED = 1
-MODE_VARIABLE = 2
-MODE_FIXED = 3
-
 class WigTrack(TextTrack):
     """
     TextTrack class for Wig files (extension ".wig").
@@ -635,72 +629,109 @@ class WigTrack(TextTrack):
         kwargs['format'] = 'wig'
         kwargs['fields'] = ['chr','start','end','score']
         TextTrack.__init__(self,path,**kwargs)
-        self.current_chrom = None
-        self.current_pos = -1
-        self.current_step = -1
-        self.current_span = -1
-        self.mode = MODE_BED
-        self.close()
 
     def _read(self, fields, index_list, selection, skip):
         self.open('read')
-        while True:
-            line = self.filehandle.readline()
-            if not line: break
-            if line.isspace(): continue
-            if line[0] == "#": continue
-            if line[0].isalpha():
-                if line[:7]=="browser" or line[:5]=="track": continue
-                elif line[:12] == "variableStep":
-                    header = parse_wig_header(line)
-                    self.current_chrom = header['chrom']
-                    self.current_pos = -1
-                    self.current_step = -1
-                    if 'span' in header:
-                        self.current_span = int(header['span'])
-                    else:
-                        self.current_span = 1
-                    self.mode = MODE_VARIABLE
+        if skip and selection:
+            chr_toskip = self._init_skip(selection)
+            next_toskip = chr_toskip.next()
+        fstart = fend = 0
+        fixedStep = None
+        chrom = start = end = step = score = None
+        span = 1
+        row = ""
+        try:
+            rowdata = ['',-1,-1,'']
+            while 1:
+                fstart = self.filehandle.tell()
+                row = self.filehandle.readline()
+                if not row: break
+                if row[0]=="#": continue
+                if row[:7]=="browser" or row[:5]=="track":
+                    if rowdata[1] >= 0:
+                        if (not selection) or any(self._select_values(rowdata,s) for s in selection):
+                            yield tuple(self._check_type(rowdata[index_list[n]],f)
+                                        for n,f in enumerate(fields))
+                    fixedStep = None
+                    chrom = start = end = score = step = None
+                    span = 1
                     continue
-                elif line[:9] == "fixedStep":
-                    header = parse_header(line)
-                    self.current_chrom = header['chrom']
-                    self.current_pos = int(header['start']) - 1
-                    self.current_step = int(header['step'])
-                    if 'span' in header:
-                        self.current_span = int(header['span'])
-                    else:
-                        self.current_span = 1
-                    self.mode = MODE_FIXED
+                if row[:9]=="fixedStep":
+                    if rowdata[1] >= 0:
+                        if (not selection) or any(self._select_values(rowdata,s) for s in selection):
+                            yield tuple(self._check_type(rowdata[index_list[n]],f)
+                                        for n,f in enumerate(fields))
+                    fixedStep = True
+                    rowdata = ['',-1,-1,'']
+                    chrom,start = re.search(r'chrom=(\S+)\s+start=(\d+)',row).groups()
+                    start = int(start)-1
+                    step = 1
+                    s_patt = re.search(r'step=(\d+)',row)
+                    if s_patt: step = max(1,int(s_patt.groups()[0]))
+                    rowdata[0] = chrom
+                    s_patt = re.search(r'span=(\d+)',row)
+                    if s_patt: span = max(1,int(s_patt.groups()[0]))
+                    end = -1
+                    start -= step
                     continue
-            elif self.mode == MODE_BED:
-                fields = line.split()
-                if len(fields) > 3:
-                    if len(fields) > 5:
-                        rowdata = [fields[0],int(fields[1])+1,int(fields[2]),fields[5],float(fields[3])]
-                        yield tuple(self._check_type(rowdata[index_list[n]],f) for n,f in enumerate(fields))
-                    else:
-                        rowdata = [fields[0],int(fields[1])+1,int(fields[2]),"+",float(fields[3])]
-                        yield tuple(self._check_type(rowdata[index_list[n]],f) for n,f in enumerate(fields))
-            elif self.mode == MODE_VARIABLE:
-                fields = line.split()
-                try:
-                    pos = int(fields[0]) - 1
-                    val = float(fields[1])
-                except ValueError:
+                if row[:12]=="variableStep":
+                    if rowdata[1] >= 0:
+                        if (not selection) or any(self._select_values(rowdata,s) for s in selection):
+                            yield tuple(self._check_type(rowdata[index_list[n]],f)
+                                        for n,f in enumerate(fields))
+                    fixedStep = False
+                    rowdata = ['',-1,-1,'']
+                    chrom = re.search(r'chrom=(\S+)',row).groups()[0]
+                    rowdata[0] = chrom
+                    start = -1
+                    s_patt = re.search(r'span=(\d+)',row)
+                    if s_patt: span = int(s_patt.groups()[0])
+                    end = start+span
                     continue
-                rowdata = [self.current_chrom, pos+1, pos + self.current_span+1, "+", val]
-                yield tuple(self._check_type(rowdata[index_list[n]],f) for n,f in enumerate(fields))
-            elif self.mode == MODE_FIXED:
-                fields = line.split()
-                try: val = float(fields[0])
-                except ValueError: continue
-                rowdata = [self.current_chrom,self.current_pos+1,self.current_pos+self.current_span+1,"+",val]
-                yield tuple(self._check_type(rowdata[index_list[n]],f) for n,f in enumerate(fields))
-                self.current_pos += self.current_step
-            else:
-                raise "Unexpected input line: %s" % line.strip()
+                if fixedStep is None: continue
+                splitrow = [s.strip() for s in row.split()]
+                if not any(splitrow): continue
+                yieldit = True
+                if fixedStep:
+                    score = splitrow[0]
+                    start += step
+                    end = start+span
+                    if start == rowdata[2] and score == rowdata[3]:
+                        yieldit = False
+                        rowdata[2] = end
+                else:
+                    score = splitrow[1]
+                    start = int(splitrow[0])-1
+                    end = start+span
+                    if start == rowdata[2] and score == rowdata[3]:
+                        yieldit = False
+                        rowdata[2] = end
+                if not(yieldit): continue
+                fstart = fend
+                if selection:
+                    if skip:
+                        fstart,fend,next_toskip = self._skip(fstart,next_toskip,chr_toskip)
+                        self._index_chr(fstart,fend,rowdata)
+                    if not any(self._select_values(rowdata,s) for s in selection):
+                        rowdata[1] = start
+                        rowdata[2] = end
+                        rowdata[3] = score
+                        continue
+                if rowdata[1] >= 0:
+                    yield tuple(self._check_type(rowdata[index_list[n]],f)
+                                for n,f in enumerate(fields))
+                rowdata[1] = start
+                rowdata[2] = end
+                rowdata[3] = score
+            if rowdata[1] >= 0:
+                if (not selection) or any(self._select_values(rowdata,s) for s in selection):
+                    yield tuple(self._check_type(rowdata[index_list[n]],f)
+                                for n,f in enumerate(fields))
+        except ValueError as ve:
+            raise ValueError("Bad line in file %s:\n %s%s\n" % (self.path,row,ve))
         self.close()
+        if fixedStep is None:
+            raise IOError("Please specify 'fixedStep' or 'variableStep'.")
 
     def _format_fields(self,vec,row,source_list,target_list):
         chrom = row[source_list[0]]
@@ -708,9 +739,10 @@ class WigTrack(TextTrack):
         span = int(row[source_list[2]])-int(row[source_list[1]])
         score = self.outtypes.get('score',str)(row[source_list[3]])
         head = ''
-        if span != vec[1]:
-            head = self.separator.join(["variableStep","chrom=%s"%chrom,"span=%s"%span])+"\n"
+        if span != vec[1] or chrom != vec[0]:
+            head = " ".join(["variableStep","chrom=%s"%chrom,"span=%i"%span])+"\n"
             vec[1] = span
+            vec[0] = chrom
         feat = self.separator.join([start,score])
         return head+feat
 
@@ -742,13 +774,13 @@ class GffTrack(TextTrack):
         rowlen = 9
         self.open()
         tostrip = ' \r\n'+(self.separator or '\t')
-        for row in self.filehandle:
-            row = row.strip(tostrip)
+        while 1:
+            row = self.filehandle.readline().strip(tostrip)
             if not row: continue
             if row[0] in ['#','@'] or row[:5]=='track' or row[:7]=='browser': continue
             rowlen = len(row.split(self.separator))
             break
-        self.close()
+        self.filehandle.seek(0)
         if rowlen > 9 or rowlen < 8:
             raise ValueError("Gff should have 8 or 9 fields.")
         if rowlen == 8:
