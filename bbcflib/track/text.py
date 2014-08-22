@@ -702,7 +702,7 @@ class WigTrack(TextTrack):
                 if rowdata[1] >= 0:
                     yield tuple(self._check_type(rowdata[index_list[n]],f)
                                 for n,f in enumerate(fields))
-                rowdata[1] = start
+                rowdata[1] = start-1
                 rowdata[2] = end
                 rowdata[3] = score
             if rowdata[1] >= 0:
@@ -717,7 +717,7 @@ class WigTrack(TextTrack):
 
     def _format_fields(self,vec,row,source_list,target_list):
         chrom = row[source_list[0]]
-        start = self.outtypes.get('start',str)(row[source_list[1]])
+        start = self.outtypes.get('start',str)(row[source_list[1]]+1)
         span = int(row[source_list[2]])-int(row[source_list[1]])
         score = self.outtypes.get('score',str)(row[source_list[3]])
         head = ''
