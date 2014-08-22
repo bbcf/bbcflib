@@ -73,7 +73,7 @@ class TextTrack(Track):
     def _check_sep(self):
         """Checks if default separator works, otherwise tries ' ' and '\t'."""
         if self.separator is None: return None
-        if type(self.filehandle) == file and not 'r' in self.filehandle.mode: 
+        if type(self.filehandle) == file and not 'r' in self.filehandle.mode:
             return None
         self.open('read')
         self._skip_header()
@@ -130,7 +130,7 @@ class TextTrack(Track):
         if not os.path.exists(self.path): return {}
         self.open()
         _info = {}
-        if type(self.filehandle) == file and 'r' not in self.filehandle.mode: 
+        if type(self.filehandle) == file and 'r' not in self.filehandle.mode:
             return _info
         for row in self.filehandle:
             if row[:7]=="browser" or row[0] in ['#','@']: continue
@@ -505,7 +505,7 @@ class BedTrack(TextTrack):
         kwargs['fields'] = _allf[:_nf]
         TextTrack.__init__(self,path,**kwargs)
         if not os.path.exists(self.path): return
-        if type(self.filehandle) == file and not 'r' in self.filehandle.mode: 
+        if type(self.filehandle) == file and not 'r' in self.filehandle.mode:
             return
         self.open()
         rowlen = None
@@ -563,6 +563,7 @@ class SgaTrack(TextTrack):
             return "%i" % (x+0.5,) # round to upper int
         kwargs['outtypes'] = {'strand': _sga_strand, 'score': _format_score}
         TextTrack.__init__(self,path,**kwargs)
+        self.close()
 
     def _read(self, fields, index_list, selection, skip):
         self.open('read')
@@ -623,6 +624,7 @@ class WigTrack(TextTrack):
         kwargs['format'] = 'wig'
         kwargs['fields'] = ['chr','start','end','score']
         TextTrack.__init__(self,path,**kwargs)
+        self.close()
 
     def _read(self, fields, index_list, selection, skip):
         self.open('read')
@@ -633,9 +635,10 @@ class WigTrack(TextTrack):
         fixedStep = None
         chrom = start = end = step = score = None
         span = 1
+        row = ''
         try:
             rowdata = ['',-1,-1,'']
-            while 1:
+            while True:
                 fstart = self.filehandle.tell()
                 row = self.filehandle.readline()
                 if not row: break
@@ -699,6 +702,9 @@ class WigTrack(TextTrack):
                         rowdata[2] = end
                         rowdata[3] = score
                         continue
+                    rowdata[1] = start
+                    rowdata[2] = end
+                    rowdata[3] = score
                 if rowdata[1] >= 0:
                     yield tuple(self._check_type(rowdata[index_list[n]],f)
                                 for n,f in enumerate(fields))

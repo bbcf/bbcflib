@@ -123,7 +123,8 @@ class Test_Formats(unittest.TestCase):
 
     def test_bed(self): # as general TextTrack
         shutil.copy(self.bed, os.path.join(path,'test')) # guess extension from header
-        t = track('test', format='bed', fields=self.fields)
+        t = track(os.path.join(path,'test'), format='bed', fields=self.fields)
+        s = t.read(); s.next()
         self.assertIsInstance(t, BedTrack)
         self.assertEqual(t.format,'bed')
         self.assertListEqual(t.fields, self.fields)
@@ -132,13 +133,15 @@ class Test_Formats(unittest.TestCase):
         bg = os.path.join(path,'test.bedGraph')
         t = convert(self.bed, bg)
         self.assertIsInstance(t, BedGraphTrack)
-        s = t.read(); s.next()
+        s = t.read(); s.next(); t.close()
         self.assertListEqual(t.fields, ['chr','start','end','score'])
 
     def test_wig(self):
         wig = os.path.join(path,'test.wig')
         t = convert(self.bed, wig)
         self.assertIsInstance(t, WigTrack)
+        s = t.read(); s.next(); t.close()
+        t = track(wig, format="wig", chrmeta={}, info=None)
         s = t.read(); s.next()
         self.assertListEqual(t.fields, ['chr','start','end','score'])
 
