@@ -62,19 +62,19 @@ class BigWigTrack(BinTrack):
     def open(self):
         if self.bedgraph is None:
             tmp = tempfile.NamedTemporaryFile(dir='./')
-            self.bedgraph = tmp.name
+            self.bedgraph = os.path.abspath(tmp.name)
             tmp.close()
 
     def close(self):
         if self.chrfile and self.bedgraph:
             try:
-                self._run_tool('bedGraphToBigWig', [self.bedgraph, self.chrfile.name, self.path])
+                self._run_tool('bedGraphToBigWig', [self.bedgraph, self.chrfile, self.path])
             except OSError,ose:
-                os.remove(self.chrfile.name)
+                os.remove(self.chrfile)
                 os.remove(self.bedgraph)
                 raise OSError(ose)
         if self.chrfile is not None:
-            os.remove(self.chrfile.name)
+            os.remove(self.chrfile)
             self.chrfile = None
         if self.bedgraph is not None:
             if os.path.exists(self.bedgraph):
@@ -106,13 +106,14 @@ class BigWigTrack(BinTrack):
             for c,v in self.chrmeta.iteritems():
                 self.chrfile.write("%s %i\n"%(c,v['length']))
             self.chrfile.close()
+            self.chrfile = os.path.abspath(self.chrfile.name)
         self.open()
         kw['mode'] = 'append'
         try:
             with track(self.bedgraph,format='bedgraph',chrmeta=self.chrmeta) as f:
                 f.write(source,**kw)
         except:
-            os.remove(self.chrfile.name)
+            os.remove(self.chrfile)
             os.remove(self.bedgraph)
             raise
 
