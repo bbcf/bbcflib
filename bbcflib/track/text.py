@@ -73,7 +73,7 @@ class TextTrack(Track):
     def _check_sep(self):
         """Checks if default separator works, otherwise tries ' ' and '\t'."""
         if self.separator is None: return None
-        if type(self.filehandle) == file and not 'r' in self.filehandle.mode:
+        if type(self.filehandle) == file and not self.filehandle.closed:
             return None
         self.open('read')
         self._skip_header()
@@ -86,7 +86,7 @@ class TextTrack(Track):
             if row.count("\t") > 1:
                 self.separator = "\t"
                 break
-        self.filehandle.seek(0)
+        self.close()
         return self.separator
 
     def _get_fields(self,fields):
