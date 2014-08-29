@@ -161,8 +161,8 @@ def Vplot(X,Y,output=None,format='pdf',new=True,last=True,**kwargs):
     robjects.r.assign('xdata',numpy2ri.numpy2ri(X))
     robjects.r.assign('ydata',numpy2ri.numpy2ri(Y))
     robjects.r("""
-library(graphics)
-smoothScatter(xdata,ydata,colramp=colorRampPalette(c("white","blue","red"))%s)""" %plotopt)
+        library(graphics)
+        smoothScatter(xdata,ydata,colramp=colorRampPalette(c("white","blue","red"))%s)""" %plotopt)
 #    robjects.r("""
 #       library(RColorBrewer)
 #       colramp = colorRampPalette(c("lightgrey","blue","red"),interpolate="spline")
@@ -172,6 +172,38 @@ smoothScatter(xdata,ydata,colramp=colorRampPalette(c("white","blue","red"))%s)""
 #       }
 #       allcols = sapply(densCols(xdata,ydata,colramp=colramp),trspcol,alpha="10")
 #       plot(xdata,ydata,pch='.',col=allcols, cex=4%s)""" %plotopt)
+    _end("",last,**kwargs)
+    return output
+
+############################################################
+def Vplot2(XL,YL,XR,YR,output=None,format='pdf',new=True,last=True,**kwargs):
+    """Creates a dotplot of Y values versus X values for left and right fragment ends."""
+    plotopt,output = _begin(output=output,format=format,new=new,**kwargs)
+    if 'nbin' in kwargs: plotopt += ',nbin=c(%i,%i)' %tuple(kwargs['nbin'])
+    if 'bandwidth' in kwargs: plotopt += ',bandwidth=c(%f,%f)' %tuple(kwargs['bandwidth'])
+    robjects.r.assign('xdataL',numpy2ri.numpy2ri(XL))
+    robjects.r.assign('ydataL',numpy2ri.numpy2ri(YL))
+    robjects.r.assign('xdataR',numpy2ri.numpy2ri(XR))
+    robjects.r.assign('ydataR',numpy2ri.numpy2ri(YR))
+    robjects.r("""
+        library(graphics)
+        alpharamp<-function(c1,c2,c3, alpha=128) {stopifnot(alpha>=0 & alpha<=256);function(n) paste(colorRampPalette(c(c1,c2,c3))(n), format(as.hexmode(alpha), upper.case=T), sep="")}
+        smoothScatter(xdataL,ydataL,colramp=alpharamp("white","cyan","blue")%s)
+        par(new=T)
+        smoothScatter(xdataR,ydataR,colramp=alpharamp("white","pink","red",64),axes=F,ann=F%s)""" %(plotopt,plotopt))
+#    robjects.r("""
+#       library(RColorBrewer)
+#       colrampL = colorRampPalette(c("lightgrey","cyan","blue"),interpolate="spline")
+#       colrampR = colorRampPalette(c("lightgrey","pink","red"),interpolate="spline")
+#       trspcol = function(x,alpha="60") {
+#           if (is.na(x)) x
+#           else paste(x,alpha,sep='')
+#       }
+#       allcolsL = sapply(densCols(xdataL,ydataL,colramp=colrampL),trspcol,alpha="10")
+#       allcolsR = sapply(densCols(xdataR,ydataR,colramp=colrampR),trspcol,alpha="10")
+#       plot(xdataL,ydataL,pch='.',col=allcolsR, cex=4%s)
+#       par(new=T)
+#       plot(xdataR,ydataR,pch='.',col=allcolsR, cex=4, axes=F,ann=F%s)"""%(plotopt,plotopt))
     _end("",last,**kwargs)
     return output
 

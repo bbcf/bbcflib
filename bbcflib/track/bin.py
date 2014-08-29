@@ -319,7 +319,7 @@ try:
             else:
                 return FeatureStream(_coverage(pboth), fields=_f)
 
-        def PE_fragment_size(self, region, midpoint=False):
+        def PE_fragment_size(self, region, midpoint=False, end=False):
             """
             Retrieves fragment sizes from paired-end data, and returns a bedgraph-style track::
 
@@ -328,7 +328,8 @@ try:
             :param region: tuple `(chr,start,end)`. `chr` has to be
                 present in the BAM file's header. `start` and `end` are 0-based
                 coordinates, counting from the beginning of feature `chr` and can be omitted.
-            :param midpoint: attribute length to fragment midpoint (as opposed to all positions within fragment) 
+            :param midpoint: attribute length to fragment midpoint (as opposed to all positions within fragment)
+            :param end: attribute length to fragment left or right end (by setting end="left" or end="right")
             :rtype: FeatureStream with fields ['chr','start','end','score'].
             """
             def _frag_cover(region):
@@ -338,7 +339,11 @@ try:
                     if read.is_reverse or not read.is_proper_pair or read.isize<0:
                         continue
                     flen = read.isize
-                    if midpoint:
+                    if end == "left":
+                        posrange = (read.pos,)
+                    elif end == "right":
+                        posrange = (read.pos+flen,)
+                    elif midpoint:
                         posrange = (read.pos+flen/2,)
                     else:
                         posrange = range(read.pos,read.pos+flen)
