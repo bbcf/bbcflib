@@ -187,10 +187,11 @@ def Vplot2(XL,YL,XR,YR,output=None,format='pdf',new=True,last=True,**kwargs):
     robjects.r.assign('ydataR',numpy2ri.numpy2ri(YR))
     robjects.r("""
         library(graphics)
-        alpharamp<-function(c1,c2,c3, alpha=128) {stopifnot(alpha>=0 & alpha<=256);function(n) paste(colorRampPalette(c(c1,c2,c3))(n), format(as.hexmode(alpha), upper.case=T), sep="")}
-        smoothScatter(xdataL,ydataL,colramp=alpharamp("white","cyan","blue")%s)
+        alpharamp<-function(c1,c2, alpha=64) {stopifnot(alpha>=0 & alpha<=256);function(n) paste(colorRampPalette(c(c1,c2))(n), format(as.hexmode(alpha), upper.case=T), sep="")}
+        smoothScatter(xdataL,ydataL,colramp=alpharamp("white","blue")%s)
+        legend("topleft","Blue: Left end; Red: Right end")
         par(new=T)
-        smoothScatter(xdataR,ydataR,colramp=alpharamp("white","pink","red",64),axes=F,ann=F%s)""" %(plotopt,plotopt))
+        smoothScatter(xdataR,ydataR,colramp=alpharamp("white","red"),axes=F,ann=F%s)""" %(plotopt,plotopt))
 #    robjects.r("""
 #       library(RColorBrewer)
 #       colrampL = colorRampPalette(c("lightgrey","cyan","blue"),interpolate="spline")
