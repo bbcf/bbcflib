@@ -17,6 +17,7 @@ import sys, os, json, math, csv, random, string
 import numpy
 from scipy import stats
 from numpy import asarray,log,log10,log2,exp,sqrt,mean,median,float_,round,nonzero
+from matplotlib import pyplot as plt
 
 
 def unique_filename(len=20, path=None):
@@ -179,7 +180,6 @@ def MAplot(dataset, cols=['2','3'], labels=['1'], annotate=None, mode="normal", 
         if not mode == "interactive":
             import matplotlib
             matplotlib.use("Agg")
-        from matplotlib import pyplot as plt
         fig = plt.figure(figsize=[14,9])
         ax = fig.add_subplot(111)
         fig.subplots_adjust(left=0.08, right=0.98, bottom=0.08, top=0.95)
