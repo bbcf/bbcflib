@@ -153,7 +153,7 @@ def boxplot(values,labels,output=None,format='pdf',new=True,last=True,**kwargs):
 
 ############################################################
 ############################################################
-def Vplot(X,Y,output=None,format='pdf',new=True,last=True,**kwargs):
+def Vplot(X,Y,output=None,format='png',new=True,last=True,**kwargs):
     """Creates a dotplot of Y values versus X values."""
     plotopt,output = _begin(output=output,format=format,new=new,**kwargs)
     if 'nbin' in kwargs: plotopt += ',nbin=c(%i,%i)' %tuple(kwargs['nbin'])
@@ -176,7 +176,7 @@ def Vplot(X,Y,output=None,format='pdf',new=True,last=True,**kwargs):
     return output
 
 ############################################################
-def Vplot2(XL,YL,XR,YR,output=None,format='pdf',new=True,last=True,**kwargs):
+def Vplot2(XL,YL,XR,YR,output=None,format='png',new=True,last=True,**kwargs):
     """Creates a dotplot of Y values versus X values for left and right fragment ends."""
     plotopt,output = _begin(output=output,format=format,new=new,**kwargs)
     if 'nbin' in kwargs: plotopt += ',nbin=c(%i,%i)' %tuple(kwargs['nbin'])
@@ -186,12 +186,16 @@ def Vplot2(XL,YL,XR,YR,output=None,format='pdf',new=True,last=True,**kwargs):
     robjects.r.assign('xdataR',numpy2ri.numpy2ri(XR))
     robjects.r.assign('ydataR',numpy2ri.numpy2ri(YR))
     robjects.r("""
-        library(graphics)
-        alpharamp<-function(c1,c2, alpha=64) {stopifnot(alpha>=0 & alpha<=256);function(n) paste(colorRampPalette(c(c1,c2))(n), format(as.hexmode(alpha), upper.case=T), sep="")}
-        smoothScatter(xdataL,ydataL,colramp=alpharamp("white","blue")%s)
-        legend("topleft","Blue: Left end; Red: Right end")
-        par(new=T)
-        smoothScatter(xdataR,ydataR,colramp=alpharamp("white","red"),axes=F,ann=F%s)""" %(plotopt,plotopt))
+        cred = colorRampPalette(c("white","red"))
+        cblue = colorRampPalette(c("white","blue"))
+        alphared = function(n) {paste(cred(n),format(as.hexmode(seq(0,128,length.out=n)),upper=T),sep="")}
+        alphablue = function(n) {paste(cblue(n),format(as.hexmode(seq(0,128,length.out=n)),upper=T),sep="")}
+        par(lwd=2,pch=20,cex=.6,cex.lab=1.5,cex.axis=1.5,mar=c(5,5,1,1),las=1)
+        par(mfrow=c(2,1))
+        plot(xdataL,ydataL,col=densCols(xdataL,ydataL,colramp=alphared)%s)
+        legend("topleft","Red: Left end")
+        plot(xdataR,ydataR,col=densCols(xdataR,ydataR,colramp=alphablue)%s)
+        legend("topleft","Blue: Right end")""" %(plotopt,plotopt))
 #    robjects.r("""
 #       library(RColorBrewer)
 #       colrampL = colorRampPalette(c("lightgrey","cyan","blue"),interpolate="spline")
