@@ -265,7 +265,7 @@ class Counter(RNAseq):
             counts = tuple(x[1] for x in info)
             rpkm = tuple(x[2] for x in info)
             towrite = '\t'.join((fid,)+counts+rpkm+rest)+'\n'
-            if ftype == 'gene':
+            if ftype == 'Gene':
                 if self.stranded:
                     strand = info[0][-1]
                     if strand == 'sense':
@@ -274,7 +274,7 @@ class Counter(RNAseq):
                         genes_anti_file.write(towrite)
                 else:
                     genes_file.write(towrite)
-            elif ftype=='transcript':
+            elif ftype=='Transcript':
                 if self.stranded:
                     strand = info[0][-1]
                     if strand == 'sense':
