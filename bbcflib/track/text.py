@@ -62,7 +62,8 @@ class TextTrack(Track):
         self.separator = kwargs.get('separator',"\t")
         self.header = kwargs.get('header',None)
         Track.__init__(self,path,**kwargs)
-        if os.path.exists(self.path): self.separator = self._check_sep()
+        if os.path.exists(self.path) and os.path.getsize(self.path): 
+            self.separator = self._check_sep()
         self.fields = self._get_fields(kwargs.get('fields'))
         self.intypes = dict((k,v) for k,v in _in_types.iteritems() if k in self.fields)
         if isinstance(kwargs.get('intypes'),dict): self.intypes.update(kwargs["intypes"])
@@ -116,7 +117,8 @@ class TextTrack(Track):
             and lengths.
         """
         _chrmeta = Track._get_chrmeta(self,chrmeta)
-        if _chrmeta or not(os.path.exists(self.path)): return _chrmeta
+        if _chrmeta or not(os.path.exists(self.path) and os.path.getsize(self.path)):
+            return _chrmeta
         elif chrmeta == "guess" and 'chr' in self.fields and 'end' in self.fields:
             self.intypes = {'end': int}
             for row in self.read(fields=['chr','end']):
@@ -132,7 +134,8 @@ class TextTrack(Track):
         Update an existing *info* dict, if provided.
         """
         if info: return info
-        if not os.path.exists(self.path): return {}
+        if not(os.path.exists(self.path) and os.path.getsize(self.path)):
+            return {}
         self.open()
         _info = {}
         if type(self.filehandle) == file and 'r' not in self.filehandle.mode:
@@ -512,7 +515,7 @@ class BedTrack(TextTrack):
         _nf = max([n for n,f in enumerate(_allf) if f in _parf])+1
         kwargs['fields'] = _allf[:_nf]
         TextTrack.__init__(self,path,**kwargs)
-        if not os.path.exists(self.path): return
+        if not(os.path.exists(self.path) and os.path.getsize(self.path)): return
         if type(self.filehandle) == file and not 'r' in self.filehandle.mode:
             return
         self.open()
@@ -773,7 +776,7 @@ class GffTrack(TextTrack):
             else: return int(x)
         self.intypes.update({'score': _gff_score, 'frame': _gff_frame})
         self.outtypes.pop('score')
-        if not(os.path.exists(self.path)): return
+        if not(os.path.exists(self.path) and os.path.getsize(self.path)): return
         rowlen = 9
         self.open()
         tostrip = ' \r\n'+(self.separator or '\t')
@@ -813,7 +816,7 @@ class SamTrack(TextTrack):
         kwargs['fields'] = ['name','flag','chr','start','end','mapq','cigar','rnext','pnext','tlen','seq','qual'] \
                            + kwargs.get('tags',[])
         TextTrack.__init__(self,path,**kwargs)
-        if not(os.path.exists(self.path)): return
+        if not(os.path.exists(self.path) and os.path.getsize(self.path)): return
         self.intypes.update({'flag':int, 'mapq':int, 'pnext':int, 'tlen':int})
 
     def _read(self, fields, index_list, selection, skip):
