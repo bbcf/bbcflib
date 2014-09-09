@@ -79,6 +79,7 @@ class TextTrack(Track):
         self._skip_header()
         while 1:
             row = self.filehandle.readline()
+            if not row: break
             if row.count(self.separator) > 1: break
             if row.count(" ") > 1:
                 self.separator = " "
