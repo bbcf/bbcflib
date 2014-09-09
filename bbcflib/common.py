@@ -352,6 +352,7 @@ try:
             chroms = {}
             for l in p.stdout:
                 row = l.strip().split()
+                if len(row) < 2: continue;
                 chroms[row[1]] = {'name': row[1], 'length': int(row[0])}
             return chroms
         return {'arguments': ['fastalength', file], 'return_value': _len_to_dict}
