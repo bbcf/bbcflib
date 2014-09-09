@@ -52,7 +52,7 @@ Options:
     Some stats programs also require raw counts anyway and do their own normalization.
     To get FPKM instead, see `--fraglength`.
 
-* :option:`-f`, `--fraglength`::
+* :option:`-f`, :option:`--fraglength`::
 
     Since in a transcript of length L there are only L-F+1 different positions where
     one can cut a fragment of length F, one should correct for this bias before RPKM
