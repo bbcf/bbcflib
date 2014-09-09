@@ -95,6 +95,8 @@ class TextTrack(Track):
         if fields:
             pass
         elif self.header is True:
+            if type(self.filehandle) == file and not self.filehandle.closed:
+                return ['chr','start','end']
             self.open()
             header = self.filehandle.readline().split(self.separator)
             self._skip_header()

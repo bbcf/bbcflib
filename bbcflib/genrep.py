@@ -194,14 +194,14 @@ class Assembly(object):
                 fasta_files = [os.path.abspath(f) for f in list(set(add_chrom.values()))]
                 with execution(None) as ex2:
                     for f in fasta_files:
-                        chromosomes.update(fasta_length.nonblocking(ex2,f,via=via).wait())
+                        chromosomes.update(fasta_length.nonblocking(ex2,f,via=via,memory=4).wait())
                     fasta_by_chrom.update(add_chrom)
                     fasta_files = list(set(fasta_by_chrom.values()))
                     [g.wait() for g in [sam_faidx.nonblocking(ex2,f,via=via) for f in fasta_files]]
             else:
                 fasta_files = list(set(add_chrom.values()))
                 for f in fasta_files:
-                    chromosomes.update(fasta_length.nonblocking(ex,f,via=via).wait())
+                    chromosomes.update(fasta_length.nonblocking(ex,f,via=via,memory=4).wait())
                 fasta_by_chrom.update( add_chrom )
                 fasta_files = list(set(fasta_by_chrom.values()))
                 [g.wait() for g in [sam_faidx.nonblocking(ex,f,via=via) for f in fasta_files]]

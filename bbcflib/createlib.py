@@ -16,7 +16,7 @@ import os, json, re, urllib2, time, shutil
 
 #GlobalLibPath="/archive/epfl/bbcf/data/genomes/4cLibraries"
 GlobalHtsUrl="http://htsstation.epfl.ch"
-GlobalRepbasePath="/archive/epfl/bbcf/data/genomes/repeats"
+GlobalRepbasePath="/data/epfl/bbcf/htsstation/data/genomes/repeats"
 
 @program
 def getRestEnzymeOccAndSeq(fasta_file, prim_site, sec_site, l_seg, l_type='typeI'):
