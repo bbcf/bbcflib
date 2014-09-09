@@ -26,11 +26,11 @@ to create a single table with counts from all samples::
 Options:
 --------
 
-* `-h, --help` and `-v, --version`::
+* :option:`-h`, :option:`--help` and :option:`-v`, :option:`--version`::
 
     Display information about the program usage / the version currently installed.
 
-* `-s, --stranded`::
+* :option:`-s`, :option:`--stranded`::
 
     If the protocol was strand-specific and this option is provided,
     sense and antisense counts are both reported in two consecutive lines
@@ -40,7 +40,7 @@ Options:
     Using the `--threshold` option together with `--stranded`
     will exclude only elements with both sense and antisense counts under the threshold.
 
-* `-n, --normalize`::
+* :option:`-n`, :option:`--normalize`::
 
     RPKM are automatically calculated together with raw read counts. RPKM are counts
     divided by the length of the transcript as well as by a sample-specific
@@ -52,32 +52,32 @@ Options:
     Some stats programs also require raw counts anyway and do their own normalization.
     To get FPKM instead, see `--fraglength`.
 
-* `-f, --fraglength`::
+* :option:`-f`, :option:`--fraglength`::
 
     Since in a transcript of length L there are only L-F+1 different positions where
     one can cut a fragment of length F, one should correct for this bias before RPKM
     calculation (then usually called FPKM). Typical fragment lengths are around 350;
     default value is 1 (no correction).
 
-* `--nh`::
+* :option:`--nh`::
 
     A flag "NH" can be added to BAM files to indicate the number of times the read
     could be mapped to different locations in the genome. Adding this option
     will take this number into account by adding 1/NH instead of 1 to an exon read count.
 
-* `--noheader`::
+* :option:`--noheader`::
 
     By default the program adds one line with column descriptors on top of the output file.
     For easier piping the result in some other program, such as `cut`, one can choose to
     not add the header by adding this option.
 
-* `--threshold`::
+* :option:`--threshold`::
 
     Features with counts inferior or equal to the given threshold (positive number)
     will not be reported in the ouput. By default everything is reported
     - even with zero counts.
 
-* `--gtf_type`::
+* :option:`--gtf_type`::
 
     Usually one uses standard (Ensembl etc.) GTF files to count reads in
     exons/genes/transcripts. The only lines of interest are then the ones with
@@ -85,13 +85,13 @@ Options:
     or provided your own, differently formatted GTF, with this option you can specify
     the 3rd column value of the lines to consider.
 
-* `--format`::
+* :option:`--format`::
 
     One can also give an annotation file in BED format, in which case each line
     is considered as an independant, disjoint interval with no splicing structure.
     Default is "gtf", can be changed to "bed".
 
-* `-t, --type`::
+* :option:`-t`, :option:`--type`::
 
     The type of feature you want to count reads in. Can be "genes" (default),
     "transcripts", "exons" or "introns".
@@ -101,18 +101,18 @@ Options:
     Then if `--method` is specified it must have the same number of values as `type`,
     also as a comma-separated list, or a single one that is applied to all types.
 
-* `-c, --chromosomes`::
+* :option:`-c`, :option:`--chromosomes`::
 
     Consider only a subset of all chromosomes by providing a comma-separated list
     of chromosome names (that must match those of the GTF and BAM).
 
-* `-o, --output`::
+* :option:`-o`, :option:`--output`::
 
     The output is `stdout` by default (output directly to screen), which permits
     redirection to a file. Alternatively one can redirect the standard output to
     a file using this option. If the file name already exists, it will be overwritten.
 
-* `-m, --method`::
+* :option:`-m`, :option:`--method`::
 
     Feature counts are inferred from the counts on (slices of) exons
     with the chosen `--method`: "raw" (default, HTSeq-like) or
