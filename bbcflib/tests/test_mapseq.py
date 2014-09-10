@@ -1,6 +1,10 @@
 import socket
 import re
-from unittest2 import TestCase, main, skipIf, skip
+try:
+    import unittest2 as unittest
+    assert unittest
+except ImportError:
+    import unittest
 
 from bbcflib.mapseq import *
 from bein import execution
@@ -27,8 +31,8 @@ else:
 path = "../test_data/mapseq/" # one directory up because of the temp working dir.
 
 
-class TestBowtie(TestCase):
-    @skip("no @SQ line in the header (?)")
+class TestBowtie(unittest.TestCase):
+    @unittest.skip("no @SQ line in the header (?)")
     def test_parallel_bowtie_local(self):
         with execution(None) as ex:
             bam = parallel_bowtie(ex, os.path.join(path,'selected_transcripts'),
@@ -39,8 +43,8 @@ class TestBowtie(TestCase):
             new_bam = sam_to_bam(ex, new_sam)
             self.assertEqual(md5sum(ex, new_bam), '2e6bd8ce814949075715b8ffddd1dcd5')
 
-    @skip("install add_nh_flags")
-    @skipIf(no_pysam, "Test requires pysam to run.")
+    @unittest.skip("install add_nh_flags")
+    @unittest.skipIf(no_pysam, "Test requires pysam to run.")
     def test_parallel_bowtie_local_with_nh_flags(self):
         with execution(None) as ex:
             bam = parallel_bowtie(ex, os.path.join(path,'selected_transcripts'),
@@ -51,7 +55,8 @@ class TestBowtie(TestCase):
             new_bam = sam_to_bam(ex, new_sam)
             self.assertEqual(md5sum(ex, new_bam), '529cd218ec0a35d5d0a23fd7b842ee20')
 
-    @skipIf(not_vital_it, "Not running on VITAL-IT.")
+    @unittest.skip("install add_nh_flags")
+    @unittest.skipIf(not_vital_it, "Not running on VITAL-IT.")
     def test_parallel_bowtie_lsf(self):
         with execution(None) as ex:
             bam = parallel_bowtie(ex, os.path.join(path,'selected_transcripts'),
@@ -63,8 +68,8 @@ class TestBowtie(TestCase):
             m = md5sum(ex, new_bam)
         self.assertEqual(m, 'find right md5sum')
 
-    @skip("install add_nh_flags")
-    @skipIf(not_vital_it, "Not running on VITAL-IT.")
+    @unittest.skip("install add_nh_flags")
+    @unittest.skipIf(not_vital_it, "Not running on VITAL-IT.")
     def test_parallel_bowtie_lsf_with_nh_flags(self):
         with execution(None) as ex:
             bam = parallel_bowtie(ex, os.path.join(path,'selected_transcripts'),
@@ -77,17 +82,17 @@ class TestBowtie(TestCase):
         self.assertEqual(m, '7b7c270a3980492e82591a785d87538f')
 
 
-class TestAddNhFlag(TestCase):
-    @skip("install add_nh_flags")
-    @skipIf(no_pysam, "No PySam")
+class TestAddNhFlag(unittest.TestCase):
+    @unittest.skip("install add_nh_flags")
+    @unittest.skipIf(no_pysam, "No PySam")
     def test_internal_add_nh_flag(self):
         with execution(None) as ex:
             f = add_nh_flag(os.path.join(path,'mapped.sam'))
             m = md5sum(ex, f)
         self.assertEqual(m, '50798b19517575533b8ccae5b1369a3e')
 
-    @skip("install add_nh_flags")
-    @skipIf(no_pysam, "No PySam")
+    @unittest.skip("install add_nh_flags")
+    @unittest.skipIf(no_pysam, "No PySam")
     def test_external_add_nh_flag(self):
         with execution(None) as ex:
             f = external_add_nh_flag(ex, os.path.join(path,'mapped.sam'))

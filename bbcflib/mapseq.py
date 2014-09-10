@@ -648,7 +648,7 @@ def bowtie_build(files, index=None, bowtie2=False):
     return {'arguments': [main_call, '-f', files, index], 'return_value': index}
 
 
-def parallel_bowtie( ex, index, reads, unmapped=None, n_lines=16000000, bowtie_args='',
+def parallel_bowtie( ex, index, reads, unmapped=None, n_lines=16000000, bowtie_args=[],
                      add_nh_flags=False, bowtie_2=False, via='local' ):
     """Run bowtie in parallel on pieces of *reads*.
 
