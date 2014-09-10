@@ -211,7 +211,10 @@ class Counter(RNAseq):
         ncond = len(self.conditions)
         tablenames = [None]*ncond
         futures = [None]*ncond
-        counter_options = ["--nh","--noheader"]
+        counter_options = ["--noheader"]
+        bwt_args = self.job.options['map_args']['bwt_args']
+        if not (bwt_args and "--local" in bwt_args):
+            counter_options += ["--nh"]
         if hasattr(self.assembly,"fasta_origin") or self.assembly.intype==2:
             counter_options += ["--type","transcripts", "--method","raw"]
         else:

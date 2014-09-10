@@ -845,9 +845,6 @@ def pprint_bamstats(sample_stats, textfile=None):
 
 def set_options(bwt_args, bowtie_2, maxhits, antibody_enrichment):
     if bwt_args is None: bwt_args = []
-    if maxhits is None: maxhits = 5
-    maxhits = int(maxhits)
-    antibody_enrichment = int(antibody_enrichment)
     if bowtie_2:
         arg = bwt_args
         # Number of hits to report
@@ -879,7 +876,7 @@ def set_options(bwt_args, bowtie_2, maxhits, antibody_enrichment):
 
 
 def map_reads( ex, fastq_file, chromosomes, bowtie_index,
-               bowtie_2=False, maxhits=None, antibody_enrichment=50,
+               bowtie_2=False, maxhits=5, antibody_enrichment=50,
                keep_unmapped=True, remove_pcr_duplicates=True, bwt_args=None,
                via='lsf' ):
     """Runs ``bowtie`` in parallel over lsf for the `fastq_file` input.
@@ -897,12 +894,9 @@ def map_reads( ex, fastq_file, chromosomes, bowtie_index,
     The mapping statistics dictionary is pickled and added to the execution's
     repository, as well as both the full and filtered bam files.
     """
+    maxhits = int(maxhits)
+    antibody_enrichment = int(antibody_enrichment)
     bwtarg = set_options(bwt_args, bowtie_2, maxhits, antibody_enrichment)
-    if maxhits is None:
-        if "--local" in bwtarg:
-            maxhits = 1  # NH>1 does not make sense in local mode
-        else:
-            maxhits = 5
     if bowtie_2:
         btcall = bowtie2.nonblocking
     else:
@@ -945,7 +939,7 @@ def map_reads( ex, fastq_file, chromosomes, bowtie_index,
             gzipfile( ex, unmapped )
             return_dict['unmapped'] = unmapped
     if remove_pcr_duplicates:
-        thresh = poisson_threshold( int(antibody_enrichment)*full_stats["actual_coverage"] )
+        thresh = poisson_threshold( antibody_enrichment*full_stats["actual_coverage"] )
         reduced_bam = remove_duplicate_reads( sorted_bam, chromosomes, maxhits, thresh, convert=True )
         return_dict['poisson_threshold'] = thresh
 #        reduced_bam = sort_bam.nonblocking(ex, bam2, via=via).wait()
@@ -967,7 +961,7 @@ def map_reads( ex, fastq_file, chromosomes, bowtie_index,
             nh = dict(read.tags).get('NH',1)
             if nh < 1:
                 continue
-            if maxhits is None or nh <= maxhits:
+            if nh <= maxhits:
                 outfile.write(read)
         outfile.close()
         infile.close()
