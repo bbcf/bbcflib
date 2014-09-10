@@ -270,7 +270,8 @@ class DAFLIMS(object):
         if isinstance(link_name,dict):
             linknext = ([],[])
             for k in sorted(link_name.keys()):
-                linknext[k[0]-1].append(link_name[k])
+                if k[0] > 1: linknext[1].append(link_name[k])
+                else: linknext[0].append(link_name[k])
             link_name = linknext
         if isinstance(link_name,str):  link_name = [link_name]
         if isinstance(link_name,list): link_name = (link_name,[])
