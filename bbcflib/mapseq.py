@@ -842,8 +842,44 @@ def pprint_bamstats(sample_stats, textfile=None):
 
 ############################################################
 
+
+def set_options(bwt_args, bowtie_2, maxhits, antibody_enrichment):
+    if bwt_args is None: bwt_args = []
+    if maxhits is None: maxhits = 5
+    maxhits = int(maxhits)
+    antibody_enrichment = int(antibody_enrichment)
+    if bowtie_2:
+        arg = bwt_args
+        # Number of hits to report
+        if "-k" not in bwt_args:
+            arg += ["-k", str(max(20,maxhits))]
+        # Mode "end-to-end" by default
+        if not ("--local" in arg or "--end-to-end" in arg):
+            arg += ["--end-to-end"]
+        # If no custom options from user by config file, use preset
+        if not any(opt in arg for opt in ["-D","-R","-N","-i"]):
+            preset = ["--very-fast","--fast","--sensitive","--very-sensitive"]
+            if "--local" in arg:
+                preset += [p+'-local' for p in preset]
+            # Maybe preset is specified by user
+            if not any(p in arg for p in preset):
+                if "--local" in arg: arg += ["--sensitive-local"]
+                else:                arg += ["--sensitive"]
+            # Presets have constraints on the seed length: use the preset's value
+            # and remove any user specified one
+            if "-L" in arg:
+                seedlen_idx = arg.index("-L")
+                arg.pop(seedlen_idx); arg.pop(seedlen_idx+1)
+    else:
+        arg = ["-Sam", str(max(20,maxhits))]+bwt_args
+        if not("--best" in arg): arg += ["--best"]
+        if not("--strata" in arg): arg += ["--strata"]
+        if not("--chunkmbs" in arg): arg += ["--chunkmbs","512"]
+    return arg
+
+
 def map_reads( ex, fastq_file, chromosomes, bowtie_index,
-               bowtie_2=False, maxhits=5, antibody_enrichment=50,
+               bowtie_2=False, maxhits=None, antibody_enrichment=50,
                keep_unmapped=True, remove_pcr_duplicates=True, bwt_args=None,
                via='lsf' ):
     """Runs ``bowtie`` in parallel over lsf for the `fastq_file` input.
@@ -861,33 +897,15 @@ def map_reads( ex, fastq_file, chromosomes, bowtie_index,
     The mapping statistics dictionary is pickled and added to the execution's
     repository, as well as both the full and filtered bam files.
     """
-    if bwt_args is None: bwt_args = []
-    maxhits = int(maxhits)
-    antibody_enrichment = int(antibody_enrichment)
+    bwtarg = set_options(bwt_args, bowtie_2, maxhits, antibody_enrichment)
+    if maxhits is None:
+        if "--local" in bwtarg:
+            maxhits = 1  # NH>1 does not make sense in local mode
+        else:
+            maxhits = 5
     if bowtie_2:
-        bwtarg = ["-k", str(max(20,maxhits))]+bwt_args
-        if not ("--local" in bwtarg or "--end-to-end" in bwtarg):
-            bwtarg += ["--end-to-end"] #"--local"
-        if not any(opt in bwtarg for opt in ["-D","-R","-N","-i"]):
-# Specific custom options from user by config file
-            preset = ["--very-fast","--fast","--sensitive","--very-sensitive"]
-            #preset += [p+'-local' for p in preset]
-# Uncomment if --local becomes the defaut mode some day
-            if not any(p in bwtarg for p in preset):
-# No specific options or preset set by user: default preset
-                if "--local" in bwtarg: bwtarg += ["--sensitive-local"]
-                else:                   bwtarg += ["--sensitive"]
-# Presets have constraints on the seed length: use the preset's value
-            if "-L" in bwtarg:
-                seedlen_idx = bwtarg.index("-L")
-                bwtarg = bwtarg[:seedlen_idx]+bwtarg[seedlen_idx+2:]
         btcall = bowtie2.nonblocking
     else:
-        bwtarg = ["-Sam", str(max(20,maxhits))]+bwt_args
-        if not("--best" in bwtarg):     bwtarg += ["--best"]
-        if not("--strata" in bwtarg):   bwtarg += ["--strata"]
-        if not("--chunkmbs" in bwtarg): bwtarg += ["--chunkmbs","512"]
-        unmapped = unique_filename_in()
         btcall = bowtie.nonblocking
     is_paired_end = isinstance(fastq_file,tuple)
     un_cmd = "--un"
