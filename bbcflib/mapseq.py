@@ -418,8 +418,8 @@ def add_nh_flag(samfile, out=None):
     outfile = pysam.Samfile(out, "wb", template=infile)
     for readset in read_sets(infile,keep_unmapped=True):
         nh = sum((r.qlen for r in readset))/(1.0*readset[0].rlen)
-        nh = int(0.5+nh)
         if readset[0].is_paired: nh /= 2
+        nh = max(1,int(0.5+nh))
         for read in readset:
             if read.is_unmapped: nh = 0
             read.tags = read.tags+[("NH",nh)]
