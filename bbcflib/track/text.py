@@ -80,7 +80,7 @@ class TextTrack(Track):
         self._skip_header()
         while 1:
             row = self.filehandle.readline()
-            if not row: break
+            if not row.strip(): break
             if row.count(self.separator) > 1: break
             if row.count(" ") > 1:
                 self.separator = " "
@@ -142,7 +142,7 @@ class TextTrack(Track):
             return _info
         while 1:
             row = self.filehandle.readline()
-            if not row: break
+            if not row.strip(): break
             if row[:7]=="browser" or row[0] in ['#','@']: continue
             if row[:5]=="track":
                 tok = row[5:].strip().split("=")
@@ -301,7 +301,7 @@ class TextTrack(Track):
             while 1:
                 fstart = self.filehandle.tell()
                 row = self.filehandle.readline()
-                if not row: break
+                if not row.strip(): break
                 if row[0] in ['#','@']: continue
                 if row[:5]=='track' or row[:7]=='browser': break
                 splitrow = [s.strip() for s in row.split(self.separator)]
@@ -516,12 +516,12 @@ class BedTrack(TextTrack):
         kwargs['fields'] = _allf[:_nf]
         TextTrack.__init__(self,path,**kwargs)
         if not(os.path.exists(self.path) and os.path.getsize(self.path)): return
-        if type(self.filehandle) == file and not 'r' in self.filehandle.mode:
-            return
+        if type(self.filehandle) == file and not 'r' in self.filehandle.mode: return
         self.open()
         rowlen = None
         while 1:
             row = self.filehandle.readline()
+            if not row: break
             if not(row.strip()) or row[0]=='#': continue
             if row[:5]=='track' or row[:7]=='browser': continue
             rowlen = len(row.split(self.separator))
@@ -587,7 +587,7 @@ class SgaTrack(TextTrack):
         while True:
             fstart = self.filehandle.tell()
             row = self.filehandle.readline()
-            if not row: break
+            if not row.strip(): break
             if row[0]=="#": continue
             splitrow = [self._check_type(s.strip(),sga_fields[n])
                         for n,s in enumerate(row.split(self.separator))]
@@ -651,7 +651,7 @@ class WigTrack(TextTrack):
             while 1:
                 fstart = self.filehandle.tell()
                 row = self.filehandle.readline()
-                if not row: break
+                if not row.strip(): break
                 if row[0]=="#": continue
                 if row[:7]=="browser" or row[:5]=="track":
                     if rowdata[1] >= 0:
@@ -782,7 +782,7 @@ class GffTrack(TextTrack):
         tostrip = ' \r\n'+(self.separator or '\t')
         while 1:
             row = self.filehandle.readline().strip(tostrip)
-            if not row: continue
+            if not row.strip(): continue
             if row[0] in ['#','@'] or row[:5]=='track' or row[:7]=='browser': continue
             rowlen = len(row.split(self.separator))
             break
@@ -829,7 +829,7 @@ class SamTrack(TextTrack):
             while 1:
                 fstart = self.filehandle.tell()
                 row = self.filehandle.readline()
-                if not row: break
+                if not row.strip(): break
                 if row[0]=="@": continue
                 splitrow = [s.strip() for s in row.split(self.separator)]
                 if not any(splitrow): continue
@@ -870,7 +870,7 @@ class FpsTrack(TextTrack):
             while 1:
                 fstart = self.filehandle.tell()
                 row = self.filehandle.readline()
-                if not row: break
+                if not row.strip(): break
                 if row[:2] != "FP": continue
                 splitrow = [s.strip() for s in row.split()]
                 splitrow = [splitrow[1],int(splitrow[5]),int(splitrow[5])+1,splitrow[0],splitrow[7],splitrow[4][1]]
