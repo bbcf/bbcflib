@@ -153,62 +153,23 @@ def boxplot(values,labels,output=None,format='pdf',new=True,last=True,**kwargs):
 
 ############################################################
 ############################################################
-def Vplot(X,Y,output=None,format='png',new=True,last=True,**kwargs):
+def smoothScatter(X,Y,output=None,format='png',new=True,last=True,**kwargs):
     """Creates a dotplot of Y values versus X values."""
     plotopt,output = _begin(output=output,format=format,new=new,**kwargs)
     if 'nbin' in kwargs: plotopt += ',nbin=c(%i,%i)' %tuple(kwargs['nbin'])
     if 'bandwidth' in kwargs: plotopt += ',bandwidth=c(%f,%f)' %tuple(kwargs['bandwidth'])
     robjects.r.assign('xdata',numpy2ri.numpy2ri(X))
     robjects.r.assign('ydata',numpy2ri.numpy2ri(Y))
+    robjects.r.assign('colrs',
+                      robjects.StrVector(kwargs.get("color",["lightgrey","blue","red"])))
     robjects.r("""
-        library(graphics)
-        smoothScatter(xdata,ydata,colramp=colorRampPalette(c("white","blue","red"))%s)""" %plotopt)
-#    robjects.r("""
+library(graphics)
+colramp = colorRampPalette(colrs,interpolate="spline")
+smoothScatter(xdata,ydata,colramp=colramp%s)
+""" %plotopt)
 #       library(RColorBrewer)
-#       colramp = colorRampPalette(c("lightgrey","blue","red"),interpolate="spline")
-#       trspcol = function(x,alpha="60") {
-#           if (is.na(x)) x
-#           else paste(x,alpha,sep='')
-#       }
-#       allcols = sapply(densCols(xdata,ydata,colramp=colramp),trspcol,alpha="10")
+#       allcols = densCols(xdata,ydata,colramp=colramp)
 #       plot(xdata,ydata,pch='.',col=allcols, cex=4%s)""" %plotopt)
-    _end("",last,**kwargs)
-    return output
-
-############################################################
-def Vplot2(XL,YL,XR,YR,output=None,format='png',new=True,last=True,**kwargs):
-    """Creates a dotplot of Y values versus X values for left and right fragment ends."""
-    plotopt,output = _begin(output=output,format=format,new=new,**kwargs)
-    if 'nbin' in kwargs: plotopt += ',nbin=c(%i,%i)' %tuple(kwargs['nbin'])
-    if 'bandwidth' in kwargs: plotopt += ',bandwidth=c(%f,%f)' %tuple(kwargs['bandwidth'])
-    robjects.r.assign('xdataL',numpy2ri.numpy2ri(XL))
-    robjects.r.assign('ydataL',numpy2ri.numpy2ri(YL))
-    robjects.r.assign('xdataR',numpy2ri.numpy2ri(XR))
-    robjects.r.assign('ydataR',numpy2ri.numpy2ri(YR))
-    robjects.r("""
-        cred = colorRampPalette(c("white","red"))
-        cblue = colorRampPalette(c("white","blue"))
-        alphared = function(n) {paste(cred(n),format(as.hexmode(seq(0,128,length.out=n)),upper=T),sep="")}
-        alphablue = function(n) {paste(cblue(n),format(as.hexmode(seq(0,128,length.out=n)),upper=T),sep="")}
-        par(lwd=2,pch=20,cex=.6,cex.lab=1.5,cex.axis=1.5,mar=c(5,5,1,1),las=1)
-        par(mfrow=c(2,1))
-        plot(xdataL,ydataL,col=densCols(xdataL,ydataL,colramp=alphared)%s)
-        legend("topleft","Red: Left end")
-        plot(xdataR,ydataR,col=densCols(xdataR,ydataR,colramp=alphablue)%s)
-        legend("topleft","Blue: Right end")""" %(plotopt,plotopt))
-#    robjects.r("""
-#       library(RColorBrewer)
-#       colrampL = colorRampPalette(c("lightgrey","cyan","blue"),interpolate="spline")
-#       colrampR = colorRampPalette(c("lightgrey","pink","red"),interpolate="spline")
-#       trspcol = function(x,alpha="60") {
-#           if (is.na(x)) x
-#           else paste(x,alpha,sep='')
-#       }
-#       allcolsL = sapply(densCols(xdataL,ydataL,colramp=colrampL),trspcol,alpha="10")
-#       allcolsR = sapply(densCols(xdataR,ydataR,colramp=colrampR),trspcol,alpha="10")
-#       plot(xdataL,ydataL,pch='.',col=allcolsR, cex=4%s)
-#       par(new=T)
-#       plot(xdataR,ydataR,pch='.',col=allcolsR, cex=4, axes=F,ann=F%s)"""%(plotopt,plotopt))
     _end("",last,**kwargs)
     return output
 

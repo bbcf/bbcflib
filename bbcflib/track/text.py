@@ -524,7 +524,7 @@ class BedTrack(TextTrack):
             if not row: break
             if not(row.strip()) or row[0]=='#': continue
             if row[:5]=='track' or row[:7]=='browser': continue
-            rowlen = len(row.split(self.separator))
+            rowlen = len(row.strip().split(self.separator))
             break
         self.filehandle.seek(0)
         if rowlen is None: return
