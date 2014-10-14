@@ -29,8 +29,8 @@ def getRestEnzymeOccAndSeq(fasta_file, prim_site, sec_site, l_seg, l_type='typeI
     logFile = unique_filename_in()
 #	script_path='/archive/epfl/bbcf/mleleu/pipeline_vMarion/pipeline_3Cseq/vWebServer_SAM/'
     progname = (l_type=='typeI') and "getRestEnzymeOccAndSeq.pl" or "getRestEnzymeOccAndSeq_typeII.pl"
-    options=["-i",fasta_file,"-m",prim_site,"-s",sec_site,
-             "-l",l_seg,"-o",segFile,"-f",fragFile,"-x",logFile]
+    options = ["-i",fasta_file,"-m",prim_site,"-s",sec_site,
+               "-l",l_seg,"-o",segFile,"-f",fragFile,"-x",logFile]
     return {'arguments': [progname]+options, 'return_value': [ segFile, fragFile, logFile ]}
 
 def parse_fragFile(fragfile,chrom_dict={}):

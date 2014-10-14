@@ -121,7 +121,7 @@ def density_to_countsPerFrag( ex, file_dict, groups, assembly, regToExclude, scr
                             chrom=assembly.chrnames[n] )
         sqlouttr.close()
         countsPerFragFile = unique_filename_in()+".bed"
-        cat(outbed_all,out=countsPerFragFile)
+        countsPerFragFile = cat(outbed_all,out=countsPerFragFile)
         results[gid] = [ countsPerFragFile, outsql ]
         FragFile = unique_filename_in()
         touch(ex,FragFile)
