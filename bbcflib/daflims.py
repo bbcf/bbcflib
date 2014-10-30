@@ -145,8 +145,8 @@ class DAFLIMS(object):
         response = self._run_method(type, facility, machine, run, lane).splitlines()
         if re.search('==DATA', response[0]) == None or len(response)<2:
             raise ValueError(("symlinkname method failed on DAFLIMS (facility='%s', " + \
-                              "machine='%s', run=%d, lane=%d): %s") % (facility, machine, run, lane,
-                                                                     '\n'.join(response[1:])))
+                              "machine='%s', run=%d, lane=%d, library=%s): "+ \
+                              "%s") % (facility, machine, run, lane, library, '\n'.join(response[1:])))
         rtn = {}
         for resp in response[1:]:
             q = resp.split('\t')
@@ -154,6 +154,10 @@ class DAFLIMS(object):
             if not(int(q[0]) in rtn): rtn[int(q[0])] = {}
             if len(q)<6 or q[5] in check_type[type]:
                 rtn[int(q[0])][(int(q[3]),int(q[4]))] = q[2]
+        if len(rtn) == 0:
+            raise ValueError(("symlinkname method failed on DAFLIMS (facility='%s', " + \
+                              "machine='%s', run=%d, lane=%d, library=%s): "+ \
+                              "%s") % (facility, machine, run, lane, library, '\n'.join(response[1:])))
         for key in sorted(rtn.keys(),reverse=True):
             if rtn[key].values()[0][:7] == 'http://':
                 return rtn[key]
