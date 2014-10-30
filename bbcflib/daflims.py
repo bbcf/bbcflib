@@ -146,7 +146,7 @@ class DAFLIMS(object):
         if re.search('==DATA', response[0]) == None or len(response)<2:
             raise ValueError(("symlinkname method failed on DAFLIMS (facility='%s', " + \
                               "machine='%s', run=%d, lane=%d, library=%s): "+ \
-                              "%s") % (facility, machine, run, lane, library, '\n'.join(response[1:])))
+                              "%s") % (facility, machine, run, lane, libname, '\n'.join(response[1:])))
         rtn = {}
         for resp in response[1:]:
             q = resp.split('\t')
@@ -157,7 +157,7 @@ class DAFLIMS(object):
         if len(rtn) == 0:
             raise ValueError(("symlinkname method failed on DAFLIMS (facility='%s', " + \
                               "machine='%s', run=%d, lane=%d, library=%s): "+ \
-                              "%s") % (facility, machine, run, lane, library, '\n'.join(response[1:])))
+                              "%s") % (facility, machine, run, lane, libname, '\n'.join(response[1:])))
         for key in sorted(rtn.keys(),reverse=True):
             if rtn[key].values()[0][:7] == 'http://':
                 return rtn[key]
