@@ -172,8 +172,7 @@ try:
             :param fields: (list of str) list of field names.
             """
             self.open()
-            if not(isinstance(selection,(list,tuple))):
-                selection = [selection]
+            if not(isinstance(selection,(list,tuple))): selection = [selection]
             if fields is None: fields = self.fields
             else: fields = [f for f in fields if f in self.fields]
             srcl = [self.fields.index(f) for f in fields]

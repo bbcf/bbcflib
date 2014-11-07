@@ -436,6 +436,18 @@ def chipseq_workflow( ex, job_or_dict, assembly, script_path='', logfile=sys.std
 
     ##############################
     def _join_macs( stream, xlsl, _f ):
+        def _macs_row(_s):
+            for _p in _s:
+                for _n in _p[3].split("|"):
+                    if len(xlsl) == 1:
+                        nb = int(_n.split(";")[0][13:]) if _n[:3] == "ID=" else int(_n[10:])
+                        yield _p+xlsl[0][nb-1][1:]
+                    else:
+                        nb = _n.split(";")[0][13:] if _n[:3] == "ID=" else _n[10:]
+                        nb = nb.split(":")
+                        yield _p+xlsl[int(nb[1])][int(nb[0])-1][1:]
+        return FeatureStream( _macs_row(stream), fields=_f )
+    def _join_macs( stream, xlsl, _f ):
         def _macs_row(_n):
             if len(xlsl) == 1:
                 return xlsl[0][(int(_n.split(";")[0][13:]) if _n[:3] == "ID=" else int(_n[10:]))-1][1:]
@@ -467,7 +479,7 @@ def chipseq_workflow( ex, job_or_dict, assembly, script_path='', logfile=sys.std
                 peakout.write(_join_macs(getNearestFeature(ptrack.read(selection=chrom),_feat),
                                          xlsl, _fields), mode='append')
             except ValueError:
-                peakout.write(_join_macs(ptrack.read(selection=chrom),xlsl, _fields), mode='append')
+                peakout.write(_join_macs(ptrack.read(selection=chrom), xlsl, _fields), mode='append')
         peakout.close()
         gzipfile(ex,peakfile)
         peakfile_list.append(track(peakfile+".gz", format='txt', fields=_fields))
