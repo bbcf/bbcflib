@@ -447,15 +447,6 @@ def chipseq_workflow( ex, job_or_dict, assembly, script_path='', logfile=sys.std
                         nb = nb.split(":")
                         yield _p+xlsl[int(nb[1])][int(nb[0])-1][1:]
         return FeatureStream( _macs_row(stream), fields=_f )
-    def _join_macs( stream, xlsl, _f ):
-        def _macs_row(_n):
-            if len(xlsl) == 1:
-                return xlsl[0][(int(_n.split(";")[0][13:]) if _n[:3] == "ID=" else int(_n[10:]))-1][1:]
-            else:
-                nb = _n.split(";")[0][13:] if _n[:3] == "ID=" else _n[10:]
-                nb = nb.split(":")
-                return xlsl[int(nb[1])][int(nb[0])-1][1:]
-        return FeatureStream( (_p+_macs_row(_p[3]) for _p in stream), fields=_f )
     ##############################
     peakfile_list = []
     for name, plist in peak_list.iteritems():
