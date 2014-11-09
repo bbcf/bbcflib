@@ -499,7 +499,7 @@ def chipseq_workflow( ex, job_or_dict, assembly, script_path='', logfile=sys.std
         with open(tablefile,"a") as _tf:
             for row in quantifs:
                 pcols = ['']*_ns*_nc
-                _rnsplit = x2.split(":")
+                _rnsplit = row[nidx].split(":")
                 _n1 = _rnsplit[0]
                 _k = 0
                 while ( _k < len(_rnsplit)-1-int(_nc>1) ):
