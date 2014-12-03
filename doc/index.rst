@@ -24,6 +24,7 @@ Tutorials
    tutorial_maplot
    tutorial_config_files
    tutorial_rnacounter
+   tutorial_bein
 
 Methods description
 '''''''''''''''''''
@@ -38,6 +39,7 @@ Library guide
 .. toctree::
    :maxdepth: 1
 
+   bein
    bbcflib
    bbcflib_common
    bbcflib_daflims
