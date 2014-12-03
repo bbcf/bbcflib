@@ -1,5 +1,9 @@
 from bbcflib.track import *
-import re, urllib2, gzip, os, sys
+import re, gzip, os, sys
+try:
+    import urllib.request as urllib2
+except ImportError:
+    import urllib2
 
 _in_types = {'start':        int,
              'end':          int,
@@ -62,7 +66,7 @@ class TextTrack(Track):
         self.separator = kwargs.get('separator',"\t")
         self.header = kwargs.get('header',None)
         Track.__init__(self,path,**kwargs)
-        if os.path.exists(self.path) and os.path.getsize(self.path): 
+        if os.path.exists(self.path) and os.path.getsize(self.path):
             self.separator = self._check_sep()
         self.fields = self._get_fields(kwargs.get('fields'))
         self.intypes = dict((k,v) for k,v in _in_types.iteritems() if k in self.fields)

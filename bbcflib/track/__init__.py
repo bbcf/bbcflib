@@ -170,7 +170,7 @@ def check(source, out=sys.stdout,
             row = s.next()
         except StopIteration:
             return True
-        except Exception, e:
+        except Exception as e:
             out.write("Check format: line %s of %s is not compatible with format %s. \
                        \nException raised: %s" % (n,source,t.format,e))
             return False

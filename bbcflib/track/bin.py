@@ -69,7 +69,7 @@ class BigWigTrack(BinTrack):
         if self.chrfile and self.bedgraph:
             try:
                 self._run_tool('bedGraphToBigWig', [self.bedgraph, self.chrfile, self.path])
-            except OSError,ose:
+            except OSError as ose:
                 os.remove(self.chrfile)
                 os.remove(self.bedgraph)
                 raise OSError(ose)
