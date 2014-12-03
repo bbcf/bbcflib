@@ -1,5 +1,5 @@
-Tutorial
-========
+Bein tutorial
+=============
 
 What is bein?
 -------------
@@ -121,7 +121,7 @@ Bein provides a simple webclient to browse MiniLIMS repositories.  Run the comma
 
 and point your browser to ``http://localhost:8080``.
 
-.. image:: bein/beinclient1.png
+.. image:: images/bein/beinclient1.png
 
 We have two tabs at the top of the page, one for executions, one for files in the repository.  Each execution is assigned a unique numeric ID.  Clicking on the 'details' link shows additional information on the execution, such as when and where it ran.  Every external program run by an execution is recorded.  If it produced output on ``stdout`` or ``stderr`` that is recorded  (though ``touch`` does not, so it is absent here).  Clicking the 'programs' link in an execution drops down a box showing this information.  Finally, if an execution had failed, the Python exception from that failure is recorded and can be displayed with the 'traceback' link.
 
@@ -144,15 +144,15 @@ Let's modify the workflow in ``test.py`` to add the file ``boris`` that we creat
 
 We run the script, and look in ``htminilims``.  The new execution has an additional line.  Each file we add shows up as as one line in the execution.
 
-.. image:: bein/beinclient2.png
+.. image:: images/bein/beinclient2.png
 
 If we click on the the file "1", we are taken to the "Files" tab, which is no longer empty.
 
-.. image:: bein/beinclient3.png
+.. image:: images/bein/beinclient3.png
 
 Note that files, like executions, are assigned numeric IDs.  Clicking on "details" shows additional information.
 
-.. image:: bein/beinclient3a.png
+.. image:: images/bein/beinclient3a.png
 
 Don't worry about most of the fields for now.    The "External name" is the name of the file when it was added to the repository.  Internally, bein assigns it a unique, random name, which is the "Repository name."  The file is stored under this name in the ``data.files`` directory of our MiniLIMS.
 
@@ -167,11 +167,11 @@ in our script.  Adding descriptions to executions is almost the same.  Add the `
 
 If we make these changes to ``test.py`` and run it again, the execution and file that result appear in ``htminilims`` as
 
-.. image:: bein/beinclient-execution-description.png
+.. image:: images/bein/beinclient-execution-description.png
 
 and
 
-.. image:: bein/beinclient-file-description.png
+.. image:: images/bein/beinclient-file-description.png
 
 One execution can add as many files as you want.  To keep different files from the same execution straight, give them sensible descriptions.  Descriptions for executions are useful when trying to remember later what you did.
 
@@ -188,15 +188,15 @@ What happened to ``boris``?  We could add many files named ``boris`` to the repo
 
 If we run this and look at the execution in ``htminilims``, we find a new field
 
-.. image:: bein/beinclient-used-files.png
+.. image:: images/bein/beinclient-used-files.png
 
 Bein tracks not only what execution created a file, but what executions have used it.  If you scroll up, you will see a change in the execution that created this file as well. The Delete button has been replaced by the word "Immutable."
 
-.. image:: bein/beinclient-immutable-execution.png
+.. image:: images/bein/beinclient-immutable-execution.png
 
 The file it created has also lost its Delete button.
 
-.. image:: bein/beinclient-file-immutable.png
+.. image:: images/bein/beinclient-file-immutable.png
 
 Bein prevents you from deleting files and executions which have been used later on.  This way you can always trace the origins of a file in the MiniLIMS repository.
 
@@ -219,7 +219,7 @@ If ``/path/to/export/to`` points to a directory, the file is copied there with i
 
 If we import ``test.py`` this way, and look at it in ``htminilims``, we see that bein also tracks whether a file was imported or not.
 
-.. image:: bein/imported_file.png
+.. image:: images/bein/imported_file.png
 
 If a group of people are working on similar problems, they may share a MiniLIMS repository with common reference files.  They could certainly export from this repository into their working directory, but for large files that are only read, this wastes a lot of time and space copying them.
 
@@ -376,15 +376,15 @@ When we run it, we get the error::
 
 Of course, we misspelled ``boris``.  No harm done.  Fix it and run it again.  If we lose the error before we fix it, there's no problem.  It's displayed in ``htminilims`` as well.
 
-.. image:: bein/failed_execution.png
+.. image:: images/bein/failed_execution.png
 
 The program that failed is shown in red when you click on the "programs" link
 
-.. image:: bein/failed_execution-programs.png
+.. image:: images/bein/failed_execution-programs.png
 
 and the full traceback shows us the error as well
 
-.. image:: bein/failed_execution-traceback.png
+.. image:: images/bein/failed_execution-traceback.png
 
 Certain errors show up all the time.  Check for them first:
 

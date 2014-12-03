@@ -460,16 +460,15 @@ def chipseq_workflow( ex, job_or_dict, assembly, script_path='', logfile=sys.std
                 +["MACS_%s"%h for h in xlsh[1:5]]+xlsh[5:]
             peakout = track(peakfile, format='txt', chrmeta=chrlist, fields=_fields)
             peakout.make_header("#"+"\t".join(['chromosome','start','end','info','peak_height','gene(s)','location_type','distance']+_fields[8:]))
+            for chrom in assembly.chrnames:
+                _feat = assembly.gene_track(chrom)
+                peakout.write(_join_macs(getNearestFeature(ptrack.read(selection=chrom),_feat),
+                                         xlsl, _fields), mode='append')
         except ValueError:
             _fields = ['chr','start','end','name','score']+["MACS_%s"%h for h in xlsh[1:5]]+xlsh[5:]
             peakout = track(peakfile, format='txt', chrmeta=chrlist, fields=_fields)
             peakout.make_header("#"+"\t".join(['chromosome','start','end','info','peak_height']+_fields[8:]))
-        for chrom in assembly.chrnames:
-            try:
-                _feat = assembly.gene_track(chrom)
-                peakout.write(_join_macs(getNearestFeature(ptrack.read(selection=chrom),_feat),
-                                         xlsl, _fields), mode='append')
-            except ValueError:
+            for chrom in assembly.chrnames:
                 peakout.write(_join_macs(ptrack.read(selection=chrom), xlsl, _fields), mode='append')
         peakout.close()
         gzipfile(ex,peakfile)

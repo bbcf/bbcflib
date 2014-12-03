@@ -39,7 +39,6 @@ Library guide
 .. toctree::
    :maxdepth: 1
 
-   bein
    bbcflib
    bbcflib_common
    bbcflib_daflims
@@ -58,6 +57,7 @@ Library guide
    bbcflib_track
    bbcflib_gfminer
    bbcflib_maplot
+   bein
 
 See also the `developer documentation <http://bbcf.github.com/bbcflib/>`_ and
 the :download:`poster <Poster_HTSstation_small.pdf>`.
