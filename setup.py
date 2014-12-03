@@ -9,13 +9,14 @@ setup(
         url             =   'http://bbcf.epfl.ch/bbcflib',
         author          =   'EPFL BBCF',
         author_email    =   'webmaster.bbcf@epfl.ch',
-        install_requires=   ['mailer', 'bein', 'rpy2', 'pysam', 'scipy', 'numpy', 'sqlalchemy', 'sqlite3'],
+        install_requires=   ['mailer', 'rpy2', 'pysam', 'scipy', 'numpy', 'sqlalchemy', 'sqlite3'],
         classifiers     =   ['Topic :: Scientific/Engineering :: Bio-Informatics'],
         packages        =   ['bbcflib',
                              'bbcflib.track',
                              'bbcflib.gfminer',
                              'bbcflib.gfminer.stream',
                              'bbcflib.gfminer.numeric',
-                             'bbcflib.gfminer.figure'
+                             'bbcflib.gfminer.figure',
+                             'bein',
                             ],
     )
