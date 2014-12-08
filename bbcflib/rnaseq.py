@@ -139,7 +139,7 @@ def rnaseq_workflow(ex, job, pileup_level=["genes","transcripts"],
         gtf = transcriptome_gtf_from_genrep(assembly)
     # ... or from config file
     else:
-        gtf = job.files.itervalues().next().itervalues().next().get('gtf')
+        gtf = job.files.itervalues().next().itervalues().next().get('annot_file')
         if gtf: logfile.write("  ... from config file: %s\n" % gtf); logfile.flush()
     # ... or from GenRep
     if gtf is None:
