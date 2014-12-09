@@ -139,11 +139,17 @@ def rnaseq_workflow(ex, job, pileup_level=["genes","transcripts"],
         gtf = transcriptome_gtf_from_genrep(assembly)
     # ... or from config file
     else:
-        gtf = job.files.itervalues().next().itervalues().next().get('annot_file')
-        if gtf: logfile.write("  ... from config file: %s\n" % gtf); logfile.flush()
+        gtf = job.options['annot_file']
+        if os.path.exists(os.path.join('..', gtf)):
+            gtf = os.path.join('..', gtf)
+            logfile.write("  ... from config file: %s\n" % gtf); logfile.flush()
+        elif os.path.exists(gtf):
+            gtf = os.path.abspath(gtf)
+            logfile.write("  ... from config file: %s\n" % gtf); logfile.flush()
     # ... or from GenRep
-    if gtf is None:
-        gtf = assembly.create_exome_gtf()
+        else:
+            logfile.write("  ... from GenRep\n"); logfile.flush()
+            gtf = assembly.create_exome_gtf()
     #shutil.copy(gtf,"../")
 
     # Build controllers
@@ -160,8 +166,6 @@ def rnaseq_workflow(ex, job, pileup_level=["genes","transcripts"],
     # DE and PCA
     if "genes" in pileup_level:
         # PCA of groups ~ gene expression
-        if ncond > 2:
-            PCA.pca_rnaseq(count_files['genes'])
         description = set_file_descr("genes_expression.txt", step="pileup", type="txt")
         ex.add(count_files['genes'], description=description)
         DE.differential_analysis(count_files['genes'], "genes")
@@ -169,6 +173,8 @@ def rnaseq_workflow(ex, job, pileup_level=["genes","transcripts"],
             description = set_file_descr("genes_antisense_expression.txt", step="pileup", type="txt")
             ex.add(count_files['genes_anti'], description=description)
             DE.differential_analysis(count_files['genes_anti'], "genes_antisense")
+        if ncond > 2:
+            PCA.pca_rnaseq(count_files['genes'])
 
     if "transcripts" in pileup_level:
         description = set_file_descr("transcripts_expression.txt", step="pileup", type="txt")
