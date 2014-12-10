@@ -396,8 +396,11 @@ def snp_workflow(ex, job, assembly, minsnp=40., mincov=5, path_to_ref=None, via=
             symbols = [0,0,0,0,0]
             quality = 0
             for pileupread in pileupcolumn.pileups:
-                symbols[atoi.get(pileupread.alignment.seq[pileupread.qpos], 4)] += 1
-                quality += ord(pileupread.alignment.qual[pileupread.qpos])-33
+                if pileupread.qpos >= len(pileupread.alignment.seq):
+                    coverage -= 1
+                else:
+                    symbols[atoi.get(pileupread.alignment.seq[pileupread.qpos], 4)] += 1
+                    quality += ord(pileupread.alignment.qual[pileupread.qpos])-33
             quality = float(quality)/coverage
             info = heterozygosity(ref, symbols[0:4])
             if coverage > 0: vectors[0].append((position, position+1, coverage))
