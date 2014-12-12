@@ -320,6 +320,7 @@ def snp_workflow(ex, job, assembly, minsnp=40., mincov=5, path_to_ref=None, via=
             index_bam(ex,_b)
             bams[gid] = _b
         else:
+            index_bam(ex, runs[0])
             bams[gid] = runs[0]
         # Samtools mpileup + bcftools + vcfutils.pl
         for chrom,ref in ref_genome.iteritems():
