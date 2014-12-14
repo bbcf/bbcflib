@@ -139,11 +139,11 @@ def rnaseq_workflow(ex, job, pileup_level=["genes","transcripts"],
         gtf = transcriptome_gtf_from_genrep(assembly)
     # ... or from config file
     else:
-        gtf = job.options.get('annot_file','')
-        if os.path.exists(os.path.join('..', gtf)):
+        gtf = job.options.get('annot_file')
+        if gtf and os.path.exists(os.path.join('..', gtf)):
             gtf = os.path.join('..', gtf)
             logfile.write("  ... from config file: %s\n" % gtf); logfile.flush()
-        elif os.path.exists(gtf):
+        elif gtf and os.path.exists(gtf):
             gtf = os.path.abspath(gtf)
             logfile.write("  ... from config file: %s\n" % gtf); logfile.flush()
     # ... or from GenRep
