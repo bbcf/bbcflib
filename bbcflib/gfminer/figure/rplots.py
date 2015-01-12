@@ -156,20 +156,27 @@ def boxplot(values,labels,output=None,format='pdf',new=True,last=True,**kwargs):
 def smoothScatter(X,Y,output=None,format='png',new=True,last=True,**kwargs):
     """Creates a dotplot of Y values versus X values."""
     plotopt,output = _begin(output=output,format=format,new=new,**kwargs)
-    if 'nbin' in kwargs: plotopt += ',nbin=c(%i,%i)' %tuple(kwargs['nbin'])
-    if 'bandwidth' in kwargs: plotopt += ',bandwidth=c(%f,%f)' %tuple(kwargs['bandwidth'])
+#    if 'nbin' in kwargs: plotopt += ',nbin=c(%i,%i)' %tuple(kwargs['nbin'])
+#    if 'bandwidth' in kwargs: plotopt += ',bandwidth=c(%f,%f)' %tuple(kwargs['bandwidth'])
     robjects.r.assign('xdata',numpy2ri.numpy2ri(X))
     robjects.r.assign('ydata',numpy2ri.numpy2ri(Y))
     robjects.r.assign('colrs',
                       robjects.StrVector(kwargs.get("color",["lightgrey","blue","red"])))
+#    robjects.r("""
+#        library(graphics)
+#        colramp = colorRampPalette(colrs,interpolate="spline")
+#        smoothScatter(xdata,ydata,colramp=colramp%s)
+#    """ %plotopt)
     robjects.r("""
-library(graphics)
-colramp = colorRampPalette(colrs,interpolate="spline")
-smoothScatter(xdata,ydata,colramp=colramp%s)
-""" %plotopt)
-#       library(RColorBrewer)
-#       allcols = densCols(xdata,ydata,colramp=colramp)
-#       plot(xdata,ydata,pch='.',col=allcols, cex=4%s)""" %plotopt)
+        library(RColorBrewer)
+        trspcol = function(x,alpha="60") {
+            if (is.na(x)) x
+            else paste(x,alpha,sep='')
+        }
+        colramp = colorRampPalette(colrs,interpolate="spline")
+        allcols = sapply(densCols(xdata,log(ydata),colramp=colramp),trspcol,alpha="10")
+        plot(xdata,ydata,pch='.',col=allcols, cex=4%s)
+    """ %plotopt)
     _end("",last,**kwargs)
     return output
 
