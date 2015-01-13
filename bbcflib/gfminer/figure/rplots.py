@@ -168,7 +168,6 @@ def smoothScatter(X,Y,output=None,format='png',new=True,last=True,**kwargs):
 #        smoothScatter(xdata,ydata,colramp=colramp%s)
 #    """ %plotopt)
     robjects.r("""
-        library(RColorBrewer)
         trspcol = function(x,alpha="60") {
             if (is.na(x)) x
             else paste(x,alpha,sep='')
