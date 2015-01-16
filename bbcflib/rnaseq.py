@@ -549,30 +549,25 @@ class Pca(RNAseq):
 
     def pca_rnaseq(self,counts_table_file):
         @program
-        def pcajl(counts_table_file):
+        def pca(counts_table_file):
             outprefix = unique_filename_in()
-            args = ['pca_rnaseq.jl', counts_table_file, outprefix]
+            args = ['pca.R', counts_table_file, outprefix]
             return {"arguments": args, "return_value": outprefix}
 
-        if not program_exists('pca_rnaseq.jl'):
-            self.write_debug("Skipped PCA: pca_rnaseq.jl not found.")
+        if not program_exists('pca.R'):
+            self.write_debug("Skipped PCA: pca.R not found.")
             return
         try:
-            outprefix = pcajl.nonblocking(self.ex, counts_table_file, via=self.via).wait()
+            self.write_log("* PCA")
+            outprefix = pca.nonblocking(self.ex, counts_table_file, via=self.via).wait()
         except Exception, err:
             self.write_debug("PCA failed: %s." % str(err))
             return
         if outprefix is None:
             self.write_debug("PCA failed.")
             return
-        pca_descr_png = set_file_descr('pca_groups.png', type='png', step='pca')
-        pca_descr_js = set_file_descr('pca_groups.js', type='txt', step='pca', view='admin')
-        pcaeigv_descr_png = set_file_descr('pca_groups_sdev.png', type='png', step='pca')
-        pcaeigv_descr_js = set_file_descr('pca_groups_sdev.js', type='txt', step='pca', view='admin')
-        self.ex.add(outprefix+'.png', description=pca_descr_png)
-        self.ex.add(outprefix+'.js', description=pca_descr_js)
-        self.ex.add(outprefix+'_sdev.png', description=pcaeigv_descr_png)
-        self.ex.add(outprefix+'_sdev.js', description=pcaeigv_descr_js)
+        pca_descr_pdf = set_file_descr(outprefix+'.pdf', type='pdf', step='pca')
+        self.ex.add(outprefix+'.pdf', description=pca_descr_pdf)
 
 
 #------------------------------------------------------#
