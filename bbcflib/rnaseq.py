@@ -566,7 +566,7 @@ class Pca(RNAseq):
         if outprefix is None:
             self.write_debug("PCA failed.")
             return
-        pca_descr_pdf = set_file_descr('PCA_analysis.pdf', type='pdf', step='pca')
+        pca_descr_pdf = set_file_descr('pca.pdf', type='pdf', step='pca')
         self.ex.add(outprefix+'.pdf', description=pca_descr_pdf)
 
 
