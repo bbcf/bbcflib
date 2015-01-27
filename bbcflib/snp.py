@@ -58,11 +58,11 @@ def filter_snp(general,snp_info,sample_stats,mincov,minsnp,ploidy):
     ref = general[2]
     dp4 = map(int, snp_info.get('DP4','0,0,0,0').split(',')) # fw.ref, rev.ref, fw.alt, rev.alt (filtered)
     total_reads = sum(dp4)
-    if dp4[2]+dp4[3] < mincov:  # too few supporting alt
-        return '-'  # '/'.join([ref]*ploidy)
+    if total_reads < mincov:  # coverage low
+        return '0'  # '/'.join([ref]*ploidy)
     ratio = 100.0*(dp4[2]+dp4[3])/total_reads
     if ratio < minsnp/ploidy:
-        return "0"
+        return "-"
     alt = general[3]
     alts = [ref]+alt.split(',')
     sample = sample_stats[1]  # ex: "0/1:48,0,53:14:0:50"
