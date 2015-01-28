@@ -576,8 +576,8 @@ class Assembly(object):
         if ".tar" in os.path.basename(path_to_ref) or ".tgz" in os.path.basename(path_to_ref):
             archive = tarfile.open(path_to_ref)
             for f in archive.getmembers():
-                if f.isdir(): continue
-                if os.path.splitext(f.name)[0][1:4] in ["sql","gtf"]:
+                If f.isdir(): continue
+                if os.path.splitext(f.name)[1][1:4] in ["sql","gtf"]:
                     self.annot_origin = f.name
                     continue
                 input_file = archive.extractfile(f)
