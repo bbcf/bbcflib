@@ -225,7 +225,7 @@ class Assembly(object):
             if hasattr(self,"annot_origin"):
                 archive = tarfile.open(fasta)
                 input_file = archive.extractfile(self.annot_origin)
-                annot = unique_filename_in()
+                annot = unique_filename_in()+os.path.basename(self.annot_origin)
                 with open(annot,"w") as outf:
                     [outf.write(line) for line in input_file]
         if annot is not None and os.path.exists(annot):
