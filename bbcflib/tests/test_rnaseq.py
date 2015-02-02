@@ -43,9 +43,9 @@ class Test_Counting(unittest.TestCase):
             gtf = os.path.join(testpath,"mm9_3genes_renamed.gtf")
             count_files = C.count_reads(bamfiles, gtf)
             with open(count_files["genes"]) as genes:
-                for line in genes: print line.strip()
-            #with open(count_files["transcripts"]) as trans:
-            #    for line in trans: print line.strip()
+                self.assertEqual(len(genes.readlines()), 4)
+            with open(count_files["transcripts"]) as trans:
+                self.assertEqual(len(trans.readlines()), 18)
 
 #-----------------------------------#
 # This code was written by the BBCF #
