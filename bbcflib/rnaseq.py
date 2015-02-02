@@ -204,6 +204,11 @@ def rnacounter(bam,gtf, options=[]):
     args = ["rnacounter"] + opts + [os.path.abspath(bam), os.path.abspath(gtf)]
     return {"arguments": args, "return_value": None}
 
+@program
+def rnacounter_join(files):
+    """Run `rnacounter join` to merge the output files"""
+    args = ["rnacounter", "join"] + files
+    return {"arguments": args, "return_value": None}
 
 class Counter(RNAseq):
     def __init__(self,*args):
@@ -217,7 +222,7 @@ class Counter(RNAseq):
         ncond = len(self.conditions)
         tablenames = [None]*ncond
         futures = [None]*ncond
-        counter_options = ["--noheader"]
+        counter_options = []
         bwt_args = self.job.options.get('map_args',{}).get('bwt_args',[])
         if not "--local" in bwt_args:
             counter_options += ["--nh"]
@@ -225,73 +230,67 @@ class Counter(RNAseq):
             counter_options += ["--type","transcripts", "--method","raw"]
         else:
             counter_options += ["--type","genes,transcripts", "--method","raw,nnls"]
-        if _TEST_:
-            counter_options += ["-n","1"]  # skip the total reads counting step
         if self.stranded:
             counter_options += ["--stranded"]
         for i,c in enumerate(self.conditions):
             tablenames[i] = unique_filename_in()
             futures[i] = rnacounter.nonblocking(self.ex, bamfiles[i], gtf, stdout=tablenames[i], via=self.via,
                                options=counter_options)
-        # Construct file headers
-        hconds = ["counts."+c for c in self.conditions] + ["rpkm."+c for c in self.conditions]
-        hinfo = ["Chromosome","Start","End","Strand","GeneName"]
-        header = ["ID"] + hconds + hinfo
 
-        # Put samples together, split genes and transcripts
-        tracks = [None]*ncond
+        # Put samples together
         for i,c in enumerate(self.conditions):
             try:
                 futures[i].wait()
-            except Exception, err:
+            except Exception as err:
                 self.write_debug("Counting failed: %s." % str(err))
                 raise err
             if futures[i] is None:
                 self.write_debug("Counting failed.")
                 raise ValueError("Counting failed.")
-            fields = ["ID","Count","RPKM"]+hinfo+['type']
-            if self.stranded: fields += ['sense']
-            tracks[i] = track(tablenames[i], format="txt", fields=fields).read()
+        joined = unique_filename_in()
+        rnacounter_join.nonblocking(self.ex, tablenames, stdout=joined, via=self.via).wait()
+
+        # Split genes and transcripts into separate files
         genes_filename = unique_filename_in()
         trans_filename = unique_filename_in()
         genes_file = open(genes_filename,"wb")
         trans_file = open(trans_filename,"wb")
-        genes_file.write('\t'.join(header)+'\n')
-        trans_file.write('\t'.join(header)+'\n')
         if self.stranded:
             genes_anti_filename = unique_filename_in()
             trans_anti_filename = unique_filename_in()
             genes_anti_file = open(genes_anti_filename,"wb")
             trans_anti_file = open(trans_anti_filename,"wb")
-            genes_anti_file.write('\t'.join(header)+'\n')
-            trans_anti_file.write('\t'.join(header)+'\n')
-        while 1:
-            info = tuple(t.next() for t in tracks)
-            if not info: break
-            fid = info[0][0]
-            rest = info[0][3:-1 -self.stranded]
-            ftype = info[0][-1 -self.stranded]
-            counts = tuple(x[1] for x in info)
-            rpkm = tuple(x[2] for x in info)
-            towrite = '\t'.join((fid,)+counts+rpkm+rest)+'\n'
-            if ftype.lower() == 'gene':
-                if self.stranded:
-                    strand = info[0][-1]
-                    if strand == 'sense':
-                        genes_file.write(towrite)
-                    else:
-                        genes_anti_file.write(towrite)
-                else:
-                    genes_file.write(towrite)
-            elif ftype.lower()=='transcript':
-                if self.stranded:
-                    strand = info[0][-1]
-                    if strand == 'sense':
-                        trans_file.write(towrite)
-                    else:
-                        trans_anti_file.write(towrite)
-                else:
-                    trans_file.write(towrite)
+        with open(joined) as jfile:
+            header = jfile.readline()
+            genes_file.write(header)
+            trans_file.write(header)
+            type_idx = header.split('\t').index("Type")
+            if self.stranded:
+                genes_anti_file.write(header)
+                trans_anti_file.write(header)
+                type_idx = header.split('\t').index("Sense")
+                for line in jfile:
+                    L = line.split('\t')
+                    ftype = L[type_idx].lower()
+                    sense = L[type_idx].lower()
+                    if ftype == 'gene':
+                        if sense == 'antisense':
+                            genes_anti_file.write(line)
+                        else:
+                            genes_file.write(line)
+                    elif ftype == 'transcript':
+                        if sense == 'antisense':
+                            trans_anti_file.write(line)
+                        else:
+                            trans_file.write(line)
+            else:
+                for line in jfile:
+                    L = line.split('\t')
+                    ftype = L[type_idx].lower()
+                    if ftype == 'gene':
+                        genes_file.write(line)
+                    elif ftype == 'transcript':
+                        trans_file.write(line)
         genes_file.close()
         trans_file.close()
         if self.stranded:
@@ -394,7 +393,7 @@ class DE_Analysis(RNAseq):
             options = ['-s','tab']
             try:
                 deseqfile = run_deseq.nonblocking(self.ex, res_file, options, via=self.via).wait()
-            except Exception, err:
+            except Exception as err:
                 self.write_debug("DE analysis failed: %s." % str(err))
                 return
             if deseqfile is None:
@@ -496,7 +495,7 @@ class Junctions(RNAseq):
                                             via=self.via, memory=8, threads=soapsplice_options['-p'])
             try:
                 template = future.wait()
-            except Exception, err:
+            except Exception as err:
                 self.write_debug("SOAPsplice failed: %s." % str(err))
                 return
             if template is None:
@@ -513,7 +512,7 @@ class Junctions(RNAseq):
                 bam = sam_to_bam(self.ex,sam,reheader=self.assembly.name)
                 add_and_index_bam(self.ex, bam, description=bam_descr)
                 self.ex.add(bam, description=bam_descr)
-            except Exception, e:
+            except Exception as e:
                 self.write_debug("%s\n(Qualities may be in the wrong format, try with '-q 0'.)" %str(e))
             self.ex.add(bed, description=bed_descr)
         return bed, bam
@@ -560,7 +559,7 @@ class Pca(RNAseq):
         try:
             self.write_log("* PCA")
             outprefix = pca.nonblocking(self.ex, counts_table_file, via=self.via).wait()
-        except Exception, err:
+        except Exception as err:
             self.write_debug("PCA failed: %s." % str(err))
             return
         if outprefix is None:
