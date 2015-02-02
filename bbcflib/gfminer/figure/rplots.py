@@ -15,6 +15,9 @@ from bbcflib.common import unique_filename_in
 from itertools import combinations
 from numpy import asarray, array, ndarray, append
 
+def my2ri(x):
+    return numpy2ri.numpy2ri(asarray(x))
+
 def list2r(L):
     """Transform a Python list into a string in R format: [1,2,'C'] -> "c(1,2,'C')" ."""
     if not isinstance(L,(list,tuple)): L = [L] # everything is a vector in R
@@ -110,12 +113,12 @@ def scatterplot(X,Y,output=None,format='pdf',new=True,last=True,ratio=1.375,**kw
     """Creates a scatter plot of X vs Y.
      If Y is a list of arrays, a different color will be used for each of them."""
     plotopt,output = _begin(output=output,format=format,new=new,ratio=ratio,**kwargs)
-    robjects.r.assign('xdata',numpy2ri.numpy2ri(X))
+    robjects.r.assign('xdata',my2ri(X))
     if not(isinstance(Y,(list,tuple))): Y = [Y]
-    robjects.r.assign('ydata',numpy2ri.numpy2ri(Y[0]))
+    robjects.r.assign('ydata',my2ri(Y[0]))
     robjects.r("plot(xdata,ydata%s)" %plotopt)
     for n in range(1,len(Y)):
-        robjects.r.assign('ydata',numpy2ri.numpy2ri(Y[n]))
+        robjects.r.assign('ydata',my2ri(Y[n]))
         robjects.r("points(xdata,ydata,col=%i)" %(n+1))
     _end(",pch=20",last,**kwargs)
     return output
@@ -128,12 +131,12 @@ def lineplot(X,Y,output=None,format='pdf',new=True,last=True,ratio=1.375,**kwarg
     If Y is a list of arrays, a different color will be used for each of them.
     """
     plotopt,output = _begin(output=output,format=format,new=new,ratio=ratio,**kwargs)
-    robjects.r.assign('xdata',numpy2ri.numpy2ri(X))
+    robjects.r.assign('xdata',my2ri(X))
     if not(isinstance(Y,(list,tuple))): Y = [Y]
-    robjects.r.assign('ydata',numpy2ri.numpy2ri(Y[0]))
+    robjects.r.assign('ydata',my2ri(Y[0]))
     robjects.r("plot(xdata,ydata,t='l'%s)" %plotopt)
     for n in range(1,len(Y)):
-        robjects.r.assign('ydata',numpy2ri.numpy2ri(Y[n]))
+        robjects.r.assign('ydata',my2ri(Y[n]))
         robjects.r("lines(xdata,ydata,col=%i)" %(n+1))
     _end(",lty=1",last,**kwargs)
     return output
@@ -145,8 +148,8 @@ def boxplot(values,labels,output=None,format='pdf',new=True,last=True,**kwargs):
     if not isinstance(values,ndarray): values = asarray(values)
     if not isinstance(labels,ndarray): labels = asarray(labels)
     plotopt,output = _begin(output=output,format=format,new=new,**kwargs)
-    robjects.r.assign('values',numpy2ri.numpy2ri(values))
-    robjects.r.assign('labels',numpy2ri.numpy2ri(labels))
+    robjects.r.assign('values',my2ri(values))
+    robjects.r.assign('labels',my2ri(labels))
     robjects.r("boxplot(values ~ labels,lty=1,varwidth=T)")
     _end("",last,**kwargs)
     return output
@@ -158,8 +161,8 @@ def smoothScatter(X,Y,output=None,format='png',new=True,last=True,**kwargs):
     plotopt,output = _begin(output=output,format=format,new=new,**kwargs)
 #    if 'nbin' in kwargs: plotopt += ',nbin=c(%i,%i)' %tuple(kwargs['nbin'])
 #    if 'bandwidth' in kwargs: plotopt += ',bandwidth=c(%f,%f)' %tuple(kwargs['bandwidth'])
-    robjects.r.assign('xdata',numpy2ri.numpy2ri(X))
-    robjects.r.assign('ydata',numpy2ri.numpy2ri(Y))
+    robjects.r.assign('xdata',my2ri(X))
+    robjects.r.assign('ydata',my2ri(Y))
     robjects.r.assign('colrs',
                       robjects.StrVector(kwargs.get("color",["lightgrey","blue","red"])))
 #    robjects.r("""
@@ -192,7 +195,7 @@ def density_boxplot(values,name=None,output=None,format='pdf',new=True,last=True
         name = str(name)
         topmar = 4
     plotopt,output = _begin(output=output,format=format,new=new,**kwargs)
-    robjects.r.assign('values',numpy2ri.numpy2ri(values))
+    robjects.r.assign('values',my2ri(values))
     robjects.r("""
 lims=range(values)*c(.95,1.05)
 layout(matrix(c(1,2),nrow=2),heights=c(3,1))
@@ -212,12 +215,12 @@ def heatmap(M,output=None,format='pdf',new=True,last=True,
     """Creates a heatmap of the matrix *M* using *rows* as row labels and *columns* as column labels.
     If either *orderRows* or *orderCols* is True, will cluster accordingly and display a dendrogram."""
     plotopt,output = _begin(output=output,format=format,new=new,**kwargs)
-    robjects.r.assign('Mdata',numpy2ri.numpy2ri(M))
+    robjects.r.assign('Mdata',my2ri(M))
     if rows is not None:
-        robjects.r.assign('labRow',numpy2ri.numpy2ri(rows))
+        robjects.r.assign('labRow',my2ri(rows))
         plotopt += ",labRow=labRow"
     if columns is not None:
-        robjects.r.assign('labCol',numpy2ri.numpy2ri(columns))
+        robjects.r.assign('labCol',my2ri(columns))
         plotopt += ",labCol=labCol"
     if cor:
         robjects.r("myCor = function(x) {as.dist(1-cor(t(x),use='pairwise.complete.obs'))}")
@@ -283,17 +286,17 @@ def pairs(M,X=None,labels=None,highlights=([],[]),
     """
     plotopt,output = _begin(output=output,format=format,new=new,ratio=1,**kwargs)
     if X is None:
-        robjects.r.assign('Mdata',numpy2ri.numpy2ri(M))
+        robjects.r.assign('Mdata',my2ri(M))
         robjects.r("n = ncol(Mdata); if (exists('X')) rm(X)")
     else:
-        robjects.r.assign('X',numpy2ri.numpy2ri(X))
-        robjects.r.assign('Mdata',numpy2ri.numpy2ri(M[0][0]))
+        robjects.r.assign('X',my2ri(X))
+        robjects.r.assign('Mdata',my2ri(M[0][0]))
         for jrow in M[0][1:]:
-            robjects.r.assign('Mdj',numpy2ri.numpy2ri(jrow))
+            robjects.r.assign('Mdj',my2ri(jrow))
             robjects.r("Mdata = cbind(Mdata,Mdj)")
         for imat in M[1:]:
             for jrow in imat:
-                robjects.r.assign('Mdj',numpy2ri.numpy2ri(jrow))
+                robjects.r.assign('Mdj',my2ri(jrow))
                 robjects.r("Mdata = cbind(Mdata,Mdj)")
         robjects.r("""
 n = as.integer((-1+sqrt(1+8*ncol(Mdata)))/2)  ### ncol(Mdata) = n*(n+1)/2
@@ -304,7 +307,7 @@ rowcol = rbind(1+1:n,rowcol)
     if labels is None:
         robjects.r("labels=as.character(1:n)")
     else:
-        robjects.r.assign('labels',numpy2ri.numpy2ri(labels))
+        robjects.r.assign('labels',my2ri(labels))
     if kwargs.get('col') is not None:
         robjects.r("col = '%s'" %kwargs['col'])
     else:
@@ -392,7 +395,7 @@ def hist(X,options={},output=None,format='pdf',new=True,last=True,**kwargs):
     rargs = ""
     for opt,val in options.iteritems():
         rargs += ", %s=%s" % (opt,list2r(val))
-    robjects.r.assign('X',numpy2ri.numpy2ri(X))
+    robjects.r.assign('X',my2ri(X))
     robjects.r("hist(X %s)" % rargs)
     _end("",last,**kwargs)
     return output
@@ -426,7 +429,7 @@ def genomeGraph(chrlist,SP=[],SM=[],F=[],options={},output=None,format='pdf',new
         robjects.r("spmbins[[%i]]=list(%s)" %(n+1,",".join("'"+c[0]+"'=list()" \
                                                                for c in chrlist)))
         for chrom in _sd.keys():
-            robjects.r.assign('rowtemp',numpy2ri.numpy2ri(asarray(_sd[chrom])))
+            robjects.r.assign('rowtemp',my2ri(_sd[chrom]))
             robjects.r("spmbins[[%i]][['%s']]=rowtemp" %(n+1,chrom))
     n0 = n+2
 #### - signals
@@ -439,7 +442,7 @@ def genomeGraph(chrlist,SP=[],SM=[],F=[],options={},output=None,format='pdf',new
         robjects.r("spmbins[[%i]]=list(%s)" %(n0+n,",".join("'"+c[0]+"'=list()" \
                                                                for c in chrlist)))
         for chrom in _sd.keys():
-            robjects.r.assign('rowtemp',numpy2ri.numpy2ri(asarray(_sd[chrom])))
+            robjects.r.assign('rowtemp',my2ri(_sd[chrom]))
             robjects.r("spmbins[[%i]][['%s']]=rowtemp" %(n0+n,chrom))
 #### features
     for n,_f in enumerate(F):
@@ -456,7 +459,7 @@ def genomeGraph(chrlist,SP=[],SM=[],F=[],options={},output=None,format='pdf',new
 #### chrlist
     robjects.r("chrlist=list("+",".join(['"%s"=%i'%(c,l) for c,l in chrlist])+")")
     robjects.r.assign('yscale_chrom',numpy2ri.numpy2ri(array(yscale.values())))
-    robjects.r.assign('binsize',numpy2ri.numpy2ri(binsize))
+    robjects.r.assign('binsize',my2ri(binsize))
     robjects.r("""
 n = length(chrlist)
 xscale = max(as.numeric(chrlist))
