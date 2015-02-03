@@ -163,27 +163,38 @@ def rnaseq_workflow(ex, job, pileup_level=["genes","transcripts"],
     # Count reads on genes, transcripts with "rnacounter"
     count_files = CNT.count_reads(bamfiles, gtf)
 
+    def differential_analysis(counts_file, feature_type):
+        counts_file = DE.clean_before_deseq(counts_file)
+        diff_files = DE.differential_analysis(counts_file)
+        if diff_files is not None:
+            diff_files = [DE.clean_deseq_output(o) for o in diff_files]
+            for diff in diff_files:
+                head = open(diff).readline().strip().replace(' ','')
+                oname = feature_type + "_differential_"+ head + ".txt"
+                desc = set_file_descr(oname, step='stats', type='txt')
+                ex.add(diff, description=desc)
+
     # DE and PCA
     if "genes" in pileup_level:
         # PCA of groups ~ gene expression
         description = set_file_descr("genes_expression.txt", step="pileup", type="txt")
         ex.add(count_files['genes'], description=description)
-        DE.differential_analysis(count_files['genes'], "genes")
+        differential_analysis(count_files['genes'], "genes")
         if stranded:
             description = set_file_descr("genes_antisense_expression.txt", step="pileup", type="txt")
             ex.add(count_files['genes_anti'], description=description)
-            DE.differential_analysis(count_files['genes_anti'], "genes_antisense")
+            differential_analysis(count_files['genes_anti'], "genes_antisense")
         if ncond > 2:
             PCA.pca_rnaseq(count_files['genes'])
 
     if "transcripts" in pileup_level:
         description = set_file_descr("transcripts_expression.txt", step="pileup", type="txt")
         ex.add(count_files['transcripts'], description=description)
-        DE.differential_analysis(count_files['transcripts'], "transcripts")
+        differential_analysis(count_files['transcripts'], "transcripts")
         if stranded:
             description = set_file_descr("transcripts_antisense_expression.txt", step="pileup", type="txt")
             ex.add(count_files['transcripts_anti'], description=description)
-            DE.differential_analysis(count_files['transcripts_anti'], "transcripts_antisense")
+            differential_analysis(count_files['transcripts_anti'], "transcripts_antisense")
 
     # Find splice junctions
     if junctions:
@@ -262,6 +273,9 @@ class Counter(RNAseq):
             trans_anti_file = open(trans_anti_filename,"wb")
         with open(joined) as jfile:
             header = jfile.readline()
+            hconds = ["counts."+c for c in self.conditions] + ["rpkm."+c for c in self.conditions]
+            hinfo = header.strip().split('\t')[2*ncond+1:]
+            header = '\t'.join(["ID"] + hconds + hinfo)+'\n'
             genes_file.write(header)
             trans_file.write(header)
             type_idx = header.split('\t').index("Type")
@@ -310,6 +324,8 @@ class DE_Analysis(RNAseq):
 
     def clean_before_deseq(self, filename, keep=0.6):
         """Delete all lines of *filename* where counts are 0 in every run.
+        Return only the first column with added information concatenated,
+        and the Count columns.
 
         :param keep: fraction of highest counts to keep. [0.6]
         """
@@ -365,7 +381,7 @@ class DE_Analysis(RNAseq):
         return filename_clean
 
     @timer
-    def differential_analysis(self, filename, feature_type):
+    def differential_analysis(self, filename):
         """Launch an analysis of differential expression on the count
         values, and saves the output in the MiniLIMS."""
 
@@ -380,11 +396,10 @@ class DE_Analysis(RNAseq):
         if not program_exists('negbin.test.R'):
             self.write_debug("Skipped DE analysis: negbin.test.R not found.")
             return
-        ncond = len(self.conditions)
-        res_file = self.clean_before_deseq(filename)
-        if res_file is None:
-            self.write_log("  Skipped differential analysis: empty counts file for %s." % feature_type)
+        if filename is None:
+            self.write_log("  Skipped differential analysis: empty counts file.")
             return
+        ncond = len(self.conditions)
         if ncond < 2:
             self.write_log("  Skipped differential analysis: less than two groups.")
             return
@@ -392,7 +407,7 @@ class DE_Analysis(RNAseq):
             self.write_log("* Differential analysis")
             options = ['-s','tab']
             try:
-                deseqfile = run_deseq.nonblocking(self.ex, res_file, options, via=self.via).wait()
+                deseqfile = run_deseq.nonblocking(self.ex, filename, options, via=self.via).wait()
             except Exception as err:
                 self.write_debug("DE analysis failed: %s." % str(err))
                 return
@@ -403,12 +418,8 @@ class DE_Analysis(RNAseq):
             if (deseqfile is None) or isinstance(deseqfile,Exception) or len(output_files)==0:
                 self.write_debug("Skipped differential analysis: %s." % str(deseqfile))
                 return
-            for o in output_files:
-                oname = feature_type+"_differential"+o.split(deseqfile)[1]+".txt"
-                desc = set_file_descr(oname, step='stats', type='txt')
-                o = self.clean_deseq_output(o)
-                self.ex.add(o, description=desc)
             self.write_log("  ....done.")
+            return output_files
 
 
 #-------------------------- SPLICE JUNCTIONS SEARCH ----------------------------#
@@ -550,7 +561,7 @@ class Pca(RNAseq):
         @program
         def pca(counts_table_file):
             outprefix = unique_filename_in()
-            args = ['pca.R', counts_table_file, outprefix]
+            args = ['pca.R', counts_table_file, outprefix, "rpkm"]
             return {"arguments": args, "return_value": outprefix}
 
         if not program_exists('pca.R'):
