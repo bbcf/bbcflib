@@ -23,6 +23,7 @@ from bein import program
 # Other modules #
 import numpy
 from numpy import asarray
+import pysam
 
 numpy.set_printoptions(precision=3,suppress=True)
 numpy.seterr(invalid='print')
@@ -233,7 +234,12 @@ class Counter(RNAseq):
         ncond = len(self.conditions)
         tablenames = [None]*ncond
         futures = [None]*ncond
+        max_rlen = 0
         counter_options = []
+        for bam in bamfiles:
+            sam = pysam.Samfile(bam,'rb')
+            max_rlen = max(max_rlen, sam.next().rlen)
+        counter_options += ["--exon_cutoff", str(max_rlen)]
         bwt_args = self.job.options.get('map_args',{}).get('bwt_args',[])
         if not "--local" in bwt_args:
             counter_options += ["--nh"]
@@ -258,6 +264,7 @@ class Counter(RNAseq):
             if futures[i] is None:
                 self.write_debug("Counting failed.")
                 raise ValueError("Counting failed.")
+            #shutil.copy(tablenames[i],'../count_%d.txt'%i)  # intermediate tables
         joined = unique_filename_in()
         rnacounter_join.nonblocking(self.ex, tablenames, stdout=joined, via=self.via).wait()
 
