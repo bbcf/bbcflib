@@ -271,7 +271,7 @@ class Counter(RNAseq):
                 self.write_debug("Counting failed.")
                 raise ValueError("Counting failed.")
             # Keep intermediate tables
-            shutil.copy(tablenames[i], "../counts%d"%i)
+            #shutil.copy(tablenames[i], "../counts%d.txt"%i)
             descr = set_file_descr(self.conditions[i]+'_'+tablenames[i]+'.txt', type='txt', step='pileup', view='admin')
             self.ex.add(tablenames[i], description=descr)
         joined = unique_filename_in()
