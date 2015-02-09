@@ -155,7 +155,7 @@ def rnaseq_workflow(ex, job, pileup_level=["genes","transcripts"],
         else:
             logfile.write("  ... from GenRep\n"); logfile.flush()
             gtf = assembly.create_exome_gtf()
-    descr = set_file_descr(gtf+'.gtf', type='txt', step='pileup', view='admin')
+    descr = set_file_descr(gtf, type='txt', step='pileup', view='admin')
     ex.add(gtf, description=descr)
     #shutil.copy(gtf,"../")
 
