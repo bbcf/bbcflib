@@ -134,6 +134,10 @@ def rnaseq_workflow(ex, job, pileup_level=["genes","transcripts"],
     if hasattr(assembly,"fasta_origin"):
         logfile.write("  ... from fasta origin\n"); logfile.flush()
         gtf = gtf_from_bam_header(bamfiles[0])
+        pileup_level = ["transcripts"]
+        if stranded:
+            stranded=False
+            logfile.write("  ... Cannot exploit strand information from custom fasta reference.\n"); logfile.flush()
     # ... or from (wrong) mapping on the transcriptome
     elif assembly.intype==2:
         logfile.write("  ... from mapping on the transcriptome\n"); logfile.flush()
@@ -151,6 +155,8 @@ def rnaseq_workflow(ex, job, pileup_level=["genes","transcripts"],
         else:
             logfile.write("  ... from GenRep\n"); logfile.flush()
             gtf = assembly.create_exome_gtf()
+    descr = set_file_descr(gtf+'.gtf', type='txt', step='pileup', view='admin')
+    ex.add(gtf, description=descr)
     #shutil.copy(gtf,"../")
 
     # Build controllers
@@ -265,7 +271,7 @@ class Counter(RNAseq):
                 self.write_debug("Counting failed.")
                 raise ValueError("Counting failed.")
             # Keep intermediate tables
-            #shutil.copy(tablenames[i],'../count_%d.txt'%i)
+            shutil.copy(tablenames[i], "../counts%d"%i)
             descr = set_file_descr(self.conditions[i]+'_'+tablenames[i]+'.txt', type='txt', step='pileup', view='admin')
             self.ex.add(tablenames[i], description=descr)
         joined = unique_filename_in()
