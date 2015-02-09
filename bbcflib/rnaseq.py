@@ -178,28 +178,28 @@ def rnaseq_workflow(ex, job, pileup_level=["genes","transcripts"],
             for diff in diff_files:
                 head = open(diff).readline().strip().replace(' ','')
                 oname = feature_type + "_differential_"+ head + ".txt"
-                desc = set_file_descr(oname, step='stats', type='txt')
+                desc = set_file_descr(oname, step='stats', type='txt', ucsc=0)
                 ex.add(diff, description=desc)
 
     # DE and PCA
     if "genes" in pileup_level:
         # PCA of groups ~ gene expression
-        description = set_file_descr("genes_expression.txt", step="pileup", type="txt")
+        description = set_file_descr("genes_expression.txt", step="pileup", type="txt", ucsc=0)
         ex.add(count_files['genes'], description=description)
         differential_analysis(count_files['genes'], "genes")
         if stranded:
-            description = set_file_descr("genes_antisense_expression.txt", step="pileup", type="txt")
+            description = set_file_descr("genes_antisense_expression.txt", step="pileup", type="txt", ucsc=0)
             ex.add(count_files['genes_anti'], description=description)
             differential_analysis(count_files['genes_anti'], "genes_antisense")
         if ncond > 2:
             PCA.pca_rnaseq(count_files['genes'])
 
     if "transcripts" in pileup_level:
-        description = set_file_descr("transcripts_expression.txt", step="pileup", type="txt")
+        description = set_file_descr("transcripts_expression.txt", step="pileup", type="txt", ucsc=0)
         ex.add(count_files['transcripts'], description=description)
         differential_analysis(count_files['transcripts'], "transcripts")
         if stranded:
-            description = set_file_descr("transcripts_antisense_expression.txt", step="pileup", type="txt")
+            description = set_file_descr("transcripts_antisense_expression.txt", step="pileup", type="txt", ucsc=0)
             ex.add(count_files['transcripts_anti'], description=description)
             differential_analysis(count_files['transcripts_anti'], "transcripts_antisense")
 
@@ -531,9 +531,9 @@ class Junctions(RNAseq):
             junc_file = template+'.junc'
             bed = self.convert_junc_file(junc_file,self.assembly)
             bed_descr = set_file_descr('junctions_%s.bed' % group['name'],
-                                       groupId=gid,type='bed',step='junctions',ucsc=1)
+                                       groupId=gid,type='bed',step='junctions', ucsc=1)
             bam_descr = set_file_descr('junctions_%s.bam' % group['name'],
-                                       groupId=gid,type='bam',step='junctions')
+                                       groupId=gid,type='bam',step='junctions', ucsc=0)
             sam = template+'.sam'
             try:
                 bam = sam_to_bam(self.ex,sam,reheader=self.assembly.name)
@@ -592,7 +592,7 @@ class Pca(RNAseq):
         if outprefix is None:
             self.write_debug("PCA failed.")
             return
-        pca_descr_pdf = set_file_descr('pca.pdf', type='pdf', step='pca')
+        pca_descr_pdf = set_file_descr('pca.pdf', type='pdf', step='pca', ucsc=0)
         self.ex.add(outprefix+'.pdf', description=pca_descr_pdf)
 
 
