@@ -264,7 +264,10 @@ class Counter(RNAseq):
             if futures[i] is None:
                 self.write_debug("Counting failed.")
                 raise ValueError("Counting failed.")
-            #shutil.copy(tablenames[i],'../count_%d.txt'%i)  # intermediate tables
+            # Keep intermediate tables
+            #shutil.copy(tablenames[i],'../count_%d.txt'%i)
+            descr = set_file_descr(self.conditions[i]+'_'+tablenames[i]+'.txt', type='txt', step='pileup', view='admin')
+            self.ex.add(tablenames[i], description=descr)
         joined = unique_filename_in()
         rnacounter_join.nonblocking(self.ex, tablenames, stdout=joined, via=self.via).wait()
 
@@ -289,11 +292,11 @@ class Counter(RNAseq):
             if self.stranded:
                 genes_anti_file.write(header)
                 trans_anti_file.write(header)
-                type_idx = header.split('\t').index("Sense")
+                sense_idx = header.split('\t').index("Sense")
                 for line in jfile:
                     L = line.split('\t')
                     ftype = L[type_idx].lower()
-                    sense = L[type_idx].lower()
+                    sense = L[sense_idx].lower()
                     if ftype == 'gene':
                         if sense == 'antisense':
                             genes_anti_file.write(line)
