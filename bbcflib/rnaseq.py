@@ -49,7 +49,6 @@ class RNAseq(object):
         self.debugfile = debugfile       # debug file name
         self.logfile = logfile           # log file name
         self.stranded = stranded         # True/False, strand-specific or not
-            # number of columns in the output, = number of runs if not stranded, twice otherwise
 
     def write_log(self,s):
         self.logfile.write(s+'\n'); self.logfile.flush()
