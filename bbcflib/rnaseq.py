@@ -351,7 +351,9 @@ class DE_Analysis(RNAseq):
                 header = f.readline().split('\t')
                 data = [x.strip().split('\t') for x in f]
                 if not data: return
-                rownames = asarray(['%s|%s|%s' % (x[0],x[-1],x[-2]) for x in data])  # id,gene_name,strand
+                name_idx = header.index("GeneName")
+                strand_idx = header.index("Strand")
+                rownames = asarray(['%s|%s|%s' % (x[0],x[name_idx],x[strand_idx]) for x in data])  # id,gene_name,strand
                 M = asarray([x[1:1+ncond] for x in data], dtype=numpy.float_)
                 colnames = header[0:1]+header[1:1+ncond] # 'counts' column names, always
                 # Remove 40% lowest counts
