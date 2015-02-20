@@ -108,26 +108,29 @@ def all_snps(ex, chrom, vcfs, bams, outall, assembly, headerfile, sample_names, 
     sorder = range(len(sample_names))
     current = [None]*nsamples
 #####
-    poslist = set()
-    bamchrom = None
-    for vf in vcfs.values():
-        with open(vf) as vh:
-            for line in vh:
-                if (not line) or line[0]=='#': continue
-                line = line.strip().split('\t')
-                if bamchrom is None: bamchrom = line[0]
-                poslist.add( int(line[1]) )
-    snplist = unique_filename_in()
-    with open(snplist,"w") as snpfh:
-        snpfh.write("\n".join("%s\t%i" %(bamchrom,pos) for pos in sorted(poslist)))
-    pilejobs = []
-    vcfs2 = {}
-    for gid, bamfile in bams.iteritems():
-        vcfs2[gid] = unique_filename_in()
-        pilejobs.append( pileup.nonblocking(ex, bams[gid], reffasta, 
-                                            step="list", bedfile=snplist, header=headerfile,
-                                            via=via, stdout=vcfs2[gid]) )
-    [job.wait() for job in pilejobs]
+    if nsamples > 1:
+        poslist = set()
+        bamchrom = None
+        for vf in vcfs.values():
+            with open(vf) as vh:
+                for line in vh:
+                    if (not line) or line[0]=='#': continue
+                    line = line.strip().split('\t')
+                    if bamchrom is None: bamchrom = line[0]
+                    poslist.add( int(line[1]) )
+        snplist = unique_filename_in()
+        with open(snplist,"w") as snpfh:
+            snpfh.write("\n".join("%s\t%i" %(bamchrom,pos) for pos in sorted(poslist)))
+        pilejobs = []
+        vcfs2 = {}
+        for gid, bamfile in bams.iteritems():
+            vcfs2[gid] = unique_filename_in()
+            pilejobs.append( pileup.nonblocking(ex, bams[gid], reffasta, 
+                                                step="list", bedfile=snplist, header=headerfile,
+                                                via=via, stdout=vcfs2[gid]) )
+        [job.wait() for job in pilejobs]
+    else:
+        vcfs2 = vcfs
 #####
     bam_tracks = [track(v,format='bam') for k,v in sorted(bams.items())]
     vcf_handles = [open(v) for k,v in sorted(vcfs2.items())]
