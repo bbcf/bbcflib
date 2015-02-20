@@ -25,11 +25,16 @@ _DEBUG_ = False
 
 
 @program
-def pileup(bam,fasta,seq_depth=1000,header=None):
+def pileup(bam,fasta,seq_depth=1000,step="call",bedfile=None,header=None):
     """Use 'samtools mpileup' followed by 'bcftools view' and 'vcfutils'
     to call for SNPs. Ref.: http://samtools.sourceforge.net/mpileup.shtml
     !! No indel call, to speed it up, until their output is implemented."""
-    args = [fasta,str(seq_depth),bam]
+    bed_or_depth = str(seq_depth)
+    if step not in ["call","list"]:
+        step = "call"
+    if bedfile and step=="list":
+        bed_or_depth = bedfile
+    args = [step,fasta,bed_or_depth,bam]
     if header: args += [header]
     return {'arguments': ["sam_mpileup.sh"]+args, 'return_value': None}
 
@@ -79,26 +84,53 @@ def filter_snp(general,snp_info,sample_stats,mincov,minsnp,ploidy):
     return genotype
 
 @timer
-def all_snps(ex, chrom, vcfs, bams, outall, assembly, sample_names, mincov, minsnp,
-             logfile=sys.stdout, debugfile=sys.stderr):
+def all_snps(ex, chrom, vcfs, bams, outall, assembly, headerfile, sample_names, mincov, minsnp,
+             logfile=sys.stdout, debugfile=sys.stderr, via='local'):
     """For a given chromosome, returns a summary file containing all SNPs identified
     in at least one of the samples.
     Each row contains: chromosome id, SNP position, reference base, SNP base (with proportions)
 
     :param chrom: (str) chromosome name.
+    :param vcfs: (dict) vcf files for each sample, dictionary keys are group ids.
+    :param bams: (dict) bamfiles organized like the vcf files.
     :param outall: (str) name of the file that will contain the list of all SNPs.
+    :param assembly: (genrep.Assembly) assembly for the fasta files and ploidy value.
+    :param headerfile: (string) name of file with substitute bam header to match the fasta files.
     :param sample_names: (list of str) list of sample names.
-    :param mincov: (int) Minimum number of reads supporting an SNP at a position for it to be considered. [5]
-    :param minsnp: (int) Minimum percentage of reads supporting the SNP for it to be returned.
+    :param mincov: (int) minimum number of reads supporting an SNP at a position for it to be considered. [5]
+    :param minsnp: (int) minimum percentage of reads supporting the SNP for it to be returned.
         N.B.: Effectively, half of it on each strand for diploids. [40]
     """
     ploidy = assembly.ploidy
+    reffasta = assembly.fasta_by_chrom[chrom]
     allsnps = []
     nsamples = len(sample_names)
     sorder = range(len(sample_names))
     current = [None]*nsamples
+#####
+    poslist = set()
+    bamchrom = None
+    for vf in vcfs.values():
+        with open(vf) as vh:
+            for line in vh:
+                if (not line) or line[0]=='#': continue
+                line = line.strip().split('\t')
+                if bamchrom is None: bamchrom = line[0]
+                poslist.add( int(line[1]) )
+    snplist = unique_filename_in()
+    with open(snplist,"w") as snpfh:
+        snpfh.write("\n".join("%s\t%i" %(bamchrom,pos) for pos in sorted(poslist)))
+    pilejobs = []
+    vcfs2 = {}
+    for gid, bamfile in bams.iteritems():
+        vcfs2[gid] = unique_filename_in()
+        pilejobs.append( pileup.nonblocking(ex, bams[gid], reffasta, 
+                                            step="list", bedfile=snplist, header=headerfile,
+                                            via=via, stdout=vcfs2[gid]) )
+    [job.wait() for job in pilejobs]
+#####
     bam_tracks = [track(v,format='bam') for k,v in sorted(bams.items())]
-    vcf_handles = [open(v) for k,v in sorted(vcfs.items())]
+    vcf_handles = [open(v) for k,v in sorted(vcfs2.items())]
     for i,vh in enumerate(vcf_handles):
         line = '#'
         while line and line[0]=='#':
@@ -304,17 +336,17 @@ def snp_workflow(ex, job, assembly, minsnp=40., mincov=5, path_to_ref=None, via=
     vcfs = dict((chrom,{}) for chrom in ref_genome.keys()) # {chr: {}}
     bams = {}
     # Launch the jobs
-    for gid in sorted(job.files.keys()):
+    bam = Samfile(job.files.values()[0].values()[0]['bam'])
+    header = bam.header
+    headerfile = unique_filename_in()
+    for h in header["SQ"]:
+        if h["SN"] in assembly.chrmeta:
+            h["SN"] = assembly.chrmeta[h["SN"]]["ac"]
+    head = Samfile( headerfile, "wh", header=header )
+    head.close()
+    for gid in job.files.keys():
         # Merge all bams belonging to the same group
         runs = [r['bam'] for r in job.files[gid].itervalues()]
-        bam = Samfile(runs[0])
-        header = bam.header
-        headerfile = unique_filename_in()
-        for h in header["SQ"]:
-            if h["SN"] in assembly.chrmeta:
-                h["SN"] = assembly.chrmeta[h["SN"]]["ac"]
-        head = Samfile( headerfile, "wh", header=header )
-        head.close()
         if len(runs) > 1:
             _b = merge_bam(ex,runs)
             index_bam(ex,_b)
@@ -330,7 +362,7 @@ def snp_workflow(ex, job, assembly, minsnp=40., mincov=5, path_to_ref=None, via=
                                                    via=via, stdout=vcf))
         logfile.write("  ...Group %s running.\n" %job.groups[gid]['name']); logfile.flush()
     # Wait for vcfs to finish and store them in *vcfs[chrom][gid]*
-    for gid in sorted(job.files.keys()):
+    for gid in job.files.keys():
         for chrom,ref in ref_genome.iteritems():
             vcfs[chrom][gid][1].wait()
             vcfs[chrom][gid] = vcfs[chrom][gid][0]
@@ -358,8 +390,9 @@ def snp_workflow(ex, job, assembly, minsnp=40., mincov=5, path_to_ref=None, via=
         logfile.write("  > Chromosome '%s'\n" % chrom); logfile.flush()
     # Put together info from all vcf files
         logfile.write("  - All SNPs\n"); logfile.flush()
-        allsnps = all_snps(ex,chrom,vcfs[chrom],bams,outall,assembly,
-                           sample_names,mincov,float(minsnp),logfile,debugfile)
+        allsnps = all_snps(ex,chrom,vcfs[chrom],bams,outall,assembly,headerfile,
+                           sample_names,mincov,float(minsnp),
+                           logfile,debugfile,via)
     # Annotate SNPs and check synonymy
         logfile.write("  - Exonic SNPs\n"); logfile.flush()
         exon_snps(chrom,outexons,allsnps,assembly,sample_names,ref_genome,logfile,debugfile)
