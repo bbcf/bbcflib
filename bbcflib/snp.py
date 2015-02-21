@@ -377,7 +377,7 @@ def snp_workflow(ex, job, assembly, minsnp=40., mincov=5, path_to_ref=None, via=
         for gid,vcf in v.iteritems():
             tarfh.add(vcf, arcname="%s_%s.vcf" % (job.groups[gid]['name'],chrom))
     tarfh.close()
-    ex.add( tarname, description=set_file_descr("vcfs_files.tar.gz",step="pileup",type="tar",view='admin') )
+    ex.add( tarname, description=set_file_descr("vcf_files.tar.gz",step="pileup",type="tar",view='admin') )
 
     logfile.write("\n* Merge info from vcf files\n"); logfile.flush()
     outall = unique_filename_in()
@@ -401,7 +401,10 @@ def snp_workflow(ex, job, assembly, minsnp=40., mincov=5, path_to_ref=None, via=
         exon_snps(chrom,outexons,allsnps,assembly,sample_names,ref_genome,logfile,debugfile)
         for snprow in allsnps:
             for n,k in enumerate([assembly.name]+sample_names):
-                msa_table[k] += snprow[3+n][0]
+                base = snprow[3+n][0]
+                if base == "-": base = snprow[3][0]
+                if base not in 'ACGTacgt': base = "N"
+                msa_table[k] += base
     description = set_file_descr("allSNP.txt",step="SNPs",type="txt")
     ex.add(outall,description=description)
     description = set_file_descr("exonsSNP.txt",step="SNPs",type="txt")
