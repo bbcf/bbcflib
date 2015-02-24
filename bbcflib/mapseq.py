@@ -258,7 +258,7 @@ def get_fastq_files( ex, job, set_seed_length=True ):
                             if run_pe:
                                 run_pe = os.path.join(demultiplex_path,run_pe)
                                 shutil.copy(run_pe, target_pe)
-                        elif os,path.exists(maprun):
+                        elif os.path.exists(maprun):
                             run = maprun+".gz"
                             if run_pe: run_pe = os.path.join(minilims+".files",run_pe)+".gz"
                         else:
