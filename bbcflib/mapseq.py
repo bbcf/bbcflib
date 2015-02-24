@@ -259,11 +259,13 @@ def get_fastq_files( ex, job, set_seed_length=True ):
                                 run_pe = os.path.join(demultiplex_path,run_pe)
                                 shutil.copy(run_pe, target_pe)
                         elif os.path.exists(maprun):
-                            run = maprun+".gz"
+                            run = maprun
                             shutil.copy(run,target)
+                            run += ".gz"
                             if run_pe: 
-                                run_pe = os.path.join(ex.lims.file_path,run_pe)+".gz"
+                                run_pe = os.path.join(ex.lims.file_path,run_pe)
                                 shutil.copy(run_pe,target_pe)
+                                run_pe += ".gz"
                         else:
                             raise ValueError("Could not find fastq file %s"%run)
 
