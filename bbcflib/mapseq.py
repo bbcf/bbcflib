@@ -82,9 +82,8 @@ import pysam
 from bein import program, ProgramFailed, MiniLIMS
 from bein.util import add_pickle, touch, split_file, count_lines
 
-from bbcflib.workflows import _basepath
+from bbcflib.workflows import _basepath, _arch_basepath
 demultiplex_path = os.path.join(_basepath,"demultiplexing_minilims.files/")
-arch_basepath = "/archive/epfl/bbcf/data/"
 
 ###############
 # Fastq files
@@ -248,18 +247,23 @@ def get_fastq_files( ex, job, set_seed_length=True ):
                     else:
                         target = os.path.abspath("../%i%s" %(rid,ext))
                 else:
-                    if run.startswith("arch://"): run = os.path.join(arch_basepath,run[7:])
-                    if run_pe and run_pe.startswith("arch://"): run_pe = os.path.join(arch_basepath,run_pe[7:])
+                    if run.startswith("arch://"): run = os.path.join(_arch_basepath,run[7:])
+                    if run_pe and run_pe.startswith("arch://"): run_pe = os.path.join(_arch_basepath,run_pe[7:])
                     if not(os.path.exists(run)):
                         demrun = os.path.join(demultiplex_path,run)
-                        if not(os.path.exists(demrun)):
+                        maprun = os.path.join(ex.lims.file_path,run)
+                        if os.path.exists(demrun):
+                            run = demrun
+                            shutil.copy(run,target)
+                            if run_pe:
+                                run_pe = os.path.join(demultiplex_path,run_pe)
+                                shutil.copy(run_pe, target_pe)
+                        elif os,path.exists(maprun):
+                            run = maprun+".gz"
+                            if run_pe: run_pe = os.path.join(minilims+".files",run_pe)+".gz"
+                        else:
                             raise ValueError("Could not find fastq file %s"%run)
-                        run = demrun
-                        if run_pe:
-                            run_pe = os.path.join(demultiplex_path,run_pe)
-                    shutil.copy(run,target)
-                    if run_pe:
-                        shutil.copy(run_pe, target_pe)
+
 #                run = re.sub('.seq.gz','_seq.tar',run)
                 if run_pe:
                     job.groups[gid]['runs'][rid] = (_expand_fastq(ex,run,target),
@@ -1344,7 +1348,7 @@ def get_bam_wig_files( ex, job, minilims=None, hts_url=None, suffix=['fwd','rev'
                         bamfile = sort_bam.nonblocking(ex, bamfile, via=via).wait()
                         index_bam(ex, bamfile)
             elif file_loc.startswith("arch://") or os.path.exists(file_loc):
-                if file_loc.startswith("arch://"): file_loc = os.path.join(arch_basepath,file_loc[7:])
+                if file_loc.startswith("arch://"): file_loc = os.path.join(_arch_basepath,file_loc[7:])
                 assert os.access(file_loc, os.R_OK), "No read access to %s" % file_loc
                 shutil.copy( file_loc, bamfile )
                 if os.path.exists(file_loc+".bai"):

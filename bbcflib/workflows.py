@@ -18,6 +18,9 @@ from bein import execution, MiniLIMS
 _usage = "run_htsstation.py module [-h] [-w wdir] [-k job_key] [-v via] [-c config_file] [--basepath minilims_path]"
 _description = "High-throughput sequencing data analysis workflows."
 _basepath = "/data/epfl/bbcf/htsstation/data"
+_arch_basepath = "/archive/epfl/bbcf/data/"
+_HTS_url = "http://htsstation.epfl.ch"
+
 _via = "lsf"
 
 class Usage(Exception):

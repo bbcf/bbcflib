@@ -15,8 +15,9 @@ from bbcflib.gfminer.common import sorted_stream
 import os, json, re, urllib2, time, shutil
 
 #GlobalLibPath="/archive/epfl/bbcf/data/genomes/4cLibraries"
-GlobalHtsUrl="http://htsstation.epfl.ch"
-GlobalRepbasePath="/data/epfl/bbcf/htsstation/data/genomes/repeats"
+
+from bbcflib.workflows import _basepath, _HTS_url as GlobalHtsUrl 
+GlobalRepbasePath = os.path.join( _basepath,"genomes/repeats" )
 
 @program
 def getRestEnzymeOccAndSeq(fasta_file, prim_site, sec_site, l_seg, l_type='typeI'):
