@@ -390,7 +390,8 @@ try:
         if isinstance(select_param,str): select_param = [select_param]
         if isinstance(id_or_key, str):
             try:
-                exid = max(minilims.search_executions(with_text=id_or_key))
+                exid = (minilims.search_executions(with_text=id_or_key,fails=True)\
+                       +minilims.search_executions(with_text=id_or_key,fails=False))[0]
             except ValueError, v:
                 raise ValueError("No execution with key "+id_or_key)
         else:
