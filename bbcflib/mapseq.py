@@ -249,7 +249,10 @@ def get_fastq_files( ex, job, set_seed_length=True ):
                 else:
                     if run.startswith("arch://"): run = os.path.join(_arch_basepath,run[7:])
                     if run_pe and run_pe.startswith("arch://"): run_pe = os.path.join(_arch_basepath,run_pe[7:])
-                    if not(os.path.exists(run)):
+                    if os.path.exists(run):
+                        shutil.copy(run,target)
+                        if run_pe: shutil.copy(run_pe, target_pe)
+                    else:
                         demrun = os.path.join(demultiplex_path,run)
                         maprun = os.path.join(ex.lims.file_path,run)
                         if os.path.exists(demrun):
