@@ -10,11 +10,11 @@ on the exons, and uses least-squares to infer counts on genes and transcripts.
 """
 
 # Built-in modules #
-import os, sys, math, itertools, shutil
+import os, sys, itertools, shutil
 from operator import itemgetter
 
 # Internal modules #
-from bbcflib.common import set_file_descr, unique_filename_in, cat, timer, program_exists, gzipfile
+from bbcflib.common import set_file_descr, unique_filename_in, cat, timer, program_exists
 from bbcflib.mapseq import add_and_index_bam, sam_to_bam
 from bbcflib.gfminer.common import map_chromosomes, duplicate, apply
 from bbcflib.track import track
@@ -22,7 +22,6 @@ from bein import program
 
 # Other modules #
 import numpy
-from numpy import asarray
 import pysam
 
 numpy.set_printoptions(precision=3,suppress=True)
@@ -170,15 +169,19 @@ def rnaseq_workflow(ex, job, pileup_level=["genes","transcripts"],
     count_files = CNT.count_reads(bamfiles, gtf)
 
     def differential_analysis(counts_file, feature_type):
-        counts_file = DE.clean_before_deseq(counts_file)
+        #shutil.copy(counts_file, "../")
         diff_files = DE.differential_analysis(counts_file)
         if diff_files is not None:
-            diff_files = [DE.clean_deseq_output(o) for o in diff_files]
             for diff in diff_files:
-                head = open(diff).readline().strip().replace(' ','')
+                # Remove first line
+                diff_nohead = unique_filename_in()
+                with open(diff) as f:
+                    head = f.readline().strip()
+                    with open(diff_nohead, "wb") as g:
+                        for line in f: g.write(line)
                 oname = feature_type + "_differential_"+ head + ".txt"
                 desc = set_file_descr(oname, step='stats', type='txt', ucsc=0)
-                ex.add(diff, description=desc)
+                ex.add(diff_nohead, description=desc)
 
     # DE and PCA
     if "genes" in pileup_level:
@@ -269,15 +272,12 @@ class Counter(RNAseq):
             if futures[i] is None:
                 self.write_debug("Counting failed.")
                 raise ValueError("Counting failed.")
+            # Keep intermediate tables
+            #shutil.copy(tablenames[i], "../counts%d.txt"%i)
+            descr = set_file_descr(self.conditions[i]+'_'+tablenames[i]+'.txt', type='txt', step='pileup', view='admin')
+            self.ex.add(tablenames[i], description=descr)
         joined = unique_filename_in()
         rnacounter_join.nonblocking(self.ex, tablenames, stdout=joined, via=self.via).wait()
-
-        # Keep intermediate tables
-        for i,c in enumerate(self.conditions):
-            #shutil.copy(tablenames[i], "../counts%d.txt"%i)
-            descr = set_file_descr(self.conditions[i]+'_'+tablenames[i]+'.gz', type='txt', step='pileup', view='admin')
-            gzipfile(self.ex, tablenames[i])
-            self.ex.add(tablenames[i]+'.gz', description=descr)
 
         # Split genes and transcripts into separate files
         genes_filename = unique_filename_in()
@@ -340,80 +340,19 @@ class DE_Analysis(RNAseq):
     def __init__(self,*args):
         RNAseq.__init__(self,*args)
 
-    def clean_before_deseq(self, filename, keep=0.6):
-        """Delete all lines of *filename* where counts are 0 in every run.
-        Return only the first column with added information concatenated,
-        and the Count columns.
-
-        :param keep: fraction of highest counts to keep. [0.6]
-        """
-        filename_clean = unique_filename_in()
-        ncond = len(self.conditions)
-        if ncond >1:
-            with open(filename) as f:
-                header = f.readline().split('\t')
-                data = [x.strip().split('\t') for x in f]
-                if not data: return
-                name_idx = header.index("GeneName")
-                strand_idx = header.index("Strand")
-                rownames = asarray(['%s|%s|%s' % (x[0],x[name_idx],x[strand_idx]) for x in data])  # id,gene_name,strand
-                M = asarray([x[1:1+ncond] for x in data], dtype=numpy.float_)
-                colnames = header[0:1]+header[1:1+ncond] # 'counts' column names, always
-                # Remove 40% lowest counts
-                sums = numpy.sum(M,1)
-                filter = asarray([x[1] for x in sorted(zip(sums,range(len(sums))))])
-                filter = filter[:len(filter)/keep]
-                M = M[filter]
-                rownames = rownames[filter]
-                # Create the input tab file
-                with open(filename_clean,"wb") as g:
-                    header = '\t'.join(colnames)+'\n'
-                    g.write(header)
-                    for i,scores in enumerate(M):
-                        if any(scores):
-                            line = rownames[i] + '\t' + '\t'.join([str(x) for x in scores]) + '\n'
-                            g.write(line)
-        return filename_clean
-
-    def clean_deseq_output(self, filename):
-        """Delete all lines of *filename* with NA's everywhere, add 0.5 to zero scores
-        before recalculating the fold change, and remove row ids. Return the new file name."""
-        filename_clean = unique_filename_in()
-        with open(filename,"rb") as f:
-            with open(filename_clean,"wb") as g:
-                contrast = f.readline().split('-')
-                header = f.readline().split('\t')
-                header[2] = 'baseMean'+contrast[0].strip()
-                header[3] = 'baseMean'+contrast[1].strip()
-                g.write('-'.join(contrast))
-                g.write('\t'.join(header[:10]))
-                for line in f:
-                    line = line.split("\t")[1:11] # 1:: remove row ids
-                    if not (line[2]=="0" and line[3]=="0"):
-                        line[1] = '%.2f'%float(line[1])
-                        meanA = float(line[2]) or 0.5
-                        meanB = float(line[3]) or 0.5
-                        fold = meanB/meanA
-                        log2fold = math.log(fold,2)
-                        line[2]='%.2f'%meanA; line[3]='%.2f'%meanB; line[4]='%.2f'%fold; line[5]='%.2f'%log2fold
-                        line = '\t'.join(line)
-                        g.write(line)
-        return filename_clean
-
     @timer
     def differential_analysis(self, filename):
         """Launch an analysis of differential expression on the count
         values, and saves the output in the MiniLIMS."""
 
         @program
-        def run_deseq(data_file, options=[]):
-            """Run negbin.test.R on *data_file*."""
+        def run_DE(data_file):
+            """Run limma.R on *data_file*."""
             output_file = unique_filename_in()
-            opts = ["-o",output_file]+options
-            arguments = ["negbin.test.R", data_file]+opts
+            arguments = ["limma.R", data_file, "-s",'\t', "-o",output_file]
             return {'arguments': arguments, 'return_value': output_file}
 
-        if not program_exists('negbin.test.R'):
+        if not program_exists('limma.R'):
             self.write_debug("Skipped DE analysis: negbin.test.R not found.")
             return
         if filename is None:
@@ -425,18 +364,17 @@ class DE_Analysis(RNAseq):
             return
         else:
             self.write_log("* Differential analysis")
-            options = ['-s','tab']
             try:
-                deseqfile = run_deseq.nonblocking(self.ex, filename, options, via=self.via).wait()
+                de_file = run_DE.nonblocking(self.ex, filename, via=self.via).wait()
             except Exception as err:
-                self.write_debug("DE analysis failed: %s." % str(err))
+                self.write_debug("DE analysis failed with error: %s." % str(err))
                 return
-            if deseqfile is None:
-                self.write_debug("DE analysis failed.")
+            if de_file is None:
+                self.write_debug("DE analysis failed (see bein 'program' table).")
                 return
-            output_files = [f for f in os.listdir(self.ex.working_directory) if deseqfile in f]
-            if (deseqfile is None) or isinstance(deseqfile,Exception) or len(output_files)==0:
-                self.write_debug("Skipped differential analysis: %s." % str(deseqfile))
+            output_files = [f for f in os.listdir(self.ex.working_directory) if de_file in f]
+            if isinstance(de_file,Exception) or len(output_files)==0:
+                self.write_debug("Skipped differential analysis: `de_file` has value %s." % str(de_file))
                 return
             self.write_log("  ....done.")
             return output_files
