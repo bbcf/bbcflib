@@ -14,7 +14,7 @@ import os, sys, itertools, shutil
 from operator import itemgetter
 
 # Internal modules #
-from bbcflib.common import set_file_descr, unique_filename_in, cat, timer, program_exists
+from bbcflib.common import set_file_descr, unique_filename_in, cat, timer, program_exists, gzipfile
 from bbcflib.mapseq import add_and_index_bam, sam_to_bam
 from bbcflib.gfminer.common import map_chromosomes, duplicate, apply
 from bbcflib.track import track
@@ -272,12 +272,15 @@ class Counter(RNAseq):
             if futures[i] is None:
                 self.write_debug("Counting failed.")
                 raise ValueError("Counting failed.")
-            # Keep intermediate tables
-            #shutil.copy(tablenames[i], "../counts%d.txt"%i)
-            descr = set_file_descr(self.conditions[i]+'_'+tablenames[i]+'.txt', type='txt', step='pileup', view='admin')
-            self.ex.add(tablenames[i], description=descr)
         joined = unique_filename_in()
         rnacounter_join.nonblocking(self.ex, tablenames, stdout=joined, via=self.via).wait()
+
+        # Keep intermediate tables
+        for i,c in enumerate(self.conditions):
+            #shutil.copy(tablenames[i], "../counts%d.txt"%i)
+            descr = set_file_descr(self.conditions[i]+'_'+tablenames[i]+'.gz', type='txt', step='pileup', view='admin')
+            gzipfile(self.ex, tablenames[i])
+            self.ex.add(tablenames[i]+'.gz', description=descr)
 
         # Split genes and transcripts into separate files
         genes_filename = unique_filename_in()
