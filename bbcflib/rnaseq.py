@@ -352,7 +352,7 @@ class DE_Analysis(RNAseq):
         def run_DE(data_file):
             """Run limma.R on *data_file*."""
             output_file = unique_filename_in()
-            arguments = ["limma.R", data_file, "-s",'\t', "-o",output_file]
+            arguments = ["limma.R", data_file, "-s","$'\t'", "-o",output_file]
             return {'arguments': arguments, 'return_value': output_file}
 
         if not program_exists('limma.R'):
