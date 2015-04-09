@@ -164,6 +164,7 @@ def check(source, out=sys.stdout,
     chr_idx = s.fields.index('chr') if is_chr else None
     start_idx = s.fields.index('start') if is_start else None
     end_idx = s.fields.index('end') if is_end else None
+    flag = True
     while 1:
         n += 1
         try:
@@ -176,14 +177,14 @@ def check(source, out=sys.stdout,
             return False
         if check_noduplicates and row == lastrow and len(row)!=0:
             out.write("Check no duplicates: %s: duplicate at line %d.\n\n" % (filename,n))
-            return False
+            flag = False
         chr   = row[chr_idx] if is_chr else None
         start = row[start_idx] if is_start else 0
         end   = row[end_idx] if is_end else 0
         if check_positive and start >= end:
             row = chr+"\t"+str(start)+"\t"+str(end)
             out.write("Check positive %s: empty or reverse region at line %d:\n%s\n" % (filename,n,row))
-            return False
+            flag = False
         if check_chromosomes:
             if chr != last_chr:
                 if chr in visited_chr:
@@ -203,11 +204,12 @@ def check(source, out=sys.stdout,
                     return False
                 elif check_nooverlaps and start <= last_end:
                     out.write("Check no overlaps: %s: overlap at line %d.\n\n" % (filename,n))
-                    return False
+                    flag = False
         last_chr = chr
         last_start = start
         last_end = end
         lastrow = row
+    return flag
 
 def stats(source, out=sys.stdout, plot=True, wlimit=80, **kwargs):
     """Prints stats about the track. Draws a plot of the scores distribution (if any)
