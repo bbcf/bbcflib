@@ -170,7 +170,7 @@ def check(source, out=sys.stdout,
         try:
             row = s.next()
         except StopIteration:
-            return True
+            return flag
         except Exception as e:
             out.write("Check format: line %s of %s is not compatible with format %s. \
                        \nException raised: %s" % (n,source,t.format,e))
@@ -209,7 +209,6 @@ def check(source, out=sys.stdout,
         last_start = start
         last_end = end
         lastrow = row
-    return flag
 
 def stats(source, out=sys.stdout, plot=True, wlimit=80, **kwargs):
     """Prints stats about the track. Draws a plot of the scores distribution (if any)
