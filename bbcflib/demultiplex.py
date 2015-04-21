@@ -272,13 +272,14 @@ def demultiplex_workflow(ex, job, gl, file_path="../", via='lsf',
                 allSubFiles.extend(split_file(ex,run,n_lines=8000000))
             else:
                 allSubFiles.append(run)
-        gzipfile(ex,run)
-        ex.add(run+".gz",description=set_file_descr(group['name']+"_full_fastq.gz",groupId=gid,step='exonerate',view='debug',type="fastq"))
         (resExonerate, tot_ambiguous, tot_discarded) = parallel_exonerate(ex, allSubFiles, primersFile,
                                                                           (gid, group['name']),
                                                                           minScore=int(params['s']),
                                                                           n=int(params['n']), x=int(params['x']),
                                                                           l=int(params['l']), via=via)
+        gzipfile(ex,run)
+        ex.add(run+".gz",description=set_file_descr(group['name']+"_full_fastq.gz",
+                                                    groupId=gid,step='exonerate',view='debug',type="fastq"))
         logfile.write("Will get sequences to filter\n");logfile.flush()
         seqToFilter = getSeqToFilter(ex,primersFile)
 
