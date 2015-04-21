@@ -349,7 +349,7 @@ We can bind it into bein with::
             return int("".join(p.stdout))
         return {'arguments': ["R","--vanilla","--slave","-f","/path/to/mean.R",
                               "--args"] + [str(n) for n in numbers],
-                'return_value': mean_R}
+                'return_value': read_mean}
 
 There are two common idioms here worth noting.  First, if you have to pass multiple arguments, append it to the list of other arguments.  Second, you must make sure your arguments are strings.  If you had written ``..."--args"] + numbers`` it would have failed because the ``numbers`` contains integers, not strings.
 
