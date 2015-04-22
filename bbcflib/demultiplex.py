@@ -9,7 +9,7 @@ from bein.util import touch, add_pickle, split_file, count_lines
 from common import set_file_descr, gzipfile, unique_filename_in, cat
 from bbcflib import daflims
 from mapseq import bowtie_build, bowtie, get_fastq_files
-import os, urllib, shutil, re, sys, tarfile
+import os, urllib, shutil, sys, tarfile
 
 #MLPath="/archive/epfl/bbcf/mleleu/pipeline_vMarion/pipeline_3Cseq/vWebServer_Bein/"
 
@@ -52,7 +52,7 @@ def split_exonerate(filename,minScore,l=30,n=1):
 
     with open(filename,"r") as f:
         for s in f:
-            if not(re.search(r'vulgar',s)): continue
+            if not s[:7] == 'vulgar:': continue
             s = s.strip().split(' ')
             s_split = s[5].split('|')
             key = s_split[0]
@@ -62,7 +62,7 @@ def split_exonerate(filename,minScore,l=30,n=1):
                 _process_line(line_buffer)
                 line_buffer = []
             prev_idLine = idLine
-            if not key in correction:
+            if key not in correction:
                 if len(s_split) > 3:
                     correction[key] = len(s_split[1])-len(s_split[3])+n-1
                 else:
@@ -78,9 +78,9 @@ def split_exonerate(filename,minScore,l=30,n=1):
             if int(s[9]) < minScore:
                 files["unaligned"].write(" ".join(s)+"\n")
             elif len(seq) >= l:
-                line_buffer.append((s[9],"@"+info[0]+"_"+seq+"_"+qual+"\n"+seq+"\n+\n"+qual+"\n",s,key))
+                line_buffer.append((s[9],"@"+info[0]+"\n"+seq+"\n+\n"+qual+"\n",s,key))
             else:
-                files["discarded"].write("@"+info[0]+"_"+seq+"_"+qual+"\n"+seq+"\n+\n"+qual+"\n")
+                files["discarded"].write("@"+info[0]+"\n"+seq+"\n+\n"+qual+"\n")
 
     _process_line(line_buffer)
     for f in files.itervalues():
@@ -102,7 +102,7 @@ def _get_minscore(dbf):
     return primer_len/2
 
 def parallel_exonerate(ex, subfiles, dbFile, grp_descr,
-                       minScore=77, n=1, x=22, l=30, via="local"):
+                       minScore=77, n=1, x=22, l=30, q=True, via="local"):
     futures = [fastqToFasta.nonblocking(ex,sf,n=n,x=x,via=via) for sf in subfiles]
 
     futures2 = []
@@ -118,8 +118,8 @@ def parallel_exonerate(ex, subfiles, dbFile, grp_descr,
     for sf in futures:
         subResFile = unique_filename_in()
         faSubFiles.append(sf.wait())
-        futures2.append(exonerate.nonblocking(ex,faSubFiles[-1],dbFile,minScore=my_minscore,
-                                              via=via,stdout=subResFile,memory=6))
+        futures2.append(exonerate.nonblocking(ex, faSubFiles[-1], dbFile, minScore=my_minscore,
+                                              via=via, stdout=subResFile, memory=6))
         resExonerate.append(subResFile)
     for nf,f in enumerate(resExonerate):
         futures2[nf].wait()
@@ -137,7 +137,7 @@ def parallel_exonerate(ex, subfiles, dbFile, grp_descr,
                                       view="admin", comment="scores between %i and %i"%(my_minscore,minScore)) )
 
     # add ambiguous file only if it is not empty
-    n=count_lines(ex,all_ambiguous[0])
+    n = count_lines(ex,all_ambiguous[0])
     if n > 1:
         gzipfile(ex,cat(all_ambiguous[1:],out=all_ambiguous[0]))
         ex.add(all_ambiguous[0]+".gz",
@@ -146,7 +146,7 @@ def parallel_exonerate(ex, subfiles, dbFile, grp_descr,
                                       view="admin", comment="multiple equally good classifications") )
 
     # add ambiguous fastq file only if it is not empty
-    tot_ambiguous=count_lines(ex,all_ambiguous_fastq[0])/4
+    tot_ambiguous = count_lines(ex,all_ambiguous_fastq[0])/4
     if n > 1:
         gzipfile(ex,cat(all_ambiguous_fastq[1:],out=all_ambiguous_fastq[0]))
         ex.add(all_ambiguous_fastq[0]+".gz",
@@ -154,7 +154,7 @@ def parallel_exonerate(ex, subfiles, dbFile, grp_descr,
                                       groupId=gid,step="exonerate",type="fastq", comment="multiple equally good classifications") )
 
     # add discarded file only if it is not empty
-    tot_discarded=count_lines(ex,all_discarded[0])/4
+    tot_discarded = count_lines(ex,all_discarded[0])/4
     if n > 1:
         gzipfile(ex,cat(all_discarded[1:],out=all_discarded[0]))
         ex.add(all_discarded[0]+".gz",
@@ -183,24 +183,16 @@ def load_paramsFile(paramsfile):
     '''
     Return a dictionary with the parameters required for exonerate
     '''
-    params={}
+    params = {}
     with open(paramsfile) as f:
         for s in f:
-            if re.search('^#',s) or not(re.search('=',s)): continue
-            (k,v)=s.strip().split('=')
-            if re.search('Search the primer from base i',k):
-                params['n']=v
-            if re.search('Search the primer in the next n bps of the reads',k):
-                params['x']=v
-            if re.search('Minimum score for Exonerate',k):
-                params['s']=v
-            if re.search('Generate fastq output files',k):
-                if re.search('Y',v) or re.search('y',v):
-                    params['q']=True
-                else:
-                    params['q']=False
-            if re.search('Length of the reads to align',k):
-                params['l']=v
+            if s[0] == '#' or '=' not in s: continue
+            (k,v) = s.strip().split('=')
+            if 'Search the primer from base i' in k: params['n'] = int(v)
+            if 'Search the primer in the next n bps of the reads' in k: params['x'] = int(v)
+            if 'Minimum score for Exonerate' in k:   params['minScore'] = int(v)
+            if 'Generate fastq output files' in k:   params['q'] = ('Y' in v.upper())
+            if 'Length of the reads to align' in k:  params['l'] = int(v)
     return params
 
 def prepareReport(ex, name, tot_counts, counts_primers, counts_primers_filtered,
@@ -272,11 +264,8 @@ def demultiplex_workflow(ex, job, gl, file_path="../", via='lsf',
                 allSubFiles.extend(split_file(ex,run,n_lines=8000000))
             else:
                 allSubFiles.append(run)
-        (resExonerate, tot_ambiguous, tot_discarded) = parallel_exonerate(ex, allSubFiles, primersFile,
-                                                                          (gid, group['name']),
-                                                                          minScore=int(params['s']),
-                                                                          n=int(params['n']), x=int(params['x']),
-                                                                          l=int(params['l']), via=via)
+        (resExonerate, tot_ambiguous, tot_discarded) = parallel_exonerate( ex, allSubFiles, primersFile,
+                                                                           (gid, group['name']), via=via, **params )
         gzipfile(ex,run)
         ex.add(run+".gz",description=set_file_descr(group['name']+"_full_fastq.gz",
                                                     groupId=gid,step='exonerate',view='debug',type="fastq"))
@@ -338,13 +327,13 @@ def getSeqToFilter(ex,primersFile):
     filenames = {}
     with open(primersFile,"r") as f:
         for s in f:
-            if not(re.search(r'^>',s)): continue
+            if s[0] == '>': continue
             s_split = s.split('|')
             key = s_split[0].replace(">","")
             filenames[key] = unique_filename_in()
             with open(filenames[key],"w") as fout:
                 for i in range(4,len(s_split)):
-                    if not re.search('Exclude',s_split[i]):
+                    if 'Exclude' not in s_split[i]:
                         fout.write(">seq"+str(i)+"\n"+s_split[i].replace(".","")+"\n")
     return filenames
 
