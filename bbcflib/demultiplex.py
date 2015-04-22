@@ -78,9 +78,9 @@ def split_exonerate(filename,minScore,l=30,n=1):
             if int(s[9]) < minScore:
                 files["unaligned"].write(" ".join(s)+"\n")
             elif len(seq) >= l:
-                line_buffer.append((s[9],"@"+info[0]+"\n"+seq+"\n+\n"+qual+"\n",s,key))
+                line_buffer.append((s[9],"@"+info[0]+"\n"+seq+"\n+"+info[0]+"\n"+qual+"\n",s,key))
             else:
-                files["discarded"].write("@"+info[0]+"\n"+seq+"\n+\n"+qual+"\n")
+                files["discarded"].write("@"+info[0]+"\n"+seq+"\n+"+info[0]+"\n"+qual+"\n")
 
     _process_line(line_buffer)
     for f in files.itervalues():
