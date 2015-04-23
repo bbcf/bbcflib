@@ -213,7 +213,7 @@ def get_libForGrp(ex, group, fasta_or_assembly, new_libraries, grpId, url=None, 
                 elif re.search('Secondary',s[0],re.I):                      key='secondary'
                 elif re.search('Segment length',s[0],re.I) and len(s[1])>0: key='length'
                 elif re.search('Type',s[0],re.I) and len(s[1])>1:           key='type'
-                if key: paramslib[key]=s[1]
+                if key: paramslib[key]=s[1].strip()
         return paramslib
 
     if url is None: url = GlobalHtsUrl
