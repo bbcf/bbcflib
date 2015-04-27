@@ -197,6 +197,7 @@ try:
 
         def pileup(self,*args,**kwargs):
             self.open()
+            if 'max_depth' not in kwargs: kwargs['max_depth'] = 100000
             return self.filehandle.pileup(*args,**kwargs)
 
         def fetch(self,*args,**kwargs):
@@ -275,11 +276,11 @@ try:
             self.open()
             if strand is not None:
 ##### mask=16 (=0x10): mask reads with "is_reverse" flag set
-                pplus = self.pileup(*region,mask=16,max_depth=100000)
+                pplus = self.pileup(*region,mask=16)
                 if str(strand) in ['-','-1']:
 ##### pysam can't iterate simultaneously on 2 pileups from the same file!
                     pplus = iter([(x.pos,x.n) for x in pplus])
-            pboth = self.pileup(*region,max_depth=100000)
+            pboth = self.pileup(*region)
             chr,start,end = region
             _f = ['chr','start','end','score']
 
