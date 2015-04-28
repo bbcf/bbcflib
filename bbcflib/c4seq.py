@@ -26,9 +26,9 @@ def loadPrimers(primersFile):
         for s in f:
             s = re.sub(r'\s','',s)
             if not(s): continue
-            if not(re.search(r'^>',s)):
+            if s[0] != ">":
                 if name:
-                    primers[name]['seq']=s
+                    primers[name]['seq'] = s
                     name = ''
                 continue
             infos = s.split('|')
@@ -37,7 +37,7 @@ def loadPrimers(primersFile):
                             'baitcoord': infos[2],
                             'primary': infos[3],
                             'seq': '' }
-            if re.search('Exclude',infos[-1]):
+            if 'Exclude' in infos[-1]:
                 primerInfos['regToExclude'] = infos[-1].split('=')[1]
             primerInfos['seqToFilter'] = infos[4:-1]
             if not name in primers: primers[name] = primerInfos
@@ -132,8 +132,8 @@ def density_to_countsPerFrag( ex, file_dict, groups, assembly, regToExclude, scr
     def _parse_select_frag(stream):
         for s in stream:
             sr = s.strip().split('\t')
-            if re.search(r'IsValid',sr[2]) \
-                    and not(re.search(r'_and_',sr[8]) or re.search(r'BothRepeats',sr[8]) or re.search(r'notValid',sr[8])):
+            if 'IsValid' in sr[2] and \
+               '_and_' not in sr[8] and 'BothRepeats' not in sr[8] and 'notValid' not in sr[8]:
                 patt = re.search(r'([^:]+):(\d+)-(\d+)',sr[1])
                 if patt:
                     coord = patt.groups()
@@ -261,9 +261,9 @@ def c4seq_workflow( ex, job, primers_dict, assembly,
             with open(logFile) as f:
                 for s in f:
                     s = s.strip()
-                    if re.search('####resfiles####',s):
+                    if '####resfiles####' in s:
                         start = True
-                    elif start and not re.search("RData",s):
+                    elif start and "RData" not in s:
                         resFiles.append(s)
                         res_tar.add(s)
             res_tar.close()
@@ -328,7 +328,7 @@ def c4seq_workflow( ex, job, primers_dict, assembly,
         ex.add(tarFile, description=set_file_descr(fname,
                                                    groupId=gid,step=step,type="tgz"))
         for s in resfiles:
-            if re.search("bedGraph$",s):
+            if s[-8:] == "bedGraph":
                 gzipfile(ex,s)
                 s += ".gz"
                 ex.add( s, description=set_file_descr( s, groupId=gid,step=step,type="bedGraph",ucsc="1",gdv="1"))
