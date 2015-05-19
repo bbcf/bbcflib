@@ -102,7 +102,7 @@ def _get_minscore(dbf):
     return primer_len/2
 
 def parallel_exonerate(ex, subfiles, dbFile, grp_descr,
-                       minScore=77, n=1, x=22, l=30, q=True, via="local"):
+                       minScore=77, n=1, x=22, l=30, via="local"):
     futures = [fastqToFasta.nonblocking(ex,sf,n=n,x=x,via=via) for sf in subfiles]
 
     futures2 = []
@@ -327,7 +327,7 @@ def getSeqToFilter(ex,primersFile):
     filenames = {}
     with open(primersFile,"r") as f:
         for s in f:
-            if s[0] == '>': continue
+            if s[0] != '>': continue
             s_split = s.split('|')
             key = s_split[0].replace(">","")
             filenames[key] = unique_filename_in()
