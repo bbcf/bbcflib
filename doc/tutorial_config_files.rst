@@ -212,7 +212,7 @@ In the mapping module, the following options are valid, with the following defau
 
 See :py:func:`bbcflib.mapseq.map_reads` for the arguments that can be passed via `map_args`, for example, to use custom bowtie options, the number of hits allowed for each read and the expected enrichement ratio::
 
-    map_args={"maxhits":1,"antibody_enrichment":100,"bwt_args":["-5","10","-n","1"]}
+    map_args={"maxhits":1,"antibody_enrichment":100,"bwt_args":["-5","10"]}
 
 To use "local" mapping mode with bowtie2::
 

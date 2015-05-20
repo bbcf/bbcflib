@@ -8,7 +8,7 @@ Provide Reads
 
 Reads files can be specified in several different ways. First they can be obtained as the output of a  `demultiplexing job <http://htsstation.epfl.ch/demultiplexing/>`_ by specifiying the corresponding key.
 
-For non-demultiplexed jobs, the original `Fastq <http://en.wikipedia.org/wiki/FASTQ_format>`_ file must be provided either as a reference to the sequencing facility LIMS, by a URL or a file path (on the server-side filesystems).
+For non-demultiplexed jobs, the original `Fastq <http://en.wikipedia.org/wiki/FASTQ_format>`_ file must be provided either as a reference to the sequencing facility LIMS, or by a URL (which can be a complete file path on the server-side filesystems).
 
 .. image:: images/mapseq_newjob.png
 
