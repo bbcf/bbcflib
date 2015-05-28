@@ -132,8 +132,7 @@ def density_to_countsPerFrag( ex, file_dict, groups, assembly, regToExclude, scr
     def _parse_select_frag(stream):
         for s in stream:
             sr = s.strip().split('\t')
-            if 'IsValid' in sr[2] and \
-               '_and_' not in sr[8] and 'BothRepeats' not in sr[8] and 'notValid' not in sr[8]:
+            if 'IsValid' in sr[2] and not any([w in sr[8] for w in ['_and_','BothRepeats','notValid']]):
                 patt = re.search(r'([^:]+):(\d+)-(\d+)',sr[1])
                 if patt:
                     coord = patt.groups()

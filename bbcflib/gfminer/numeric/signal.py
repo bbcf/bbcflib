@@ -74,12 +74,15 @@ def correlation(trackList, regions, limits=(-1000,1000), with_acf=False):
         _reg = []
     else:
         x = [array([s[0] for s in unroll(t,regions)]) for t in trackList]
-    x = [vec_reduce(t) for t in x]
     if limits[1]-limits[0] > 2*len(x[0]):
         limits = (-len(x[0])+1,len(x[0])-1)
-    N = len(x[0])+limits[1]-limits[0]-1
-    ##### convert to nearest power of 2, fft gets orders of magnitude faster...
-    N = 2**int(log(2+N,2)+.5)
+    N0 = len(x[0])+limits[1]-limits[0]-1
+    ##### convert to a power of 2, fft gets orders of magnitude faster...
+    N = 2**int(log(max(1,N0/200.0),2)+8.5)  #2**int(log(2+N0,2)+.5)
+    if N < N0:
+        x = [vec_reduce(t[:N]) for t in x]
+    else:
+        x = [vec_reduce(t) for t in x]
     def _corr(x1,x2,N):
         corr = ifft(conjugate(fft(x1,N))*fft(x2,N))/len(x1)
         corr = ncat((corr[N+limits[0]:], corr[:limits[1]+1]))
