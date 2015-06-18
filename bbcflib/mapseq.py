@@ -571,7 +571,7 @@ def add_bowtie_index(execution, files, description="",
     return index
 
 @program
-def bowtie(index, reads, args="-Sra"):
+def bowtie(index, reads, args="-Sra", as_single_end=False):
     """Run bowtie with *args* to map *reads* against *index*.
     See `<http://bowtie-bio.sourceforge.net/index.shtml>`_.
 
@@ -598,13 +598,16 @@ def bowtie(index, reads, args="-Sra"):
         else:
             reads1 = reads[0]
             reads2 = reads[1]
-        reads = "-1 "+reads1+" -2 "+reads2
-        if not("-X" in options): options += ["-X","800"]
+        if as_single_end:
+            reads = reads1+","+reads2
+        else:
+            reads = "-1 "+reads1+" -2 "+reads2
+            if not("-X" in options): options += ["-X","800"]
     return {"arguments": ["bowtie"]+options+[index, reads, sam_filename],
             "return_value": sam_filename}
 
 @program
-def bowtie2(index, reads, args=''):
+def bowtie2(index, reads, args='', as_single_end=False):
     """Run `bowtie2` with *args* to map *reads* against *index*.
     Returns the name of bowtie's output file.
     See `<http://bowtie-bio.sourceforge.net/bowtie2/index.shtml>`_.
@@ -614,6 +617,7 @@ def bowtie2(index, reads, args=''):
         if paired, a tuple `(path_to_R1, path_to_R2)`.
     :param args: (str or list) command line arguments to bowtie - either a string ("-k 20 ...")
         or a list of strings (["-k","20",...]).
+    :param as_single_end: (bool) ignore the paired-end nature of the fastq files (map as independent reads).
     """
     index = re.sub(r'([/_])bowtie/',r'\1bowtie2/',index)
     sam_filename = unique_filename_in()
@@ -637,8 +641,11 @@ def bowtie2(index, reads, args=''):
         else:
             reads1 = reads[0]
             reads2 = reads[1]
-        options += ["-1", reads1, "-2", reads2]
-        if not("-X" in options): options += ["-X","800"]
+        if as_single_end:
+            options += ["-U",reads1+","+reads2]
+        else:
+            options += ["-1", reads1, "-2", reads2]
+            if not("-X" in options): options += ["-X","800"]
     return {"arguments": ["bowtie2"]+options, "return_value": sam_filename}
 
 @program
@@ -660,7 +667,7 @@ def bowtie_build(files, index=None, bowtie2=False):
 
 
 def parallel_bowtie( ex, index, reads, unmapped=None, n_lines=16000000, bowtie_args=[],
-                     add_nh_flags=False, bowtie_2=False, via='local' ):
+                     add_nh_flags=False, bowtie_2=False, as_single_end=False, via='local' ):
     """Run bowtie in parallel on pieces of *reads*.
 
     Splits *reads* into chunks *n_lines* long, then runs `bowtie` with
@@ -691,10 +698,12 @@ def parallel_bowtie( ex, index, reads, unmapped=None, n_lines=16000000, bowtie_a
     if unmapped:
         futures = [btcall(ex, index, sf,
                           args=bowtie_args+[un_cmd,unmapped+"_"+str(n),"-p","5"],
+                          as_single_end=as_single_end,
                           via=via, memory=mlim, threads=5)
                    for n,sf in enumerate(subfiles)]
     else:
         futures = [btcall(ex, index, sf, args=bowtie_args+["-p","5"],
+                          as_single_end=as_single_end,
                           via=via, memory=mlim, threads=5) for sf in subfiles]
     samfiles = [f.wait() for f in futures]
     futures = []
@@ -856,7 +865,7 @@ def pprint_bamstats(sample_stats, textfile=None):
 def map_reads( ex, fastq_file, chromosomes, bowtie_index,
                bowtie_2=False, maxhits=5, antibody_enrichment=50,
                keep_unmapped=True, remove_pcr_duplicates=True, bwt_args=None,
-               via='lsf' ):
+               as_single_end=False, via='lsf' ):
     """Runs ``bowtie`` in parallel over lsf for the `fastq_file` input.
     Returns the full bamfile, its filtered version (see 'remove_duplicate_reads')
     and the mapping statistics dictionary (see 'bamstats').
@@ -917,7 +926,8 @@ def map_reads( ex, fastq_file, chromosomes, bowtie_index,
         n_lines = 4*(linecnt/40+1)#has to be a multiple of 4
         sorted_bam = parallel_bowtie( ex, bowtie_index, fastq_file, unmapped=unmapped,
                                       n_lines=n_lines, bowtie_args=bwtarg,
-                                      add_nh_flags=True, bowtie_2=bowtie_2, via=via )
+                                      add_nh_flags=True, bowtie_2=bowtie_2,
+                                      as_single_end=as_single_end, via=via )
     else:
         bwtarg += [un_cmd, unmapped]
         future = btcall( ex, bowtie_index, fastq_file, bwtarg+["-p","5"], via=via, memory=mlim, threads=5 )
@@ -1288,6 +1298,8 @@ def mapseq_workflow(ex, job, assembly, map_args, gl, bowtie2=False, via="local",
                     logfile=sys.stdout, debugfile=sys.stderr):
     logfile.write("Map reads.\n");logfile.flush()
     map_args.setdefault("via",via)
+    se = job.options.get('as_single_end','0').lower() in ['1','true','t']
+    map_args.setdefault("as_single_end",se)
     mapped_files = map_groups( ex, job, assembly, map_args, bowtie2, logfile, debugfile )
     logfile.write("Make stats:\n");logfile.flush()
     logfile.write("GroupId_GroupName:\t")
