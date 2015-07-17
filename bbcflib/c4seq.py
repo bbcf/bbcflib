@@ -61,7 +61,7 @@ def BRICKSToFrag( BRICKSfile, fragFile, resfile, script_path='' ):
     This function calls BRICKS2Frags.sh (which return for each fragment the -log10(pval) of the associated BRICKS)
     For now it only concerns fragments located on the viewpoint chromosome as the domainogram is not run on 'trans' fragments
     '''
-    args = [os.path.join(script_path,'BRICKS2Frags.sh'), BRICKSfile, fragFile, resfile]
+    args = ['BRICKS2Frags.sh', BRICKSfile, fragFile, resfile]
     print(args)
     return {'arguments': args, 'return_value': None}
 
