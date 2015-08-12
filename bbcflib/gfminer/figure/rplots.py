@@ -459,7 +459,7 @@ def genomeGraph(chrlist,SP=[],SM=[],F=[],options={},output=None,format='pdf',new
 #### chrlist
     robjects.r("chrlist=list("+",".join(['"%s"=%i'%(c,l) for c,l in chrlist])+")")
     robjects.r.assign('yscale_chrom',numpy2ri.numpy2ri(array(yscale.values())))
-    robjects.r.assign('binsize',my2ri(binsize))
+    robjects.r.assign('binsize',binsize)
     robjects.r("""
 n = length(chrlist)
 xscale = max(as.numeric(chrlist))
