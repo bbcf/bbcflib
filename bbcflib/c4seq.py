@@ -208,8 +208,6 @@ def c4seq_workflow( ex, job, primers_dict, assembly,
     * 2. calculate the count per fragment for each denstiy file with gfminer:score_by_feature to calculate)
     '''
 
-    print "*********** local version bbcflib ************************"
-
     mapseq_files = job.files
 ### outputs
     processed = {'lib': {}, 'density': {}, '4cseq': {}}
