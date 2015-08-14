@@ -45,6 +45,18 @@ def loadPrimers(primersFile):
             if not name in primers: primers[name] = primerInfos
     return primers
 
+def removeNA( fileToClean ):
+    ''' remove NA present in the 4th column of a file '''
+    ''' mainly used with bedgraph'''
+    fileNoNA = unique_filename_in()
+    resfile = open(fileNoNA, 'w')
+    with open( fileToClean ) as f:
+        for s in f:
+            if s[0:5] == 'track': resfile.write(s)
+            if s[0:5] != 'track' and s.strip().split('\t')[3] != "NA": resfile.write(s)
+    resfile.close()
+    return fileNoNA
+
 @program
 def segToFrag( countsPerFragFile, regToExclude="", script_path='' ):
     '''
@@ -558,12 +570,18 @@ def c4seq_workflow( ex, job, primers_dict, assembly,
                                    selection={'score':(0.01,sys.maxint)}))
             trwig.close()
             ex.add( bwig, set_file_descr(fname+".bw",groupId=gid,step=step,type="bigWig",ucsc='1'))
-        ## add bedGraph segToFrags before normalisation
+        ## add segToFrags before normalisation
+        futures_merged_raw[gid].wait()
+        trbedgraph = track(removeNA(processed['4cseq']['countsPerFrag_grp'][gid]),format='bedgraph')
+        bwig = unique_filename_in()+".bw"
+        trwig = track(bwig,chrmeta=assembly.chrmeta)
+        trwig.write(trbedgraph.read(fields=['chr','start','end','score'],
+                               selection={'score':(0.01,sys.maxint)}))
+        trwig.close()
         fname = "segToFrag_"+job.groups[gid]['name']
-        gzipfile(ex,processed['4cseq']['countsPerFrag_grp'][gid])
-        ex.add( processed['4cseq']['countsPerFrag_grp'][gid]+".gz", description=set_file_descr( fname+"_all.bedGraph.gz",
-                                                             groupId=gid,step=step,type="bedGraph",
-                                                             comment="all informative frags - null included" ))
+        ex.add( bwig, description=set_file_descr( fname+".bw",
+                                                             groupId=gid,step=step,type="bigWig",
+                                                             comment="segToFrag file before normalisation" ))
 
     step = "norm_counts_per_frags"  # after new normalisation process, combined replicates
     for gid, resfile in processed['4cseq']['norm_grp'].iteritems():
