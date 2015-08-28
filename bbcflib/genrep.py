@@ -32,7 +32,7 @@ import warnings
 
 from bbcflib.common import normalize_url, unique_filename_in, fasta_length, fasta_composition, sam_faidx
 from bbcflib.track import track, ensembl_to_ucsc, FeatureStream
-from bbcflib.gfminer.common import shuffled as track_shuffle, split_field, map_chromosomes
+from bbcflib.gfminer.common import shuffled as track_shuffle, split_field, map_chromosomes, reorder
 
 # Constants #
 default_url = 'http://bbcftools.epfl.ch/genrep/'
@@ -676,9 +676,11 @@ class Assembly(object):
         xsplit = split_field(ensembl_to_ucsc(gtf.read(fields=gtf_read_fields)),
                              outfields=std_outfields+new_fields, infield='attributes',
                              header_split=' ', strip_input=True)
+        if 'gene_biotype' in new_fields:
+            xsplit = reorder(xsplit,['chr','gene_biotype']+gtf_read_fields[2:])
         outf = track(sql_path, fields=sql_fields+new_fields, **sql_params)
         outf.write(FeatureStream(_fix_exon_id(
-                    map_chromosomes(xsplit,self.chromosomes),exon_count),
+            map_chromosomes(xsplit,self.chromosomes),exon_count),
                                  sql_fields[:7]+xsplit.fields[7:]))
         outf.close()
         return os.path.abspath(sql_path)
