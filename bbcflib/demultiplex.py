@@ -237,7 +237,7 @@ def createReport(numbersFile,reportFile,script_path='./'):
 
 def demultiplex_workflow(ex, job, gl, file_path="../", via='lsf',
                          logfile=sys.stdout, debugfile=sys.stderr):
-    script_path=gl['script_path']
+    script_path = gl['script_path']
     file_names = {}
     job_groups=job.groups
     resFiles={}
@@ -245,11 +245,11 @@ def demultiplex_workflow(ex, job, gl, file_path="../", via='lsf',
         file_names[gid] = {}
 
         primersFilename = 'group_' + group['name'] + "_barcode_file.fa"
-        primersFile = os.path.join(file_path,primersFilename)
+        primersFile = group.get("primersfile",os.path.join(file_path,primersFilename))
         ex.add(primersFile,description=set_file_descr(primersFilename,groupId=gid,step="init",type="fa"))
 
         paramsFilename = 'group_' + group['name'] + "_param_file.txt"
-        paramsFile = os.path.join(file_path,paramsFilename)
+        paramsFile = group.get("paramsfile",os.path.join(file_path,paramsFilename))
         ex.add(paramsFile,description=set_file_descr(paramsFilename,groupId=gid,step="init",type="txt"))
         params = load_paramsFile(paramsFile)
 
