@@ -48,7 +48,7 @@ def split_exonerate(filename,minScore,l=30,n=1):
             for buf in sorted(line_buffer):
                 files["ambiguous"].write(" ".join(buf[2])+"\n")
             # add the corresponding ambiguous read to the ambiguous_fastq file (only once)
-            files["ambiguous_fastq"].write(" ".buf[1]+"\n")
+            files["ambiguous_fastq"].write(" ".join(buf[1])+"\n")
 
     with open(filename,"r") as f:
         for s in f:
