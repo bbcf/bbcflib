@@ -62,28 +62,28 @@ def split_exonerate(filename,minScore,primersDict,l=30,n=1):
                 _process_line(line_buffer)
                 line_buffer = []
             prev_idLine = idLine
-					
-			closestBarcode = key
+
+            closestBarcode = key
             bcDelimiter = ':' ## '_' might be replaced by ';' or ':'
             if key.split(bcDelimiter)[0] in primersDict: ## has barcode
                 pr = key.split(bcDelimiter)[0]
                 closestBarcode = getClosestBarcode(info[1],primersDict[pr]) ## replace key with the closest barcode
-			
+
             if key not in correction:
                 if len(s_split) > 3:
                     correction[key] = len(s_split[1])-len(s_split[3])+n-1
                 else:
                     correction[key] = len(s_split[1])+n-1
-					
-				if len(key.split(bcDelimiter)) > 1:
-                    correction[key] = correction[key] - 1 ## remove the bcDelimiter from the correction	
-					
+
+                if len(key.split(bcDelimiter)) > 1:
+                    correction[key] = correction[key] - 1 ## remove the bcDelimiter from the correction
+
                 filenames[key] = unique_filename_in()
                 files[key] = open(filenames[key],"w")
             k = int(s[3])-int(s[7])+correction[key]
-			if len(key.split(bcDelimiter)) > 1:
+            if len(key.split(bcDelimiter)) > 1:
                 k = k - len(primersDict[key.split(bcDelimiter)[0]][key])
-				
+
             l_linename = len(info[0])
             l_seq = len(info[1])
             full_qual = s[1][int(l_linename)+int(l_seq)+2:int(l_linename)+2*int(l_seq)+2]
@@ -190,8 +190,8 @@ def parallel_exonerate(ex, subfiles, dbFile, grp_descr,
     all_discarded = []
     gid, grp_name = grp_descr
     my_minscore = _get_minscore(dbFile)
-	primersDict=get_primersList(dbFile)
-	
+    primersDict=get_primersList(dbFile)
+
     for sf in futures:
         subResFile = unique_filename_in()
         faSubFiles.append(sf.wait())
