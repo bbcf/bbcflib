@@ -19,7 +19,7 @@ def fastqToFasta(fqFile,n=1,x=22,output=None):
     return {'arguments': ["fastqToFasta.py","-i",fqFile,"-o",output,"-n",str(n),"-x",str(x)],
             'return_value': output}
 
-def split_exonerate(filename,minScore,primersDict,l=30,n=1):
+def split_exonerate(filename,minScore,l=30,n=1):
     correction = {}
     files = {}
     filenames = {}
@@ -62,28 +62,14 @@ def split_exonerate(filename,minScore,primersDict,l=30,n=1):
                 _process_line(line_buffer)
                 line_buffer = []
             prev_idLine = idLine
-
-            closestBarcode = key
-            bcDelimiter = '_' ## '_' might be replaced by ';' or ':'
-            if key.split(bcDelimiter)[0] in primersDict: ## has barcode
-                pr = key.split(bcDelimiter)[0]
-                closestBarcode = getClosestBarcode(info[1],primersDict[pr]) ## replace key with the closest barcode
-
             if key not in correction:
                 if len(s_split) > 3:
                     correction[key] = len(s_split[1])-len(s_split[3])+n-1
                 else:
                     correction[key] = len(s_split[1])+n-1
-
-                if len(key.split(bcDelimiter)) > 1:
-                    correction[key] = correction[key] - 1 ## remove the bcDelimiter from the correction
-
                 filenames[key] = unique_filename_in()
                 files[key] = open(filenames[key],"w")
             k = int(s[3])-int(s[7])+correction[key]
-            if len(key.split(bcDelimiter)) > 1:
-                k = k - len(primersDict[key.split(bcDelimiter)[0]][key])
-
             l_linename = len(info[0])
             l_seq = len(info[1])
             full_qual = s[1][int(l_linename)+int(l_seq)+2:int(l_linename)+2*int(l_seq)+2]
@@ -92,8 +78,7 @@ def split_exonerate(filename,minScore,primersDict,l=30,n=1):
             if int(s[9]) < minScore:
                 files["unaligned"].write(" ".join(s)+"\n")
             elif len(seq) >= l:
-                if key == closestBarcode or closestBarcode == "amb": # if not => not the primer_barcode to which the read comes from + add if ambiguous barcode
-                    line_buffer.append((s[9],"@"+info[0]+"\n"+seq+"***"+info[1]+"\n+\n"+qual+"\n",s,key))
+                line_buffer.append((s[9],"@"+info[0]+"\n"+seq+"\n+\n"+qual+"\n",s,key))
             else:
                 files["discarded"].write("@"+info[0]+"\n"+seq+"\n+\n"+qual+"\n")
 
@@ -116,66 +101,6 @@ def _get_minscore(dbf):
 ## max score = len*5, penalty for len/2 mismatches = -9*len/2 => score = len/2
     return primer_len/2
 
-
-def get_primersList(primersfile):
-    '''
-    Return a dictionary with all primers with at least one barcode occurrence
-    '''
-    primers = {}
-    bcDelimiter = '_' ## '_' might be replaced by ';' or ':'
-    with open(primersfile) as f:
-        for s in f:
-            if s[0] == '>':
-                s = s.replace('>','')
-                s_split = s.strip().split('|')
-                key = s_split[0]
-                key_split = key.split(bcDelimiter)
-                pr = key_split[0]
-                if len(key_split) > 1: ## add only barcoded primers
-                    bcSeq = s_split[1].split(bcDelimiter)[0]
-                    if pr not in primers:
-                        primers[pr] = {}
-                    primers[pr][key] = bcSeq
-
-    with open(primersfile) as f:
-        for s in f:
-            if s[0] == '>':
-                s = s.replace('>','')
-                s_split = s.strip().split('|')
-                key = s_split[0]
-                key_split = key.split(bcDelimiter) ## '_' might be replaced by ';' or ':'
-                pr = key_split[0] if len(key_split) > 1 else key
-                if len(key_split) < 2 and pr in primers: ## not barcoded but other occurrences of the same primer are.
-                    bcExistSeq = primers[pr].itervalues().next()
-                    bcSeq = s_split[1][:len(bcExistSeq)]
-                    primers[pr][key]=bcSeq
-
-    return primers
-
-def countident(seq1,seq2):
-    """Count the common letters in both sequencies
-    """
-    count = 0
-    for i in range(min(len(seq1),len(seq2))):
-        if seq1[i]==seq2[i]: count += 1
-
-    return(count)
-
-def getClosestBarcode(seq, bcList):
-    max = 0
-    closestBc = ''
-    for bc,bcSeq in bcList.items():
-        curIdent=countident(seq, bcSeq)
-        if curIdent > 1: ## define a minimum identity value to avoid "wrong" sequences (identity score too low) to be associated to one barcode
-            if curIdent == max : ## ambiguous
-                closestBc = "amb"
-            if curIdent > max :
-                closestBc = bc
-                max = curIdent
-
-    return closestBc
-
-
 def parallel_exonerate(ex, subfiles, dbFile, grp_descr,
                        minScore=77, n=1, x=22, l=30, via="local"):
     futures = [fastqToFasta.nonblocking(ex,sf,n=n,x=x,via=via) for sf in subfiles]
@@ -190,8 +115,6 @@ def parallel_exonerate(ex, subfiles, dbFile, grp_descr,
     all_discarded = []
     gid, grp_name = grp_descr
     my_minscore = _get_minscore(dbFile)
-    primersDict=get_primersList(dbFile)
-
     for sf in futures:
         subResFile = unique_filename_in()
         faSubFiles.append(sf.wait())
@@ -200,7 +123,7 @@ def parallel_exonerate(ex, subfiles, dbFile, grp_descr,
         resExonerate.append(subResFile)
     for nf,f in enumerate(resExonerate):
         futures2[nf].wait()
-        (resSplitExonerate,alignments) = split_exonerate(f,minScore, primersDict, l=l, n=n)
+        (resSplitExonerate,alignments) = split_exonerate(f,minScore,l=l,n=n)
         all_unaligned.append(alignments["unaligned"])
         all_ambiguous.append(alignments["ambiguous"])
         all_ambiguous_fastq.append(alignments["ambiguous_fastq"])
