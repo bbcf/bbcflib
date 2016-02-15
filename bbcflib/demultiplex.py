@@ -64,7 +64,7 @@ def split_exonerate(filename,minScore,primersDict,l=30,n=1):
             prev_idLine = idLine
 
             closestBarcode = key
-            bcDelimiter = ':' ## '_' might be replaced by ';' or ':'
+            bcDelimiter = '_' ## '_' might be replaced by ';' or ':'
             if key.split(bcDelimiter)[0] in primersDict: ## has barcode
                 pr = key.split(bcDelimiter)[0]
                 closestBarcode = getClosestBarcode(info[1],primersDict[pr]) ## replace key with the closest barcode
@@ -122,7 +122,7 @@ def get_primersList(primersfile):
     Return a dictionary with all primers with at least one barcode occurrence
     '''
     primers = {}
-    bcDelimiter = ':' ## '_' might be replaced by ';' or ':'
+    bcDelimiter = '_' ## '_' might be replaced by ';' or ':'
     with open(primersfile) as f:
         for s in f:
             if s[0] == '>':
