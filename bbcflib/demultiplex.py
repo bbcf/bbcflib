@@ -11,7 +11,8 @@ from bbcflib import daflims
 from mapseq import bowtie_build, bowtie, get_fastq_files
 import os, urllib, shutil, sys, tarfile
 
-#MLPath="/archive/epfl/bbcf/mleleu/pipeline_vMarion/pipeline_3Cseq/vWebServer_Bein/"
+bcDelimiter = ':' ## '_' might be replaced by ';' or ':'
+
 
 @program
 def fastqToFasta(fqFile,n=1,x=22,output=None):
@@ -19,7 +20,8 @@ def fastqToFasta(fqFile,n=1,x=22,output=None):
     return {'arguments': ["fastqToFasta.py","-i",fqFile,"-o",output,"-n",str(n),"-x",str(x)],
             'return_value': output}
 
-def split_exonerate(filename,minScore,l=30,n=1):
+def split_exonerate(filename,primersDict,minScore,l=30,n=1):
+
     correction = {}
     files = {}
     filenames = {}
@@ -48,7 +50,8 @@ def split_exonerate(filename,minScore,l=30,n=1):
             for buf in sorted(line_buffer):
                 files["ambiguous"].write(" ".join(buf[2])+"\n")
             # add the corresponding ambiguous read to the ambiguous_fastq file (only once)
-            files["ambiguous_fastq"].write(" ".join(buf[1])+"\n")
+            #files["ambiguous_fastq"].write(" ".join(buf[1])+"\n")
+            files["ambiguous_fastq"].write(buf[1])
 
     with open(filename,"r") as f:
         for s in f:
@@ -62,14 +65,28 @@ def split_exonerate(filename,minScore,l=30,n=1):
                 _process_line(line_buffer)
                 line_buffer = []
             prev_idLine = idLine
+
+            closestBarcode = key
+            global bcDelimiter
+            if key.split(bcDelimiter)[0] in primersDict: ## has barcode
+                pr = key.split(bcDelimiter)[0]
+                closestBarcode = getClosestBarcode(info[1],primersDict[pr]) ## replace key with the closest barcode
+
             if key not in correction:
                 if len(s_split) > 3:
                     correction[key] = len(s_split[1])-len(s_split[3])+n-1
                 else:
                     correction[key] = len(s_split[1])+n-1
+
+                if len(key.split(bcDelimiter)) > 1:
+                    correction[key] = correction[key] - 1 ## remove the bcDelimiter from the correction
+
                 filenames[key] = unique_filename_in()
                 files[key] = open(filenames[key],"w")
             k = int(s[3])-int(s[7])+correction[key]
+            if len(key.split(bcDelimiter)) > 1:
+                k = k - len(primersDict[key.split(bcDelimiter)[0]][key])
+
             l_linename = len(info[0])
             l_seq = len(info[1])
             full_qual = s[1][int(l_linename)+int(l_seq)+2:int(l_linename)+2*int(l_seq)+2]
@@ -78,7 +95,9 @@ def split_exonerate(filename,minScore,l=30,n=1):
             if int(s[9]) < minScore:
                 files["unaligned"].write(" ".join(s)+"\n")
             elif len(seq) >= l:
-                line_buffer.append((s[9],"@"+info[0]+"\n"+seq+"\n+\n"+qual+"\n",s,key))
+                if key == closestBarcode or closestBarcode == "amb": # if not => not the primer_barcode to which the read comes from + add if ambiguous barcode
+                    #line_buffer.append((s[9],"@"+info[0]+"\n"+seq+"***"+info[1]+"\n+\n"+qual+"\n",s,key))
+                    line_buffer.append((s[9],"@"+info[0]+"\n"+seq+"\n+\n"+qual+"\n",s,key))
             else:
                 files["discarded"].write("@"+info[0]+"\n"+seq+"\n+\n"+qual+"\n")
 
@@ -101,6 +120,66 @@ def _get_minscore(dbf):
 ## max score = len*5, penalty for len/2 mismatches = -9*len/2 => score = len/2
     return primer_len/2
 
+
+def get_primersList(primersfile):
+    '''
+    Return a dictionary with all primers with at least one barcode occurrence
+    '''
+    primers = {}
+    global bcDelimiter
+    with open(primersfile) as f:
+        for s in f:
+            if s[0] == '>':
+                s = s.replace('>','')
+                s_split = s.strip().split('|')
+                key = s_split[0]
+                key_split = key.split(bcDelimiter)
+                pr = key_split[0]
+                if len(key_split) > 1: ## add only barcoded primers
+                    bcSeq = s_split[1].split(bcDelimiter)[0]
+                    if pr not in primers:
+                        primers[pr] = {}
+                    primers[pr][key] = bcSeq
+
+    with open(primersfile) as f:
+        for s in f:
+            if s[0] == '>':
+                s = s.replace('>','')
+                s_split = s.strip().split('|')
+                key = s_split[0]
+                key_split = key.split(bcDelimiter) ## '_' might be replaced by ';' or ':'
+                pr = key_split[0] if len(key_split) > 1 else key
+                if len(key_split) < 2 and pr in primers: ## not barcoded but other occurrences of the same primer are.
+                    bcExistSeq = primers[pr].itervalues().next()
+                    bcSeq = s_split[1][:len(bcExistSeq)]
+                    primers[pr][key]=bcSeq
+
+    return primers
+
+def countident(seq1,seq2):
+    """Count the common letters in both sequencies
+    """
+    count = 0
+    for i in range(min(len(seq1),len(seq2))):
+        if seq1[i]==seq2[i]: count += 1
+
+    return(count)
+
+def getClosestBarcode(seq, bcList):
+    max = 0
+    closestBc = ''
+    for bc,bcSeq in bcList.items():
+        curIdent=countident(seq, bcSeq)
+        if curIdent > 1: ## define a minimum identity value to avoid "wrong" sequences (identity score too low) to be associated to one barcode
+            if curIdent == max : ## ambiguous
+                closestBc = "amb"
+            if curIdent > max :
+                closestBc = bc
+                max = curIdent
+
+    return closestBc
+
+
 def parallel_exonerate(ex, subfiles, dbFile, grp_descr,
                        minScore=77, n=1, x=22, l=30, via="local"):
     futures = [fastqToFasta.nonblocking(ex,sf,n=n,x=x,via=via) for sf in subfiles]
@@ -115,6 +194,8 @@ def parallel_exonerate(ex, subfiles, dbFile, grp_descr,
     all_discarded = []
     gid, grp_name = grp_descr
     my_minscore = _get_minscore(dbFile)
+    primersDict=get_primersList(dbFile)
+
     for sf in futures:
         subResFile = unique_filename_in()
         faSubFiles.append(sf.wait())
@@ -123,7 +204,7 @@ def parallel_exonerate(ex, subfiles, dbFile, grp_descr,
         resExonerate.append(subResFile)
     for nf,f in enumerate(resExonerate):
         futures2[nf].wait()
-        (resSplitExonerate,alignments) = split_exonerate(f,minScore,l=l,n=n)
+        (resSplitExonerate,alignments) = split_exonerate(f, primersDict, minScore, l=l, n=n)
         all_unaligned.append(alignments["unaligned"])
         all_ambiguous.append(alignments["ambiguous"])
         all_ambiguous_fastq.append(alignments["ambiguous_fastq"])
@@ -279,20 +360,21 @@ def demultiplex_workflow(ex, job, gl, file_path="../", via='lsf',
 
         counts_primers = {}
         counts_primers_filtered = {}
+        global bcDelimiter
         if len(filteredFastq):
             archive = unique_filename_in()
             tgz = tarfile.open(archive, "w:gz")
         for k,f in resExonerate.iteritems():
             counts_primers[k] = count_lines(ex,f)/4
             if k in filteredFastq:
-                file_names[gid][k] = group['name']+"_"+k+"_filtered"
+                file_names[gid][k] = group['name']+"_"+k.replace(bcDelimiter,"_")+"_filtered"
                 ex.add(filteredFastq[k],description=set_file_descr(file_names[gid][k]+".fastq",
                                                                    groupId=gid,step="final",
                                                                    type="fastq"))
                 counts_primers_filtered[k] = count_lines(ex,filteredFastq[k])/4
-                tgz.add( f, arcname=group['name']+"_"+k+".fastq" )
+                tgz.add( f, arcname=group['name']+"_"+k.replace(bcDelimiter,"_")+".fastq" )
             else:
-                file_names[gid][k] = group['name']+"_"+k
+                file_names[gid][k] = group['name']+"_"+k.replace(bcDelimiter,"_")
                 ex.add(f,description=set_file_descr(file_names[gid][k]+".fastq",
                                                     groupId=gid,step="final",
                                                     type="fastq"))
@@ -339,12 +421,12 @@ def getSeqToFilter(ex,primersFile):
 
 
 def filterSeq(ex,fastqFiles,seqToFilter,gid,grp_name,via='lsf'):
-#seqToFilter=`awk -v primer=${curPrimer} '{if($0 ~ /^>/){n=split($0,a,"|");curPrimer=a[1];gsub(">","",curPrimer); if(curPrimer == primer){seqToFilter="";for(i=5;i<n;i++){if(a[i] !~ /Exclude=/){seqToFilter=seqToFilter""a[i]","}} if(a[n] !~ /Exclude=/){seqToFilter=seqToFilter""a[n]}else{gsub(/,$/,"",seqToFilter)};print seqToFilter}}}' ${primersFile}`
     indexSeqToFilter = {}
     indexFiles = {}
+    global bcDelimiter
     for k,f in seqToFilter.iteritems():
         if os.path.getsize(f) == 0: continue
-        ex.add(f,description=set_file_descr(grp_name+"_"+k+"_seqToFilter.fa",
+        ex.add(f,description=set_file_descr(grp_name+"_"+k.replace(bcDelimiter,"_")+"_seqToFilter.fa",
                                             groupId=gid,step="filtering",
                                             type="fa",view="admin"))
         if k in fastqFiles:
@@ -362,3 +444,18 @@ def filterSeq(ex,fastqFiles,seqToFilter,gid,grp_name,via='lsf'):
     for f in futures: f.wait()
     return unalignedFiles
 
+
+
+if __name__ == "__main__":
+    primersDict=get_primersList(sys.argv[2])
+    (resSplitExonerate,alignments)=split_exonerate(sys.argv[1],primersDict,minScore=8,l=30,n=1)
+    res = []
+    res.append(resSplitExonerate)
+    resFiles = dict((k,'') for d in res for k in d.keys())
+    for k in resFiles.keys():
+        v = [d[k] for d in res if k in d]
+        resFiles[k] = cat(v[1:],out=v[0])
+    print resFiles
+    print resSplitExonerate
+    print alignments
+    print "Done"
