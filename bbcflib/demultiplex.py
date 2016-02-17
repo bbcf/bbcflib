@@ -20,7 +20,7 @@ def fastqToFasta(fqFile,n=1,x=22,output=None):
     return {'arguments': ["fastqToFasta.py","-i",fqFile,"-o",output,"-n",str(n),"-x",str(x)],
             'return_value': output}
 
-def split_exonerate(filename,primersDict,minScore,l=30,n=1):
+def split_exonerate(filename,primersDict,minScore,l=30,n=1,trim=True):
 
     correction = {}
     files = {}
@@ -90,15 +90,19 @@ def split_exonerate(filename,primersDict,minScore,l=30,n=1):
             l_linename = len(info[0])
             l_seq = len(info[1])
             full_qual = s[1][int(l_linename)+int(l_seq)+2:int(l_linename)+2*int(l_seq)+2]
-            seq = info[1][k:l+k]
-            qual = full_qual[k:l+k]
+            if trim:
+                seq = info[1][k:l+k] if l+k < l_seq else info[1][k:]; ## if not take the remaining length
+                qual = full_qual[k:l+k] if l+k < l_seq else full_qual[k:]
+            else:
+                seq = info[1]
+                qual = full_qual
             if int(s[9]) < minScore:
                 files["unaligned"].write(" ".join(s)+"\n")
-            elif len(seq) >= l:
+            elif len(seq) >= l/2:
                 if key == closestBarcode or closestBarcode == "amb": # if not => not the primer_barcode to which the read comes from + add if ambiguous barcode
                     #line_buffer.append((s[9],"@"+info[0]+"\n"+seq+"***"+info[1]+"\n+\n"+qual+"\n",s,key))
                     line_buffer.append((s[9],"@"+info[0]+"\n"+seq+"\n+\n"+qual+"\n",s,key))
-            else:
+            else: ## will be discarded if remaining read length is too short. Arbitrarly set to < l/2. It used to be < l but will not happen as we now accept l close to the read length.
                 files["discarded"].write("@"+info[0]+"\n"+seq+"\n+\n"+qual+"\n")
 
     _process_line(line_buffer)
@@ -181,7 +185,7 @@ def getClosestBarcode(seq, bcList):
 
 
 def parallel_exonerate(ex, subfiles, dbFile, grp_descr,
-                       minScore=77, n=1, x=22, l=30, via="local"):
+                       minScore=77, n=1, x=22, l=30, trim=True, via="local"):
     futures = [fastqToFasta.nonblocking(ex,sf,n=n,x=x,via=via) for sf in subfiles]
 
     futures2 = []
@@ -194,7 +198,7 @@ def parallel_exonerate(ex, subfiles, dbFile, grp_descr,
     all_discarded = []
     gid, grp_name = grp_descr
     my_minscore = _get_minscore(dbFile)
-    primersDict=get_primersList(dbFile)
+    primersDict = get_primersList(dbFile)
 
     for sf in futures:
         subResFile = unique_filename_in()
@@ -204,7 +208,7 @@ def parallel_exonerate(ex, subfiles, dbFile, grp_descr,
         resExonerate.append(subResFile)
     for nf,f in enumerate(resExonerate):
         futures2[nf].wait()
-        (resSplitExonerate,alignments) = split_exonerate(f, primersDict, minScore, l=l, n=n)
+        (resSplitExonerate,alignments) = split_exonerate(f, primersDict, minScore, l=l, n=n, trim=trim)
         all_unaligned.append(alignments["unaligned"])
         all_ambiguous.append(alignments["ambiguous"])
         all_ambiguous_fastq.append(alignments["ambiguous_fastq"])
@@ -274,6 +278,10 @@ def load_paramsFile(paramsfile):
             if 'Minimum score for Exonerate' in k:   params['minScore'] = int(v)
             if 'Generate fastq output files' in k:   params['q'] = ('Y' in v.upper())
             if 'Length of the reads to align' in k:  params['l'] = int(v)
+            if 'Trim read' in k:
+                params['trim'] = ('Y' in v.upper()) or ('T' in v.upper())
+            else:
+                params['trim'] = True
     return params
 
 def prepareReport(ex, name, tot_counts, counts_primers, counts_primers_filtered,
@@ -448,7 +456,7 @@ def filterSeq(ex,fastqFiles,seqToFilter,gid,grp_name,via='lsf'):
 
 if __name__ == "__main__":
     primersDict=get_primersList(sys.argv[2])
-    (resSplitExonerate,alignments)=split_exonerate(sys.argv[1],primersDict,minScore=8,l=30,n=1)
+    (resSplitExonerate,alignments)=split_exonerate(sys.argv[1],primersDict,minScore=8,l=30,n=1,trim='False')
     res = []
     res.append(resSplitExonerate)
     resFiles = dict((k,'') for d in res for k in d.keys())
