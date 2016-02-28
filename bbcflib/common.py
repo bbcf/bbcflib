@@ -327,15 +327,14 @@ try:
         """
         def _parse_fasta(p):
             retval = []
-            seq = ''
+            seq = None
             for x in p.stdout:
                 if x.startswith('>'):
-                    if seq:
-                        retval.append(seq.upper())
-                        seq = ''
+                    if seq is not None:  retval.append(seq.upper())
+                    seq = ''
                     continue
                 seq += x.strip(' \t\r\n')
-            if seq: retval.append(seq.upper())
+            if seq is not None: retval.append(seq.upper())
             return retval
 
         return {"arguments": ["samtools","faidx",str(fasta)]+locus,
