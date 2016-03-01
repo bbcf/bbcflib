@@ -236,7 +236,7 @@ def parallel_exonerate(ex, subfiles, dbFile, grp_descr,
 
     # add ambiguous fastq file only if it is not empty
     tot_ambiguous = count_lines(ex,all_ambiguous_fastq[0])/4
-    if n > 1:
+    if tot_ambiguous > 1:
         gzipfile(ex,cat(all_ambiguous_fastq[1:],out=all_ambiguous_fastq[0]))
         ex.add(all_ambiguous_fastq[0]+".gz",
                description=set_file_descr(grp_name+"_ambiguous.fastq.gz",
@@ -244,19 +244,28 @@ def parallel_exonerate(ex, subfiles, dbFile, grp_descr,
 
     # add discarded file only if it is not empty
     tot_discarded = count_lines(ex,all_discarded[0])/4
-    if n > 1:
+    if tot_discarded > 1:
         gzipfile(ex,cat(all_discarded[1:],out=all_discarded[0]))
         ex.add(all_discarded[0]+".gz",
                description=set_file_descr(grp_name+"_discarded.fastq.gz",
                                           groupId=gid, step="exonerate", type="fastq",
                                           view="admin", comment="< %i bps" %l ) )
-    gzipfile(ex,faSubFiles[0])
-    ex.add(faSubFiles[0]+".gz",
+
+    ## add part input fasta file only if it is not empty
+    n = count_lines(ex,faSubFiles[0])
+    if n > 1:
+        gzipfile(ex,faSubFiles[0])
+        ex.add(faSubFiles[0]+".gz",
            description=set_file_descr(grp_name+"_input_part.fa.gz",
                                       groupId=gid, step="init", type="fa",
                                       view="admin", comment="part") )
-    gzipfile(ex,resExonerate[0])
-    ex.add(resExonerate[0]+".gz",
+
+
+    ## add part res exonerate only if it is not empty
+    n = count_lines(ex,resExonerate[0])
+    if n > 1:
+        gzipfile(ex,resExonerate[0])
+        ex.add(resExonerate[0]+".gz",
            description=set_file_descr(grp_name+"_exonerate_part.txt.gz",
                                       groupId=gid, step="exonerate", type="txt",
                                       view="admin", comment="part") )
