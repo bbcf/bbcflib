@@ -215,8 +215,12 @@ def parallel_exonerate(ex, subfiles, dbFile, grp_descr,
         all_discarded.append(alignments["discarded"])
         res.append(resSplitExonerate)
 
-    gzipfile(ex,cat(all_unaligned[1:],out=all_unaligned[0]))
-    ex.add(all_unaligned[0]+".gz",
+
+    # add unaligned file only if it is not empty
+    n = count_lines(ex,all_unaligned[0])
+    if n > 1:
+        gzipfile(ex,cat(all_unaligned[1:],out=all_unaligned[0]))
+        ex.add(all_unaligned[0]+".gz",
            description=set_file_descr(grp_name+"_unaligned.txt.gz",
                                       groupId=gid,step="exonerate",type="txt",
                                       view="admin", comment="scores between %i and %i"%(my_minscore,minScore)) )
