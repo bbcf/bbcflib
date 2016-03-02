@@ -219,7 +219,7 @@ def parallel_exonerate(ex, subfiles, dbFile, grp_descr,
     # add unaligned file only if it is not empty
     n = count_lines(ex,all_unaligned[0])
     if n > 1:
-        catfile=cat(all_unaligned[1:],out=all_unaligned[0])
+        catfile = cat(all_unaligned)
         gzipfile(ex,catfile)
         ex.add(catfile+".gz",
            description=set_file_descr(grp_name+"_unaligned.txt.gz",
@@ -229,7 +229,7 @@ def parallel_exonerate(ex, subfiles, dbFile, grp_descr,
     # add ambiguous file only if it is not empty
     n = count_lines(ex,all_ambiguous[0])
     if n > 1:
-        catfile=cat(all_ambiguous[1:],out=all_ambiguous[0])
+        catfile = cat(all_ambiguous)
         gzipfile(ex,catfile)
         ex.add(catfile+".gz",
                description=set_file_descr(grp_name+"_ambiguous.txt.gz",
@@ -239,7 +239,7 @@ def parallel_exonerate(ex, subfiles, dbFile, grp_descr,
     # add ambiguous fastq file only if it is not empty
     tot_ambiguous = count_lines(ex,all_ambiguous_fastq[0])/4
     if tot_ambiguous > 1:
-        catfile=cat(all_ambiguous_fastq[1:],out=all_ambiguous_fastq[0])
+        catfile = cat(all_ambiguous_fastq)
         gzipfile(ex,catfile)
         ex.add(catfile+".gz",
                description=set_file_descr(grp_name+"_ambiguous.fastq.gz",
@@ -248,7 +248,7 @@ def parallel_exonerate(ex, subfiles, dbFile, grp_descr,
     # add discarded file only if it is not empty
     tot_discarded = count_lines(ex,all_discarded[0])/4
     if tot_discarded > 1:
-        catfile=cat(all_discarded[1:],out=all_discarded[0])
+        catfile = cat(all_discarded)
         gzipfile(ex,catfile)
         ex.add(catfile+".gz",
                description=set_file_descr(grp_name+"_discarded.fastq.gz",
