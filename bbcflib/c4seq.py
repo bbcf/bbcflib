@@ -242,6 +242,10 @@ def c4seq_workflow( ex, job, primers_dict, assembly,
     else:
         out_chromosomes = ','.join([primers_dict.get(group['name'],{}).get('baitcoord').split(':')[0] for gid,group in job.groups.iteritems()])
     print "out_chromosomes=" + out_chromosomes + "\n"
+
+    sizeExt = job.options.get('norm_reg',1000000)
+    print "region considered for normalisation: mid viewpoint +/-" + str(sizeExt) + 'bps'
+
 ### do it
     for gid, group in job.groups.iteritems():
         run_domainogram[gid] = group.get('run_domainogram',False)
@@ -305,8 +309,8 @@ def c4seq_workflow( ex, job, primers_dict, assembly,
             convert(resfiles[3],resfile)
             countsPerFrags_bedGraph[gid][rid] = resfile
 
-            print "call normFrags: infiles="+resfile+", normfile="+normfile+"baitCoord="+primers_dict[group['name']]['baitcoord']+", sizeExt=1000000, name="+ group['name']+"rep_"+str(rid) + "regToExclude="+regToExclude[gid]+"\n"
-            futures_norm[gid][rid] = normFrags.nonblocking( ex, resfile, normfile, baitCoord=primers_dict[group['name']]['baitcoord'], sizeExt=1000000, name=group['name']+"rep_"+str(rid) ,regToExclude=regToExclude[gid], script_path=script_path, via=via )
+            print "call normFrags: infiles="+resfile+", normfile="+normfile+"baitCoord="+primers_dict[group['name']]['baitcoord']+", sizeExt=sizeExt, name="+ group['name']+"rep_"+str(rid) + "regToExclude="+regToExclude[gid]+"\n"
+            futures_norm[gid][rid] = normFrags.nonblocking( ex, resfile, normfile, baitCoord=primers_dict[group['name']]['baitcoord'], sizeExt=sizeExt, name=group['name']+"rep_"+str(rid) ,regToExclude=regToExclude[gid], script_path=script_path, via=via )
             processed['4cseq']['norm'][gid][rid] = normfile
 
         if len(group) > 1:
