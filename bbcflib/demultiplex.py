@@ -13,6 +13,7 @@ import os, urllib, shutil, sys, tarfile
 
 bcDelimiter = ':' ## '_' might be replaced by ';' or ':'
 
+print "**** Local version *****"
 
 @program
 def fastqToFasta(fqFile,n=1,x=22,output=None):
@@ -219,8 +220,9 @@ def parallel_exonerate(ex, subfiles, dbFile, grp_descr,
     # add unaligned file only if it is not empty
     n = count_lines(ex,all_unaligned[0])
     if n > 1:
-        gzipfile(ex,cat(all_unaligned[1:],out=all_unaligned[0]))
-        ex.add(all_unaligned[0]+".gz",
+        catfile=cat(all_unaligned[1:],out=all_unaligned[0])
+        gzipfile(ex,catfile)
+        ex.add(catfile+".gz",
            description=set_file_descr(grp_name+"_unaligned.txt.gz",
                                       groupId=gid,step="exonerate",type="txt",
                                       view="admin", comment="scores between %i and %i"%(my_minscore,minScore)) )
@@ -228,8 +230,9 @@ def parallel_exonerate(ex, subfiles, dbFile, grp_descr,
     # add ambiguous file only if it is not empty
     n = count_lines(ex,all_ambiguous[0])
     if n > 1:
-        gzipfile(ex,cat(all_ambiguous[1:],out=all_ambiguous[0]))
-        ex.add(all_ambiguous[0]+".gz",
+        catfile=cat(all_ambiguous[1:],out=all_ambiguous[0])
+        gzipfile(ex,catfile)
+        ex.add(catfile+".gz",
                description=set_file_descr(grp_name+"_ambiguous.txt.gz",
                                       groupId=gid,step="exonerate",type="txt",
                                       view="admin", comment="multiple equally good classifications") )
@@ -237,19 +240,21 @@ def parallel_exonerate(ex, subfiles, dbFile, grp_descr,
     # add ambiguous fastq file only if it is not empty
     tot_ambiguous = count_lines(ex,all_ambiguous_fastq[0])/4
     if tot_ambiguous > 1:
-        gzipfile(ex,cat(all_ambiguous_fastq[1:],out=all_ambiguous_fastq[0]))
-        ex.add(all_ambiguous_fastq[0]+".gz",
+        catfile=cat(all_ambiguous_fastq[1:],out=all_ambiguous_fastq[0])
+        gzipfile(ex,catfile)
+        ex.add(catfile+".gz",
                description=set_file_descr(grp_name+"_ambiguous.fastq.gz",
                                       groupId=gid,step="exonerate",type="fastq", comment="multiple equally good classifications") )
 
     # add discarded file only if it is not empty
     tot_discarded = count_lines(ex,all_discarded[0])/4
     if tot_discarded > 1:
-        gzipfile(ex,cat(all_discarded[1:],out=all_discarded[0]))
-        ex.add(all_discarded[0]+".gz",
+        catfile=cat(all_discarded[1:],out=all_discarded[0])
+        gzipfile(ex,catfile)
+        ex.add(catfile+".gz",
                description=set_file_descr(grp_name+"_discarded.fastq.gz",
                                           groupId=gid, step="exonerate", type="fastq",
-                                          view="admin", comment="< %i bps" %l ) )
+                                          view="admin", comment="remaining seq too short") )
 
     ## add part input fasta file only if it is not empty
     n = count_lines(ex,faSubFiles[0])
