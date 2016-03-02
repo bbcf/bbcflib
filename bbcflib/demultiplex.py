@@ -13,7 +13,6 @@ import os, urllib, shutil, sys, tarfile
 
 bcDelimiter = ':' ## '_' might be replaced by ';' or ':'
 
-print "**** Local version *****"
 
 @program
 def fastqToFasta(fqFile,n=1,x=22,output=None):
