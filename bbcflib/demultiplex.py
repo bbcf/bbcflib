@@ -372,7 +372,8 @@ def demultiplex_workflow(ex, job, gl, file_path="../", via='lsf',
                 allSubFiles.append(run)
         (resExonerate, tot_ambiguous, tot_discarded) = parallel_exonerate( ex, allSubFiles, primersFile,
                                                                            (gid, group['name']), via=via, **params )
-        gzipfile(ex,run)
+
+        gzipfile(ex, cat(infiles))
         ex.add(run+".gz",description=set_file_descr(group['name']+"_full_fastq.gz",
                                                     groupId=gid,step='exonerate',view='debug',type="fastq"))
         logfile.write("Will get sequences to filter\n");logfile.flush()
