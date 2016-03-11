@@ -243,14 +243,14 @@ class Counter(RNAseq):
         tablenames = [None]*ncond
         futures = [None]*ncond
         max_rlen = 0
-        counter_options = []
+        counter_options = ["--nh"]
         for bam in bamfiles:
             sam = pysam.Samfile(bam,'rb')
             max_rlen = max(max_rlen, sam.next().rlen)
         counter_options += ["--exon_cutoff", str(max_rlen)]
         bwt_args = self.job.options.get('map_args',{}).get('bwt_args',[])
-        if not "--local" in bwt_args:
-            counter_options += ["--nh"]
+#        if not "--local" in bwt_args:
+#            counter_options += ["--nh"]
         if hasattr(self.assembly,"fasta_origin") or self.assembly.intype==2:
             counter_options += ["--type","transcripts", "--method","raw"]
         else:
