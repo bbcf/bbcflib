@@ -393,15 +393,17 @@ def demultiplex_workflow(ex, job, gl, file_path="../", via='lsf',
         for k,f in resExonerate.iteritems():
             counts_primers[k] = count_lines(ex,f)/4
             if k in filteredFastq:
-                file_names[gid][k] = group['name']+"_"+k.replace(bcDelimiter,"_")+"_filtered"
-                ex.add(filteredFastq[k],description=set_file_descr(file_names[gid][k]+".fastq",
+                k2 = k.replace(bcDelimiter,"_")
+                file_names[gid][k2] = group['name']+"_"+k2+"_filtered"
+                ex.add(filteredFastq[k],description=set_file_descr(file_names[gid][k2]+".fastq",
                                                                    groupId=gid,step="final",
                                                                    type="fastq"))
                 counts_primers_filtered[k] = count_lines(ex,filteredFastq[k])/4
                 tgz.add( f, arcname=group['name']+"_"+k.replace(bcDelimiter,"_")+".fastq" )
             else:
-                file_names[gid][k] = group['name']+"_"+k.replace(bcDelimiter,"_")
-                ex.add(f,description=set_file_descr(file_names[gid][k]+".fastq",
+                k2 = k.replace(bcDelimiter,"_")
+                file_names[gid][k2] = group['name']+"_"+k2
+                ex.add(f,description=set_file_descr(file_names[gid][k2]+".fastq",
                                                     groupId=gid,step="final",
                                                     type="fastq"))
                 counts_primers_filtered[k] = 0
