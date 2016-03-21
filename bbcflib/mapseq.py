@@ -283,7 +283,8 @@ def get_fastq_files( ex, job, set_seed_length=True ):
             if libnt in libnames:
                 libnames[libnt] += 1
                 libnt += "."+str(libnames[libnt])
-            libnames[libnt] = 0
+            else:
+                libnames[libnt] = 0
             job.groups[gid]['run_names'][rid] = libnt
     return job
 
