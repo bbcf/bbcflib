@@ -414,11 +414,11 @@ def c4seq_workflow( ex, job, primers_dict, assembly,
             if before_profile_correction[gid]:
                futures_domainograms[gid] = runDomainogram.nonblocking( ex, processed['4cseq']['norm_grp'][gid],
                                                                             grName, regCoord=regCoord, skip=1,
-                                                                            script_path="/scratch/cluster/monthly/mleleu/tmp/share/", via=via, memory=15 )
+                                                                            script_path=script_path, via=via, memory=15 )
             else:
                 futures_domainograms[gid] = runDomainogram.nonblocking( ex, processed['4cseq']['profileCorrection_grp'][gid],
                                                                             grName, regCoord=regCoord.split(':')[0], skip=1,
-                                                                            script_path="/scratch/cluster/monthly/mleleu/tmp/share/", via=via, memory=15 )
+                                                                            script_path=script_path, via=via, memory=15 )
 
     ## prepare tar files for domainogram results (if any)
     ## and create "BRICKS to frags" files
