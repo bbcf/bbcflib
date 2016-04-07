@@ -204,6 +204,7 @@ def get_fastq_files( ex, job, set_seed_length=True ):
     for gid,group in job.groups.iteritems():
         job.groups[gid]['seed_lengths'] = {}
         job.groups[gid]['run_names'] = {}
+        libnames = {}
         for rid,run in group['runs'].iteritems():
             run_lib_name = None
             if isinstance(run,dict):
@@ -278,7 +279,13 @@ def get_fastq_files( ex, job, set_seed_length=True ):
                                                     _expand_fastq(ex,run_pe,target_pe))
                 else:
                     job.groups[gid]['runs'][rid] = _expand_fastq(ex,run,target)
-            job.groups[gid]['run_names'][rid] = re.sub(r'\s+','_',run_lib_name)
+            libnt = re.sub(r'\s+','_',run_lib_name)
+            if libnt in libnames:
+                libnames[libnt] += 1
+                libnt += "."+str(libnames[libnt])
+            else:
+                libnames[libnt] = 0
+            job.groups[gid]['run_names'][rid] = libnt
     return job
 
 ###############
@@ -1125,10 +1132,8 @@ def bam_to_density( bamfile, output, chromosome_accession=None, chromosome_name=
         b2w_args += ["-q",str(read_extension)]
     if sql:
         b2w_args += ["-d"]
-        if merge<0:
-            files = [output+"fwd.sql",output+"rev.sql"]
-        else:
-            files = [output+"merged.sql"]
+        if merge<0: files = [output+"fwd.sql",output+"rev.sql"]
+        else:       files = [output+"merged.sql"]
     else:
         if merge<0:
             b2w_args += ["-6"]
