@@ -529,7 +529,7 @@ def c4seq_workflow( ex, job, primers_dict, assembly,
         allNames += [ job.groups[gid]['name']+"_BRICKSpval" ]
         cat_bricks2frags = unique_filename_in()+".txt"
         print ','.join(processed['4cseq']['bricks2frags'][gid])
-        cat(processed['4cseq']['bricks2frags'][gid],out=cat_bricks2frags)
+        cat_bricks2frags = cat(processed['4cseq']['bricks2frags'][gid],out=cat_bricks2frags)
         allFiles += [ cat_bricks2frags ]
 
     for gid, fg in futures_smoothed.iteritems():
