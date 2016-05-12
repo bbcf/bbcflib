@@ -275,13 +275,6 @@ class Counter(RNAseq):
         else:
             joined = tablenames[0]
 
-        # Keep intermediate tables
-        for i,c in enumerate(self.conditions):
-            #shutil.copy(tablenames[i], "../counts%d.txt"%i)
-            descr = set_file_descr(self.conditions[i]+'_'+tablenames[i]+'.gz', type='txt', step='pileup', view='admin')
-            gzipfile(self.ex, tablenames[i])
-            self.ex.add(tablenames[i]+'.gz', description=descr)
-
         # Split genes and transcripts into separate files
         genes_filename = unique_filename_in()
         trans_filename = unique_filename_in()
@@ -328,6 +321,14 @@ class Counter(RNAseq):
                         trans_file.write(line)
         genes_file.close()
         trans_file.close()
+
+        # Keep intermediate tables
+        for i,c in enumerate(self.conditions):
+            #shutil.copy(tablenames[i], "../counts%d.txt"%i)
+            descr = set_file_descr(self.conditions[i]+'_'+tablenames[i]+'.gz', type='txt', step='pileup', view='admin')
+            gzipfile(self.ex, tablenames[i])
+            self.ex.add(tablenames[i]+'.gz', description=descr)
+
         if self.stranded:
             count_files = {'genes':genes_filename, 'transcripts':trans_filename,
                            'genes_anti':genes_anti_filename, 'transcripts_anti':trans_anti_filename}
