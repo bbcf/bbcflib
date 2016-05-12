@@ -80,13 +80,10 @@ def transcriptome_gtf_from_genrep(assembly):
     smap = {1:'+', -1:'-'}
     with open(gtf,"wb") as g:
         for tid,t in tmap.iteritems():
-            gtflines.append([t.chrom,'Ensembl','exon',t.start,t.end,'.',smap.get(t.strand,'.'),'.',
-                           'exon_id "%s"; transcript_id "%s"; gene_id "%s"; gene_name "%s"' \
-                           % (t.id,t.id,t.gene_id,t.gene_name)])
-        del tmap
-        gtflines.sort(key=itemgetter(0,3,4))  # chrom,start,end
-        for gtfline in gtflines:
+            gtfline = [t.id,'Ensembl','exon',1,t.length,'.','+','.','gene_id "%s"; gene_name "%s"; gene_locus "%s:%i-%i"'\
+                       % (t.gene_id,t.gene_name,t.chrom,t.start,t.end)]
             g.write('\t'.join([str(x) for x in gtfline])+'\n')
+    del tmap
     return gtf
 
 
@@ -272,8 +269,11 @@ class Counter(RNAseq):
             if futures[i] is None:
                 self.write_debug("Counting failed.")
                 raise ValueError("Counting failed.")
-        joined = unique_filename_in()
-        rnacounter_join.nonblocking(self.ex, tablenames, stdout=joined, via=self.via).wait()
+        if len(tablenames) > 1:
+            joined = unique_filename_in()
+            rnacounter_join.nonblocking(self.ex, tablenames, stdout=joined, via=self.via).wait()
+        else:
+            joined = tablenames[0]
 
         # Keep intermediate tables
         for i,c in enumerate(self.conditions):

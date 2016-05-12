@@ -505,8 +505,7 @@ def remove_duplicate_reads( bamfile, chromosomes,
     pos_per_lib = {}
     for read in infile:
         nh = dict(read.tags).get('NH',1)
-        if nh < 1:
-            continue
+        if nh < 1: continue
         lpatt = re.search(r'^(.*?:.*?):',read.qname)
         if lpatt: lname = lpatt.groups()[0]
         else: lname = '1'
@@ -742,10 +741,10 @@ def bamstats(bamfile):
     be parsed and converted to a dictionary.
     """
     def extract_pairs(s,head,foot):
-        m=re.search(head+r'\n([\d\s]*)\n'+foot,s,
-                    flags=re.MULTILINE).groups()[0].splitlines()
+        m = re.search(head+r'\n([\d\s]*)\n'+foot,s,
+                      flags=re.MULTILINE).groups()[0].splitlines()
         def f(x):
-            (a,b) = re.search(r'(\d+)\s(\d+)',x).groups()
+            a,b = re.search(r'(\d+)\s(\d+)',x).groups()
             return (int(a),int(b))
         return dict([f(x) for x in m])
     def coverage_stats(p):
@@ -760,22 +759,20 @@ def bamstats(bamfile):
         if not(re.search(r'Total (\d+)',s)):
                time.sleep(60)
                s=''.join(p.stdout)
-        results["read_length"]=int(re.search(r'Read length (\d+)',s).groups()[0])
-        results["genome_size"]=int(re.search(r'Genome size (\d+)',s).groups()[0])
-        results["nb_positions"]=int(re.search(r'Nb positions (\d+)',s).groups()[0])
-        results["multi_hits"]=extract_pairs(s,"Hits Reads","Total")
-        results["total"]=int(re.search(r'Total (\d+)',s).groups()[0])
-        [total,fwd,rev]=re.search(r'Alignments (\d+)\s*\(fwd:\s+(\d+)/rev:\s+(\d+)\)',
+        results["read_length"] = int(re.search(r'Read length (\d+)',s).groups()[0])
+        results["genome_size"] = int(re.search(r'Genome size (\d+)',s).groups()[0])
+        results["nb_positions"] = int(re.search(r'Nb positions (\d+)',s).groups()[0])
+        results["multi_hits"] = extract_pairs(s,"Hits Reads","Total")
+        results["total"] = int(re.search(r'Total (\d+)',s).groups()[0])
+        total,fwd,rev = re.search(r'Alignments (\d+)\s*\(fwd:\s+(\d+)/rev:\s+(\d+)\)',
                                   s,flags=re.MULTILINE).groups()
-        results["alignments"]={"total": int(total),
-                                "fwd": int(fwd),
-                                "rev": int(rev)}
-        results["unmapped"]=int(re.search(r'Unmapped ([\d.]+)',s).groups()[0])
-        results["expected_coverage"]=float(re.search(r'Expected coverage ([\d.]+)',
+        results["alignments"] = {"total": int(total), "fwd": int(fwd), "rev": int(rev)}
+        results["unmapped"] = int(re.search(r'Unmapped ([\d.]+)',s).groups()[0])
+        results["expected_coverage"] = float(re.search(r'Expected coverage ([\d.]+)',
                                                      s).groups()[0])
-        results["actual_coverage"]=float(re.search(r'Actual coverage ([\d.]+)',
+        results["actual_coverage"] = float(re.search(r'Actual coverage ([\d.]+)',
                                                    s).groups()[0])
-        results["mismatches"]=extract_pairs(s,"Mismatches Reads","")
+        results["mismatches"] = extract_pairs(s,"Mismatches Reads","")
         return results
     return {"arguments": ["bamstat",bamfile], "return_value": coverage_stats}
 
