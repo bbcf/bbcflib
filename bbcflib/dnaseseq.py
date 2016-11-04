@@ -29,7 +29,7 @@ def macs_bedfiles( ex, chrmeta, tests, controls, names, macs_args, via, logfile 
     _tts = [tests[k][1] for k in missing_beds]
     _nms = {'tests': [names['tests'][k] for k in missing_beds],
             'controls': names['controls']}
-    macsout = add_macs_results( ex, 0, genome_size, _tts, 
+    macsout = add_macs_results( ex, 0, genome_size, _tts,
                                 ctrlbam=controls, name=_nms,
                                 poisson_threshold={},
                                 macs_args=macs_args, via=via )
@@ -48,7 +48,7 @@ def macs_bedfiles( ex, chrmeta, tests, controls, names, macs_args, via, logfile 
 @program
 def wellington( bed, bam, output=None, options=[] ):
     """
-    Binds the ``wellington_footprints.py`` program: `<http://pythonhosted.org/pyDNase/scripts.html#wellington-footprints-py>`_. 
+    Binds the ``wellington_footprints.py`` program: `<http://pythonhosted.org/pyDNase/scripts.html#wellington-footprints-py>`_.
     """
     if output is None: output = unique_filename_in()
     outdir = unique_filename_in()
@@ -74,7 +74,7 @@ def save_wellington( ex, wellout, chrmeta ):
                 [bedzip.write(l) for l in _bed]
         bedzip.close()
         ex.add(wellall+"FDR01.bed.gz",
-               description=set_file_descr(name[1]+'_WellingtonFootprintsFDR01.bed.gz', 
+               description=set_file_descr(name[1]+'_WellingtonFootprintsFDR01.bed.gz',
                                           type='bed', ucsc='1', step='footprints', groupId=name[0]),
                associate_to_filename=wellall, template='%s_WellingtonFootprintsFDR01.bed.gz')
 #### BED at p-values [...]
@@ -88,16 +88,20 @@ def save_wellington( ex, wellout, chrmeta ):
                     [bedzip.write(l) for l in _bed]
         bedzip.close()
         ex.add(wellall+"PvalCutoffs.bed.gz",
-               description=set_file_descr(name[1]+'_WellingtonFootprintsPvalCutoffs.bed.gz', 
+               description=set_file_descr(name[1]+'_WellingtonFootprintsPvalCutoffs.bed.gz',
                                           type='bed', ucsc='1', step='footprints', groupId=name[0]),
                associate_to_filename=wellall, template='%s_WellingtonFootprintsPvalCutoffs.bed.gz')
 #### WIG
         cat([os.path.join(*x)+".WellingtonFootprints.wig" for x in wlist], wellall+".wig")
-        convert(wellall+".wig", wellall+".bw", chrmeta=chrmeta)
-        ex.add(wellall+".bw",
-               description=set_file_descr(name[1]+'_WellingtonFootprints.bw', 
-                                          type='bigWig', ucsc='1', step='footprints', groupId=name[0]),
-               associate_to_filename=wellall, template='%s_WellingtonFootprints.bw')
+        #convert(wellall+".wig", wellall+".bw", chrmeta=chrmeta)
+        #ex.add(wellall+".bw",
+        #       description=set_file_descr(name[1]+'_WellingtonFootprints.bw',
+        #                                  type='bigWig', ucsc='1', step='footprints', groupId=name[0]),
+        #       associate_to_filename=wellall, template='%s_WellingtonFootprints.bw')
+        ex.add(wellall+".wig",
+               description=set_file_descr(name[1]+'_WellingtonFootprints.wig',
+                                          type='wig', ucsc='1', step='footprints', groupId=name[0]),
+               associate_to_filename=wellall, template='%s_WellingtonFootprints.wig')
     return bedlist
 
 
@@ -178,7 +182,7 @@ def plot_footprint_profile( ex, bedlist, signals, chrnames, groups, logfile ):
                 numregs[motif] += len(regs)
                 tFeat = sorted_stream(segment_features(FeatureStream(regs,fields=['start','end']),
                                                        nbins=motif[1],upstream=_plot_flank,downstream=_plot_flank))
-                for t in score_by_feature([s.read(chrom) for s in signals[gid]], tFeat): 
+                for t in score_by_feature([s.read(chrom) for s in signals[gid]], tFeat):
                     data[motif][t[2]] += t[3:]
         files[gid]['pdf'] = unique_filename_in()
         new = True
@@ -191,7 +195,7 @@ def plot_footprint_profile( ex, bedlist, signals, chrnames, groups, logfile ):
             for k in range(nbins): X[k+_plot_flank[1]] = str(k+1)
 ####### Could do a heatmap (sort by intensity)...
             lineplot(X, [dat[:, n] for n in range(dat.shape[-1])], mfrow=[4,2],
-                     output=files[gid]['pdf'], new=new, last=(last==0), 
+                     output=files[gid]['pdf'], new=new, last=(last==0),
                      legend=snames, main=mname)
             new = False
             _datf = unique_filename_in()
@@ -244,11 +248,11 @@ def dnaseseq_workflow( ex, job, assembly, logfile=sys.stdout, via='lsf' ):
     if len(controls)<1:
         controls = [None]
         names['controls'] = [(0,None)]
-    tests = macs_bedfiles( ex, assembly.chrmeta, tests, controls, names, 
+    tests = macs_bedfiles( ex, assembly.chrmeta, tests, controls, names,
                            job.options.get('macs_args',["--keep-dup","10"]), via, logfile )
     bedlist = run_wellington(ex, tests, names, assembly, via, logfile)
 ######################### Motif scanning / plotting
-    if any([gr.get('motif') != 'null' and gr.get('motif') 
+    if any([gr.get('motif') != 'null' and gr.get('motif')
             for gr in job.groups.values()]):
         motifbeds = motif_scan( ex, bedlist, assembly, job.groups, via, logfile )
         siglist = dict((gid[0],[]) for gid in names['tests'])
@@ -269,7 +273,7 @@ def dnaseseq_workflow( ex, job, assembly, logfile=sys.stdout, via='lsf' ):
                 else:
                     wig.append(m['wig'])
             if len(wig) > 1:
-                wig[0] = dict((s,merge_sql(ex, [x[s] for x in wig], via=via)) 
+                wig[0] = dict((s,merge_sql(ex, [x[s] for x in wig], via=via))
                               for s in suffixes)
             _trn = job.groups[gid]['name']+"_%s"
             if job.groups[gid]['control']:
@@ -279,18 +283,18 @@ def dnaseseq_workflow( ex, job, assembly, logfile=sys.stdout, via='lsf' ):
             else:
                 siglist[gid].extend([track(w,info={'name': _trn%s})
                                      for s,w in wig[0].iteritems()])
-        plot_files = plot_footprint_profile( ex, motifbeds, siglist, 
-                                             assembly.chrnames, 
+        plot_files = plot_footprint_profile( ex, motifbeds, siglist,
+                                             assembly.chrnames,
                                              job.groups, logfile )
         for gid, flist in plot_files.iteritems():
             gname = job.groups[gid]['name']
             plotall = unique_filename_in()
             touch( ex, plotall )
-            ex.add(plotall, description=set_file_descr(gname+'_footprints_plots', 
+            ex.add(plotall, description=set_file_descr(gname+'_footprints_plots',
                                                        type='none', view='admin',
                                                        step='motifs', groupId=gid))
-            ex.add(flist['pdf'], description=set_file_descr(gname+'_footprints_plots.pdf', 
-                                                            type='pdf', step='motifs', 
+            ex.add(flist['pdf'], description=set_file_descr(gname+'_footprints_plots.pdf',
+                                                            type='pdf', step='motifs',
                                                             groupId=gid),
                    associate_to_filename=plotall, template='%s.pdf')
             tarname = unique_filename_in()
