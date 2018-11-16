@@ -448,7 +448,7 @@ def getSeqToFilter(ex,primersFile):
     return filenames
 
 
-def filterSeq(ex,fastqFiles,seqToFilter,gid,grp_name,via='lsf'):
+def filterSeq(ex,fastqFiles,seqToFilter,gid,grp_name,via='local'):
     indexSeqToFilter = {}
     indexFiles = {}
     global bcDelimiter
@@ -467,7 +467,7 @@ def filterSeq(ex,fastqFiles,seqToFilter,gid,grp_name,via='lsf'):
         unalignedFiles[k] = unique_filename_in()
         touch(ex,unalignedFiles[k])
         futures.append(bowtie.nonblocking( ex, f.wait(), fastqFiles[k],
-                                           bwtarg+[unalignedFiles[k]], via='lsf'))
+                                           bwtarg+[unalignedFiles[k]], via=via))
 
     for f in futures: f.wait()
     return unalignedFiles

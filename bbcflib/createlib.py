@@ -194,10 +194,11 @@ def createLibrary(ex, assembly_or_fasta, params, url=GlobalHtsUrl, via='local'):
 def get_libForGrp(ex, group, fasta_or_assembly, new_libraries, grpId, url=None, lib_dir=None, via='lsf'):
 #wd_archive="/archive/epfl/bbcf/mleleu/pipeline_vMarion/pipeline_3Cseq/vWebServer_Bein/"
     def _libfile(id_lib):
-        libs_list = json.load(urllib2.urlopen( url+"/libraries.json" ))
+        #libs_list = json.load(urllib2.urlopen( url+"/libraries.json" ))
+        libs_list = json.load(open( url+"/libraries.json" ))
         for lib in libs_list:
             if lib['library']['id']==int(id_lib):
-                return lib['library']['filename']
+                return url+'/'+lib['library']['filename']
         return None
 
     def _paramsFile(paramsfile):

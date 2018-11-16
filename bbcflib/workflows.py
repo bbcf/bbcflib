@@ -83,7 +83,8 @@ class Workflow(object):
             if self.opts.config and os.path.exists(self.opts.config):
                 (self.job,self.globals) = frontend.parseConfig( self.opts.config, self.job, self.globals )
         elif os.path.exists(self.opts.config):
-            (self.job,self.globals) = frontend.parseConfig( self.opts.config )
+            self.globals = use_pickle(M, "global variables")
+            (self.job,self.globals) = frontend.parseConfig( self.opts.config , None, self.globals )
             self.opts.key = self.job.description
         else:
             raise Usage("Need either a job key (-k) or a configuration file (-c).")

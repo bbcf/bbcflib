@@ -241,7 +241,7 @@ def execution(lims = None, description="", remote_working_directory=None):
         ex.remote_working_directory = os.path.join(remote_working_directory,
                                                    execution_dir)
     os.chdir(os.path.join(os.getcwd(), execution_dir))
-    exception_string = None
+    exception_string = "" #was None
     try:
         yield ex
     except:
@@ -917,7 +917,7 @@ class MiniLIMS(object):
         except ValueError, v:
             return None
 
-    def write(self, ex, description = "", exception_string=None):
+    def write(self, ex, description = "", exception_string = ""):
         """Write an execution to the MiniLIMS.
 
         The overall Execution object is recorded in the execution
@@ -948,7 +948,7 @@ class MiniLIMS(object):
                 self.stdout = None
                 self.stderr = exception_string
                 self.pid = pid
-                self.return_code = exception_string
+                self.return_code = int(-1) #was exception_string but it should be an integer and cannot be null
                 self.arguments = []
 
         for i,p in enumerate(ex.programs):
@@ -962,6 +962,7 @@ class MiniLIMS(object):
                 stderr_value = ""
             else:
                 stderr_value = "".join(p.stderr)
+            print(p.arguments)
 
             self.db.execute("""insert into program(pos,execution,pid,
                                                    return_code,stdout,stderr)

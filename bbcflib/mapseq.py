@@ -495,6 +495,7 @@ def remove_duplicate_reads( bamfile, chromosomes,
     infile = pysam.Samfile( bamfile, "rb" )
     outname = unique_filename_in()
     header = infile.header
+    header = header.to_dict() ## now pysam returns an AlignmentFile.header object, not a dict 
     pilesize = max(1,pilesize)
     if convert:
         for h in header["SQ"]:
@@ -966,6 +967,7 @@ def map_reads( ex, fastq_file, chromosomes, bowtie_index,
         infile = pysam.Samfile( sorted_bam, "rb" )
         reduced_bam = unique_filename_in()
         header = infile.header
+        header = header.to_dict() ## now pysam returns an AlignmentFile.header object, not a dict 
         for h in header["SQ"]:
             if h["SN"] in chromosomes:
                 h["SN"] = chromosomes[h["SN"]]["name"]
@@ -1450,6 +1452,14 @@ def get_bam_wig_files( ex, job, minilims=None, hts_url=None, suffix=['fwd','rev'
                         wig = dict((x[1],s) for x,s in wig_ids.iteritems())
             else:
                 raise ValueError("Couldn't find this bam file anywhere: %s" %file_loc)
+            ## added by Marion to give the possibility to directly give a path to wig files in the 4cseq pipeline
+            if 'url_wig' in run:
+                file_loc_wig = re.search(r'^[\"\']?([^\"\';]+)[\"\']?',str(run.get('url_wig','')).strip()).groups()[0]
+                if os.path.exists(file_loc_wig):
+                    assert os.access(file_loc_wig, os.R_OK), "No read access to %s" % file_loc_wig
+                    wigfile = unique_filename_in()
+                    shutil.copy( file_loc_wig , wigfile)
+                    wig = {'merged': wigfile} #for 4cseq the wig are the merged ones, not _fwd or _rev as above
             mapped_files[gid][rid] = {'bam': bamfile,
                                    'stats': stats or bamstats( ex, bamfile ),
                                    'poisson_threshold': p_thresh,

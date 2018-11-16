@@ -128,7 +128,7 @@ def runDomainogram( infile, name, prefix=None, regCoord="",
     return {'arguments': args, 'return_value': prefix+".log"}
 
 
-def density_to_countsPerFrag( ex, file_dict, groups, assembly, regToExclude, script_path, via='lsf' ):
+def density_to_countsPerFrag( ex, file_dict, groups, assembly, regToExclude, bash_script_path, via='lsf' ):
     '''
     Main function to compute normalised counts per fragments from a density file.
     '''
@@ -152,21 +152,23 @@ def density_to_countsPerFrag( ex, file_dict, groups, assembly, regToExclude, scr
                 gfminer_job = {"operation": "score_by_feature",
                                "output": bedfile,
                                "datatype": "qualitative",
-                               "args": "'"+json.dumps({"trackScores":density_file,
-                                                       "trackFeatures":chref,
-                                                       "chromosome":ch})+"'"}
-                gm_futures.append((gfminer_run.nonblocking(ex,gfminer_job,via=via),
+                               "args": json.dumps({"trackScores":density_file, "trackFeatures":chref, "chromosome":ch})}
+                gm_job_future = gfminer_run.nonblocking(ex,gfminer_job,via=via)
+                gm_futures.append((gm_job_future,
                                    bedfile))
+                print "in density_to_countsPerFrag, launched call gfminer_run for group " + group.get('name','') + " and chr " + chref + " as future "+ str(gm_job_future)
+                print str(gfminer_job)
             outsql = unique_filename_in()+".sql"
             sqlouttr = track( outsql, chrmeta=assembly.chrmeta,
                               info={'datatype':'quantitative'},
                               fields=['start', 'end', 'score'] )
             outbed_all = []
             for n,f in enumerate(gm_futures):
+                print "...wait for "+ str(f)
                 f[0].wait()
                 fout = f[1]
                 if not(os.path.exists(fout)):
-                    time.sleep(60)
+                    time.sleep(5)
                     touch(ex,fout)
                 outbed_all.append(fout)
                 outbed = track(fout, chrmeta=assembly.chrmeta)
@@ -181,7 +183,7 @@ def density_to_countsPerFrag( ex, file_dict, groups, assembly, regToExclude, scr
             touch(ex,FragFile)
             futures[gid][rid] = (FragFile,
                             segToFrag.nonblocking( ex, countsPerFragFile, regToExclude[gid],
-                                                   script_path, via=via, stdout=FragFile ,
+                                                   bash_script_path, via=via, stdout=FragFile ,
                                                    memory=4 ))
     def _parse_select_frag(stream):
         for s in stream:
@@ -209,7 +211,7 @@ def density_to_countsPerFrag( ex, file_dict, groups, assembly, regToExclude, scr
 
 ############################################################################
 def c4seq_workflow( ex, job, primers_dict, assembly,
-                    c4_url=None, script_path='', logfile=sys.stdout, via='lsf' ):
+                    gl=None, logfile=sys.stdout, via='lsf' ):
     '''
     Main
     * open the 4C-seq minilims and create execution
@@ -219,6 +221,9 @@ def c4seq_workflow( ex, job, primers_dict, assembly,
     '''
 
     mapseq_files = job.files
+    c4_url = gl.get('c4_url',os.getcwd())
+    script_path = gl.get('script_path',os.getcwd())
+    bash_script_path = gl.get('bash_script_path',os.getcwd())
 ### outputs
     processed = {'lib': {}, 'density': {}, '4cseq': {}}
     processed['4cseq'] = {'density_files' : {},
@@ -270,7 +275,7 @@ def c4seq_workflow( ex, job, primers_dict, assembly,
         print "regToExclude["+str(gid)+"]="+regToExclude[gid]
         for rid,run in group['runs'].iteritems():
             libname = mapseq_files[gid][rid]['libname']
-            if job.options.get('merge_strands') != 0 or not('wig' in mapseq_files[gid][rid]):
+            if job.options.get('merge_strands',0) != 0 or not('wig' in mapseq_files[gid][rid]):
                 density_file=parallel_density_sql( ex, mapseq_files[gid][rid]['bam'],
                                                    assembly.chrmeta,
                                                    nreads=mapseq_files[gid][rid]['stats']["total"],
@@ -291,7 +296,7 @@ def c4seq_workflow( ex, job, primers_dict, assembly,
         # not anymore:
         # processed['density'][gid] = merge_sql(ex, density_files, via=via)
 
-    processed['4cseq']['countsPerFrag'] = density_to_countsPerFrag( ex, processed, job.groups, assembly, regToExclude, script_path, via )
+    processed['4cseq']['countsPerFrag'] = density_to_countsPerFrag( ex, processed, job.groups, assembly, regToExclude, bash_script_path, via )
     ## access per gid+rid
 
     futures_norm = {}
